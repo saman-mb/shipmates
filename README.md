@@ -4,6 +4,11 @@
 
 # 🚢 Shipmates
 
+<p align="center">
+  <b>Custom sub-agents &amp; slash-command workflows for <a href="https://claude.com/claude-code">Claude Code</a>.</b><br/>
+  A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
+</p>
+
 [![License: MIT](https://img.shields.io/github/license/saman-mb/shipmates?color=blue)](LICENSE)
 [![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Crew aboard](https://img.shields.io/badge/crew-11%20specialists-orange)](#-meet-the-crew)
@@ -11,6 +16,11 @@
 [![Stars](https://img.shields.io/github/stars/saman-mb/shipmates?style=flat&logo=github)](https://github.com/saman-mb/shipmates/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/saman-mb/shipmates)](https://github.com/saman-mb/shipmates/commits/main)
 [![Issues](https://img.shields.io/github/issues/saman-mb/shipmates)](https://github.com/saman-mb/shipmates/issues)
+
+<p align="center">
+  <img src="assets/demo.gif" width="760" alt="A /ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request." />
+</p>
+<p align="center"><sub><i>Illustrative — the actual stages <code>/ship-issue</code> runs, in order.</i></sub></p>
 
 ### Stop being your AI's for-loop. Give it a crew. ⚓
 
@@ -22,6 +32,8 @@ One command — **`/ship-issue`** — takes a GitHub issue from *"open"* to a *r
 request*, on its own: it plans the work, builds it in an isolated worktree, waits for CI to go
 green, convenes an adversarial review board, loops on the fixes, and hands you a PR to merge.
 You stay the captain. The shipmates do the twenty steps in between. 🫡
+
+**[⚓ Get the crew aboard →](#-come-aboard-install)** · one line, no clone — then just `/ship-issue 42`.
 
 ---
 
@@ -246,6 +258,35 @@ can override or specialise a crew member without touching the shared copy.
 
 The crew keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new orders
 keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs very welcome.
+
+## ❓ FAQ
+
+**What is Shipmates?**
+A ready-made crew of [Claude Code](https://claude.com/claude-code) **sub-agents** and **slash-command
+workflows**. Instead of you playing planner–builder–reviewer in a loop, a board of specialist AI agents
+does it — the flagship `/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request.
+
+**What are Claude Code sub-agents and slash commands?**
+Sub-agents are focused AI agents defined in `.claude/agents/*.md`; slash commands are reusable workflows
+in `.claude/commands/*.md`. Shipmates ships 11 agents and 9 commands you drop into `~/.claude/` (global,
+every project) or a repo's `.claude/` (project-scoped). See [install](#-come-aboard-install).
+
+**Is this an official Anthropic project?**
+No. Shipmates is an independent, MIT-licensed community project that builds on Claude Code's public
+sub-agent and slash-command features. "Claude" and "Claude Code" are trademarks of Anthropic.
+
+**How is it different from just prompting Claude Code?**
+A raw prompt drifts; Shipmates is a **state machine with gates** — an isolated worktree, a mandatory
+green-CI gate, and a *fresh* reviewer that never grades its own work — so an autonomous run converges
+instead of wandering. See [how the voyage works](#-how-the-voyage-works).
+
+**Which languages and frameworks does it work with?**
+Any. The agents are **domain-neutral** — they enforce the standard in *your* repo's `README` / `CLAUDE.md`,
+so the same crew works on a game engine, a web app, or a CLI.
+
+**Do I have to configure each agent?**
+No. Install once, then `/ship-issue 42`. The crew picks up your project's quality bar automatically;
+a project-level `.claude/` definition overrides the global crew when you want to specialise one.
 
 ## 🤝 Contributing
 
