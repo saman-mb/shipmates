@@ -46,6 +46,7 @@ from anything hardcoded into the role.
 |---|---|
 | `/ship-issue <n>` | Drives GitHub issue `#n` from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
 | `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories — a `product-manager` sub-agent authors each epic's stories in parallel |
+| `/polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix, looping until the `artist` / `ux-ui-designer` / `product-manager` is genuinely happy |
 
 *More crew and more orders are on the way.* ⛵
 
@@ -110,6 +111,63 @@ The tricks that make the loop hold together:
 - 👥 **Reviewers can't grade their own homework.** A *fresh* agent reviews the PR — never the builder.
 - ⏱️ **Bounded loops.** Retry N, then tap the human. A loop with no cap just spins.
 - 🎟️ **Capture, don't block.** Nits become tickets, not roadblocks.
+
+## 🧭 Examples — putting the crew to work
+
+**Ship a single ticket, hands-off to a reviewed PR:**
+```
+/ship-issue 142
+```
+The planner reads issue #142 and your README; a `senior-engineer` builds it in a worktree; CI has to
+go green; then a `product-manager` and `sdet` review the pushed PR — a `ux-ui-designer` or `artist`
+joins automatically if the story is UI or art. Fixes loop until they pass, and you get a reviewed PR
+to merge.
+
+**Ship it fully autonomously (merge included), where that's acceptable:**
+```
+MERGE_MODE=auto /ship-issue 142      # or just say "auto-merge" in the prompt
+```
+
+**Turn a one-line brief into a tracked backlog:**
+```
+/plan-epics "User accounts: signup, login, password reset, and a profile page"
+```
+A `product-manager` scopes it into an epic, drafts INVEST user stories with acceptance criteria, and
+files them as linked, labelled GitHub issues — ready to hand to `/ship-issue` one at a time.
+
+**Break a big vision into several epics at once (fan-out):**
+```
+/plan-epics ./docs/product-brief.md
+```
+When the brief spans multiple epics, one `product-manager` sub-agent per epic drafts its stories in
+parallel, then everything is created and cross-linked.
+
+**Preview a backlog without creating anything:**
+```
+/plan-epics "checkout + payments + order history"  — dry run
+```
+
+**Polish a UI screen until it's actually right:**
+```
+/polish the settings screen
+```
+The `ux-ui-designer` reviews the *rendered* screen (not the code), lists concrete fixes, a
+`senior-engineer` applies them, it re-renders, and the loop repeats until the designer signs off — or
+hands you the outstanding notes after a few rounds.
+
+**Polish rendered art the same way:**
+```
+/polish the title-screen background — reviewer: artist
+```
+Same loop, but the `artist` judges the actual render — palette, composition, contrast — round after
+round until it meets the bar.
+
+**Chain them — scope the work, ship a story, polish its UI:**
+```
+/plan-epics "settings redesign"     # → creates the epic + stories
+/ship-issue 148                     # → builds & reviews one story to a PR
+/polish the settings screen         # → iterates the visuals to sign-off
+```
 
 ## 🗂️ Scopes & precedence
 
