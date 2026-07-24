@@ -130,7 +130,7 @@ The tricks that make the loop hold together:
 /ship-issue 142
 ```
 The planner reads issue #142 and your README; a `senior-engineer` builds it in a worktree; CI has to
-go green; then a `product-manager` and `sdet` review the pushed PR — a `ux-ui-designer` or `artist`
+go green; then a `product-manager` and `sdet` review the pushed PR — a `ux-ui-designer` or `art-director`
 joins automatically if the story is UI or art. Fixes loop until they pass, and you get a reviewed PR
 to merge.
 
@@ -168,9 +168,9 @@ hands you the outstanding notes after a few rounds.
 
 **Polish rendered art the same way:**
 ```
-/polish the title-screen background — reviewer: artist
+/polish the title-screen background — reviewer: art-director
 ```
-Same loop, but the `artist` judges the actual render — palette, composition, contrast — round after
+Same loop, but the `art-director` judges the actual render — palette, composition, contrast — round after
 round until it meets the bar.
 
 **Fix a bug — proven, not just patched:**
