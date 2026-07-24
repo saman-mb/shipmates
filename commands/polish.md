@@ -1,6 +1,6 @@
 ---
-description: Iterate a visual / UI / output artifact to a specialist's sign-off — produce → critique → fix, looping until the artist, ux-ui-designer, or product-manager is genuinely happy (or a round cap).
-argument-hint: <what to polish — a screen, an asset, a rendered surface> [reviewer: artist|ux-ui-designer|product-manager]
+description: Iterate a visual / UI / output artifact to a specialist's sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or product-manager is genuinely happy (or a round cap).
+argument-hint: <what to polish — a screen, an asset, a rendered surface> [reviewer: art-director|ux-ui-designer|product-manager]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 ---
 
@@ -19,7 +19,7 @@ a chart, a piece of output…) and optionally which reviewer. If it's empty, ask
 ## Config
 
 - `REVIEWER` — chosen by the artifact's domain (or named in `$ARGUMENTS`):
-  - rendered visual **art** (game world, sprites, shaders, generative imagery, brand/motion) → `artist`
+  - rendered visual **art** (game world, sprites, shaders, generative imagery, brand/motion) → `art-director`
   - on-screen application **UI** (screens, HUD, panels, components) → `ux-ui-designer`
   - general **output quality** / does-it-meet-the-goal (copy, a data view, a non-visual deliverable) → `product-manager`
 
@@ -81,7 +81,7 @@ follow-up issues.
 - Scope each fix round to the reviewer's notes; the `senior-engineer` doesn't refactor or wander.
 - The sign-off is the REVIEWER's to give, and the final report states what the reviewer actually said
   — not an optimistic paraphrase. A "needs a human visual pass" fallback is a real outcome, not a fail.
-- Reviewer choice follows the project's domain: `artist` for art, `ux-ui-designer` for UI,
+- Reviewer choice follows the project's domain: `art-director` for art, `ux-ui-designer` for UI,
   `product-manager` for general output. When ambiguous, ask.
 - Runs standalone, or as the visual pass inside/after `/ship-issue` on a UI/visual story.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the role's

@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/github/license/saman-mb/shipmates?color=blue)](LICENSE)
 [![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-[![Crew aboard](https://img.shields.io/badge/crew-6%20specialists-orange)](#-meet-the-crew)
+[![Crew aboard](https://img.shields.io/badge/crew-11%20specialists-orange)](#-meet-the-crew)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Stars](https://img.shields.io/github/stars/saman-mb/shipmates?style=flat&logo=github)](https://github.com/saman-mb/shipmates/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/saman-mb/shipmates)](https://github.com/saman-mb/shipmates/commits/main)
@@ -27,7 +27,7 @@ You stay the captain. The shipmates do the twenty steps in between. 🫡
 
 ## 🧭 Meet the crew
 
-Six **domain-neutral** specialists. They'll work on *anything* — a game engine, a web app, a CLI —
+Eleven **domain-neutral** specialists. They'll work on *anything* — a game engine, a web app, a CLI —
 because the standard they hold your work to comes from **your** repo's `README` / `CLAUDE.md`, not
 from anything hardcoded into the role.
 
@@ -35,18 +35,29 @@ from anything hardcoded into the role.
 |---|---|
 | 🏛️ `architect` | Structure & schema — coupling, boundaries, migration safety, "does this actually fit?" |
 | 🔧 `senior-engineer` | Builds to spec, fixes red CI, clears review defects |
-| 📋 `product-manager` | Accepts or rejects against the acceptance criteria **and** your quality bar |
 | 🧪 `sdet` | Runs the real tests/build and reports pass/fail with a proper defect list |
+| 🛡️ `security-engineer` | Threat-models the change — authz, injection, secrets, crypto, vulnerable deps |
+| 🚨 `site-reliability-engineer` | Reliability & failure modes, rollback/deploy safety — and bug root-cause |
+| ⚡ `performance-engineer` | Profiles, benchmarks, and *proves* the win — measure → optimise → measure |
+| 📋 `product-manager` | Accepts or rejects against the acceptance criteria **and** your quality bar |
 | 🎛️ `ux-ui-designer` | Specs & reviews on-screen UI — tokens, responsive layout, focus, a11y |
-| 🎨 `artist` | Directs & reviews *rendered* visuals — judges the picture, not the code that drew it |
+| 🎨 `art-director` | Directs & reviews *rendered* visuals — judges the picture, not the code that drew it |
+| 📖 `technical-writer` | Writes docs from the real code; proves them with a fresh-reader test |
+| 📊 `data-scientist` | Data/model work — metric choice, leakage & validation, reproducibility (domain-gated) |
 
 ## 📜 The orders (commands)
 
 | Command | What it does |
 |---|---|
 | `/ship-issue <n>` | Drives GitHub issue `#n` from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
-| `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories — a `product-manager` sub-agent authors each epic's stories in parallel |
-| `/polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix, looping until the `artist` / `ux-ui-designer` / `product-manager` is genuinely happy |
+| `/fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
+| `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
+| `/harden <surface>` | Threat-models a surface and remediates until every finding is fixed or an explicit accepted-risk |
+| `/spike <question>` | De-risks a decision — prototypes the options in parallel, judges them, records the pick as an ADR |
+| `/migrate <from→to>` | Sweeps a mechanical migration across the codebase — every call site, verified, no remnants left |
+| `/document <target>` | Writes docs from the real code, gated on a *fresh reader* actually completing the steps |
+| `/release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
+| `/polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
 
 *More crew and more orders are on the way.* ⛵
 
@@ -98,8 +109,8 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 4. **Build** 🔨 — parallel `senior-engineer` builders with non-overlapping file ownership.
 5. **Self-check → CI gate** 🚦 — the SDET runs the tests; then **CI must go green** on the pushed PR
    before anything moves on. Red? It reads the logs and fixes — bounded to a few rounds.
-6. **Acceptance board** ⚖️ — `product-manager` + `sdet` (+ gated `ux-ui-designer` / `artist` /
-   `architect`) review the *pushed PR head*, independently and adversarially.
+6. **Acceptance board** ⚖️ — `product-manager` + `sdet` (+ gated `ux-ui-designer` / `art-director` /
+   `architect` / `security-engineer`) review the *pushed PR head*, independently and adversarially.
 7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-reviews. Bounded, then escalates.
 8. **Deliver** 🏁 — files the non-blocking nits as follow-ups, and opens (or, opt-in, merges) the PR.
 
@@ -162,6 +173,49 @@ hands you the outstanding notes after a few rounds.
 Same loop, but the `artist` judges the actual render — palette, composition, contrast — round after
 round until it meets the bar.
 
+**Fix a bug — proven, not just patched:**
+```
+/fix-bug 213
+```
+A failing regression test is written *first* to reproduce #213; a `senior-engineer` root-causes and fixes
+it; the test flips red→green while the suite stays green; a fresh reviewer confirms it's the root cause,
+not the symptom. You get a PR with the proof attached.
+
+**Threat-model and harden a surface:**
+```
+/harden the auth + session flow
+```
+The `security-engineer` walks it with STRIDE / OWASP, ranks findings by severity with the exploit path, a
+`senior-engineer` remediates the blockers, and it re-reviews until nothing Critical/High is left open.
+
+**De-risk a decision before committing to it:**
+```
+/spike "job queue: Redis vs Postgres vs SQS"
+```
+Engineers prototype each option in parallel as throwaways, an `architect` judges them against your real
+constraints (weighing reversibility), and you get a recommendation recorded as an ADR — not a hunch.
+
+**Sweep a migration across the whole codebase:**
+```
+/migrate "moment.js → date-fns"
+```
+Every call site is inventoried, transformed in isolation, verified, and the run only closes when a re-grep
+for the old pattern comes back empty and the suite is green. Nothing left half-migrated.
+
+**Write docs that actually work:**
+```
+/document the getting-started guide
+```
+The `technical-writer` drafts from the real code, then a *fresh* agent follows the steps against the repo
+like a newcomer — the docs ship only once that reader reaches the result. No drift, no dead ends.
+
+**Cut a release safely:**
+```
+/release minor
+```
+The changelog is assembled from what actually merged, the version is bumped, CI must be green on the exact
+tagged commit, and the `site-reliability-engineer` checks rollback + migration safety before it's tagged.
+
 **Chain them — scope the work, ship a story, polish its UI:**
 ```
 /plan-epics "settings redesign"     # → creates the epic + stories
@@ -190,8 +244,8 @@ can override or specialise a crew member without touching the shared copy.
 
 ## 🌊 On the horizon
 
-More crew (`security-reviewer`, `technical-writer`, `devops-engineer`…) and more orders beyond
-`/ship-issue`. Ideas and PRs very welcome.
+The crew keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new orders
+keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs very welcome.
 
 ## 🤝 Contributing
 

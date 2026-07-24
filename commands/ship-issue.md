@@ -45,13 +45,14 @@ agent with a persona pasted inline. The pool:
 | `product-manager`  | Acceptance vs. criteria + the quality bar (Stage 5) |
 | `architect`        | Structural / schema review — gated by `IS_ARCH_SIGNIFICANT` (Stages 1.5, 5) |
 | `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
-| `artist`           | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
+| `art-director`     | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
+| `security-engineer`| Threat-model + security review — gated by `IS_SECURITY_SENSITIVE` (Stage 5) |
 
 These agents are **generic** (domain-neutral); the project-specific standard they enforce comes
 from your repo's README / CLAUDE.md, passed at spawn — not baked into the role. Which specialists a
 story needs is decided by the Planner's classification flags, so the board is **context-aware to
-the story's domain** (a pure-logic story pulls no designer/artist; a UI story pulls the designer; a
-rendered-art story pulls the artist; a schema story pulls the architect). If a referenced role does
+the story's domain** (a pure-logic story pulls no designer/art-director; a UI story pulls the designer; a
+rendered-art story pulls the art-director; a schema story pulls the architect). If a referenced role does
 not resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the role's brief inlined,
 and note the fallback in the final report — never silently skip a gated review.
 
@@ -75,15 +76,17 @@ and note the fallback in the final report — never silently skip a gated review
      independently — a story can trip more than one):
      - `IS_UI_STORY = yes/no` — does it create/modify on-screen UI (screens, HUD, panels, overlays,
        menus, components, styling)? Gates `ux-ui-designer`.
-     - `IS_VISUAL_STORY = yes/no` — gate the `artist` on the PROJECT'S DOMAIN, not merely on whether
+     - `IS_VISUAL_STORY = yes/no` — gate the `art-director` on the PROJECT'S DOMAIN, not merely on whether
        a story touches pixels. Set it only when the project's actual deliverable is rendered visual
        *art* — a game's world/sprites/shaders, illustration/brand/motion assets, generative imagery —
        and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only
        visual surface is its interface is a **UI** story (`ux-ui-designer`), NOT an art story: the
-       artist reviews pictures judged *as art*, not application chrome. Most projects never set this —
-       when in doubt, prefer `IS_UI_STORY` and leave the artist out.
+       art-director reviews pictures judged *as art*, not application chrome. Most projects never set this —
+       when in doubt, prefer `IS_UI_STORY` and leave the art-director out.
      - `IS_ARCH_SIGNIFICANT = yes/no` — does it add a new subsystem, change a persisted data/schema
        format, or cross-cut many modules in a way a narrow code review would miss? Gates `architect`.
+     - `IS_SECURITY_SENSITIVE = yes/no` — does it touch authn/authz, untrusted input, secrets/credentials,
+       crypto, file/network/OS access, or dependencies? Gates `security-engineer`.
 3. If the plan reveals the issue is too big/ambiguous to finish autonomously, stop and tell the user
    what's blocking — otherwise continue.
 
@@ -96,7 +99,7 @@ its work governs. Skip this stage entirely when none of the flags are set.
 - **`ux-ui-designer`** (only if `IS_UI_STORY`) — a UI design spec: wireframes, a shared-token/theme
   plan, responsive container layout (no hardcoded positions), focus order + interaction states, and
   accessibility/contrast, consistent with the project's design system.
-- **`artist`** (only if `IS_VISUAL_STORY`) — a concrete, numeric art direction (palette values,
+- **`art-director`** (only if `IS_VISUAL_STORY`) — a concrete, numeric art direction (palette values,
   dimensions, light angle/ratio — whatever the medium needs) held to the project's visual bar, so a
   Builder implements what's meant, not a guess.
 - **`architect`** (only if `IS_ARCH_SIGNIFICANT`) — the structural approach: module boundaries and
@@ -187,12 +190,15 @@ core reviewers always run; each specialist runs only when its flag is set:
   the UI bar — shared-token/theme usage (not per-component override sprawl), responsive layout, focus
   navigation, interaction states, contrast/readability. If it cannot actually render the UI, it
   reviews statically and MUST flag the PR **"needs a human visual pass"** — carry that into the report.
-- **`artist`** (only if `IS_VISUAL_STORY`): renders the actual change via the project's render/preview
+- **`art-director`** (only if `IS_VISUAL_STORY`): renders the actual change via the project's render/preview
   harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the
   visual bar — the render, not the source. If it cannot render, it says so and flags **"needs a human
   visual pass"**.
 - **`architect`** (only if `IS_ARCH_SIGNIFICANT`): reviews structural fit, coupling/blast radius, and
   schema/migration safety.
+- **`security-engineer`** (only if `IS_SECURITY_SENSITIVE`): threat-models the change (STRIDE / OWASP) —
+  broken access control, injection, secrets/crypto, vulnerable deps — and returns severity-ranked findings
+  with the exploit path; a credible Critical/High is a blocking defect.
 
 Decision (each specialist participates only when its flag is set):
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → go to Stage 7.
@@ -243,12 +249,11 @@ anything that could only be validated statically.
   requires), stop and surface it — autonomy does not mean forcing a bad merge.
 - **Secrets & security hygiene.** Never write secrets, tokens, or credentials into commits, PR/issue
   bodies, or logs — assume the repo is public. When the change touches auth, input handling, crypto,
-  or dependencies, have the `sdet` flag secret leakage, injection, and known-vulnerable deps; a real
-  leak or a clear injection path is a blocking defect. (A dedicated `security-reviewer` is on the
-  roadmap; until then this is the SDET's remit.)
+  or dependencies, the `security-engineer` (gated by `IS_SECURITY_SENSITIVE`) threat-models it and the
+  `sdet` also flags secret leakage; a real leak or a clear injection path is a blocking defect.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work. Every stage should be safe to repeat.
-- Static review cannot verify pixels. When neither the `ux-ui-designer` (UI) nor the `artist`
+- Static review cannot verify pixels. When neither the `ux-ui-designer` (UI) nor the `art-director`
   (visual-art) could actually render and inspect the result, surface their **"needs human visual
   pass"** flag in the final report rather than implying the visuals are confirmed. Both are auto-gated
   by the Planner's `IS_UI_STORY` / `IS_VISUAL_STORY` flags, as `architect` is by `IS_ARCH_SIGNIFICANT`.
