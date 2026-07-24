@@ -45,6 +45,7 @@ from anything hardcoded into the role.
 | Command | What it does |
 |---|---|
 | `/ship-issue <n>` | Drives GitHub issue `#n` from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
+| `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories — a `product-manager` sub-agent authors each epic's stories in parallel |
 
 *More crew and more orders are on the way.* ⛵
 
@@ -52,21 +53,23 @@ from anything hardcoded into the role.
 
 ## ⚓ Come aboard (install)
 
-```bash
-git clone https://github.com/saman-mb/shipmates.git
-cd shipmates
-./install.sh            # aboard for every project  (~/.claude)
-```
-
-Rather scope it to one repo (checked in, shared with your team)?
+One line, no clone required:
 
 ```bash
-./install.sh --project /path/to/your/repo    # into <repo>/.claude
+curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash
 ```
 
-The installer drops `commands/*.md` and `agents/*.md` into your `.claude/` directory. Already have a
-file by that name? It's **backed up** to `<file>.bak-<timestamp>` first — your edits are safe. Re-run
-any time to update; `./install.sh --uninstall` puts everything back.
+That brings the crew aboard for **every** project (`~/.claude`). Scope it to a single repo instead
+(checked in, shared with your team):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash -s -- --project /path/to/your/repo
+```
+
+Prefer to read the script first? Clone the repo and run `./install.sh` (same flags). Either way it
+drops `commands/*.md` and `agents/*.md` into your `.claude/`, **backing up** any existing file of the
+same name to `<file>.bak-<timestamp>` — your edits are safe. Re-run to update; add `--uninstall` to
+remove what it installed.
 
 > 🔁 First time a `commands/` or `agents/` dir got created? Restart Claude Code so it spots them.
 

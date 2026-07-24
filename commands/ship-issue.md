@@ -66,7 +66,8 @@ and note the fallback in the final report — never silently skip a gated review
    CLAUDE.md. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
-   - **explicit, checkable acceptance criteria** (functional + the quality bar above),
+   - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
+     project's **Definition of Done** where it states one (tests, docs/changelog, non-functional bars),
    - a **test/validation plan** (the commands the SDET should run: unit tests, lint, type-check,
      build/compile/import — whatever this repo uses),
    - a list of files expected to change,
@@ -240,6 +241,13 @@ anything that could only be validated statically.
 - Respect `MERGE_MODE` — do not auto-merge unless it is explicitly set to `auto`.
 - If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan
   requires), stop and surface it — autonomy does not mean forcing a bad merge.
+- **Secrets & security hygiene.** Never write secrets, tokens, or credentials into commits, PR/issue
+  bodies, or logs — assume the repo is public. When the change touches auth, input handling, crypto,
+  or dependencies, have the `sdet` flag secret leakage, injection, and known-vulnerable deps; a real
+  leak or a clear injection path is a blocking defect. (A dedicated `security-reviewer` is on the
+  roadmap; until then this is the SDET's remit.)
+- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
+  than erroring or duplicating work. Every stage should be safe to repeat.
 - Static review cannot verify pixels. When neither the `ux-ui-designer` (UI) nor the `artist`
   (visual-art) could actually render and inspect the result, surface their **"needs human visual
   pass"** flag in the final report rather than implying the visuals are confirmed. Both are auto-gated
