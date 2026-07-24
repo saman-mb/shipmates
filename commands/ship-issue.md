@@ -45,7 +45,7 @@ agent with a persona pasted inline. The pool:
 | `product-manager`  | Acceptance vs. criteria + the quality bar (Stage 5) |
 | `architect`        | Structural / schema review — gated by `IS_ARCH_SIGNIFICANT` (Stages 1.5, 5) |
 | `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
-| `artist`           | Visual-art direction + review — gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
+| `artist`           | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
 
 These agents are **generic** (domain-neutral); the project-specific standard they enforce comes
 from your repo's README / CLAUDE.md, passed at spawn — not baked into the role. Which specialists a
@@ -74,9 +74,13 @@ and note the fallback in the final report — never silently skip a gated review
      independently — a story can trip more than one):
      - `IS_UI_STORY = yes/no` — does it create/modify on-screen UI (screens, HUD, panels, overlays,
        menus, components, styling)? Gates `ux-ui-designer`.
-     - `IS_VISUAL_STORY = yes/no` — does it create/modify rendered visual art (game world, generated
-       imagery, shaders, sprites, brand/marketing visuals) — anything judged by looking at the
-       output rather than reading code? Gates `artist`.
+     - `IS_VISUAL_STORY = yes/no` — gate the `artist` on the PROJECT'S DOMAIN, not merely on whether
+       a story touches pixels. Set it only when the project's actual deliverable is rendered visual
+       *art* — a game's world/sprites/shaders, illustration/brand/motion assets, generative imagery —
+       and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only
+       visual surface is its interface is a **UI** story (`ux-ui-designer`), NOT an art story: the
+       artist reviews pictures judged *as art*, not application chrome. Most projects never set this —
+       when in doubt, prefer `IS_UI_STORY` and leave the artist out.
      - `IS_ARCH_SIGNIFICANT = yes/no` — does it add a new subsystem, change a persisted data/schema
        format, or cross-cut many modules in a way a narrow code review would miss? Gates `architect`.
 3. If the plan reveals the issue is too big/ambiguous to finish autonomously, stop and tell the user
@@ -119,10 +123,10 @@ stay clean. Pass the absolute worktree path to every agent.
 ## Stage 3 — Self-check before PR  (agent: `sdet`)
 
 - Spawn the **SDET** (`subagent_type: sdet`) to run the test/validation plan against the worktree:
-  unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile/import
-  (e.g. `npm test && npm run build`, `cargo test`, `pytest`, `go build ./...`,
-  `godot --headless --import`). If the toolchain is absent, it does a rigorous **static** pass and
-  says so explicitly in the PR.
+  unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step
+  (whatever this repo uses: e.g. `npm test && npm run build`, `cargo test`, `pytest -q`,
+  `go build ./...`, `make check`). If the toolchain is absent, it does a rigorous **static** pass
+  and says so explicitly in the PR.
 - If self-check fails, loop a **Fixer** (`subagent_type: senior-engineer`) until green (counts
   toward `MAX_FIX_ROUNDS`). Only open a PR once self-check passes — never open a known-red PR.
 
