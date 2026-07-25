@@ -535,6 +535,9 @@ html.js .codeblock__copy{ display:inline-flex; }
   padding:0;
 }
 .order-card{
+  position:relative;             /* stretched-link anchor for __link::after — must
+                                     NEVER gain overflow:hidden, or the focus ring
+                                     and the flagship rail both get clipped */
   display:flex;
   flex-direction:column;
   align-items:flex-start;
@@ -544,12 +547,21 @@ html.js .codeblock__copy{ display:inline-flex; }
   border:1px solid var(--border);
   border-radius:var(--radius-md);
   box-shadow:var(--shadow-1);
+  transition:box-shadow var(--transition) var(--ease),
+             transform var(--transition-fast) var(--ease);
 }
+/* N5: never touch border-color here — it would erase --flagship's accent rail. */
+.order-card:hover{
+  box-shadow:var(--shadow-2);
+  transform:translateY(-1px);
+}
+.order-card:active{ transform:translateY(0); }
 .order-card--flagship{
   border-color:var(--accent);
   border-left-width:4px;
 }
-.order-card__tag{
+.order-card__tag,
+.order-detail__flag{
   display:inline-flex;
   align-items:center;
   padding:var(--space-1) var(--space-3);
@@ -572,6 +584,33 @@ html.js .codeblock__copy{ display:inline-flex; }
   font-size:var(--fs-300);
   line-height:1.5;
   color:var(--text-muted);
+}
+/* Stretched link: exactly one focusable element per card (N4). Known trade-off,
+   deliberate: a stretched link kills text selection inside the card — accepted,
+   since each card is one command name plus one sentence, neither gets copied. */
+.order-card__link{
+  color:inherit;
+  text-decoration:none;
+  scroll-margin-top:calc(var(--header-h) + var(--space-6));
+}
+.order-card:hover .order-card__link,
+.order-card:hover .order-card__more{ text-decoration:underline; text-underline-offset:2px; }
+.order-card__link::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:var(--radius-md);
+}
+/* N4: ring drawn on the ::after (already card-sized via inset:0), not :has(). */
+.order-card__link:focus-visible{ outline:none; }
+.order-card__link:focus-visible::after{
+  outline:2px solid var(--focus-ring);
+  outline-offset:2px;
+  border-radius:var(--radius-md);
+}
+.order-card__more{
+  font-size:var(--fs-300);
+  color:var(--accent-strong);
 }
 
 /* --- 5.6 How (§3): steps grid; num disc is decorative, <ol> carries order --- */
@@ -722,6 +761,260 @@ summary::-webkit-details-marker{ display:none; }
   color:var(--text-muted);
 }
 
+/* --- 5.9 Order detail pages (site/commands/<slug>/index.html) ---
+   Per-command pages generated from tools/gen_command_pages.py. No JS ships
+   here; every interactive state below is pure CSS. --- */
+
+/* Hero: back-link + eyebrow/flag/title/tagline/desc, single column. */
+.order-back{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--space-2);
+  min-height:var(--tap-min);
+  margin-bottom:var(--space-5);
+  font-size:var(--fs-300);
+  font-weight:var(--fw-medium);
+  color:var(--accent-strong);
+  text-decoration:none;
+}
+.order-back:hover{ text-decoration:underline; text-underline-offset:2px; }
+.order-detail{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:var(--space-3);
+}
+.order-detail__eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--space-2);
+  margin:0;
+  font-size:var(--fs-200);
+  font-weight:var(--fw-semibold);
+  line-height:var(--lh-tight);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--accent-strong);
+}
+/* .order-detail__flag shares .order-card__tag's rule above — same component. */
+.order-detail__title{
+  /* N3: accent-strong, NEVER accent — #D97757 on #FBFAF9 is 2.99:1, fails the
+     3:1 large-text floor; accent-strong clears it at 5.52:1. The inner <code>
+     inherits this colour. */
+  font-size:var(--fs-900);
+  line-height:1.05;
+  font-weight:var(--fw-bold);
+  color:var(--accent-strong);
+}
+.order-detail__tagline{
+  font-size:var(--fs-600);
+  line-height:1.5;
+  font-weight:var(--fw-semibold);
+}
+.order-detail__desc{
+  font-size:var(--fs-400);
+  line-height:var(--lh-body);
+  color:var(--text-muted);
+}
+
+/* --- #invoke: reuses .codeblock* (C4) verbatim; only the hint is new. --- */
+.order-invoke__hint{
+  margin-top:var(--space-3);
+  font-size:var(--fs-300);
+  color:var(--text-muted);
+}
+.order-invoke__hint code{
+  background:var(--code-bg);
+  color:var(--code-text);
+  padding-inline:var(--space-1);
+  border-radius:var(--radius-sm);
+}
+
+/* --- #stages: the stage list + card. Single column always — 11 long stages
+   are a sequence, not a gallery. --- */
+.order-stages{
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-5);           /* external card gap; 2:1 vs internal row-gap */
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.order-stage{
+  /* No overflow property here — it would clip .order-code's focus ring. */
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr);
+  grid-template-areas:
+    "num   title"
+    "gate  gate"
+    "crew  crew"
+    "body  body";
+  column-gap:var(--space-4);
+  row-gap:var(--space-3);
+  align-items:start;
+  padding:var(--space-5);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+}
+/* Mirrors .how-step__num (:601-615) — same disc treatment, but a pill: labels
+   like "1.5" / "4.5" don't fit a fixed-width 2.25rem circle. */
+.order-stage__num{
+  grid-area:num;
+  align-self:start;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:2.25rem;             /* same literal as .how-step__num :607-608 */
+  height:2.25rem;
+  padding-inline:var(--space-2);
+  border-radius:var(--radius-pill);
+  background:var(--accent);
+  color:var(--on-accent);
+  font-size:var(--fs-400);
+  font-weight:var(--fw-bold);
+  line-height:1;
+}
+.order-stage__title{
+  grid-area:title;
+  align-self:start;
+  font-size:var(--fs-500);      /* same as .how-step__title :621-626 */
+  line-height:1.4;
+  font-weight:var(--fw-semibold);
+}
+/* Not colour-alone (WCAG 1.4.1): the word "HARD GATE" / the source's literal
+   gate sentence is real text, plus the 4px rail, the inset fill, the ⛔ glyph
+   (aria-hidden) and the SR-only "Gate: " prefix — five non-colour signals. */
+.order-stage__gate{
+  grid-area:gate;
+  display:flex;
+  align-items:baseline;
+  gap:var(--space-2);
+  padding:var(--space-2) var(--space-3);
+  background:var(--surface);           /* inset strip; precedent .faq__q:hover :656 */
+  border-left:4px solid var(--accent-strong);  /* width literal precedent :551 */
+  border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  font-size:var(--fs-300);
+  font-weight:var(--fw-semibold);
+  color:var(--accent-strong);          /* --accent fails 3:1 on --surface-2; this clears 4.5:1 */
+}
+/* A literal visible "Crew:" label, not a list — real text over aria-label. */
+.order-stage__crew{
+  grid-area:crew;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:var(--space-2);
+  font-size:var(--fs-300);
+  color:var(--text-muted);
+}
+/* Reuses .chip (C4) for the pill shell; overrides only background + family —
+   .chip's own --surface-2 fill is identical to the card bg and would be
+   invisible here, so the override is necessary, not sprawl. */
+.order-stage__crew-item{
+  background:var(--surface);
+  font-family:var(--font-mono);
+}
+.order-stage__body{
+  grid-area:body;
+  min-width:0;                  /* load-bearing: an unbounded <pre> would defeat
+                                    the page-scroll guard at :92-94 otherwise */
+}
+
+/* --- Long-form content inside a stage body. --- */
+/* Markdown can't carry a class per element, so this is the deliberate
+   descendant-sprawl exception — one block, every value still a token. */
+.order-prose{ min-width:0; color:var(--text); }
+.order-prose > * + *{ margin-top:var(--space-3); }   /* single rhythm rule */
+.order-prose ul,
+.order-prose ol{ padding-left:var(--space-5); margin:0; }
+.order-prose li + li{ margin-top:var(--space-2); }
+.order-prose li > ul,
+.order-prose li > ol{ margin-top:var(--space-2); }
+.order-prose strong{ font-weight:var(--fw-semibold); }
+.order-prose code{
+  background:var(--code-bg);
+  color:var(--code-text);
+  padding-inline:var(--space-1);
+  border-radius:var(--radius-sm);
+}
+
+/* Fenced blocks inside a stage body. Deliberately NOT .codeblock* — that family
+   carries a copy-button reserve (:731-735) detail pages never need (C4). */
+.order-code{
+  margin-top:var(--space-3);
+  padding:var(--space-4);
+  background:var(--code-bg);
+  color:var(--code-text);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  font-family:var(--font-mono);
+  font-size:var(--fs-300);
+  line-height:1.5;
+  white-space:pre;
+  overflow-x:auto;               /* scrolls INSIDE — tabindex=0 in the HTML makes
+                                     it keyboard-operable (WCAG 2.1.1) */
+}
+
+/* The one GFM table in the whole corpus (ship-issue.md:35). Scrolls in its own
+   container rather than reflowing to cards — WCAG 1.4.10 explicitly exempts
+   data tables from the no-2D-scroll rule, and a reflow pattern here would need
+   CSS-generated data-label text that severs the th/scope↔cell association. */
+.order-table{ min-width:0; overflow-x:auto; margin-top:var(--space-3); }
+.order-table table{ width:100%; border-collapse:collapse; font-size:var(--fs-300); }
+.order-table th,
+.order-table td{
+  padding:var(--space-2) var(--space-3);
+  border-bottom:1px solid var(--border);
+  text-align:left;
+  vertical-align:top;
+}
+.order-table th{ font-weight:var(--fw-semibold); background:var(--surface-2); }
+.order-table thead th:first-child,
+.order-table tbody td:first-child{ white-space:nowrap; }
+
+/* --- #source: p + .btn sit flush (global reset zeroes <p> margin) --- */
+.order-source .btn{ margin-top:var(--space-4); }
+
+/* --- #other-orders: sibling nav, ~5% of the page, no shadow/fill/icon. --- */
+.order-siblings{ margin-top:var(--space-2); }
+.order-siblings__list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:var(--space-2);
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.order-siblings__item{ display:flex; }
+.order-siblings__link{
+  display:inline-flex;
+  align-items:center;
+  min-height:var(--tap-min);
+  padding-inline:var(--space-4);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-pill);
+  font-size:var(--fs-300);
+  color:var(--accent-strong);
+  text-decoration:none;
+  scroll-margin-top:calc(var(--header-h) + var(--space-6));
+}
+.order-siblings__link:hover,
+.order-siblings__link:focus-visible{
+  text-decoration:underline;
+  text-underline-offset:2px;
+  background:var(--surface);
+}
+/* Current sibling: distinguished by weight + border + fill + SR text +
+   aria-current — never colour alone. */
+.order-siblings__link--current{
+  color:var(--text);
+  font-weight:var(--fw-semibold);
+  border-color:var(--accent-strong);
+  background:var(--surface);
+}
+
 
 /* =============================================================================
    6. RESPONSIVE — mobile-first; breakpoints sm 480 · md 640 · lg 900 · xl 1120
@@ -742,6 +1035,11 @@ summary::-webkit-details-marker{ display:none; }
     border:1px solid var(--border-strong);
     border-radius:var(--radius-sm);
   }
+
+  /* Detail pages ship no copy button (C4) — neutralise the reserve above so
+     .order-invoke's codeblock isn't left with dead right-padding. Higher
+     specificity (0,2,0 vs 0,1,0) wins the cascade regardless of source order. */
+  .order-invoke .codeblock__pre{ padding-right:var(--space-4); }
 }
 
 /* --- md 640px: show horizontal nav; how-steps 2 cols; footer row --- */
@@ -791,6 +1089,7 @@ summary::-webkit-details-marker{ display:none; }
     scroll-behavior:auto!important;
   }
   .btn--primary:hover{ transform:none; }
+  .order-card:hover{ transform:none; }
   /* Swap the autoplaying demo GIF for a static poster of the finished run. */
   .hero__demo{ display:none; }
   .hero__demo-poster{ display:block; }

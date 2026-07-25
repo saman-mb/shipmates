@@ -31,7 +31,7 @@ Global (`~/.claude`) by default; add `--project /path/to/repo` to scope it to on
 If you are an AI agent (or a human) contributing to Shipmates itself:
 
 - **The one hard rule: keep agent roles domain-neutral.** No role may name-drop a stack, framework, or product — each enforces whatever *the user's* `README` / `CLAUDE.md` says. That neutrality is what lets the crew sail on anyone's project; a PR that hardcodes a domain will be rejected.
-- **Layout:** `agents/*.md` are the sub-agent personas (frontmatter `name`/`description`/`tools` + a system-prompt body). `commands/*.md` are the slash-command workflows (`description`/`argument-hint`/`allowed-tools` + a body using `$ARGUMENTS`/`$1`). `install.sh` drops both into a `.claude/` directory. `site/` is the GitHub Pages landing site (validated by `.github/scripts/validate_site.py`).
+- **Layout:** `agents/*.md` are the sub-agent personas (frontmatter `name`/`description`/`tools` + a system-prompt body). `commands/*.md` are the slash-command workflows (`description`/`argument-hint`/`allowed-tools` + a body using `$ARGUMENTS`/`$1`). `install.sh` drops both into a `.claude/` directory. `site/` is the GitHub Pages landing site (validated by `.github/scripts/validate_site.py`). `site/commands/<name>/index.html` are **generated** from `commands/*.md` by `tools/gen_command_pages.py` and committed — never hand-edit them; run `python3 tools/gen_command_pages.py` and commit the result. CI enforces this with `--check`.
 - **Don't wholesale-rewrite `commands/ship-issue.md`** — make scoped edits; it encodes the flagship's gated state machine.
 - See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution guide.
 
