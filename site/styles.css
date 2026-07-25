@@ -659,8 +659,11 @@ summary::-webkit-details-marker{ display:none; }
 .faq__marker{
   flex:none;
   color:var(--text-muted);
+  font-size:1.5rem;
+  line-height:1;
   transition:transform var(--transition) var(--ease);
 }
+.faq__marker::before{ content:"\203A"; display:block; } /* › chevron: points right closed, down when [open] */
 .faq__item[open] .faq__marker{ transform:rotate(90deg); }
 .faq__a{
   padding:0 var(--space-4) var(--space-4);
