@@ -1,5 +1,6 @@
 *.bak-*
 .DS_Store
+.shipmates/
 __pycache__/
 *.py[cod]
 # Generated harness trees — built at install time by tools/export.py into a
