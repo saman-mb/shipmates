@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shipmates — Claude Code sub-agents &amp; slash-command workflows</title>
+  <meta name="description" content="A crew of Claude Code sub-agents & slash-command workflows that drive a GitHub issue to a reviewed, CI-green pull request — autonomously. Open-source, MIT.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/">
+  <link rel="icon" href="assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="Shipmates — Give your AI a crew">
+  <meta property="og:description" content="A crew of Claude Code sub-agents & slash-command workflows that drive a GitHub issue to a reviewed, CI-green pull request — autonomously.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom sub-agents and slash-command workflows for Claude Code.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Shipmates — Give your AI a crew">
+  <meta name="twitter:description" content="Claude Code sub-agents & slash-command workflows that take a GitHub issue to a reviewed, CI-green pull request — autonomously.">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom sub-agents and slash-command workflows for Claude Code.">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Shipmates","description":"A crew of Claude Code sub-agents and slash-command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request, autonomously.","url":"https://saman-mb.github.io/shipmates/","applicationCategory":"DeveloperApplication","operatingSystem":"macOS, Linux, Windows (via Claude Code)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"saman-mb","url":"https://github.com/saman-mb"},"license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/saman-mb/shipmates","isAccessibleForFree":true}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" id="top">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="#top">
+        <img class="site-header__logo" src="assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="#orders">Orders</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="#faq">FAQ</a></li>
+        </ul>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section hero" id="hero" aria-labelledby="hero-title">
+      <div class="container hero__inner">
+        <div class="hero__copy">
+          <img class="hero__logo" src="assets/logo.png" width="120" height="120" alt="Pixel-art sailboat sailing into a sunset">
+          <h1 class="hero__title" id="hero-title"><span class="hero__title-emoji" aria-hidden="true">🚢</span> Shipmates</h1>
+          <p class="hero__subtitle">Custom sub-agents &amp; slash-command workflows for Claude Code.</p>
+          <p class="hero__tagline">Stop being your AI's for-loop. Give it a crew. <span aria-hidden="true">⚓</span></p>
+          <p class="hero__hook">One command takes a GitHub issue from open to a reviewed, CI-green pull request — autonomously.</p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="#install">Get the crew aboard</a>
+            <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates">
+              <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+              <span>View on GitHub</span>
+            </a>
+          </div>
+          <ul class="hero__badges">
+            <li class="chip">MIT licensed</li>
+            <li class="chip">11 specialists</li>
+            <li class="chip">Zero config</li>
+          </ul>
+        </div>
+        <figure class="hero__figure">
+          <img class="hero__demo" src="assets/demo.gif" width="940" height="604" alt="A /ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request.">
+          <figcaption class="hero__figcaption">Illustrative — the stages <code>/ship-issue</code> runs, in order.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section install" id="install" aria-labelledby="install-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <p class="section__eyebrow"><span aria-hidden="true">⚓</span> Come aboard</p>
+          <h2 class="section__title" id="install-title">Get the crew aboard</h2>
+          <p class="section__lead">One line, no clone. Bring the crew aboard for every project, or scope it to a single repo.</p>
+        </div>
+        <div class="install__blocks">
+          <div class="codeblock">
+            <p class="codeblock__label">Every project (global)</p>
+            <div class="codeblock__body">
+              <pre class="codeblock__pre"><code class="codeblock__code">curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash</code></pre>
+              <button class="codeblock__copy" type="button" aria-label="Copy the global install command">
+                <span class="codeblock__copy-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M4 2.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h1z"/><path fill="currentColor" d="M6.5 0A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0zm0 1h3a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5"/></svg></span>
+                <span class="codeblock__copy-label">Copy</span>
+              </button>
+            </div>
+          </div>
+          <div class="codeblock">
+            <p class="codeblock__label">One repo (project-scoped)</p>
+            <div class="codeblock__body">
+              <pre class="codeblock__pre"><code class="codeblock__code">curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash -s -- --project /path/to/your/repo</code></pre>
+              <button class="codeblock__copy" type="button" aria-label="Copy the project-scoped install command">
+                <span class="codeblock__copy-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16"><path fill="currentColor" d="M4 2.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h1z"/><path fill="currentColor" d="M6.5 0A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0zm0 1h3a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5"/></svg></span>
+                <span class="codeblock__copy-label">Copy</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="install__note">Prefer to read the script first? Clone the repo and run ./install.sh — same flags. It backs up any file it would overwrite, and --uninstall removes what it installed.</p>
+        <p class="visually-hidden" aria-live="polite" data-copy-status></p>
+      </div>
+    </section>
+
+    <section class="section crew" id="crew" aria-labelledby="crew-title">
+      <div class="container">
+        <div class="section__head">
+          <p class="section__eyebrow"><span aria-hidden="true">🧭</span> Meet the crew</p>
+          <h2 class="section__title" id="crew-title">Eleven Claude Code sub agents</h2>
+          <p class="section__lead">Domain-neutral specialists that work on anything — a game engine, a web app, a CLI. The bar they hold you to comes from your repo's README and CLAUDE.md, not the role.</p>
+        </div>
+        <ul class="crew__grid">
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">🏛️</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">architect</code></h3>
+            <p class="crew-card__duty">Structure &amp; schema — coupling, boundaries, migration safety.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">🔧</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">senior-engineer</code></h3>
+            <p class="crew-card__duty">Builds to spec, fixes red CI, clears review defects.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">🧪</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">sdet</code></h3>
+            <p class="crew-card__duty">Runs the real tests/build and reports pass/fail with a defect list.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">🛡️</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">security-engineer</code></h3>
+            <p class="crew-card__duty">Threat-models the change — authz, injection, secrets, vulnerable deps.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">🚨</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">site-reliability-engineer</code></h3>
+            <p class="crew-card__duty">Reliability, failure modes, rollback safety — and bug root-cause.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">⚡</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">performance-engineer</code></h3>
+            <p class="crew-card__duty">Profiles, benchmarks, and proves the win.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">📋</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">product-manager</code></h3>
+            <p class="crew-card__duty">Accepts or rejects against the acceptance criteria and your bar.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">🎛️</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">ux-ui-designer</code></h3>
+            <p class="crew-card__duty">Specs &amp; reviews on-screen UI — tokens, layout, focus, a11y.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">🎨</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">art-director</code></h3>
+            <p class="crew-card__duty">Directs &amp; reviews rendered visuals — judges the picture.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">📖</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">technical-writer</code></h3>
+            <p class="crew-card__duty">Writes docs from the real code; proves them with a reader test.</p>
+          </li>
+          <li class="crew-card">
+            <span class="crew-card__icon" aria-hidden="true">📊</span>
+            <h3 class="crew-card__name"><code class="crew-card__handle">data-scientist</code></h3>
+            <p class="crew-card__duty">Data/model work — metrics, leakage, validation, reproducibility.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section orders" id="orders" aria-labelledby="orders-title">
+      <div class="container">
+        <div class="section__head">
+          <p class="section__eyebrow"><span aria-hidden="true">📜</span> The orders</p>
+          <h2 class="section__title" id="orders-title">Slash command workflows</h2>
+          <p class="section__lead">Reusable slash-command workflows — each one convenes the right crew for a job and drives it to done.</p>
+        </div>
+        <ul class="orders__grid">
+          <li class="order-card order-card--flagship">
+            <span class="order-card__tag">Flagship</span>
+            <h3 class="order-card__cmd"><code>/ship-issue</code></h3>
+            <p class="order-card__desc">Drives issue #n from open → reviewed, CI-green PR with the whole crew.</p>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><code>/fix-bug</code></h3>
+            <p class="order-card__desc">Reproduce as a failing test first, root-cause, minimal fix, red→green proof.</p>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><code>/plan-epics</code></h3>
+            <p class="order-card__desc">Turns a brief into GitHub epics + linked, labelled user stories, in parallel.</p>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><code>/harden</code></h3>
+            <p class="order-card__desc">Threat-models a surface and remediates until every finding is fixed or accepted.</p>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><code>/spike</code></h3>
+            <p class="order-card__desc">De-risks a decision — prototypes options in parallel, judges them, records an ADR.</p>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><code>/migrate</code></h3>
+            <p class="order-card__desc">Sweeps a migration across every call site, verified, no remnants left.</p>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><code>/document</code></h3>
+            <p class="order-card__desc">Writes docs from the real code, gated on a fresh reader completing the steps.</p>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><code>/release</code></h3>
+            <p class="order-card__desc">Cuts a release — changelog, CI-green tag, SRE rollback pre-flight, opt-in publish.</p>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><code>/polish</code></h3>
+            <p class="order-card__desc">Iterates a visual/UI artifact to a specialist's sign-off — render → critique → fix.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section how" id="how" aria-labelledby="how-title">
+      <div class="container">
+        <div class="section__head">
+          <p class="section__eyebrow"><span aria-hidden="true">🛠️</span> How the voyage works</p>
+          <h2 class="section__title" id="how-title">How <code>/ship-issue</code> takes a GitHub issue to a pull request</h2>
+          <p class="section__lead">It's not a clever prompt — it's a state machine with gates. Eight stages, in order.</p>
+        </div>
+        <ol class="how__steps">
+          <li class="how-step">
+            <span class="how-step__num" aria-hidden="true">1</span>
+            <span class="how-step__icon" aria-hidden="true">🗺️</span>
+            <h3 class="how-step__title">Plan</h3>
+            <p class="how-step__desc">A planner reads the issue + your docs → build plan, acceptance criteria, validation plan, and which specialists the story needs.</p>
+          </li>
+          <li class="how-step">
+            <span class="how-step__num" aria-hidden="true">2</span>
+            <span class="how-step__icon" aria-hidden="true">✏️</span>
+            <h3 class="how-step__title">Design specs</h3>
+            <p class="how-step__desc">For UI / visual / architecture-heavy stories, the right specialist writes a spec the builders must build to. (Only if needed.)</p>
+          </li>
+          <li class="how-step">
+            <span class="how-step__num" aria-hidden="true">3</span>
+            <span class="how-step__icon" aria-hidden="true">📦</span>
+            <h3 class="how-step__title">Isolate</h3>
+            <p class="how-step__desc">All work happens in a throwaway git worktree; your base branch never breaks.</p>
+          </li>
+          <li class="how-step">
+            <span class="how-step__num" aria-hidden="true">4</span>
+            <span class="how-step__icon" aria-hidden="true">🔨</span>
+            <h3 class="how-step__title">Build</h3>
+            <p class="how-step__desc">Parallel senior-engineer builders with non-overlapping file ownership.</p>
+          </li>
+          <li class="how-step">
+            <span class="how-step__num" aria-hidden="true">5</span>
+            <span class="how-step__icon" aria-hidden="true">🚦</span>
+            <h3 class="how-step__title">Self-check → CI gate</h3>
+            <p class="how-step__desc">The SDET runs the tests; then CI must go green on the pushed PR before anything moves on. Red? It reads the logs and fixes — bounded.</p>
+          </li>
+          <li class="how-step">
+            <span class="how-step__num" aria-hidden="true">6</span>
+            <span class="how-step__icon" aria-hidden="true">⚖️</span>
+            <h3 class="how-step__title">Acceptance board</h3>
+            <p class="how-step__desc">product-manager + sdet (+ gated ux-ui-designer / art-director / architect / security-engineer) review the pushed PR head, adversarially.</p>
+          </li>
+          <li class="how-step">
+            <span class="how-step__num" aria-hidden="true">7</span>
+            <span class="how-step__icon" aria-hidden="true">🔁</span>
+            <h3 class="how-step__title">Remediate</h3>
+            <p class="how-step__desc">Any rejection loops back to a fixer, then re-reviews. Bounded, then escalates to you.</p>
+          </li>
+          <li class="how-step">
+            <span class="how-step__num" aria-hidden="true">8</span>
+            <span class="how-step__icon" aria-hidden="true">🏁</span>
+            <h3 class="how-step__title">Deliver</h3>
+            <p class="how-step__desc">Files the non-blocking nits as follow-ups, and opens (or, opt-in, merges) the PR.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section faq" id="faq" aria-labelledby="faq-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <p class="section__eyebrow"><span aria-hidden="true">❓</span> FAQ</p>
+          <h2 class="section__title" id="faq-title">Frequently asked questions</h2>
+        </div>
+        <div class="faq__list">
+          <details class="faq__item">
+            <summary class="faq__q">
+              <h3 class="faq__q-text">What is Shipmates?</h3>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p>A ready-made crew of Claude Code sub-agents and slash-command workflows. Instead of you playing planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship /ship-issue takes a GitHub issue all the way to a reviewed, CI-green pull request.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <h3 class="faq__q-text">What are Claude Code sub-agents and slash commands?</h3>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p>Sub-agents are focused AI agents defined in .claude/agents/*.md; slash commands are reusable workflows in .claude/commands/*.md. Shipmates ships 11 agents and 9 commands you drop into ~/.claude/ (global) or a repo's .claude/ (project-scoped).</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <h3 class="faq__q-text">Is this an official Anthropic project?</h3>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p>No. Shipmates is an independent, MIT-licensed community project that builds on Claude Code's public sub-agent and slash-command features. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <h3 class="faq__q-text">How is it different from just prompting Claude Code?</h3>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p>A raw prompt drifts; Shipmates is a state machine with gates — an isolated worktree, a mandatory green-CI gate, and a fresh reviewer that never grades its own work — so an autonomous run converges instead of wandering.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <h3 class="faq__q-text">Which languages and frameworks does it work with?</h3>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p>Any. The agents are domain-neutral — they enforce the standard in your repo's README / CLAUDE.md, so the same crew works on a game engine, a web app, or a CLI.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <h3 class="faq__q-text">Do I have to configure each agent?</h3>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p>No. Install once, then /ship-issue 42. The crew picks up your project's quality bar automatically; a project-level .claude/ definition overrides the global crew when you want to specialise one.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom sub-agents &amp; slash-command workflows for Claude Code.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a href="#crew">Crew</a></li>
+          <li><a href="#orders">Orders</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var docEl = document.documentElement;
+      docEl.classList.add('js');
+      var status = document.querySelector('[data-copy-status]');
+      var buttons = document.querySelectorAll('.codeblock__copy');
+      Array.prototype.forEach.call(buttons, function (btn) {
+        btn.addEventListener('click', function () {
+          var block = btn.closest('.codeblock');
+          var code = block && block.querySelector('.codeblock__code');
+          var label = btn.querySelector('.codeblock__copy-label');
+          if (!code || !navigator.clipboard) {
+            if (status) status.textContent = 'Copy failed — select the text and press Ctrl/Cmd+C';
+            return;
+          }
+          navigator.clipboard.writeText(code.textContent).then(function () {
+            btn.classList.add('is-copied');
+            if (label) label.textContent = 'Copied';
+            if (status) status.textContent = 'Copied to clipboard';
+            window.setTimeout(function () {
+              btn.classList.remove('is-copied');
+              if (label) label.textContent = 'Copy';
+            }, 2000);
+          }).catch(function () {
+            btn.classList.remove('is-copied');
+            if (label) label.textContent = 'Copy';
+            if (status) status.textContent = 'Copy failed — select the text and press Ctrl/Cmd+C';
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

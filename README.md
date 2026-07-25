@@ -11,6 +11,7 @@
 
 [![License: MIT](https://img.shields.io/github/license/saman-mb/shipmates?color=blue)](LICENSE)
 [![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
+[![Website](https://img.shields.io/badge/website-saman--mb.github.io%2Fshipmates-D97757?logo=github)](https://saman-mb.github.io/shipmates/)
 [![Crew aboard](https://img.shields.io/badge/crew-11%20specialists-orange)](#-meet-the-crew)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Stars](https://img.shields.io/github/stars/saman-mb/shipmates?style=flat&logo=github)](https://github.com/saman-mb/shipmates/stargazers)
@@ -34,6 +35,7 @@ green, convenes an adversarial review board, loops on the fixes, and hands you a
 You stay the captain. The shipmates do the twenty steps in between. 🫡
 
 **[⚓ Get the crew aboard →](#-come-aboard-install)** · one line, no clone — then just `/ship-issue 42`.
+<br/>🌐 **[shipmates website →](https://saman-mb.github.io/shipmates/)** · the crew, the orders, and how `/ship-issue` works.
 
 ---
 

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://saman-mb.github.io/shipmates/sitemap.xml
