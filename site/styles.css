@@ -1,0 +1,789 @@
+/* =============================================================================
+   Shipmates — landing site stylesheet
+   Implements design-spec v1. Single source of truth for colour/size/space/radius
+   lives in the tokens below; NO selector hardcodes a colour, font-size, spacing,
+   or radius — everything references var(--…).
+
+   Order:
+     1. Design tokens (:root light  +  dark override)
+     2. Reset / base guards
+     3. Utilities (skip-link, visually-hidden, container, focus, base links/code)
+     4. Shared components (btn, chip, section head, codeblock)
+     5. Sections in DOM order (header → hero → install → crew → orders → how → faq → footer)
+     6. Responsive media queries (sm 480 · md 640 · lg 900 · xl 1120)
+     7. Reduced-motion
+============================================================================= */
+
+
+/* =============================================================================
+   1. DESIGN TOKENS
+============================================================================= */
+
+:root{
+  /* --- Colour — light (default) --- */
+  --surface:      #FBFAF9;
+  --surface-2:    #F4F1EE;
+  --text:         #1A1714;
+  --text-muted:   #5C544E;
+  --accent:       #D97757;   /* UI + large text (>=24px, or >=18.66px bold) ONLY */
+  --accent-strong:#AD4526;   /* accent as small text / links */
+  --btn-primary-bg:      #BF4D2E;
+  --btn-primary-bg-hover:#A8401F;
+  --btn-primary-fg:      #FFFFFF;
+  --border:       #E3DED8;
+  --border-strong:#C9C1B8;
+  --success:      #1E7A52;
+  --code-bg:      #F3EFEA;
+  --code-text:    #2B2620;
+  --focus-ring:   #AD4526;
+  --shadow-1: 0 1px 2px rgba(26,23,20,.06), 0 1px 1px rgba(26,23,20,.04);
+  --shadow-2: 0 6px 20px rgba(26,23,20,.09), 0 2px 6px rgba(26,23,20,.06);
+
+  /* Ink that sits ON an --accent fill (order tag, how-step disc). Held constant
+     across themes because --accent itself is constant in both themes; spec §3
+     mandates #1A140F here for 5.84:1. Deliberately NOT overridden in dark. */
+  --on-accent: #1A140F;
+
+  /* --- Type — system stack, rem on 16px --- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+  --fs-900: clamp(2rem, 1.15rem + 4vw, 3.25rem);   /* h1 hero, lh 1.05 */
+  --fs-800: clamp(1.5rem, 1.1rem + 2vw, 2rem);      /* h2, lh 1.15 */
+  --fs-700: 1.25rem;                                 /* h3 card, lh 1.25 */
+  --fs-600: clamp(1.125rem,1rem + 0.6vw,1.375rem);  /* lead/hook, lh 1.5 */
+  --fs-500: 1.125rem;                                /* h4/emph, lh 1.4 */
+  --fs-400: 1rem;                                    /* body, lh 1.6 */
+  --fs-300: .875rem;                                 /* small/meta, lh 1.5 */
+  --fs-200: .75rem;                                  /* eyebrow/kbd, lh 1.4, uppercase +.06em */
+  --fw-normal:400; --fw-medium:500; --fw-semibold:600; --fw-bold:700;
+  --lh-tight:1.15; --lh-snug:1.3; --lh-body:1.6;
+
+  /* --- Space / radii / sizing / motion --- */
+  --space-1:.25rem; --space-2:.5rem; --space-3:.75rem; --space-4:1rem; --space-5:1.5rem; --space-6:2rem; --space-7:3rem; --space-8:4rem; --space-9:6rem; --space-10:8rem;
+  --section-pad-y: clamp(3rem, 6vw, 6rem);
+  --gutter: clamp(1rem, 4vw, 2rem);
+  --grid-gap: clamp(1rem, 2.5vw, 1.5rem);
+  --maxw:1100px; --maxw-prose:760px; --header-h:56px;
+  --radius-sm:6px; --radius-md:10px; --radius-lg:16px; --radius-pill:999px;
+  --tap-min:44px;
+  --transition-fast:120ms; --transition:200ms; --ease: cubic-bezier(.2,.8,.2,1);
+}
+
+/* --- Colour — dark (token override only; components are theme-agnostic) --- */
+@media (prefers-color-scheme: dark){
+  :root{
+    --surface:#14110F; --surface-2:#1D1916; --text:#F2EDE8; --text-muted:#B3A99F;
+    --accent:#D97757; --accent-strong:#E8916F;
+    --btn-primary-bg:#E8916F; --btn-primary-bg-hover:#F0A283; --btn-primary-fg:#1A140F;
+    --border:#332C26; --border-strong:#4A4139; --success:#4ADE94;
+    --code-bg:#211C18; --code-text:#EDE7E0; --focus-ring:#E8916F;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.5);
+    --shadow-2: 0 8px 26px rgba(0,0,0,.55);
+  }
+}
+
+
+/* =============================================================================
+   2. RESET / BASE GUARDS
+============================================================================= */
+
+*{ box-sizing:border-box; }
+
+/* No horizontal page scroll at any width: page never exceeds the viewport,
+   grids shrink via minmax(0,1fr), and long lines scroll INSIDE the codeblock. */
+html,body{ max-width:100%; }
+
+html{ scroll-behavior:smooth; }
+
+body{
+  margin:0;
+  font-family:var(--font-sans);
+  font-size:var(--fs-400);
+  line-height:var(--lh-body);
+  color:var(--text);
+  background:var(--surface);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+img{ max-width:100%; height:auto; display:block; }
+
+/* Brand logos sit in flex rows (header/footer) — keep them at their intrinsic
+   size instead of shrinking; dimensions come from the HTML width/height attrs. */
+.site-header__logo,.hero__logo,.site-footer__logo{ flex:none; }
+
+h1,h2,h3,h4,h5,h6,p,figure,pre{ margin:0; }
+
+h1,h2,h3,h4{ overflow-wrap:break-word; }
+
+/* Inline code inherits its context's size; only the family is fixed here. */
+code{ font-family:var(--font-mono); }
+
+/* Anchor scroll offset so sticky-header never covers a jumped-to heading. */
+:target,[id]{ scroll-margin-top:calc(var(--header-h) + var(--space-4)); }
+
+
+/* =============================================================================
+   3. UTILITIES
+============================================================================= */
+
+/* --- Focus (§4.1): visible ring only for keyboard/AT, never on mouse click --- */
+:focus-visible{
+  outline:2px solid var(--focus-ring);
+  outline-offset:2px;
+  border-radius:var(--radius-sm);
+}
+:focus:not(:focus-visible){ outline:none; }
+
+/* --- Base links (§4.2): accent-strong + underline; overridden for chrome below --- */
+a{
+  color:var(--accent-strong);
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+a:hover{ text-decoration-thickness:2px; }
+
+/* --- Skip link (§4.3): off-screen until focused --- */
+.skip-link{
+  position:fixed;
+  left:var(--space-3);
+  top:calc(-1 * var(--space-10));   /* parked above the viewport */
+  z-index:100;
+  padding:var(--space-2) var(--space-4);
+  background:var(--surface);
+  color:var(--text);
+  border:2px solid var(--accent-strong);
+  border-radius:var(--radius-sm);
+  text-decoration:none;
+  transition:top var(--transition) var(--ease);
+}
+.skip-link:focus{ top:var(--space-3); }
+
+/* --- Screen-reader-only text (used by [data-copy-status] live region too) --- */
+.visually-hidden{
+  position:absolute;
+  width:1px; height:1px;
+  padding:0; margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
+
+/* --- Layout container --- */
+.container{
+  width:100%;
+  max-width:var(--maxw);
+  margin-inline:auto;
+  padding-inline:var(--gutter);
+}
+.container--prose{ max-width:var(--maxw-prose); }
+
+/* --- Section rhythm --- */
+.section{ padding-block:var(--section-pad-y); }
+
+
+/* =============================================================================
+   4. SHARED COMPONENTS
+============================================================================= */
+
+/* --- Buttons (§4.2) --- */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:var(--space-2);
+  min-height:var(--tap-min);
+  padding:var(--space-2) var(--space-4);
+  border:1.5px solid transparent;
+  border-radius:var(--radius-md);
+  font-family:inherit;
+  font-size:var(--fs-400);
+  font-weight:var(--fw-semibold);
+  line-height:var(--lh-tight);
+  text-decoration:none;
+  cursor:pointer;
+  transition:background-color var(--transition) var(--ease),
+             border-color var(--transition) var(--ease),
+             color var(--transition) var(--ease),
+             box-shadow var(--transition) var(--ease),
+             transform var(--transition-fast) var(--ease);
+}
+
+.btn--primary{
+  background:var(--btn-primary-bg);
+  border-color:var(--btn-primary-bg);
+  color:var(--btn-primary-fg);
+}
+.btn--primary:hover{
+  background:var(--btn-primary-bg-hover);
+  border-color:var(--btn-primary-bg-hover);
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-2);
+}
+.btn--primary:active{ transform:translateY(0); }
+
+.btn--secondary{
+  background:transparent;
+  border:1.5px solid var(--border-strong);
+  color:var(--text);
+}
+.btn--secondary:hover{
+  background:var(--surface-2);
+  border-color:var(--accent);
+}
+
+/* Inline SVG mark; size comes from the SVG's own width/height attrs (spec: 20px). */
+.btn__icon{
+  flex:none;
+  fill:currentColor;
+}
+
+/* --- Chip (non-interactive pill) (§4.2) --- */
+.chip{
+  display:inline-flex;
+  align-items:center;
+  padding:var(--space-1) var(--space-3);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-pill);
+  font-size:var(--fs-300);
+  color:var(--text-muted);
+}
+
+/* --- Section head --- */
+.section__head{ margin-bottom:var(--space-6); }
+.section__eyebrow{
+  margin:0 0 var(--space-2);
+  font-size:var(--fs-200);
+  font-weight:var(--fw-semibold);
+  line-height:var(--lh-tight);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--accent-strong);   /* accent as small text ⇒ accent-strong (§1.3) */
+}
+.section__title{
+  font-size:var(--fs-800);
+  line-height:var(--lh-tight);
+  font-weight:var(--fw-bold);
+}
+.section__lead{
+  margin-top:var(--space-3);
+  max-width:var(--maxw-prose);
+  font-size:var(--fs-600);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
+/* --- Codeblock family --- */
+.codeblock{ min-width:0; }
+.codeblock__label{
+  display:block;
+  margin-bottom:var(--space-2);
+  font-size:var(--fs-300);
+  font-weight:var(--fw-semibold);
+  color:var(--text-muted);
+}
+.codeblock__body{
+  position:relative;
+  min-width:0;
+  background:var(--code-bg);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+}
+/* Long curl line scrolls HERE, never the page. */
+.codeblock__pre{
+  margin:0;
+  padding:var(--space-4);
+  overflow-x:auto;
+}
+.codeblock__code{
+  font-family:var(--font-mono);
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--code-text);
+  white-space:pre;
+}
+
+/* Copy button — hidden until progressive enhancement flips html.js (§4.4).
+   Mobile-first default (<sm) = full-width static bar UNDER the <pre> so it
+   never overlaps the code; promoted to a top-right button at sm+ (media query). */
+.codeblock__copy{
+  display:none;
+  width:100%;
+  align-items:center;
+  justify-content:center;
+  gap:var(--space-2);
+  min-height:var(--tap-min);
+  padding:var(--space-2) var(--space-3);
+  font-family:inherit;
+  font-size:var(--fs-300);
+  font-weight:var(--fw-medium);
+  color:var(--text);
+  background:var(--surface);
+  border:0;
+  border-top:1px solid var(--border);
+  border-radius:0 0 var(--radius-md) var(--radius-md);
+  cursor:pointer;
+  transition:background-color var(--transition) var(--ease),
+             border-color var(--transition) var(--ease),
+             color var(--transition) var(--ease);
+}
+html.js .codeblock__copy{ display:inline-flex; }
+.codeblock__copy:hover{ background:var(--surface-2); }
+.codeblock__copy.is-copied{          /* success = check + word + colour (§1.3) */
+  color:var(--success);
+  border-color:var(--success);
+}
+.codeblock__copy-icon{ flex:none; display:inline-flex; }
+.codeblock__copy-icon svg{ fill:currentColor; }
+.codeblock__copy-label{ white-space:nowrap; }   /* keeps "Copy" / "Copied" on one line */
+
+
+/* =============================================================================
+   5. SECTIONS — DOM order
+============================================================================= */
+
+/* --- 5.1 Header (§3) --- */
+.site-header{
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+.site-header__inner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--space-4);
+  min-height:var(--header-h);
+}
+.site-header__brand{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--space-2);
+  color:var(--text);
+  text-decoration:none;
+  font-weight:var(--fw-bold);
+}
+.site-header__name{ font-size:var(--fs-500); }
+
+.site-nav{
+  display:flex;
+  align-items:center;
+  gap:var(--space-4);
+}
+.site-nav__list{
+  display:none;                 /* hidden <md; horizontal row at md+ (zero-JS) */
+  align-items:center;
+  gap:var(--space-4);
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.site-nav__item{ display:flex; }
+.site-nav__link{
+  display:inline-flex;
+  align-items:center;
+  min-height:var(--tap-min);
+  padding-inline:var(--space-2);
+  color:var(--text);
+  text-decoration:none;
+  font-size:var(--fs-300);
+  font-weight:var(--fw-medium);
+}
+.site-nav__link:hover{
+  color:var(--accent-strong);
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+.site-nav__cta{ font-size:var(--fs-300); }
+
+/* --- Main landmark (skip-link target) --- */
+.main:focus{ outline:none; }
+
+/* --- 5.2 Hero (§3): mobile single column; 2-col grid at lg+ --- */
+.hero__inner{
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-6);
+  align-items:flex-start;
+}
+.hero__copy{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:var(--space-4);
+  min-width:0;
+}
+.hero__title{
+  font-size:var(--fs-900);
+  line-height:1.05;
+  font-weight:var(--fw-bold);
+}
+.hero__title-emoji{ font-style:normal; }
+.hero__subtitle{
+  font-size:var(--fs-500);
+  line-height:1.4;
+  color:var(--text-muted);
+}
+.hero__tagline{
+  font-size:var(--fs-600);
+  line-height:1.5;
+  font-weight:var(--fw-semibold);
+}
+.hero__hook{
+  max-width:var(--maxw-prose);
+  font-size:var(--fs-600);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+.hero__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:var(--space-3);
+}
+.hero__badges{
+  display:flex;
+  flex-wrap:wrap;
+  gap:var(--space-2);
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.hero__figure{
+  min-width:0;
+  margin:0;
+}
+.hero__demo{
+  width:100%;
+  max-width:940px;
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-2);
+}
+.hero__figcaption{
+  margin-top:var(--space-3);
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
+/* --- 5.3 Install (§3): prose width, vertical stack of codeblocks --- */
+.install__blocks{
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-5);
+}
+.install__note{
+  margin-top:var(--space-4);
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
+/* --- 5.4 Crew (§3): auto-fit grid; non-interactive cards --- */
+.crew__grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(15rem, 1fr));
+  gap:var(--grid-gap);
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.crew-card{
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-2);
+  padding:var(--space-5);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  box-shadow:var(--shadow-1);
+}
+.crew-card__icon{
+  font-size:var(--fs-700);
+  line-height:1;
+}
+.crew-card__name{
+  font-size:var(--fs-700);
+  line-height:1.25;
+  font-weight:var(--fw-semibold);
+}
+.crew-card__handle{
+  font-family:var(--font-mono);
+  font-weight:var(--fw-semibold);
+  color:var(--accent-strong);
+}
+.crew-card__duty{
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
+/* --- 5.5 Orders (§3): auto-fit grid; flagship gets accent rail + label --- */
+.orders__grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(17rem, 1fr));
+  gap:var(--grid-gap);
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.order-card{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:var(--space-2);
+  padding:var(--space-5);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  box-shadow:var(--shadow-1);
+}
+.order-card--flagship{
+  border-color:var(--accent);
+  border-left-width:4px;
+}
+.order-card__tag{
+  display:inline-flex;
+  align-items:center;
+  padding:var(--space-1) var(--space-3);
+  background:var(--accent);
+  color:var(--on-accent);       /* dark ink on accent = 5.84:1 (spec §3) */
+  border-radius:var(--radius-pill);
+  font-size:var(--fs-200);
+  font-weight:var(--fw-bold);
+  line-height:var(--lh-tight);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.order-card__cmd{
+  font-size:var(--fs-700);
+  line-height:1.25;
+  font-weight:var(--fw-semibold);
+}
+.order-card__cmd code{ color:var(--accent-strong); }
+.order-card__desc{
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
+/* --- 5.6 How (§3): steps grid; num disc is decorative, <ol> carries order --- */
+.how__steps{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr);   /* 1 col mobile → 2 (md) → 4 (xl) */
+  gap:var(--grid-gap);
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.how-step{
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr);
+  grid-template-areas:
+    "num icon"
+    "num title"
+    "num desc";
+  column-gap:var(--space-4);
+  row-gap:var(--space-1);
+  align-items:start;
+  padding:var(--space-5);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+}
+.how-step__num{
+  grid-area:num;
+  align-self:start;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:2.25rem;
+  height:2.25rem;
+  border-radius:var(--radius-pill);
+  background:var(--accent);
+  color:var(--on-accent);       /* dark ink on accent (spec §3) */
+  font-size:var(--fs-400);
+  font-weight:var(--fw-bold);
+  line-height:1;
+}
+.how-step__icon{
+  grid-area:icon;
+  font-size:var(--fs-700);
+  line-height:1;
+}
+.how-step__title{
+  grid-area:title;
+  font-size:var(--fs-500);
+  line-height:1.4;
+  font-weight:var(--fw-semibold);
+}
+.how-step__desc{
+  grid-area:desc;
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
+/* --- 5.7 FAQ (§3): native <details>; marker rotates on [open] --- */
+.faq__list{
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-3);
+}
+.faq__item{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+}
+.faq__q{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:var(--space-3);
+  padding:var(--space-4);
+  cursor:pointer;
+  list-style:none;              /* strip default disclosure triangle (§4.6/§5) */
+}
+.faq__q::-webkit-details-marker{ display:none; }
+summary::-webkit-details-marker{ display:none; }
+.faq__q:hover{ background:var(--surface); }   /* subtle hover bg (§4.2) */
+.faq__q-text{
+  margin:0;
+  font-size:var(--fs-500);
+  line-height:1.4;
+  font-weight:var(--fw-semibold);
+}
+.faq__marker{
+  flex:none;
+  color:var(--text-muted);
+  font-size:1.5rem;
+  line-height:1;
+  transition:transform var(--transition) var(--ease);
+}
+.faq__marker::before{ content:"\203A"; display:block; } /* › chevron: points right closed, down when [open] */
+.faq__item[open] .faq__marker{ transform:rotate(90deg); }
+.faq__a{
+  padding:0 var(--space-4) var(--space-4);
+  color:var(--text-muted);
+}
+.faq__a p{
+  font-size:var(--fs-400);
+  line-height:var(--lh-body);
+}
+
+/* --- 5.8 Footer (§3): surface-2, top border; stacks mobile, row at md+ --- */
+.site-footer{
+  padding-block:var(--space-7);
+  background:var(--surface-2);
+  border-top:1px solid var(--border);
+}
+.site-footer__inner{
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-6);
+}
+.site-footer__brand{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:var(--space-2) var(--space-3);
+}
+.site-footer__name{ font-weight:var(--fw-bold); }
+.site-footer__tagline{
+  flex-basis:100%;
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+.site-footer__links{
+  display:flex;
+  flex-wrap:wrap;
+  gap:var(--space-2) var(--space-4);
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.site-footer__links a{
+  display:inline-flex;
+  align-items:center;
+  min-height:var(--tap-min);
+  font-size:var(--fs-300);
+}
+.site-footer__legal{
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
+
+/* =============================================================================
+   6. RESPONSIVE — mobile-first; breakpoints sm 480 · md 640 · lg 900 · xl 1120
+============================================================================= */
+
+/* --- sm 480px: copy button becomes a top-right button (off the full-width bar) --- */
+@media (min-width:480px){
+  .codeblock__pre{
+    /* reserve room so code never hides under the absolute copy button */
+    padding-right:calc(var(--space-4) + 5.5rem);
+  }
+  .codeblock__copy{
+    position:absolute;
+    top:var(--space-2);
+    right:var(--space-2);
+    width:auto;
+    min-width:var(--tap-min);
+    border:1px solid var(--border-strong);
+    border-radius:var(--radius-sm);
+  }
+}
+
+/* --- md 640px: show horizontal nav; how-steps 2 cols; footer row --- */
+@media (min-width:640px){
+  .site-nav__list{ display:flex; }
+
+  .how__steps{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+
+  .site-footer__inner{
+    flex-direction:row;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    align-items:flex-start;
+  }
+  .site-footer__legal{ flex-basis:100%; }
+}
+
+/* --- lg 900px: hero becomes a 2-column grid (46/54) --- */
+@media (min-width:900px){
+  .hero__inner{
+    display:grid;
+    grid-template-columns:minmax(0, 46fr) minmax(0, 54fr);
+    gap:var(--space-7);
+    align-items:center;
+  }
+}
+
+/* --- xl 1120px: how-steps 4 cols (8 → 4×2) --- */
+@media (min-width:1120px){
+  .how__steps{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+}
+
+
+/* =============================================================================
+   7. REDUCED MOTION (§4.5)
+   NOTE (spec follow-up): demo.gif cannot honour reduced-motion — no static
+   poster exists — so this page is NOT claimed fully motion-compliant. The gif's
+   content is duplicated in the How section + its alt text.
+============================================================================= */
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+    scroll-behavior:auto!important;
+  }
+  .btn--primary:hover{ transform:none; }
+}
