@@ -174,6 +174,12 @@ def main() -> int:
     else:
         ok("dark-theme override present")
 
+    # --- reduced-motion demo poster wired (a11y / WCAG 2.2.2) ---
+    if "hero__demo-poster" in html and "hero__demo-poster" in css and "prefers-reduced-motion" in css:
+        ok("reduced-motion demo poster wired")
+    else:
+        fail("reduced-motion demo poster not fully wired (need the poster <img> in HTML + a prefers-reduced-motion swap in CSS)")
+
     return report()
 
 

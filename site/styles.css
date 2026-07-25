@@ -456,12 +456,16 @@ html.js .codeblock__copy{ display:inline-flex; }
   min-width:0;
   margin:0;
 }
-.hero__demo{
+.hero__demo,
+.hero__demo-poster{
   width:100%;
   max-width:940px;
   border-radius:var(--radius-lg);
   box-shadow:var(--shadow-2);
 }
+/* The static poster is hidden by default; it replaces the animated GIF only
+   when the user asks for reduced motion (see the reduced-motion block below). */
+.hero__demo-poster{ display:none; }
 .hero__figcaption{
   margin-top:var(--space-3);
   font-size:var(--fs-300);
@@ -773,9 +777,10 @@ summary::-webkit-details-marker{ display:none; }
 
 /* =============================================================================
    7. REDUCED MOTION (§4.5)
-   NOTE (spec follow-up): demo.gif cannot honour reduced-motion — no static
-   poster exists — so this page is NOT claimed fully motion-compliant. The gif's
-   content is duplicated in the How section + its alt text.
+   Under prefers-reduced-motion the autoplaying demo.gif is hidden and the static
+   demo-poster.png (a finished-run still) is shown in its place, so users who ask
+   for reduced motion never see the loop. The gif's content is also duplicated in
+   the How section + both images' alt text.
 ============================================================================= */
 
 @media (prefers-reduced-motion:reduce){
@@ -786,4 +791,7 @@ summary::-webkit-details-marker{ display:none; }
     scroll-behavior:auto!important;
   }
   .btn--primary:hover{ transform:none; }
+  /* Swap the autoplaying demo GIF for a static poster of the finished run. */
+  .hero__demo{ display:none; }
+  .hero__demo-poster{ display:block; }
 }
