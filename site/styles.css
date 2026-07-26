@@ -302,7 +302,13 @@ a:hover{ text-decoration-thickness:2px; }
   font-size:var(--fs-300);
   line-height:1.5;
   color:var(--code-text);
-  white-space:pre;
+  /* Wrap rather than scroll: the project-scoped install command is ~120ch, which
+     overflows every viewport we support, so `pre` truncated it behind a scrollbar
+     even on a wide desktop. Newlines are still honoured; long unbroken URLs break
+     anywhere so the command is always readable in full. Copy is a button, so the
+     wrap never costs anyone an accurate paste. */
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
 }
 
 /* Copy button — hidden until progressive enhancement flips html.js (§4.4).
