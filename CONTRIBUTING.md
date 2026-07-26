@@ -27,6 +27,10 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
 2. Prefer invoking the shared agents by `subagent_type` over inlining personas.
 3. Anything with side effects (merging, publishing) should be **opt-in**, not the default — be a
    good guest on other people's repos.
+4. Add the slug to `SLUGS` in `tools/gen_command_pages.py`, then run
+   `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
+   `site/sitemap.xml`. Add a matching card to the `#orders` grid in `site/index.html`, linking to
+   `commands/<name>/`. CI fails if the generated pages drift from `commands/*.md`.
 
 ## Testing your change
 
