@@ -245,6 +245,9 @@ tagged commit, and the `site-reliability-engineer` checks rollback + migration s
 Claude Code loads agents and skills from `~/.claude/` (global, every project) and `<repo>/.claude/`
 (that project only). A project definition **wins** over a global one of the same name — so any repo
 can override or specialise a crew member without touching the shared copy.
+<!-- KNOWN-WRONG, do not cite: the precedence claim above holds for subagents but is inverted for
+     skills — user-level ~/.claude/skills/ beats project-level. Correction is tracked in issue #71
+     (PR B), which owns this section; leave the fix to that PR. -->
 
 ## 🎒 What you'll need
 

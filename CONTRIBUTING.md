@@ -23,8 +23,9 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
 
 ## Adding a skill (workflow)
 
-A workflow ships as a **skill** on disk and is invoked as a **command** in Claude Code. Work the
-checklist top to bottom:
+A workflow ships as a **skill** on disk and is invoked as a **command** in Claude Code. Both names
+are correct; which one belongs in a given sentence is set by the
+[naming register](docs/BRAND.md#naming-register). Work the checklist top to bottom:
 
 1. Create `skills/<name>/SKILL.md` (lowercase-and-hyphens `<name>`), with frontmatter in this
    canonical order: `name`, `description`, `argument-hint`, `allowed-tools`. **`name` must be
@@ -35,8 +36,12 @@ checklist top to bottom:
 3. Make the first heading after the frontmatter `# /<name> — <tagline>` — the page generator parses
    that line for the command's title, and fails on anything else.
 4. Take input from `$ARGUMENTS` only, parsed in prose — a skill has no positional arguments. A `$`
-   followed by a digit is rejected outside a fenced code block; inside a fence it is read as a shell
-   field reference and allowed.
+   followed by a digit is rejected **anywhere in the file**, frontmatter and fenced code blocks
+   included: substitution is textual over the whole file, so a fence protects nothing. (An earlier
+   version of this checklist allowed it inside a fence, on the grounds that it reads as a shell field
+   reference there. That was wrong: run `/ship-issue 42 focus on retries` and a fenced snippet asking
+   for field two gets the literal word `on`.) If you genuinely need a literal, escape it as `\$2` —
+   but prefer restructuring so you don't, e.g. `cut -f2` rather than an `awk` field reference.
 5. Prefer invoking the shared agents by `subagent_type` over inlining personas.
 6. Anything with side effects (merging, publishing) should be **opt-in**, not the default — be a
    good guest on other people's repos.
