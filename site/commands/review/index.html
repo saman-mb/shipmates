@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>/review — classify → convene the board → consolidate · Shipmates</title>
+  <meta name="description" content="Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one…">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/review/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="/review — classify → convene the board → consolidate">
+  <meta property="og:description" content="Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one…">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/review/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for Claude Code.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="/review — classify → convene the board → consolidate">
+  <meta name="twitter:description" content="Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one…">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for Claude Code.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "/review",
+    "description": "Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.",
+    "url": "https://saman-mb.github.io/shipmates/commands/review/",
+    "step": [
+      {
+        "@type": "HowToStep",
+        "position": 1,
+        "name": "Stage 0 — Intake & classify",
+        "text": "Pull the change itself, not a description of it:",
+        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-0"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 2,
+        "name": "Stage 1 — CI state (read it, don't fix it)",
+        "text": "Report what CI says; never try to repair it. You cannot push to a fork, and pushing to a colleague's branch uninvited is rude at best. Red CI is a finding, recorded with the failing job and a link — not a loop. If checks are still pending, say so and review the diff on its merits, flagging that…",
+        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-1"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
+        "name": "Stage 2 — The board",
+        "text": "Spawn these in a single message so they run concurrently, each pinned to the head commit so they review exactly what would merge. Two always run; the rest only when their flag is set:",
+        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-2"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 4,
+        "name": "Stage 3 — Consolidate",
+        "text": "You synthesise; don't delegate it. Merge the reports, dedupe findings several reviewers raised, and rank them: blocking (correctness, security, data loss, a criterion the PR itself claims and misses) above nits (style, naming, taste). Attribute each finding to the role that raised it so the author…",
+        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-3"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 5,
+        "name": "Stage 4 — Deliver",
+        "text": "Return the consolidated review. If MODE=post, publish it:",
+        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-4"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#orders">Orders</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+        </ul>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../../#orders"><span aria-hidden="true">←</span> All orders</a>
+        <div class="order-detail">
+          <p class="order-detail__eyebrow"><span aria-hidden="true">📜</span> Order</p>
+          <h1 class="order-detail__title" id="order-title"><code>/review</code></h1>
+          <p class="order-detail__tagline">classify → convene the board → consolidate</p>
+          <p class="order-detail__desc">Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.</p>
+          <div class="order-prose">
+            <p>Point the crew at a pull request <strong>somebody else wrote</strong> — a teammate&#x27;s, an outside contributor&#x27;s, a dependency bump, or one you opened by hand before you thought to use Shipmates. Every other order assumes the crew authored the change; this one doesn&#x27;t, and that single fact sets its shape: <strong>no worktree, no build, no fix loop.</strong> You don&#x27;t own the branch, so the deliverable is findings, not commits.</p>
+            <p>Input (<strong>$ARGUMENTS</strong>): a PR number or URL, plus an optional focus hint. If it&#x27;s empty, default to the PR for the current branch (<code>gh pr view --json number</code>); if there isn&#x27;t one, ask which PR to review.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section order-invoke" id="invoke" aria-labelledby="invoke-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="invoke-title">How to run it</h2>
+        </div>
+        <div class="codeblock">
+          <p class="codeblock__label">Run it in Claude Code</p>
+          <div class="codeblock__body">
+            <pre class="codeblock__pre"><code class="codeblock__code">/review &lt;pr-number or PR url&gt; [optional focus — e.g. &quot;security only&quot;, &quot;just the schema change&quot;]</code></pre>
+          </div>
+        </div>
+        <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
+      </div>
+    </section>
+
+    <section class="section" id="stages" aria-labelledby="stages-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <p class="section__eyebrow">Step by step</p>
+          <h2 class="section__title" id="stages-title">The stages</h2>
+          <p class="section__lead">Five stages, in order.</p>
+        </div>
+        <ol class="order-stages" role="list">
+          <li class="order-stage" id="stage-0">
+            <span class="order-stage__num" aria-hidden="true">0</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Intake &amp; classify</h3>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <p>Pull the change itself, not a description of it:</p>
+                <pre class="order-code" tabindex="0"><code>gh pr view &lt;PR#&gt; --json number,title,body,author,headRefOid,isCrossRepository,files,url
+gh pr diff &lt;PR#&gt;</code></pre>
+                <p>Then read the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> for the bar. Set the <strong>same classification flags <code>/ship-issue</code> uses</strong>, so a given change pulls the same specialists whichever door it came through — but derive them from the <strong>diff</strong>, not from an issue body. That is the real difference: there are no stated acceptance criteria here, so the criteria are <em>the repo&#x27;s own bar plus what the PR claims to do</em>. Where the PR description and the diff disagree, that mismatch is itself a finding.</p>
+                <ul>
+                  <li><code>IS_UI_STORY</code> — does the diff create or change on-screen UI? Gates <code>ux-ui-designer</code>.</li>
+                  <li><code>IS_VISUAL_STORY</code> — is the project&#x27;s deliverable rendered visual <strong>art</strong>, and does this touch it? Almost always <code>no</code> for conventional apps — prefer <code>IS_UI_STORY</code>. Gates <code>art-director</code>.</li>
+                  <li><code>IS_ARCH_SIGNIFICANT</code> — new subsystem, changed persisted schema, or a cross-cutting change a narrow read would miss? Gates <code>architect</code>.</li>
+                  <li><code>IS_SECURITY_SENSITIVE</code> — authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies? Gates <code>security-engineer</code>.</li>
+                  <li><code>IS_DELIVERY_SENSITIVE</code> — pipeline/build definitions, image or environment definitions, infrastructure-as-code, or dependency/toolchain pins? Gates <code>devops-engineer</code>.</li>
+                </ul>
+                <p>This flag vocabulary is <strong>shared with <code>/ship-issue</code></strong> — a new flag must be added to both files.</p>
+              </div>
+            </div>
+          </li>
+          <li class="order-stage" id="stage-1">
+            <span class="order-stage__num" aria-hidden="true">1</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>CI state (read it, don&#x27;t fix it)</h3>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <pre class="order-code" tabindex="0"><code>gh pr checks &lt;PR#&gt;</code></pre>
+                <p>Report what CI says; never try to repair it. You cannot push to a fork, and pushing to a colleague&#x27;s branch uninvited is rude at best. <strong>Red CI is a finding</strong>, recorded with the failing job and a link — not a loop. If checks are still pending, say so and review the diff on its merits, flagging that the runtime signal is unconfirmed.</p>
+              </div>
+            </div>
+          </li>
+          <li class="order-stage" id="stage-2">
+            <span class="order-stage__num" aria-hidden="true">2</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>The board</h3>
+            <p class="order-stage__crew">Crew: (specialist agents, in parallel, against <code>headRefOid</code>)</p>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <p>Spawn these in a single message so they run concurrently, each pinned to the <strong>head commit</strong> so they review exactly what would merge. Two always run; the rest only when their flag is set:</p>
+                <div class="order-table" tabindex="0">
+                  <table>
+                    <thead><tr><th scope="col"><code>subagent_type</code></th><th scope="col">Runs</th></tr></thead>
+                    <tbody>
+                      <tr><td><code>product-manager</code></td><td>always — does it solve the stated problem, and does it clear the repo&#x27;s bar?</td></tr>
+                      <tr><td><code>sdet</code></td><td>always — test coverage and quality of the change (see <code>RUN_TESTS</code> before executing anything)</td></tr>
+                      <tr><td><code>architect</code></td><td>only if <code>IS_ARCH_SIGNIFICANT</code></td></tr>
+                      <tr><td><code>security-engineer</code></td><td>only if <code>IS_SECURITY_SENSITIVE</code></td></tr>
+                      <tr><td><code>devops-engineer</code></td><td>only if <code>IS_DELIVERY_SENSITIVE</code></td></tr>
+                      <tr><td><code>ux-ui-designer</code></td><td>only if <code>IS_UI_STORY</code></td></tr>
+                      <tr><td><code>art-director</code></td><td>only if <code>IS_VISUAL_STORY</code></td></tr>
+                      <tr><td><code>performance-engineer</code></td><td>if the PR claims a performance win, or touches a known hot path</td></tr>
+                      <tr><td><code>site-reliability-engineer</code></td><td>if it changes runtime behaviour, failure handling, or rollout</td></tr>
+                      <tr><td><code>data-scientist</code></td><td>if the deliverable is an analysis or a model</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p><strong>Don&#x27;t restate what each reviewer checks.</strong> Their remit lives in <code>agents/*.md</code> — that is the single source of truth, and duplicating it here is how the two boards drift apart. Pass each agent the PR head, the repo&#x27;s bar, and the caller&#x27;s focus hint; let the role do the rest.</p>
+              </div>
+            </div>
+          </li>
+          <li class="order-stage" id="stage-3">
+            <span class="order-stage__num" aria-hidden="true">3</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Consolidate</h3>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <p><strong>You</strong> synthesise; don&#x27;t delegate it. Merge the reports, dedupe findings several reviewers raised, and rank them: <strong>blocking</strong> (correctness, security, data loss, a criterion the PR itself claims and misses) above <strong>nits</strong> (style, naming, taste). Attribute each finding to the role that raised it so the author can weigh it. One verdict for the PR: <code>APPROVE</code> / <code>APPROVE-WITH-NITS</code> / <code>REQUEST-CHANGES</code>.</p>
+                <p>If a visual specialist could not actually render the change, carry its <strong>&quot;needs a human visual pass&quot;</strong> flag into the output rather than implying the visuals were confirmed.</p>
+              </div>
+            </div>
+          </li>
+          <li class="order-stage" id="stage-4">
+            <span class="order-stage__num" aria-hidden="true">4</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Deliver</h3>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <p>Return the consolidated review. If <code>MODE=post</code>, publish it:</p>
+                <pre class="order-code" tabindex="0"><code>gh pr review &lt;PR#&gt; --comment --body &quot;&lt;consolidated findings&gt;&quot;</code></pre>
+                <p>Use <code>--comment</code>, not <code>--approve</code>/<code>--request-changes</code>, unless the caller explicitly asked for a binding verdict — an automated approval carries weight the crew hasn&#x27;t earned on someone else&#x27;s work.</p>
+              </div>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="config" aria-labelledby="config-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="config-title">Config (override only if the repo needs it)</h2>
+        </div>
+        <div class="order-prose">
+          <ul>
+            <li><code>MODE</code> = <code>report</code> — <code>report</code>: return the verdict to the caller only. <code>post</code>: also publish it with <code>gh pr review</code>. Posting onto someone else&#x27;s PR is a <strong>social side effect and irreversible</strong>, so it is opt-in, never the default.</li>
+            <li><code>RUN_TESTS</code> = <code>no</code> for a PR from a <strong>fork</strong>, <code>ask</code> otherwise. See the trust boundary below — this command is the only one that executes code the crew did not write.</li>
+            <li><code>MAX_REVIEWERS</code> = unbounded; the flags decide. Don&#x27;t pad the board to look thorough.</li>
+            <li><strong>Quality bar</strong> = whatever the target repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it first and pass it to every reviewer — they enforce <em>that</em> bar, not a generic one.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="guardrails" aria-labelledby="guardrails-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="guardrails-title">Guardrails</h2>
+        </div>
+        <div class="order-prose">
+          <ul>
+            <li><strong>Read-only by default.</strong> No worktree, no commits, no pushes, no fix loop. If the findings need fixing, hand them to <code>/fix-bug</code> or <code>/ship-issue</code> — don&#x27;t fork a remediation loop into this command.</li>
+            <li><strong>This command crosses a trust boundary the others don&#x27;t.</strong> <code>/ship-issue</code>, <code>/fix-bug</code> and <code>/migrate</code> all run code the crew itself wrote; here the code is a stranger&#x27;s. Running a fork&#x27;s test suite executes untrusted code on your machine — a PR can put arbitrary commands in a test file or a build script. Hence <code>RUN_TESTS=no</code> for cross-repository PRs: the <code>sdet</code> reviews statically and says so. Never silently upgrade that to a real run.</li>
+            <li>Never post to a third party&#x27;s PR unless <code>MODE=post</code> was explicitly set.</li>
+            <li>Review the <strong>head commit</strong>, so &quot;reviewed&quot; means &quot;what would merge&quot; — re-run if the author pushes.</li>
+            <li>Don&#x27;t pad the board. A flag that isn&#x27;t set means that specialist has nothing to say.</li>
+            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>skills/review/SKILL.md</code>. The installer copies it to <code>~/.claude/skills/review/SKILL.md</code> for every project, or <code>.claude/skills/review/SKILL.md</code> inside a single repo.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/skills/review/SKILL.md">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>View skills/review/SKILL.md on GitHub</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="other-orders" aria-labelledby="other-orders-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-orders-title">Other orders</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other orders">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-issue/"><code>/ship-issue</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../fix-bug/"><code>/fix-bug</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../plan-epics/"><code>/plan-epics</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../harden/"><code>/harden</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../spike/"><code>/spike</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../migrate/"><code>/migrate</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../document/"><code>/document</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../release/"><code>/release</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../polish/"><code>/polish</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/review</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../onboard/"><code>/onboard</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../refactor/"><code>/refactor</code></a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../../#orders"><span aria-hidden="true">←</span> All orders</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows for Claude Code.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#orders">Orders</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>

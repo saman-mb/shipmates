@@ -1,0 +1,127 @@
+---
+name: review
+description: Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.
+argument-hint: <pr-number or PR url> [optional focus — e.g. "security only", "just the schema change"]
+allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
+---
+
+# /review — classify → convene the board → consolidate
+
+Point the crew at a pull request **somebody else wrote** — a teammate's, an outside contributor's, a
+dependency bump, or one you opened by hand before you thought to use Shipmates. Every other order
+assumes the crew authored the change; this one doesn't, and that single fact sets its shape: **no
+worktree, no build, no fix loop.** You don't own the branch, so the deliverable is findings, not
+commits.
+
+Input (**$ARGUMENTS**): a PR number or URL, plus an optional focus hint. If it's empty, default to the
+PR for the current branch (`gh pr view --json number`); if there isn't one, ask which PR to review.
+
+---
+
+## Config (override only if the repo needs it)
+
+- `MODE` = `report` — `report`: return the verdict to the caller only. `post`: also publish it with
+  `gh pr review`. Posting onto someone else's PR is a **social side effect and irreversible**, so it
+  is opt-in, never the default.
+- `RUN_TESTS` = `no` for a PR from a **fork**, `ask` otherwise. See the trust boundary below — this
+  command is the only one that executes code the crew did not write.
+- `MAX_REVIEWERS` = unbounded; the flags decide. Don't pad the board to look thorough.
+- **Quality bar** = whatever the target repo's `README` / `CLAUDE.md` / contributing docs state. Read
+  it first and pass it to every reviewer — they enforce *that* bar, not a generic one.
+
+## Stage 0 — Intake & classify
+
+Pull the change itself, not a description of it:
+
+```bash
+gh pr view <PR#> --json number,title,body,author,headRefOid,isCrossRepository,files,url
+gh pr diff <PR#>
+```
+
+Then read the repo's `README` / `CLAUDE.md` for the bar. Set the **same classification flags
+`/ship-issue` uses**, so a given change pulls the same specialists whichever door it came through —
+but derive them from the **diff**, not from an issue body. That is the real difference: there are no
+stated acceptance criteria here, so the criteria are *the repo's own bar plus what the PR claims to
+do*. Where the PR description and the diff disagree, that mismatch is itself a finding.
+
+- `IS_UI_STORY` — does the diff create or change on-screen UI? Gates `ux-ui-designer`.
+- `IS_VISUAL_STORY` — is the project's deliverable rendered visual **art**, and does this touch it?
+  Almost always `no` for conventional apps — prefer `IS_UI_STORY`. Gates `art-director`.
+- `IS_ARCH_SIGNIFICANT` — new subsystem, changed persisted schema, or a cross-cutting change a narrow
+  read would miss? Gates `architect`.
+- `IS_SECURITY_SENSITIVE` — authn/authz, untrusted input, secrets, crypto, file/network/OS access, or
+  dependencies? Gates `security-engineer`.
+- `IS_DELIVERY_SENSITIVE` — pipeline/build definitions, image or environment definitions,
+  infrastructure-as-code, or dependency/toolchain pins? Gates `devops-engineer`.
+
+This flag vocabulary is **shared with `/ship-issue`** — a new flag must be added to both files.
+
+## Stage 1 — CI state (read it, don't fix it)
+
+```bash
+gh pr checks <PR#>
+```
+
+Report what CI says; never try to repair it. You cannot push to a fork, and pushing to a colleague's
+branch uninvited is rude at best. **Red CI is a finding**, recorded with the failing job and a link —
+not a loop. If checks are still pending, say so and review the diff on its merits, flagging that the
+runtime signal is unconfirmed.
+
+## Stage 2 — The board  (specialist agents, in parallel, against `headRefOid`)
+
+Spawn these in a single message so they run concurrently, each pinned to the **head commit** so they
+review exactly what would merge. Two always run; the rest only when their flag is set:
+
+| `subagent_type` | Runs |
+|---|---|
+| `product-manager` | always — does it solve the stated problem, and does it clear the repo's bar? |
+| `sdet` | always — test coverage and quality of the change (see `RUN_TESTS` before executing anything) |
+| `architect` | only if `IS_ARCH_SIGNIFICANT` |
+| `security-engineer` | only if `IS_SECURITY_SENSITIVE` |
+| `devops-engineer` | only if `IS_DELIVERY_SENSITIVE` |
+| `ux-ui-designer` | only if `IS_UI_STORY` |
+| `art-director` | only if `IS_VISUAL_STORY` |
+| `performance-engineer` | if the PR claims a performance win, or touches a known hot path |
+| `site-reliability-engineer` | if it changes runtime behaviour, failure handling, or rollout |
+| `data-scientist` | if the deliverable is an analysis or a model |
+
+**Don't restate what each reviewer checks.** Their remit lives in `agents/*.md` — that is the single
+source of truth, and duplicating it here is how the two boards drift apart. Pass each agent the PR
+head, the repo's bar, and the caller's focus hint; let the role do the rest.
+
+## Stage 3 — Consolidate
+
+**You** synthesise; don't delegate it. Merge the reports, dedupe findings several reviewers raised,
+and rank them: **blocking** (correctness, security, data loss, a criterion the PR itself claims and
+misses) above **nits** (style, naming, taste). Attribute each finding to the role that raised it so
+the author can weigh it. One verdict for the PR: `APPROVE` / `APPROVE-WITH-NITS` / `REQUEST-CHANGES`.
+
+If a visual specialist could not actually render the change, carry its **"needs a human visual pass"**
+flag into the output rather than implying the visuals were confirmed.
+
+## Stage 4 — Deliver
+
+Return the consolidated review. If `MODE=post`, publish it:
+
+```bash
+gh pr review <PR#> --comment --body "<consolidated findings>"
+```
+
+Use `--comment`, not `--approve`/`--request-changes`, unless the caller explicitly asked for a binding
+verdict — an automated approval carries weight the crew hasn't earned on someone else's work.
+
+---
+
+### Guardrails
+- **Read-only by default.** No worktree, no commits, no pushes, no fix loop. If the findings need
+  fixing, hand them to `/fix-bug` or `/ship-issue` — don't fork a remediation loop into this command.
+- **This command crosses a trust boundary the others don't.** `/ship-issue`, `/fix-bug` and `/migrate`
+  all run code the crew itself wrote; here the code is a stranger's. Running a fork's test suite
+  executes untrusted code on your machine — a PR can put arbitrary commands in a test file or a build
+  script. Hence `RUN_TESTS=no` for cross-repository PRs: the `sdet` reviews statically and says so.
+  Never silently upgrade that to a real run.
+- Never post to a third party's PR unless `MODE=post` was explicitly set.
+- Review the **head commit**, so "reviewed" means "what would merge" — re-run if the author pushes.
+- Don't pad the board. A flag that isn't set means that specialist has nothing to say.
+- If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the brief
+  inlined, and note it.

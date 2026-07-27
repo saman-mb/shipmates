@@ -30,6 +30,7 @@ INDEX = SITE / "index.html"
 CSS = SITE / "styles.css"
 SITEMAP = SITE / "sitemap.xml"
 SKILLS = ROOT / "skills"
+CREW = ROOT / "agents"
 
 SITE_URL = "https://saman-mb.github.io/shipmates/"
 SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -180,6 +181,10 @@ def is_local_asset(url: str) -> bool:
 
 def source_slugs() -> list[str]:
     return [p.parent.name for p in sorted(SKILLS.glob("*/SKILL.md"))]
+
+
+def crew_roles() -> list[str]:
+    return [p.stem for p in sorted(CREW.glob("*.md"))]
 
 
 def load_page(path: Path) -> Page:
@@ -355,7 +360,7 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
 
     # --- component counts (acceptance criteria) ---
     counts = {
-        "crew-card": (len(re.findall(r'class="crew-card"', page.html)), 11),
+        "crew-card": (len(re.findall(r'class="crew-card"', page.html)), len(crew_roles())),
         "order-card": (len(re.findall(r'class="order-card(?:\s|")', page.html)), n_commands),
         "order-card--flagship": (page.html.count("order-card--flagship"), 1),
         "how-step": (len(re.findall(r'class="how-step"', page.html)), 8),
