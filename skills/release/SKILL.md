@@ -1,4 +1,5 @@
 ---
+name: release
 description: Cut a release safely — assemble the changelog from what actually merged, bump the version, gate on green CI at the tag, run an SRE pre-flight (rollback + migration safety), then tag and (opt-in) publish.
 argument-hint: [version — e.g. v1.4.0, or "patch"/"minor"/"major" to derive it]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch

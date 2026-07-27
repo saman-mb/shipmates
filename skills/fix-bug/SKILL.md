@@ -1,4 +1,5 @@
 ---
+name: fix-bug
 description: Fix a bug the honest way — reproduce it as a failing test first, root-cause it, apply the minimal fix, and prove it with the test flipping red→green while the suite stays green. Worktree-isolated, CI-gated, opens a PR.
 argument-hint: <issue-number or a description of the bug> [optional repro hints]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
