@@ -145,8 +145,8 @@
               <div class="order-prose">
                 <p>Detect what already exists before writing anything:</p>
                 <ul>
-                  <li><strong>Neither file exists</strong> → <code>MODE=create</code>.</li>
-                  <li><strong>One exists</strong> → <code>MODE=refresh</code>. <strong>Never blind-overwrite.</strong> Back it up first, reusing the installer&#x27;s own convention: <code>&lt;file&gt;.bak-&lt;timestamp&gt;</code>. Read the existing file and treat every hand-written rule in it as authoritative unless the repo contradicts it — a human wrote that for a reason you can&#x27;t see from the code.</li>
+                  <li><strong>Neither file exists</strong> → <code>SURVEY=create</code>.</li>
+                  <li><strong>One exists</strong> → <code>SURVEY=refresh</code>. <strong>Never blind-overwrite.</strong> Back it up first, reusing the installer&#x27;s own convention: <code>&lt;file&gt;.bak-&lt;timestamp&gt;</code>. Read the existing file and treat every hand-written rule in it as authoritative unless the repo contradicts it — a human wrote that for a reason you can&#x27;t see from the code.</li>
                   <li><strong>Both exist</strong> → they are two sources of truth for one contract, which is the exact failure this order exists to prevent. Keep the richer one, and reduce the other to a one-line pointer at it.</li>
                 </ul>
                 <p>Also read the repo&#x27;s <code>README</code>, contributing docs, CI config and any existing rules files, so the context file agrees with them instead of competing.</p>
@@ -217,7 +217,7 @@
         </div>
         <div class="order-prose">
           <ul>
-            <li><code>MODE</code> = <code>edit-in-place</code> (default) or <code>pr</code> — open a branch and a PR instead of writing to the tree.</li>
+            <li><code>MODE</code> = <code>edit-in-place</code> (default) or <code>pr</code> — where the result lands. <code>pr</code> opens a worktree, a branch and a CI-gated PR rather than writing to the tree, like <code>/document</code>. Prefer it on a repo that isn&#x27;t yours. <code>SURVEY</code> (<code>create</code> / <code>refresh</code>) is set by Stage 0 and describes what was <em>found</em> — it is a separate axis and never overwrites <code>MODE</code>.</li>
             <li><code>TARGET</code> = auto-detected. <code>CLAUDE.md</code> if one exists, else <code>AGENTS.md</code> if one exists, else <code>CLAUDE.md</code>. <strong>Never write both</strong> — see below.</li>
             <li><code>MAX_ROUNDS</code> = <code>3</code> verification loops before escalating.</li>
           </ul>

@@ -122,7 +122,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in Claude Code</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/review &lt;pr-number or PR url&gt; [optional focus — e.g. &quot;security only&quot;, &quot;just the schema change&quot;]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/review &lt;pr-number or PR url&gt; [optional emphasis passed to every reviewer — e.g. &quot;weight the schema change&quot;]</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -151,7 +151,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
                   <li><code>IS_VISUAL_STORY</code> — is the project&#x27;s deliverable rendered visual <strong>art</strong>, and does this touch it? Almost always <code>no</code> for conventional apps — prefer <code>IS_UI_STORY</code>. Gates <code>art-director</code>.</li>
                   <li><code>IS_ARCH_SIGNIFICANT</code> — new subsystem, changed persisted schema, or a cross-cutting change a narrow read would miss? Gates <code>architect</code>.</li>
                   <li><code>IS_SECURITY_SENSITIVE</code> — authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies? Gates <code>security-engineer</code>.</li>
-                  <li><code>IS_DELIVERY_SENSITIVE</code> — pipeline/build definitions, image or environment definitions, infrastructure-as-code, or dependency/toolchain pins? Gates <code>devops-engineer</code>.</li>
+                  <li><code>IS_DELIVERY_SENSITIVE</code> — does the diff change how the project is built, packaged, configured or shipped (pipeline/build definitions, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>.</li>
                 </ul>
                 <p>This flag vocabulary is <strong>shared with <code>/ship-issue</code></strong> — a new flag must be added to both files.</p>
               </div>
@@ -229,7 +229,6 @@ gh pr diff &lt;PR#&gt;</code></pre>
           <ul>
             <li><code>MODE</code> = <code>report</code> — <code>report</code>: return the verdict to the caller only. <code>post</code>: also publish it with <code>gh pr review</code>. Posting onto someone else&#x27;s PR is a <strong>social side effect and irreversible</strong>, so it is opt-in, never the default.</li>
             <li><code>RUN_TESTS</code> = <code>no</code> for a PR from a <strong>fork</strong>, <code>ask</code> otherwise. See the trust boundary below — this command is the only one that executes code the crew did not write.</li>
-            <li><code>MAX_REVIEWERS</code> = unbounded; the flags decide. Don&#x27;t pad the board to look thorough.</li>
             <li><strong>Quality bar</strong> = whatever the target repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it first and pass it to every reviewer — they enforce <em>that</em> bar, not a generic one.</li>
           </ul>
         </div>

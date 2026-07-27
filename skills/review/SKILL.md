@@ -1,7 +1,7 @@
 ---
 name: review
 description: Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.
-argument-hint: <pr-number or PR url> [optional focus — e.g. "security only", "just the schema change"]
+argument-hint: <pr-number or PR url> [optional emphasis passed to every reviewer — e.g. "weight the schema change"]
 allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 ---
 
@@ -25,7 +25,6 @@ PR for the current branch (`gh pr view --json number`); if there isn't one, ask 
   is opt-in, never the default.
 - `RUN_TESTS` = `no` for a PR from a **fork**, `ask` otherwise. See the trust boundary below — this
   command is the only one that executes code the crew did not write.
-- `MAX_REVIEWERS` = unbounded; the flags decide. Don't pad the board to look thorough.
 - **Quality bar** = whatever the target repo's `README` / `CLAUDE.md` / contributing docs state. Read
   it first and pass it to every reviewer — they enforce *that* bar, not a generic one.
 
@@ -51,8 +50,9 @@ do*. Where the PR description and the diff disagree, that mismatch is itself a f
   read would miss? Gates `architect`.
 - `IS_SECURITY_SENSITIVE` — authn/authz, untrusted input, secrets, crypto, file/network/OS access, or
   dependencies? Gates `security-engineer`.
-- `IS_DELIVERY_SENSITIVE` — pipeline/build definitions, image or environment definitions,
-  infrastructure-as-code, or dependency/toolchain pins? Gates `devops-engineer`.
+- `IS_DELIVERY_SENSITIVE` — does the diff change how the project is built, packaged, configured or
+  shipped (pipeline/build definitions, image or environment definitions, infrastructure-as-code,
+  dependency or toolchain pins)? Gates `devops-engineer`.
 
 This flag vocabulary is **shared with `/ship-issue`** — a new flag must be added to both files.
 

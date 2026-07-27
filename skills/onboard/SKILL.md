@@ -25,7 +25,10 @@ want is a README or a tutorial, stop and run `/document`.
 
 ## Config (override only if the repo needs it)
 
-- `MODE` = `edit-in-place` (default) or `pr` — open a branch and a PR instead of writing to the tree.
+- `MODE` = `edit-in-place` (default) or `pr` — where the result lands. `pr` opens a worktree, a branch
+  and a CI-gated PR rather than writing to the tree, like `/document`. Prefer it on a repo that isn't
+  yours. `SURVEY` (`create` / `refresh`) is set by Stage 0 and describes what was *found* — it is a
+  separate axis and never overwrites `MODE`.
 - `TARGET` = auto-detected. `CLAUDE.md` if one exists, else `AGENTS.md` if one exists, else
   `CLAUDE.md`. **Never write both** — see below.
 - `MAX_ROUNDS` = `3` verification loops before escalating.
@@ -34,8 +37,8 @@ want is a README or a tutorial, stop and run `/document`.
 
 Detect what already exists before writing anything:
 
-- **Neither file exists** → `MODE=create`.
-- **One exists** → `MODE=refresh`. **Never blind-overwrite.** Back it up first, reusing the
+- **Neither file exists** → `SURVEY=create`.
+- **One exists** → `SURVEY=refresh`. **Never blind-overwrite.** Back it up first, reusing the
   installer's own convention: `<file>.bak-<timestamp>`. Read the existing file and treat every
   hand-written rule in it as authoritative unless the repo contradicts it — a human wrote that for a
   reason you can't see from the code.

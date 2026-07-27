@@ -77,6 +77,13 @@ from anything hardcoded into the role.
 | `/onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
 
+**There's deliberately no `code-reviewer`.** Review is split by discipline instead of pooled into one
+generalist: `architect` takes structure, `sdet` takes verification, `product-manager` takes acceptance,
+`security-engineer` takes threat modelling, `devops-engineer` takes delivery. Line-level craft — naming,
+dead code, error handling — is `senior-engineer`'s as it builds and `architect`'s on review. If you're
+arriving from another agent pack that ships a `code-reviewer`, reach for one of those instead: an
+unresolved role name silently falls back to a generic agent rather than erroring.
+
 *More crew and more orders are on the way.* ⛵
 
 ---
