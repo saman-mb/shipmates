@@ -116,10 +116,16 @@ sha256() { $SHA256_BIN "$1" | awk '{print $1}'; }
 # frontmatter carries an identity); payload files under a skill dir go without.
 
 MANIFEST_STATE=1  # 0 = present and valid, 1 = absent, 2 = present but corrupt
+MANIFEST_PARSED=""  # temp file of canonicalized "relpath sha256" pairs, valid state only
 
-# Validate the whole manifest in one awk pass — the single trust boundary.
-# Corrupt means: unreadable, missing/unknown manifest_version, duplicate paths,
-# absolute or ..-traversing paths, paths outside agents|skills, bad sha. A
+# Validate the whole manifest in one awk pass — the single trust boundary —
+# and emit canonicalized `relpath sha256` pairs to MANIFEST_PARSED. Every
+# consumer (uninstall, orphan sweep, sha lookups) reads THAT file, never the
+# raw manifest: two parsers reading one format is how a crafted line passes
+# validation while extracting to something else (a traversal path hiding in a
+# name= field, say). Corrupt means: unreadable, missing/unknown
+# manifest_version, duplicate paths, absolute or ..-traversing paths, paths
+# outside agents|skills, unsafe characters in a path or name, bad sha. A
 # manifest is a deletion instruction list; anything suspicious must stop us.
 manifest_read() {
   MANIFEST_STATE=1
@@ -128,6 +134,7 @@ manifest_read() {
     echo "Shipmates: manifest exists but is not readable: $MANIFEST" >&2
     MANIFEST_STATE=2; return 0
   fi
+  MANIFEST_PARSED="$(mktemp)"; CLEANUP="${CLEANUP:+$CLEANUP }$MANIFEST_PARSED"
   if awk '
     BEGIN { mv=0; bad=0 }
     /^[[:space:]]*$/ { next }
@@ -136,17 +143,20 @@ manifest_read() {
     /^manifest_version=/ { print "unsupported manifest_version line: " $0 > "/dev/stderr"; bad=1; exit }
     /^(version|installed_at|scope)=[^[:space:]]+$/ { next }
     /^file=[^[:space:]]/ {
-      path=""; sha=""; bad_field=0
+      path=""; sha=""; nm=""; bad_field=0
       for (i=1; i<=NF; i++) {
         if ($i ~ /^file=/) path=substr($i, 6)
         else if ($i ~ /^sha256=/) sha=substr($i, 8)
-        else if ($i ~ /^name=/) { }
+        else if ($i ~ /^name=/) nm=substr($i, 6)
         else bad_field=1
       }
       if (bad_field || path == "" || sha == "") { print "malformed record: " $0 > "/dev/stderr"; bad=1; exit }
       if (path ~ /^\// || path ~ /\.\./ || path !~ /^(agents|skills)\//) { print "unsafe path: " path > "/dev/stderr"; bad=1; exit }
+      if (path !~ /^[A-Za-z0-9._\/-]+$/) { print "unsafe characters in path: " path > "/dev/stderr"; bad=1; exit }
+      if (nm != "" && nm !~ /^[A-Za-z0-9._-]+$/) { print "unsafe characters in name for " path > "/dev/stderr"; bad=1; exit }
       if (length(sha) != 64 || sha !~ /^[0-9a-f]+$/) { print "bad sha256 for " path > "/dev/stderr"; bad=1; exit }
       if (seen[path]++) { print "duplicate path: " path > "/dev/stderr"; bad=1; exit }
+      print path " " sha
       next
     }
     { next }  # unknown record types are ignored, for forward compatibility
@@ -154,18 +164,18 @@ manifest_read() {
       if (bad) exit 1
       if (!mv) { print "missing manifest_version=1" > "/dev/stderr"; exit 1 }
     }
-  ' "$MANIFEST"; then
+  ' "$MANIFEST" > "$MANIFEST_PARSED"; then
     MANIFEST_STATE=0
   else
     MANIFEST_STATE=2
   fi
 }
 
-# sha for a relpath from a valid manifest; empty when not listed.
+# sha for a relpath from a valid manifest; empty when not listed. Exact field
+# match against the canonicalized parse — never a regex over the raw file.
 manifest_sha_of() {
-  local line
-  line="$(grep -m1 "^file=$1 " "$MANIFEST" 2>/dev/null || true)"
-  [ -n "$line" ] && printf '%s\n' "$line" | sed -n 's/.*sha256=\([0-9a-f]*\).*/\1/p' || return 0
+  [ -n "$MANIFEST_PARSED" ] || return 0
+  awk -v p="$1" '$1 == p { print $2; exit }' "$MANIFEST_PARSED"
 }
 
 # Write the collected NEW_ENTRIES as the new manifest, atomically: temp beside
@@ -271,7 +281,17 @@ record_entry() {
   case "$rel" in
     agents/*.md|skills/*/SKILL.md)
       nm="$(agent_name "$TARGET/$rel")"
-      [ -n "$nm" ] && nm=" name=$nm"
+      if [ -n "$nm" ]; then
+        # Writer enforces the same charset the reader whitelists, or a
+        # multi-word/exotic name would produce a manifest we then reject as
+        # corrupt — bricking uninstall against our own write.
+        if [[ "$nm" =~ ^[A-Za-z0-9._-]+$ ]]; then
+          nm=" name=$nm"
+        else
+          echo "  ${c_yellow}WARNING${c_reset} $rel: name '$nm' has unsafe characters — omitted from manifest" >&2
+          nm=""
+        fi
+      fi
       ;;
   esac
   echo "file=$rel sha256=$sha$nm" >> "$NEW_ENTRIES"
@@ -341,12 +361,23 @@ remove_file() {
 # Restore the newest .bak-* for a just-removed file, but never onto an occupied
 # path — a surviving file there is the user's and clobbering it is #77 in
 # reverse. Timestamps sort lexicographically (%Y%m%d%H%M%S), so newest = max.
+# Restore the newest .bak-* for a just-removed file — but only a backup that
+# matches the shape WE create (<file>.bak-<14 digits>[.N]): anything else
+# sitting at that glob (planted, misnamed, foreign) is not ours to promote
+# onto a live agent/skill path. Never onto an occupied path either: a
+# surviving file there is the user's and clobbering it is #77 in reverse.
+# Timestamps sort lexicographically (%Y%m%d%H%M%S), so newest = max name.
 restore_bak() {
-  local dst="$1" newest
-  newest="$( { ls -1 "$dst".bak-* 2>/dev/null || true; } | sort | tail -1 )"
-  if [ -n "$newest" ] && [ ! -e "$dst" ]; then
-    mv "$newest" "$dst"
-    echo "  ${c_green}restored${c_reset}  ${dst#"$TARGET/"} ${c_dim}(from $(basename "$newest"))${c_reset}"
+  local dst="$1" b suffix best=""
+  for b in "$dst".bak-*; do
+    [ -f "$b" ] || continue
+    suffix="${b#"$dst".bak-}"
+    [[ "$suffix" =~ ^[0-9]{14}(\.[0-9]+)?$ ]] || continue
+    [[ "$b" > "$best" ]] && best="$b"
+  done
+  if [ -n "$best" ] && [ ! -e "$dst" ]; then
+    mv -n "$best" "$dst"
+    echo "  ${c_green}restored${c_reset}  ${dst#"$TARGET/"} ${c_dim}(from $(basename "$best"))${c_reset}"
   fi
 }
 
@@ -365,16 +396,18 @@ sweep_legacy_commands() {
       slugs="$slugs$(basename "$d")"$'\n'
     done
   elif [ "$MANIFEST_STATE" = "0" ]; then
-    slugs="$(sed -n 's/^file=skills\/\([^/[:space:]]*\)\/.*/\1/p' "$MANIFEST" | sort -u || true)"$'\n'
+    slugs="$(awk '$1 ~ /^skills\// { split($1, a, "/"); print a[2] }' "$MANIFEST_PARSED" | sort -u || true)"$'\n'
   else
     return 0
   fi
-  printf '%s' "$slugs" | while IFS= read -r slug; do
+  # Process substitution, not a pipe: the loop must run in THIS shell or the
+  # swept counter and the echoes that depend on it are lost to a subshell.
+  while IFS= read -r slug; do
     [ -n "$slug" ] || continue
     legacy="$TARGET/commands/$slug.md"
     [ -f "$legacy" ] || continue
     stash_file "$legacy" "moved legacy"; swept=$((swept+1))
-  done
+  done < <(printf '%s' "$slugs")
   # Only tidy up a dir we emptied. An untouched commands/ that happens to be
   # empty is the user's, and removing it is none of our business.
   if [ "$swept" -gt 0 ]; then
@@ -398,9 +431,11 @@ if $UNINSTALL; then
       ;;
     0)
       need_sha256
-      while IFS= read -r line; do
-        rel="$(printf '%s\n' "$line" | sed -n 's/.*file=\([^[:space:]]*\).*/\1/p')"
-        sha="$(printf '%s\n' "$line" | sed -n 's/.*sha256=\([0-9a-f]*\).*/\1/p')"
+      # Iterate the canonicalized parse (relpath + sha per line, both
+      # charset-whitelisted by the validator) — never re-parse the raw
+      # manifest, or a crafted line can validate as one path and extract as
+      # another.
+      while read -r rel sha; do
         [ -n "$rel" ] && [ -n "$sha" ] || continue
         dst="$TARGET/$rel"
         if [ ! -e "$dst" ]; then
@@ -414,7 +449,7 @@ if $UNINSTALL; then
           echo "  ${c_yellow}kept${c_reset}     $rel ${c_dim}(modified since install — yours now; rm '$dst' to force)${c_reset}"
           kept=$((kept+1)); skipped=$((skipped+1))
         fi
-      done < <(grep '^file=' "$MANIFEST" || true)
+      done < "$MANIFEST_PARSED"
       # Tidy dirs the removal emptied; rmdir fails on any dir still holding a
       # user's files, which is the correct outcome.
       if [ -d "$TARGET/skills" ]; then
@@ -436,11 +471,16 @@ if $UNINSTALL; then
       # from the old installer — but say plainly what that means.
       resolve_src
       echo "${c_yellow}No manifest at $MANIFEST — falling back to name-based uninstall.${c_reset}" >&2
-      echo "${c_yellow}Files you wrote whose names match Shipmates' will be moved aside, and any" >&2
-      echo ".bak-* backups are NOT loadable by Claude Code. Restore them by hand, e.g.:" >&2
-      { find "$TARGET/agents" "$TARGET/skills" "$TARGET/commands" -name '*.bak-*' 2>/dev/null || true; } | while IFS= read -r b; do
-        echo "  mv '$b' '${b%.bak-*}'" >&2
-      done
+      baks="$( { find "$TARGET/agents" "$TARGET/skills" "$TARGET/commands" -name '*.bak-*' 2>/dev/null || true; } )"
+      if [ -n "$baks" ]; then
+        echo "${c_yellow}Files you wrote whose names match Shipmates' will be moved aside, and any" >&2
+        echo ".bak-* backups are NOT loadable by Claude Code. Restore them by hand, e.g.:" >&2
+        printf '%s\n' "$baks" | while IFS= read -r b; do
+          echo "  mv '$b' '${b%.bak-*}'" >&2
+        done
+      else
+        echo "${c_yellow}Files you wrote whose names match Shipmates' will be moved aside, not deleted.${c_reset}" >&2
+      fi
       echo >&2
       for f in "$SRC/agents"/*.md; do
         [ -e "$f" ] || continue
@@ -468,6 +508,7 @@ if $UNINSTALL; then
   esac
 else
   resolve_src
+  need_sha256  # preflight: fail before any mutation on a host with no sha tool
   manifest_read
   if [ "$MANIFEST_STATE" = "2" ]; then
     # Installing never deletes, so a corrupt manifest can't cause data loss
@@ -497,24 +538,23 @@ else
 
   # Orphan sweep: files the previous install owned that this version no longer
   # ships. Untouched (still matching the old manifest) → remove; modified →
-  # leave and warn. Only meaningful with a valid prior manifest.
+  # leave and warn. Only meaningful with a valid prior manifest. Iterates the
+  # canonicalized parse — same single-parser rule as uninstall.
   if [ "$MANIFEST_STATE" = "0" ]; then
     NEW_RELS="$(mktemp)"; CLEANUP="${CLEANUP:+$CLEANUP }$NEW_RELS"
     sed -n 's/^file=\([^[:space:]]*\).*/\1/p' "$NEW_ENTRIES" | sort > "$NEW_RELS"
-    while IFS= read -r line; do
-      rel="$(printf '%s\n' "$line" | sed -n 's/.*file=\([^[:space:]]*\).*/\1/p')"
+    while read -r rel old_sha; do
       [ -n "$rel" ] || continue
       grep -qxF "$rel" "$NEW_RELS" && continue
       dst="$TARGET/$rel"
       [ -e "$dst" ] || continue
-      old_sha="$(manifest_sha_of "$rel")"
       if [ -n "$old_sha" ] && [ "$(sha256 "$dst")" = "$old_sha" ]; then
         rm -f "$dst"
         echo "  ${c_yellow}removed${c_reset}  $rel ${c_dim}(no longer shipped)${c_reset}"; removed=$((removed+1))
       else
         echo "  ${c_yellow}kept${c_reset}     $rel ${c_dim}(no longer shipped, but you modified it)${c_reset}"
       fi
-    done < <(grep '^file=' "$MANIFEST" || true)
+    done < "$MANIFEST_PARSED"
   fi
 
   sweep_legacy_commands
