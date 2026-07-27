@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/ship-issue — autonomous ticket delivery · Shipmates</title>
-  <meta name="description" content="Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, sub-agent build, CI gate, specialist acceptance board,…">
+  <meta name="description" content="Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board,…">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/ship-issue/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,31 +12,31 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/ship-issue — autonomous ticket delivery">
-  <meta property="og:description" content="Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, sub-agent build, CI gate, specialist acceptance board,…">
+  <meta property="og:description" content="Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board,…">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/ship-issue/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
-  <meta property="og:image:alt" content="Shipmates — Custom sub-agents and slash-command workflows for Claude Code.">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for Claude Code.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/ship-issue — autonomous ticket delivery">
-  <meta name="twitter:description" content="Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, sub-agent build, CI gate, specialist acceptance board,…">
+  <meta name="twitter:description" content="Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board,…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
-  <meta name="twitter:image:alt" content="Shipmates — Custom sub-agents and slash-command workflows for Claude Code.">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for Claude Code.">
   <link rel="stylesheet" href="../../styles.css">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/ship-issue",
-    "description": "Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, sub-agent build, CI gate, specialist acceptance board, follow-up issues.",
+    "description": "Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.",
     "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Intake & plan",
-        "text": "Resolve the number: gh issue view $1 --json number,title,body,labels,url. If $1 is a \"story number\" that differs from the GitHub issue number, map it via the epic checklist issue or the README scope table, then confirm the real issue number.",
+        "text": "Resolve the number: gh issue view <issue> --json number,title,body,labels,url. If <issue> is a \"story number\" that differs from the GitHub issue number, map it via the epic checklist issue or the README scope table, then confirm the real issue number.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-0"
       },
       {
@@ -148,10 +148,10 @@
           <span class="order-detail__flag">Flagship</span>
           <h1 class="order-detail__title" id="order-title"><code>/ship-issue</code></h1>
           <p class="order-detail__tagline">autonomous ticket delivery</p>
-          <p class="order-detail__desc">Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, sub-agent build, CI gate, specialist acceptance board, follow-up issues.</p>
+          <p class="order-detail__desc">Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.</p>
           <div class="order-prose">
-            <p>Take <strong>issue / story #$1</strong> from open all the way to a <strong>reviewed, CI-green pull request</strong> on the base branch, autonomously — using an isolated git worktree and a board of specialist sub-agents. Merging is gated by <code>MERGE_MODE</code> (see Config): by default the run stops with the PR open for a human to merge; set <code>MERGE_MODE=auto</code> for fully hands-off delivery.</p>
-            <p>Extra guidance from the caller (may be empty): <strong>$ARGUMENTS</strong></p>
+            <p>Take <strong>issue / story <code>#&lt;issue&gt;</code></strong> from open all the way to a <strong>reviewed, CI-green pull request</strong> on the base branch, autonomously — using an isolated git worktree and a board of specialist subagents. Merging is gated by <code>MERGE_MODE</code> (see Config): by default the run stops with the PR open for a human to merge; set <code>MERGE_MODE=auto</code> for fully hands-off delivery.</p>
+            <p>Input (<strong>$ARGUMENTS</strong>): the first whitespace-delimited token is the issue / story number (<code>&lt;issue&gt;</code> below); everything after it is extra guidance from the caller (may be empty).</p>
           </div>
         </div>
       </div>
@@ -187,7 +187,7 @@
             <div class="order-stage__body">
               <div class="order-prose">
                 <ol>
-                  <li>Resolve the number: <code>gh issue view $1 --json number,title,body,labels,url</code>. If <code>$1</code> is a &quot;story number&quot; that differs from the GitHub issue number, map it via the epic checklist issue or the README scope table, then confirm the real issue number.</li>
+                  <li>Resolve the number: <code>gh issue view &lt;issue&gt; --json number,title,body,labels,url</code>. If <code>&lt;issue&gt;</code> is a &quot;story number&quot; that differs from the GitHub issue number, map it via the epic checklist issue or the README scope table, then confirm the real issue number.</li>
                   <li>Spawn ONE <strong>Planner</strong> (<code>subagent_type: Plan</code>). Give it the full issue body + repo README + CLAUDE.md. Ask it to return, as structured data:
                     <ul>
                       <li>a <strong>build plan</strong> broken into independent work units with <strong>non-overlapping file ownership</strong> (so builders can run in parallel without collisions),</li>
@@ -381,8 +381,8 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li><code>MERGE_STRATEGY</code> = <code>--squash --delete-branch</code></li>
             <li><code>MERGE_MODE</code> = <code>manual</code> — <code>manual</code>: stop after the acceptance board with a green, reviewed PR open for a human to merge. <code>auto</code>: squash-merge automatically once every gate passes. Start with <code>manual</code>; opt into <code>auto</code> only in a repo where unattended merges to the base branch are acceptable.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>  (acceptance→fix→re-acceptance loops before escalating to the user)</li>
-            <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-$1</code></li>
-            <li><code>BRANCH</code> = <code>feat/issue-$1-&lt;short-slug&gt;</code></li>
+            <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-&lt;issue&gt;</code></li>
+            <li><code>BRANCH</code> = <code>feat/issue-&lt;issue&gt;-&lt;short-slug&gt;</code></li>
             <li><strong>Quality bar</strong> = whatever the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it at the start and pass it to every reviewer — the <code>product-manager</code> (and the visual specialists) enforce THAT bar, not just &quot;it runs.&quot;</li>
           </ul>
           <p>Required commit trailers (append to every commit and the PR body — read them from the harness / session context; do not invent them). At minimum a <code>Co-Authored-By:</code> line for the agent.</p>
@@ -434,10 +434,10 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         <div class="section__head">
           <h2 class="section__title" id="source-title">Where this lives</h2>
         </div>
-        <p>This page is generated from <code>commands/ship-issue.md</code>. The installer copies it to <code>~/.claude/commands/ship-issue.md</code> for every project, or <code>.claude/commands/ship-issue.md</code> inside a single repo.</p>
-        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/ship-issue.md">
+        <p>This page is generated from <code>skills/ship-issue/SKILL.md</code>. The installer copies it to <code>~/.claude/skills/ship-issue/SKILL.md</code> for every project, or <code>.claude/skills/ship-issue/SKILL.md</code> inside a single repo.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/skills/ship-issue/SKILL.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View ship-issue.md on GitHub</span>
+          <span>View skills/ship-issue/SKILL.md on GitHub</span>
         </a>
       </div>
     </section>
@@ -471,7 +471,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
       <div class="site-footer__brand">
         <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
         <span class="site-footer__name">Shipmates</span>
-        <p class="site-footer__tagline">Custom sub-agents &amp; slash-command workflows for Claude Code.</p>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows for Claude Code.</p>
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <ul class="site-footer__links">

@@ -1,4 +1,5 @@
 ---
+name: migrate
 description: Run a mechanical migration across a whole codebase — discover every call site, transform each in isolation, verify per-site, and gate on a clean sweep (no old-pattern remnants) with the suite green. For API/dependency/pattern/framework migrations.
 argument-hint: <from → to — e.g. "moment.js → date-fns" or "callback API → async/await">
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch

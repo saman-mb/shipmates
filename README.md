@@ -5,7 +5,7 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom sub-agents &amp; slash-command workflows for <a href="https://claude.com/claude-code">Claude Code</a>.</b><br/>
+  <b>Custom subagents &amp; command workflows for <a href="https://claude.com/claude-code">Claude Code</a>.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
@@ -27,7 +27,7 @@
 
 You know the drill: prompt, read the reply, prompt again, sigh, prompt again. **You** are the
 control loop — the planner, the reviewer, the nagger. Shipmates hands that job to a *crew* of
-specialist sub-agents and a workflow that actually finishes things.
+specialist subagents and a workflow that actually finishes things.
 
 One command — **`/ship-issue`** — takes a GitHub issue from *"open"* to a *reviewed, CI-green pull
 request*, on its own: it plans the work, builds it in an isolated worktree, waits for CI to go
@@ -93,11 +93,14 @@ curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh 
 ```
 
 Prefer to read the script first? Clone the repo and run `./install.sh` (same flags). Either way it
-drops `commands/*.md` and `agents/*.md` into your `.claude/`, **backing up** any existing file of the
-same name to `<file>.bak-<timestamp>` — your edits are safe. Re-run to update; add `--uninstall` to
-remove what it installed.
+drops `skills/<name>/SKILL.md` and `agents/*.md` into your `.claude/`, **backing up** any existing
+file of the same name to `<file>.bak-<timestamp>` — your edits are safe. Re-run to update; add
+`--uninstall` to remove what it installed.
 
-> 🔁 First time a `commands/` or `agents/` dir got created? Restart Claude Code so it spots them.
+> 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
+>
+> ↩️ Upgrading and `/ship-issue` stops resolving? Put the old file back with
+> `mv ~/.claude/commands/ship-issue.md.bak-<ts> ~/.claude/commands/ship-issue.md`.
 
 ## 🚀 Weigh anchor (use it)
 
@@ -164,7 +167,7 @@ files them as linked, labelled GitHub issues — ready to hand to `/ship-issue` 
 ```
 /plan-epics ./docs/product-brief.md
 ```
-When the brief spans multiple epics, one `product-manager` sub-agent per epic drafts its stories in
+When the brief spans multiple epics, one `product-manager` subagent per epic drafts its stories in
 parallel, then everything is created and cross-linked.
 
 **Preview a backlog without creating anything:**
@@ -239,7 +242,7 @@ tagged commit, and the `site-reliability-engineer` checks rollback + migration s
 
 ## 🗂️ Scopes & precedence
 
-Claude Code loads agents/commands from `~/.claude/` (global, every project) and `<repo>/.claude/`
+Claude Code loads agents and skills from `~/.claude/` (global, every project) and `<repo>/.claude/`
 (that project only). A project definition **wins** over a global one of the same name — so any repo
 can override or specialise a crew member without touching the shared copy.
 
@@ -264,18 +267,19 @@ keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs
 ## ❓ FAQ
 
 **What is Shipmates?**
-A ready-made crew of [Claude Code](https://claude.com/claude-code) **sub-agents** and **slash-command
+A ready-made crew of [Claude Code](https://claude.com/claude-code) **subagents** and **command
 workflows**. Instead of you playing planner–builder–reviewer in a loop, a board of specialist AI agents
 does it — the flagship `/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request.
 
-**What are Claude Code sub-agents and slash commands?**
-Sub-agents are focused AI agents defined in `.claude/agents/*.md`; slash commands are reusable workflows
-in `.claude/commands/*.md`. Shipmates ships 11 agents and 9 commands you drop into `~/.claude/` (global,
-every project) or a repo's `.claude/` (project-scoped). See [install](#-come-aboard-install).
+**What are Claude Code subagents and skills?**
+Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
+in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/ship-issue`. Shipmates ships 11 agents
+and 9 commands you drop into `~/.claude/` (global, every project) or a repo's `.claude/`
+(project-scoped). See [install](#-come-aboard-install).
 
 **Is this an official Anthropic project?**
 No. Shipmates is an independent, MIT-licensed community project that builds on Claude Code's public
-sub-agent and slash-command features. "Claude" and "Claude Code" are trademarks of Anthropic.
+subagent and skill features. "Claude" and "Claude Code" are trademarks of Anthropic.
 
 **How is it different from just prompting Claude Code?**
 A raw prompt drifts; Shipmates is a **state machine with gates** — an isolated worktree, a mandatory

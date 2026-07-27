@@ -21,16 +21,31 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
    returns (`ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT`, or `PASS` / `FAIL`).
 4. If a command should invoke it, wire it into that command's stages by `subagent_type`.
 
-## Adding a command
+## Adding a skill (workflow)
 
-1. Create `commands/<name>.md` with a `description` and `argument-hint` frontmatter.
-2. Prefer invoking the shared agents by `subagent_type` over inlining personas.
-3. Anything with side effects (merging, publishing) should be **opt-in**, not the default — be a
+A workflow ships as a **skill** on disk and is invoked as a **command** in Claude Code. Work the
+checklist top to bottom:
+
+1. Create `skills/<name>/SKILL.md` (lowercase-and-hyphens `<name>`), with frontmatter in this
+   canonical order: `name`, `description`, `argument-hint`, `allowed-tools`. **`name` must be
+   exactly the directory name** — that is the [Agent Skills](https://agentskills.io) standard's
+   rule, and the skill will not resolve without it.
+2. `argument-hint` and `allowed-tools` are vendor extensions on top of the standard, kept
+   comma-separated because that is what Claude Code parses.
+3. Make the first heading after the frontmatter `# /<name> — <tagline>` — the page generator parses
+   that line for the command's title, and fails on anything else.
+4. Take input from `$ARGUMENTS` only, parsed in prose — a skill has no positional arguments. A `$`
+   followed by a digit is rejected outside a fenced code block; inside a fence it is read as a shell
+   field reference and allowed.
+5. Prefer invoking the shared agents by `subagent_type` over inlining personas.
+6. Anything with side effects (merging, publishing) should be **opt-in**, not the default — be a
    good guest on other people's repos.
-4. Add the slug to `SLUGS` in `tools/gen_command_pages.py`, then run
-   `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
-   `site/sitemap.xml`. Add a matching card to the `#orders` grid in `site/index.html`, linking to
-   `commands/<name>/`. CI fails if the generated pages drift from `commands/*.md`.
+7. Add `<name>` to `SLUGS` in `tools/gen_command_pages.py`.
+8. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
+   `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the skill sources.
+9. Add a matching card to the `#orders` grid in `site/index.html`, linking to `commands/<name>/`.
+10. Both validators must exit 0 before you open the PR: `python3 tools/validate_skills.py` and
+    `python3 .github/scripts/validate_site.py`.
 
 ## Testing your change
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/plan-epics — briefs → GitHub epics + user stories · Shipmates</title>
-  <meta name="description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager sub-agent authoring each epic&#x27;s…">
+  <meta name="description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic&#x27;s…">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/plan-epics/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,24 +12,24 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/plan-epics — briefs → GitHub epics + user stories">
-  <meta property="og:description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager sub-agent authoring each epic&#x27;s…">
+  <meta property="og:description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic&#x27;s…">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/plan-epics/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
-  <meta property="og:image:alt" content="Shipmates — Custom sub-agents and slash-command workflows for Claude Code.">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for Claude Code.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/plan-epics — briefs → GitHub epics + user stories">
-  <meta name="twitter:description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager sub-agent authoring each epic&#x27;s…">
+  <meta name="twitter:description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic&#x27;s…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
-  <meta name="twitter:image:alt" content="Shipmates — Custom sub-agents and slash-command workflows for Claude Code.">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for Claude Code.">
   <link rel="stylesheet" href="../../styles.css">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/plan-epics",
-    "description": "Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager sub-agent authoring each epic's stories in parallel.",
+    "description": "Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic's stories in parallel.",
     "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/",
     "step": [
       {
@@ -50,7 +50,7 @@
         "@type": "HowToStep",
         "position": 3,
         "name": "Stage 2 — Author each epic's stories",
-        "text": "Spawn one product-manager sub-agent per epic, in a single message so they run concurrently. Give each: its epic (title/why/scope), the full repo context, the OTHER epics' titles (for cross-epic dependencies), and the existing-issues list (to dedupe). Each returns its epic's user stories as…",
+        "text": "Spawn one product-manager subagent per epic, in a single message so they run concurrently. Give each: its epic (title/why/scope), the full repo context, the OTHER epics' titles (for cross-epic dependencies), and the existing-issues list (to dedupe). Each returns its epic's user stories as…",
         "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#stage-2"
       },
       {
@@ -105,9 +105,9 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">📜</span> Order</p>
           <h1 class="order-detail__title" id="order-title"><code>/plan-epics</code></h1>
           <p class="order-detail__tagline">briefs → GitHub epics + user stories</p>
-          <p class="order-detail__desc">Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager sub-agent authoring each epic&#x27;s stories in parallel.</p>
+          <p class="order-detail__desc">Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic&#x27;s stories in parallel.</p>
           <div class="order-prose">
-            <p>Turn the brief(s) in <strong>$ARGUMENTS</strong> into a tracked backlog: one or more <strong>epics</strong> (labelled <code>epic</code>), each broken into <strong>user stories</strong> (labelled <code>user-story</code> + area tags), created as GitHub issues and cross-linked. When the work spans <strong>multiple epics, a <code>product-manager</code> sub-agent authors each epic&#x27;s stories in parallel</strong> — one PM per epic.</p>
+            <p>Turn the brief(s) in <strong>$ARGUMENTS</strong> into a tracked backlog: one or more <strong>epics</strong> (labelled <code>epic</code>), each broken into <strong>user stories</strong> (labelled <code>user-story</code> + area tags), created as GitHub issues and cross-linked. When the work spans <strong>multiple epics, a <code>product-manager</code> subagent authors each epic&#x27;s stories in parallel</strong> — one PM per epic.</p>
             <p>Input (<strong>$ARGUMENTS</strong>): the brief(s). May be inline text, a path to a file/dir of briefs, or several briefs separated by <code>---</code> or numbered. If it&#x27;s empty, ask the user for the brief before doing anything.</p>
           </div>
         </div>
@@ -167,7 +167,7 @@
             <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> (agents: <code>product-manager</code> × N, parallel)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Spawn <strong>one <code>product-manager</code> sub-agent per epic, in a single message</strong> so they run concurrently. Give each: its epic (title/why/scope), the full repo context, the OTHER epics&#x27; titles (for cross-epic dependencies), and the existing-issues list (to dedupe). Each returns its epic&#x27;s <strong>user stories</strong> as structured data (no <code>gh</code> calls) — per story:</p>
+                <p>Spawn <strong>one <code>product-manager</code> subagent per epic, in a single message</strong> so they run concurrently. Give each: its epic (title/why/scope), the full repo context, the OTHER epics&#x27; titles (for cross-epic dependencies), and the existing-issues list (to dedupe). Each returns its epic&#x27;s <strong>user stories</strong> as structured data (no <code>gh</code> calls) — per story:</p>
                 <ul>
                   <li><code>title</code> (short, outcome-shaped),</li>
                   <li><code>description</code> (the user value: &quot;As a … I want … so that …&quot; where it fits),</li>
@@ -250,10 +250,10 @@
         <div class="section__head">
           <h2 class="section__title" id="source-title">Where this lives</h2>
         </div>
-        <p>This page is generated from <code>commands/plan-epics.md</code>. The installer copies it to <code>~/.claude/commands/plan-epics.md</code> for every project, or <code>.claude/commands/plan-epics.md</code> inside a single repo.</p>
-        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/plan-epics.md">
+        <p>This page is generated from <code>skills/plan-epics/SKILL.md</code>. The installer copies it to <code>~/.claude/skills/plan-epics/SKILL.md</code> for every project, or <code>.claude/skills/plan-epics/SKILL.md</code> inside a single repo.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/skills/plan-epics/SKILL.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View plan-epics.md on GitHub</span>
+          <span>View skills/plan-epics/SKILL.md on GitHub</span>
         </a>
       </div>
     </section>
@@ -287,7 +287,7 @@
       <div class="site-footer__brand">
         <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
         <span class="site-footer__name">Shipmates</span>
-        <p class="site-footer__tagline">Custom sub-agents &amp; slash-command workflows for Claude Code.</p>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows for Claude Code.</p>
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <ul class="site-footer__links">
