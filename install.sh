@@ -358,9 +358,6 @@ remove_file() {
   fi
 }
 
-# Restore the newest .bak-* for a just-removed file, but never onto an occupied
-# path — a surviving file there is the user's and clobbering it is #77 in
-# reverse. Timestamps sort lexicographically (%Y%m%d%H%M%S), so newest = max.
 # Restore the newest .bak-* for a just-removed file — but only a backup that
 # matches the shape WE create (<file>.bak-<14 digits>[.N]): anything else
 # sitting at that glob (planted, misnamed, foreign) is not ours to promote
