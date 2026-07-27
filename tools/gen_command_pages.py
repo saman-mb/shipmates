@@ -4,7 +4,7 @@
 Honest by construction: every command-specific sentence on a page is a
 markdown-rendered projection of skills/<slug>/SKILL.md — no invented stage names,
 gates, crew, counts, durations or file names. Only command-agnostic chrome
-("How to run it", "The stages", "Other orders") is authored here. Anything the
+("How to run it", "The stages", "Other commands") is authored here. Anything the
 parser does not recognise raises with a file:line and a remedy rather than being
 silently dropped or passed through, and every non-blank source line must be
 claimed by a block. Deterministic and committed, matching the repo's other
@@ -57,7 +57,7 @@ LASTMOD = "2026-07-25"
 
 # Section ids reserved by the page skeleton; a source heading may not claim one.
 RESERVED_ANCHORS = frozenset(
-    {"invoke", "stages", "config", "guardrails", "source", "other-orders", "main", "top"}
+    {"invoke", "stages", "config", "guardrails", "source", "other-commands", "main", "top"}
 )
 
 # Spelled out so the stages lead reads as prose; derived, never hand-typed.
@@ -203,10 +203,30 @@ class Command:
 # No markup literals, no escaping, no writing.
 # ---------------------------------------------------------------------------
 
-# Canonical frontmatter key order — the Agent Skills standard's `name` and
-# `description` first, then our two vendor extensions. Drives the remedies below.
-FRONTMATTER_KEYS = ("name", "description", "argument-hint", "allowed-tools")
+# The Agent Skills standard's required keys — present, and first, in this order.
+REQUIRED_FRONTMATTER_KEYS = ("name", "description")
+# The standard's optional keys, then the Claude Code extensions it does not
+# define. Both groups are permitted in any order; only `argument-hint` reaches a
+# page, the rest are parsed so a standard-legal SKILL.md renders instead of
+# raising. Keep in step with tools/validate_skills.py.
+STANDARD_OPTIONAL_FRONTMATTER_KEYS = ("license", "compatibility", "metadata")
+EXTENSION_FRONTMATTER_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation")
+ALLOWED_FRONTMATTER_KEYS = (
+    REQUIRED_FRONTMATTER_KEYS
+    + STANDARD_OPTIONAL_FRONTMATTER_KEYS
+    + EXTENSION_FRONTMATTER_KEYS
+)
+# Canonical order for the keys the nine ship — recommended, not enforced past the
+# required prefix. Drives the remedies below.
+FRONTMATTER_KEYS = REQUIRED_FRONTMATTER_KEYS + EXTENSION_FRONTMATTER_KEYS
 FRONTMATTER_KEY_LIST = ", ".join(FRONTMATTER_KEYS)
+REQUIRED_FRONTMATTER_KEY_LIST = ", ".join(REQUIRED_FRONTMATTER_KEYS)
+ALLOWED_FRONTMATTER_KEY_LIST = ", ".join(ALLOWED_FRONTMATTER_KEYS)
+# `metadata:` is the one standard key defined as a nested mapping, so its value
+# may live on indented continuation lines. They are consumed and ignored — this
+# is a line-oriented reader, not a YAML parser, and no page reads them.
+BLOCK_FRONTMATTER_KEY = "metadata"
+INDENTED_RE = re.compile(r"^[ \t]")
 
 # Agent Skills limits on the two standard keys.
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -306,7 +326,14 @@ def load_skills(skills_dir: Path, agents: tuple) -> tuple:
 
 
 def split_frontmatter(lines: list, src: str, consumed: set) -> tuple:
-    """Return (Frontmatter, index of the first line after the closing fence)."""
+    """Return (Frontmatter, index of the first line after the closing fence).
+
+    `name` and `description` are required and must come first, in that order —
+    the standard's own rule. Everything else in ALLOWED_FRONTMATTER_KEYS is
+    optional and unordered, so a SKILL.md carrying the standard's `license`,
+    `compatibility` or `metadata` parses here instead of raising. Unknown keys
+    still raise: a typo no reader honours must not reach a page in silence.
+    """
     if not lines or lines[0].strip() != "---":
         raise SourceError(
             src, 1, "missing frontmatter fence", lines[0] if lines else "",
@@ -314,43 +341,68 @@ def split_frontmatter(lines: list, src: str, consumed: set) -> tuple:
         )
     consumed.add(1)
     values = {}
+    order = []
     for i in range(1, len(lines)):
         raw = lines[i]
         lineno = i + 1
         if raw.strip() == "---":
             consumed.add(lineno)
-            missing = [k for k in FRONTMATTER_KEYS if k not in values]
+            missing = [k for k in REQUIRED_FRONTMATTER_KEYS if k not in values]
             if missing:
                 raise SourceError(
                     src, lineno, f"frontmatter is missing {missing[0]}", raw,
-                    f"expected one of {FRONTMATTER_KEY_LIST}",
+                    f"the Agent Skills standard requires {REQUIRED_FRONTMATTER_KEY_LIST}, "
+                    f"in that order, at the top of the block (we ship {FRONTMATTER_KEY_LIST})",
+                )
+            prefix = tuple(order[: len(REQUIRED_FRONTMATTER_KEYS)])
+            if prefix != REQUIRED_FRONTMATTER_KEYS:
+                first = next(
+                    k for k, want in zip(order, REQUIRED_FRONTMATTER_KEYS) if k != want
+                )
+                raise SourceError(
+                    src, _key_lineno(lines, i, first), "frontmatter does not open with "
+                    f"{REQUIRED_FRONTMATTER_KEY_LIST}", raw,
+                    f"move {REQUIRED_FRONTMATTER_KEY_LIST} to the top of the block, in "
+                    "that order; the optional keys follow in any order",
                 )
             return (
                 Frontmatter(
                     name=values["name"],
                     description=values["description"],
-                    argument_hint=values["argument-hint"],
+                    argument_hint=values.get("argument-hint", ""),
                     allowed_tools=tuple(
-                        t.strip() for t in values["allowed-tools"].split(",") if t.strip()
+                        t.strip()
+                        for t in values.get("allowed-tools", "").split(",")
+                        if t.strip()
                     ),
                 ),
                 i + 1,
             )
         if not raw.strip():
             continue
+        if INDENTED_RE.match(raw):
+            if order and order[-1] == BLOCK_FRONTMATTER_KEY:
+                consumed.add(lineno)  # nested mapping under `metadata:`
+                continue
+            raise SourceError(
+                src, lineno, "indented frontmatter line", raw,
+                f"only `{BLOCK_FRONTMATTER_KEY}:` takes a nested block — write every "
+                "other entry on a single unindented `key: value` line",
+            )
         key, sep, value = raw.partition(":")
-        if not sep or key.strip() not in FRONTMATTER_KEYS:
+        if not sep or key.strip() not in ALLOWED_FRONTMATTER_KEYS:
             raise SourceError(
                 src, lineno, "unknown frontmatter key", raw,
-                f"expected one of {FRONTMATTER_KEY_LIST}",
+                f"expected one of {ALLOWED_FRONTMATTER_KEY_LIST}",
             )
         key = key.strip()
         if key in values:
             raise SourceError(
                 src, lineno, f"duplicate frontmatter key {key}", raw,
-                f"declare each of {FRONTMATTER_KEY_LIST} exactly once",
+                "declare each frontmatter key exactly once",
             )
         values[key] = value.strip()
+        order.append(key)
         consumed.add(lineno)
     raise SourceError(
         src, len(lines), "unterminated frontmatter fence", "",
@@ -918,7 +970,7 @@ def parse_skill(path: Path, agents: tuple) -> Command:
                     src, raw_section.lineno, f"section anchor `{anchor}` is reserved",
                     raw_section.heading_raw,
                     "rename the section — the page skeleton already owns the ids invoke, "
-                    "stages, config, guardrails, source, other-orders and every stage-<n>",
+                    "stages, config, guardrails, source, other-commands and every stage-<n>",
                 )
             if anchor in anchors:
                 raise SourceError(
@@ -993,7 +1045,7 @@ GITHUB_ICON = (
 NAV_LINKS = (
     ("install", "Install"),
     ("crew", "Crew"),
-    ("orders", "Orders"),
+    ("commands", "Commands"),
     ("how", "How"),
     ("faq", "FAQ"),
 )
@@ -1002,7 +1054,7 @@ FOOTER_LINKS = (
     ("https://github.com/saman-mb/shipmates", "GitHub"),
     ("../../#install", "Install"),
     ("../../#crew", "Crew"),
-    ("../../#orders", "Orders"),
+    ("../../#commands", "Commands"),
     ("https://github.com/saman-mb/shipmates/blob/main/LICENSE", "License"),
     ("https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md", "Contributing"),
 )
@@ -1316,8 +1368,8 @@ def render_footer() -> str:
 
 def render_back_link() -> str:
     return (
-        f'<a class="order-back" href="{link("../../#orders")}">'
-        '<span aria-hidden="true">←</span> All orders</a>'
+        f'<a class="order-back" href="{link("../../#commands")}">'
+        '<span aria-hidden="true">←</span> All commands</a>'
     )
 
 
@@ -1334,7 +1386,7 @@ def render_hero(cmd: Command, src: str) -> str:
       <div class="container container--prose">
         {render_back_link()}
         <div class="order-detail">
-          <p class="order-detail__eyebrow"><span aria-hidden="true">\U0001f4dc</span> Order</p>{flag}
+          <p class="order-detail__eyebrow"><span aria-hidden="true">\U0001f4dc</span> Command</p>{flag}
           <h1 class="order-detail__title" id="order-title"><code>/{esc(cmd.slug)}</code></h1>
           <p class="order-detail__tagline">{esc(cmd.tagline)}</p>
           <p class="order-detail__desc">{esc(cmd.frontmatter.description)}</p>{intro}
@@ -1497,12 +1549,12 @@ def render_siblings(cmd: Command, all_cmds: tuple) -> str:
             )
         items.append(f'            <li class="order-siblings__item">{inner}</li>')
     listing = "\n".join(items)
-    return f"""    <section class="section" id="other-orders" aria-labelledby="other-orders-title">
+    return f"""    <section class="section" id="other-commands" aria-labelledby="other-commands-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="other-orders-title">Other orders</h2>
+          <h2 class="section__title" id="other-commands-title">Other commands</h2>
         </div>
-        <nav class="order-siblings" aria-label="Other orders">
+        <nav class="order-siblings" aria-label="Other commands">
           <ul class="order-siblings__list" role="list">
 {listing}
           </ul>

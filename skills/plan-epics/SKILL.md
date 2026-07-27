@@ -3,6 +3,7 @@ name: plan-epics
 description: Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic's stories in parallel.
 argument-hint: <brief text | path to a brief file | several briefs> [area/label hints] [dry-run]
 allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
+disable-model-invocation: true
 ---
 
 # /plan-epics — briefs → GitHub epics + user stories

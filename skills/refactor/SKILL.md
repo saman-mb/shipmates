@@ -3,6 +3,7 @@ name: refactor
 description: Change the shape of the code without changing what it does — pin current behaviour in characterization tests first, transform, then prove equivalence by those tests passing unmodified and no existing test being deleted, skipped or loosened.
 argument-hint: <what to refactor + why — e.g. "split the 900-line order service, it's untestable">
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
+disable-model-invocation: true
 ---
 
 # /refactor — pin behaviour → transform → prove equivalence

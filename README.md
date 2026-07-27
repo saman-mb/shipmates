@@ -35,7 +35,7 @@ green, convenes an adversarial review board, loops on the fixes, and hands you a
 You stay the captain. The shipmates do the twenty steps in between. 🫡
 
 **[⚓ Get the crew aboard →](#-come-aboard-install)** · one line, no clone — then just `/ship-issue 42`.
-<br/>🌐 **[shipmates website →](https://saman-mb.github.io/shipmates/)** · the crew, the orders, and how `/ship-issue` works.
+<br/>🌐 **[shipmates website →](https://saman-mb.github.io/shipmates/)** · the crew, the commands, and how `/ship-issue` works.
 
 ---
 
@@ -60,7 +60,7 @@ from anything hardcoded into the role.
 | 📖 `technical-writer` | Writes docs from the real code; proves them with a fresh-reader test |
 | 📊 `data-scientist` | Data/model work — metric choice, leakage & validation, reproducibility (domain-gated) |
 
-## 📜 The orders (commands)
+## 📜 The commands
 
 | Command | What it does |
 |---|---|
@@ -84,7 +84,7 @@ dead code, error handling — is `senior-engineer`'s as it builds and `architect
 arriving from another agent pack that ships a `code-reviewer`, reach for one of those instead: an
 unresolved role name silently falls back to a generic agent rather than erroring.
 
-*More crew and more orders are on the way.* ⛵
+*More crew and more commands are on the way.* ⛵
 
 ---
 
@@ -256,6 +256,9 @@ tagged commit, and the `site-reliability-engineer` checks rollback + migration s
 Claude Code loads agents and skills from `~/.claude/` (global, every project) and `<repo>/.claude/`
 (that project only). A project definition **wins** over a global one of the same name — so any repo
 can override or specialise a crew member without touching the shared copy.
+<!-- KNOWN-WRONG, do not cite: the precedence claim above holds for subagents but is inverted for
+     skills — user-level ~/.claude/skills/ beats project-level. Correction is tracked in issue #71
+     (PR B), which owns this section; leave the fix to that PR. -->
 
 ## 🎒 What you'll need
 
@@ -272,7 +275,7 @@ can override or specialise a crew member without touching the shared copy.
 
 ## 🌊 On the horizon
 
-The crew keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new orders
+The crew keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new commands
 keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs very welcome.
 
 ## ❓ FAQ

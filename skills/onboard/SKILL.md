@@ -3,6 +3,7 @@ name: onboard
 description: Read an unfamiliar repo and write the agent-facing context file every other order depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew's real questions from the file alone.
 argument-hint: [path to the repo — defaults to the current one]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
+disable-model-invocation: true
 ---
 
 # /onboard — recon → draft → prove it answers

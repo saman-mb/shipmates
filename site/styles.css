@@ -982,7 +982,7 @@ summary::-webkit-details-marker{ display:none; }
 /* --- #source: p + .btn sit flush (global reset zeroes <p> margin) --- */
 .order-source .btn{ margin-top:var(--space-4); }
 
-/* --- #other-orders: sibling nav, ~5% of the page, no shadow/fill/icon. --- */
+/* --- #other-commands: sibling nav, ~5% of the page, no shadow/fill/icon. --- */
 .order-siblings{ margin-top:var(--space-2); }
 .order-siblings__list{
   display:flex;

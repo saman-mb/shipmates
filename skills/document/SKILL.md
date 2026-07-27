@@ -3,6 +3,7 @@ name: document
 description: Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against the repo and must reach the stated result. Loops until the docs are drift-free and completable.
 argument-hint: <what to document — a module, a feature, a public API, the README, the whole repo>
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
+disable-model-invocation: true
 ---
 
 # /document — draft from the code → fresh-reader test → fix drift
