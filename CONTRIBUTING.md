@@ -31,7 +31,7 @@ are correct; which one belongs in a given sentence is set by the
    are required, and they must come first, in that order. After them, in any order: the standard's
    optional `license`, `compatibility`, `metadata`, and the Claude Code extensions `argument-hint`,
    `allowed-tools`, `disable-model-invocation`. Unknown keys are rejected, so a typo fails the gate.
-   The nine ship `name`, `description`, `argument-hint`, `allowed-tools`, `disable-model-invocation`
+   The twelve ship `name`, `description`, `argument-hint`, `allowed-tools`, `disable-model-invocation`
    — recommended, not required. **`name` must be exactly the directory name** — that is the
    [Agent Skills](https://agentskills.io) standard's rule, and the skill will not resolve without it.
 2. `argument-hint`, `allowed-tools` and `disable-model-invocation` are vendor extensions on top of

@@ -24,7 +24,7 @@ the emoji mappings are frozen, and the name/logo trademark position — are trac
 as TODOs in this file.
 
 The published `commands/<name>/` URL segment is **settled**, not open: under the three-tier naming
-above, a page documenting one of the nine documents a *command*, so the path is correct. That
+above, a page documenting one of the twelve documents a *command*, so the path is correct. That
 supersedes an earlier decision to move it to `skills/`, which was taken before "command" and "order"
 were distinguished. Recorded on issue #72; do not reopen it here.
 
@@ -32,9 +32,9 @@ were distinguished. Recorded on issue #72; do not reopen it here.
 
 ## What Shipmates is
 
-Shipmates is an open-source (MIT) crew of specialist AI agents for Claude Code:
-**11 domain-neutral subagents** and **9 reusable commands**.
-Its flagship, `/ship-issue`, takes a GitHub issue all the way to a
+Shipmates is an open-source (MIT) crew of specialist AI agents for
+[Claude Code](https://claude.com/claude-code): **12 domain-neutral subagents** and
+**12 reusable commands**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a
 reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git
 worktree, waits for CI to go green, convenes an adversarial review board, loops on fixes within
 bounds, and hands you a PR to merge. You stay the captain. The shipmates do the twenty steps in
@@ -50,9 +50,9 @@ delegation) land in one read.
 | Term | Maps to | Where it appears today |
 |---|---|---|
 | **captain** | the user — you decide, you approve, you merge | README: "You stay the captain." |
-| **crew** / **shipmates** | the 11 subagents in `agents/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
+| **crew** / **shipmates** | the 12 subagents in `agents/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
 | **shipmate** | a single subagent role | README crew table column header |
-| **command** | one of the 9 workflows in `skills/*/SKILL.md`, as the captain issues it | README "The commands"; site `#commands`; `order-card` components |
+| **command** | one of the 12 workflows in `skills/*/SKILL.md`, as the captain issues it | README "The commands"; site `#commands`; `order-card` components |
 | **order** | what one subagent is told to do *inside* a command | Nowhere yet — reserved for per-subagent copy; see [The narrow sense of "order"](#the-narrow-sense-of-order) |
 | **voyage** | one end-to-end run of a command | README + site "How the voyage works" |
 | **come aboard** | installing Shipmates | README + site "Come aboard" / "Get the crew aboard" |
@@ -92,7 +92,7 @@ swapped at will.
 | Term | Register | What it names |
 |---|---|---|
 | **skill** | technical | The artifact on disk — `skills/<name>/SKILL.md`, in the [Agent Skills](https://agentskills.io) open-standard shape. |
-| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/fix-bug`. The nine of them are **the commands**. |
+| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/fix-bug`. The twelve of them are **the commands**. |
 | **order** | brand | What a single subagent is told to do *within* a command — one specialist's instruction. |
 
 The metaphor holds the three together: the captain issues a **command** to the crew, and carrying
@@ -118,14 +118,14 @@ belong to different registers.
 
 ### The narrow sense of "order"
 
-**"Order" is not a synonym for "command", and it is not a name for the nine.** It is deliberately
+**"Order" is not a synonym for "command", and it is not a name for the twelve.** It is deliberately
 smaller: an order is what one crew member is told to do inside a run. `/ship-issue` is a command;
 "root-cause the failure and write the minimal fix", handed to `senior-engineer` at the remediation
-loop, is an order. Test it by rewriting: if the sentence still works with "one of the nine
+loop, is an order. Test it by rewriting: if the sentence still works with "one of the twelve
 workflows", the word is **command**; if it only works with "one specialist's instruction", the word
 is **order**.
 
-This is a narrowing. Until this taxonomy landed, "orders" was the brand plural for the nine
+This is a narrowing. Until this taxonomy landed, "orders" was the brand plural for the
 workflows — README's `## 📜 The orders (commands)`, the site's `#orders` section, the detail pages'
 `← All orders`. Those surfaces say **commands** now, and the `#orders` anchor no longer exists;
 `#commands` replaces it.
@@ -135,7 +135,7 @@ Worked examples:
 - ✅ "Install the crew, then run your first **command**: `/ship-issue 42`." — brand, the whole workflow.
 - ✅ "`/ship-issue` is defined by the `ship-issue` **skill** at `skills/ship-issue/SKILL.md`." — technical, the file on disk.
 - ✅ "Every reviewer on the acceptance board gets the same **order**: judge the pushed PR head, independently." — brand, one subagent's instruction inside one command.
-- ❌ "Shipmates ships nine **orders**." — the nine are **commands**.
+- ❌ "Shipmates ships twelve **orders**." — they are **commands**.
 - ❌ "Install the **orders** into `~/.claude/`." — wrong twice: wrong tier, and install paths are tech-leading, so it is **skills**.
 
 ### Which register
@@ -156,13 +156,13 @@ where the reader first meets it, is better than picking a side.
 | **slash command**, **slash-command workflow** | "command" (brand-leading) or "skill" (tech-leading) | Anthropic's old label. Custom commands were merged into skills. It is also Claude-Code-only, and Shipmates' artifact is a portable standard. |
 | `.claude/commands/<name>.md` as the current layout | `.claude/skills/<name>/SKILL.md` | The flat layout is legacy. `install.sh` sweeps it aside on upgrade; document it only in migration notes. |
 | **sub-agent**, **sub agent** (hyphenated or spaced) | **subagent**, one word | Matches the Claude Code, Cursor, and OpenCode docs. One spelling, everywhere. |
-| **the orders**, **an order** *meaning one of the nine workflows* | **the commands**, **a command** | "Order" was narrowed to a single subagent's instruction inside a command. Using it for the nine collapses two tiers of the taxonomy. |
+| **the orders**, **an order** *meaning one of the twelve workflows* | **the commands**, **a command** | "Order" was narrowed to a single subagent's instruction inside a command. Using it for the twelve collapses two tiers of the taxonomy. |
 
 Plain **"command"** as the product noun is correct and wanted. The retirement is of the
 *compound* "slash command", not of the word "command".
 
 **"Order" is not retired — it is narrowed.** It stays in the vocabulary in its new, smaller sense
-([above](#the-narrow-sense-of-order)); what is retired is using it for the nine workflows.
+([above](#the-narrow-sense-of-order)); what is retired is using it for the twelve workflows.
 
 `subagent` is the technical noun. "The crew" / "shipmates" / "a shipmate" is the brand
 equivalent — use those in brand-leading copy, `subagent` in tech-leading copy.
@@ -196,7 +196,7 @@ surface is right and this table is stale — fix the table.
 | Site FAQ | `builds on Claude Code's public sub-agent and slash-command features` | `builds on Claude Code's public subagent and skill features` | Tech-leading |
 | README section heading | `## 📜 The orders (commands)` | `## 📜 The commands` | Brand-leading |
 | `AGENTS.md` layout bullet | `commands/*.md are the slash-command workflows` | `skills/<name>/SKILL.md are the workflows, in the Agent Skills format` | Tech-leading |
-| `AGENTS.md` section heading | `## The orders (9)` | `## The commands (9)` | Brand-leading |
+| `AGENTS.md` section heading | `## The orders (12)` | `## The commands (12)` | Brand-leading |
 | Site nav and footer link | `Orders` → `#orders` | `Commands` → `#commands` | Brand-leading |
 | Detail-page back link | `← All orders` | `← All commands` | Brand-leading |
 | Site commands-section lead | `Open any order for its full stage-by-stage breakdown.` | `Open any command for its full stage-by-stage breakdown.` | Brand-leading |
@@ -359,8 +359,8 @@ Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 | No nouns-as-names | Not `/quality-gate`, not `/pr-flow`. If you can't phrase it as an instruction, it isn't a command. |
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
-The nine that exist: `/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` ·
-`/migrate` · `/document` · `/release` · `/polish`.
+The twelve that exist: `/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` ·
+`/migrate` · `/document` · `/release` · `/polish` · `/review` · `/onboard` · `/refactor`.
 
 ---
 

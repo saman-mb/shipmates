@@ -50,6 +50,7 @@ agent with a persona pasted inline. The pool:
 | `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
 | `art-director`     | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
 | `security-engineer`| Threat-model + security review — gated by `IS_SECURITY_SENSITIVE` (Stage 5) |
+| `devops-engineer`  | Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by `IS_DELIVERY_SENSITIVE` (Stage 5) |
 
 These agents are **generic** (domain-neutral); the project-specific standard they enforce comes
 from your repo's README / CLAUDE.md, passed at spawn — not baked into the role. Which specialists a
@@ -90,6 +91,11 @@ and note the fallback in the final report — never silently skip a gated review
        format, or cross-cut many modules in a way a narrow code review would miss? Gates `architect`.
      - `IS_SECURITY_SENSITIVE = yes/no` — does it touch authn/authz, untrusted input, secrets/credentials,
        crypto, file/network/OS access, or dependencies? Gates `security-engineer`.
+     - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
+       or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
+       infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
+   This flag vocabulary is shared with `/review`, which classifies a PR diff the same way — a new flag
+   must be added to both files.
 3. If the plan reveals the issue is too big/ambiguous to finish autonomously, stop and tell the user
    what's blocking — otherwise continue.
 
@@ -202,6 +208,11 @@ core reviewers always run; each specialist runs only when its flag is set:
 - **`security-engineer`** (only if `IS_SECURITY_SENSITIVE`): threat-models the change (STRIDE / OWASP) —
   broken access control, injection, secrets/crypto, vulnerable deps — and returns severity-ranked findings
   with the exploit path; a credible Critical/High is a blocking defect.
+- **`devops-engineer`** (only if `IS_DELIVERY_SENSITIVE`): reviews the delivery definitions for
+  reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and
+  secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety
+  to `site-reliability-engineer`, and the severity of secret exposure or dependency trust to
+  `security-engineer`.
 
 Decision (each specialist participates only when its flag is set):
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → go to Stage 7.
