@@ -1,4 +1,5 @@
 ---
+name: spike
 description: De-risk an open technical decision with a time-boxed spike — frame the question, prototype several approaches in parallel as throwaways, judge them against the project's constraints, and return a recommendation as an ADR. Produces a decision, not production code.
 argument-hint: <the open question or decision — e.g. "which queue for the job system" or "SSR vs SPA">
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch

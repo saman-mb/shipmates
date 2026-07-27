@@ -1,4 +1,5 @@
 ---
+name: harden
 description: Security-harden a surface — threat-model it, rank the findings, remediate the blockers, and re-review until every finding has a fix or an explicit accepted-risk note (and secrets/dependency scans are clean).
 argument-hint: <what to harden — a module, an endpoint, an auth flow, or the whole app>
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch

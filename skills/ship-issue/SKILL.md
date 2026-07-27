@@ -1,17 +1,19 @@
 ---
-description: Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, sub-agent build, CI gate, specialist acceptance board, follow-up issues.
+name: ship-issue
+description: Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
 argument-hint: <issue-or-story-number> [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 ---
 
 # /ship-issue — autonomous ticket delivery
 
-Take **issue / story #$1** from open all the way to a **reviewed, CI-green pull request** on the
-base branch, autonomously — using an isolated git worktree and a board of specialist sub-agents.
+Take **issue / story `#<issue>`** from open all the way to a **reviewed, CI-green pull request** on the
+base branch, autonomously — using an isolated git worktree and a board of specialist subagents.
 Merging is gated by `MERGE_MODE` (see Config): by default the run stops with the PR open for a
 human to merge; set `MERGE_MODE=auto` for fully hands-off delivery.
 
-Extra guidance from the caller (may be empty): **$ARGUMENTS**
+Input (**$ARGUMENTS**): the first whitespace-delimited token is the issue / story number (`<issue>`
+below); everything after it is extra guidance from the caller (may be empty).
 
 ---
 
@@ -23,8 +25,8 @@ Extra guidance from the caller (may be empty): **$ARGUMENTS**
   open for a human to merge. `auto`: squash-merge automatically once every gate passes. Start with
   `manual`; opt into `auto` only in a repo where unattended merges to the base branch are acceptable.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
-- `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-$1`
-- `BRANCH` = `feat/issue-$1-<short-slug>`
+- `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<issue>`
+- `BRANCH` = `feat/issue-<issue>-<short-slug>`
 - **Quality bar** = whatever the repo's `README` / `CLAUDE.md` / contributing docs state. Read it at
   the start and pass it to every reviewer — the `product-manager` (and the visual specialists)
   enforce THAT bar, not just "it runs."
@@ -60,7 +62,7 @@ and note the fallback in the final report — never silently skip a gated review
 
 ## Stage 0 — Intake & plan  (agent: `Plan`)
 
-1. Resolve the number: `gh issue view $1 --json number,title,body,labels,url`. If `$1` is a
+1. Resolve the number: `gh issue view <issue> --json number,title,body,labels,url`. If `<issue>` is a
    "story number" that differs from the GitHub issue number, map it via the epic checklist issue or
    the README scope table, then confirm the real issue number.
 2. Spawn ONE **Planner** (`subagent_type: Plan`). Give it the full issue body + repo README +

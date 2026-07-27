@@ -1,5 +1,6 @@
 ---
-description: Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager sub-agent authoring each epic's stories in parallel.
+name: plan-epics
+description: Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic's stories in parallel.
 argument-hint: <brief text | path to a brief file | several briefs> [area/label hints] [dry-run]
 allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
 ---
@@ -8,7 +9,7 @@ allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
 
 Turn the brief(s) in **$ARGUMENTS** into a tracked backlog: one or more **epics** (labelled `epic`),
 each broken into **user stories** (labelled `user-story` + area tags), created as GitHub issues and
-cross-linked. When the work spans **multiple epics, a `product-manager` sub-agent authors each
+cross-linked. When the work spans **multiple epics, a `product-manager` subagent authors each
 epic's stories in parallel** — one PM per epic.
 
 Input (**$ARGUMENTS**): the brief(s). May be inline text, a path to a file/dir of briefs, or several
@@ -48,7 +49,7 @@ brief may yield one epic; that's fine.
 
 ## Stage 2 — Author each epic's stories  (agents: `product-manager` × N, parallel)
 
-Spawn **one `product-manager` sub-agent per epic, in a single message** so they run concurrently. Give
+Spawn **one `product-manager` subagent per epic, in a single message** so they run concurrently. Give
 each: its epic (title/why/scope), the full repo context, the OTHER epics' titles (for cross-epic
 dependencies), and the existing-issues list (to dedupe). Each returns its epic's **user stories** as
 structured data (no `gh` calls) — per story:
