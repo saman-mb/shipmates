@@ -30,6 +30,7 @@ INDEX = SITE / "index.html"
 CSS = SITE / "styles.css"
 SITEMAP = SITE / "sitemap.xml"
 SKILLS = ROOT / "skills"
+CREW = ROOT / "agents"
 
 SITE_URL = "https://saman-mb.github.io/shipmates/"
 SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -180,6 +181,17 @@ def is_local_asset(url: str) -> bool:
 
 def source_slugs() -> list[str]:
     return [p.parent.name for p in sorted(SKILLS.glob("*/SKILL.md"))]
+
+
+def crew_roles() -> list[str]:
+    """Role handles from agents/*.md — only files that actually declare one, so a
+    stray note in agents/ can't move the expected crew count."""
+    roles = []
+    for path in sorted(CREW.glob("*.md")):
+        head = path.read_text(encoding="utf-8").split("---")
+        if len(head) > 1 and re.search(r"^name:\s*\S", head[1], re.M):
+            roles.append(path.stem)
+    return roles
 
 
 def load_page(path: Path) -> Page:
@@ -355,7 +367,7 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
 
     # --- component counts (acceptance criteria) ---
     counts = {
-        "crew-card": (len(re.findall(r'class="crew-card"', page.html)), 11),
+        "crew-card": (len(re.findall(r'class="crew-card(?:\s|")', page.html)), len(crew_roles())),
         "order-card": (len(re.findall(r'class="order-card(?:\s|")', page.html)), n_commands),
         "order-card--flagship": (page.html.count("order-card--flagship"), 1),
         "how-step": (len(re.findall(r'class="how-step"', page.html)), 8),
@@ -385,6 +397,30 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
             f"({n_cards}) and one per skills/*/SKILL.md ({n_commands}) — a card with no link "
             "strands its detail page"
         )
+
+    # --- crew cards name real roles, not merely the right number of them ---
+    shown = set(re.findall(r'class="crew-card__handle">([^<]+)</code>', page.html))
+    roles = set(crew_roles())
+    if shown and shown != roles:
+        for h in sorted(shown - roles):
+            fail(f"{page.rel}: crew-card '{h}' has no agents/{h}.md")
+        for h in sorted(roles - shown):
+            fail(f"{page.rel}: agents/{h}.md has no crew-card")
+    elif shown:
+        ok(f"{page.rel}: all {len(shown)} crew-card handles resolve to agents/*.md")
+
+    # --- prose counts track the same source as the cards ---
+    # Deriving the card count removed the hardcoded constant that used to force a human
+    # to notice the other places the number lives; this is the replacement tripwire.
+    chip = re.search(r'class="chip">(\d+)\s+specialists</li>', page.html)
+    if chip and int(chip.group(1)) != len(roles):
+        fail(
+            f"{page.rel}: hero chip says {chip.group(1)} specialists but agents/*.md has "
+            f"{len(roles)} — the prose counts in README.md, AGENTS.md and docs/BRAND.md "
+            "likely need the same bump"
+        )
+    elif chip:
+        ok(f"{page.rel}: hero chip matches agents/*.md ({chip.group(1)} specialists)")
 
     # --- reduced-motion demo poster wired (a11y / WCAG 2.2.2) ---
     if "hero__demo-poster" in page.html and "hero__demo-poster" in css and "prefers-reduced-motion" in css:

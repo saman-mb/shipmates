@@ -14,8 +14,8 @@ and links here for the full statement.
 ## What Shipmates is
 
 Shipmates is an open-source (MIT) crew of specialist AI agents for
-[Claude Code](https://claude.com/claude-code): **11 domain-neutral subagents** and
-**9 reusable commands**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a
+[Claude Code](https://claude.com/claude-code): **12 domain-neutral subagents** and
+**12 reusable commands**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a
 reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git
 worktree, waits for CI to go green, convenes an adversarial review board, loops on fixes within
 bounds, and hands you a PR to merge. You stay the captain. The shipmates do the twenty steps in
@@ -31,9 +31,9 @@ delegation) land in one read.
 | Term | Maps to | Where it appears today |
 |---|---|---|
 | **captain** | the user — you decide, you approve, you merge | README: "You stay the captain." |
-| **crew** / **shipmates** | the 11 subagents in `agents/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
+| **crew** / **shipmates** | the 12 subagents in `agents/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
 | **shipmate** | a single subagent role | README crew table column header |
-| **orders** / **commands** | the 9 skills in `skills/*/SKILL.md` | README "The orders"; site `#orders`; `order-card` components |
+| **orders** / **commands** | the 12 skills in `skills/*/SKILL.md` | README "The orders"; site `#orders`; `order-card` components |
 | **voyage** | one end-to-end run of a command | README + site "How the voyage works" |
 | **come aboard** | installing Shipmates | README + site "Come aboard" / "Get the crew aboard" |
 | **weigh anchor** | running your first command | README "Weigh anchor (use it)" |

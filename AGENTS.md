@@ -4,19 +4,19 @@ A crew of Claude Code subagents and command workflows that drive a GitHub issue 
 
 ## What it is
 
-Shipmates is an open-source (MIT) toolkit for [Claude Code](https://claude.com/claude-code): **11 domain-neutral specialist subagents** and **9 command workflows**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git worktree, waits for CI to go green, convenes an adversarial review board, loops on the fixes within bounds, and hands you a PR to merge.
+Shipmates is an open-source (MIT) toolkit for [Claude Code](https://claude.com/claude-code): **12 domain-neutral specialist subagents** and **12 command workflows**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git worktree, waits for CI to go green, convenes an adversarial review board, loops on the fixes within bounds, and hands you a PR to merge.
 
 ## Who it's for
 
 Developers using Claude Code who want to hand off whole *tickets* — not just single prompts — to a crew of specialist agents. The agents are domain-neutral: they hold the work to the standard in **your** repo's `README` / `CLAUDE.md`, so the same crew works on a game engine, a web app, or a CLI, in any language.
 
-## The crew (11)
+## The crew (12)
 
-`architect` · `senior-engineer` · `sdet` · `security-engineer` · `site-reliability-engineer` · `performance-engineer` · `product-manager` · `ux-ui-designer` · `art-director` · `technical-writer` · `data-scientist` — each defined in `agents/<role>.md`.
+`architect` · `senior-engineer` · `sdet` · `security-engineer` · `site-reliability-engineer` · `performance-engineer` · `devops-engineer` · `product-manager` · `ux-ui-designer` · `art-director` · `technical-writer` · `data-scientist` — each defined in `agents/<role>.md`.
 
-## The orders (9)
+## The orders (12)
 
-`/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` · `/migrate` · `/document` · `/release` · `/polish` — each defined in `skills/<name>/SKILL.md`.
+`/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` · `/migrate` · `/document` · `/release` · `/polish` · `/review` · `/onboard` · `/refactor` — each defined in `skills/<name>/SKILL.md`.
 
 ## Install
 

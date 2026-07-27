@@ -43,6 +43,9 @@ SLUGS = (
     "document",
     "release",
     "polish",
+    "review",
+    "onboard",
+    "refactor",
 )
 FLAGSHIP_SLUG = "ship-issue"
 
