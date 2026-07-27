@@ -5,12 +5,12 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows for <a href="https://claude.com/claude-code">Claude Code</a>.</b><br/>
+  <b>Custom subagents &amp; command workflows — on <a href="https://claude.com/product/claude-code">Claude Code</a> today.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
 [![License: MIT](https://img.shields.io/github/license/saman-mb/shipmates?color=blue)](LICENSE)
-[![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
+[![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/product/claude-code)
 [![Website](https://img.shields.io/badge/website-saman--mb.github.io%2Fshipmates-D97757?logo=github)](https://saman-mb.github.io/shipmates/)
 [![Crew aboard](https://img.shields.io/badge/crew-12%20specialists-orange)](#-meet-the-crew)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -253,16 +253,25 @@ tagged commit, and the `site-reliability-engineer` checks rollback + migration s
 
 ## 🗂️ Scopes & precedence
 
-Claude Code loads agents and skills from `~/.claude/` (global, every project) and `<repo>/.claude/`
-(that project only). A project definition **wins** over a global one of the same name — so any repo
-can override or specialise a crew member without touching the shared copy.
-<!-- KNOWN-WRONG, do not cite: the precedence claim above holds for subagents but is inverted for
-     skills — user-level ~/.claude/skills/ beats project-level. Correction is tracked in issue #71
-     (PR B), which owns this section; leave the fix to that PR. -->
+**In Claude Code**, both `~/.claude/` (global, every project) and `<repo>/.claude/` (that project
+only) are loaded. The two halves of the crew then resolve a name clash in **opposite** directions:
+
+- **Subagents — the project copy wins.** `<repo>/.claude/agents/architect.md` overrides
+  `~/.claude/agents/architect.md`, so any repo can specialise a crew member without touching the
+  shared copy.
+- **Skills — the personal copy wins.** `~/.claude/skills/ship-issue/SKILL.md` overrides
+  `<repo>/.claude/skills/ship-issue/SKILL.md`. If you have installed globally *and* with
+  `--project`, the **global** command is the one that runs — uninstall the one you don't want
+  rather than editing the loser.
+
+A skill also beats a legacy `.claude/commands/<name>.md` of the same name.
+
+Other harnesses resolve clashes on their own rules, so read this as a Claude Code fact, not a
+universal one.
 
 ## 🎒 What you'll need
 
-- [Claude Code](https://claude.com/claude-code)
+- [Claude Code](https://claude.com/product/claude-code)
 - `git` + an authenticated [`gh`](https://cli.github.com/) CLI, for the GitHub flow
 - A repo with CI (strongly recommended — the green-CI gate is what makes autonomy trustworthy)
 
@@ -275,15 +284,32 @@ can override or specialise a crew member without touching the shared copy.
 
 ## 🌊 On the horizon
 
-The crew keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new commands
-keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs very welcome.
+**Which harnesses the crew runs on.** Every entry links to the epic that tracks it, so the claim is
+auditable rather than a promise.
+
+- **Now** — Claude Code: the full crew and all 12 commands.
+- **In development** — [Codex CLI](https://github.com/saman-mb/shipmates/issues/17) ·
+  [Cursor](https://github.com/saman-mb/shipmates/issues/15) ·
+  [GitHub Copilot](https://github.com/saman-mb/shipmates/issues/16) ·
+  [opencode](https://github.com/saman-mb/shipmates/issues/14). Listed alphabetically — that is not a
+  delivery order, and none is settled yet.
+- **Planned** — more harnesses to follow.
+
+Why that's credible: the crew's system prompts name no harness, and the twelve commands ship in the
+[Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
+of a port is mapping frontmatter fields, not rewriting the crew.
+
+The crew also keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new
+commands keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs very welcome.
 
 ## ❓ FAQ
 
 **What is Shipmates?**
-A ready-made crew of [Claude Code](https://claude.com/claude-code) **subagents** and **command
-workflows**. Instead of you playing planner–builder–reviewer in a loop, a board of specialist AI agents
-does it — the flagship `/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request.
+A ready-made crew of **subagents** and **command workflows**. Instead of you playing
+planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
+`/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It runs on
+[Claude Code](https://claude.com/product/claude-code) today; see [on the horizon](#-on-the-horizon)
+for the other harnesses.
 
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
@@ -306,7 +332,8 @@ so the same crew works on a game engine, a web app, or a CLI.
 
 **Do I have to configure each agent?**
 No. Install once, then `/ship-issue 42`. The crew picks up your project's quality bar automatically;
-a project-level `.claude/` definition overrides the global crew when you want to specialise one.
+a project-level `.claude/agents/` definition overrides the global one when you want to specialise a
+crew member. Skills go the other way — see [scopes & precedence](#-scopes--precedence).
 
 ## 🤝 Contributing
 

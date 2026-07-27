@@ -1047,6 +1047,7 @@ NAV_LINKS = (
     ("crew", "Crew"),
     ("commands", "Commands"),
     ("how", "How"),
+    ("next", "What's next"),
     ("faq", "FAQ"),
 )
 
@@ -1055,6 +1056,7 @@ FOOTER_LINKS = (
     ("../../#install", "Install"),
     ("../../#crew", "Crew"),
     ("../../#commands", "Commands"),
+    ("../../#next", "What's next"),
     ("https://github.com/saman-mb/shipmates/blob/main/LICENSE", "License"),
     ("https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md", "Contributing"),
 )
@@ -1249,7 +1251,7 @@ def render_head(cmd: Command, ctx: PageContext) -> str:
     full_title = page_title(cmd) + " · Shipmates"
     social_title = page_title(cmd)
     description = truncate_words(cmd.frontmatter.description, MAX_META_DESCRIPTION)
-    alt = "Shipmates — Custom subagents and command workflows for Claude Code."
+    alt = "Shipmates — Custom subagents and command workflows, on Claude Code today."
     return f"""<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1354,7 +1356,7 @@ def render_footer() -> str:
       <div class="site-footer__brand">
         <img class="site-footer__logo" src="{link("../../assets/logo-240.png")}" width="32" height="32" alt="">
         <span class="site-footer__name">Shipmates</span>
-        <p class="site-footer__tagline">Custom subagents &amp; command workflows for Claude Code.</p>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — on Claude Code today.</p>
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <ul class="site-footer__links">
