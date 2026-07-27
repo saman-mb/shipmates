@@ -8,9 +8,19 @@ its own terms rather than only through the site it feeds.
 Asserts the invariants a skill directory holds: skills/<slug>/SKILL.md exists
 for every entry under skills/, its frontmatter opens on line 1 and declares
 exactly name, description, argument-hint and allowed-tools in that order, the
-name is its own directory name, the description is present and bounded, no
-positional argument placeholder (`$1`) survives in prose outside a code fence, and the
+name is its own directory name, every declared value carries content (and the
+description is bounded), no unescaped positional argument placeholder (`$1`)
+survives anywhere in the file, every fenced code block is closed, and the
 retired commands/ directory is gone.
+
+Positionals are flagged inside fenced code blocks too. An earlier revision
+exempted fences, on the assumption that a `$2` between ``` markers is read as a
+shell field reference rather than substituted. That assumption was never
+verified — nothing documents a fence exemption, and the documented way to keep a
+literal `$` before a digit is the backslash escape `\\$1`, which would be
+pointless if fences were exempt — so it was removed. Substitution is treated as
+textual over the whole file: `/ship-issue 42 focus on retries` binds `$2` to
+`on` and rewrites `awk '{print $2}'` to `awk '{print on}'`.
 
 Exit 0 if all green; exit 1 if one or more failures (printed).
 """
@@ -30,12 +40,31 @@ FRONTMATTER_KEYS = ("name", "description", "argument-hint", "allowed-tools")
 
 KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-# Positional argument placeholder. Skills are invoked by description, not by
-# argv, so `$1` in a skill body is a leftover that silently never expands.
-POSITIONAL_RE = re.compile(r"\$\{?[0-9]")
+# Positional argument placeholder, anywhere in the file. Skills are invoked by
+# description, not by argv, so `$1` is either a leftover that never expands or —
+# worse, inside a fence — live text the invocation rewrites. A backslash-escaped
+# `\$1` is the documented literal, so the lookbehind lets it through.
+POSITIONAL_RE = re.compile(r"(?<!\\)\$\{?[0-9]")
 
 MAX_NAME = 64
 MAX_DESCRIPTION = 1024
+
+# Presence and order are not enough: a declared-but-empty value ships a broken
+# skill. One remedy per key, phrased as what to write instead.
+EMPTY_REMEDY = {
+    "description": (
+        "write one line saying what the skill does and when to use it (this is "
+        "what the model matches on)"
+    ),
+    "argument-hint": (
+        "write the shape of the invocation text (e.g. `<issue-number> [optional "
+        "extra guidance]`)"
+    ),
+    "allowed-tools": (
+        "list the tools the skill needs as one comma-separated value (e.g. "
+        "`Bash, Read, Write, Edit, Agent`)"
+    ),
+}
 
 KEY_LIST = ", ".join(FRONTMATTER_KEYS)
 
@@ -145,44 +174,77 @@ def check_values(rel: str, slug: str, entries: dict) -> None:
                 f"{rel}:{lineno}: name is {len(name)} characters, max {MAX_NAME} — "
                 "shorten it (the directory name must match, so rename both)"
             )
-    if "description" in entries:
+    for key, remedy in EMPTY_REMEDY.items():
+        if key in entries and not entries[key][1]:
+            fail(f"{rel}:{entries[key][0]}: {key} is empty — {remedy}")
+    if entries.get("description", (0, ""))[1]:
         lineno, description = entries["description"]
-        if not description:
-            fail(
-                f"{rel}:{lineno}: description is empty — write one line saying what the "
-                "skill does and when to use it (this is what the model matches on)"
-            )
-        elif len(description) > MAX_DESCRIPTION:
+        if len(description) > MAX_DESCRIPTION:
             fail(
                 f"{rel}:{lineno}: description is {len(description)} characters, max "
                 f"{MAX_DESCRIPTION} — shorten it to a single summary line"
             )
 
 
-def check_body(rel: str, lines: list[str], start: int) -> None:
-    """No positional argument placeholder outside a fenced code block.
+def check_frontmatter(rel: str, lines: list[str], start: int) -> None:
+    """No positional placeholder in the frontmatter either.
 
-    The fence test strips leading whitespace first: a fence indented under a
-    list item is still a fence, and `awk '{print $2}'` inside one is a shell
-    field reference, not a leftover command argument. Mirrors the fence handling
-    in .github/scripts/validate_site.py's check_fidelity.
+    Substitution is textual over the whole file, so `argument-hint: <... $1>` is
+    rewritten exactly like a body line. Scanned raw, over the whole block
+    including its '---' delimiters, so a line that failed to parse as
+    'key: value' is still covered.
     """
-    in_fence = False
-    for offset, raw in enumerate(lines[start:]):
-        lineno = start + offset + 1
-        s = raw.strip()
-        if s.startswith("```"):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        hit = POSITIONAL_RE.search(raw)
+    for lineno in range(1, start + 1):
+        hit = POSITIONAL_RE.search(lines[lineno - 1])
         if hit:
             fail(
-                f"{rel}:{lineno}: {hit.group(0)!r} outside a fenced code block — a skill "
-                "has no positional arguments; write $ARGUMENTS, or describe the input in "
-                "prose (shell field references belong inside a ``` fence)"
+                f"{rel}:{lineno}: {hit.group(0)!r} in the frontmatter — a skill has no "
+                "positional arguments, and frontmatter is substituted like the body; "
+                "describe the input shape instead (e.g. `<issue-number> [optional extra "
+                "guidance]`), or escape a literal as `\\$1`"
             )
+
+
+def check_body(rel: str, lines: list[str], start: int) -> None:
+    """No positional placeholder in the body, fenced or not, and no open fence.
+
+    Fences are still tracked, but only so the report can name where the hit is:
+    a fence does not exempt anything (see the module docstring). The fence test
+    strips leading whitespace first — a fence indented under a list item is
+    still a fence — mirroring the fence handling in
+    .github/scripts/validate_site.py's check_fidelity.
+    """
+    fence_lineno = 0
+    for offset, raw in enumerate(lines[start:]):
+        lineno = start + offset + 1
+        if raw.strip().startswith("```"):
+            fence_lineno = lineno if not fence_lineno else 0
+            continue
+        hit = POSITIONAL_RE.search(raw)
+        if not hit:
+            continue
+        if fence_lineno:
+            fail(
+                f"{rel}:{lineno}: {hit.group(0)!r} inside the fenced code block opened on "
+                f"line {fence_lineno} — substitution is textual over the whole file, so a "
+                "``` fence does not protect it (`/ship-issue 42 focus on retries` would "
+                "make `awk '{print $2}'` read `awk '{print on}'`); restructure to avoid "
+                "`$` before a digit (e.g. `cut -f2` instead of `awk '{print $2}'`), or "
+                "escape it as `\\$2`"
+            )
+        else:
+            fail(
+                f"{rel}:{lineno}: {hit.group(0)!r} in the body — a skill has no positional "
+                "arguments; write $ARGUMENTS, describe the input in prose, or escape a "
+                "literal as `\\$1`"
+            )
+
+    if fence_lineno:
+        fail(
+            f"{rel}:{fence_lineno}: unterminated fenced code block — close it with a "
+            "matching ``` line; an open fence swallows the rest of the file for the site "
+            "generator and the site validator too"
+        )
 
 
 def check_skill(directory: Path) -> None:
@@ -204,10 +266,14 @@ def check_skill(directory: Path) -> None:
         return
     entries, start = parsed
     check_values(rel, slug, entries)
+    check_frontmatter(rel, lines, start)
     check_body(rel, lines, start)
 
     if len(failures) == before:
-        ok(f"{rel}: frontmatter ({KEY_LIST}), name matches directory, no bare '$n' in prose")
+        ok(
+            f"{rel}: frontmatter ({KEY_LIST}) present, ordered and non-empty, name matches "
+            "directory, no unescaped '$n' anywhere, fences closed"
+        )
 
 
 def main() -> int:

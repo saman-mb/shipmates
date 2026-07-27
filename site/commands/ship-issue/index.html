@@ -287,7 +287,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                 <p><strong>When there is no local toolchain to fully validate, CI is the ONLY real runtime gate — the Stage 3 SDET pass is static and WILL miss things (parse errors, lint-as-error, dependency/version drift). You MUST confirm CI is green on the pushed head before the acceptance board runs. Never assume a push is green.</strong> (If the repo has no CI, say so and treat the SDET pass as the gate, explicitly noting the reduced assurance.)</p>
                 <ol>
                   <li><strong>Wait for the checks to finish</strong> on the PR head (poll, don&#x27;t guess):
-                    <pre class="order-code" tabindex="0"><code>until s=$(gh pr checks &lt;PR#&gt; 2&gt;&amp;1 | head -1); st=$(echo &quot;$s&quot; | awk &#x27;{print $2}&#x27;); \
+                    <pre class="order-code" tabindex="0"><code>until s=$(gh pr checks &lt;PR#&gt; 2&gt;&amp;1 | head -1); st=$(echo &quot;$s&quot; | cut -f2); \
   [ &quot;$st&quot; != &quot;pending&quot; ]; do sleep 15; done; echo &quot;$s&quot;</code></pre>
                     <p>(Long-running: launch as a background command / until-loop so you&#x27;re notified on completion — do not chain foreground sleeps.)</p>
                   </li>
