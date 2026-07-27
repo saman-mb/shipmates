@@ -20,6 +20,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gates the sources (skills/) and the site built from them, in that order:
+  # a bad SKILL.md is reported against the file someone edited, not against a
+  # derived page.
+  # The job name is the status-check name branch protection matches on; leave it.
   validate:
     name: Validate site
     runs-on: ubuntu-latest
@@ -28,6 +32,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+      - name: Validate skills
+        run: python3 tools/validate_skills.py
       - name: Check generated command pages are up to date
         run: python3 tools/gen_command_pages.py --check
       - name: Validate static site

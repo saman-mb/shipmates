@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate site/commands/<slug>/index.html — one detail page per slash command.
+"""Generate site/commands/<slug>/index.html — one detail page per command.
 
 Honest by construction: every command-specific sentence on a page is a
-markdown-rendered projection of commands/<slug>.md — no invented stage names,
+markdown-rendered projection of skills/<slug>/SKILL.md — no invented stage names,
 gates, crew, counts, durations or file names. Only command-agnostic chrome
 ("How to run it", "The stages", "Other orders") is authored here. Anything the
 parser does not recognise raises with a file:line and a remedy rather than being
@@ -12,7 +12,7 @@ generators. Regenerate with:  python3 tools/gen_command_pages.py
 
 Layers, in file order, with hard import discipline:
   1 MODEL   frozen dataclasses only — no markup, no URLs, no I/O
-  2 PARSE   commands/*.md -> model — no markup, no writing
+  2 PARSE   skills/*/SKILL.md -> model — no markup, no writing
   3 RENDER  model -> HTML/XML strings — the only layer that escapes or emits markup
   4 EMIT    paths + bytes — build_site() is pure, write_all() is the only writer
   5 CLI     argv -> exit code — the only layer that prints
@@ -142,6 +142,7 @@ class Subheading:
 
 @dataclass(frozen=True, slots=True)
 class Frontmatter:
+    name: str
     description: str
     argument_hint: str
     allowed_tools: tuple  # tuple[str, ...]
@@ -195,11 +196,19 @@ class Command:
 
 
 # ---------------------------------------------------------------------------
-# Layer 2 — PARSE  (commands/*.md -> model)
+# Layer 2 — PARSE  (skills/*/SKILL.md -> model)
 # No markup literals, no escaping, no writing.
 # ---------------------------------------------------------------------------
 
-FRONTMATTER_KEYS = ("description", "argument-hint", "allowed-tools")
+# Canonical frontmatter key order — the Agent Skills standard's `name` and
+# `description` first, then our two vendor extensions. Drives the remedies below.
+FRONTMATTER_KEYS = ("name", "description", "argument-hint", "allowed-tools")
+FRONTMATTER_KEY_LIST = ", ".join(FRONTMATTER_KEYS)
+
+# Agent Skills limits on the two standard keys.
+SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+MAX_SKILL_NAME = 64
+MAX_SKILL_DESCRIPTION = 1024
 
 HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})[ ](?P<title>.+?)[ ]*$")
 TITLE_RE = re.compile(r"^#[ ]+/(?P<slug>[a-z0-9][a-z0-9-]*)[ ]*[—–-][ ]*(?P<tagline>.+?)[ ]*$")
@@ -219,7 +228,7 @@ LINK_RE = re.compile(r"!\[|\[[^\]]*\]\(|\[[^\]]*\]\[|\[\^|~~")
 LASTMOD_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 LINKS_UNSUPPORTED = (
-    "links are not supported in command sources — write the target as inline code instead"
+    "links are not supported in skill sources — write the target as inline code instead"
 )
 
 
@@ -259,26 +268,38 @@ def load_agent_names(agents_dir: Path) -> tuple:
     return tuple(dict.fromkeys(names))
 
 
-def load_commands(commands_dir: Path, agents: tuple) -> tuple:
-    """Every commands/*.md, in canonical SLUGS order. Raises on any drift from SLUGS."""
-    on_disk = {p.stem: p for p in sorted(commands_dir.glob("*.md"))}
-    for stem in sorted(on_disk):
-        if stem not in SLUGS:
+def load_skills(skills_dir: Path, agents: tuple) -> tuple:
+    """Every skills/<slug>/SKILL.md, in canonical SLUGS order. Raises on any drift from SLUGS."""
+    on_disk = {p.parent.name: p for p in sorted(skills_dir.glob("*/SKILL.md"))}
+    # glob, not iterdir: a missing skills/ must still reach the SLUGS check below
+    # with a remedy rather than raising FileNotFoundError out of the parser.
+    for sub in sorted(p for p in skills_dir.glob("*") if p.is_dir()):
+        if sub.name not in on_disk:
+            # The glob would skip this directory in silence, and a source that
+            # never reaches the parser is exactly what this generator forbids.
             raise SourceError(
-                f"commands/{stem}.md", 1, "command file is not in SLUGS", "",
-                f"commands/{stem}.md is not in SLUGS — add it to SLUGS in "
+                f"skills/{sub.name}/SKILL.md", 1, "skill directory has no SKILL.md", "",
+                f"skills/{sub.name}/ holds no SKILL.md — the Agent Skills standard names every "
+                "skill file SKILL.md; rename the file, or delete the directory if it is a "
+                "leftover, then rerun the generator and commit site/",
+            )
+    for slug in sorted(on_disk):
+        if slug not in SLUGS:
+            raise SourceError(
+                f"skills/{slug}/SKILL.md", 1, "skill file is not in SLUGS", "",
+                f"skills/{slug}/SKILL.md is not in SLUGS — add it to SLUGS in "
                 "tools/gen_command_pages.py (canonical order drives the sitemap, the sibling nav "
                 "and the homepage cards), then rerun the generator and commit site/",
             )
     for slug in SLUGS:
         if slug not in on_disk:
             raise SourceError(
-                f"commands/{slug}.md", 1, "SLUGS entry has no command file", "",
-                f"SLUGS lists {slug} but commands/{slug}.md does not exist — remove it from SLUGS "
-                "in tools/gen_command_pages.py, delete site/commands/" + slug + "/, "
+                f"skills/{slug}/SKILL.md", 1, "SLUGS entry has no skill file", "",
+                f"SLUGS lists {slug} but skills/{slug}/SKILL.md does not exist — remove it from "
+                "SLUGS in tools/gen_command_pages.py, delete site/commands/" + slug + "/, "
                 "then rerun the generator and commit site/",
             )
-    return tuple(parse_command(on_disk[slug], agents) for slug in SLUGS)
+    return tuple(parse_skill(on_disk[slug], agents) for slug in SLUGS)
 
 
 def split_frontmatter(lines: list, src: str, consumed: set) -> tuple:
@@ -286,7 +307,7 @@ def split_frontmatter(lines: list, src: str, consumed: set) -> tuple:
     if not lines or lines[0].strip() != "---":
         raise SourceError(
             src, 1, "missing frontmatter fence", lines[0] if lines else "",
-            "a command file must open with a `---` line",
+            "a skill file must open with a `---` line",
         )
     consumed.add(1)
     values = {}
@@ -299,10 +320,11 @@ def split_frontmatter(lines: list, src: str, consumed: set) -> tuple:
             if missing:
                 raise SourceError(
                     src, lineno, f"frontmatter is missing {missing[0]}", raw,
-                    "expected one of description, argument-hint, allowed-tools",
+                    f"expected one of {FRONTMATTER_KEY_LIST}",
                 )
             return (
                 Frontmatter(
+                    name=values["name"],
                     description=values["description"],
                     argument_hint=values["argument-hint"],
                     allowed_tools=tuple(
@@ -317,13 +339,13 @@ def split_frontmatter(lines: list, src: str, consumed: set) -> tuple:
         if not sep or key.strip() not in FRONTMATTER_KEYS:
             raise SourceError(
                 src, lineno, "unknown frontmatter key", raw,
-                "expected one of description, argument-hint, allowed-tools",
+                f"expected one of {FRONTMATTER_KEY_LIST}",
             )
         key = key.strip()
         if key in values:
             raise SourceError(
                 src, lineno, f"duplicate frontmatter key {key}", raw,
-                "declare each of description, argument-hint, allowed-tools exactly once",
+                f"declare each of {FRONTMATTER_KEY_LIST} exactly once",
             )
         values[key] = value.strip()
         consumed.add(lineno)
@@ -685,7 +707,7 @@ def parse_sections(lines: list, start: int, src: str, consumed: set) -> tuple:
             if level == 1:
                 raise SourceError(
                     src, lineno, "second level-1 heading", raw,
-                    "a command file has exactly one `# /<command> — <tagline>` heading; "
+                    "a skill file has exactly one `# /<command> — <tagline>` heading; "
                     "use `##` for sections",
                 )
             if level >= 4:
@@ -727,13 +749,58 @@ def _is_config_title(title: str) -> bool:
     return title == "Config" or title.startswith("Config ")
 
 
-def parse_command(path: Path, agents: tuple) -> Command:
-    src = f"commands/{path.name}"
-    slug = path.stem
+def _key_lineno(lines: list, end: int, key: str) -> int:
+    """1-based line of a frontmatter key already validated as present."""
+    for i in range(end):
+        if lines[i].partition(":")[0].strip() == key:
+            return i + 1
+    return 1
+
+
+def check_frontmatter(fm: Frontmatter, slug: str, lines: list, end: int, src: str) -> None:
+    """Agent Skills rules on `name` and `description`.
+
+    Not in split_frontmatter: only the caller knows which directory the file
+    came from, and `name` is only meaningful against that directory.
+    """
+    lineno = _key_lineno(lines, end, "name")
+    if not SKILL_NAME_RE.match(fm.name):
+        raise SourceError(
+            src, lineno, "frontmatter name is not a slug", lines[lineno - 1],
+            "the Agent Skills standard restricts `name:` to lowercase letters, digits and single "
+            "hyphens (`^[a-z0-9]+(-[a-z0-9]+)*$`) — rename the skill and its directory to match",
+        )
+    if len(fm.name) > MAX_SKILL_NAME:
+        raise SourceError(
+            src, lineno, f"frontmatter name is {len(fm.name)} characters", lines[lineno - 1],
+            f"the Agent Skills standard caps `name:` at {MAX_SKILL_NAME} characters — shorten it "
+            "and rename its directory to match",
+        )
+    if fm.name != slug:
+        raise SourceError(
+            src, lineno, "frontmatter name does not match the directory", lines[lineno - 1],
+            "the Agent Skills standard requires `name:` to equal the parent directory name — "
+            f"write `name: {slug}` here, or move the file to skills/{fm.name}/SKILL.md",
+        )
+
+    lineno = _key_lineno(lines, end, "description")
+    if len(fm.description) > MAX_SKILL_DESCRIPTION:
+        raise SourceError(
+            src, lineno, f"frontmatter description is {len(fm.description)} characters",
+            lines[lineno - 1],
+            f"the Agent Skills standard caps `description:` at {MAX_SKILL_DESCRIPTION} characters "
+            "— trim it to the sentence that tells a model when to reach for this skill",
+        )
+
+
+def parse_skill(path: Path, agents: tuple) -> Command:
+    slug = path.parent.name  # the standard's identity, not the file name (always SKILL.md)
+    src = f"skills/{slug}/SKILL.md"
     lines = path.read_text(encoding="utf-8").split("\n")
     consumed = set()
 
     frontmatter, idx = split_frontmatter(lines, src, consumed)
+    check_frontmatter(frontmatter, slug, lines, idx, src)
     while idx < len(lines) and not lines[idx].strip():
         idx += 1
     if idx >= len(lines):
@@ -750,8 +817,8 @@ def parse_command(path: Path, agents: tuple) -> Command:
         )
     if title_match.group("slug") != slug:
         raise SourceError(
-            src, idx + 1, "heading command name does not match the file name", title_line,
-            f"the heading must read `# /{slug} — <tagline>` to match commands/{slug}.md",
+            src, idx + 1, "heading command name does not match the directory", title_line,
+            f"the heading must read `# /{slug} — <tagline>` to match skills/{slug}/SKILL.md",
         )
     consumed.add(idx + 1)
     tagline = _squeeze(title_match.group("tagline"))
@@ -830,14 +897,14 @@ def parse_command(path: Path, agents: tuple) -> Command:
             if guardrails is not None:
                 raise SourceError(
                     src, raw_section.lineno, "second Guardrails section",
-                    raw_section.heading_raw, "a command file has exactly one Guardrails section",
+                    raw_section.heading_raw, "a skill file has exactly one Guardrails section",
                 )
             guardrails = section
         elif _is_config_title(raw_section.title) and not seen_stage:
             if config is not None:
                 raise SourceError(
                     src, raw_section.lineno, "second Config section",
-                    raw_section.heading_raw, "a command file has exactly one Config section",
+                    raw_section.heading_raw, "a skill file has exactly one Config section",
                 )
             config = section
         else:
@@ -862,7 +929,7 @@ def parse_command(path: Path, agents: tuple) -> Command:
     if not stages:
         raise SourceError(
             src, 1, "no `## Stage <n> — <title>` sections", "",
-            "a command file describes its run as numbered stages",
+            "a skill file describes its run as numbered stages",
         )
 
     # [C-3] no-silent-drop invariant: every non-blank line must be claimed by a block.
@@ -879,7 +946,7 @@ def parse_command(path: Path, agents: tuple) -> Command:
     crew = find_crew(tuple(stage.heading_raw for stage in stages), agents)
     return Command(
         slug=slug,
-        source_path=f"commands/{slug}.md",
+        source_path=f"skills/{slug}/SKILL.md",
         tagline=tagline,
         frontmatter=frontmatter,
         intro=intro,
@@ -1127,7 +1194,7 @@ def render_head(cmd: Command, ctx: PageContext) -> str:
     full_title = page_title(cmd) + " · Shipmates"
     social_title = page_title(cmd)
     description = truncate_words(cmd.frontmatter.description, MAX_META_DESCRIPTION)
-    alt = "Shipmates — Custom sub-agents and slash-command workflows for Claude Code."
+    alt = "Shipmates — Custom subagents and command workflows for Claude Code."
     return f"""<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1232,7 +1299,7 @@ def render_footer() -> str:
       <div class="site-footer__brand">
         <img class="site-footer__logo" src="{link("../../assets/logo-240.png")}" width="32" height="32" alt="">
         <span class="site-footer__name">Shipmates</span>
-        <p class="site-footer__tagline">Custom sub-agents &amp; slash-command workflows for Claude Code.</p>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows for Claude Code.</p>
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <ul class="site-footer__links">
@@ -1256,7 +1323,7 @@ def render_hero(cmd: Command, src: str) -> str:
     if cmd.slug == FLAGSHIP_SLUG:
         flag = '\n          <span class="order-detail__flag">Flagship</span>'
     # The frontmatter description is the one-line summary (it is also the meta
-    # description); the intro blocks are the command file's own lede and follow it.
+    # description); the intro blocks are the skill file's own lede and follow it.
     intro = render_prose(cmd.intro, src, "          ")
     if intro:
         intro = "\n" + intro
@@ -1401,10 +1468,10 @@ def render_source(cmd: Command, ctx: PageContext) -> str:
         <div class="section__head">
           <h2 class="section__title" id="source-title">Where this lives</h2>
         </div>
-        <p>This page is generated from <code>{esc(cmd.source_path)}</code>. The installer copies it to <code>~/.claude/commands/{esc(cmd.slug)}.md</code> for every project, or <code>.claude/commands/{esc(cmd.slug)}.md</code> inside a single repo.</p>
+        <p>This page is generated from <code>{esc(cmd.source_path)}</code>. The installer copies it to <code>~/.claude/skills/{esc(cmd.slug)}/SKILL.md</code> for every project, or <code>.claude/skills/{esc(cmd.slug)}/SKILL.md</code> inside a single repo.</p>
         <a class="btn btn--secondary" href="{link(blob)}">
           {GITHUB_ICON}
-          <span>View {esc(cmd.slug)}.md on GitHub</span>
+          <span>View skills/{esc(cmd.slug)}/SKILL.md on GitHub</span>
         </a>
       </div>
     </section>"""
@@ -1596,7 +1663,10 @@ REGENERATE_HINT = "run: python3 tools/gen_command_pages.py && git add site/"
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Generate the per-command detail pages under site/commands/ and site/sitemap.xml."
+        description=(
+            "Generate the per-command detail pages under site/commands/ and site/sitemap.xml "
+            "from skills/*/SKILL.md."
+        )
     )
     parser.add_argument(
         "--check",
@@ -1630,7 +1700,7 @@ def main(argv=None) -> int:
     )
     try:
         agents = load_agent_names(root / "agents")
-        cmds = load_commands(root / "commands", agents)
+        cmds = load_skills(root / "skills", agents)
         files = build_site(cmds, ctx)
     except SourceError as err:
         print(f"error: {err}", file=sys.stderr)
@@ -1647,7 +1717,7 @@ def main(argv=None) -> int:
                 print(line)
             print(REGENERATE_HINT)
             return 1
-        print(f"up to date: {len(files)} generated files, {len(cmds)} commands")
+        print(f"up to date: {len(files)} generated files, {len(cmds)} skills")
         return 0
 
     written = write_all(files, root)
@@ -1656,7 +1726,7 @@ def main(argv=None) -> int:
     if written:
         for path in written:
             print(f"wrote {path}")
-    print(f"{len(written)} of {len(files)} files updated ({len(cmds)} commands)")
+    print(f"{len(written)} of {len(files)} files updated ({len(cmds)} skills)")
     return 0
 
 
