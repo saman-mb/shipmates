@@ -14,14 +14,19 @@ descriptions, release notes, issue titles, or social text for this project.
 | The exact wording of any shipped string | The file that ships it (`README.md`, `site/index.html`, `agents/*.md`, `skills/*/SKILL.md`) |
 
 Everything else — the metaphor, the naming register, voice, emoji, naming rules for new roles and
-orders, trademark wording — is stated here and nowhere else, so this is where to change it.
+commands, trademark wording — is stated here and nowhere else, so this is where to change it.
 
 `AGENTS.md` and `CONTRIBUTING.md` carry a condensed version of the
 [naming register](#naming-register) and link here for the full statement.
 
 Open brand questions — logo clear-space and monochrome variant, the logo palette's status, whether
-the emoji mappings are frozen, the name/logo trademark position, and whether the site's `commands/`
-URL segment moves to `skills` — are tracked in issue #85, not as TODOs in this file.
+the emoji mappings are frozen, and the name/logo trademark position — are tracked in issue #85, not
+as TODOs in this file.
+
+The published `commands/<name>/` URL segment is **settled**, not open: under the three-tier naming
+above, a page documenting one of the nine documents a *command*, so the path is correct. That
+supersedes an earlier decision to move it to `skills/`, which was taken before "command" and "order"
+were distinguished. Recorded on issue #72; do not reopen it here.
 
 ---
 
@@ -47,7 +52,8 @@ delegation) land in one read.
 | **captain** | the user — you decide, you approve, you merge | README: "You stay the captain." |
 | **crew** / **shipmates** | the 11 subagents in `agents/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
 | **shipmate** | a single subagent role | README crew table column header |
-| **orders** / **commands** | the 9 skills in `skills/*/SKILL.md` | README "The orders"; site `#orders`; `order-card` components |
+| **command** | one of the 9 workflows in `skills/*/SKILL.md`, as the captain issues it | README "The commands"; site `#commands`; `order-card` components |
+| **order** | what one subagent is told to do *inside* a command | Nowhere yet — reserved for per-subagent copy; see [The narrow sense of "order"](#the-narrow-sense-of-order) |
 | **voyage** | one end-to-end run of a command | README + site "How the voyage works" |
 | **come aboard** | installing Shipmates | README + site "Come aboard" / "Get the crew aboard" |
 | **weigh anchor** | running your first command | README "Weigh anchor (use it)" |
@@ -58,7 +64,7 @@ delegation) land in one read.
 The metaphor is a wrapper, never a substitute. It must never be the only way a reader learns
 something they need in order to act. Drop it — immediately and without apology — for:
 
-- **Install paths and file layout.** `~/.claude/skills/<name>/SKILL.md`, not "where the orders
+- **Install paths and file layout.** `~/.claude/skills/<name>/SKILL.md`, not "where the commands
   are stowed."
 - **Precedence and scoping rules.** Name the two scopes and say plainly which one wins. No
   harbour metaphors.
@@ -73,15 +79,24 @@ something they need in order to act. Drop it — immediately and without apology
 Rule of thumb: **headings and hooks can sail; instructions dock.** If a sentence tells the
 reader to do something or warns them about something, write it plainly.
 
-Do not extend the metaphor with new coinages. The eight terms above are the vocabulary. No
+Do not extend the metaphor with new coinages. The nine terms above are the vocabulary. No
 "port", "cargo", "manifest", "first mate", "logbook", "swab", "ahoy", "arr", "matey".
 
 ---
 
 ## Naming register
 
-**The load-bearing section.** Shipmates ships two artifact types with two correct names, and the
-right one depends on what the passage is doing.
+**The load-bearing section.** Three nouns, three jobs. They are not synonyms and they may not be
+swapped at will.
+
+| Term | Register | What it names |
+|---|---|---|
+| **skill** | technical | The artifact on disk — `skills/<name>/SKILL.md`, in the [Agent Skills](https://agentskills.io) open-standard shape. |
+| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/fix-bug`. The nine of them are **the commands**. |
+| **order** | brand | What a single subagent is told to do *within* a command — one specialist's instruction. |
+
+The metaphor holds the three together: the captain issues a **command** to the crew, and carrying
+it out means individual crew members receive **orders**. On disk, that command is a **skill**.
 
 ### The artifact
 
@@ -98,14 +113,36 @@ skills/fix-bug/SKILL.md
 `<repo>/.claude/skills/<name>/SKILL.md` (project-scoped). In the Shipmates product domain,
 these same things are **commands you give the crew** — you invoke one by typing `/ship-issue 42`.
 
-Both names are correct. They are not synonyms you may swap at will; they belong to different
-registers.
+Both names are correct for that one object. They are not synonyms you may swap at will; they
+belong to different registers.
+
+### The narrow sense of "order"
+
+**"Order" is not a synonym for "command", and it is not a name for the nine.** It is deliberately
+smaller: an order is what one crew member is told to do inside a run. `/ship-issue` is a command;
+"root-cause the failure and write the minimal fix", handed to `senior-engineer` at the remediation
+loop, is an order. Test it by rewriting: if the sentence still works with "one of the nine
+workflows", the word is **command**; if it only works with "one specialist's instruction", the word
+is **order**.
+
+This is a narrowing. Until this taxonomy landed, "orders" was the brand plural for the nine
+workflows — README's `## 📜 The orders (commands)`, the site's `#orders` section, the detail pages'
+`← All orders`. Those surfaces say **commands** now, and the `#orders` anchor no longer exists;
+`#commands` replaces it.
+
+Worked examples:
+
+- ✅ "Install the crew, then run your first **command**: `/ship-issue 42`." — brand, the whole workflow.
+- ✅ "`/ship-issue` is defined by the `ship-issue` **skill** at `skills/ship-issue/SKILL.md`." — technical, the file on disk.
+- ✅ "Every reviewer on the acceptance board gets the same **order**: judge the pushed PR head, independently." — brand, one subagent's instruction inside one command.
+- ❌ "Shipmates ships nine **orders**." — the nine are **commands**.
+- ❌ "Install the **orders** into `~/.claude/`." — wrong twice: wrong tier, and install paths are tech-leading, so it is **skills**.
 
 ### Which register
 
 | Register | Use | Because |
 |---|---|---|
-| **Brand-leading** — "command", "orders" | Site hero and section headings, card labels, README intro and tagline, example-usage prose, social copy, release announcements | The reader is being sold an idea. "Give the crew an order" is the product. |
+| **Brand-leading** — "command", "order" | Site hero and section headings, card labels, README intro and tagline, example-usage prose, social copy, release announcements | The reader is being sold an idea. "Give the crew a command" is the product. |
 | **Tech-leading** — "skill" | Install paths, repo layout and reference docs, frontmatter documentation, contributor instructions, validation tooling, portability / cross-harness material | The reader is being told a fact they must act on. The fact is the open standard. |
 
 The two overlap in one place and that is fine: a doc may say "the `/ship-issue` **command**,
@@ -119,37 +156,50 @@ where the reader first meets it, is better than picking a side.
 | **slash command**, **slash-command workflow** | "command" (brand-leading) or "skill" (tech-leading) | Anthropic's old label. Custom commands were merged into skills. It is also Claude-Code-only, and Shipmates' artifact is a portable standard. |
 | `.claude/commands/<name>.md` as the current layout | `.claude/skills/<name>/SKILL.md` | The flat layout is legacy. `install.sh` sweeps it aside on upgrade; document it only in migration notes. |
 | **sub-agent**, **sub agent** (hyphenated or spaced) | **subagent**, one word | Matches the Claude Code, Cursor, and OpenCode docs. One spelling, everywhere. |
+| **the orders**, **an order** *meaning one of the nine workflows* | **the commands**, **a command** | "Order" was narrowed to a single subagent's instruction inside a command. Using it for the nine collapses two tiers of the taxonomy. |
 
 Plain **"command"** as the product noun is correct and wanted. The retirement is of the
 *compound* "slash command", not of the word "command".
+
+**"Order" is not retired — it is narrowed.** It stays in the vocabulary in its new, smaller sense
+([above](#the-narrow-sense-of-order)); what is retired is using it for the nine workflows.
 
 `subagent` is the technical noun. "The crew" / "shipmates" / "a shipmate" is the brand
 equivalent — use those in brand-leading copy, `subagent` in tech-leading copy.
 
 ### The hard rule
 
-> **Never bulk-substitute one noun for the other.** No `sed -i 's/command/skill/g'`. Decide per
-> passage: is this sentence selling the idea, or telling the reader a fact they must act on?
+> **Never bulk-substitute one noun for another.** No `sed -i 's/command/skill/g'`, no
+> `s/orders/commands/g`. Decide per passage: is this sentence selling the idea, or telling the
+> reader a fact they must act on — and does it mean the whole workflow or one specialist's
+> instruction?
 
-A find-and-replace across the repo will produce "install the orders" and "the /ship-issue skill
-takes a GitHub issue" in the same document. Both are wrong.
+A find-and-replace across the repo will produce "install the commands" and "the /ship-issue skill
+takes a GitHub issue" in the same document. Both are wrong. It will also rewrite the English word
+— "the stages, in order", "in order to act", the `order-card` CSS class — which is a different word
+that happens to be spelled the same. Read every hit.
 
 ### Do / don't
 
-Worked examples, not prescriptions. The middle column is the copy as it stood at commit `9a78bc7`,
-before the rename; the right column is the string the repo actually ships today. If a surface is
-rewritten again, the surface is right and this table is stale — fix the table.
+Worked examples, not prescriptions. The middle column is wording this repo used and no longer
+ships — from the slash-command rename (commit `9a78bc7`) and the later narrowing of "order"; the
+right column is the string the repo actually ships today. If a surface is rewritten again, the
+surface is right and this table is stale — fix the table.
 
-| Surface | Retired (at `9a78bc7`) | Shipped today | Register |
+| Surface | Retired | Shipped today | Register |
 |---|---|---|---|
-| Site `#orders` heading (`h2#orders-title`) | `Slash command workflows` | `Command workflows` | Brand-leading |
+| Site commands-section heading (`h2#commands-title`) | `Slash command workflows` | `Command workflows` | Brand-leading |
 | README subtitle | `Custom sub-agents & slash-command workflows for Claude Code.` | `Custom subagents & command workflows for Claude Code.` | Brand-leading |
 | Site `<title>` | `Shipmates — Claude Code sub-agents & slash-command workflows` | `Shipmates — Claude Code subagents & command workflows` | Brand-leading |
 | README FAQ answer | `slash commands are reusable workflows in .claude/commands/*.md` | `skills are reusable workflows defined in .claude/skills/<name>/SKILL.md and invoked as commands, like /ship-issue` | Tech-leading |
 | `CONTRIBUTING.md` heading | `## Adding a command` | `## Adding a skill (workflow)` | Tech-leading |
 | Site FAQ | `builds on Claude Code's public sub-agent and slash-command features` | `builds on Claude Code's public subagent and skill features` | Tech-leading |
-| README section heading | `## 📜 The orders (commands)` | *(unchanged — already correct)* | Brand-leading |
+| README section heading | `## 📜 The orders (commands)` | `## 📜 The commands` | Brand-leading |
 | `AGENTS.md` layout bullet | `commands/*.md are the slash-command workflows` | `skills/<name>/SKILL.md are the workflows, in the Agent Skills format` | Tech-leading |
+| `AGENTS.md` section heading | `## The orders (9)` | `## The commands (9)` | Brand-leading |
+| Site nav and footer link | `Orders` → `#orders` | `Commands` → `#commands` | Brand-leading |
+| Detail-page back link | `← All orders` | `← All commands` | Brand-leading |
+| Site commands-section lead | `Open any order for its full stage-by-stage breakdown.` | `Open any command for its full stage-by-stage breakdown.` | Brand-leading |
 
 ---
 
@@ -267,10 +317,10 @@ The established vocabulary:
 | 🚢 | Shipmates itself | Title, hero, sign-off |
 | ⚓ | Coming aboard / install | Install headings, hero tagline |
 | 🧭 | The crew | "Meet the crew" |
-| 📜 | The orders | "The orders" |
+| 📜 | The commands | "The commands" |
 | 🛠️ | How the voyage works | Mechanism sections |
 | 🌊 | Roadmap | "On the horizon" |
-| ⛵ | Forward-looking aside | "More crew and more orders are on the way." |
+| ⛵ | Forward-looking aside | "More crew and more commands are on the way." |
 | 🫡 | Handoff to the captain | "You stay the captain." |
 
 Each crew role also carries a fixed icon, used identically in the README table and the site crew
@@ -298,15 +348,15 @@ The `/ship-issue` stages likewise: 🗺️ Plan · ✏️ Design specs · 📦 I
 Good: `security-engineer`, `site-reliability-engineer`, `performance-engineer`, `art-director`.
 Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 
-### New orders / skills
+### New commands / skills
 
 | Rule | Detail |
 |---|---|
 | Format | Imperative verb phrase, `lowercase-hyphenated`. Invoked with a leading slash: `/ship-issue`, `/fix-bug`, `/plan-epics`. |
 | Filename | `skills/<name>/SKILL.md`, where `<name>` exactly equals the frontmatter `name` and the command you type (`/<name>`). |
-| Verb first | The name is an order you give the crew. `/harden`, `/migrate`, `/document`, `/release`, `/polish`, `/spike` — every one starts with the action. |
+| Verb first | The name is a command you give the crew. `/harden`, `/migrate`, `/document`, `/release`, `/polish`, `/spike` — every one starts with the action. |
 | Object second, if needed | `/ship-issue`, `/fix-bug`, `/plan-epics`. Singular or plural per what the command actually takes. |
-| No nouns-as-names | Not `/quality-gate`, not `/pr-flow`. If you can't phrase it as an instruction, it isn't an order. |
+| No nouns-as-names | Not `/quality-gate`, not `/pr-flow`. If you can't phrase it as an instruction, it isn't a command. |
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
 The nine that exist: `/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` ·

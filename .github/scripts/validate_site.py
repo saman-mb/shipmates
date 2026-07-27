@@ -37,7 +37,7 @@ LASTMOD_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 SOURCE_STAGE_RE = re.compile(r"^## Stage ", re.M)
 REGEN_HINT = "run: python3 tools/gen_command_pages.py && git add site/"
 MAX_DESC = 160
-BACK_HREF = "../../#orders"
+BACK_HREF = "../../#commands"
 
 # C3 — every class the generator emits on a detail page (plus the two the
 # homepage order cards gained) must have a rule in styles.css.
@@ -400,7 +400,7 @@ def check_command_page(page: Page) -> None:
     slug = page.slug
     src = SKILLS / slug / "SKILL.md"
 
-    # --- back-navigation to the orders list on the homepage ---
+    # --- back-navigation to the commands list on the homepage ---
     if any(a.get("href") == BACK_HREF for _t, a in page.collector.refs):
         ok(f"{page.rel}: back link to {BACK_HREF}")
     else:

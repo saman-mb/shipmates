@@ -35,7 +35,7 @@ green, convenes an adversarial review board, loops on the fixes, and hands you a
 You stay the captain. The shipmates do the twenty steps in between. 🫡
 
 **[⚓ Get the crew aboard →](#-come-aboard-install)** · one line, no clone — then just `/ship-issue 42`.
-<br/>🌐 **[shipmates website →](https://saman-mb.github.io/shipmates/)** · the crew, the orders, and how `/ship-issue` works.
+<br/>🌐 **[shipmates website →](https://saman-mb.github.io/shipmates/)** · the crew, the commands, and how `/ship-issue` works.
 
 ---
 
@@ -59,7 +59,7 @@ from anything hardcoded into the role.
 | 📖 `technical-writer` | Writes docs from the real code; proves them with a fresh-reader test |
 | 📊 `data-scientist` | Data/model work — metric choice, leakage & validation, reproducibility (domain-gated) |
 
-## 📜 The orders (commands)
+## 📜 The commands
 
 | Command | What it does |
 |---|---|
@@ -73,7 +73,7 @@ from anything hardcoded into the role.
 | `/release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
 | `/polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
 
-*More crew and more orders are on the way.* ⛵
+*More crew and more commands are on the way.* ⛵
 
 ---
 
@@ -264,7 +264,7 @@ can override or specialise a crew member without touching the shared copy.
 
 ## 🌊 On the horizon
 
-The crew keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new orders
+The crew keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new commands
 keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs very welcome.
 
 ## ❓ FAQ
