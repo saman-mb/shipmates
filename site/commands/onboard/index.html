@@ -64,7 +64,7 @@
         "@type": "HowToStep",
         "position": 5,
         "name": "Stage 4 — Deliver",
-        "text": "Write to TARGET. If a file was replaced, show the diff — a human must be able to see what was changed on their behalf. If MODE=pr, open a branch and a PR instead of writing to the tree. Report: the file written, the backup path, which commands were proven versus recorded as unverified, and the…",
+        "text": "Write to TARGET. If a file was replaced, show the diff — a human must be able to see what was changed on their behalf. If MODE=pr, open a branch and a PR instead of writing to the tree. Report: the file written, the undo path (the backup, or the branch), which commands were proven versus recorded…",
         "url": "https://saman-mb.github.io/shipmates/commands/onboard/#stage-4"
       }
     ]
@@ -146,7 +146,7 @@
                 <p>Detect what already exists before writing anything:</p>
                 <ul>
                   <li><strong>Neither file exists</strong> → <code>SURVEY=create</code>.</li>
-                  <li><strong>One exists</strong> → <code>SURVEY=refresh</code>. <strong>Never blind-overwrite.</strong> Back it up first, reusing the installer&#x27;s own convention: <code>&lt;file&gt;.bak-&lt;timestamp&gt;</code>. Read the existing file and treat every hand-written rule in it as authoritative unless the repo contradicts it — a human wrote that for a reason you can&#x27;t see from the code.</li>
+                  <li><strong>One exists</strong> → <code>SURVEY=refresh</code>. <strong>Never blind-overwrite.</strong> Under <code>MODE=edit-in-place</code>, back it up first, reusing the installer&#x27;s own convention: <code>&lt;file&gt;.bak-&lt;timestamp&gt;</code>. Under <code>MODE=pr</code> the branch <em>is</em> the undo path, so don&#x27;t drop a backup into a tree you were asked not to touch. Read the existing file either way, and treat every hand-written rule in it as authoritative unless the repo contradicts it — a human wrote that for a reason you can&#x27;t see from the code.</li>
                   <li><strong>Both exist</strong> → they are two sources of truth for one contract, which is the exact failure this order exists to prevent. Keep the richer one, and reduce the other to a one-line pointer at it.</li>
                 </ul>
                 <p>Also read the repo&#x27;s <code>README</code>, contributing docs, CI config and any existing rules files, so the context file agrees with them instead of competing.</p>
@@ -202,7 +202,7 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Deliver</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Write to <code>TARGET</code>. If a file was replaced, <strong>show the diff</strong> — a human must be able to see what was changed on their behalf. If <code>MODE=pr</code>, open a branch and a PR instead of writing to the tree. Report: the file written, the backup path, which commands were proven versus recorded as unverified, and the verification round it passed on.</p>
+                <p>Write to <code>TARGET</code>. If a file was replaced, <strong>show the diff</strong> — a human must be able to see what was changed on their behalf. If <code>MODE=pr</code>, open a branch and a PR instead of writing to the tree. Report: the file written, the undo path (the backup, or the branch), which commands were proven versus recorded as unverified, and the verification round it passed on.</p>
               </div>
             </div>
           </li>
@@ -232,7 +232,7 @@
         </div>
         <div class="order-prose">
           <ul>
-            <li><strong>The backup is mandatory, not best-effort.</strong> A bad context file degrades every future run in that repo with no failing signal, so the undo path has to exist before the write does.</li>
+            <li><strong>An undo path is mandatory, not best-effort.</strong> A bad context file degrades every future run in that repo with no failing signal, so the way back has to exist before the write does — a backup under <code>MODE=edit-in-place</code>, the branch itself under <code>MODE=pr</code>.</li>
             <li><strong>One context file, never two.</strong> Two sources of truth for the quality bar is the problem, not a tidy outcome.</li>
             <li>Proven over plausible: a command that wasn&#x27;t run is labelled unverified, never presented as fact.</li>
             <li>Preserve hand-written rules on a refresh. You are augmenting someone&#x27;s judgement, not replacing it.</li>

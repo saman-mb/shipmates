@@ -38,10 +38,11 @@ want is a README or a tutorial, stop and run `/document`.
 Detect what already exists before writing anything:
 
 - **Neither file exists** → `SURVEY=create`.
-- **One exists** → `SURVEY=refresh`. **Never blind-overwrite.** Back it up first, reusing the
-  installer's own convention: `<file>.bak-<timestamp>`. Read the existing file and treat every
-  hand-written rule in it as authoritative unless the repo contradicts it — a human wrote that for a
-  reason you can't see from the code.
+- **One exists** → `SURVEY=refresh`. **Never blind-overwrite.** Under `MODE=edit-in-place`, back it
+  up first, reusing the installer's own convention: `<file>.bak-<timestamp>`. Under `MODE=pr` the
+  branch *is* the undo path, so don't drop a backup into a tree you were asked not to touch. Read
+  the existing file either way, and treat every hand-written rule in it as authoritative unless the
+  repo contradicts it — a human wrote that for a reason you can't see from the code.
 - **Both exist** → they are two sources of truth for one contract, which is the exact failure this
   order exists to prevent. Keep the richer one, and reduce the other to a one-line pointer at it.
 
@@ -90,14 +91,15 @@ then escalate with the unanswerable questions listed.
 
 Write to `TARGET`. If a file was replaced, **show the diff** — a human must be able to see what was
 changed on their behalf. If `MODE=pr`, open a branch and a PR instead of writing to the tree. Report:
-the file written, the backup path, which commands were proven versus recorded as unverified, and the
-verification round it passed on.
+the file written, the undo path (the backup, or the branch), which commands were proven versus
+recorded as unverified, and the verification round it passed on.
 
 ---
 
 ### Guardrails
-- **The backup is mandatory, not best-effort.** A bad context file degrades every future run in that
-  repo with no failing signal, so the undo path has to exist before the write does.
+- **An undo path is mandatory, not best-effort.** A bad context file degrades every future run in
+  that repo with no failing signal, so the way back has to exist before the write does — a backup
+  under `MODE=edit-in-place`, the branch itself under `MODE=pr`.
 - **One context file, never two.** Two sources of truth for the quality bar is the problem, not a
   tidy outcome.
 - Proven over plausible: a command that wasn't run is labelled unverified, never presented as fact.
