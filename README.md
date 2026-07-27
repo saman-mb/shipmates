@@ -104,9 +104,12 @@ curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh 
 ```
 
 Prefer to read the script first? Clone the repo and run `./install.sh` (same flags). Either way it
-drops `skills/<name>/SKILL.md` and `agents/*.md` into your `.claude/`, **backing up** any existing
-file of the same name to `<file>.bak-<timestamp>` — your edits are safe. Re-run to update; add
-`--uninstall` to remove what it installed.
+drops `skills/<name>/SKILL.md` and `agents/*.md` into your `.claude/` and records a manifest at
+`.claude/shipmates/manifest` (one SHA-256 per file), so re-runs skip what is identical, update what
+only Shipmates touched, and **back up** anything you wrote or edited to `<file>.bak-<timestamp>` —
+including a loud warning when a pre-existing file's `name:` says it is a *different* agent or skill
+than the one replacing it. `--uninstall` removes only files the manifest proves are Shipmates' and
+untouched, then restores your originals from their `.bak-<timestamp>` backups.
 
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
 >
