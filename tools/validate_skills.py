@@ -7,11 +7,20 @@ its own terms rather than only through the site it feeds.
 
 Asserts the invariants a skill directory holds: skills/<slug>/SKILL.md exists
 for every entry under skills/, its frontmatter opens on line 1 and declares
-exactly name, description, argument-hint and allowed-tools in that order, the
-name is its own directory name, every declared value carries content (and the
-description is bounded), no unescaped positional argument placeholder (`$1`)
-survives anywhere in the file, every fenced code block is closed, and the
-retired commands/ directory is gone.
+name then description first (the standard's two required keys, in the order it
+requires them) followed by any of the standard's optional keys and the vendor
+extensions we use, in any order; the name is its own directory name; every
+declared value carries content (and the description is bounded); no unescaped
+positional argument placeholder (`$1`) survives anywhere in the file; every
+fenced code block is closed; and the retired commands/ directory is gone.
+
+The key set is a superset check, not an exact-set check. An earlier revision
+demanded exactly name, description, argument-hint, allowed-tools in that fixed
+order, which rejected the Agent Skills standard's own optional keys (license,
+compatibility, metadata) — so a standard-legal SKILL.md written anywhere else
+failed this gate, and `compatibility`, the first key a multi-harness adapter
+would reach for, was unusable. Unknown keys are still rejected, so a typo like
+`descrition` fails loudly rather than being ignored by every reader.
 
 Positionals are flagged inside fenced code blocks too. An earlier revision
 exempted fences, on the assumption that a `$2` between ``` markers is read as a
@@ -35,8 +44,28 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
 COMMANDS = ROOT / "commands"
 
-# Exact set AND exact order — a reader (and the installer) sees one shape.
-FRONTMATTER_KEYS = ("name", "description", "argument-hint", "allowed-tools")
+# The Agent Skills standard's required keys — present, and first, in this order.
+REQUIRED_KEYS = ("name", "description")
+# The standard's optional keys. Permitted in any order; none of the nine use them
+# yet, but a SKILL.md that carries them is legal and must pass this gate.
+STANDARD_OPTIONAL_KEYS = ("license", "compatibility", "metadata")
+# Claude Code extensions the standard does not define. Permitted in any order.
+EXTENSION_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation")
+# Everything a SKILL.md may declare. Anything else is a typo or a private key
+# no reader honours, and is rejected.
+ALLOWED_KEYS = REQUIRED_KEYS + STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS
+# The canonical order for the keys the nine ship — recommended, and what the ok()
+# note describes, but only the REQUIRED_KEYS prefix is enforced.
+FRONTMATTER_KEYS = REQUIRED_KEYS + EXTENSION_KEYS
+
+# `metadata:` is the one standard key defined as a nested mapping, so its value
+# may live on indented continuation lines. They are opaque here (this is a
+# line-oriented reader, not a YAML parser) but still scanned for placeholders.
+INDENTED_RE = re.compile(r"^[ \t]")
+BLOCK_KEY = "metadata"
+
+# Claude Code reads these as booleans, in any letter case.
+BOOLEAN_VALUES = frozenset({"true", "false", "yes", "no", "on", "off", "1", "0"})
 
 KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -64,9 +93,20 @@ EMPTY_REMEDY = {
         "list the tools the skill needs as one comma-separated value (e.g. "
         "`Bash, Read, Write, Edit, Agent`)"
     ),
+    "disable-model-invocation": (
+        "write `true` to keep the skill user-invoked only, or drop the key to let "
+        "the model load it on its own"
+    ),
+    "license": "name the licence (e.g. `MIT`), or drop the key",
+    "compatibility": (
+        "state what the skill needs from its environment (e.g. `Requires git and "
+        "the GitHub CLI`), or drop the key"
+    ),
 }
 
 KEY_LIST = ", ".join(FRONTMATTER_KEYS)
+REQUIRED_LIST = ", ".join(REQUIRED_KEYS)
+OPTIONAL_LIST = ", ".join(STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS)
 
 failures: list[str] = []
 notes: list[str] = []
@@ -89,7 +129,8 @@ def parse_frontmatter(rel: str, lines: list[str]) -> tuple[dict, int] | None:
     if not lines or lines[0].strip() != "---":
         fail(
             f"{rel}:1: no opening frontmatter '---' — a SKILL.md must open with a "
-            f"'---' line, then {KEY_LIST}, then a closing '---'"
+            f"'---' line, then {REQUIRED_LIST} in that order (optionally followed by "
+            f"any of {OPTIONAL_LIST}), then a closing '---'"
         )
         return None
 
@@ -103,6 +144,16 @@ def parse_frontmatter(rel: str, lines: list[str]) -> tuple[dict, int] | None:
             return entries, i + 1
         if not raw.strip():
             continue
+        if INDENTED_RE.match(raw):
+            if order and order[-1] == BLOCK_KEY:
+                continue  # nested mapping under `metadata:` — opaque to this reader
+            fail(
+                f"{rel}:{lineno}: indented frontmatter line ({raw[:60]!r}) — only "
+                f"`{BLOCK_KEY}:` takes a nested block; write every other entry on a "
+                "single unindented line (allowed-tools is one comma-separated value, "
+                "not a YAML list)"
+            )
+            continue
         key, sep, value = raw.partition(":")
         if not sep or not KEY_RE.fullmatch(key):
             fail(
@@ -114,7 +165,7 @@ def parse_frontmatter(rel: str, lines: list[str]) -> tuple[dict, int] | None:
         if key in entries:
             fail(
                 f"{rel}:{lineno}: duplicate frontmatter key '{key}' (first seen on line "
-                f"{entries[key][0]}) — declare each of {KEY_LIST} exactly once"
+                f"{entries[key][0]}) — declare each frontmatter key exactly once"
             )
             continue
         entries[key] = (lineno, value.strip())
@@ -128,31 +179,39 @@ def parse_frontmatter(rel: str, lines: list[str]) -> tuple[dict, int] | None:
 
 
 def check_key_set(rel: str, close_lineno: int, entries: dict, order: list[str]) -> None:
-    """Exactly FRONTMATTER_KEYS, in that order. Duplicates are reported by the caller."""
+    """REQUIRED_KEYS present and first, then any of ALLOWED_KEYS in any order.
+
+    Order past the required prefix is a recommendation (KEY_LIST is what the nine
+    ship), not a failure: the optional keys are the standard's, and a file that
+    declares them in its own order is still legal. Duplicates are reported by the
+    caller.
+    """
     drift = False
     for key in order:
-        if key not in FRONTMATTER_KEYS:
+        if key not in ALLOWED_KEYS:
             fail(
-                f"{rel}:{entries[key][0]}: unknown frontmatter key '{key}' — a SKILL.md "
-                f"declares exactly {KEY_LIST}"
+                f"{rel}:{entries[key][0]}: unknown frontmatter key '{key}' — check the "
+                f"spelling; a SKILL.md declares {REQUIRED_LIST} and may add any of "
+                f"{OPTIONAL_LIST}"
             )
             drift = True
-    for key in FRONTMATTER_KEYS:
+    for key in REQUIRED_KEYS:
         if key not in entries:
             fail(
                 f"{rel}:{close_lineno}: frontmatter is missing '{key}' — declare "
-                f"{KEY_LIST}, in that order"
+                f"{REQUIRED_LIST} first, in that order (we ship {KEY_LIST})"
             )
             drift = True
     if drift:
         return  # an order report on top of a wrong key set is noise, not a second bug
-    if tuple(order) != FRONTMATTER_KEYS:
+    if tuple(order[: len(REQUIRED_KEYS)]) != REQUIRED_KEYS:
         first = next(
-            key for key, want in zip(order, FRONTMATTER_KEYS) if key != want
+            key for key, want in zip(order, REQUIRED_KEYS) if key != want
         )
         fail(
-            f"{rel}:{entries[first][0]}: frontmatter keys out of order (got "
-            f"{', '.join(order)}) — declare them in the order {KEY_LIST}"
+            f"{rel}:{entries[first][0]}: frontmatter does not open with {REQUIRED_LIST} "
+            f"(got {', '.join(order)}) — move them to the top in that order; the "
+            "optional keys follow in any order"
         )
 
 
@@ -183,6 +242,14 @@ def check_values(rel: str, slug: str, entries: dict) -> None:
             fail(
                 f"{rel}:{lineno}: description is {len(description)} characters, max "
                 f"{MAX_DESCRIPTION} — shorten it to a single summary line"
+            )
+    if entries.get("disable-model-invocation", (0, ""))[1]:
+        lineno, value = entries["disable-model-invocation"]
+        if value.lower() not in BOOLEAN_VALUES:
+            fail(
+                f"{rel}:{lineno}: disable-model-invocation is {value!r}, which is not a "
+                "boolean — write `true` to keep the skill user-invoked only; a value "
+                "Claude Code cannot read silently restores model invocation"
             )
 
 
@@ -271,8 +338,8 @@ def check_skill(directory: Path) -> None:
 
     if len(failures) == before:
         ok(
-            f"{rel}: frontmatter ({KEY_LIST}) present, ordered and non-empty, name matches "
-            "directory, no unescaped '$n' anywhere, fences closed"
+            f"{rel}: frontmatter opens with {REQUIRED_LIST}, every key known and non-empty, "
+            "name matches directory, no unescaped '$n' anywhere, fences closed"
         )
 
 

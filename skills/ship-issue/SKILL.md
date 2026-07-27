@@ -3,6 +3,7 @@ name: ship-issue
 description: Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
 argument-hint: <issue-or-story-number> [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
+disable-model-invocation: true
 ---
 
 # /ship-issue — autonomous ticket delivery
