@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/github/license/saman-mb/shipmates?color=blue)](LICENSE)
 [![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Website](https://img.shields.io/badge/website-saman--mb.github.io%2Fshipmates-D97757?logo=github)](https://saman-mb.github.io/shipmates/)
-[![Crew aboard](https://img.shields.io/badge/crew-11%20specialists-orange)](#-meet-the-crew)
+[![Crew aboard](https://img.shields.io/badge/crew-12%20specialists-orange)](#-meet-the-crew)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Stars](https://img.shields.io/github/stars/saman-mb/shipmates?style=flat&logo=github)](https://github.com/saman-mb/shipmates/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/saman-mb/shipmates)](https://github.com/saman-mb/shipmates/commits/main)
@@ -41,7 +41,7 @@ You stay the captain. The shipmates do the twenty steps in between. 🫡
 
 ## 🧭 Meet the crew
 
-Eleven **domain-neutral** specialists. They'll work on *anything* — a game engine, a web app, a CLI —
+Twelve **domain-neutral** specialists. They'll work on *anything* — a game engine, a web app, a CLI —
 because the standard they hold your work to comes from **your** repo's `README` / `CLAUDE.md`, not
 from anything hardcoded into the role.
 
@@ -53,6 +53,7 @@ from anything hardcoded into the role.
 | 🛡️ `security-engineer` | Threat-models the change — authz, injection, secrets, crypto, vulnerable deps |
 | 🚨 `site-reliability-engineer` | Reliability & failure modes, rollback/deploy safety — and bug root-cause |
 | ⚡ `performance-engineer` | Profiles, benchmarks, and *proves* the win — measure → optimise → measure |
+| 📦 `devops-engineer` | Build & delivery — reproducibility, pinning, environment parity, does the gate gate? |
 | 📋 `product-manager` | Accepts or rejects against the acceptance criteria **and** your quality bar |
 | 🎛️ `ux-ui-designer` | Specs & reviews on-screen UI — tokens, responsive layout, focus, a11y |
 | 🎨 `art-director` | Directs & reviews *rendered* visuals — judges the picture, not the code that drew it |
@@ -72,6 +73,16 @@ from anything hardcoded into the role.
 | `/document <target>` | Writes docs from the real code, gated on a *fresh reader* actually completing the steps |
 | `/release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
 | `/polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
+| `/review <pr>` | Runs the board against a PR the crew didn't author — read-only, it reports and never repairs |
+| `/onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
+| `/refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
+
+**There's deliberately no `code-reviewer`.** Review is split by discipline instead of pooled into one
+generalist: `architect` takes structure, `sdet` takes verification, `product-manager` takes acceptance,
+`security-engineer` takes threat modelling, `devops-engineer` takes delivery. Line-level craft — naming,
+dead code, error handling — is `senior-engineer`'s as it builds and `architect`'s on review. If you're
+arriving from another agent pack that ships a `code-reviewer`, reach for one of those instead: an
+unresolved role name silently falls back to a generic agent rather than erroring.
 
 *More crew and more orders are on the way.* ⛵
 
@@ -273,8 +284,8 @@ does it — the flagship `/ship-issue` takes a GitHub issue all the way to a rev
 
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
-in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/ship-issue`. Shipmates ships 11 agents
-and 9 commands you drop into `~/.claude/` (global, every project) or a repo's `.claude/`
+in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/ship-issue`. Shipmates ships 12 agents
+and 12 commands you drop into `~/.claude/` (global, every project) or a repo's `.claude/`
 (project-scoped). See [install](#-come-aboard-install).
 
 **Is this an official Anthropic project?**

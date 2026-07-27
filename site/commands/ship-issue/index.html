@@ -200,6 +200,7 @@
                           <li><code>IS_VISUAL_STORY = yes/no</code> — gate the <code>art-director</code> on the PROJECT&#x27;S DOMAIN, not merely on whether a story touches pixels. Set it only when the project&#x27;s actual deliverable is rendered visual <em>art</em> — a game&#x27;s world/sprites/shaders, illustration/brand/motion assets, generative imagery — and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only visual surface is its interface is a <strong>UI</strong> story (<code>ux-ui-designer</code>), NOT an art story: the art-director reviews pictures judged <em>as art</em>, not application chrome. Most projects never set this — when in doubt, prefer <code>IS_UI_STORY</code> and leave the art-director out.</li>
                           <li><code>IS_ARCH_SIGNIFICANT = yes/no</code> — does it add a new subsystem, change a persisted data/schema format, or cross-cut many modules in a way a narrow code review would miss? Gates <code>architect</code>.</li>
                           <li><code>IS_SECURITY_SENSITIVE = yes/no</code> — does it touch authn/authz, untrusted input, secrets/credentials, crypto, file/network/OS access, or dependencies? Gates <code>security-engineer</code>.</li>
+                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>. This flag vocabulary is shared with <code>/review</code>, which classifies a PR diff the same way — a new flag must be added to both files.</li>
                         </ul>
                       </li>
                     </ul>
@@ -316,6 +317,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                   <li><strong><code>art-director</code></strong> (only if <code>IS_VISUAL_STORY</code>): renders the actual change via the project&#x27;s render/preview harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the visual bar — the render, not the source. If it cannot render, it says so and flags <strong>&quot;needs a human visual pass&quot;</strong>.</li>
                   <li><strong><code>architect</code></strong> (only if <code>IS_ARCH_SIGNIFICANT</code>): reviews structural fit, coupling/blast radius, and schema/migration safety.</li>
                   <li><strong><code>security-engineer</code></strong> (only if <code>IS_SECURITY_SENSITIVE</code>): threat-models the change (STRIDE / OWASP) — broken access control, injection, secrets/crypto, vulnerable deps — and returns severity-ranked findings with the exploit path; a credible Critical/High is a blocking defect.</li>
+                  <li><strong><code>devops-engineer</code></strong> (only if <code>IS_DELIVERY_SENSITIVE</code>): reviews the delivery definitions for reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety to <code>site-reliability-engineer</code>, and the severity of secret exposure or dependency trust to <code>security-engineer</code>.</li>
                 </ul>
                 <p>Decision (each specialist participates only when its flag is set):</p>
                 <ul>
@@ -399,6 +401,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                 <tr><td><code>ux-ui-designer</code></td><td>On-screen UI design + review — gated by <code>IS_UI_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>art-director</code></td><td>Visual-art direction + review — <strong>art-producing domains only</strong>, gated by <code>IS_VISUAL_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>security-engineer</code></td><td>Threat-model + security review — gated by <code>IS_SECURITY_SENSITIVE</code> (Stage 5)</td></tr>
+                <tr><td><code>devops-engineer</code></td><td>Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by <code>IS_DELIVERY_SENSITIVE</code> (Stage 5)</td></tr>
               </tbody>
             </table>
           </div>
@@ -458,6 +461,9 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li class="order-siblings__item"><a class="order-siblings__link" href="../document/"><code>/document</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../release/"><code>/release</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../polish/"><code>/polish</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../review/"><code>/review</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../onboard/"><code>/onboard</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../refactor/"><code>/refactor</code></a></li>
           </ul>
         </nav>
         <a class="order-back" href="../../#orders"><span aria-hidden="true">←</span> All orders</a>
