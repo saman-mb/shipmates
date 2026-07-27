@@ -1,10 +1,10 @@
 # Shipmates
 
-A crew of Claude Code subagents and command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request — autonomously.
+A crew of specialist AI agents and command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request — autonomously. On Claude Code.
 
 ## What it is
 
-Shipmates is an open-source (MIT) toolkit for [Claude Code](https://claude.com/claude-code): **12 domain-neutral specialist subagents** and **12 command workflows**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git worktree, waits for CI to go green, convenes an adversarial review board, loops on the fixes within bounds, and hands you a PR to merge.
+Shipmates is an open-source (MIT) crew of specialist AI agents: **12 domain-neutral subagents** and **12 command workflows**. It runs on [Claude Code](https://claude.com/product/claude-code) today. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git worktree, waits for CI to go green, convenes an adversarial review board, loops on the fixes within bounds, and hands you a PR to merge.
 
 ## Who it's for
 
@@ -40,7 +40,7 @@ If you are an AI agent (or a human) contributing to Shipmates itself:
 
 ## Scope & honesty
 
-- **Claude Code only today.** Running the crew on opencode / Cursor / Copilot / Codex is on the roadmap, not shipped.
+- **Claude Code today.** Codex CLI, Cursor, GitHub Copilot and opencode are in development, not shipped. One name moves between those two groups when a harness lands — see the roadmap on the [website](https://saman-mb.github.io/shipmates/#next) and in [`README.md`](README.md#-on-the-horizon).
 - **Gates are orchestrated by the command, not hook-enforced yet.** The worktree / green-CI / fresh-reviewer gates are driven by the workflow prompt; a code-enforced (hook-backed) state machine is planned, not in the current release.
 - **Not affiliated with Anthropic.** "Claude" and "Claude Code" are trademarks of Anthropic.
 
