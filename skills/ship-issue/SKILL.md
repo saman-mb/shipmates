@@ -3,6 +3,7 @@ name: ship-issue
 description: Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
 argument-hint: <issue-or-story-number> [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
+disable-model-invocation: true
 ---
 
 # /ship-issue — autonomous ticket delivery
@@ -165,7 +166,7 @@ reduced assurance.)
 
 1. **Wait for the checks to finish** on the PR head (poll, don't guess):
    ```bash
-   until s=$(gh pr checks <PR#> 2>&1 | head -1); st=$(echo "$s" | awk '{print $2}'); \
+   until s=$(gh pr checks <PR#> 2>&1 | head -1); st=$(echo "$s" | cut -f2); \
      [ "$st" != "pending" ]; do sleep 15; done; echo "$s"
    ```
    (Long-running: launch as a background command / until-loop so you're notified on completion — do

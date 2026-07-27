@@ -126,7 +126,7 @@
         <ul class="site-nav__list">
           <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
-          <li class="site-nav__item"><a class="site-nav__link" href="../../#orders">Orders</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
         </ul>
@@ -142,9 +142,9 @@
 
     <section class="section" aria-labelledby="order-title">
       <div class="container container--prose">
-        <a class="order-back" href="../../#orders"><span aria-hidden="true">←</span> All orders</a>
+        <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>
         <div class="order-detail">
-          <p class="order-detail__eyebrow"><span aria-hidden="true">📜</span> Order</p>
+          <p class="order-detail__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <span class="order-detail__flag">Flagship</span>
           <h1 class="order-detail__title" id="order-title"><code>/ship-issue</code></h1>
           <p class="order-detail__tagline">autonomous ticket delivery</p>
@@ -288,7 +288,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                 <p><strong>When there is no local toolchain to fully validate, CI is the ONLY real runtime gate — the Stage 3 SDET pass is static and WILL miss things (parse errors, lint-as-error, dependency/version drift). You MUST confirm CI is green on the pushed head before the acceptance board runs. Never assume a push is green.</strong> (If the repo has no CI, say so and treat the SDET pass as the gate, explicitly noting the reduced assurance.)</p>
                 <ol>
                   <li><strong>Wait for the checks to finish</strong> on the PR head (poll, don&#x27;t guess):
-                    <pre class="order-code" tabindex="0"><code>until s=$(gh pr checks &lt;PR#&gt; 2&gt;&amp;1 | head -1); st=$(echo &quot;$s&quot; | awk &#x27;{print $2}&#x27;); \
+                    <pre class="order-code" tabindex="0"><code>until s=$(gh pr checks &lt;PR#&gt; 2&gt;&amp;1 | head -1); st=$(echo &quot;$s&quot; | cut -f2); \
   [ &quot;$st&quot; != &quot;pending&quot; ]; do sleep 15; done; echo &quot;$s&quot;</code></pre>
                     <p>(Long-running: launch as a background command / until-loop so you&#x27;re notified on completion — do not chain foreground sleeps.)</p>
                   </li>
@@ -445,12 +445,12 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
       </div>
     </section>
 
-    <section class="section" id="other-orders" aria-labelledby="other-orders-title">
+    <section class="section" id="other-commands" aria-labelledby="other-commands-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="other-orders-title">Other orders</h2>
+          <h2 class="section__title" id="other-commands-title">Other commands</h2>
         </div>
-        <nav class="order-siblings" aria-label="Other orders">
+        <nav class="order-siblings" aria-label="Other commands">
           <ul class="order-siblings__list" role="list">
             <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/ship-issue</code><span class="visually-hidden"> (current page)</span></span></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../fix-bug/"><code>/fix-bug</code></a></li>
@@ -466,7 +466,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li class="order-siblings__item"><a class="order-siblings__link" href="../refactor/"><code>/refactor</code></a></li>
           </ul>
         </nav>
-        <a class="order-back" href="../../#orders"><span aria-hidden="true">←</span> All orders</a>
+        <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>
       </div>
     </section>
 
@@ -484,7 +484,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
           <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
           <li><a href="../../#install">Install</a></li>
           <li><a href="../../#crew">Crew</a></li>
-          <li><a href="../../#orders">Orders</a></li>
+          <li><a href="../../#commands">Commands</a></li>
           <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
           <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
         </ul>
