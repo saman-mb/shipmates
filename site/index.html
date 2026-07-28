@@ -45,6 +45,7 @@
           <li class="site-nav__item"><a class="site-nav__link" href="#how">How</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#next">What's next</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#faq">FAQ</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="docs/">Docs</a></li>
         </ul>
         <a class="btn btn--primary site-nav__cta--mobile" href="#install">Install</a>
         <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
@@ -115,7 +116,7 @@
             </div>
           </div>
         </div>
-        <p class="install__note">Prefer to read the script first? Clone the repo and run ./install.sh — same flags. It backs up any file it would overwrite, and --uninstall removes what it installed.</p>
+        <p class="install__note">Prefer to read the script first? See the <a href="docs/install/">full install reference</a> for all flags and per-harness paths. Clone the repo and run ./install.sh — same flags. It backs up any file it would overwrite, and --uninstall removes what it installed.</p>
         <p class="visually-hidden" aria-live="polite" data-copy-status></p>
       </div>
     </section>
@@ -419,6 +420,15 @@
               <p>No. Install once, then /ship-issue 42. The crew picks up your project's quality bar automatically. In Claude Code, a project-level .claude/agents/ definition overrides the global one when you want to specialise a crew member — skills go the other way, so a personal ~/.claude/skills/ copy beats a project one of the same name.</p>
             </div>
           </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span class="faq__q-text">Where are the full install docs?</span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p>The <a href="docs/install/">install reference</a> covers every flag and path. See also the <a href="docs/harnesses/">harness matrix</a>, <a href="docs/troubleshooting/">troubleshooting</a>, and <a href="docs/architecture/">architecture</a> pages.</p>
+            </div>
+          </details>
         </div>
       </div>
     </section>
@@ -438,6 +448,7 @@
           <li><a href="#install">Install</a></li>
           <li><a href="#crew">Crew</a></li>
           <li><a href="#commands">Commands</a></li>
+          <li><a href="docs/">Docs</a></li>
           <li><a href="#next">What's next</a></li>
           <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
           <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>

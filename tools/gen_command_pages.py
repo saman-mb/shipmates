@@ -47,6 +47,10 @@ SLUGS = (
     "onboard",
     "refactor",
 )
+
+# Hand-authored docs pages under site/docs/. The generator discovers them on
+# disk and includes them in the sitemap — it never generates them.
+DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture")
 FLAGSHIP_SLUG = "ship-issue"
 
 SITE_URL = "https://saman-mb.github.io/shipmates/"
@@ -1599,7 +1603,7 @@ def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
 """
 
 
-def render_sitemap(cmds: tuple, ctx: PageContext) -> str:
+def render_sitemap(cmds: tuple, ctx: PageContext, docs: tuple = ()) -> str:
     entries = [
         "  <url>\n"
         f"    <loc>{esc(ctx.site_url)}</loc>\n"
@@ -1612,6 +1616,25 @@ def render_sitemap(cmds: tuple, ctx: PageContext) -> str:
         entries.append(
             "  <url>\n"
             f"    <loc>{esc(canonical_url(cmd.slug, ctx))}</loc>\n"
+            f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
+            "    <changefreq>monthly</changefreq>\n"
+            "    <priority>0.8</priority>\n"
+            "  </url>"
+        )
+    for slug in docs:
+        entries.append(
+            "  <url>\n"
+            f"    <loc>{esc(ctx.site_url)}docs/{slug}/</loc>\n"
+            f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
+            "    <changefreq>monthly</changefreq>\n"
+            "    <priority>0.7</priority>\n"
+            "  </url>"
+        )
+    # Docs hub itself (docs/index.html) — always included when any docs leaf is found.
+    if docs:
+        entries.append(
+            "  <url>\n"
+            f"    <loc>{esc(ctx.site_url)}docs/</loc>\n"
             f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
             "    <changefreq>monthly</changefreq>\n"
             "    <priority>0.8</priority>\n"
@@ -1640,14 +1663,14 @@ def page_path(slug: str) -> str:
 SITEMAP_PATH = f"{SITE_DIR}/sitemap.xml"
 
 
-def build_site(cmds: tuple, ctx: PageContext) -> dict:
+def build_site(cmds: tuple, ctx: PageContext, docs: tuple = ()) -> dict:
     """Repo-relative posix path -> full file text. PURE: no I/O, no clock, no cwd.
 
     Every output is materialised in memory before anything is written, so a parse
     failure in any command leaves the tree completely untouched.
     """
     files = {page_path(cmd.slug): render_page(cmd, cmds, ctx) for cmd in cmds}
-    files[SITEMAP_PATH] = render_sitemap(cmds, ctx)
+    files[SITEMAP_PATH] = render_sitemap(cmds, ctx, docs)
     return files
 
 
@@ -1759,7 +1782,12 @@ def main(argv=None) -> int:
     try:
         agents = load_agent_names(root / "agents")
         cmds = load_skills(root / "skills", agents)
-        files = build_site(cmds, ctx)
+        # Discover hand-authored docs pages for the sitemap.
+        docs = tuple(
+            slug for slug in DOCS_SLUGS
+            if (root / SITE_DIR / "docs" / slug / "index.html").is_file()
+        )
+        files = build_site(cmds, ctx, docs)
     except SourceError as err:
         print(f"error: {err}", file=sys.stderr)
         return 1

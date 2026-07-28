@@ -13,6 +13,10 @@ independent gate on that output: page coverage is derived from skills/*/SKILL.md
 (never a hardcoded count), stage counts must agree across source, markup and
 JSON-LD, and every source line must survive verbatim into the rendered page.
 
+The docs section (site/docs/index.html plus one leaf per DOCS_SLUGS) is
+hand-maintained: every slug must have a page, the hub is a CollectionPage and
+each leaf a TechArticle, and every docs page links back to its parent.
+
 Exit 0 = all green; exit 1 = one or more failures (printed)."""
 
 from __future__ import annotations
@@ -39,6 +43,16 @@ SOURCE_STAGE_RE = re.compile(r"^## Stage ", re.M)
 REGEN_HINT = "run: python3 tools/gen_command_pages.py && git add site/"
 MAX_DESC = 160
 BACK_HREF = "../../#commands"
+# The docs hub sits one level below site/ (unlike command pages at two), so
+# its homepage back-link is "../" — "../../" would resolve outside site/ and
+# trip the local-refs containment check (and escape the /shipmates/ Pages
+# sub-path once published).
+DOCS_HUB_BACK_HREF = "../"
+DOCS_LEAF_BACK_HREF = "../"
+
+# The hand-maintained docs section: one leaf page per slug, hard error if any
+# is missing (the hub is checked separately in check_docs_coverage).
+DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture")
 
 # C3 — every class the generator emits on a detail page (plus the two the
 # homepage order cards gained) must have a rule in styles.css.
@@ -203,9 +217,13 @@ def load_page(path: Path) -> Page:
 
 
 def discover_pages(site: Path) -> list[Page]:
-    """The homepage plus every generated detail page, in a stable order."""
+    """The homepage plus every generated detail page and docs page, in a stable order."""
     paths = [site / "index.html"]
     paths += sorted(p for p in (site / "commands").glob("*/index.html") if p.is_file())
+    docs = site / "docs"
+    if (docs / "index.html").is_file():
+        paths.append(docs / "index.html")
+    paths += sorted(p for p in docs.glob("*/index.html") if p.is_file())
     return [load_page(p) for p in paths]
 
 
@@ -371,7 +389,7 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
         "order-card": (len(re.findall(r'class="order-card(?:\s|")', page.html)), n_commands),
         "order-card--flagship": (page.html.count("order-card--flagship"), 1),
         "how-step": (len(re.findall(r'class="how-step"', page.html)), 8),
-        "faq__item": (len(re.findall(r'class="faq__item"', page.html)), 6),
+        "faq__item": (len(re.findall(r'class="faq__item"', page.html)), 7),
     }
     for name, (got, want) in counts.items():
         if got == want:
@@ -421,6 +439,20 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
         )
     elif chip:
         ok(f"{page.rel}: hero chip matches agents/*.md ({chip.group(1)} specialists)")
+
+    # --- homepage links into the docs section (install section + FAQ entry) ---
+    n_docs_links = sum(
+        1
+        for _t, a in page.collector.refs
+        if is_local_asset(a.get("href", "")) and a["href"].startswith("docs/")
+    )
+    if n_docs_links >= 2:
+        ok(f"{page.rel}: {n_docs_links} link(s) into docs/")
+    else:
+        fail(
+            f"{page.rel}: {n_docs_links} link(s) into docs/, expected at least 2 "
+            "(the install section link and the docs FAQ entry)"
+        )
 
     # --- reduced-motion demo poster wired (a11y / WCAG 2.2.2) ---
     # Three valid approaches:
@@ -541,6 +573,45 @@ def check_ldjson_howto(page: Page) -> dict | None:
     if not bad:
         ok(f"{page.rel}: JSON-LD HowTo.step: {len(steps)} steps, positions 1..{len(steps)}, anchors resolve")
     return data
+
+
+def check_docs_hub_page(page: Page) -> None:
+    """The docs index: links back to the homepage, CollectionPage payload."""
+    check_docs_back_link(page, DOCS_HUB_BACK_HREF)
+    check_ldjson_docs(page, "CollectionPage")
+
+
+def check_docs_leaf_page(page: Page) -> None:
+    """A docs leaf: links back to the docs index, TechArticle payload."""
+    check_docs_back_link(page, DOCS_LEAF_BACK_HREF)
+    check_ldjson_docs(page, "TechArticle")
+
+
+def check_docs_back_link(page: Page, href: str) -> None:
+    if any(a.get("href") == href for _t, a in page.collector.refs):
+        ok(f"{page.rel}: back link to {href}")
+    else:
+        fail(f"{page.rel}: no back-navigation link (expected an href of {href!r})")
+
+
+def check_ldjson_docs(page: Page, ld_type: str) -> None:
+    """name/description non-empty, url equal to the page's canonical URL."""
+    blocks = page.collector.ldjson_blocks
+    if len(blocks) != 1:
+        return  # check_page_common already failed on this
+    try:
+        data = json.loads(blocks[0])
+    except json.JSONDecodeError:
+        return  # check_page_common already failed on this
+    if not isinstance(data, dict):
+        return  # check_page_common already failed on this
+
+    for key in ("name", "description"):
+        value = data.get(key)
+        if not isinstance(value, str) or not value.strip():
+            fail(f"{page.rel}: JSON-LD {ld_type}.{key} is empty or not a string ({value!r})")
+    if data.get("url") != page.url:
+        fail(f"{page.rel}: JSON-LD {ld_type}.url is {data.get('url')!r}, expected {page.url!r}")
 
 
 def check_stage_parity(page: Page, src: Path, data: dict | None) -> None:
@@ -665,6 +736,18 @@ def check_coverage(pages: list[Page], slugs: list[str]) -> None:
         ok(f"page coverage: {len(slugs)} command(s) in skills/, {len(published)} published")
 
 
+def check_docs_coverage(pages: list[Page]) -> None:
+    """The docs hub plus one published leaf per DOCS_SLUGS — hard error if missing."""
+    if not (SITE / "docs" / "index.html").is_file():
+        fail("missing site/docs/index.html — the docs hub page")
+    published = {p.slug for p in pages if p.path.parent.parent.name == "docs"}
+    for slug in DOCS_SLUGS:
+        if slug not in published:
+            fail(f"no published docs page for '{slug}' — expected site/docs/{slug}/index.html")
+    if all(s in published for s in DOCS_SLUGS):
+        ok(f"docs coverage: hub plus {len(DOCS_SLUGS)} docs page(s) published")
+
+
 def check_uniqueness(pages: list[Page]) -> None:
     """Duplicate titles or descriptions make pages compete in search results."""
     titles: dict[str, list[str]] = {}
@@ -719,7 +802,7 @@ def check_css(css: str) -> None:
         ok(f"all {len(C3_CLASSES)} detail-page class(es) styled")
 
 
-def check_sitemap(pages: list[Page], n_commands: int) -> None:
+def check_sitemap(pages: list[Page], n_commands: int, n_docs: int) -> None:
     if not SITEMAP.is_file():
         fail(f"missing {SITEMAP.relative_to(ROOT).as_posix()}")
         return
@@ -752,9 +835,12 @@ def check_sitemap(pages: list[Page], n_commands: int) -> None:
         if lastmod is None or not LASTMOD_RE.match(lastmod.strip()):
             fail(f"sitemap.xml: {loc} has no valid <lastmod> (YYYY-MM-DD), got {lastmod!r}")
 
-    want = 1 + n_commands
+    want = 1 + n_commands + n_docs
     if len(entries) != want:
-        fail(f"sitemap.xml: {len(entries)} <url> entries, expected {want} (homepage + one per command)")
+        fail(
+            f"sitemap.xml: {len(entries)} <url> entries, expected {want} "
+            "(homepage + one per command + docs hub and leaves)"
+        )
     if len(failures) == before:
         ok(f"sitemap.xml: {len(entries)} URLs, all resolve to a page and carry a lastmod")
 
@@ -776,18 +862,31 @@ def main() -> int:
 
     pages = discover_pages(SITE)
     homepage = pages[0]
+    command_pages = [p for p in pages if p.path.parent.parent.name == "commands"]
+    docs_hub = [p for p in pages if p.path.parent.name == "docs"]
+    docs_leaves = [p for p in pages if p.path.parent.parent.name == "docs"]
+    n_docs = len(docs_hub) + len(docs_leaves)
 
     check_page_common(homepage, expect_ldjson_type="SoftwareApplication")
     check_homepage(homepage, css, n_commands)
 
-    for page in pages[1:]:
+    for page in command_pages:
         check_page_common(page, expect_ldjson_type="HowTo")
         check_command_page(page)
 
+    for page in docs_hub:
+        check_page_common(page, expect_ldjson_type="CollectionPage")
+        check_docs_hub_page(page)
+
+    for page in docs_leaves:
+        check_page_common(page, expect_ldjson_type="TechArticle")
+        check_docs_leaf_page(page)
+
     check_coverage(pages, slugs)
+    check_docs_coverage(pages)
     check_uniqueness(pages)
     check_css(css)
-    check_sitemap(pages, n_commands)
+    check_sitemap(pages, n_commands, n_docs)
 
     return report()
 

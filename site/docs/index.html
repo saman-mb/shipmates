@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docs — install, harnesses, troubleshooting, architecture · Shipmates</title>
+  <meta name="description" content="Reference documentation for installing, configuring, and understanding Shipmates — install flags, the harness matrix, troubleshooting, and architecture.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/">
+  <link rel="icon" href="../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="Shipmates docs">
+  <meta property="og:description" content="Reference documentation for installing, configuring, and understanding Shipmates — install flags, the harness matrix, troubleshooting, and architecture.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Shipmates docs">
+  <meta name="twitter:description" content="Reference documentation for installing, configuring, and understanding Shipmates — install flags, the harness matrix, troubleshooting, and architecture.">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <link rel="stylesheet" href="../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Shipmates docs",
+    "description": "Reference documentation for installing, configuring, and understanding Shipmates.",
+    "url": "https://saman-mb.github.io/shipmates/docs/",
+    "hasPart": [
+      { "@type": "TechArticle", "name": "Install reference", "url": "https://saman-mb.github.io/shipmates/docs/install/" },
+      { "@type": "TechArticle", "name": "Harness matrix", "url": "https://saman-mb.github.io/shipmates/docs/harnesses/" },
+      { "@type": "TechArticle", "name": "Troubleshooting", "url": "https://saman-mb.github.io/shipmates/docs/troubleshooting/" },
+      { "@type": "TechArticle", "name": "Architecture", "url": "https://saman-mb.github.io/shipmates/docs/architecture/" }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../">
+        <img class="site-header__logo" src="../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../#faq">FAQ</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="./" aria-current="page">Docs</a></li>
+        </ul>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="docs-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../"><span aria-hidden="true">←</span> Back to the homepage</a>
+        <div class="order-detail">
+          <p class="order-detail__eyebrow"><span aria-hidden="true">⚓</span> Docs</p>
+          <h1 class="order-detail__title" id="docs-title">Shipmates docs</h1>
+          <p class="order-detail__tagline">Reference documentation</p>
+          <p class="order-detail__desc">Reference documentation for installing, configuring, and understanding Shipmates.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="pages-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="pages-title">The reference pages</h2>
+          <p class="section__lead">Four hand-maintained references. Every fact on them is sourced from the repo — the installer, the capability matrix, and the README.</p>
+        </div>
+        <ul class="orders__grid">
+          <li class="order-card">
+            <h3 class="order-card__cmd"><a class="order-card__link" href="install/">Install reference</a></h3>
+            <p class="order-card__desc">Every flag, scope, and path the installer touches — per-harness roots, the manifest, backups, verify, and uninstall.</p>
+            <span class="order-card__more" aria-hidden="true">Read the reference →</span>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><a class="order-card__link" href="harnesses/">Harness matrix</a></h3>
+            <p class="order-card__desc">Which harnesses the crew runs on today, which are refused, and the safety policy behind the refusal.</p>
+            <span class="order-card__more" aria-hidden="true">See the matrix →</span>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><a class="order-card__link" href="troubleshooting/">Troubleshooting</a></h3>
+            <p class="order-card__desc">Symptom → cause → fix for install, runtime, and upgrade problems.</p>
+            <span class="order-card__more" aria-hidden="true">Fix my install →</span>
+          </li>
+          <li class="order-card">
+            <h3 class="order-card__cmd"><a class="order-card__link" href="architecture/">Architecture</a></h3>
+            <p class="order-card__desc">How the capability matrix, payload generator, and installer fit together — and the CI gates that keep them honest.</p>
+            <span class="order-card__more" aria-hidden="true">See how it fits →</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="all-docs-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="all-docs-title">All docs pages</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Docs pages">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="install/">Install reference</a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="harnesses/">Harness matrix</a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="troubleshooting/">Troubleshooting</a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="architecture/">Architecture</a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../"><span aria-hidden="true">←</span> Back to the homepage</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — on Claude Code today.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../#install">Install</a></li>
+          <li><a href="../#crew">Crew</a></li>
+          <li><a href="../#commands">Commands</a></li>
+          <li><a href="./">Docs</a></li>
+          <li><a href="../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>
