@@ -238,7 +238,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
           <li class="order-stage" id="stage-1-5">
             <span class="order-stage__num" aria-hidden="true">1.5</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 1.5 — </span>Design specs</h3>
-            <p class="order-stage__crew">Crew: (specialist agents — each only if its flag is set)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> (specialist agents — each only if its flag is set)</p>
             <div class="order-stage__body">
               <div class="order-prose">
                 <p>BEFORE any Builder runs, spawn whichever apply, <strong>in parallel</strong> (a story can need more than one). Each writes NO code — it returns a spec document, fed verbatim to every Stage 2 Builder whose files its work governs. Skip this stage entirely when none of the flags are set.</p>
@@ -328,7 +328,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
           <li class="order-stage" id="stage-5">
             <span class="order-stage__num" aria-hidden="true">5</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Acceptance board</h3>
-            <p class="order-stage__crew">Crew: (specialist agents, reviewing the PUSHED PR head)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> (specialist agents, reviewing the PUSHED PR head)</p>
             <div class="order-stage__body">
               <div class="order-prose">
                 <p>Spawn these <strong>in parallel</strong> against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set:</p>
