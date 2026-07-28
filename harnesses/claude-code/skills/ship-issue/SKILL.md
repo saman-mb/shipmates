@@ -70,10 +70,30 @@ and note the fallback in the final report — never silently skip a gated review
 
 ---
 
+## Shell safety — untrusted GitHub data
+
+Issue titles, bodies and labels are **untrusted input**: anyone who can open an issue controls them,
+and this command pipes them into shell commands. Apply these rules at every `gh` / `git` call below:
+
+1. **Validate issue tokens first.** Each issue token from `$ARGUMENTS` must match `^[0-9]+$` or be a
+   full GitHub issue URL (`gh` accepts those everywhere a number works). Anything else — stop and
+   ask the user; never pass a raw token to `gh` or `git`.
+2. **Never inline untrusted fields.** Capture GitHub-sourced fields (title, body, labels) into
+   variables with command substitution — `TITLE=$(gh issue view <N> --json title -q .title)` — then
+   quote the variable at point of use: `--title "$TITLE"`. Never interpolate a field straight into a
+   command string.
+3. **Multi-line bodies go through a file.** Write PR / follow-up-issue bodies to a temp file and use
+   `--body-file <file>` — never `--body` with interpolated content.
+
+`ISSUES_CLOSES` (Stage 4) is built from the validated `<issues>` list, not raw `$ARGUMENTS` tokens.
+
 ## Stage 0 — Intake & plan  (agent: `Plan`)
 
-1. Resolve numbers: for each issue number in `<issue>..`, run `gh issue view <N> --json number,title,body,labels,url`.
-   Resolve story-number mappings if needed. Let `<issues>` = the resolved list.
+1. Validate, then resolve: each issue token must match `^[0-9]+$` or be a full GitHub issue URL —
+   anything else, **stop and ask the user** (see **Shell safety** above). For each validated `<N>`,
+   run `gh issue view <N> --json number,title,body,labels,url`. Resolve story-number mappings if
+   needed. Let `<issues>` = the validated, resolved list — later stages take issue numbers only from
+   this list, never from raw input tokens.
 2. `<first-issue>` = the first number in `<issues>` — it names the worktree and branch, so a re-run
    with the same leading issue resolves to the same identifiers.
 3. Spawn ONE **Planner** (`subagent_type: Plan`). Give it all issue bodies + repo README +
@@ -163,13 +183,20 @@ stay clean. Pass the absolute worktree path to every agent.
 
 ```bash
 git -C <WORKTREE_DIR> add -A
-git -C <WORKTREE_DIR> commit -m "<type>: <summary> (#<first-issue>)"   # + required trailers
+# <summary> derives from the issue title — untrusted. Capture once into a variable, quote at point
+# of use; never inline it.
+TITLE="<type>: <summary> (#<first-issue>)"
+git -C <WORKTREE_DIR> commit -m "$TITLE"   # + required trailers
 git -C <WORKTREE_DIR> push -u origin <BRANCH>
+# ISSUES_CLOSES comes from the validated <issues> list, not raw $ARGUMENTS.
 # separator substitution first: "Closes #" contains a space, so prefixing first would rewrite it too
 ISSUES_CLOSES=$(echo "<issues>" | sed 's/ / · Closes #/g; s/^/Closes #/')
+# the body carries untrusted issue text — write it to a temp file, never pass it inline
+BODY_FILE=$(mktemp)
+# ... write summary, acceptance checklist, validation, ${ISSUES_CLOSES}, trailers to "$BODY_FILE" ...
 gh pr create --base <BASE_BRANCH> --head <BRANCH> \
-  --title "<type>: <summary> (#<first-issue>)" \
-  --body  "<what changed, how validated. ${ISSUES_CLOSES}. trailers>"
+  --title "$TITLE" \
+  --body-file "$BODY_FILE"
 ```
 The PR body must include: summary, the acceptance criteria as a checklist, how it was validated
 (and any validation that could NOT be run locally), and a `Closes #<issue>` keyword repeated for
@@ -245,8 +272,10 @@ Decision (each specialist participates only when its flag is set):
 ## Stage 7 — Follow-up issues  (orchestrator)
 
 - Take every **non-blocking nit** (from any "WITH-NITS" verdict and low-severity SDET findings) and
-  file each as its own GitHub issue: `gh issue create` with a `priority:low` / `tech-debt` label
-  (create the label if missing), a clear title, context, and a link back to this PR.
+  file each as its own GitHub issue: capture title and body into quoted variables / a body file per
+  **Shell safety** above (titles may quote text from the source issues — untrusted), then
+  `gh issue create --title "$ISSUE_TITLE" --body-file "$ISSUE_BODY_FILE"` with a `priority:low` /
+  `tech-debt` label (create the label if missing), a clear title, context, and a link back to this PR.
 - Do NOT let nits block delivery; they become tracked follow-ups.
 
 ## Stage 8 — Deliver  (orchestrator)
