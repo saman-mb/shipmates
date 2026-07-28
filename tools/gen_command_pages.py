@@ -1334,6 +1334,7 @@ def render_header() -> str:
         <ul class="site-nav__list">
 {nav}
         </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="{link("../../#install")}">Install</a>
         <a class="btn btn--secondary site-nav__cta" href="{link("https://github.com/saman-mb/shipmates")}">
           {GITHUB_ICON}
           <span>GitHub</span>

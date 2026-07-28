@@ -66,6 +66,7 @@
   --maxw:1100px; --maxw-prose:760px; --header-h:56px;
   --radius-sm:6px; --radius-md:10px; --radius-lg:16px; --radius-pill:999px;
   --tap-min:44px;
+  --hero-logo-size:120px; --hero-logo-size-sm:64px;
   --transition-fast:120ms; --transition:200ms; --ease: cubic-bezier(.2,.8,.2,1);
 }
 
@@ -404,7 +405,8 @@ html.js .codeblock__copy{ display:inline-flex; }
   text-decoration:underline;
   text-underline-offset:2px;
 }
-.site-nav__cta{ font-size:var(--fs-300); }
+.site-nav__cta{ display:none; font-size:var(--fs-300); }   /* GitHub link; shown 640px+, hero/footer cover it below */
+.site-nav__cta--mobile{ font-size:var(--fs-300); }          /* Install link; only reachable control <640px */
 
 /* --- Main landmark (skip-link target) --- */
 .main:focus{ outline:none; }
@@ -422,28 +424,27 @@ html.js .codeblock__copy{ display:inline-flex; }
   align-items:flex-start;
   gap:var(--space-4);
   min-width:0;
+  max-width:var(--maxw-prose);
+}
+.hero__logo{
+  width:var(--hero-logo-size-sm);   /* 640px+ grows to full size; see §7 nav breakpoint */
+  height:auto;
 }
 .hero__title{
   font-size:var(--fs-900);
   line-height:1.05;
   font-weight:var(--fw-bold);
 }
-.hero__title-emoji{ font-style:normal; }
-.hero__subtitle{
+.hero__tagline{
   font-size:var(--fs-500);
   line-height:1.4;
   color:var(--text-muted);
-}
-.hero__tagline{
-  font-size:var(--fs-600);
-  line-height:1.5;
-  font-weight:var(--fw-semibold);
 }
 .hero__hook{
   max-width:var(--maxw-prose);
   font-size:var(--fs-600);
   line-height:1.5;
-  color:var(--text-muted);
+  font-weight:var(--fw-semibold);
 }
 .hero__actions{
   display:flex;
@@ -464,9 +465,12 @@ html.js .codeblock__copy{ display:inline-flex; }
 }
 .hero__demo{
   width:100%;
-  max-width:940px;
+  max-width:var(--maxw);
   border-radius:var(--radius-lg);
   box-shadow:var(--shadow-2);
+}
+.hero__demo-toggle{
+  margin-top:var(--space-3);
 }
 .hero__figcaption{
   margin-top:var(--space-3);
@@ -512,8 +516,9 @@ html.js .codeblock__copy{ display:inline-flex; }
   line-height:1;
 }
 .crew-card__name{
-  font-size:var(--fs-700);
+  font-size:var(--fs-500);
   line-height:1.25;
+  min-height:calc(2 * 1.25em);
   font-weight:var(--fw-semibold);
 }
 .crew-card__handle{
@@ -1047,6 +1052,10 @@ summary::-webkit-details-marker{ display:none; }
 /* --- md 640px: show horizontal nav; how-steps 2 cols; footer row --- */
 @media (min-width:640px){
   .site-nav__list{ display:flex; }
+  .site-nav__cta{ display:inline-flex; }
+  .site-nav__cta--mobile{ display:none; }
+
+  .hero__logo{ width:var(--hero-logo-size); }
 
   .how__steps{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
 
@@ -1059,19 +1068,12 @@ summary::-webkit-details-marker{ display:none; }
   .site-footer__legal{ flex-basis:100%; }
 }
 
-/* --- lg 900px: hero becomes a 2-column grid (46/54) --- */
-@media (min-width:900px){
-  .hero__inner{
-    display:grid;
-    grid-template-columns:minmax(0, 46fr) minmax(0, 54fr);
-    gap:var(--space-7);
-    align-items:center;
-  }
-}
-
-/* --- xl 1120px: how-steps 4 cols (8 → 4×2) --- */
+/* --- xl 1120px: how-steps 4 cols (8 → 4×2); crew grid pinned to 4 cols
+   (auto-fit gives 4×241px tracks here with only 4px slack — make it explicit
+   so a future --gutter/--grid-gap/--maxw change can't silently drop it to 3) --- */
 @media (min-width:1120px){
   .how__steps{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+  .crew__grid{ grid-template-columns:repeat(4, minmax(0,1fr)); }
 }
 
 
