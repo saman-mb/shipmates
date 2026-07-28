@@ -407,6 +407,21 @@ restore_bak() {
   fi
 }
 
+# $1 is the dir a file we just removed lived in: rmdir it, then walk up
+# rmdir'ing each now-empty ancestor, stopping at (never removing) $2 or the
+# first dir still holding something. Called once per removal rather than
+# swept over the whole tree after the fact, so a nested bundle (skills/x/
+# SKILL.md beside skills/x/scripts/) converges — emptying scripts/ empties
+# x/ in turn — without ever touching a dir the sweep didn't vacate, like an
+# empty skills/my-wip-skill/ the user made themselves.
+prune_empty_dirs() {
+  local d="$1" boundary="$2"
+  while [ "$d" != "$boundary" ] && [ "${d#"$boundary"/}" != "$d" ]; do
+    rmdir "$d" 2>/dev/null || break
+    d="$(dirname "$d")"
+  done
+}
+
 # An upgrade may leave a flat commands/<slug>.md from a previous install sitting
 # next to commands the user wrote. Ours shadows the new skill, so move it aside —
 # never delete it, it may be hand-edited. Runs on install and on --uninstall: a
@@ -477,18 +492,16 @@ if $UNINSTALL; then
           rm -f "$dst"
           echo "  ${c_yellow}removed${c_reset}  $rel"; removed=$((removed+1))
           restore_bak "$dst"
+          # Tidy the dir this removal emptied and its now-empty ancestors up
+          # to skills/ — rmdir fails on any dir still holding a user's files,
+          # which is the correct outcome.
+          [ -d "$TARGET/skills" ] && prune_empty_dirs "$(dirname "$dst")" "$TARGET/skills"
         else
           echo "  ${c_yellow}kept${c_reset}     $rel ${c_dim}(modified since install — yours now; rm '$dst' to force)${c_reset}"
           kept=$((kept+1)); skipped=$((skipped+1))
         fi
       done < "$MANIFEST_PARSED"
-      # Tidy dirs the removal emptied; rmdir fails on any dir still holding a
-      # user's files, which is the correct outcome.
-      if [ -d "$TARGET/skills" ]; then
-        while IFS= read -r sub; do rmdir "$sub" 2>/dev/null || :; done \
-          < <(find "$TARGET/skills" -mindepth 1 -depth -type d -empty 2>/dev/null)
-        rmdir "$TARGET/skills" 2>/dev/null || :
-      fi
+      rmdir "$TARGET/skills" 2>/dev/null || :
       rmdir "$TARGET/agents" 2>/dev/null || :
       sweep_legacy_commands
       if [ "$skipped" -eq 0 ]; then
@@ -583,6 +596,10 @@ else
       if [ -n "$old_sha" ] && [ "$(sha256 "$dst")" = "$old_sha" ]; then
         rm -f "$dst"
         echo "  ${c_yellow}removed${c_reset}  $rel ${c_dim}(no longer shipped)${c_reset}"; removed=$((removed+1))
+        # Tidy the dir this removal emptied (e.g. a renamed/dropped skill) and
+        # its now-empty ancestors up to skills/ — same rmdir-only rule as
+        # uninstall: a dir still holding any file is left alone.
+        [ -d "$TARGET/skills" ] && prune_empty_dirs "$(dirname "$dst")" "$TARGET/skills"
       else
         echo "  ${c_yellow}kept${c_reset}     $rel ${c_dim}(no longer shipped, but you modified it)${c_reset}"
       fi

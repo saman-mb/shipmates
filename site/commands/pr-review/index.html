@@ -146,7 +146,7 @@
                 <p>Pull the change itself, not a description of it:</p>
                 <pre class="order-code" tabindex="0"><code>gh pr view &lt;PR#&gt; --json number,title,body,author,headRefOid,isCrossRepository,files,url
 gh pr diff &lt;PR#&gt;</code></pre>
-                <p>Then read the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> for the bar. Set the <strong>same classification flags <code>/ship-issue</code> uses</strong>, so a given change pulls the same specialists whichever door it came through — but derive them from the <strong>diff</strong>, not from an issue body. That is the real difference: there are no stated acceptance criteria here, so the criteria are <em>the repo&#x27;s own bar plus what the PR claims to do</em>. Where the PR description and the diff disagree, that mismatch is itself a finding.</p>
+                <p>Then read the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> for the bar. Set the <strong>same classification flags <code>/ship-issue</code> uses</strong> — with one deliberate exception, <code>IS_SECURITY_SENSITIVE</code> (see below) — but derive them from the <strong>diff</strong>, not from an issue body. That is the real difference: there are no stated acceptance criteria here, so the criteria are <em>the repo&#x27;s own bar plus what the PR claims to do</em>. Where the PR description and the diff disagree, that mismatch is itself a finding.</p>
                 <ul>
                   <li><code>IS_UI_STORY</code> — does the diff create or change on-screen UI? Gates <code>ux-ui-designer</code>.</li>
                   <li><code>IS_VISUAL_STORY</code> — is the project&#x27;s deliverable rendered visual <strong>art</strong>, and does this touch it? Almost always <code>no</code> for conventional apps — prefer <code>IS_UI_STORY</code>. Gates <code>art-director</code>.</li>
@@ -154,7 +154,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
                   <li><code>IS_SECURITY_SENSITIVE</code> — authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies? Gates <code>security-engineer</code>.</li>
                   <li><code>IS_DELIVERY_SENSITIVE</code> — does the diff change how the project is built, packaged, configured or shipped (pipeline/build definitions, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>.</li>
                 </ul>
-                <p>This flag vocabulary is <strong>shared with <code>/ship-issue</code></strong> — a new flag must be added to both files.</p>
+                <p>This flag vocabulary is <strong>shared with <code>/ship-issue</code></strong> — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: it stays wired to the <code>security-engineer</code> seat here, because this command reviews a PR the crew didn&#x27;t author — you don&#x27;t own the branch, so <code>/harden</code> isn&#x27;t an available remedy. <code>/ship-issue</code> keeps the same flag (it still gates the <code>/harden</code> recommendation and forces a manual merge) but not the seat, since a crew-authored change can just run <code>/harden</code> itself.</p>
               </div>
             </div>
           </li>

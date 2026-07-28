@@ -360,7 +360,7 @@ Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
 The twelve that exist: `/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` ·
-`/migrate` · `/document` · `/release` · `/polish` · `/review` · `/onboard` · `/refactor`.
+`/migrate` · `/document` · `/release` · `/polish` · `/pr-review` · `/onboard` · `/refactor`.
 
 ---
 
