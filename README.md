@@ -120,6 +120,25 @@ untouched, then restores your originals from their `.bak-<timestamp>` backups. I
 wrong or you want a clean slate, `--force` skips SHA checks and overwrites everything (backups
 still created).
 
+Install for a different harness with `--harness`:
+
+```bash
+./install.sh --harness cursor          # one harness
+./install.sh --harness cursor --harness codex   # several
+./install.sh --harness all             # every known harness
+```
+
+Each harness's skills land in its own directory (`.cursor/skills/`, `.codex/skills/`, …) — the
+Agent Skills standard is filesystem-based, so the same `SKILL.md` payload works everywhere, only
+the target path differs. Subagents (`agents/`) ship for Claude Code only — no cross-harness
+subagent standard exists yet.
+
+**Safety:** payloads are generated per harness by `tools/build_harness_payloads.py` against
+`tools/harness_matrix.json`. If the matrix can't honour a safety property on a target (e.g. no
+equivalent of `disable-model-invocation`), the payload is **refused** and the install fails
+loudly rather than shipping a more permissive artifact. Currently only `claude-code` builds;
+others refuse until their harness documents a user-invoked-only equivalent.
+
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
 >
 > ↩️ Upgrading and `/ship-issue` stops resolving? Put the old file back with

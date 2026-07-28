@@ -90,69 +90,90 @@ norm_manifest() { grep -v -E '^(installed_at|version)=' "$1"; }
 assert "claude-code: same manifest as default" \
   diff <(norm_manifest "$WORK/default/shipmates/manifest") <(norm_manifest "$WORK/explicit-cc/shipmates/manifest")
 
-# --- 2. each harness individually (project scope) -----------------------------
+# --- 2. claude-code harness individually (project scope) ---------------------
 
-for h in $ALL; do
+h=claude-code
+p="$WORK/per-$h"
+run --harness "$h" --project "$p" >/dev/null 2>&1
+root="$(project_root_for "$h")"
+assert "$h: skills installed at $root/skills"    test -f "$p/$root/skills/ship-issue/SKILL.md"
+assert "$h: manifest at $root/shipmates"         test -f "$p/$root/shipmates/manifest"
+assert "$h: agents installed" test "$N_AGENTS" -eq "$(find "$p/$root/agents" -name '*.md' | wc -l)"
+
+# --- 2b. non-claude-code harnesses refuse without a payload -------------------
+
+# The capability matrix refuses to build for harnesses with no user-invoked-only
+# equivalent — so install.sh refuses too, with a clear message.
+for h in github-copilot codex cursor gemini windsurf zed opencode; do
   p="$WORK/per-$h"
-  run --harness "$h" --project "$p" >/dev/null 2>&1
-  root="$(project_root_for "$h")"
-  assert "$h: skills installed at $root/skills"    test -f "$p/$root/skills/ship-issue/SKILL.md"
-  assert "$h: manifest at $root/shipmates"         test -f "$p/$root/shipmates/manifest"
-  if [ "$h" = "claude-code" ]; then
-    assert "$h: agents installed" test "$N_AGENTS" -eq "$(find "$p/$root/agents" -name '*.md' | wc -l)"
+  if run --harness "$h" --project "$p" >/dev/null 2>"$WORK/$h.err"; then
+    bad "$h: refuses without payload (exits non-zero)"
   else
-    assert "$h: agents skipped" test ! -d "$p/$root/agents"
+    ok  "$h: refuses without payload (exits non-zero)"
   fi
+  assert "$h: refusal mentions matrix" grep -q "no payload for" "$WORK/$h.err"
+  assert "$h: refusal mentions generator" grep -q "build_harness_payloads.py" "$WORK/$h.err"
+  assert "$h: nothing created" test ! -e "$p"
 done
 
-# --- 3. --harness all ---------------------------------------------------------
+# --- 3. --harness all fails on first refused harness ----------------------------
 
-run --harness all --project "$WORK/all" >/dev/null 2>&1
-for h in $ALL; do
-  root="$(project_root_for "$h")"
-  assert "all: $h root present" test -f "$WORK/all/$root/skills/ship-issue/SKILL.md"
-done
+# 'all' expands to every harness; the first refused one (github-copilot) stops
+# the run before anything is installed — same trust posture as a single-target
+# install.
+if run --harness all --project "$WORK/all" >/dev/null 2>"$WORK/all.err"; then
+  bad "all: fails on refused harness (exits non-zero)"
+else
+  ok  "all: fails on refused harness (exits non-zero)"
+fi
+assert "all: refusal mentions matrix" grep -q "no payload for" "$WORK/all.err"
 
 # --- 4. repeated --harness flags ----------------------------------------------
 
-run --harness cursor --harness codex --project "$WORK/repeat" >/dev/null 2>&1
-assert "repeat: cursor installed"   test -f "$WORK/repeat/.cursor/skills/ship-issue/SKILL.md"
-assert "repeat: codex installed"    test -f "$WORK/repeat/.agents/skills/ship-issue/SKILL.md"
-assert "repeat: gemini NOT installed" test ! -d "$WORK/repeat/.gemini"
+# First refused harness stops the run.
+if run --harness cursor --harness codex --project "$WORK/repeat" >/dev/null 2>"$WORK/repeat.err"; then
+  bad "repeat: fails on refused harness (exits non-zero)"
+else
+  ok  "repeat: fails on refused harness (exits non-zero)"
+fi
+assert "repeat: refusal mentions matrix" grep -q "no payload for" "$WORK/repeat.err"
 
 # --- 5. --project + --harness compose -----------------------------------------
 
-run --project "$WORK/compose" --harness gemini >/dev/null 2>&1
-assert "compose: gemini under project path" test -f "$WORK/compose/.gemini/skills/ship-issue/SKILL.md"
-assert "compose: no .claude created"        test ! -d "$WORK/compose/.claude"
+# Refused harness fails before touching the project path.
+if run --project "$WORK/compose" --harness gemini >/dev/null 2>"$WORK/compose.err"; then
+  bad "compose: fails on refused harness (exits non-zero)"
+else
+  ok  "compose: fails on refused harness (exits non-zero)"
+fi
+assert "compose: refusal mentions matrix" grep -q "no payload for" "$WORK/compose.err"
 
 # --dir pins the root exactly; the harness only governs the agents skip rule.
-run --harness cursor --dir "$WORK/dir-cursor" >/dev/null 2>&1
-assert "compose --dir: skills at explicit root" test -f "$WORK/dir-cursor/skills/ship-issue/SKILL.md"
-assert "compose --dir: agents skipped for cursor" test ! -d "$WORK/dir-cursor/agents"
+# Refused harness fails before touching the --dir path.
+if run --harness cursor --dir "$WORK/dir-cursor" >/dev/null 2>"$WORK/dir-cursor.err"; then
+  bad "compose --dir: fails on refused harness (exits non-zero)"
+else
+  ok  "compose --dir: fails on refused harness (exits non-zero)"
+fi
+assert "compose --dir: refusal mentions matrix" grep -q "no payload for" "$WORK/dir-cursor.err"
 
-# --- 6. --uninstall per harness ------------------------------------------------
+# --- 6. --uninstall per harness (claude-code only for now) -------------------
 
+# Only claude-code installs succeed today; uninstall tests use it as the
+# working harness. Non-claude-code uninstall would fail at the same gate.
 p="$WORK/uninst"
-run --harness cursor --project "$p" >/dev/null 2>&1
-run --harness cursor --project "$p" --uninstall >/dev/null 2>&1
-assert "uninstall: skills removed"   test ! -d "$p/.cursor/skills"
-assert "uninstall: manifest removed" test ! -e "$p/.cursor/shipmates/manifest"
+run --harness claude-code --project "$p" >/dev/null 2>&1
+run --harness claude-code --project "$p" --uninstall >/dev/null 2>&1
+assert "uninstall: skills removed"   test ! -d "$p/.claude/skills"
+assert "uninstall: manifest removed" test ! -e "$p/.claude/shipmates/manifest"
 
-# Uninstalling one harness leaves a sibling harness untouched.
-p="$WORK/uninst-sibling"
-run --harness cursor --harness gemini --project "$p" >/dev/null 2>&1
-run --harness gemini --project "$p" --uninstall >/dev/null 2>&1
-assert "uninstall: gemini removed"        test ! -d "$p/.gemini/skills"
-assert "uninstall: cursor left intact"    test -f "$p/.cursor/skills/ship-issue/SKILL.md"
-
-# --- 7. overwrite backup per harness -------------------------------------------
+# --- 7. overwrite backup (claude-code) -----------------------------------------
 
 p="$WORK/backup"
-run --harness gemini --project "$p" >/dev/null 2>&1
-edited="$p/.gemini/skills/ship-issue/SKILL.md"
+run --harness claude-code --project "$p" >/dev/null 2>&1
+edited="$p/.claude/skills/ship-issue/SKILL.md"
 printf '# hand edit\n' >> "$edited"
-run --harness gemini --project "$p" >/dev/null 2>&1
+run --harness claude-code --project "$p" >/dev/null 2>&1
 assert "backup: .bak-* kept for hand edit" bash -c "ls '$edited'.bak-* >/dev/null 2>&1"
 assert "backup: payload restored over edit" cmp -s "$REPO/skills/ship-issue/SKILL.md" "$edited"
 
@@ -168,11 +189,15 @@ assert "unknown harness: nothing created" test ! -e "$WORK/bogus"
 
 # --- 9. global roots land under the right per-harness homes -------------------
 
-run --harness all >/dev/null 2>&1
-for h in $ALL; do
-  root="$(global_root_for "$h")"
-  assert "global: $h → ~/$root" test -f "$HOME/$root/skills/ship-issue/SKILL.md"
-done
+# Only claude-code succeeds; the rest refuse at the payload gate.
+run --harness claude-code >/dev/null 2>&1
+assert "global: claude-code → ~/.claude" test -f "$HOME/.claude/skills/ship-issue/SKILL.md"
+if run --harness github-copilot >/dev/null 2>"$WORK/global-copilot.err"; then
+  bad "global: github-copilot refuses (exits non-zero)"
+else
+  ok  "global: github-copilot refuses (exits non-zero)"
+fi
+assert "global: refusal mentions matrix" grep -q "no payload for" "$WORK/global-copilot.err"
 
 # --- summary -------------------------------------------------------------------
 

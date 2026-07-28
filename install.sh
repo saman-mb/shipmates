@@ -121,6 +121,28 @@ harness_known() {
 # Subagents (agents/) ship for claude-code only — see the table comment above.
 harness_has_agents() { [ "$1" = "claude-code" ]; }
 
+# When --harness is used, the payload comes from harnesses/<target>/ (the
+# matrix-generated, transformed tree), not from the canonical skills/+agents/.
+# claude-code is the exception — its generated tree is byte-identical to the
+# canonical, so either source works. For other harnesses, a missing tree means
+# the matrix refused to build it (safety policy), and we refuse to install.
+resolve_harness_src() {
+  local harness="$1"
+  if [ "$harness" = "claude-code" ]; then
+    return 0  # use canonical $SRC
+  fi
+  # $SRC is set by resolve_src (checkout or extracted tarball); it carries
+  # harnesses/ either way since the tree is committed to the repo.
+  local tree="$SRC/harnesses/$harness"
+  if [ -d "$tree/skills" ]; then
+    SRC="$tree"
+    return 0
+  fi
+  echo "Shipmates: no payload for '$harness' — the capability matrix refused" >&2
+  echo "to build one (run 'python3 tools/build_harness_payloads.py --target $harness' to see why)." >&2
+  exit 1
+}
+
 # Resolve the install root for harness $1 under the current SCOPE. --dir pins
 # the root exactly, so the harness choice changes nothing there — every known
 # harness reads <root>/skills/ anyway.
@@ -578,6 +600,10 @@ sweep_legacy_commands_for_harness() {
 # MANIFEST*, counters, NEW_ENTRIES) is global, reset here per harness.
 process_target() {
 
+# Gate BEFORE resolve_target creates any directory: a refused harness must
+# fail without touching the filesystem. resolve_src must run first to set SRC.
+resolve_src
+resolve_harness_src "$HARNESS"
 resolve_target "$HARNESS"
 
 MANIFEST="$TARGET/shipmates/manifest"

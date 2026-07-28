@@ -80,6 +80,7 @@ POLICIES = ("drop", "warn", "emulate", "refuse")
 SEPARATORS = ("comma", "space")
 
 KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+HARNESS_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 INDENTED_RE = re.compile(r"^[ \t]")
 
 # Diff context lines shown per drifted file before truncating, mirroring
@@ -220,6 +221,11 @@ def load_matrix(root: Path) -> Matrix:
     for name, cell in raw_harnesses.items():
         if not isinstance(cell, dict) or not isinstance(cell.get("agents"), bool):
             raise MatrixError(f"harnesses.{name}: must be an object with a boolean 'agents'")
+        if not HARNESS_RE.match(name):
+            raise MatrixError(
+                f"harnesses.{name}: name must match {HARNESS_RE.pattern} "
+                "(lowercase alphanumerics and hyphens only — no path traversal)"
+            )
         harnesses.append(Harness(name, cell["agents"]))
     raw_features = raw.get("features")
     if not isinstance(raw_features, dict) or not raw_features:
@@ -465,8 +471,11 @@ def expected_paths(result: BuildResult) -> frozenset:
 def write_all(files: dict, root: Path) -> list:
     """Write every file that differs, atomically. The only writer in this module."""
     written = []
+    harnesses_root = (root / "harnesses").resolve()
     for rel in sorted(files):
-        target = root / rel
+        target = (root / rel).resolve()
+        if not str(target).startswith(str(harnesses_root) + os.sep):
+            raise MatrixError(f"refusing to write outside harnesses/: {rel}")
         body = files[rel]
         if target.is_file() and target.read_text(encoding="utf-8") == body:
             continue
@@ -504,8 +513,12 @@ def find_orphan_targets(root: Path, known: frozenset) -> list:
 def check_all(files: dict, root: Path) -> list:
     """Drift report lines. Writes NOTHING — this function never opens a path for writing."""
     report = []
+    harnesses_root = (root / "harnesses").resolve()
     for rel in sorted(files):
-        target = root / rel
+        target = (root / rel).resolve()
+        if not str(target).startswith(str(harnesses_root) + os.sep):
+            report.append(f"refusing to check outside harnesses/: {rel}")
+            continue
         if not target.is_file():
             report.append(f"missing: {rel}")
             continue
