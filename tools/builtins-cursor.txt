@@ -1,0 +1,7 @@
+# Built-in commands: Cursor
+# Source: https://cursor.com/docs/skills
+# Last updated: 2026-07-28
+#
+# This list is manually maintained. Refresh when Cursor ships new built-ins.
+
+/migrate-to-skills
