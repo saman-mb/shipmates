@@ -189,6 +189,16 @@ a:hover{ text-decoration-thickness:2px; }
 /* --- Section rhythm --- */
 .section{ padding-block:var(--section-pad-y); }
 
+/* The landing page alternates tall, visually distinct sections, so a full
+   --section-pad-y band on each side of a boundary reads as deliberate pacing.
+   Detail and docs pages (.page--doc — everything except index.html) are dense
+   prose: short sections one after another, where a doubled band reads as a
+   hole in the page rather than a separator. Collapse the boundary to a single
+   band and run a tighter scale, keeping the first section's top pad and the
+   last section's bottom pad so the content still clears the header/footer. */
+.page--doc{ --section-pad-y: clamp(2rem, 3.5vw, 3.5rem); }
+.page--doc .section + .section{ padding-top:0; }
+
 
 /* =============================================================================
    4. SHARED COMPONENTS
