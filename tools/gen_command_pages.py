@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Generate site/commands/<slug>/index.html — one detail page per command.
+"""Generate site/commands/<slug>/index.html and site/agents/<role>/index.html —
+one detail page per command, one per agent.
 
-Honest by construction: every command-specific sentence on a page is a
+Honest by construction: every command-specific sentence on a command page is a
 markdown-rendered projection of skills/<slug>/SKILL.md — no invented stage names,
 gates, crew, counts, durations or file names. Only command-agnostic chrome
 ("How to run it", "The stages", "Other commands") is authored here. Anything the
@@ -10,12 +11,20 @@ silently dropped or passed through, and every non-blank source line must be
 claimed by a block. Deterministic and committed, matching the repo's other
 generators. Regenerate with:  python3 tools/gen_command_pages.py
 
+Agent pages project the agents/<role>.md frontmatter (name/description/tools)
+verbatim; their editorial copy (tagline, what/scenarios/checks/crew-fit) is
+authored here in AGENT_COPY, and drift between the copy table and agents/*.md
+on disk raises in either direction — an agent with no copy, or copy with no
+agent, is a hard error. Which commands call an agent is DERIVED by scanning the
+skill sources for the role name, never hand-maintained.
+
 Layers, in file order, with hard import discipline:
   1 MODEL   frozen dataclasses only — no markup, no URLs, no I/O
-  2 PARSE   skills/*/SKILL.md -> model — no markup, no writing
-  3 RENDER  model -> HTML/XML strings — the only layer that escapes or emits markup
-  4 EMIT    paths + bytes — build_site() is pure, write_all() is the only writer
-  5 CLI     argv -> exit code — the only layer that prints
+  2 COPY    AGENT_COPY — the agent pages' authored editorial text (model-layer data)
+  3 PARSE   skills/*/SKILL.md + agents/*.md -> model — no markup, no writing
+  4 RENDER  model -> HTML/XML strings — the only layer that escapes or emits markup
+  5 EMIT    paths + bytes — build_site() is pure, write_all() is the only writer
+  6 CLI     argv -> exit code — the only layer that prints
 """
 
 import argparse
@@ -52,6 +61,23 @@ SLUGS = (
 # disk and includes them in the sitemap — it never generates them.
 DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture")
 FLAGSHIP_SLUG = "ship-issue"
+
+# Canonical crew order — the homepage crew grid's order. Drives the agent page
+# sibling nav and the sitemap. Every agents/<role>.md on disk must appear here.
+AGENT_ROLES = (
+    "architect",
+    "senior-engineer",
+    "sdet",
+    "security-engineer",
+    "site-reliability-engineer",
+    "performance-engineer",
+    "devops-engineer",
+    "product-manager",
+    "ux-ui-designer",
+    "art-director",
+    "technical-writer",
+    "data-scientist",
+)
 
 SITE_URL = "https://saman-mb.github.io/shipmates/"
 SOCIAL_IMAGE = SITE_URL + "assets/social-preview.png"
@@ -202,8 +228,943 @@ class Command:
     crew: tuple  # tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class AgentFrontmatter:
+    """agents/<role>.md uses `tools:` (comma-separated), not a skill's `allowed-tools:`."""
+    name: str
+    description: str
+    tools: tuple  # tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AgentScenario:
+    title: str  # 3-6 words, rendered as the card's heading
+    desc: str  # 1-2 sentences
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCheck:
+    lead: str  # the bold lead-in
+    text: str  # the explanation — at most 25 words
+
+
+@dataclass(frozen=True, slots=True)
+class CrewFit:
+    paragraphs: tuple  # tuple[str, ...] — 1-2 paragraphs naming the handoff roles
+    related: tuple  # tuple[str, ...] — roles it hands off to or works alongside
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCopy:
+    """The authored editorial half of an agent page; the other half is parsed frontmatter."""
+    tagline: str
+    what: tuple  # tuple[str, ...] — 1-2 paragraphs
+    scenarios: tuple  # tuple[AgentScenario, ...] — 2-3 cards
+    checks: tuple  # tuple[AgentCheck, ...] — 5-8 bullets
+    crew_fit: CrewFit
+
+
+@dataclass(frozen=True, slots=True)
+class Agent:
+    slug: str
+    source_path: str  # repo-relative posix path
+    name: str
+    description: str
+    tools: tuple  # tuple[str, ...]
+    tagline: str
+    what: tuple  # tuple[str, ...]
+    scenarios: tuple  # tuple[AgentScenario, ...]
+    checks: tuple  # tuple[AgentCheck, ...]
+    crew_fit: CrewFit
+    called_by: tuple  # tuple[str, ...] — command slugs, derived from the skill sources
+
+
 # ---------------------------------------------------------------------------
-# Layer 2 — PARSE  (skills/*/SKILL.md -> model)
+# Layer 2 — COPY  (AGENT_COPY)
+# The agent pages' authored editorial text: model-layer data — no markup, no
+# URLs, no I/O. Every string is inline markdown, rendered by the RENDER layer.
+# Drift against agents/*.md raises in load_agents, in either direction; the
+# shape rules (2-3 scenarios, 5-8 checks, 25-word explanations) are enforced by
+# check_agent_copy, so a copy defect fails the build rather than shipping.
+# ---------------------------------------------------------------------------
+
+# Source name attached to copy errors — the copy lives here, not in a repo source file.
+AGENT_COPY_SRC = "tools/gen_command_pages.py"
+
+AGENT_COPY = {
+    "architect": AgentCopy(
+        tagline="Structure & schema — coupling, boundaries, migration safety.",
+        what=(
+            "The architect reviews the structure of a change rather than its lines: whether "
+            "the change fits the system's existing boundaries, layering, and single sources of "
+            "truth, or forks logic that already lives elsewhere. A one-off exception that fights "
+            "the established pattern is a reject even when it works.",
+            "One-way doors — public APIs, persisted schemas, data migrations, hard-to-drop "
+            "dependencies — get scrutinised hard, while reversible changes wave through. Every "
+            "finding is grounded in specific `file:line` evidence, and significant decisions "
+            "capture the trade-off and the rejected alternative, so the why survives.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A design plan needs vetting",
+                "Before a big build starts, the architect checks the plan against the system's "
+                "real boundaries and quality attributes — coupling, reversibility, and what "
+                "breaks at ten times the load.",
+            ),
+            AgentScenario(
+                "A schema or API is changing",
+                "Cross-cutting and schema-level changes get a structural review before merge: "
+                "backward and forward compatibility, versioning, and a concrete migration path "
+                "for existing data and callers.",
+            ),
+            AgentScenario(
+                "Complexity is creeping in",
+                "When a change adds abstraction, the architect asks whether that complexity is "
+                "essential to the problem — and prefers removing the need over adding a clever "
+                "layer.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Fit and duplication.",
+                "Whether the change respects existing boundaries and single sources of truth, "
+                "or quietly forks logic that already lives elsewhere.",
+            ),
+            AgentCheck(
+                "Coupling and blast radius.",
+                "What the change makes harder to change later — dependency direction, cohesion, "
+                "and how far a future edit would have to reach.",
+            ),
+            AgentCheck(
+                "Reversibility.",
+                "Two-way doors get waved through; one-way doors like public APIs, persisted "
+                "schemas, and migrations get scrutinised hard.",
+            ),
+            AgentCheck(
+                "Quality attributes.",
+                "Real risks to security, performance, scalability, reliability, and observability "
+                "— including what breaks at ten times the load, data, or users.",
+            ),
+            AgentCheck(
+                "Data and schema evolution.",
+                "Backward and forward compatibility, versioning, and a concrete migration path "
+                "for existing data and its callers.",
+            ),
+            AgentCheck(
+                "Essential complexity.",
+                "Whether new complexity is essential to the problem or accidental — and whether "
+                "the need could be removed instead.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The architect usually runs early and late: vetting a design plan before the "
+                "`senior-engineer` builds from it, then reviewing the finished structure before "
+                "merge. A REJECT hands the engineer the specific structural concern and a "
+                "concrete alternative, and the `sdet` later proves the rework actually runs.",
+            ),
+            related=("senior-engineer", "sdet", "security-engineer"),
+        ),
+    ),
+    "senior-engineer": AgentCopy(
+        tagline="Builds to spec, fixes red CI, clears review defects.",
+        what=(
+            "The senior engineer is the crew's builder. It implements features to a plan or "
+            "spec, fixes failing tests and red CI, and clears the defects reviewers flag — "
+            "working in the codebase's existing style and reusing what's already there before "
+            "adding anything new.",
+            "It implements exactly what the task asks, treats tests as part of done, and "
+            "verifies its own work — running the relevant tests, build, and lint, then "
+            "re-reading its diff before reporting. It never commits or opens pull requests: the "
+            "orchestrator owns git, and the engineer reports what changed and exactly how it "
+            "was verified.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A planned feature needs building",
+                "Hand it a spec or plan and it implements exactly that — matching the codebase's "
+                "idioms, staying in scope, and adding tests for the failure and edge paths, not "
+                "just the happy path.",
+            ),
+            AgentScenario(
+                "CI is red",
+                "Failing tests, lint, or build errors get diagnosed and fixed at the cause, "
+                "then re-run to prove the pipeline goes green.",
+            ),
+            AgentScenario(
+                "Review came back with defects",
+                "The board's defect list gets cleared item by item, each fix verified — with "
+                "adjacent problems noted for follow-up rather than silently folded in.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Codebase match.",
+                "New code follows the project's existing style, idioms, and patterns, reusing "
+                "what's already there before adding anything new.",
+            ),
+            AgentCheck(
+                "Scope discipline.",
+                "Exactly what the task, acceptance criteria, or defect list asks — adjacent "
+                "problems get noted for follow-up, not silently fixed.",
+            ),
+            AgentCheck(
+                "Test coverage.",
+                "Tests for the failure and edge paths, not just the happy path — meaningful "
+                "coverage, not coverage theatre.",
+            ),
+            AgentCheck(
+                "Security hygiene.",
+                "External input validated, no secrets committed, least privilege honoured, and "
+                "no injection or path-traversal footguns introduced.",
+            ),
+            AgentCheck(
+                "Verified done.",
+                "Relevant tests, build, and lint actually run, the diff re-read, and each "
+                "criterion confirmed before claiming completion.",
+            ),
+            AgentCheck(
+                "Surfaced ambiguity.",
+                "Underspecified tasks or conflicts with the code get called out, never silently "
+                "guessed around.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "Nearly every command routes through the senior engineer at some point: it "
+                "builds what the `architect` and `product-manager` shape, and fixes what the "
+                "`sdet`, `security-engineer`, and the review board find. Its handback is a "
+                "verified diff and a precise report, which the sdet then re-verifies "
+                "independently.",
+            ),
+            related=("architect", "sdet", "product-manager"),
+        ),
+    ),
+    "sdet": AgentCopy(
+        tagline="Runs the real tests/build and reports pass/fail with a defect list.",
+        what=(
+            "The sdet proves a change actually works — by running it, not by judging whether "
+            "the code looks right. It executes the real tests, linters, type-checks, and build "
+            "against the pushed head, testing to break rather than to confirm.",
+            "Tests are designed deliberately — boundary values, decision tables, state "
+            "transitions, malformed input — and every acceptance criterion is traced to a test "
+            "that exercises it. Defects come back severity-tagged, with the exact command, "
+            "exact output, and `file:line`, so nobody has to reproduce its work. It verifies; "
+            "it never edits code.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A change is about to ship",
+                "Before a PR opens, and again against the pushed head before merge, the sdet "
+                "runs the full validation plan and returns PASS or FAIL with the defect list.",
+            ),
+            AgentScenario(
+                "The happy path looks fine",
+                "Boundary values, empty and maximum inputs, and malformed cases get probed — "
+                "along with error paths, concurrency, and whether nearby behaviour silently "
+                "broke.",
+            ),
+            AgentScenario(
+                "A test suite looks flaky",
+                "A pass on a non-deterministic test is not a pass; the sdet re-runs to confirm "
+                "before anything is reported green.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Real execution.",
+                "Tests, linters, type-checks, and a real build or run where the toolchain "
+                "exists — a static read-through only as a stated fallback.",
+            ),
+            AgentCheck(
+                "Boundary values.",
+                "Empty, one, many, maximum, and just-past-maximum inputs, plus decision tables "
+                "for branching logic.",
+            ),
+            AgentCheck(
+                "Criteria traceability.",
+                "Every acceptance criterion mapped to a test that exercises it — an untested "
+                "criterion is itself a finding.",
+            ),
+            AgentCheck(
+                "Failure paths.",
+                "Error handling, concurrency and ordering, malformed input, and whether nearby "
+                "existing behaviour silently broke.",
+            ),
+            AgentCheck(
+                "Flakiness.",
+                "Any non-deterministic pass re-run to confirm — a flaky green is never reported "
+                "as green.",
+            ),
+            AgentCheck(
+                "Actionable defects.",
+                "Every finding severity-tagged blocking, high, or low, with the exact command, "
+                "exact output, and `file:line`.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The sdet is the crew's independent verification pass: it re-runs what the "
+                "`senior-engineer` claims is done, and its verdict gates the `product-manager`'s "
+                "acceptance. A FAIL hands the engineer a severity-tagged defect list to clear; "
+                "a PASS is the evidence the board can trust.",
+            ),
+            related=("senior-engineer", "product-manager", "site-reliability-engineer"),
+        ),
+    ),
+    "security-engineer": AgentCopy(
+        tagline="Threat-models the change — authz, injection, secrets, vulnerable deps.",
+        what=(
+            "The security engineer threat-models a change against the project's actual threat "
+            "model — proportionate, not paranoid. It walks the trust boundaries with STRIDE, "
+            "asking per boundary what an attacker controls and what that buys them, then "
+            "reviews against OWASP fundamentals.",
+            "Every finding shows the exploit path, not a lint hit: the concrete attack scenario "
+            "from inputs to impact, the exact location, and a specific fix, ranked from "
+            "Critical to Low. A credible Critical or High is blocking. It hands the engineer a "
+            "precise, testable remediation rather than writing the product fix itself.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A change touches a trust boundary",
+                "Authentication, authorisation, input handling, crypto, or a new external "
+                "surface gets threat-modelled before it ships, with findings ranked by "
+                "severity.",
+            ),
+            AgentScenario(
+                "Secrets might be leaking",
+                "Code, commits, logs, and error bodies get hunted for tokens and keys — a "
+                "hardcoded credential is a blocking finding.",
+            ),
+            AgentScenario(
+                "Dependencies are changing",
+                "Known-vulnerable, unpinned, or abandoned packages and risky install-time "
+                "scripts get flagged; lockfiles and minimal, current versions are preferred.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Authorisation.",
+                "Identity actually verified, and every privileged action checked server-side "
+                "against this principal — broken access control and IDOR hunted first.",
+            ),
+            AgentCheck(
+                "Injection.",
+                "Untrusted input reaching any interpreter parameterised, never concatenated; "
+                "output encoded for its sink to stop XSS, SSRF, and path traversal.",
+            ),
+            AgentCheck(
+                "Secrets and crypto.",
+                "No secrets in code, commits, logs, or errors; vetted primitives only, strong "
+                "salted password hashing, TLS in transit.",
+            ),
+            AgentCheck(
+                "Supply chain.",
+                "Known-vulnerable, unpinned, or abandoned dependencies flagged, along with "
+                "risky install-time scripts.",
+            ),
+            AgentCheck(
+                "Secure defaults.",
+                "Least privilege, deny-by-default, fail closed, server-side validation, and no "
+                "stack traces leaking in error bodies.",
+            ),
+            AgentCheck(
+                "Exploit paths.",
+                "Findings show the concrete attack scenario from inputs to impact — reasoned "
+                "data flow, not pattern-match lint hits.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The security engineer reviews risky changes before merge and thinks about "
+                "trust boundaries alongside the `architect`. Its REJECT hands the "
+                "`senior-engineer` a specific, testable remediation, and the `sdet` confirms "
+                "the fix holds. On delivery plumbing it sets the severity of an exposure, while "
+                "the `devops-engineer` owns where the wiring changes.",
+            ),
+            related=("architect", "senior-engineer", "devops-engineer"),
+        ),
+    ),
+    "site-reliability-engineer": AgentCopy(
+        tagline="Reliability, failure modes, rollback safety — and bug root-cause.",
+        what=(
+            "The site reliability engineer judges a change by how it behaves when things go "
+            "wrong, not just on the happy path. It is also the crew's root-cause specialist: "
+            "reproduce the failure deterministically, work back to the mechanism, then specify "
+            "the minimal fix and the regression check that would have caught it.",
+            "On review it walks the failure surface — timeouts and retries, idempotency, "
+            "observability, and whether the rollout can be undone. Findings are ranked by "
+            "severity, with blockers like data loss, no rollback path, or unbounded failure "
+            "separated from nits.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A bug needs a real cause",
+                "The SRE finds the smallest input that triggers the failure, names the "
+                "mechanism, and hands back the minimal fix plus the regression check — "
+                "blameless, fix once.",
+            ),
+            AgentScenario(
+                "A change is going to production",
+                "Failure modes, rollback safety, and migration compatibility get reviewed "
+                "before deploy; a one-way, irreversible deploy is a blocking concern unless "
+                "justified.",
+            ),
+            AgentScenario(
+                "Something wakes people up",
+                "Toil and unobservable systems get flagged: if it can't be diagnosed at 3am "
+                "from what it emits, it can't be operated.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Reproduction.",
+                "The smallest input or state that triggers the failure, captured "
+                "deterministically — no reproduction, no confirmed root cause.",
+            ),
+            AgentCheck(
+                "Root cause.",
+                "Work backwards from the failure with logs, traces, and bisection until the "
+                "actual defect is named, not the place it surfaced.",
+            ),
+            AgentCheck(
+                "Failure modes.",
+                "Slow or dead dependencies, malformed input, full disks, and mid-operation "
+                "crashes — every remote call gets a timeout and sane retries.",
+            ),
+            AgentCheck(
+                "Idempotency.",
+                "Running twice — retry, redelivery, restart — must not double-apply; partial "
+                "failures left recoverable, resources bounded.",
+            ),
+            AgentCheck(
+                "Observability.",
+                "Meaningful logs, metrics, and traces at the right boundaries, with no secrets "
+                "in them — diagnosable at 3am.",
+            ),
+            AgentCheck(
+                "Safe delivery.",
+                "A rollback path, backward-compatible migrations, and flag or canary guards — "
+                "irreversible deploys blocked unless justified.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "On `/fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
+                "minimal fix and its regression check; the `sdet` then proves the fix. On "
+                "`/release` it gates deploy safety. Build-time questions — pipelines, caching, "
+                "pinning — belong to the `devops-engineer`, and the SRE defers there "
+                "explicitly.",
+            ),
+            related=("senior-engineer", "sdet", "devops-engineer"),
+        ),
+    ),
+    "performance-engineer": AgentCopy(
+        tagline="Profiles, benchmarks, and proves the win.",
+        what=(
+            "The performance engineer optimises to the project's stated bar — target latency, "
+            "throughput, frame budget, or memory ceiling — with correctness first: a fast "
+            "wrong answer is a bug. If no bar is stated, it establishes the current baseline "
+            "and improves against that.",
+            "The discipline is measure, don't guess: record a baseline, profile to the real "
+            "bottleneck, attack the biggest cost, then re-measure with the same benchmark to "
+            "prove the win. No measured improvement means it was not an optimisation.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "Something is too slow",
+                "The bottleneck gets found with a profiler rather than intuition, then fixed "
+                "and proven with before-and-after numbers on the same benchmark.",
+            ),
+            AgentScenario(
+                "A change might regress",
+                "Hot paths get reviewed for complexity, N+1 patterns, and unbounded growth — a "
+                "real regression against the bar is blocking.",
+            ),
+            AgentScenario(
+                "No way to measure exists",
+                "If the repo has no benchmark or timing harness, a minimal one gets built "
+                "first — nothing is optimised on intuition.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Repeatable baseline.",
+                "A benchmark, profile, or timing harness with a number recorded before anything "
+                "gets touched.",
+            ),
+            AgentCheck(
+                "The real bottleneck.",
+                "Profiling to where time and memory actually go — Amdahl's law: speeding up "
+                "code that isn't the bottleneck buys nothing.",
+            ),
+            AgentCheck(
+                "Biggest cost first.",
+                "Algorithmic wins before micro-tuning — complexity reductions, collapsed N+1 "
+                "queries, cached repeated work, fewer allocations and copies.",
+            ),
+            AgentCheck(
+                "The right goal.",
+                "Latency, throughput, and memory are different targets — watch the tail "
+                "percentiles, not just the average.",
+            ),
+            AgentCheck(
+                "Proof of the win.",
+                "Before-and-after numbers on the same benchmark, with the target met and the "
+                "tests still green.",
+            ),
+            AgentCheck(
+                "Premature optimisation.",
+                "Cold paths left simple — flagged when the simpler code is the right call at "
+                "this scale.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The performance engineer is called when a bottleneck needs fixing or a change "
+                "needs a regression check, and hands the `senior-engineer` a precise, measured "
+                "fix to apply. Its remit is the shipped system's behaviour — build and pipeline "
+                "speed belongs to the `devops-engineer`.",
+            ),
+            related=("senior-engineer", "devops-engineer", "sdet"),
+        ),
+    ),
+    "devops-engineer": AgentCopy(
+        tagline="Build & delivery — reproducibility, pinning, environment parity.",
+        what=(
+            "The devops engineer reviews the delivery system as a codebase: the pipeline and "
+            "build definitions, image and environment definitions, config and secret plumbing, "
+            "and dependency pinning that construct, configure, and ship the software. Its line "
+            "is sharp — it owns build time, not run time.",
+            "It judges reproducibility, pinning, environment parity, pipeline correctness, and "
+            "the speed of the feedback loop — and where feasible it exercises the definitions "
+            "rather than reasoning about them: run the build twice, build from a clean "
+            "checkout, inspect what a step really resolved.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "The build can't be trusted",
+                "Floating versions, runner-dependent steps, and unchecked network fetches get "
+                "hunted until the same commit produces the same artifact, on any machine, six "
+                "months from now.",
+            ),
+            AgentScenario(
+                "A pipeline change needs review",
+                "Jobs get checked for correct wiring, real gating, idempotent re-runs, and safe "
+                "secret plumbing — a green check that can't fail is worse than no check.",
+            ),
+            AgentScenario(
+                "The feedback loop is slow",
+                "Cache correctness comes before cache presence, then redundant work and "
+                "needless serialisation — a loosely-keyed cache is a correctness bug wearing a "
+                "performance costume.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Reproducibility.",
+                "Same commit, same artifact — no floating versions, machine-specific paths, or "
+                "steps whose result depends on what ran before.",
+            ),
+            AgentCheck(
+                "Pinning.",
+                "Base images, toolchains, and build dependencies pinned to immutable "
+                "references, with a stated route to updating them.",
+            ),
+            AgentCheck(
+                "Environment parity.",
+                "Drift between environments named specifically — versions, config shape, "
+                "resource limits, flags — and the bug class it hides.",
+            ),
+            AgentCheck(
+                "Secret plumbing.",
+                "Where values are injected, how they're scoped per environment, and whether one "
+                "can reach a log, artifact, or untrusted pull request.",
+            ),
+            AgentCheck(
+                "Pipeline correctness.",
+                "Jobs wired to the right events, gates that can genuinely fail, and re-runs "
+                "that are idempotent and side-effect free.",
+            ),
+            AgentCheck(
+                "Feedback-loop time.",
+                "What a contributor waits for and why — cache correctness, redundant work, and "
+                "jobs that could be conditional.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "Three verdicts get deferred explicitly: rollout and rollback safety to the "
+                "`site-reliability-engineer`, the severity of a secret exposure to the "
+                "`security-engineer`, and the shipped system's performance to the "
+                "`performance-engineer`. File location never decides ownership — the question "
+                "being asked does.",
+            ),
+            related=("site-reliability-engineer", "security-engineer", "performance-engineer"),
+        ),
+    ),
+    "product-manager": AgentCopy(
+        tagline="Accepts or rejects against the acceptance criteria and your bar.",
+        what=(
+            "The product manager guards user value and the quality bar — not the code. It "
+            "checks every acceptance criterion individually against the actual current state of "
+            "the pushed change, running whatever is checkable rather than trusting the PR's "
+            "claims.",
+            "Beyond the ticket, it holds the change to the project's Definition of Done: tests "
+            "present, docs updated, and the non-functional expectations the product implies. It "
+            "guards scope in both directions — rejecting under-delivery and gold-plating alike. "
+            "During planning, it surfaces hidden requirements and names ambiguity rather than "
+            "letting it slide.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A PR needs a verdict",
+                "Each acceptance criterion gets verified against the real, pushed state of the "
+                "change — ACCEPT, ACCEPT-WITH-NITS, or REJECT with the specific unmet criteria "
+                "listed.",
+            ),
+            AgentScenario(
+                "Requirements are fuzzy",
+                "During planning, the product manager asks the why behind the request, "
+                "surfacing hidden requirements and edge cases before they turn into rework.",
+            ),
+            AgentScenario(
+                "The ticket passed, the point didn't",
+                "Outcome over output: whether the change actually solves the user's underlying "
+                "problem, judged from the real journey rather than one screen in isolation.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Every criterion.",
+                "Each acceptance criterion checked individually against the pushed change's "
+                "actual state — run when runnable, never taken on claims.",
+            ),
+            AgentCheck(
+                "Definition of Done.",
+                "The project's stated bar beyond the ticket: tests present, docs updated, and "
+                "implied non-functional expectations held.",
+            ),
+            AgentCheck(
+                "Real user value.",
+                "Whether the change solves the underlying problem from the user's perspective, "
+                "not merely the letter of the ticket.",
+            ),
+            AgentCheck(
+                "Under-delivery.",
+                "Placeholders, obviously-wrong defaults, and corner cases that will bite "
+                "immediately get rejected.",
+            ),
+            AgentCheck(
+                "Gold-plating.",
+                "Unrequested extra surface that adds risk and maintenance for no agreed value "
+                "gets rejected too.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The product manager books the ends of a run: clarifying requirements with the "
+                "`architect` during planning, then accepting or rejecting the finished PR after "
+                "the `sdet` has verified it. A REJECT lists the specific unmet criteria and "
+                "routes the work back to the `senior-engineer`.",
+            ),
+            related=("sdet", "architect", "senior-engineer"),
+        ),
+    ),
+    "ux-ui-designer": AgentCopy(
+        tagline="Specs & reviews on-screen UI — tokens, layout, focus, a11y.",
+        what=(
+            "The ux-ui designer works to the project's stated design system — matching it, "
+            "never inventing a competing style. Before anything is built, it produces a design "
+            "spec: text wireframes of every screen and state, a tokens plan, responsive layout, "
+            "focus order, feedback, and WCAG 2.2 AA accessibility.",
+            "After the build, it reviews the real interface against that spec, Nielsen's "
+            "heuristics, and WCAG — stating its coverage up front and naming anything unseen as "
+            "unreviewed. Layout is never trusted from a static read: the UI gets rendered, or "
+            "the change is flagged as needing a human visual pass.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "UI is about to be built",
+                "The spec comes first: every screen and every state wireframed, tokens planned, "
+                "layout responsive, and accessibility designed in rather than bolted on.",
+            ),
+            AgentScenario(
+                "Built UI needs a verdict",
+                "The interface gets reviewed against the spec, the heuristics, and the WCAG "
+                "thresholds — findings grouped by category, each with evidence, the expected "
+                "pattern, and a severity.",
+            ),
+            AgentScenario(
+                "Consistency is drifting",
+                "Token bypasses, components built two different ways, and rhythm that doesn't "
+                "share an edge get named — framed by the confusion they cause, not consistency "
+                "for its own sake.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Every state.",
+                "Default, empty, loading, error, and success states for each screen — plus the "
+                "coverage actually seen, stated before any verdict.",
+            ),
+            AgentCheck(
+                "Token discipline.",
+                "Shared design tokens as the single source of truth — raw colour, size, and "
+                "spacing values bypassing the layer get rejected.",
+            ),
+            AgentCheck(
+                "Responsive layout.",
+                "Platform layout primitives and constraints, never hardcoded absolute "
+                "positions, so the interface adapts across viewports.",
+            ),
+            AgentCheck(
+                "Keyboard and focus.",
+                "Full keyboard operability, a sensible focus order, and a visible focus "
+                "indicator that nothing obscures.",
+            ),
+            AgentCheck(
+                "WCAG 2.2 AA.",
+                "Contrast ratios, target sizes, colour never the only signal, and honest "
+                "reading order — checked against the thresholds.",
+            ),
+            AgentCheck(
+                "Rendering honesty.",
+                "Layout never trusted from a static read alone — render the real UI, or "
+                "explicitly flag that a human visual pass is needed.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The ux-ui designer specs before the `senior-engineer` builds and reviews "
+                "after, looping until the interface holds up. Rendered visuals beyond UI — "
+                "imagery, brand, art — belong to the `art-director`, and acceptance against the "
+                "product bar stays with the `product-manager`.",
+            ),
+            related=("senior-engineer", "art-director", "product-manager"),
+        ),
+    ),
+    "art-director": AgentCopy(
+        tagline="Directs & reviews rendered visuals — judges the picture.",
+        what=(
+            "The art director judges the produced output, not the source that made it. If the "
+            "project has a render, export, or screenshot path, it runs it, looks at the result "
+            "at real resolution, and critiques what it actually sees — anything not rendered is "
+            "named as unreviewed.",
+            "The judgement follows the fundamentals: value and readability first, then "
+            "hierarchy and composition, colour, cohesion with the project's other assets, and "
+            "craft. Before work begins, it specs a concrete, measurable direction — exact "
+            "colour values, dimensions, light, and reference examples — so the result is what "
+            "was meant, not a guess.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "Visuals need a direction",
+                "Before work starts, the art director writes a concrete direction — exact "
+                "values, dimensions, light angle and intensity, and references — concrete "
+                "enough to verify against.",
+            ),
+            AgentScenario(
+                "Rendered work needs review",
+                "The real artifact gets produced and viewed at real resolution, then judged on "
+                "value, composition, colour, cohesion, and craft — with a decisive verdict.",
+            ),
+            AgentScenario(
+                "Something looks imported",
+                "Cohesion checks catch assets that don't sit in the project's visual world: "
+                "shared palette, line weight, lighting, and scale.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "The real artifact.",
+                "The render or export actually produced and viewed at real resolution — never "
+                "the source reviewed in its place.",
+            ),
+            AgentCheck(
+                "Stated coverage.",
+                "Exactly which assets were seen and at what resolution named before the verdict "
+                "— anything unseen called unreviewed.",
+            ),
+            AgentCheck(
+                "Value and readability.",
+                "The composition still reads when detail blurs — strong light-dark structure "
+                "and clear silhouettes over rendering polish.",
+            ),
+            AgentCheck(
+                "Hierarchy and colour.",
+                "A clear focal point and eye path; a deliberate, harmonious palette with "
+                "consistent light direction.",
+            ),
+            AgentCheck(
+                "Cohesion and craft.",
+                "One visual world with the project's other assets, plus spacing, alignment, "
+                "edge quality, and no unwanted repetition or artifacts.",
+            ),
+            AgentCheck(
+                "No rubber-stamping.",
+                "Loops run produce, look, critique, refine until genuinely signed off — never "
+                "ended early to close the loop.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The art director is the visual counterpart to the `ux-ui-designer`: the "
+                "designer owns interface usability and tokens, the art director owns the "
+                "picture itself. Findings hand back to the `senior-engineer` or the asset's "
+                "author as concrete fixes, blockers separated from nits — and a review loop "
+                "never rubber-stamps early to end.",
+            ),
+            related=("ux-ui-designer", "senior-engineer", "product-manager"),
+        ),
+    ),
+    "technical-writer": AgentCopy(
+        tagline="Writes docs from the real code; proves them with a reader test.",
+        what=(
+            "The technical writer gets a reader to done, not to informed. It picks the right "
+            "kind of doc for the job — tutorial, how-to guide, reference, or explanation — and "
+            "writes it in the project's own voice and format, next to what it describes.",
+            "Every claim is verified against the actual code: commands, paths, parameters, and "
+            "output must match what the repo does today, and a fresh reader following the steps "
+            "verbatim must reach the stated result. When reviewing docs, a factually wrong or "
+            "non-completable instruction is blocking.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A change needs docs",
+                "READMEs, how-tos, reference pages, changelogs, and migration guides get "
+                "written from the real source — ready to commit, in the repo's format.",
+            ),
+            AgentScenario(
+                "Docs might have drifted",
+                "Every claim gets checked against the code and every procedure walked — drift, "
+                "broken samples, and missing prerequisites get flagged with specific fixes.",
+            ),
+            AgentScenario(
+                "A doc type is blurry",
+                "Tutorials, how-tos, reference, and explanation serve different readers; the "
+                "writer splits them instead of blending one doc that serves none.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Zero drift.",
+                "Every command, path, parameter, and output read from the real source and "
+                "matching what the repo actually does today.",
+            ),
+            AgentCheck(
+                "The reader test.",
+                "A fresh reader with no prior context, following the steps verbatim, must reach "
+                "the stated result — executed personally where possible.",
+            ),
+            AgentCheck(
+                "The right doc type.",
+                "Tutorial, how-to, reference, or explanation chosen for the reader's goal — "
+                "never blended into one doc.",
+            ),
+            AgentCheck(
+                "Minimalism.",
+                "The least that gets the reader to done — throat-clearing, obvious statements, "
+                "and duplication cut.",
+            ),
+            AgentCheck(
+                "Consistent terminology.",
+                "One name per concept, matching the code and UI — terms defined once, never "
+                "drifting synonyms.",
+            ),
+            AgentCheck(
+                "Honest changelogs.",
+                "Breaking changes and the upgrade path stated plainly; scannable structure with "
+                "descriptive link text and alt text.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The technical writer runs near the end of a change, turning the "
+                "`senior-engineer`'s verified diff into docs that match it, and reviews docs "
+                "the way the `sdet` reviews code — by walking the steps. The `product-manager` "
+                "holds docs to the Definition of Done like any other deliverable.",
+            ),
+            related=("senior-engineer", "product-manager", "sdet"),
+        ),
+    ),
+    "data-scientist": AgentCopy(
+        tagline="Data/model work — metrics, leakage, validation, reproducibility.",
+        what=(
+            "The data scientist engages where the actual deliverable is analysis or a model — "
+            "experiments, pipelines, metrics, statistical claims. A model that scores well but "
+            "answers the wrong question, or scores well only because of a leak, counts as a "
+            "failure.",
+            "Framing and metric choice come first, then the ways results lie: target leakage, "
+            "train-test contamination, missing baselines, and evaluation on data the model has "
+            "seen. Where feasible, the pipeline gets rerun or the metric recomputed rather than "
+            "trusting the reported figure. On a conventional app with no data deliverable, it "
+            "says so instead of inventing work.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A model claims a number",
+                "The evaluation gets audited — an honest split, a sensible baseline, metrics on "
+                "unseen data — before the number is believed.",
+            ),
+            AgentScenario(
+                "An experiment needs designing",
+                "Problem framing, metric choice, and validation strategy get set up front, "
+                "matched to the real-world cost of the errors that matter.",
+            ),
+            AgentScenario(
+                "Results look too good",
+                "Target leakage and train-test contamination get hunted first — the number one "
+                "way results lie.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Problem framing.",
+                "The question well-posed and the metric reflecting real success — accuracy on "
+                "imbalanced data is a trap.",
+            ),
+            AgentCheck(
+                "Leakage.",
+                "Features encoding the label or the future, tuning on the test set, duplicates, "
+                "and shift between train and serve.",
+            ),
+            AgentCheck(
+                "Honest evaluation.",
+                "Held-out or cross-validated correctly, a sensible baseline to beat, and "
+                "metrics reported only on unseen data.",
+            ),
+            AgentCheck(
+                "Statistical soundness.",
+                "Real effect or noise — sample size, variance across runs, multiple "
+                "comparisons, and correlation not read as cause.",
+            ),
+            AgentCheck(
+                "Bias and fairness.",
+                "Where decisions affect people, disparate performance across relevant groups "
+                "and unrepresentative training data.",
+            ),
+            AgentCheck(
+                "Reproducibility.",
+                "Fixed seeds, pinned data and dependencies, and a runnable path from raw data "
+                "to result — an irreproducible number is a finding.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The data scientist is the crew's specialist for data-and-model deliverables — "
+                "designing experiments in `/spike`, reviewing analysis and model changes in "
+                "`/pr-review`. Findings hand to the `senior-engineer` as specific fixes, and "
+                "anything outside data work routes back to the rest of the crew.",
+            ),
+            related=("senior-engineer", "sdet", "product-manager"),
+        ),
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Layer 3 — PARSE  (skills/*/SKILL.md + agents/*.md -> model)
 # No markup literals, no escaping, no writing.
 # ---------------------------------------------------------------------------
 
@@ -231,6 +1192,13 @@ ALLOWED_FRONTMATTER_KEY_LIST = ", ".join(ALLOWED_FRONTMATTER_KEYS)
 # is a line-oriented reader, not a YAML parser, and no page reads them.
 BLOCK_FRONTMATTER_KEY = "metadata"
 INDENTED_RE = re.compile(r"^[ \t]")
+
+# Agent frontmatter (agents/<role>.md): name and description required and first,
+# in that order; `tools` optional. No other keys — a typo fails here rather than
+# reaching a page in silence, same rule as the skill parser.
+AGENT_REQUIRED_FRONTMATTER_KEYS = ("name", "description")
+AGENT_FRONTMATTER_KEYS = AGENT_REQUIRED_FRONTMATTER_KEYS + ("tools",)
+AGENT_FRONTMATTER_KEY_LIST = ", ".join(AGENT_FRONTMATTER_KEYS)
 
 # Agent Skills limits on the two standard keys.
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -280,23 +1248,203 @@ def _is_structural(raw: str) -> bool:
     )
 
 
-def load_agent_names(agents_dir: Path) -> tuple:
-    """The known crew roles, read from each agents/*.md `name:` frontmatter key."""
-    names = []
-    for path in sorted(agents_dir.glob("*.md")):
-        src = f"agents/{path.name}"
-        found = ""
-        for lineno, raw in enumerate(path.read_text(encoding="utf-8").split("\n")[:10], start=1):
-            if raw.startswith("name:"):
-                found = raw[len("name:"):].strip()
-                break
-        if not found:
-            raise SourceError(
-                src, 1, "no `name:` key in the frontmatter", "",
-                "every agents/*.md must open with a frontmatter block declaring `name: <role>`",
+def parse_agent(path: Path) -> AgentFrontmatter:
+    """The frontmatter of one agents/<role>.md. The body is a system prompt — no
+    page reads it, so only the fence block is parsed. Unknown keys raise, same as
+    the skill parser: a typo no reader honours must not reach a page in silence.
+    """
+    slug = path.stem
+    src = f"agents/{path.name}"
+    lines = path.read_text(encoding="utf-8").split("\n")
+    if not lines or lines[0].strip() != "---":
+        raise SourceError(
+            src, 1, "missing frontmatter fence", lines[0] if lines else "",
+            "an agent file must open with a `---` line",
+        )
+    values = {}
+    order = []
+    for i in range(1, len(lines)):
+        raw = lines[i]
+        lineno = i + 1
+        if raw.strip() == "---":
+            missing = [k for k in AGENT_REQUIRED_FRONTMATTER_KEYS if k not in values]
+            if missing:
+                raise SourceError(
+                    src, lineno, f"frontmatter is missing {missing[0]}", raw,
+                    f"an agent file requires {', '.join(AGENT_REQUIRED_FRONTMATTER_KEYS)}, "
+                    "in that order, at the top of the block (we ship "
+                    f"{AGENT_FRONTMATTER_KEY_LIST})",
+                )
+            if tuple(order[: len(AGENT_REQUIRED_FRONTMATTER_KEYS)]) != AGENT_REQUIRED_FRONTMATTER_KEYS:
+                raise SourceError(
+                    src, _key_lineno(lines, i, order[0] if order else "name"),
+                    "frontmatter does not open with "
+                    f"{', '.join(AGENT_REQUIRED_FRONTMATTER_KEYS)}", raw,
+                    "move name and description to the top of the block, in that order; "
+                    "tools follows",
+                )
+            fm = AgentFrontmatter(
+                name=values["name"],
+                description=values["description"],
+                tools=tuple(
+                    t.strip() for t in values.get("tools", "").split(",") if t.strip()
+                ),
             )
-        names.append(found)
-    return tuple(dict.fromkeys(names))
+            lineno = _key_lineno(lines, i, "name")
+            if not SKILL_NAME_RE.match(fm.name):
+                raise SourceError(
+                    src, lineno, "frontmatter name is not a slug", lines[lineno - 1],
+                    "agent names use lowercase letters, digits and single hyphens "
+                    "(`^[a-z0-9]+(-[a-z0-9]+)*$`) — rename the agent and its file to match",
+                )
+            if fm.name != slug:
+                raise SourceError(
+                    src, lineno, "frontmatter name does not match the file name", lines[lineno - 1],
+                    f"the `name:` key must equal the file name — write `name: {slug}` here, "
+                    f"or rename the file to agents/{fm.name}.md",
+                )
+            return fm
+        if not raw.strip():
+            continue
+        if INDENTED_RE.match(raw):
+            raise SourceError(
+                src, lineno, "indented frontmatter line", raw,
+                "write every entry on a single unindented `key: value` line",
+            )
+        key, sep, value = raw.partition(":")
+        if not sep or key.strip() not in AGENT_FRONTMATTER_KEYS:
+            raise SourceError(
+                src, lineno, "unknown frontmatter key", raw,
+                f"expected one of {AGENT_FRONTMATTER_KEY_LIST}",
+            )
+        key = key.strip()
+        if key in values:
+            raise SourceError(
+                src, lineno, f"duplicate frontmatter key {key}", raw,
+                "declare each frontmatter key exactly once",
+            )
+        values[key] = value.strip()
+        order.append(key)
+    raise SourceError(
+        src, len(lines), "unterminated frontmatter fence", "",
+        "close the frontmatter with a `---` line before the system-prompt body",
+    )
+
+
+def check_agent_copy(role: str, copy: AgentCopy) -> None:
+    """Fail-fast shape rules on the authored copy — the UX spec's bounds, enforced
+    at build time so a copy defect can never ship on a page."""
+    src = AGENT_COPY_SRC
+
+    def bad(what: str, remedy: str) -> None:
+        raise SourceError(src, 1, f"AGENT_COPY['{role}']: {what}", "", remedy)
+
+    if not copy.tagline.strip():
+        bad("empty tagline", "give the agent its one-line tagline (it matches the homepage crew card)")
+    if not 1 <= len(copy.what) <= 2:
+        bad(f"{len(copy.what)} 'what' paragraphs", "the spec allows 1-2 paragraphs")
+    if not 2 <= len(copy.scenarios) <= 3:
+        bad(f"{len(copy.scenarios)} scenarios", "the spec allows 2-3 scenario cards")
+    for scenario in copy.scenarios:
+        words = len(scenario.title.split())
+        if not 3 <= words <= 6:
+            bad(
+                f"scenario title {scenario.title!r} is {words} words",
+                "scenario titles are 3-6 words",
+            )
+        if not scenario.desc.strip():
+            bad(f"scenario {scenario.title!r} has an empty description", "write 1-2 sentences")
+    if not 5 <= len(copy.checks) <= 8:
+        bad(f"{len(copy.checks)} checks", "the spec allows 5-8 check bullets")
+    for check in copy.checks:
+        if not check.lead.strip():
+            bad("a check has an empty lead-in", "bold lead-in, then the explanation")
+        words = len(check.text.split())
+        if words > 25:
+            bad(f"check {check.lead!r} runs {words} words", "check explanations are at most 25 words")
+    if not 1 <= len(copy.crew_fit.paragraphs) <= 2:
+        bad(f"{len(copy.crew_fit.paragraphs)} crew-fit paragraphs", "the spec allows 1-2")
+    if not copy.crew_fit.related:
+        bad("no related roles", "name the roles it hands off to or works alongside")
+    for rel in copy.crew_fit.related:
+        if rel not in AGENT_ROLES:
+            bad(f"related role {rel!r} is not a known agent", f"use one of: {', '.join(AGENT_ROLES)}")
+
+
+def derive_called_by(skills_dir: Path, roles: tuple) -> dict:
+    """role -> slugs of the commands whose SKILL.md mentions the role, in canonical
+    SLUGS order. Derived from the skill sources, never hand-maintained: a skill
+    that starts or stops calling an agent moves the pill on the next regen."""
+    called = {role: [] for role in roles}
+    for slug in SLUGS:
+        path = skills_dir / slug / "SKILL.md"
+        if not path.is_file():
+            continue  # load_skills reports the drift with its own remedy
+        text = path.read_text(encoding="utf-8")
+        for role in roles:
+            if re.search(r"\b" + re.escape(role) + r"\b", text):
+                called[role].append(slug)
+    return {role: tuple(slugs) for role, slugs in called.items()}
+
+
+def load_agents(agents_dir: Path, skills_dir: Path) -> tuple:
+    """Every agents/<role>.md joined with its AGENT_COPY entry and the derived
+    called_by, in canonical AGENT_ROLES order. Raises on any drift between the
+    disk, the copy table, and AGENT_ROLES — in every direction."""
+    on_disk = {p.stem: p for p in sorted(agents_dir.glob("*.md"))}
+    for role in sorted(on_disk):
+        if role not in AGENT_COPY:
+            raise SourceError(
+                f"agents/{role}.md", 1, "agent file has no AGENT_COPY entry", "",
+                f"agents/{role}.md exists but AGENT_COPY in tools/gen_command_pages.py has no "
+                f"'{role}' entry — add the editorial copy (tagline, what, scenarios, checks, "
+                "crew_fit), then rerun the generator and commit site/",
+            )
+    for role in sorted(AGENT_COPY):
+        if role not in on_disk:
+            raise SourceError(
+                "tools/gen_command_pages.py", 1, "AGENT_COPY entry has no agent file", "",
+                f"AGENT_COPY lists '{role}' but agents/{role}.md does not exist — write the "
+                "agent file or remove the copy entry, then rerun the generator and commit site/",
+            )
+    for role in sorted(AGENT_ROLES):
+        if role not in on_disk:
+            raise SourceError(
+                f"agents/{role}.md", 1, "AGENT_ROLES entry has no agent file", "",
+                f"AGENT_ROLES lists {role} but agents/{role}.md does not exist — remove it from "
+                "AGENT_ROLES in tools/gen_command_pages.py, delete site/agents/" + role + "/, "
+                "then rerun the generator and commit site/",
+            )
+    parsed = {role: parse_agent(path) for role, path in on_disk.items()}
+    called_by = derive_called_by(skills_dir, tuple(parsed))
+    agents = []
+    for role in AGENT_ROLES:
+        if role not in parsed:
+            raise SourceError(
+                f"agents/{role}.md", 1, "agent file is not in AGENT_ROLES", "",
+                f"agents/{role}.md is not in AGENT_ROLES — add it to AGENT_ROLES in "
+                "tools/gen_command_pages.py (canonical order drives the sitemap and the "
+                "sibling nav), then rerun the generator and commit site/",
+            )
+        copy = AGENT_COPY[role]
+        check_agent_copy(role, copy)
+        fm = parsed[role]
+        agents.append(
+            Agent(
+                slug=role,
+                source_path=f"agents/{role}.md",
+                name=fm.name,
+                description=fm.description,
+                tools=fm.tools,
+                tagline=copy.tagline,
+                what=copy.what,
+                scenarios=copy.scenarios,
+                checks=copy.checks,
+                crew_fit=copy.crew_fit,
+                called_by=called_by[role],
+            )
+        )
+    return tuple(agents)
 
 
 def load_skills(skills_dir: Path, agents: tuple) -> tuple:
@@ -1080,7 +2228,7 @@ def parse_skill(path: Path, agents: tuple) -> Command:
 
 
 # ---------------------------------------------------------------------------
-# Layer 3 — RENDER  (model -> HTML/XML strings)
+# Layer 4 — RENDER  (model -> HTML/XML strings)
 # The only layer allowed to escape or to write markup. No Path, no open, no os.
 # ---------------------------------------------------------------------------
 
@@ -1311,11 +2459,11 @@ def page_title(cmd: Command) -> str:
     return f"/{cmd.slug} — {cmd.tagline}"
 
 
-def render_head(cmd: Command, ctx: PageContext) -> str:
-    url = canonical_url(cmd.slug, ctx)
-    full_title = page_title(cmd) + " · Shipmates"
-    social_title = page_title(cmd)
-    description = truncate_words(cmd.frontmatter.description, MAX_META_DESCRIPTION)
+def _head(
+    full_title: str, social_title: str, description: str, url: str, jsonld: str, ctx: PageContext
+) -> str:
+    """The one <head> every detail page shares — command and agent pages differ
+    only in the five values the callers pass in."""
     alt = "Shipmates — Custom subagents and command workflows, on Claude Code today."
     return f"""<head>
   <meta charset="utf-8">
@@ -1341,8 +2489,28 @@ def render_head(cmd: Command, ctx: PageContext) -> str:
   <meta name="twitter:image" content="{link(ctx.social_image)}">
   <meta name="twitter:image:alt" content="{esc(alt)}">
   <link rel="stylesheet" href="{link("../../styles.css")}">
-{indent_html(render_jsonld(cmd, ctx), "  ")}
+{indent_html(jsonld, "  ")}
 </head>"""
+
+
+def render_head(cmd: Command, ctx: PageContext) -> str:
+    return _head(
+        full_title=page_title(cmd) + " · Shipmates",
+        social_title=page_title(cmd),
+        description=truncate_words(cmd.frontmatter.description, MAX_META_DESCRIPTION),
+        url=canonical_url(cmd.slug, ctx),
+        jsonld=render_jsonld(cmd, ctx),
+        ctx=ctx,
+    )
+
+
+def _jsonld_script(payload: dict) -> str:
+    """Serialise one ld+json block. JSON-LD is the one place HTML-escaping would
+    corrupt the payload. Two replacements close the </script> and <!-- breakouts;
+    both stay valid JSON."""
+    body = json.dumps(payload, ensure_ascii=False, indent=2)
+    body = body.replace("</", "<\\/").replace("<!--", "\\u003c!--")
+    return '<script type="application/ld+json">\n' + body + "\n</script>"
 
 
 def _step_text(cmd: Command, stage: Stage) -> str:
@@ -1376,11 +2544,7 @@ def render_jsonld(cmd: Command, ctx: PageContext) -> str:
             for position, stage in enumerate(cmd.stages, start=1)
         ],
     }
-    # JSON-LD is the one place HTML-escaping would corrupt the payload. Two
-    # replacements close the </script> and <!-- breakouts; both stay valid JSON.
-    body = json.dumps(payload, ensure_ascii=False, indent=2)
-    body = body.replace("</", "<\\/").replace("<!--", "\\u003c!--")
-    return '<script type="application/ld+json">\n' + body + "\n</script>"
+    return _jsonld_script(payload)
 
 
 def render_header() -> str:
@@ -1434,11 +2598,19 @@ def render_footer() -> str:
   </footer>"""
 
 
-def render_back_link() -> str:
+def _back_link(href: str, label: str) -> str:
     return (
-        f'<a class="order-back" href="{link("../../#commands")}">'
-        '<span aria-hidden="true">←</span> All commands</a>'
+        f'<a class="order-back" href="{link(href)}">'
+        f'<span aria-hidden="true">←</span> {esc(label)}</a>'
     )
+
+
+def render_back_link() -> str:
+    return _back_link("../../#commands", "All commands")
+
+
+def render_agent_back_link() -> str:
+    return _back_link("../../#crew", "All crew")
 
 
 def render_hero(cmd: Command, src: str) -> str:
@@ -1701,7 +2873,216 @@ def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
 """
 
 
-def render_sitemap(cmds: tuple, ctx: PageContext, docs: tuple = ()) -> str:
+# --- agent detail pages ------------------------------------------------------
+
+
+def canonical_agent_url(agent: Agent, ctx: PageContext) -> str:
+    return f"{ctx.site_url}agents/{agent.slug}/"
+
+
+def agent_page_title(agent: Agent) -> str:
+    return f"{agent.name} — {agent.tagline}"
+
+
+def render_agent_jsonld(agent: Agent, ctx: PageContext) -> str:
+    """TechArticle — the same shape the hand-authored docs leaves carry."""
+    payload = {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "name": agent.name,
+        "description": agent.description,
+        "url": canonical_agent_url(agent, ctx),
+        "isPartOf": {"@type": "CollectionPage", "url": ctx.site_url + "#crew"},
+    }
+    return _jsonld_script(payload)
+
+
+def render_agent_head(agent: Agent, ctx: PageContext) -> str:
+    return _head(
+        full_title=agent_page_title(agent) + " · Shipmates",
+        social_title=agent_page_title(agent),
+        description=truncate_words(agent.description, MAX_META_DESCRIPTION),
+        url=canonical_agent_url(agent, ctx),
+        jsonld=render_agent_jsonld(agent, ctx),
+        ctx=ctx,
+    )
+
+
+def render_agent_hero(agent: Agent) -> str:
+    return f"""    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        {render_agent_back_link()}
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">\U0001f9ed</span> Subagent</p>
+          <h1 class="order-detail__title" id="order-title"><code>{esc(agent.name)}</code></h1>
+          <p class="order-detail__tagline">{esc(agent.tagline)}</p>
+          <p class="order-detail__desc">{esc(agent.description)}</p>
+        </div>
+      </div>
+    </section>"""
+
+
+def _copy_prose(texts: tuple, prefix: str) -> str:
+    """Authored copy paragraphs through the same prose renderer the sources use."""
+    return render_prose(
+        tuple(Para(lineno=0, text=text) for text in texts), AGENT_COPY_SRC, prefix
+    )
+
+
+def _agent_section(section_id: str, title: str, inner: str) -> str:
+    return f"""    <section class="section" id="{esc(section_id)}" aria-labelledby="{esc(section_id)}-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="{esc(section_id)}-title">{esc(title)}</h2>
+        </div>
+{inner}
+      </div>
+    </section>"""
+
+
+def render_agent_what(agent: Agent) -> str:
+    return _agent_section("what", "What this agent does", _copy_prose(agent.what, "        "))
+
+
+def render_agent_scenarios(agent: Agent) -> str:
+    cards = []
+    for scenario in agent.scenarios:
+        cards.append(
+            '          <div class="agent-scenario">\n'
+            f'            <h3 class="agent-scenario__title">'
+            f'{render_inline(scenario.title, AGENT_COPY_SRC, 0)}</h3>\n'
+            f'            <p class="agent-scenario__desc">'
+            f'{render_inline(scenario.desc, AGENT_COPY_SRC, 0)}</p>\n'
+            "          </div>"
+        )
+    inner = '        <div class="agent-scenarios">\n' + "\n".join(cards) + "\n        </div>"
+    return _agent_section("scenarios", "When you'd want it", inner)
+
+
+def render_agent_checks(agent: Agent) -> str:
+    items = tuple(
+        ListItem(lineno=0, text=f"**{check.lead}** {check.text}", children=())
+        for check in agent.checks
+    )
+    prose = render_prose(
+        (ListBlock(lineno=0, ordered=False, items=items),), AGENT_COPY_SRC, "        "
+    )
+    return _agent_section("checks", "What it checks", prose)
+
+
+def render_agent_crew_fit(agent: Agent) -> str:
+    related = " ".join(
+        f'<a class="chip order-stage__crew-item" href="{link("../" + role + "/")}">'
+        f"<code>{esc(role)}</code></a>"
+        for role in agent.crew_fit.related
+    )
+    called = " ".join(
+        f'<a class="chip order-stage__crew-item" href="{link("../../commands/" + slug + "/")}">'
+        f"<code>/{esc(slug)}</code></a>"
+        for slug in agent.called_by
+    )
+    inner = (
+        _copy_prose(agent.crew_fit.paragraphs, "        ")
+        + f'\n        <p class="order-stage__crew">Related roles: {related}</p>'
+        + f'\n        <p class="order-stage__crew">Called in by: {called}</p>'
+    )
+    return _agent_section("crew-fit", "How it fits the crew", inner)
+
+
+def render_agent_reference(agent: Agent) -> str:
+    tools = ", ".join(f"<code>{esc(tool)}</code>" for tool in agent.tools)
+    inner = f"""        <dl class="agent-ref">
+          <dt>Name</dt>
+          <dd><code>{esc(agent.name)}</code></dd>
+          <dt>Description</dt>
+          <dd>{esc(agent.description)}</dd>
+          <dt>Tools</dt>
+          <dd>{tools}</dd>
+        </dl>"""
+    return _agent_section("reference", "Reference", inner)
+
+
+def render_agent_source(agent: Agent, ctx: PageContext) -> str:
+    blob = ctx.repo_blob_base + agent.source_path
+    return f"""    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>{esc(agent.source_path)}</code>. The installer copies it to <code>~/.claude/agents/{esc(agent.slug)}.md</code> for every project, or <code>.claude/agents/{esc(agent.slug)}.md</code> inside a single repo.</p>
+        <a class="btn btn--secondary" href="{link(blob)}">
+          {GITHUB_ICON}
+          <span>View agents/{esc(agent.slug)}.md on GitHub</span>
+        </a>
+      </div>
+    </section>"""
+
+
+def render_agent_siblings(agent: Agent, all_agents: tuple) -> str:
+    items = []
+    for other in all_agents:
+        name = f"<code>{esc(other.name)}</code>"
+        if other.slug == agent.slug:
+            inner = (
+                '<span class="order-siblings__link order-siblings__link--current" '
+                f'aria-current="page">{name}'
+                '<span class="visually-hidden"> (current page)</span></span>'
+            )
+        else:
+            inner = (
+                f'<a class="order-siblings__link" href="{link("../" + other.slug + "/")}">'
+                f"{name}</a>"
+            )
+        items.append(f'            <li class="order-siblings__item">{inner}</li>')
+    listing = "\n".join(items)
+    return f"""    <section class="section" id="other-agents" aria-labelledby="other-agents-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-agents-title">Other agents</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other agents">
+          <ul class="order-siblings__list" role="list">
+{listing}
+          </ul>
+        </nav>
+        {render_agent_back_link()}
+      </div>
+    </section>"""
+
+
+def render_agent_page(agent: Agent, all_agents: tuple, ctx: PageContext) -> str:
+    sections = [
+        render_agent_hero(agent),
+        render_agent_what(agent),
+        render_agent_scenarios(agent),
+        render_agent_checks(agent),
+        render_agent_crew_fit(agent),
+        render_agent_reference(agent),
+        render_agent_source(agent, ctx),
+        render_agent_siblings(agent, all_agents),
+    ]
+    body = "\n\n".join(sections)
+    return f"""<!doctype html>
+<html lang="en">
+{render_agent_head(agent, ctx)}
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+{render_header()}
+
+  <main class="main" id="main" tabindex="-1">
+
+{body}
+
+  </main>
+
+{render_footer()}
+</body>
+</html>
+"""
+
+
+def render_sitemap(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = ()) -> str:
     entries = [
         "  <url>\n"
         f"    <loc>{esc(ctx.site_url)}</loc>\n"
@@ -1717,6 +3098,15 @@ def render_sitemap(cmds: tuple, ctx: PageContext, docs: tuple = ()) -> str:
             f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
             "    <changefreq>monthly</changefreq>\n"
             "    <priority>0.8</priority>\n"
+            "  </url>"
+        )
+    for agent in agents:
+        entries.append(
+            "  <url>\n"
+            f"    <loc>{esc(canonical_agent_url(agent, ctx))}</loc>\n"
+            f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
+            "    <changefreq>monthly</changefreq>\n"
+            "    <priority>0.7</priority>\n"
             "  </url>"
         )
     for slug in docs:
@@ -1747,7 +3137,7 @@ def render_sitemap(cmds: tuple, ctx: PageContext, docs: tuple = ()) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Layer 4 — EMIT  (paths + bytes)
+# Layer 5 — EMIT  (paths + bytes)
 # No markup is built here. build_site() is pure; write_all() is the only writer.
 # ---------------------------------------------------------------------------
 
@@ -1758,22 +3148,32 @@ def page_path(slug: str) -> str:
     return f"{SITE_DIR}/commands/{slug}/index.html"
 
 
+def agent_page_path(slug: str) -> str:
+    return f"{SITE_DIR}/agents/{slug}/index.html"
+
+
 SITEMAP_PATH = f"{SITE_DIR}/sitemap.xml"
 
 
-def build_site(cmds: tuple, ctx: PageContext, docs: tuple = ()) -> dict:
+def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = ()) -> dict:
     """Repo-relative posix path -> full file text. PURE: no I/O, no clock, no cwd.
 
     Every output is materialised in memory before anything is written, so a parse
-    failure in any command leaves the tree completely untouched.
+    failure in any command or agent leaves the tree completely untouched.
     """
     files = {page_path(cmd.slug): render_page(cmd, cmds, ctx) for cmd in cmds}
-    files[SITEMAP_PATH] = render_sitemap(cmds, ctx, docs)
+    files.update(
+        {agent_page_path(agent.slug): render_agent_page(agent, agents, ctx) for agent in agents}
+    )
+    files[SITEMAP_PATH] = render_sitemap(cmds, agents, ctx, docs)
     return files
 
 
-def expected_paths(cmds: tuple) -> frozenset:
-    return frozenset(page_path(cmd.slug) for cmd in cmds)
+def expected_paths(cmds: tuple, agents: tuple) -> frozenset:
+    return frozenset(
+        [page_path(cmd.slug) for cmd in cmds]
+        + [agent_page_path(agent.slug) for agent in agents]
+    )
 
 
 def write_all(files: dict, root: Path) -> list:
@@ -1797,7 +3197,8 @@ def find_orphans(root: Path, expected: frozenset) -> list:
     site = root / SITE_DIR
     return sorted(
         str(path.relative_to(root).as_posix())
-        for path in sorted(site.glob("commands/*/index.html"))
+        for subtree in ("commands", "agents")
+        for path in sorted(site.glob(f"{subtree}/*/index.html"))
         if path.relative_to(root).as_posix() not in expected
     )
 
@@ -1831,7 +3232,7 @@ def check_all(files: dict, root: Path) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Layer 5 — CLI
+# Layer 6 — CLI
 # The only layer that prints or exits. Root comes from __file__, never from cwd.
 # ---------------------------------------------------------------------------
 
@@ -1843,8 +3244,9 @@ REGENERATE_HINT = "run: python3 tools/gen_command_pages.py && git add site/"
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate the per-command detail pages under site/commands/ and site/sitemap.xml "
-            "from skills/*/SKILL.md."
+            "Generate the per-command detail pages under site/commands/, the per-agent "
+            "detail pages under site/agents/, and site/sitemap.xml from skills/*/SKILL.md "
+            "and agents/*.md."
         )
     )
     parser.add_argument(
@@ -1878,14 +3280,14 @@ def main(argv=None) -> int:
         repo_blob_base=REPO_BLOB_BASE,
     )
     try:
-        agents = load_agent_names(root / "agents")
-        cmds = load_skills(root / "skills", agents)
+        agents = load_agents(root / "agents", root / "skills")
+        cmds = load_skills(root / "skills", tuple(agent.name for agent in agents))
         # Discover hand-authored docs pages for the sitemap.
         docs = tuple(
             slug for slug in DOCS_SLUGS
             if (root / SITE_DIR / "docs" / slug / "index.html").is_file()
         )
-        files = build_site(cmds, ctx, docs)
+        files = build_site(cmds, agents, ctx, docs)
     except SourceError as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
@@ -1893,24 +3295,30 @@ def main(argv=None) -> int:
     if args.check:
         report = check_all(files, root) + [
             f"unexpected generated file: {path} "
-            "(renamed or removed a command? delete it and rerun)"
-            for path in find_orphans(root, expected_paths(cmds))
+            "(renamed or removed a command or agent? delete it and rerun)"
+            for path in find_orphans(root, expected_paths(cmds, agents))
         ]
         if report:
             for line in report:
                 print(line)
             print(REGENERATE_HINT)
             return 1
-        print(f"up to date: {len(files)} generated files, {len(cmds)} skills")
+        print(
+            f"up to date: {len(files)} generated files, "
+            f"{len(cmds)} skills, {len(agents)} agents"
+        )
         return 0
 
     written = write_all(files, root)
-    for path in find_orphans(root, expected_paths(cmds)):
-        print(f"warning: unexpected generated file: {path} (renamed or removed a command?)")
+    for path in find_orphans(root, expected_paths(cmds, agents)):
+        print(f"warning: unexpected generated file: {path} (renamed or removed a command or agent?)")
     if written:
         for path in written:
             print(f"wrote {path}")
-    print(f"{len(written)} of {len(files)} files updated ({len(cmds)} skills)")
+    print(
+        f"{len(written)} of {len(files)} files updated "
+        f"({len(cmds)} skills, {len(agents)} agents)"
+    )
     return 0
 
 
