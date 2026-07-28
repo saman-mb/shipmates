@@ -593,7 +593,10 @@ else
     # Upgrade summary: changed = upgraded + backed_up, new = installed - changed
     changed=$((upgraded + backed_up))
     new_files=$((installed - changed))
-    NEW_VERSION="$(git -C "$SELF_DIR" rev-parse --short HEAD 2>/dev/null || printf unknown)"
+    NEW_VERSION="unknown"
+    if [ -n "$SELF_DIR" ]; then
+      NEW_VERSION="$(git -C "$SELF_DIR" rev-parse --short HEAD 2>/dev/null || printf unknown)"
+    fi
     if [ "$MANIFEST_OLD_VERSION" != "$NEW_VERSION" ]; then
       echo "${c_bold}shipmates ${MANIFEST_OLD_VERSION} → ${NEW_VERSION}:${c_reset} ${changed} changed, ${new_files} new, ${removed} removed, ${unchanged} unchanged."
     else

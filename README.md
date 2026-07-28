@@ -109,7 +109,9 @@ drops `skills/<name>/SKILL.md` and `agents/*.md` into your `.claude/` and record
 only Shipmates touched, and **back up** anything you wrote or edited to `<file>.bak-<timestamp>` —
 including a loud warning when a pre-existing file's `name:` says it is a *different* agent or skill
 than the one replacing it. `--uninstall` removes only files the manifest proves are Shipmates' and
-untouched, then restores your originals from their `.bak-<timestamp>` backups.
+untouched, then restores your originals from their `.bak-<timestamp>` backups. If the manifest is
+wrong or you want a clean slate, `--force` skips SHA checks and overwrites everything (backups
+still created).
 
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
 >
