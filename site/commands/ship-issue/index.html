@@ -71,7 +71,7 @@
         "@type": "HowToStep",
         "position": 6,
         "name": "Stage 4 — Commit, push, open PR (orchestrator)",
-        "text": "The PR body must include: summary, the acceptance criteria as a checklist, how it was validated (and any validation that could NOT be run locally), and Closes #<issues> (comma-separated).",
+        "text": "The PR body must include: summary, the acceptance criteria as a checklist, how it was validated (and any validation that could NOT be run locally), and a Closes #<issue> keyword repeated for every issue in <issues> — GitHub only auto-closes the ones it's told individually, so a single…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-4"
       },
       {
@@ -106,7 +106,7 @@
         "@type": "HowToStep",
         "position": 11,
         "name": "Stage 8 — Deliver (orchestrator)",
-        "text": "If MERGE_MODE=manual (default): stop here. Post a completion comment on the PR (what shipped, how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave the worktree in place, or remove it and keep the branch — your choice, state which.",
+        "text": "If MERGE_MODE=manual (default): stop here. Post a completion comment on the PR (what shipped, how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes the…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-8"
       }
     ]
@@ -152,7 +152,7 @@
           <p class="order-detail__desc">Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.</p>
           <div class="order-prose">
             <p>Take <strong>one or more issues / stories (<code>#&lt;issue&gt;</code>..)</strong> from open all the way to a <strong>reviewed, CI-green pull request</strong> on the base branch, autonomously — using an isolated git worktree and a board of specialist subagents. Merging is gated by <code>MERGE_MODE</code> (see Config): by default the run stops with the PR open for a human to merge; set <code>MERGE_MODE=auto</code> for fully hands-off delivery.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): whitespace-delimited tokens. The first one or more tokens are issue / story numbers (<code>&lt;issue&gt;</code> below); the token <code>--</code> separates issues from extra guidance (everything after <code>--</code> is guidance, may be empty). If no <code>--</code> is present, every token that looks like a number is treated as an issue number, and the rest as guidance.</p>
+            <p>Input (<strong>$ARGUMENTS</strong>): whitespace-delimited tokens. The issue / story numbers (<code>&lt;issue&gt;</code> below) are the <strong>leading run</strong> of numeric tokens; the first non-numeric token begins the extra guidance, which runs to the end. So <code>104</code> is one issue with no guidance, <code>104 105</code> is two, and <code>104 focus on retries</code> is issue 104 with the guidance <code>focus on retries</code>. Never extend the run past the first non-numeric token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with a number, separate it explicitly with <code>--</code>, which ends the issue list wherever it appears: <code>104 -- 2 fix rounds max</code>.</p>
           </div>
         </div>
       </div>
@@ -189,7 +189,7 @@
               <div class="order-prose">
                 <ol>
                   <li>Resolve numbers: for each issue number in <code>&lt;issue&gt;..</code>, run <code>gh issue view &lt;N&gt; --json number,title,body,labels,url</code>. Resolve story-number mappings if needed. Let <code>&lt;issues&gt;</code> = the resolved list.</li>
-                  <li><code>&lt;first-issue&gt;</code> = the first number in <code>&lt;issues&gt;</code>, <code>&lt;last-issue&gt;</code> = the last number. For a single issue, both are the same.</li>
+                  <li><code>&lt;first-issue&gt;</code> = the first number in <code>&lt;issues&gt;</code> — it names the worktree and branch, so a re-run with the same leading issue resolves to the same identifiers.</li>
                   <li>Spawn ONE <strong>Planner</strong> (<code>subagent_type: Plan</code>). Give it all issue bodies + repo README + CLAUDE.md. Ask it to return, as structured data:
                     <ul>
                       <li>a <strong>build plan</strong> broken into independent work units with <strong>non-overlapping file ownership</strong> (so builders can run in parallel without collisions),</li>
@@ -201,13 +201,13 @@
                           <li><code>IS_UI_STORY = yes/no</code> — does it create/modify on-screen UI (screens, HUD, panels, overlays, menus, components, styling)? Gates <code>ux-ui-designer</code>.</li>
                           <li><code>IS_VISUAL_STORY = yes/no</code> — gate the <code>art-director</code> on the PROJECT&#x27;S DOMAIN, not merely on whether a story touches pixels. Set it only when the project&#x27;s actual deliverable is rendered visual <em>art</em> — a game&#x27;s world/sprites/shaders, illustration/brand/motion assets, generative imagery — and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only visual surface is its interface is a <strong>UI</strong> story (<code>ux-ui-designer</code>), NOT an art story: the art-director reviews pictures judged <em>as art</em>, not application chrome. Most projects never set this — when in doubt, prefer <code>IS_UI_STORY</code> and leave the art-director out.</li>
                           <li><code>IS_ARCH_SIGNIFICANT = yes/no</code> — does it add a new subsystem, change a persisted data/schema format, or cross-cut many modules in a way a narrow code review would miss? Gates <code>architect</code>.</li>
-                          <li><code>IS_SECURITY_SENSITIVE = yes/no</code> — does it touch authn/authz, untrusted input, secrets/credentials, crypto, file/network/OS access, or dependencies? Gates <code>security-engineer</code>.</li>
-                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>. This flag vocabulary is shared with <code>/review</code>, which classifies a PR diff the same way — a new flag must be added to both files.</li>
+                          <li><code>IS_SECURITY_SENSITIVE = yes/no</code> — does it touch authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies? Does <strong>not</strong> gate a reviewer seat — security review lives in <code>/harden</code>, which this command doesn&#x27;t run. It gates two things instead: the final report must carry the <code>/harden</code> recommendation (mechanical, not a judgment call made while writing the summary), and it forces <code>MERGE_MODE=manual</code> for this run (see Config).</li>
+                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>. This flag vocabulary is shared with <code>/pr-review</code>, which classifies a PR diff the same way — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: here it gates the <code>/harden</code> recommendation and <code>MERGE_MODE</code> above, never a reviewer seat, because this command owns the branch and can just run <code>/harden</code> itself. <code>/pr-review</code> keeps the same flag wired to a <code>security-engineer</code> seat, because it reviews a PR the crew didn&#x27;t author, where <code>/harden</code> isn&#x27;t available — you don&#x27;t own that branch.</li>
                         </ul>
                       </li>
                     </ul>
                   </li>
-                  <li>If the plan reveals the issue is too big/ambiguous to finish autonomously, stop and tell the user what&#x27;s blocking — otherwise continue.</li>
+                  <li>If the plan reveals any issue is too big/ambiguous to finish autonomously, stop and tell the user what&#x27;s blocking — otherwise continue.</li>
                 </ol>
               </div>
             </div>
@@ -274,11 +274,12 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
                 <pre class="order-code" tabindex="0"><code>git -C &lt;WORKTREE_DIR&gt; add -A
 git -C &lt;WORKTREE_DIR&gt; commit -m &quot;&lt;type&gt;: &lt;summary&gt; (#&lt;first-issue&gt;)&quot;   # + required trailers
 git -C &lt;WORKTREE_DIR&gt; push -u origin &lt;BRANCH&gt;
-ISSUES_CSV=$(echo &quot;&lt;issues&gt;&quot; | sed &#x27;s/ /, #/g&#x27;)
+# separator substitution first: &quot;Closes #&quot; contains a space, so prefixing first would rewrite it too
+ISSUES_CLOSES=$(echo &quot;&lt;issues&gt;&quot; | sed &#x27;s/ / · Closes #/g; s/^/Closes #/&#x27;)
 gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
   --title &quot;&lt;type&gt;: &lt;summary&gt; (#&lt;first-issue&gt;)&quot; \
-  --body  &quot;&lt;what changed, how validated. Closes #${ISSUES_CSV}. trailers&gt;&quot;</code></pre>
-                <p>The PR body must include: summary, the acceptance criteria as a checklist, how it was validated (and any validation that could NOT be run locally), and <code>Closes #&lt;issues&gt;</code> (comma-separated).</p>
+  --body  &quot;&lt;what changed, how validated. ${ISSUES_CLOSES}. trailers&gt;&quot;</code></pre>
+                <p>The PR body must include: summary, the acceptance criteria as a checklist, how it was validated (and any validation that could NOT be run locally), and a <code>Closes #&lt;issue&gt;</code> keyword repeated for every issue in <code>&lt;issues&gt;</code> — GitHub only auto-closes the ones it&#x27;s told individually, so a single comma-separated <code>Closes #1, #2, #3</code> silently leaves all but the first open.</p>
               </div>
             </div>
           </li>
@@ -319,8 +320,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                   <li><strong><code>ux-ui-designer</code></strong> (only if <code>IS_UI_STORY</code>): reviews the pushed head against the Stage 1.5 spec and the UI bar — shared-token/theme usage (not per-component override sprawl), responsive layout, focus navigation, interaction states, contrast/readability. If it cannot actually render the UI, it reviews statically and MUST flag the PR <strong>&quot;needs a human visual pass&quot;</strong> — carry that into the report.</li>
                   <li><strong><code>art-director</code></strong> (only if <code>IS_VISUAL_STORY</code>): renders the actual change via the project&#x27;s render/preview harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the visual bar — the render, not the source. If it cannot render, it says so and flags <strong>&quot;needs a human visual pass&quot;</strong>.</li>
                   <li><strong><code>architect</code></strong> (only if <code>IS_ARCH_SIGNIFICANT</code>): reviews structural fit, coupling/blast radius, and schema/migration safety.</li>
-                  <li><strong><code>security-engineer</code></strong> (only if <code>IS_SECURITY_SENSITIVE</code>): threat-models the change (STRIDE / OWASP) — broken access control, injection, secrets/crypto, vulnerable deps — and returns severity-ranked findings with the exploit path; a credible Critical/High is a blocking defect.</li>
-                  <li><strong><code>devops-engineer</code></strong> (only if <code>IS_DELIVERY_SENSITIVE</code>): reviews the delivery definitions for reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety to <code>site-reliability-engineer</code>, and the severity of secret exposure or dependency trust to <code>security-engineer</code>.</li>
+                  <li><strong><code>devops-engineer</code></strong> (only if <code>IS_DELIVERY_SENSITIVE</code>): reviews the delivery definitions for reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety to <code>site-reliability-engineer</code>.</li>
                 </ul>
                 <p>Decision (each specialist participates only when its flag is set):</p>
                 <ul>
@@ -361,7 +361,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <div class="order-stage__body">
               <div class="order-prose">
                 <ul>
-                  <li><strong>If <code>MERGE_MODE=manual</code></strong> (default): stop here. Post a completion comment on the PR (what shipped, how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave the worktree in place, or remove it and keep the branch — your choice, state which.</li>
+                  <li><strong>If <code>MERGE_MODE=manual</code></strong> (default): stop here. Post a completion comment on the PR (what shipped, how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes the issues on this path: the repeated <code>Closes</code> keywords in the PR body do that when a human merges, so name every issue the PR will close in the completion comment.</li>
                   <li><strong>If <code>MERGE_MODE=auto</code></strong>: <code>gh pr merge &lt;BRANCH&gt; --squash --delete-branch</code>, then confirm all issues auto-closed (for each issue in <code>&lt;issues&gt;</code>: <code>gh issue close &lt;N&gt;</code> if not already closed), tick the epic checklist box if any, remove the worktree (<code>git -C &lt;repo&gt; worktree remove &lt;WORKTREE_DIR&gt;</code>), and post the completion comment.</li>
                 </ul>
               </div>
@@ -370,7 +370,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         </ol>
         <h3 id="final-report-to-the-user">Final report to the user</h3>
         <div class="order-prose">
-          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, and anything that could only be validated statically.</p>
+          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now.</p>
         </div>
       </div>
     </section>
@@ -384,10 +384,10 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
           <ul>
             <li><code>BASE_BRANCH</code> = the repo&#x27;s default branch (<code>gh repo view --json defaultBranchRef -q .defaultBranchRef.name</code>).</li>
             <li><code>MERGE_STRATEGY</code> = <code>--squash --delete-branch</code></li>
-            <li><code>MERGE_MODE</code> = <code>manual</code> — <code>manual</code>: stop after the acceptance board with a green, reviewed PR open for a human to merge. <code>auto</code>: squash-merge automatically once every gate passes. Start with <code>manual</code>; opt into <code>auto</code> only in a repo where unattended merges to the base branch are acceptable.</li>
+            <li><code>MERGE_MODE</code> = <code>manual</code> — <code>manual</code>: stop after the acceptance board with a green, reviewed PR open for a human to merge. <code>auto</code>: squash-merge automatically once every gate passes. Start with <code>manual</code>; opt into <code>auto</code> only in a repo where unattended merges to the base branch are acceptable. If Stage 0 set <code>IS_SECURITY_SENSITIVE</code>, <code>MERGE_MODE</code> is forced to <code>manual</code> for this run regardless of the configured default — a security-sensitive change must not auto-merge past the <code>/harden</code> recommendation.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>  (acceptance→fix→re-acceptance loops before escalating to the user)</li>
-            <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-&lt;first-issue&gt;</code> (single issue) or <code>../&lt;repo&gt;--bundle-&lt;first-issue&gt;-&lt;last-issue&gt;</code> (multiple issues)</li>
-            <li><code>BRANCH</code> = <code>feat/issue-&lt;first-issue&gt;</code> (single) or <code>feat/bundle-&lt;first-issue&gt;-&lt;last-issue&gt;</code> (multiple)</li>
+            <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-&lt;first-issue&gt;</code> (single issue) or <code>../&lt;repo&gt;--bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple issues)</li>
+            <li><code>BRANCH</code> = <code>feat/issue-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (single) or <code>feat/bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple)</li>
             <li><strong>Quality bar</strong> = whatever the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it at the start and pass it to every reviewer — the <code>product-manager</code> (and the visual specialists) enforce THAT bar, not just &quot;it runs.&quot;</li>
           </ul>
           <p>Required commit trailers (append to every commit and the PR body — read them from the harness / session context; do not invent them). At minimum a <code>Co-Authored-By:</code> line for the agent.</p>
@@ -403,7 +403,6 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                 <tr><td><code>architect</code></td><td>Structural / schema review — gated by <code>IS_ARCH_SIGNIFICANT</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>ux-ui-designer</code></td><td>On-screen UI design + review — gated by <code>IS_UI_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>art-director</code></td><td>Visual-art direction + review — <strong>art-producing domains only</strong>, gated by <code>IS_VISUAL_STORY</code> (Stages 1.5, 5)</td></tr>
-                <tr><td><code>security-engineer</code></td><td>Threat-model + security review — gated by <code>IS_SECURITY_SENSITIVE</code> (Stage 5)</td></tr>
                 <tr><td><code>devops-engineer</code></td><td>Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by <code>IS_DELIVERY_SENSITIVE</code> (Stage 5)</td></tr>
               </tbody>
             </table>
@@ -427,7 +426,8 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li>Keep the base branch and the user&#x27;s working tree untouched throughout (all work in the worktree).</li>
             <li>Respect <code>MERGE_MODE</code> — do not auto-merge unless it is explicitly set to <code>auto</code>.</li>
             <li>If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan requires), stop and surface it — autonomy does not mean forcing a bad merge.</li>
-            <li><strong>Secrets &amp; security hygiene.</strong> Never write secrets, tokens, or credentials into commits, PR/issue bodies, or logs — assume the repo is public. When the change touches auth, input handling, crypto, or dependencies, the <code>security-engineer</code> (gated by <code>IS_SECURITY_SENSITIVE</code>) threat-models it and the <code>sdet</code> also flags secret leakage; a real leak or a clear injection path is a blocking defect.</li>
+            <li><strong>Secrets &amp; security hygiene.</strong> Never write secrets, tokens, or credentials into commits, PR/issue bodies, or logs — assume the repo is public. The <code>sdet</code> flags secret leakage as a defect; a real leak is blocking. Deeper security work is not this command&#x27;s job — see the next bullet.</li>
+            <li><strong>Security review lives in <code>/harden</code>, not here.</strong> This command does not threat-model. When <code>IS_SECURITY_SENSITIVE</code> is set, the final report must carry the <code>/harden</code> recommendation and the run stays on <code>MERGE_MODE=manual</code> (Stage 0, Config) — the flag is the trigger, not a judgment call made while writing the summary.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work. Every stage should be safe to repeat.</li>
             <li>Static review cannot verify pixels. When neither the <code>ux-ui-designer</code> (UI) nor the <code>art-director</code> (visual-art) could actually render and inspect the result, surface their <strong>&quot;needs human visual pass&quot;</strong> flag in the final report rather than implying the visuals are confirmed. Both are auto-gated by the Planner&#x27;s <code>IS_UI_STORY</code> / <code>IS_VISUAL_STORY</code> flags, as <code>architect</code> is by <code>IS_ARCH_SIGNIFICANT</code>.</li>
           </ul>
