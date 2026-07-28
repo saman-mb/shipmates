@@ -27,15 +27,17 @@ want is a README or a tutorial, stop and run `/document`.
 ## Config (override only if the repo needs it)
 
 - `MODE` = `pr` (default) or `edit-in-place` — where the result lands. `pr` opens a worktree, a
-  branch and a CI-gated PR rather than writing to the tree, reusing `/ship-issue`'s Stage 1
-  (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate). This file is the contract every
-  later run inherits, so it earns a diff and a human's eye before it lands; `edit-in-place` is an
-  explicit request. `SURVEY` (`create` / `refresh`) is set by Stage 0 and describes what was *found* —
-  it is a separate axis and never overwrites `MODE`.
-- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch. `WORKTREE_DIR` = `../<repo>--onboard`.
-  `BRANCH` = `docs/onboard-context-file`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto`
-  opt-in). A repo with no remote to open a PR against is the one fallback: build the branch, stop
-  there, and report the branch as the undo path — never quietly write to the tree instead.
+  branch and a CI-gated PR rather than writing to the tree, reusing `/ship-issue`'s isolate stage and
+  its commit-push-PR stage. This file is the contract every later run inherits, so it earns a diff
+  and a human's eye before it lands; `edit-in-place` is an explicit request. `SURVEY` (`create` /
+  `refresh`) is set by Stage 0 and describes what was *found* — it is a separate axis and never
+  overwrites `MODE`.
+- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
+  worktree is cut from (that's current `HEAD`, so Stage 0's survey sees your actual checkout).
+  `WORKTREE_DIR` = `../<repo>--onboard`. `BRANCH` = `docs/onboard-context-file`. `MERGE_MODE` =
+  `manual` (stop at a reviewed PR; `auto` opt-in). A repo with no remote to open a PR against is the
+  one fallback: build the branch, stop there, and report the branch as the undo path — never quietly
+  write to the tree instead.
 - `TARGET` = auto-detected. `CLAUDE.md` if one exists, else `AGENTS.md` if one exists, else
   `CLAUDE.md`. **Never write both** — see below.
 - `MAX_ROUNDS` = `3` verification loops before escalating.
@@ -58,11 +60,12 @@ context file agrees with them instead of competing.
 
 ## Stage 0.5 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
 
-The branch exists before the context file does. Exactly as `/ship-issue` Stage 1:
+The branch exists before the context file does. Exactly as `/ship-issue`'s isolate stage, but cut
+from current `HEAD` rather than `origin/<BASE_BRANCH>` — so an unpushed `CLAUDE.md`/`AGENTS.md` that
+Stage 0's survey already saw is actually present in the worktree the draft and refresh work against:
 
 ```bash
-git -C <repo> fetch origin
-git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
 ```
 
 Recon reads the repo either way; the draft and every verification round write inside
@@ -111,9 +114,14 @@ then escalate with the unanswerable questions listed.
 
 Write to `TARGET` — inside `<WORKTREE_DIR>` under `MODE=pr` (the default), in the repo itself under
 `MODE=edit-in-place`. If a file was replaced, **show the diff** — a human must be able to see what was
-changed on their behalf. Under `MODE=pr`, commit on the branch, run the CI gate, open the PR and stop
-there unless `MERGE_MODE=auto`. Report: the file written, the undo path (the backup, or the branch),
-which commands were proven versus recorded as unverified, and the verification round it passed on.
+changed on their behalf. Under `MODE=pr`, commit on the branch — staging only the paths this run
+produced, never `git add -A` — push, and open the PR against `BASE_BRANCH`. Then gate on CI: poll
+`gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing it,
+re-pushing, and re-polling. Stop there unless `MERGE_MODE=auto`. The context file only exists on that
+branch until it's merged, though — merge or check out `BRANCH` before running other commands in this
+session if you need it in place now, or pass `MODE=edit-in-place` up front instead. Report: the file
+written, the undo path (the backup, or the branch), which commands were proven versus recorded as
+unverified, and the verification round it passed on.
 
 ---
 

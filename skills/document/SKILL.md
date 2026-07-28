@@ -23,10 +23,11 @@ a migration guide, or the whole repo. If empty, ask what to document and for who
 - `WRITER` = `technical-writer`. `READER` = a **fresh** `general-purpose` (or `technical-writer`) agent that
   has NOT seen the drafting — it only gets the doc + the repo, like a real newcomer.
 - `MAX_ROUNDS` = `3`. `MODE` = `pr` (default) — a worktree, a branch and a CI-gated PR, reusing
-  `/ship-issue`'s Stage 1 (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate); your
-  checkout is left exactly as you left it. `edit-in-place` writes the docs straight into the working
-  tree — still available, but ask for it.
-- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch.
+  `/ship-issue`'s isolate stage and its commit-push-PR stage; your checkout is left exactly as you
+  left it. `edit-in-place` writes the docs straight into the working tree — still available, but ask
+  for it.
+- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
+  worktree is cut from (that's current `HEAD`, so the draft has your latest work in it).
   `WORKTREE_DIR` = `../<repo>--docs-<slug>`. `BRANCH` = `docs/<slug>`.
   `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). The orchestrator owns all git/gh;
   agents never push. If there is no remote for `gh` to open a PR against, stop at the branch and say
@@ -42,11 +43,11 @@ Don't blend them. State the concrete "reader can now do X" success condition the
 
 ## Stage 0.5 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
 
-The worktree exists before anything writes. Exactly as `/ship-issue` Stage 1:
+The worktree exists before anything writes. Exactly as `/ship-issue`'s isolate stage, but cut from
+current `HEAD` rather than `origin/<BASE_BRANCH>`, so it contains the work being documented:
 
 ```bash
-git -C <repo> fetch origin
-git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
 ```
 
 Drafting, the fresh-reader run and every fix round happen inside `<WORKTREE_DIR>`. Under
@@ -75,10 +76,12 @@ reader's outstanding blockers — don't ship docs that don't work.
 
 ## Stage 4 — Deliver
 
-`pr` (the default): commit on the worktree branch, run the CI gate (docs build/link-check if the repo has
-one), open the PR, and stop there unless `MERGE_MODE=auto`. `edit-in-place`: leave the finished docs in the
-working tree and report. Report: what was documented, the doc type, the fresh-reader's final result (in its
-words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).
+`pr` (the default): commit on the worktree branch — staging only the paths this run produced, never
+`git add -A` — push, and open the PR against `BASE_BRANCH`. Then gate on CI: poll `gh pr checks` until
+nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling.
+Stop there unless `MERGE_MODE=auto`. `edit-in-place`: leave the finished docs in the working tree and
+report. Report: what was documented, the doc type, the fresh-reader's final result (in its words),
+rounds taken, and any follow-ups (things worth documenting next, discovered gaps).
 
 ---
 

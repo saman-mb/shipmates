@@ -57,27 +57,27 @@
         "@type": "HowToStep",
         "position": 4,
         "name": "Stage 2.5 — Isolate",
-        "text": "Nothing is edited until the branch exists. Exactly as /ship-issue Stage 1:",
+        "text": "Nothing is edited until the branch exists. Unlike /ship-issue's isolate stage, cut the worktree from the caller's current HEAD, not origin/<BASE_BRANCH> — precisely so the findings located in Stages 0–2 still exist in the branch being remediated:",
         "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-2-5"
       },
       {
         "@type": "HowToStep",
         "position": 5,
         "name": "Stage 3 — Remediate",
-        "text": "MODE=fix-pr only. Under report this stage does not run: each blocker's fix is described in the findings table, not applied. The caller runs MODE=fix-pr when they want the change made.",
+        "text": "MODE=pr only. Under report this stage does not run: each blocker's fix is described in the findings table, not applied. The caller runs MODE=pr when they want the change made.",
         "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-3"
       },
       {
         "@type": "HowToStep",
         "position": 6,
         "name": "Stage 4 — Re-review",
-        "text": "MODE=fix-pr only. Under report there is nothing remediated to re-review — go straight to Stage 5 with the ranked findings.",
+        "text": "MODE=pr only. Under report there is nothing remediated to re-review — go straight to Stage 5 with the ranked findings.",
         "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-4"
       },
       {
         "@type": "HowToStep",
         "position": 7,
-        "name": "Stage 5 — Report (and PR, if MODE=fix-pr)",
+        "name": "Stage 5 — Report (and PR, if MODE=pr)",
         "text": "Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk / deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config changes outside the repo). Under report (the default) that report is the deliverable and the…",
         "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-5"
       }
@@ -183,12 +183,11 @@
           <li class="order-stage" id="stage-2-5">
             <span class="order-stage__num" aria-hidden="true">2.5</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 2.5 — </span>Isolate</h3>
-            <p class="order-stage__crew">Crew: (<code>MODE=fix-pr</code> only — orchestrator, deterministic, no agent)</p>
+            <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Nothing is edited until the branch exists. Exactly as <code>/ship-issue</code> Stage 1:</p>
-                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
-git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
+                <p>Nothing is edited until the branch exists. Unlike <code>/ship-issue</code>&#x27;s isolate stage, cut the worktree from the caller&#x27;s current <code>HEAD</code>, not <code>origin/&lt;BASE_BRANCH&gt;</code> — precisely so the findings located in Stages 0–2 still exist in the branch being remediated:</p>
+                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
                 <p>Every remediation and re-review below runs inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=report</code> this stage does not run, because nothing is written.</p>
               </div>
             </div>
@@ -199,7 +198,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>senior-engineer</code></span> (agent: <code>senior-engineer</code>)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p><strong><code>MODE=fix-pr</code> only.</strong> Under <code>report</code> this stage does not run: each blocker&#x27;s fix is <em>described</em> in the findings table, not applied. The caller runs <code>MODE=fix-pr</code> when they want the change made.</p>
+                <p><strong><code>MODE=pr</code> only.</strong> Under <code>report</code> this stage does not run: each blocker&#x27;s fix is <em>described</em> in the findings table, not applied. The caller runs <code>MODE=pr</code> when they want the change made.</p>
                 <p>Spawn a <code>senior-engineer</code> with the exact blocker list; apply <strong>scoped</strong> fixes (parameterise the query, add the authz check, move the secret to config, pin/upgrade the dep) — no unrelated rewrites. Where a fix changes behaviour, add/adjust a test so it&#x27;s covered. Rotate any exposed secret is a human action — flag it loudly; don&#x27;t just delete it from the diff and consider it solved.</p>
               </div>
             </div>
@@ -210,17 +209,17 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>security-engineer</code></span> (agent: <code>security-engineer</code>, fresh pass)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p><strong><code>MODE=fix-pr</code> only.</strong> Under <code>report</code> there is nothing remediated to re-review — go straight to Stage 5 with the ranked findings.</p>
+                <p><strong><code>MODE=pr</code> only.</strong> Under <code>report</code> there is nothing remediated to re-review — go straight to Stage 5 with the ranked findings.</p>
                 <p>Re-run the <code>security-engineer</code> against the remediated surface: confirm each blocker is actually closed (not moved), no fix introduced a new hole, and the secret/dependency scans are clean. Loop Stages 3–4 up to <code>MAX_ROUNDS</code>; if blockers remain after that, <strong>STOP and escalate</strong> with the open findings — never declare a surface hardened while a Critical/High stands.</p>
               </div>
             </div>
           </li>
           <li class="order-stage" id="stage-5">
             <span class="order-stage__num" aria-hidden="true">5</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Report (and PR, if <code>MODE=fix-pr</code>)</h3>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Report (and PR, if <code>MODE=pr</code>)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk / deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config changes outside the repo). Under <code>report</code> (the default) that report <strong>is</strong> the deliverable and the working tree is exactly as you found it — say so explicitly. Under <code>fix-pr</code>, open the CI-gated PR (<code>/ship-issue</code>&#x27;s Stage 4 and Stage 4.5, with the same trailers), stop there unless <code>MERGE_MODE=auto</code>, and file Medium/Low items as labelled follow-up issues.</p>
+                <p>Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk / deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config changes outside the repo). Under <code>report</code> (the default) that report <strong>is</strong> the deliverable and the working tree is exactly as you found it — say so explicitly. Under <code>pr</code>, commit and push <code>&lt;BRANCH&gt;</code> and open the PR, same as <code>/ship-issue</code>&#x27;s commit-push-PR stage, with the same trailers — then gate it the same way: poll <code>gh pr checks</code> until the run is no longer pending; if it comes back red, pull the failing log, fix, re-push, and re-poll, bounded by <code>MAX_ROUNDS</code>. Only once green do you stop there unless <code>MERGE_MODE=auto</code>, and file Medium/Low items as labelled follow-up issues.</p>
               </div>
             </div>
           </li>
@@ -236,8 +235,8 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
         <div class="order-prose">
           <ul>
             <li><code>REVIEWER</code> = <code>security-engineer</code>. <code>BUILDER</code> = <code>senior-engineer</code>. <code>MAX_ROUNDS</code> = <code>4</code>.</li>
-            <li><code>MODE</code> = <code>report</code> (default) — <strong>read-only</strong>: threat-model, rank, report. It writes nothing to the working tree, not even a fix that looks safe; a mode that edits is named for it. <code>fix-pr</code> — apply the remediations in a worktree on a branch and open a CI-gated PR, reusing <code>/ship-issue</code>&#x27;s Stage 1 (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate) rather than a second path of its own. Infer from the request; when ambiguous, default to <code>report</code>, and state which mode you ran.</li>
-            <li>Under <code>MODE=fix-pr</code> only: <code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--harden-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>chore/harden-&lt;slug&gt;</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). The orchestrator owns all git/gh; agents never push.</li>
+            <li><code>MODE</code> = <code>report</code> (default) — <strong>read-only</strong>: threat-model, rank, report. It writes nothing to the working tree, not even a fix that looks safe; a mode that edits is named for it. <code>pr</code> — apply the remediations in a worktree on a branch and open a CI-gated PR, reusing the shape of <code>/ship-issue</code>&#x27;s isolate stage and its commit-push-PR stage rather than a second path of its own. Infer from the request; when ambiguous, default to <code>report</code>, and state which mode you ran.</li>
+            <li>Under <code>MODE=pr</code> only: <code>BASE_BRANCH</code> = the branch the PR targets (the repo&#x27;s default branch) — the worktree itself is cut from the caller&#x27;s current <code>HEAD</code>, not <code>BASE_BRANCH</code> (see Stage 2.5). <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--harden-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>chore/harden-&lt;slug&gt;</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). The orchestrator owns all git/gh; agents never push. If there is no remote for <code>gh</code> to open a PR against, stop at the branch and say so — never silently downgrade to writing in the tree.</li>
             <li><strong>Threat model / sensitivity</strong> = from the repo (what data it handles, what&#x27;s exposed). Assume the repo is public and input is hostile.</li>
           </ul>
         </div>
@@ -251,13 +250,13 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
         </div>
         <div class="order-prose">
           <ul>
-            <li><strong><code>report</code> is read-only, and that is the whole point.</strong> No <code>Write</code>, no <code>Edit</code>, no <code>git</code> mutation, no &quot;while I was in there&quot; fix. <code>allowed-tools</code> still carries <code>Write</code> and <code>Edit</code> because <code>fix-pr</code> needs them — the mode is the gate. A security pass that quietly edits someone&#x27;s checkout is the surprise this command exists to remove.</li>
+            <li><strong><code>report</code> is read-only, and that is the whole point.</strong> No writes of <em>any</em> kind — no <code>Write</code>, no <code>Edit</code>, no <code>git</code> mutation, and no working-tree write via <code>Bash</code> either (a scanner invocation that would pull a dependency tree or rewrite a lockfile is still a write). A scanner that can&#x27;t run without installing or modifying something is reported as &quot;could not run read-only,&quot; not run. <code>allowed-tools</code> still carries <code>Write</code>, <code>Edit</code> and <code>Bash</code> because <code>pr</code> mode needs them — the mode is the gate. A security pass that quietly edits someone&#x27;s checkout is the surprise this command exists to remove.</li>
             <li><strong>Proportionate, not paranoid</strong> — harden to the real threat model; don&#x27;t gold-plate a low-value surface.</li>
             <li>Show the <strong>exploit path</strong>, not a scanner hit — a finding without a plausible attack isn&#x27;t a blocker.</li>
             <li>Never write a secret/token into a commit, PR, issue, or log; flag exposed secrets for <strong>rotation</strong> (deleting them from the diff does not un-leak them).</li>
             <li>Every Critical/High ends as fixed or explicitly accepted — never silently dropped.</li>
             <li>Bounded loop; escalate with open findings rather than rubber-stamping.</li>
-            <li>Drops into <code>/ship-issue</code>&#x27;s acceptance board too: on a security-sensitive story the <code>security-engineer</code> is the gated reviewer. If the role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li><strong>Security review lives here, not in <code>/ship-issue</code>.</strong> <code>/ship-issue</code> doesn&#x27;t seat <code>security-engineer</code> on its acceptance board — when a story it&#x27;s shipping touches a security-sensitive surface, it classifies the change as such and <strong>recommends</strong> a <code>/harden</code> pass rather than convening the review itself. If the <code>security-engineer</code> role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code> here, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>
       </div>

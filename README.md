@@ -78,9 +78,11 @@ from anything hardcoded into the role.
 | `/refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
-worktree, and hands you a pull request — your checkout is left as you left it. `/pr-review` and
-`/harden`'s default `report` mode write nothing at all. Writing straight into the working tree is
-opt-in (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
+worktree, and hands you a pull request — your checkout is left as you left it. `/release` is the one
+exception: the release commit has to land on the branch being tagged, so it commits, pushes and tags
+straight in your checkout instead of an unmerged side branch. `/pr-review` and `/harden`'s default
+`report` mode write nothing at all. Writing straight into the working tree is opt-in
+(`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
 **There's deliberately no `code-reviewer`.** Review is split by discipline instead of pooled into one
 generalist: `architect` takes structure, `sdet` takes verification, `product-manager` takes acceptance,
@@ -204,7 +206,8 @@ The `ux-ui-designer` reviews the *rendered* screen (not the code), lists concret
 `senior-engineer` applies them, it re-renders, and the loop repeats until the designer signs off — or
 hands you the outstanding notes after a few rounds. Run it from your default branch and the loop
 happens on its own branch, ending in a PR; run it from a feature branch — say, one `/ship-issue` just
-made — and it polishes right there, where the work already is.
+made — and the polish lands on that same branch instead of cutting a new one, since the branch is
+already the isolation.
 
 **Polish rendered art the same way:**
 ```

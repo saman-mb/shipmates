@@ -27,6 +27,15 @@ Input (**$ARGUMENTS**): the open question or decision to resolve. If empty, ask 
   don't collide and nothing lands on the base branch.
 - **Constraints & priorities** = from the repo (quality attributes that matter here — performance,
   simplicity, reversibility, team familiarity, cost) plus anything in `$ARGUMENTS`.
+- **ADR delivery** — `MODE` = `pr` (default) or `edit-in-place`: where the **ADR** lands. This is a
+  different axis from `ISOLATION` above: `ISOLATION` governs the throwaway prototype worktrees in
+  Stage 1, which always exist and are always torn down; `MODE` governs only where the *deliverable*
+  (the ADR) ends up, and defaults to a reviewed PR. Under `MODE=pr`: `BASE_BRANCH` = the repo's
+  default branch — the PR's target, not what the worktree is cut from (that's current `HEAD`).
+  `WORKTREE_DIR` = `../<repo>--adr-<slug>`. `BRANCH` = `docs/adr-<slug>`. `MERGE_MODE` = `manual`
+  (stop at a reviewed PR; `auto` opt-in). A repo with no remote to open a PR against is the one
+  fallback: build the branch, stop there, and report the branch as the undo path — never quietly
+  write to the tree instead.
 
 ## Stage 0 — Frame the decision
 
@@ -51,18 +60,42 @@ made fast; a one-way door (a persisted format, a public API, a framework lock-in
 Note essential vs accidental complexity. Output: a ranked comparison with the reasoning, and the runner-up's
 best ideas worth grafting onto the winner.
 
+## Stage 2.5 — Isolate the ADR worktree  (`MODE=pr` only — orchestrator, deterministic, no agent)
+
+The branch exists before the ADR does. Exactly as `/ship-issue`'s isolate stage, but cut from current
+`HEAD` rather than `origin/<BASE_BRANCH>`:
+
+```bash
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
+```
+
+This is separate from the `ISOLATION` worktrees Stage 1 used for the disposable prototypes — those
+get torn down in Stage 3; this one holds the ADR that's about to be written and reviewed. Under
+`MODE=edit-in-place`, skip this stage and write straight into the repo.
+
 ## Stage 3 — Recommend as an ADR
 
-Write an **ADR** to the repo's decision-records location (or `docs/adr/NNNN-<slug>.md` if none exists):
-**Context** (the question + constraints), **Options considered** (each with its trade-offs and the spike
-evidence), **Decision** (the recommendation), **Consequences** (what it commits us to, what becomes
-harder, how reversible it is), and **Status** (proposed). Tear down the throwaway worktrees.
+Write an **ADR** to the repo's decision-records location (or `docs/adr/NNNN-<slug>.md` if none
+exists) — inside `<WORKTREE_DIR>` under `MODE=pr` (the default), or directly in the repo under
+`MODE=edit-in-place`: **Context** (the question + constraints), **Options considered** (each with its
+trade-offs and the spike evidence), **Decision** (the recommendation), **Consequences** (what it
+commits us to, what becomes harder, how reversible it is), and **Status** (proposed). Tear down the
+throwaway prototype worktrees from Stage 1 — the ADR's own worktree, if any, stays until Stage 3.5
+delivers it.
+
+## Stage 3.5 — Deliver the ADR  (`MODE=pr` only — orchestrator, deterministic, no agent)
+
+Commit on the ADR branch — staging only the ADR file this run produced, never `git add -A` — push,
+and open the PR against `BASE_BRANCH`. Then gate on CI: poll `gh pr checks` until nothing is pending;
+a red check means pulling the failing log, fixing it, re-pushing, and re-polling. Stop there unless
+`MERGE_MODE=auto`. Under `MODE=edit-in-place`, there's nothing to deliver — the ADR is already in the
+tree.
 
 ## Stage 4 — Report & hand off
 
-Summarise the recommendation and why, link the ADR, and offer the next step: `/plan-epics` to turn the
-chosen direction into a backlog, or `/ship-issue` if it's already a single unit of work. Optionally file
-the ADR as an issue/PR for the team to ratify.
+Summarise the recommendation and why, link the ADR — and, under `MODE=pr`, the PR it's waiting for
+review on — and offer the next step: `/plan-epics` to turn the chosen direction into a backlog, or
+`/ship-issue` if it's already a single unit of work.
 
 ---
 
@@ -74,5 +107,9 @@ the ADR as an issue/PR for the team to ratify.
 - The decision and its trade-offs are **recorded** (the ADR) so the "why" survives — an unrecorded decision
   gets re-litigated in six months.
 - Keep spikes minimal and time-boxed; more prototypes ≠ better if they don't sharpen the criteria.
+- **The ADR is the deliverable, so it gets a branch.** Prototypes stay disposable; the ADR itself
+  lands as a diff a human can read, not a surprise in someone's checkout. `MODE=edit-in-place` is an
+  explicit request, never an assumption — and it's a different switch from `ISOLATION`, which only
+  governs the throwaway prototype worktrees.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the brief
   inlined and note it.

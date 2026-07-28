@@ -36,7 +36,7 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Isolate",
-        "text": "Resolve MODE and the guard above first. If a worktree is called for:",
+        "text": "Resolve MODE and the guard above first.",
         "url": "https://saman-mb.github.io/shipmates/commands/polish/#stage-0"
       },
       {
@@ -64,7 +64,7 @@
         "@type": "HowToStep",
         "position": 5,
         "name": "Stage 4 — Report",
-        "text": "Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the number of rounds, and a short before → after of what changed. Optionally file any allowed nits as follow-up issues. Under MODE=pr, commit the rounds on the branch, run the CI gate, open the PR with…",
+        "text": "Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the number of rounds, and a short before → after of what changed. Optionally file any allowed nits as follow-up issues. Under MODE=pr, commit the rounds on the branch — staging only the paths the rounds…",
         "url": "https://saman-mb.github.io/shipmates/commands/polish/#stage-4"
       }
     ]
@@ -144,10 +144,12 @@
             <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Resolve <code>MODE</code> and the guard above first. If a worktree is called for:</p>
-                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
-git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
-                <p>Every round — the harness, the renders, the fixes — happens inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, or when the guard keeps you on an existing feature branch, work where you are. Either way, name the location in the report <strong>before</strong> the first round runs, so nobody discovers after five rounds where the edits went.</p>
+                <p>Resolve <code>MODE</code> and the guard above first.</p>
+                <p>If the guard finds you already inside a linked worktree, confirm it&#x27;s clean before touching it — <code>git -C &lt;repo&gt; status --porcelain</code>. If it&#x27;s dirty, stop and say so; round 0 must not fold someone else&#x27;s unrelated, uncommitted work into the polish commit.</p>
+                <p>Otherwise, cut the worktree from your current <code>HEAD</code>, not <code>origin/&lt;BASE_BRANCH&gt;</code> — precisely so it contains the work you were asked to polish, whatever your branch has become:</p>
+                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; rev-parse --abbrev-ref HEAD          # the branch you are on
+git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
+                <p>Every round — the harness, the renders, the fixes — happens inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, or when the guard keeps you inside an existing worktree, work where you are. Either way, name the location in the report <strong>before</strong> the first round runs, so nobody discovers after five rounds where the edits went.</p>
               </div>
             </div>
           </li>
@@ -191,7 +193,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Report</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Show the user the final artifact (path / screenshot), the reviewer&#x27;s verdict in its own words, the number of rounds, and a short before → after of what changed. Optionally file any allowed nits as follow-up issues. Under <code>MODE=pr</code>, commit the rounds on the branch, run the CI gate, open the PR with the before → after renders cited by path, and stop there unless <code>MERGE_MODE=auto</code>.</p>
+                <p>Show the user the final artifact (path / screenshot), the reviewer&#x27;s verdict in its own words, the number of rounds, and a short before → after of what changed. Optionally file any allowed nits as follow-up issues. Under <code>MODE=pr</code>, commit the rounds on the branch — staging only the paths the rounds actually touched, never <code>git add -A</code>, since the tree may hold unrelated uncommitted work — then run the CI gate: poll <code>gh pr checks</code> until nothing is pending; if red, pull the failing log, fix, re-push, re-poll. If the branch already has an open PR (the usual case when chained after <code>/ship-issue</code>), push to it and add a comment with the before → after renders cited by path rather than opening a second one; otherwise open a new PR with the same renders cited by path. Stop there unless <code>MERGE_MODE=auto</code>.</p>
               </div>
             </div>
           </li>
@@ -216,8 +218,11 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             </li>
             <li><code>MAX_ROUNDS</code> = 5 — loop cap before escalating to the user with the current state and the reviewer&#x27;s outstanding notes. Never loop forever; never declare a sign-off the reviewer didn&#x27;t give.</li>
             <li><code>BUILDER</code> = <code>senior-engineer</code> — applies the reviewer&#x27;s fixes each round.</li>
-            <li><code>MODE</code> = <code>pr</code> (default) — run the loop in a worktree on its own branch and hand back a CI-gated PR, reusing <code>/ship-issue</code>&#x27;s Stage 1 (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate); the caller&#x27;s checkout is never written to. <code>edit-in-place</code> refines the working tree directly — still available, but ask for it. <strong>One guard:</strong> if the run starts on a branch that is not <code>BASE_BRANCH</code>, you are already isolated — typically inside the worktree <code>/ship-issue</code> just left behind, which is how <code>/polish</code> is usually chained. Stay on that branch and do not cut a second one: a fresh worktree off the base branch would not contain the work you were asked to polish.</li>
-            <li>Under <code>MODE=pr</code>: <code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--polish-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>polish/&lt;slug&gt;</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). The orchestrator owns all git/gh; agents never push.</li>
+            <li><code>MODE</code> = <code>pr</code> (default) — run the loop in a worktree on its own branch and hand back a CI-gated PR, reusing <code>/ship-issue</code>&#x27;s isolate stage, its commit-push-PR stage, and its CI gate; the caller&#x27;s checkout is never written to. <code>edit-in-place</code> refines the working tree directly — still available, but ask for it.</li>
+            <li>Under <code>MODE=pr</code>: <code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--polish-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>polish/&lt;slug&gt;</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). The orchestrator owns all git/gh; agents never push. If there is no remote for <code>gh</code> to open a PR against, stop at the branch and say so — never silently downgrade to writing in the tree. <strong>The guard:</strong> the real question isn&#x27;t which branch you&#x27;re on, it&#x27;s whether you&#x27;re already inside an isolated worktree — typically the one <code>/ship-issue</code> just left behind, which is how <code>/polish</code> is usually chained. Detect it properly, don&#x27;t infer it from a branch name:
+              <pre class="order-code" tabindex="0"><code>[ &quot;$(git rev-parse --git-dir)&quot; != &quot;$(git rev-parse --git-common-dir)&quot; ]   # true inside a linked worktree</code></pre>
+              <p>Inside a linked worktree: stay put, do not cut a second one. In the caller&#x27;s primary checkout: cut a fresh worktree per Stage 0, whatever branch they happen to be on.</p>
+            </li>
             <li>The renders are <strong>evidence, not deliverables.</strong> The fixes land in tracked source; the captured artifact is often gitignored build output. Never force-add an ignored render to the branch — cite its path in the report and the PR body instead.</li>
             <li><strong>Quality bar</strong> = the project&#x27;s stated visual/UX bar (README/CLAUDE.md), passed to the reviewer.</li>
           </ul>
@@ -239,7 +244,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <li>The sign-off is the REVIEWER&#x27;s to give, and the final report states what the reviewer actually said — not an optimistic paraphrase. A &quot;needs a human visual pass&quot; fallback is a real outcome, not a fail.</li>
             <li>Reviewer choice follows the project&#x27;s domain: <code>art-director</code> for art, <code>ux-ui-designer</code> for UI, <code>product-manager</code> for general output. When ambiguous, ask.</li>
             <li>Runs standalone, or as the visual pass inside/after <code>/ship-issue</code> on a UI/visual story.</li>
-            <li><strong>The loop runs on its own branch by default.</strong> Five rounds of edits belong in a diff a human can read, not in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request — except when you are already on a feature branch, where staying put <em>is</em> the isolation.</li>
+            <li><strong>The loop runs on its own branch by default.</strong> Five rounds of edits belong in a diff a human can read, not in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request — except when you&#x27;re already inside an isolated worktree, where staying put <em>is</em> the isolation.</li>
             <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback.</li>
           </ul>
         </div>

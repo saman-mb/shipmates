@@ -552,6 +552,12 @@ else
         echo "  ${c_yellow}kept${c_reset}     $rel ${c_dim}(no longer shipped, but you modified it)${c_reset}"
       fi
     done < "$MANIFEST_PARSED"
+    # Tidy dirs the sweep emptied (e.g. a renamed/dropped skill) — same
+    # rmdir-only rule as uninstall: a dir still holding any file is left alone.
+    if [ -d "$TARGET/skills" ]; then
+      while IFS= read -r sub; do rmdir "$sub" 2>/dev/null || :; done \
+        < <(find "$TARGET/skills" -mindepth 1 -depth -type d -empty 2>/dev/null)
+    fi
   fi
 
   sweep_legacy_commands

@@ -30,17 +30,22 @@ a chart, a piece of output…) and optionally which reviewer. If it's empty, ask
   outstanding notes. Never loop forever; never declare a sign-off the reviewer didn't give.
 - `BUILDER` = `senior-engineer` — applies the reviewer's fixes each round.
 - `MODE` = `pr` (default) — run the loop in a worktree on its own branch and hand back a CI-gated
-  PR, reusing `/ship-issue`'s Stage 1 (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate);
-  the caller's checkout is never written to. `edit-in-place` refines the working tree directly —
-  still available, but ask for it.
-  **One guard:** if the run starts on a branch that is not `BASE_BRANCH`, you are already isolated —
-  typically inside the worktree `/ship-issue` just left behind, which is how `/polish` is usually
-  chained. Stay on that branch and do not cut a second one: a fresh worktree off the base branch
-  would not contain the work you were asked to polish.
+  PR, reusing `/ship-issue`'s isolate stage, its commit-push-PR stage, and its CI gate; the caller's
+  checkout is never written to. `edit-in-place` refines the working tree directly — still available,
+  but ask for it.
 - Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch.
   `WORKTREE_DIR` = `../<repo>--polish-<slug>`. `BRANCH` = `polish/<slug>`.
   `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). The orchestrator owns all git/gh;
-  agents never push.
+  agents never push. If there is no remote for `gh` to open a PR against, stop at the branch and say
+  so — never silently downgrade to writing in the tree.
+  **The guard:** the real question isn't which branch you're on, it's whether you're already inside
+  an isolated worktree — typically the one `/ship-issue` just left behind, which is how `/polish` is
+  usually chained. Detect it properly, don't infer it from a branch name:
+  ```bash
+  [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]   # true inside a linked worktree
+  ```
+  Inside a linked worktree: stay put, do not cut a second one. In the caller's primary checkout: cut
+  a fresh worktree per Stage 0, whatever branch they happen to be on.
 - The renders are **evidence, not deliverables.** The fixes land in tracked source; the captured
   artifact is often gitignored build output. Never force-add an ignored render to the branch — cite
   its path in the report and the PR body instead.
@@ -50,15 +55,22 @@ a chart, a piece of output…) and optionally which reviewer. If it's empty, ask
 
 ## Stage 0 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
 
-Resolve `MODE` and the guard above first. If a worktree is called for:
+Resolve `MODE` and the guard above first.
+
+If the guard finds you already inside a linked worktree, confirm it's clean before touching it —
+`git -C <repo> status --porcelain`. If it's dirty, stop and say so; round 0 must not fold someone
+else's unrelated, uncommitted work into the polish commit.
+
+Otherwise, cut the worktree from your current `HEAD`, not `origin/<BASE_BRANCH>` — precisely so it
+contains the work you were asked to polish, whatever your branch has become:
 
 ```bash
-git -C <repo> fetch origin
-git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
+git -C <repo> rev-parse --abbrev-ref HEAD          # the branch you are on
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
 ```
 
 Every round — the harness, the renders, the fixes — happens inside `<WORKTREE_DIR>`. Under
-`MODE=edit-in-place`, or when the guard keeps you on an existing feature branch, work where you are.
+`MODE=edit-in-place`, or when the guard keeps you inside an existing worktree, work where you are.
 Either way, name the location in the report **before** the first round runs, so nobody discovers
 after five rounds where the edits went.
 
@@ -99,8 +111,13 @@ reviewer's remaining notes. Escalate; don't spin.
 
 Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the
 number of rounds, and a short before → after of what changed. Optionally file any allowed nits as
-follow-up issues. Under `MODE=pr`, commit the rounds on the branch, run the CI gate, open the PR with
-the before → after renders cited by path, and stop there unless `MERGE_MODE=auto`.
+follow-up issues. Under `MODE=pr`, commit the rounds on the branch — staging only the paths the
+rounds actually touched, never `git add -A`, since the tree may hold unrelated uncommitted work —
+then run the CI gate: poll `gh pr checks` until nothing is pending; if red, pull the failing log, fix,
+re-push, re-poll. If the branch already has an open PR (the usual case when chained after
+`/ship-issue`), push to it and add a comment with the before → after renders cited by path rather than
+opening a second one; otherwise open a new PR with the same renders cited by path. Stop there unless
+`MERGE_MODE=auto`.
 
 ---
 
@@ -117,7 +134,7 @@ the before → after renders cited by path, and stop there unless `MERGE_MODE=au
   `product-manager` for general output. When ambiguous, ask.
 - Runs standalone, or as the visual pass inside/after `/ship-issue` on a UI/visual story.
 - **The loop runs on its own branch by default.** Five rounds of edits belong in a diff a human can
-  read, not in someone's checkout. `MODE=edit-in-place` is an explicit request — except when you are
-  already on a feature branch, where staying put *is* the isolation.
+  read, not in someone's checkout. `MODE=edit-in-place` is an explicit request — except when you're
+  already inside an isolated worktree, where staying put *is* the isolation.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the role's
   brief inlined, and note the fallback.

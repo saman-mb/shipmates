@@ -25,6 +25,9 @@ below); everything after it is extra guidance from the caller (may be empty).
 - `MERGE_MODE` = `manual` — `manual`: stop after the acceptance board with a green, reviewed PR
   open for a human to merge. `auto`: squash-merge automatically once every gate passes. Start with
   `manual`; opt into `auto` only in a repo where unattended merges to the base branch are acceptable.
+  If Stage 0 set `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
+  of the configured default — a security-sensitive change must not auto-merge past the `/harden`
+  recommendation.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
 - `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<issue>`
 - `BRANCH` = `feat/issue-<issue>-<short-slug>`
@@ -88,11 +91,20 @@ and note the fallback in the final report — never silently skip a gated review
        when in doubt, prefer `IS_UI_STORY` and leave the art-director out.
      - `IS_ARCH_SIGNIFICANT = yes/no` — does it add a new subsystem, change a persisted data/schema
        format, or cross-cut many modules in a way a narrow code review would miss? Gates `architect`.
+     - `IS_SECURITY_SENSITIVE = yes/no` — does it touch authn/authz, untrusted input, secrets, crypto,
+       file/network/OS access, or dependencies? Does **not** gate a reviewer seat — security review
+       lives in `/harden`, which this command doesn't run. It gates two things instead: the final
+       report must carry the `/harden` recommendation (mechanical, not a judgment call made while
+       writing the summary), and it forces `MERGE_MODE=manual` for this run (see Config).
      - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
        or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
        infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
    This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
-   must be added to both files.
+   must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
+   `/harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
+   the branch and can just run `/harden` itself. `/pr-review` keeps the same flag wired to a
+   `security-engineer` seat, because it reviews a PR the crew didn't author, where `/harden` isn't
+   available — you don't own that branch.
 3. If the plan reveals the issue is too big/ambiguous to finish autonomously, stop and tell the user
    what's blocking — otherwise continue.
 
@@ -239,8 +251,8 @@ Decision (each specialist participates only when its flag is set):
 
 One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their
 verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
-anything that could only be validated statically, and the `/harden` recommendation when the change
-touched a security-relevant surface.
+anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
+Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now.
 
 ---
 
@@ -258,10 +270,10 @@ touched a security-relevant surface.
 - **Secrets & security hygiene.** Never write secrets, tokens, or credentials into commits, PR/issue
   bodies, or logs — assume the repo is public. The `sdet` flags secret leakage as a defect; a real
   leak is blocking. Deeper security work is not this command's job — see the next bullet.
-- **Security review lives in `/harden`, not here.** This command does not threat-model. When the
-  change touched authn/authz, untrusted input, secrets, crypto, file/network/OS access, or
-  dependencies, say so in the final report and recommend a `/harden` pass on the surface — one
-  line, so the risk is named rather than silently dropped.
+- **Security review lives in `/harden`, not here.** This command does not threat-model. When
+  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/harden` recommendation and the
+  run stays on `MERGE_MODE=manual` (Stage 0, Config) — the flag is the trigger, not a judgment call
+  made while writing the summary.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work. Every stage should be safe to repeat.
 - Static review cannot verify pixels. When neither the `ux-ui-designer` (UI) nor the `art-director`

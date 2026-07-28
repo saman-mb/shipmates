@@ -39,7 +39,7 @@ gh pr diff <PR#>
 ```
 
 Then read the repo's `README` / `CLAUDE.md` for the bar. Set the **same classification flags
-`/ship-issue` uses**, so a given change pulls the same specialists whichever door it came through —
+`/ship-issue` uses** — with one deliberate exception, `IS_SECURITY_SENSITIVE` (see below) —
 but derive them from the **diff**, not from an issue body. That is the real difference: there are no
 stated acceptance criteria here, so the criteria are *the repo's own bar plus what the PR claims to
 do*. Where the PR description and the diff disagree, that mismatch is itself a finding.
@@ -56,6 +56,11 @@ do*. Where the PR description and the diff disagree, that mismatch is itself a f
   dependency or toolchain pins)? Gates `devops-engineer`.
 
 This flag vocabulary is **shared with `/ship-issue`** — a new flag must be added to both files.
+`IS_SECURITY_SENSITIVE` is the deliberate exception: it stays wired to the `security-engineer`
+seat here, because this command reviews a PR the crew didn't author — you don't own the branch, so
+`/harden` isn't an available remedy. `/ship-issue` keeps the same flag (it still gates the `/harden`
+recommendation and forces a manual merge) but not the seat, since a crew-authored change can just
+run `/harden` itself.
 
 ## Stage 1 — CI state (read it, don't fix it)
 

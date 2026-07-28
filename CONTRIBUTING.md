@@ -52,11 +52,20 @@ are correct; which one belongs in a given sentence is set by the
 6. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
    repo works on its own branch in its own worktree and proposes the result as a pull request; the
    caller's checkout is left as they left it. Writing straight into the working tree is an opt-in
-   (`MODE=edit-in-place`), never a default. **Irreversible side effects are a separate axis, and
-   they are opt-in too:** merging (`MERGE_MODE=auto`), publishing (`PUBLISH_MODE=auto`) and posting
-   on a third party's pull request (`MODE=post`) stay off unless the caller sets them. Opening a PR
-   is not in that class — it is a proposal the reader can close. Be a good guest on other people's
-   repos: a branch is a suggestion, a merge is a decision.
+   (`MODE=edit-in-place`), never a default. `/release` is the one shipped exception: the release
+   commit has to land on the branch being tagged, so it commits, pushes and tags straight in the
+   caller's checkout instead of an unmerged side branch — not because a worktree defeats tagging (it
+   doesn't; a worktree shares the object database and the remote, so `git tag` behaves the same
+   either way), but because the commit being tagged can't sit on a branch that was never merged. If
+   your workflow genuinely can't isolate for a comparable structural reason, say so in its Config and
+   state why — don't just skip the default quietly. **Irreversible side effects are a separate axis,
+   judged by its own test, not this one:** *irreversible = the caller cannot undo it with one command
+   in their own repo.* Opening a PR doesn't clear that bar — the caller closes it with one command —
+   so it's not in the class. Merging (`MERGE_MODE=auto`), publishing (`PUBLISH_MODE=auto`),
+   posting on a third party's pull request (`MODE=post`), and creating issues or labels on someone
+   else's tracker all pass it — none undoes with one command in the caller's own repo — so each stays
+   opt-in, off unless the caller sets it. Be a good guest on other people's repos: a branch is a
+   suggestion, a merge is a decision.
 7. Add `<name>` to `SLUGS` in `tools/gen_command_pages.py`.
 8. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
    `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the skill sources.
