@@ -2856,7 +2856,7 @@ def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
     return f"""<!doctype html>
 <html lang="en">
 {render_head(cmd, ctx)}
-<body>
+<body class="page--doc">
   <a class="skip-link" href="#main">Skip to content</a>
 
 {render_header()}
@@ -3065,7 +3065,7 @@ def render_agent_page(agent: Agent, all_agents: tuple, ctx: PageContext) -> str:
     return f"""<!doctype html>
 <html lang="en">
 {render_agent_head(agent, ctx)}
-<body>
+<body class="page--doc">
   <a class="skip-link" href="#main">Skip to content</a>
 
 {render_header()}
