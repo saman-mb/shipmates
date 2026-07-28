@@ -100,14 +100,24 @@ Every round — the harness, the renders, the fixes — happens inside `<WORKTRE
 Either way, name `DESTINATION` and why it was chosen in the report **before** the first round runs,
 so nobody discovers after five rounds where the edits went.
 
-## Stage 1 — Secure a way to SEE the output  (the loop can't converge without it)
+## Stage 1 — Secure a way for the REVIEWER to SEE the output  (the loop can't converge without it)
 
-The reviewer must judge the ACTUAL produced artifact, not the code. Find the project's way to produce
-it headlessly — a render / screenshot / build / export / preview harness (check its tools/scripts/
-docs). If none exists and one is feasible, have a `senior-engineer` build a **minimal** one (e.g. a
-headless script that writes a PNG, or a preview export). If it is genuinely impossible to produce or
-view the artifact, say so plainly, fall back to a single static review flagged **"needs a human visual
-pass,"** and tell the user the loop cannot truly converge blind — don't fake iterations.
+The `REVIEWER` must be able to open and inspect the ACTUAL produced artifact itself — not a
+description of it relayed by the orchestrator, and not the code. Find the project's way to produce it
+headlessly — a render / screenshot / build / export / preview harness (check its tools/scripts/docs).
+If none exists and one is feasible, have a `senior-engineer` build a **minimal** one (e.g. a headless
+script that writes a PNG, or a preview export) that hands the reviewer a file it can open directly. If
+it is genuinely impossible to produce the artifact or to give the reviewer direct access to it, say so
+plainly, fall back to a single static review flagged **"needs a human visual pass,"** name exactly what
+the reviewer could not see, and tell the user the loop cannot truly converge blind — don't fake
+iterations.
+
+Resolve a **capture matrix** before round 0: every section × the chosen breakpoints — a narrow and a
+desktop viewport at minimum, 375 / 768 / 1280 a common ladder — plus every distinct page template (N
+generated pages sharing one template need one capture; zero is not acceptable). **Settle animation
+before capturing** — wait it out or force a stable frame; unsettled motion is the leading cause of a
+flaky review (two captures of a 38-frame GIF both landing on frame 0 read as a capture artifact once —
+it was a real defect).
 
 ## Stage 2 — Baseline
 
@@ -120,15 +130,17 @@ Each round:
 1. **Critique** — spawn the `REVIEWER` against the CURRENT produced artifact (the actual image/output
    file, which it opens and inspects — not the source). It returns a decisive verdict —
    `ACCEPT` (sign-off) / `ACCEPT-WITH-NITS` / `REJECT` — with SPECIFIC, plug-in fixes (values, not
-   "make it nicer"), blockers separated from nits. Instruct it explicitly not to rubber-stamp to end
-   the loop.
+   "make it nicer"), blockers separated from nits, and a statement of which capture-matrix cells it
+   actually reviewed this round — the verdict covers only those. Instruct it explicitly not to
+   rubber-stamp to end the loop.
 2. **Signed off?** `ACCEPT` → leave the loop. `ACCEPT-WITH-NITS` → leave the loop too (the nits become
    follow-ups) unless the caller asked to resolve nits as well. `REJECT` → continue.
 3. **Fix** — spawn a `senior-engineer` with the reviewer's exact blocker list; apply the changes where
    Stage 0 put you — the worktree branch under `MODE=pr`, the working tree under `MODE=edit-in-place`.
    Keep the change scoped to the notes — no unrelated drift.
 4. **Re-produce** — re-run the harness and capture the new artifact.
-5. Keep a one-line changelog per round so the trajectory is visible.
+5. Keep a one-line changelog per round, naming that round's capture-matrix coverage, so the trajectory
+   and the coverage are both visible.
 
 If `MAX_ROUNDS` is reached without a sign-off, **STOP** and hand the user the current artifact plus the
 reviewer's remaining notes. Escalate; don't spin.
