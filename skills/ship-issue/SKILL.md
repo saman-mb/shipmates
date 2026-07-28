@@ -1,20 +1,22 @@
 ---
 name: ship-issue
-description: Take a GitHub issue/story from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
-argument-hint: <issue-or-story-number> [optional extra guidance]
+description: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
+argument-hint: <issue-number>... [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 
 # /ship-issue — autonomous ticket delivery
 
-Take **issue / story `#<issue>`** from open all the way to a **reviewed, CI-green pull request** on the
-base branch, autonomously — using an isolated git worktree and a board of specialist subagents.
-Merging is gated by `MERGE_MODE` (see Config): by default the run stops with the PR open for a
-human to merge; set `MERGE_MODE=auto` for fully hands-off delivery.
+Take **one or more issues / stories (`#<issue>`..)** from open all the way to a **reviewed, CI-green
+pull request** on the base branch, autonomously — using an isolated git worktree and a board of
+specialist subagents. Merging is gated by `MERGE_MODE` (see Config): by default the run stops with
+the PR open for a human to merge; set `MERGE_MODE=auto` for fully hands-off delivery.
 
-Input (**$ARGUMENTS**): the first whitespace-delimited token is the issue / story number (`<issue>`
-below); everything after it is extra guidance from the caller (may be empty).
+Input (**$ARGUMENTS**): whitespace-delimited tokens. The first one or more tokens are issue / story
+numbers (`<issue>` below); the token `--` separates issues from extra guidance (everything after
+`--` is guidance, may be empty). If no `--` is present, every token that looks like a number is
+treated as an issue number, and the rest as guidance.
 
 ---
 
@@ -25,12 +27,10 @@ below); everything after it is extra guidance from the caller (may be empty).
 - `MERGE_MODE` = `manual` — `manual`: stop after the acceptance board with a green, reviewed PR
   open for a human to merge. `auto`: squash-merge automatically once every gate passes. Start with
   `manual`; opt into `auto` only in a repo where unattended merges to the base branch are acceptable.
-  If Stage 0 set `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
-  of the configured default — a security-sensitive change must not auto-merge past the `/harden`
-  recommendation.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
-- `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<issue>`
-- `BRANCH` = `feat/issue-<issue>-<short-slug>`
+- `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<first-issue>` (single issue)
+  or `../<repo>--bundle-<first-issue>-<last-issue>` (multiple issues)
+- `BRANCH` = `feat/issue-<first-issue>` (single) or `feat/bundle-<first-issue>-<last-issue>` (multiple)
 - **Quality bar** = whatever the repo's `README` / `CLAUDE.md` / contributing docs state. Read it at
   the start and pass it to every reviewer — the `product-manager` (and the visual specialists)
   enforce THAT bar, not just "it runs."
@@ -52,6 +52,7 @@ agent with a persona pasted inline. The pool:
 | `architect`        | Structural / schema review — gated by `IS_ARCH_SIGNIFICANT` (Stages 1.5, 5) |
 | `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
 | `art-director`     | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
+| `security-engineer`| Threat-model + security review — gated by `IS_SECURITY_SENSITIVE` (Stage 5) |
 | `devops-engineer`  | Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by `IS_DELIVERY_SENSITIVE` (Stage 5) |
 
 These agents are **generic** (domain-neutral); the project-specific standard they enforce comes
@@ -66,10 +67,11 @@ and note the fallback in the final report — never silently skip a gated review
 
 ## Stage 0 — Intake & plan  (agent: `Plan`)
 
-1. Resolve the number: `gh issue view <issue> --json number,title,body,labels,url`. If `<issue>` is a
-   "story number" that differs from the GitHub issue number, map it via the epic checklist issue or
-   the README scope table, then confirm the real issue number.
-2. Spawn ONE **Planner** (`subagent_type: Plan`). Give it the full issue body + repo README +
+1. Resolve numbers: for each issue number in `<issue>..`, run `gh issue view <N> --json number,title,body,labels,url`.
+   Resolve story-number mappings if needed. Let `<issues>` = the resolved list.
+2. `<first-issue>` = the first number in `<issues>`, `<last-issue>` = the last number. For a single
+   issue, both are the same.
+3. Spawn ONE **Planner** (`subagent_type: Plan`). Give it all issue bodies + repo README +
    CLAUDE.md. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
@@ -91,20 +93,13 @@ and note the fallback in the final report — never silently skip a gated review
        when in doubt, prefer `IS_UI_STORY` and leave the art-director out.
      - `IS_ARCH_SIGNIFICANT = yes/no` — does it add a new subsystem, change a persisted data/schema
        format, or cross-cut many modules in a way a narrow code review would miss? Gates `architect`.
-     - `IS_SECURITY_SENSITIVE = yes/no` — does it touch authn/authz, untrusted input, secrets, crypto,
-       file/network/OS access, or dependencies? Does **not** gate a reviewer seat — security review
-       lives in `/harden`, which this command doesn't run. It gates two things instead: the final
-       report must carry the `/harden` recommendation (mechanical, not a judgment call made while
-       writing the summary), and it forces `MERGE_MODE=manual` for this run (see Config).
+     - `IS_SECURITY_SENSITIVE = yes/no` — does it touch authn/authz, untrusted input, secrets/credentials,
+       crypto, file/network/OS access, or dependencies? Gates `security-engineer`.
      - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
        or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
        infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
-   This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
-   must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
-   `/harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
-   the branch and can just run `/harden` itself. `/pr-review` keeps the same flag wired to a
-   `security-engineer` seat, because it reviews a PR the crew didn't author, where `/harden` isn't
-   available — you don't own that branch.
+   This flag vocabulary is shared with `/review`, which classifies a PR diff the same way — a new flag
+   must be added to both files.
 3. If the plan reveals the issue is too big/ambiguous to finish autonomously, stop and tell the user
    what's blocking — otherwise continue.
 
@@ -156,14 +151,15 @@ stay clean. Pass the absolute worktree path to every agent.
 
 ```bash
 git -C <WORKTREE_DIR> add -A
-git -C <WORKTREE_DIR> commit -m "<type>: <summary> (#<issue>)"   # + required trailers
+git -C <WORKTREE_DIR> commit -m "<type>: <summary> (#<first-issue>)"   # + required trailers
 git -C <WORKTREE_DIR> push -u origin <BRANCH>
+ISSUES_CSV=$(echo "<issues>" | sed 's/ /, #/g')
 gh pr create --base <BASE_BRANCH> --head <BRANCH> \
-  --title "<type>: <issue title> (#<issue>)" \
-  --body  "<what changed, how validated, 'Closes #<issue>', trailers>"
+  --title "<type>: <summary> (#<first-issue>)" \
+  --body  "<what changed, how validated. Closes #${ISSUES_CSV}. trailers>"
 ```
 The PR body must include: summary, the acceptance criteria as a checklist, how it was validated
-(and any validation that could NOT be run locally), and `Closes #<issue>`.
+(and any validation that could NOT be run locally), and `Closes #<issues>` (comma-separated).
 
 ## Stage 4.5 — CI gate: wait for green, fix if red  (orchestrator + Fixer)  ⛔ HARD GATE
 
@@ -214,10 +210,14 @@ core reviewers always run; each specialist runs only when its flag is set:
   visual pass"**.
 - **`architect`** (only if `IS_ARCH_SIGNIFICANT`): reviews structural fit, coupling/blast radius, and
   schema/migration safety.
+- **`security-engineer`** (only if `IS_SECURITY_SENSITIVE`): threat-models the change (STRIDE / OWASP) —
+  broken access control, injection, secrets/crypto, vulnerable deps — and returns severity-ranked findings
+  with the exploit path; a credible Critical/High is a blocking defect.
 - **`devops-engineer`** (only if `IS_DELIVERY_SENSITIVE`): reviews the delivery definitions for
   reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and
   secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety
-  to `site-reliability-engineer`.
+  to `site-reliability-engineer`, and the severity of secret exposure or dependency trust to
+  `security-engineer`.
 
 Decision (each specialist participates only when its flag is set):
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → go to Stage 7.
@@ -243,16 +243,16 @@ Decision (each specialist participates only when its flag is set):
 - **If `MERGE_MODE=manual`** (default): stop here. Post a completion comment on the PR (what shipped,
   how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave
   the worktree in place, or remove it and keep the branch — your choice, state which.
-- **If `MERGE_MODE=auto`**: `gh pr merge <BRANCH> --squash --delete-branch`, then confirm the issue
-  auto-closed (else `gh issue close`), tick the epic checklist box if any, remove the worktree
-  (`git -C <repo> worktree remove <WORKTREE_DIR>`), and post the completion comment.
+- **If `MERGE_MODE=auto`**: `gh pr merge <BRANCH> --squash --delete-branch`, then confirm all issues
+  auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
+  epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
+  and post the completion comment.
 
 ## Final report to the user
 
 One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their
-verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
-anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
-Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now.
+verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, and
+anything that could only be validated statically.
 
 ---
 
@@ -268,12 +268,9 @@ Stage 0 — the `/harden` recommendation, carried here mechanically rather than 
 - If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan
   requires), stop and surface it — autonomy does not mean forcing a bad merge.
 - **Secrets & security hygiene.** Never write secrets, tokens, or credentials into commits, PR/issue
-  bodies, or logs — assume the repo is public. The `sdet` flags secret leakage as a defect; a real
-  leak is blocking. Deeper security work is not this command's job — see the next bullet.
-- **Security review lives in `/harden`, not here.** This command does not threat-model. When
-  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/harden` recommendation and the
-  run stays on `MERGE_MODE=manual` (Stage 0, Config) — the flag is the trigger, not a judgment call
-  made while writing the summary.
+  bodies, or logs — assume the repo is public. When the change touches auth, input handling, crypto,
+  or dependencies, the `security-engineer` (gated by `IS_SECURITY_SENSITIVE`) threat-models it and the
+  `sdet` also flags secret leakage; a real leak or a clear injection path is a blocking defect.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work. Every stage should be safe to repeat.
 - Static review cannot verify pixels. When neither the `ux-ui-designer` (UI) nor the `art-director`

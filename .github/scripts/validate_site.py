@@ -423,12 +423,23 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
         ok(f"{page.rel}: hero chip matches agents/*.md ({chip.group(1)} specialists)")
 
     # --- reduced-motion demo poster wired (a11y / WCAG 2.2.2) ---
-    if "hero__demo-poster" in page.html and "hero__demo-poster" in css and "prefers-reduced-motion" in css:
+    # Two valid approaches:
+    #   1. <picture> with <source media="(prefers-reduced-motion: reduce)">
+    #   2. CSS swap with .hero__demo-poster <img> + prefers-reduced-motion in styles
+    has_picture_motion = (
+        '<source media="(prefers-reduced-motion: reduce)"' in page.html
+    )
+    has_css_swap = (
+        "hero__demo-poster" in page.html
+        and "hero__demo-poster" in css
+        and "prefers-reduced-motion" in css
+    )
+    if has_picture_motion or has_css_swap:
         ok(f"{page.rel}: reduced-motion demo poster wired")
     else:
         fail(
-            f"{page.rel}: reduced-motion demo poster not fully wired (need the poster <img> in "
-            "HTML + a prefers-reduced-motion swap in CSS)"
+            f"{page.rel}: reduced-motion demo poster not wired (need a <picture> with "
+            "<source media=\"(prefers-reduced-motion: reduce)\"> or a CSS swap)"
         )
 
 

@@ -462,16 +462,12 @@ html.js .codeblock__copy{ display:inline-flex; }
   min-width:0;
   margin:0;
 }
-.hero__demo,
-.hero__demo-poster{
+.hero__demo{
   width:100%;
   max-width:940px;
   border-radius:var(--radius-lg);
   box-shadow:var(--shadow-2);
 }
-/* The static poster is hidden by default; it replaces the animated GIF only
-   when the user asks for reduced motion (see the reduced-motion block below). */
-.hero__demo-poster{ display:none; }
 .hero__figcaption{
   margin-top:var(--space-3);
   font-size:var(--fs-300);
@@ -1096,7 +1092,4 @@ summary::-webkit-details-marker{ display:none; }
   }
   .btn--primary:hover{ transform:none; }
   .order-card:hover{ transform:none; }
-  /* Swap the autoplaying demo GIF for a static poster of the finished run. */
-  .hero__demo{ display:none; }
-  .hero__demo-poster{ display:block; }
 }

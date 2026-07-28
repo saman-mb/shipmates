@@ -32,8 +32,8 @@ were distinguished. Recorded on issue #72; do not reopen it here.
 
 ## What Shipmates is
 
-Shipmates is an open-source (MIT) crew of specialist AI agents for
-[Claude Code](https://claude.com/claude-code): **12 domain-neutral subagents** and
+Shipmates is an open-source (MIT) crew of specialist AI agents on
+[Claude Code](https://code.claude.com/docs) today: **12 domain-neutral subagents** and
 **12 reusable commands**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a
 reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git
 worktree, waits for CI to go green, convenes an adversarial review board, loops on fixes within
