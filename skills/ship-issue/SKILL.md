@@ -13,11 +13,13 @@ pull request** on the base branch, autonomously — using an isolated git worktr
 specialist subagents. Merging is gated by `MERGE_MODE` (see Config): by default the run stops with
 the PR open for a human to merge; set `MERGE_MODE=auto` for fully hands-off delivery.
 
-Input (**$ARGUMENTS**): whitespace-delimited tokens. The first one or more tokens are issue / story
-numbers (`<issue>` below); the token `--` separates issues from extra guidance (everything after
-`--` is guidance, may be empty). If no `--` is present, every token must look like an issue number —
-if any token doesn't, stop and ask the caller to add `--` before the guidance rather than guessing
-which tokens are numbers.
+Input (**$ARGUMENTS**): whitespace-delimited tokens. The issue / story numbers (`<issue>` below) are
+the **leading run** of numeric tokens; the first non-numeric token begins the extra guidance, which
+runs to the end. So `104` is one issue with no guidance, `104 105` is two, and `104 focus on retries`
+is issue 104 with the guidance `focus on retries`. Never extend the run past the first non-numeric
+token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with
+a number, separate it explicitly with `--`, which ends the issue list wherever it appears:
+`104 -- 2 fix rounds max`.
 
 ---
 
@@ -72,8 +74,8 @@ and note the fallback in the final report — never silently skip a gated review
 
 1. Resolve numbers: for each issue number in `<issue>..`, run `gh issue view <N> --json number,title,body,labels,url`.
    Resolve story-number mappings if needed. Let `<issues>` = the resolved list.
-2. `<first-issue>` = the first number in `<issues>`, `<last-issue>` = the last number. For a single
-   issue, both are the same.
+2. `<first-issue>` = the first number in `<issues>` — it names the worktree and branch, so a re-run
+   with the same leading issue resolves to the same identifiers.
 3. Spawn ONE **Planner** (`subagent_type: Plan`). Give it all issue bodies + repo README +
    CLAUDE.md. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
@@ -110,7 +112,7 @@ and note the fallback in the final report — never silently skip a gated review
    the branch and can just run `/harden` itself. `/pr-review` keeps the same flag wired to a
    `security-engineer` seat, because it reviews a PR the crew didn't author, where `/harden` isn't
    available — you don't own that branch.
-3. If the plan reveals the issue is too big/ambiguous to finish autonomously, stop and tell the user
+4. If the plan reveals any issue is too big/ambiguous to finish autonomously, stop and tell the user
    what's blocking — otherwise continue.
 
 ## Stage 1.5 — Design specs  (specialist agents — each only if its flag is set)
@@ -250,7 +252,9 @@ Decision (each specialist participates only when its flag is set):
 
 - **If `MERGE_MODE=manual`** (default): stop here. Post a completion comment on the PR (what shipped,
   how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave
-  the worktree in place, or remove it and keep the branch — your choice, state which.
+  the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
+  the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
+  so name every issue the PR will close in the completion comment.
 - **If `MERGE_MODE=auto`**: `gh pr merge <BRANCH> --squash --delete-branch`, then confirm all issues
   auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
   epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
