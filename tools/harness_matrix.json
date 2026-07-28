@@ -1,0 +1,194 @@
+{
+  "version": 1,
+  "harnesses": {
+    "claude-code": {
+      "agents": true,
+      "notes": "Canonical source format. The payload is a byte-for-byte mirror of skills/ and agents/."
+    },
+    "github-copilot": {
+      "agents": false
+    },
+    "codex": {
+      "agents": false
+    },
+    "cursor": {
+      "agents": false
+    },
+    "gemini": {
+      "agents": false
+    },
+    "windsurf": {
+      "agents": false
+    },
+    "zed": {
+      "agents": false
+    },
+    "opencode": {
+      "agents": true
+    }
+  },
+  "features": {
+    "name": {
+      "applies_to": ["skills", "agents"],
+      "harnesses": {
+        "claude-code": { "supported": true },
+        "github-copilot": { "supported": true },
+        "codex": { "supported": true },
+        "cursor": { "supported": true },
+        "gemini": { "supported": true },
+        "windsurf": { "supported": true },
+        "zed": { "supported": true },
+        "opencode": { "supported": true }
+      }
+    },
+    "description": {
+      "applies_to": ["skills", "agents"],
+      "harnesses": {
+        "claude-code": { "supported": true },
+        "github-copilot": { "supported": true },
+        "codex": { "supported": true },
+        "cursor": { "supported": true },
+        "gemini": { "supported": true },
+        "windsurf": { "supported": true },
+        "zed": { "supported": true },
+        "opencode": { "supported": true }
+      }
+    },
+    "license": {
+      "applies_to": ["skills"],
+      "harnesses": {
+        "claude-code": { "supported": true },
+        "github-copilot": { "supported": true },
+        "codex": { "supported": false, "policy": "warn" },
+        "cursor": { "supported": true },
+        "gemini": { "supported": false, "policy": "warn" },
+        "windsurf": { "supported": false, "policy": "warn" },
+        "zed": { "supported": false, "policy": "warn" },
+        "opencode": { "supported": true }
+      }
+    },
+    "compatibility": {
+      "applies_to": ["skills"],
+      "harnesses": {
+        "claude-code": { "supported": true },
+        "github-copilot": { "supported": true },
+        "codex": { "supported": false, "policy": "warn" },
+        "cursor": { "supported": true },
+        "gemini": { "supported": false, "policy": "warn" },
+        "windsurf": { "supported": false, "policy": "warn" },
+        "zed": { "supported": false, "policy": "warn" },
+        "opencode": { "supported": true }
+      }
+    },
+    "metadata": {
+      "applies_to": ["skills"],
+      "harnesses": {
+        "claude-code": { "supported": true },
+        "github-copilot": { "supported": true },
+        "codex": { "supported": false, "policy": "warn" },
+        "cursor": { "supported": true },
+        "gemini": { "supported": false, "policy": "warn" },
+        "windsurf": { "supported": false, "policy": "warn" },
+        "zed": { "supported": false, "policy": "warn" },
+        "opencode": { "supported": true }
+      }
+    },
+    "allowed-tools": {
+      "applies_to": ["skills"],
+      "harnesses": {
+        "claude-code": { "supported": true, "separator": "comma" },
+        "github-copilot": { "supported": true, "separator": "space" },
+        "codex": { "supported": false, "policy": "warn" },
+        "cursor": { "supported": true, "separator": "space" },
+        "gemini": { "supported": false, "policy": "warn" },
+        "windsurf": { "supported": false, "policy": "warn" },
+        "zed": { "supported": false, "policy": "warn" },
+        "opencode": { "supported": true, "separator": "space" }
+      }
+    },
+    "argument-hint": {
+      "applies_to": ["skills"],
+      "harnesses": {
+        "claude-code": { "supported": true },
+        "github-copilot": { "supported": false, "policy": "drop" },
+        "codex": { "supported": false, "policy": "drop" },
+        "cursor": { "supported": false, "policy": "drop" },
+        "gemini": { "supported": false, "policy": "drop" },
+        "windsurf": { "supported": false, "policy": "drop" },
+        "zed": { "supported": false, "policy": "drop" },
+        "opencode": { "supported": false, "policy": "drop" }
+      }
+    },
+    "disable-model-invocation": {
+      "applies_to": ["skills"],
+      "harnesses": {
+        "claude-code": { "supported": true },
+        "github-copilot": {
+          "supported": false,
+          "policy": "refuse",
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+        },
+        "codex": {
+          "supported": false,
+          "policy": "refuse",
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "refuse",
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "refuse",
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "refuse",
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+        },
+        "zed": {
+          "supported": false,
+          "policy": "refuse",
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "refuse",
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+        }
+      }
+    },
+    "tools": {
+      "applies_to": ["agents"],
+      "harnesses": {
+        "claude-code": { "supported": true, "separator": "comma" },
+        "github-copilot": { "supported": false, "policy": "warn" },
+        "codex": { "supported": false, "policy": "warn" },
+        "cursor": { "supported": false, "policy": "warn" },
+        "gemini": { "supported": false, "policy": "warn" },
+        "windsurf": { "supported": false, "policy": "warn" },
+        "zed": { "supported": false, "policy": "warn" },
+        "opencode": {
+          "supported": false,
+          "policy": "emulate",
+          "emulation": "opencode gates tools per-name in its own configuration rather than as a markdown frontmatter allowlist, so the allowlist is expressed as a prompt-level instruction in the agent body"
+        }
+      }
+    },
+    "model": {
+      "applies_to": ["agents"],
+      "harnesses": {
+        "claude-code": { "supported": true },
+        "github-copilot": { "supported": false, "policy": "warn" },
+        "codex": { "supported": false, "policy": "warn" },
+        "cursor": { "supported": false, "policy": "warn" },
+        "gemini": { "supported": false, "policy": "warn" },
+        "windsurf": { "supported": false, "policy": "warn" },
+        "zed": { "supported": false, "policy": "warn" },
+        "opencode": { "supported": true }
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# Built-in commands: Windsurf (Cascade)
+# Source: https://docs.windsurf.com/windsurf/cascade/skills
+# Last updated: 2026-07-28
+#
+# This list is manually maintained. Refresh when Windsurf ships new built-ins.
+# Cascade slash commands are user-defined Workflows; no built-in slash
+# commands are documented as of 2026-07-28.
+
+# (no known built-in slash commands as of 2026-07-28)

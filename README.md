@@ -64,7 +64,7 @@ from anything hardcoded into the role.
 
 | Command | What it does |
 |---|---|
-| `/ship-issue <n>` | Drives GitHub issue `#n` from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
+| `/ship-issue <n>...` | Drives GitHub issue `#n` — or several at once, bundled into one PR — from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
 | `/fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
 | `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
 | `/harden <surface>` | Threat-models a surface and ranks every finding — read-only by default; remediation on a branch, opt-in |
@@ -119,6 +119,25 @@ than the one replacing it. `--uninstall` removes only files the manifest proves 
 untouched, then restores your originals from their `.bak-<timestamp>` backups. If the manifest is
 wrong or you want a clean slate, `--force` skips SHA checks and overwrites everything (backups
 still created).
+
+Install for a different harness with `--harness`:
+
+```bash
+./install.sh --harness claude-code     # default — works today
+./install.sh --harness all             # every known harness (refused ones fail loudly)
+./install.sh --harness cursor          # fails: no payload (matrix refused)
+```
+
+Each harness's skills land in its own directory (`.cursor/skills/`, `.codex/skills/`, …) — the
+Agent Skills standard is filesystem-based, so the same `SKILL.md` payload works everywhere, only
+the target path differs. Subagents (`agents/`) ship for Claude Code only — no cross-harness
+subagent standard exists yet.
+
+**Safety:** payloads are generated per harness by `tools/build_harness_payloads.py` against
+`tools/harness_matrix.json`. If the matrix can't honour a safety property on a target (e.g. no
+equivalent of `disable-model-invocation`), the payload is **refused** and the install fails
+loudly rather than shipping a more permissive artifact. Currently only `claude-code` builds;
+others refuse until their harness documents a user-invoked-only equivalent.
 
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
 >
