@@ -43,7 +43,7 @@ BACK_HREF = "../../#commands"
 # C3 — every class the generator emits on a detail page (plus the two the
 # homepage order cards gained) must have a rule in styles.css.
 C3_CLASSES = (
-    "order-detail", "order-detail__eyebrow", "order-detail__flag",
+    "order-detail", "section__eyebrow", "order-detail__flag",
     "order-detail__title", "order-detail__tagline", "order-detail__desc",
     "order-back",
     "order-invoke", "order-invoke__hint",
