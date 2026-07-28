@@ -1093,6 +1093,50 @@ summary::-webkit-details-marker{ display:none; }
   text-decoration:underline;
 }
 
+/* --- 5.11 AGENTS — agent detail pages + crew card links --- */
+.agent-scenarios{
+  display:grid;
+  gap:var(--space-4);
+}
+.agent-scenario{
+  border-left:3px solid var(--border);
+  padding-left:var(--space-4);
+}
+.agent-scenario__title{
+  font-size:var(--fs-400);
+  font-weight:600;
+  margin:0 0 var(--space-1);
+}
+.agent-scenario__desc{
+  margin:0;
+  color:var(--muted);
+}
+.agent-ref{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:var(--space-2) var(--space-4);
+  margin:0;
+}
+.agent-ref dt{
+  font-weight:600;
+  font-size:var(--fs-350);
+}
+.agent-ref dd{
+  margin:0;
+}
+.crew-card__link{
+  color:inherit;
+  text-decoration:none;
+}
+.crew-card__link:hover{
+  text-decoration:underline;
+}
+.crew-card__more{
+  display:block;
+  margin-top:var(--space-1);
+  font-size:var(--fs-300);
+  color:var(--accent);
+}
 
 /* =============================================================================
    6. RESPONSIVE — mobile-first; breakpoints sm 480 · md 640 · lg 900 · xl 1120
