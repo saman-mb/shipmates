@@ -43,7 +43,6 @@
 /plan
 /prompt
 /pr
-/pr-review
 /prefs
 /quit
 /rebase
