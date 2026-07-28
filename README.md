@@ -123,9 +123,9 @@ still created).
 Install for a different harness with `--harness`:
 
 ```bash
-./install.sh --harness cursor          # one harness
-./install.sh --harness cursor --harness codex   # several
-./install.sh --harness all             # every known harness
+./install.sh --harness claude-code     # default — works today
+./install.sh --harness all             # every known harness (refused ones fail loudly)
+./install.sh --harness cursor          # fails: no payload (matrix refused)
 ```
 
 Each harness's skills land in its own directory (`.cursor/skills/`, `.codex/skills/`, …) — the

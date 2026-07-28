@@ -221,7 +221,7 @@ def load_matrix(root: Path) -> Matrix:
     for name, cell in raw_harnesses.items():
         if not isinstance(cell, dict) or not isinstance(cell.get("agents"), bool):
             raise MatrixError(f"harnesses.{name}: must be an object with a boolean 'agents'")
-        if not HARNESS_RE.match(name):
+        if not HARNESS_RE.fullmatch(name):
             raise MatrixError(
                 f"harnesses.{name}: name must match {HARNESS_RE.pattern} "
                 "(lowercase alphanumerics and hyphens only — no path traversal)"

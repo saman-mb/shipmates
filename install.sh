@@ -160,7 +160,6 @@ resolve_target() {
       esac ;;
     project)
       local base="${PROJECT_PATH:-.}" root
-      mkdir -p "$base"
       case "$1" in
         claude-code)    root=".claude" ;;
         github-copilot) root=".github" ;;
@@ -170,7 +169,7 @@ resolve_target() {
         windsurf)       root=".windsurf" ;;
         opencode)       root=".opencode" ;;
       esac
-      TARGET="$(cd "$base" && pwd)/$root" ;;
+      TARGET="$(cd "$base" 2>/dev/null && pwd || printf '%s' "$base")/$root" ;;
     explicit)
       TARGET="$EXPLICIT_DIR" ;;
   esac
@@ -600,13 +599,21 @@ sweep_legacy_commands_for_harness() {
 # MANIFEST*, counters, NEW_ENTRIES) is global, reset here per harness.
 process_target() {
 
-# Gate BEFORE resolve_target creates any directory: a refused harness must
-# fail without touching the filesystem. resolve_src must run first to set SRC.
-resolve_src
-resolve_harness_src "$HARNESS"
+# resolve_target sets TARGET (and thus MANIFEST); no SRC needed for that.
 resolve_target "$HARNESS"
-
 MANIFEST="$TARGET/shipmates/manifest"
+
+# Gate BEFORE any directory is created: a refused harness fails without
+# touching the filesystem. resolve_src + resolve_harness_src run only when
+# the payload is needed (install, or legacy uninstall without a manifest) —
+# a manifest-driven uninstall works offline.
+if ! $UNINSTALL || [ ! -e "$MANIFEST" ]; then
+  resolve_src
+  resolve_harness_src "$HARNESS"
+fi
+
+# Create the project base dir now that the gate has passed.
+[ "$SCOPE" = "project" ] && mkdir -p "${PROJECT_PATH:-.}"
 MANIFEST_OLD_VERSION=""
 MANIFEST_STATE=1
 MANIFEST_PARSED=""
