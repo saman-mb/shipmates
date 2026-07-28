@@ -34,10 +34,13 @@ want is a README or a tutorial, stop and run `/document`.
   overwrites `MODE`.
 - Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
   worktree is cut from (that's current `HEAD`, so Stage 0's survey sees your actual checkout).
-  `WORKTREE_DIR` = `../<repo>--onboard`. `BRANCH` = `docs/onboard-context-file`. `MERGE_MODE` =
-  `manual` (stop at a reviewed PR; `auto` opt-in). A repo with no remote to open a PR against is the
-  one fallback: build the branch, stop there, and report the branch as the undo path — never quietly
-  write to the tree instead.
+  `WORKTREE_DIR` = `../<repo>--onboard-<SURVEY>`. `BRANCH` = `docs/onboard-context-file-<SURVEY>` —
+  onboard has no topic slug to build a name from (it always produces the one context file), so the
+  identifier is `SURVEY` instead: a still-open `create` PR then can't collide with a later `refresh`
+  run, which is the failure this suffix exists to prevent. `MERGE_MODE` = `manual` (stop at a
+  reviewed PR; `auto` opt-in). A repo with no remote to open a PR against is the one fallback: build
+  the branch, stop there, and report the branch as the undo path — never quietly write to the tree
+  instead.
 - `TARGET` = auto-detected. `CLAUDE.md` if one exists, else `AGENTS.md` if one exists, else
   `CLAUDE.md`. **Never write both** — see below.
 - `MAX_ROUNDS` = `3` verification loops before escalating.
@@ -60,9 +63,12 @@ context file agrees with them instead of competing.
 
 ## Stage 0.5 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
 
-The branch exists before the context file does. Exactly as `/ship-issue`'s isolate stage, but cut
-from current `HEAD` rather than `origin/<BASE_BRANCH>` — so an unpushed `CLAUDE.md`/`AGENTS.md` that
-Stage 0's survey already saw is actually present in the worktree the draft and refresh work against:
+The branch exists before the context file does. First check `git -C <repo> status --porcelain`; if
+the caller's tree is dirty, **warn loudly** — a worktree cut from `HEAD` holds committed work only,
+so an uncommitted rule Stage 0's survey just saw won't carry into the draft — then proceed. Exactly
+as `/ship-issue`'s isolate stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>` — so
+an unpushed `CLAUDE.md`/`AGENTS.md` that Stage 0's survey already saw is actually present in the
+worktree the draft and refresh work against:
 
 ```bash
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
@@ -117,11 +123,14 @@ Write to `TARGET` — inside `<WORKTREE_DIR>` under `MODE=pr` (the default), in 
 changed on their behalf. Under `MODE=pr`, commit on the branch — staging only the paths this run
 produced, never `git add -A` — push, and open the PR against `BASE_BRANCH`. Then gate on CI: poll
 `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing it,
-re-pushing, and re-polling. Stop there unless `MERGE_MODE=auto`. The context file only exists on that
-branch until it's merged, though — merge or check out `BRANCH` before running other commands in this
-session if you need it in place now, or pass `MODE=edit-in-place` up front instead. Report: the file
-written, the undo path (the backup, or the branch), which commands were proven versus recorded as
-unverified, and the verification round it passed on.
+re-pushing, and re-polling — bounded by `MAX_ROUNDS`, after which you stop and escalate to the user
+with the failing log rather than looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`,
+in which case merge the PR and remove `<WORKTREE_DIR>`; the manual default leaves the worktree in
+place with the PR open. The context file only exists on that branch until it's merged, though — merge
+or check out `BRANCH` before running other commands in this session if you need it in place now, or
+pass `MODE=edit-in-place` up front instead. Report: the file written, the undo path (the backup, or
+the branch), which commands were proven versus recorded as unverified, and the verification round it
+passed on.
 
 ---
 
@@ -132,6 +141,8 @@ unverified, and the verification round it passed on.
 - **One context file, never two.** Two sources of truth for the quality bar is the problem, not a
   tidy outcome.
 - Proven over plausible: a command that wasn't run is labelled unverified, never presented as fact.
+- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
+  than erroring or duplicating work.
 - Preserve hand-written rules on a refresh. You are augmenting someone's judgement, not replacing it.
 - Don't write a README. If the content is for humans, it belongs in `/document`.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the brief

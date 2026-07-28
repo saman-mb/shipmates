@@ -43,7 +43,7 @@
         "@type": "HowToStep",
         "position": 2,
         "name": "Stage 0.5 — Isolate",
-        "text": "The worktree exists before anything writes. Exactly as /ship-issue's isolate stage, but cut from current HEAD rather than origin/<BASE_BRANCH>, so it contains the work being documented:",
+        "text": "The worktree exists before anything writes. First check git -C <repo> status --porcelain; if the caller's tree is dirty, stop and say so — a worktree cut from HEAD holds committed work only, so a draft written against it would silently miss whatever the caller hasn't committed yet; tell them to…",
         "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-0-5"
       },
       {
@@ -71,7 +71,7 @@
         "@type": "HowToStep",
         "position": 6,
         "name": "Stage 4 — Deliver",
-        "text": "pr (the default): commit on the worktree branch — staging only the paths this run produced, never git add -A — push, and open the PR against BASE_BRANCH. Then gate on CI: poll gh pr checks until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling.…",
+        "text": "pr (the default): commit on the worktree branch — staging only the paths this run produced, never git add -A — push, and open the PR against BASE_BRANCH. Then gate on CI: poll gh pr checks until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling —…",
         "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-4"
       }
     ]
@@ -160,7 +160,7 @@
             <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>The worktree exists before anything writes. Exactly as <code>/ship-issue</code>&#x27;s isolate stage, but cut from current <code>HEAD</code> rather than <code>origin/&lt;BASE_BRANCH&gt;</code>, so it contains the work being documented:</p>
+                <p>The worktree exists before anything writes. First check <code>git -C &lt;repo&gt; status --porcelain</code>; if the caller&#x27;s tree is dirty, <strong>stop and say so</strong> — a worktree cut from <code>HEAD</code> holds committed work only, so a draft written against it would silently miss whatever the caller hasn&#x27;t committed yet; tell them to commit or stash first. Otherwise, exactly as <code>/ship-issue</code>&#x27;s isolate stage, but cut from current <code>HEAD</code> rather than <code>origin/&lt;BASE_BRANCH&gt;</code>, so it contains the work being documented:</p>
                 <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
                 <p>Drafting, the fresh-reader run and every fix round happen inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, skip this stage and work in the repo as it stands.</p>
               </div>
@@ -201,7 +201,7 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Deliver</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p><code>pr</code> (the default): commit on the worktree branch — staging only the paths this run produced, never <code>git add -A</code> — push, and open the PR against <code>BASE_BRANCH</code>. Then gate on CI: poll <code>gh pr checks</code> until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling. Stop there unless <code>MERGE_MODE=auto</code>. <code>edit-in-place</code>: leave the finished docs in the working tree and report. Report: what was documented, the doc type, the fresh-reader&#x27;s final result (in its words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).</p>
+                <p><code>pr</code> (the default): commit on the worktree branch — staging only the paths this run produced, never <code>git add -A</code> — push, and open the PR against <code>BASE_BRANCH</code>. Then gate on CI: poll <code>gh pr checks</code> until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling — bounded by <code>MAX_ROUNDS</code>, after which you stop and escalate to the user with the failing log rather than looping. Never advance a red PR. Stop there unless <code>MERGE_MODE=auto</code>, in which case merge the PR and remove <code>&lt;WORKTREE_DIR&gt;</code>; the manual default leaves the worktree in place with the PR open. <code>edit-in-place</code>: leave the finished docs in the working tree and report. Report: what was documented, the doc type, the fresh-reader&#x27;s final result (in its words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).</p>
               </div>
             </div>
           </li>
@@ -238,6 +238,7 @@
             <li>Minimal and honest: cut filler; call out breaking changes and their upgrade path in changelogs/migration guides.</li>
             <li>Bounded loop; escalate with the reader&#x27;s blockers rather than shipping docs that don&#x27;t work.</li>
             <li><strong>Docs are source, so they get a branch.</strong> A doc rewrite lands as a diff a human can read, not as a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption.</li>
+            <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
             <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>

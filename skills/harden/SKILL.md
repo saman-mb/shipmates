@@ -58,9 +58,12 @@ Critical/High may be silently dropped.
 
 ## Stage 2.5 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
 
-Nothing is edited until the branch exists. Unlike `/ship-issue`'s isolate stage, cut the worktree
-from the caller's current `HEAD`, not `origin/<BASE_BRANCH>` — precisely so the findings located in
-Stages 0–2 still exist in the branch being remediated:
+Nothing is edited until the branch exists. First check `git -C <repo> status --porcelain`; if the
+caller's tree is dirty, **stop and say so** — tell them to commit or stash first, because a worktree
+cut from `HEAD` holds committed work only, and remediating a tree that doesn't match the findings'
+`file:line` locations would fix the wrong thing. Otherwise, unlike `/ship-issue`'s isolate stage, cut
+the worktree from the caller's current `HEAD`, not `origin/<BASE_BRANCH>` — on a clean tree, this is
+precisely so the findings located in Stages 0–2 still exist in the branch being remediated:
 
 ```bash
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
@@ -95,10 +98,13 @@ Deliver: the threat model summary, the findings table (severity → status: fixe
 deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config
 changes outside the repo). Under `report` (the default) that report **is** the deliverable and the
 working tree is exactly as you found it — say so explicitly. Under `pr`, commit and push `<BRANCH>`
-and open the PR, same as `/ship-issue`'s commit-push-PR stage, with the same trailers — then gate it
-the same way: poll `gh pr checks` until the run is no longer pending; if it comes back red, pull the
-failing log, fix, re-push, and re-poll, bounded by `MAX_ROUNDS`. Only once green do you stop there
-unless `MERGE_MODE=auto`, and file Medium/Low items as labelled follow-up issues.
+and open the PR, same as `/ship-issue`'s commit-push-PR stage, with the same trailers. Then gate on
+CI: poll `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing
+it, re-pushing, and re-polling — bounded by `MAX_ROUNDS`, after which you stop and escalate to the
+user with the failing log rather than looping. Never advance a red PR. Only once green do you stop
+there unless `MERGE_MODE=auto`, and file Medium/Low items as labelled follow-up issues. Under
+`MERGE_MODE=auto`, merge the PR and remove `<WORKTREE_DIR>`; the manual default leaves the worktree
+in place with the PR open for a human to merge.
 
 ---
 
@@ -116,6 +122,8 @@ unless `MERGE_MODE=auto`, and file Medium/Low items as labelled follow-up issues
   (deleting them from the diff does not un-leak them).
 - Every Critical/High ends as fixed or explicitly accepted — never silently dropped.
 - Bounded loop; escalate with open findings rather than rubber-stamping.
+- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
+  than erroring or duplicating work.
 - **Security review lives here, not in `/ship-issue`.** `/ship-issue` doesn't seat `security-engineer`
   on its acceptance board — when a story it's shipping touches a security-sensitive surface, it
   classifies the change as such and **recommends** a `/harden` pass rather than convening the review

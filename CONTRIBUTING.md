@@ -64,8 +64,18 @@ are correct; which one belongs in a given sentence is set by the
    so it's not in the class. Merging (`MERGE_MODE=auto`), publishing (`PUBLISH_MODE=auto`),
    posting on a third party's pull request (`MODE=post`), and creating issues or labels on someone
    else's tracker all pass it — none undoes with one command in the caller's own repo — so each stays
-   opt-in, off unless the caller sets it. Be a good guest on other people's repos: a branch is a
-   suggestion, a merge is a decision.
+   opt-in, off unless the caller sets it, with one known deviation: `/plan-epics` files issues and
+   labels by default today ([#111](https://github.com/saman-mb/shipmates/issues/111), not yet fixed).
+   Be a good guest on other people's repos: a branch is a suggestion, a merge is a decision.
+   **Which ref to branch from follows the same split: cut from wherever the stage that found the
+   work read from.** `/harden` locates findings in your checkout, `/document` describes what you
+   built, `/onboard` surveys your files, `/polish` critiques your render, and `/spike`'s ADR
+   belongs on top of the state that provoked it, so those cut from `HEAD`; `/ship-issue` and
+   `/fix-bug` start from an issue and a bug must reproduce against the base branch, and
+   `/migrate` and `/refactor` transform the whole codebase and want a clean mergeable baseline,
+   so those cut from `origin/<BASE_BRANCH>`. `HEAD` is not the working tree — uncommitted work
+   isn't in it — so a command that cuts from `HEAD` must check `git status --porcelain` first
+   and stop or warn, or it ends up surveying one thing and changing another.
 7. Add `<name>` to `SLUGS` in `tools/gen_command_pages.py`.
 8. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
    `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the skill sources.

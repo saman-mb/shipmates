@@ -43,8 +43,11 @@ Don't blend them. State the concrete "reader can now do X" success condition the
 
 ## Stage 0.5 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
 
-The worktree exists before anything writes. Exactly as `/ship-issue`'s isolate stage, but cut from
-current `HEAD` rather than `origin/<BASE_BRANCH>`, so it contains the work being documented:
+The worktree exists before anything writes. First check `git -C <repo> status --porcelain`; if the
+caller's tree is dirty, **stop and say so** — a worktree cut from `HEAD` holds committed work only,
+so a draft written against it would silently miss whatever the caller hasn't committed yet; tell them
+to commit or stash first. Otherwise, exactly as `/ship-issue`'s isolate stage, but cut from current
+`HEAD` rather than `origin/<BASE_BRANCH>`, so it contains the work being documented:
 
 ```bash
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
@@ -78,10 +81,13 @@ reader's outstanding blockers — don't ship docs that don't work.
 
 `pr` (the default): commit on the worktree branch — staging only the paths this run produced, never
 `git add -A` — push, and open the PR against `BASE_BRANCH`. Then gate on CI: poll `gh pr checks` until
-nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling.
-Stop there unless `MERGE_MODE=auto`. `edit-in-place`: leave the finished docs in the working tree and
-report. Report: what was documented, the doc type, the fresh-reader's final result (in its words),
-rounds taken, and any follow-ups (things worth documenting next, discovered gaps).
+nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling —
+bounded by `MAX_ROUNDS`, after which you stop and escalate to the user with the failing log rather
+than looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`, in which case merge the PR
+and remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with the PR open.
+`edit-in-place`: leave the finished docs in the working tree and report. Report: what was documented,
+the doc type, the fresh-reader's final result (in its words), rounds taken, and any follow-ups
+(things worth documenting next, discovered gaps).
 
 ---
 
@@ -94,5 +100,7 @@ rounds taken, and any follow-ups (things worth documenting next, discovered gaps
 - Bounded loop; escalate with the reader's blockers rather than shipping docs that don't work.
 - **Docs are source, so they get a branch.** A doc rewrite lands as a diff a human can read, not as
   a surprise in someone's checkout. `MODE=edit-in-place` is an explicit request, never an assumption.
+- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
+  than erroring or duplicating work.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the brief
   inlined and note it.

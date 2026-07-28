@@ -30,22 +30,27 @@ a chart, a piece of output…) and optionally which reviewer. If it's empty, ask
   outstanding notes. Never loop forever; never declare a sign-off the reviewer didn't give.
 - `BUILDER` = `senior-engineer` — applies the reviewer's fixes each round.
 - `MODE` = `pr` (default) — run the loop in a worktree on its own branch and hand back a CI-gated
-  PR, reusing `/ship-issue`'s isolate stage, its commit-push-PR stage, and its CI gate; the caller's
-  checkout is never written to. `edit-in-place` refines the working tree directly — still available,
-  but ask for it.
-- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch.
+  PR, reusing `/ship-issue`'s CI gate; the isolate and commit-push-PR stages diverge on purpose (see
+  Stage 0 and Stage 4) — the caller's checkout is never written to. `edit-in-place` refines the
+  working tree directly — still available, but ask for it.
+- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
+  worktree is cut from (that's current `HEAD`; see Stage 0).
   `WORKTREE_DIR` = `../<repo>--polish-<slug>`. `BRANCH` = `polish/<slug>`.
   `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). The orchestrator owns all git/gh;
   agents never push. If there is no remote for `gh` to open a PR against, stop at the branch and say
   so — never silently downgrade to writing in the tree.
-  **The guard:** the real question isn't which branch you're on, it's whether you're already inside
-  an isolated worktree — typically the one `/ship-issue` just left behind, which is how `/polish` is
-  usually chained. Detect it properly, don't infer it from a branch name:
+  **The guard:** the real question isn't which branch you're on, it's where the polish should
+  land — resolve it by destination, not by standing position. Being inside a linked worktree left
+  behind by `/ship-issue` is one destination; the caller's own feature branch with an open PR is
+  another; a fresh branch is the fallback. Don't infer any of it from a branch name — Stage 0 spells
+  out the order:
   ```bash
-  [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]   # true inside a linked worktree
+  # --path-format needs git >= 2.31 — without it, a primary checkout entered from a
+  # subdirectory reports an absolute --git-dir vs a relative --git-common-dir and false-positives
+  [ "$(git rev-parse --path-format=absolute --git-dir)" != "$(git rev-parse --path-format=absolute --git-common-dir)" ]   # true inside a linked worktree
   ```
-  Inside a linked worktree: stay put, do not cut a second one. In the caller's primary checkout: cut
-  a fresh worktree per Stage 0, whatever branch they happen to be on.
+  Inside a linked worktree: stay put, do not cut a second one. Otherwise Stage 0 decides between the
+  caller's own branch (if it already has an open PR) and a fresh `polish/<slug>` branch.
 - The renders are **evidence, not deliverables.** The fixes land in tracked source; the captured
   artifact is often gitignored build output. Never force-add an ignored render to the branch — cite
   its path in the report and the PR body instead.
@@ -55,24 +60,39 @@ a chart, a piece of output…) and optionally which reviewer. If it's empty, ask
 
 ## Stage 0 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
 
-Resolve `MODE` and the guard above first.
+Resolve `MODE` and the guard above first — decide the destination, don't infer it from where you
+happen to be standing:
 
-If the guard finds you already inside a linked worktree, confirm it's clean before touching it —
-`git -C <repo> status --porcelain`. If it's dirty, stop and say so; round 0 must not fold someone
-else's unrelated, uncommitted work into the polish commit.
-
-Otherwise, cut the worktree from your current `HEAD`, not `origin/<BASE_BRANCH>` — precisely so it
-contains the work you were asked to polish, whatever your branch has become:
-
-```bash
-git -C <repo> rev-parse --abbrev-ref HEAD          # the branch you are on
-git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
-```
+1. **Already inside a linked worktree** (the guard above). Confirm *that worktree* — not `<repo>`,
+   the primary checkout — is clean before touching it: run `git status --porcelain` with no `-C`, so
+   it targets the tree you're already standing in. If it's dirty, stop and say so; round 0 must not
+   fold someone else's unrelated, uncommitted work into the polish commit. Otherwise stay put and
+   reuse it — do not cut a second one.
+2. **Otherwise, if `HEAD` isn't `BASE_BRANCH`** — the caller is on a feature branch — resolve
+   whether that branch already has an open PR:
+   ```bash
+   git -C <repo> rev-parse --abbrev-ref HEAD                  # the branch you are on
+   gh pr list --head <branch> --state open --json number
+   ```
+   - **A PR exists:** cut a **detached** worktree at `HEAD`, so the caller's checkout is never
+     written to, and run the rounds there:
+     ```bash
+     git -C <repo> worktree add --detach <WORKTREE_DIR> HEAD
+     ```
+     At Stage 4, push back onto `<branch>` and its existing PR — never open a second one.
+   - **No PR:** fall through to the fresh-branch case below.
+3. **On `BASE_BRANCH`, or a feature branch with no open PR:** cut `<BRANCH>` = `polish/<slug>` from
+   your current `HEAD`, not `origin/<BASE_BRANCH>` — precisely so it contains the work you were
+   asked to polish:
+   ```bash
+   git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
+   ```
+   At Stage 4, open a new PR for it.
 
 Every round — the harness, the renders, the fixes — happens inside `<WORKTREE_DIR>`. Under
 `MODE=edit-in-place`, or when the guard keeps you inside an existing worktree, work where you are.
-Either way, name the location in the report **before** the first round runs, so nobody discovers
-after five rounds where the edits went.
+Either way, name **which of the three destinations was chosen and why** in the report **before** the
+first round runs, so nobody discovers after five rounds where the edits went.
 
 ## Stage 1 — Secure a way to SEE the output  (the loop can't converge without it)
 
@@ -111,13 +131,24 @@ reviewer's remaining notes. Escalate; don't spin.
 
 Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the
 number of rounds, and a short before → after of what changed. Optionally file any allowed nits as
-follow-up issues. Under `MODE=pr`, commit the rounds on the branch — staging only the paths the
-rounds actually touched, never `git add -A`, since the tree may hold unrelated uncommitted work —
-then run the CI gate: poll `gh pr checks` until nothing is pending; if red, pull the failing log, fix,
-re-push, re-poll. If the branch already has an open PR (the usual case when chained after
-`/ship-issue`), push to it and add a comment with the before → after renders cited by path rather than
-opening a second one; otherwise open a new PR with the same renders cited by path. Stop there unless
-`MERGE_MODE=auto`.
+follow-up issues. Under `MODE=pr`, commit the rounds — staging only the paths the rounds actually
+touched, never `git add -A`, since the tree may hold unrelated uncommitted work — then push to
+whichever destination Stage 0 named:
+- **Existing-PR destination** (the detached worktree, feature branch already had an open PR): push
+  onto that branch and add a comment on its existing PR with the before → after renders cited by
+  path. Never run `gh pr create` here — that would open a second PR against work that already has
+  one.
+  ```bash
+  git -C <WORKTREE_DIR> push origin HEAD:<branch>
+  ```
+- **New-branch destination** (`BASE_BRANCH`, or a feature branch with no open PR): push `<BRANCH>`
+  and open a new PR with the same renders cited by path.
+
+Either way, then run the CI gate: poll `gh pr checks`; if red, pull the failing log, fix, re-push,
+re-poll — bounded by `MAX_ROUNDS`. Never advance a red PR. If it's still red after `MAX_ROUNDS` fix
+attempts, **STOP** and escalate to the user with the failing log — don't merge or declare done on a
+red PR. Stop there unless `MERGE_MODE=auto`. Leave the worktree in place, or remove it and keep the
+branch — your choice, state which in the report.
 
 ---
 
@@ -127,6 +158,8 @@ opening a second one; otherwise open a new PR with the same renders cited by pat
 - A reviewer that `ACCEPT`s round 0 with zero changes gets a sanity check — make sure it actually
   inspected the artifact and isn't rubber-stamping.
 - Bounded by `MAX_ROUNDS` — escalate rather than loop forever.
+- **Be resumable.** A re-run may find the worktree, branch, or PR for this slug already exists —
+  reuse them rather than erroring or duplicating work.
 - Scope each fix round to the reviewer's notes; the `senior-engineer` doesn't refactor or wander.
 - The sign-off is the REVIEWER's to give, and the final report states what the reviewer actually said
   — not an optimistic paraphrase. A "needs a human visual pass" fallback is a real outcome, not a fail.

@@ -57,7 +57,7 @@
         "@type": "HowToStep",
         "position": 4,
         "name": "Stage 2.5 — Isolate the ADR worktree",
-        "text": "The branch exists before the ADR does. Exactly as /ship-issue's isolate stage, but cut from current HEAD rather than origin/<BASE_BRANCH>:",
+        "text": "The branch exists before the ADR does. First check git -C <repo> status --porcelain; if the caller's tree is dirty, warn loudly that a worktree cut from HEAD holds committed work only, so any uncommitted context won't carry into the ADR — then proceed. Exactly as /ship-issue's isolate stage, but…",
         "url": "https://saman-mb.github.io/shipmates/commands/spike/#stage-2-5"
       },
       {
@@ -187,7 +187,7 @@
             <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>The branch exists before the ADR does. Exactly as <code>/ship-issue</code>&#x27;s isolate stage, but cut from current <code>HEAD</code> rather than <code>origin/&lt;BASE_BRANCH&gt;</code>:</p>
+                <p>The branch exists before the ADR does. First check <code>git -C &lt;repo&gt; status --porcelain</code>; if the caller&#x27;s tree is dirty, <strong>warn loudly</strong> that a worktree cut from <code>HEAD</code> holds committed work only, so any uncommitted context won&#x27;t carry into the ADR — then proceed. Exactly as <code>/ship-issue</code>&#x27;s isolate stage, but cut from current <code>HEAD</code> rather than <code>origin/&lt;BASE_BRANCH&gt;</code>:</p>
                 <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
                 <p>This is separate from the <code>ISOLATION</code> worktrees Stage 1 used for the disposable prototypes — those get torn down in Stage 3; this one holds the ADR that&#x27;s about to be written and reviewed. Under <code>MODE=edit-in-place</code>, skip this stage and write straight into the repo.</p>
               </div>
@@ -208,7 +208,7 @@
             <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Commit on the ADR branch — staging only the ADR file this run produced, never <code>git add -A</code> — push, and open the PR against <code>BASE_BRANCH</code>. Then gate on CI: poll <code>gh pr checks</code> until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling — bounded by <code>MAX_FIX_ROUNDS</code>, after which you stop and escalate to the user with the failing log rather than looping. Never advance a red PR. Stop there unless <code>MERGE_MODE=auto</code>. Under <code>MODE=edit-in-place</code>, there&#x27;s nothing to deliver — the ADR is already in the tree.</p>
+                <p>Commit on the ADR branch — staging only the ADR file this run produced, never <code>git add -A</code> — push, and open the PR against <code>BASE_BRANCH</code>. Then gate on CI: poll <code>gh pr checks</code> until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling — bounded by <code>MAX_FIX_ROUNDS</code>, after which you stop and escalate to the user with the failing log rather than looping. Never advance a red PR. Stop there unless <code>MERGE_MODE=auto</code>, in which case merge the PR and remove <code>&lt;WORKTREE_DIR&gt;</code>; the manual default leaves the worktree in place with the PR open. Under <code>MODE=edit-in-place</code>, there&#x27;s nothing to deliver — the ADR is already in the tree.</p>
               </div>
             </div>
           </li>
@@ -256,6 +256,7 @@
             <li>Keep spikes minimal and time-boxed; more prototypes ≠ better if they don&#x27;t sharpen the criteria.</li>
             <li><strong>The ADR is the deliverable, so it gets a branch.</strong> Prototypes stay disposable; the ADR itself lands as a diff a human can read, not a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption — and it&#x27;s a different switch from <code>ISOLATION</code>, which only governs the throwaway prototype worktrees.</li>
             <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
           </ul>
         </div>
       </div>

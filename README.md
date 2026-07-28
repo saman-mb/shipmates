@@ -204,10 +204,12 @@ parallel, then everything is created and cross-linked.
 ```
 The `ux-ui-designer` reviews the *rendered* screen (not the code), lists concrete fixes, a
 `senior-engineer` applies them, it re-renders, and the loop repeats until the designer signs off — or
-hands you the outstanding notes after a few rounds. Run it from your default branch and the loop
-happens on its own branch, ending in a PR; run it from a feature branch — say, one `/ship-issue` just
-made — and the polish lands on that same branch instead of cutting a new one, since the branch is
-already the isolation.
+hands you the outstanding notes after a few rounds. It never writes to your checkout: it decides
+where the polish should *land*, not where you happen to be standing. Already inside a worktree — the
+one `/ship-issue` left behind, say — it stays put and reuses it, refusing if the tree is dirty. On a
+feature branch whose PR is already open, it works in a detached worktree and pushes back onto that
+branch, so the polish joins the PR you already have instead of opening a second one. Otherwise it
+cuts a `polish/<slug>` branch from `HEAD` and opens a PR of its own.
 
 **Polish rendered art the same way:**
 ```
@@ -229,7 +231,7 @@ not the symptom. You get a PR with the proof attached.
 /harden the auth + session flow
 ```
 The `security-engineer` walks it with STRIDE / OWASP and ranks findings by severity with the exploit path.
-That pass is **read-only** — it reports, it doesn't touch your tree. Ask for the fixes (`MODE=fix-pr`)
+That pass is **read-only** — it reports, it doesn't touch your tree. Ask for the fixes (`MODE=pr`)
 and a `senior-engineer` remediates the blockers on a branch, re-reviewing until nothing Critical/High is
 left open, then hands you a CI-gated PR.
 
