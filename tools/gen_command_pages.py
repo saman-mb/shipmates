@@ -248,6 +248,10 @@ FENCE_ANY_RE = re.compile(r"^ *```")
 RULE_RE = re.compile(r"^-{3,}[ ]*$")
 DELIM_CELL_RE = re.compile(r"^:?-+:?$")
 CODESPAN_RE = re.compile(r"`([^`]+)`")
+# A role opening a list item / table cell, optionally bold: `role` or **`role`**.
+LEADING_ROLE_RE = re.compile(r"^\*{0,2}`([^`]+)`\*{0,2}")
+# What can chain two roles named together ("`a` or `b`", "`a`, `b`"), consumed between hits.
+ROLE_CHAIN_SEP_RE = re.compile(r"^\s*(?:,|/|or|and)\s*", re.IGNORECASE)
 GATE_MARK = "⛔"  # no-entry sign; introduces a stage's hard gate
 TRAILING_PAREN_RE = re.compile(r"[ ]*\(([^()]*)\)[ ]*$")
 AGENT_WORD_RE = re.compile(r"\bagents?\b")
@@ -484,6 +488,60 @@ def find_crew(texts: tuple, agents: tuple) -> tuple:
         for span in CODESPAN_RE.findall(text):
             if span in agents:
                 found.append(span)
+    return tuple(dict.fromkeys(found))
+
+
+def _leading_roles(text: str, agents: tuple) -> tuple:
+    """Roles named at the very start of a list item / table cell, chained by 'or'/','/'and'.
+
+    Empty if the text doesn't open on a known role — i.e. it isn't a declaration at all,
+    just prose that happens to mention one later.
+    """
+    roles = []
+    rest = text.lstrip()
+    while True:
+        hit = LEADING_ROLE_RE.match(rest)
+        if not hit or hit.group(1) not in agents:
+            break
+        roles.append(hit.group(1))
+        rest = rest[hit.end():]
+        sep = ROLE_CHAIN_SEP_RE.match(rest)
+        if not sep:
+            break
+        rest = rest[sep.end():]
+    return tuple(roles)
+
+
+def find_declared_crew(blocks: tuple, agents: tuple) -> tuple:
+    """Crew a stage body *declares*, as distinct from one it merely *mentions* (C8).
+
+    A list or a table row counts as a declaration only when every item / row opens on a
+    role name — "`sdet` (always): ..." — rather than naming one in passing partway through
+    a sentence — "dispatch a `senior-engineer` fixer". A block with any non-role-led item
+    is enumerating something else (flags, config) and contributes nothing, even for the
+    items that do happen to start with a role name.
+    """
+    found = []
+    for block in blocks:
+        if isinstance(block, ListBlock):
+            roles = []
+            for item in block.items:
+                item_roles = _leading_roles(item.text, agents)
+                if not item_roles:
+                    roles = []
+                    break
+                roles.extend(item_roles)
+            found.extend(roles)
+        elif isinstance(block, Table):
+            roles = []
+            for row in block.rows:
+                cell = row[0].strip() if row else ""
+                hit = re.fullmatch(r"`([^`]+)`", cell)
+                if not hit or hit.group(1) not in agents:
+                    roles = []
+                    break
+                roles.append(hit.group(1))
+            found.extend(roles)
     return tuple(dict.fromkeys(found))
 
 
@@ -916,11 +974,14 @@ def parse_skill(path: Path, agents: tuple) -> Command:
                     "a stage title already occupies heading level 3; C5 forbids level 4 — use a "
                     "list or a bold lead-in instead",
                 )
-            # Crew comes from the stage HEADING only. An agent merely named in the body is
-            # usually being *discussed* ("Gates `ux-ui-designer`"), not convened at this stage —
-            # listing it as crew would make the page claim something the source does not (C8).
-            # The body mention still renders verbatim in the stage prose, so nothing is lost.
+            # Crew comes from the stage HEADING plus any body list/table that *declares* it
+            # (every item opens on a role name). An agent merely named in running prose is
+            # usually being *discussed* ("Gates `ux-ui-designer`", "dispatch a
+            # `senior-engineer` fixer"), not convened at this stage — listing it as crew
+            # would make the page claim something the source does not (C8). The prose
+            # mention still renders verbatim in the stage body, so nothing is lost.
             texts = (raw_section.heading_raw,)
+            crew = find_crew(texts, agents) + find_declared_crew(blocks, agents)
             stages.append(
                 Stage(
                     lineno=raw_section.lineno,
@@ -930,7 +991,7 @@ def parse_skill(path: Path, agents: tuple) -> Command:
                     title=heading.title,
                     gate=heading.gate,
                     annotation=heading.annotation,
-                    crew=find_crew(texts, agents),
+                    crew=tuple(dict.fromkeys(crew)),
                     anchor="stage-" + heading.label.replace(".", "-"),
                     blocks=blocks,
                 )

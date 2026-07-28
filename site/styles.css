@@ -979,11 +979,24 @@ summary::-webkit-details-marker{ display:none; }
 .order-prose li > ul,
 .order-prose li > ol{ margin-top:var(--space-2); }
 .order-prose strong{ font-weight:var(--fw-semibold); }
+/* :not(.order-code > code) keeps this off the <code> inside a fenced block (below) —
+   inline padding on that nested, display:inline code would only land at the start/end
+   of its first/last line fragment, indenting a multi-line block's first line (#141). */
 .order-prose code{
   background:var(--code-bg);
   color:var(--code-text);
   padding-inline:var(--space-1);
   border-radius:var(--radius-sm);
+}
+/* ...but not the <code> inside a fenced block. Scoping the rule above with
+   :not(.order-code > code) would be tidier, except a combinator inside :not()
+   is Selectors L4 — a browser that cannot parse it drops the WHOLE rule and
+   inline code loses its pill everywhere. A plain descendant reset always parses. */
+.order-code code{
+  background:none;
+  color:inherit;
+  padding-inline:0;
+  border-radius:0;
 }
 
 /* Fenced blocks inside a stage body. Deliberately NOT .codeblock* — that family
