@@ -165,7 +165,8 @@ stay clean. Pass the absolute worktree path to every agent.
 git -C <WORKTREE_DIR> add -A
 git -C <WORKTREE_DIR> commit -m "<type>: <summary> (#<first-issue>)"   # + required trailers
 git -C <WORKTREE_DIR> push -u origin <BRANCH>
-ISSUES_CLOSES=$(echo "<issues>" | sed 's/^/Closes #/; s/ / · Closes #/g')
+# separator substitution first: "Closes #" contains a space, so prefixing first would rewrite it too
+ISSUES_CLOSES=$(echo "<issues>" | sed 's/ / · Closes #/g; s/^/Closes #/')
 gh pr create --base <BASE_BRANCH> --head <BRANCH> \
   --title "<type>: <summary> (#<first-issue>)" \
   --body  "<what changed, how validated. ${ISSUES_CLOSES}. trailers>"

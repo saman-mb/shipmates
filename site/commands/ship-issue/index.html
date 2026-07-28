@@ -274,7 +274,8 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
                 <pre class="order-code" tabindex="0"><code>git -C &lt;WORKTREE_DIR&gt; add -A
 git -C &lt;WORKTREE_DIR&gt; commit -m &quot;&lt;type&gt;: &lt;summary&gt; (#&lt;first-issue&gt;)&quot;   # + required trailers
 git -C &lt;WORKTREE_DIR&gt; push -u origin &lt;BRANCH&gt;
-ISSUES_CLOSES=$(echo &quot;&lt;issues&gt;&quot; | sed &#x27;s/^/Closes #/; s/ / · Closes #/g&#x27;)
+# separator substitution first: &quot;Closes #&quot; contains a space, so prefixing first would rewrite it too
+ISSUES_CLOSES=$(echo &quot;&lt;issues&gt;&quot; | sed &#x27;s/ / · Closes #/g; s/^/Closes #/&#x27;)
 gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
   --title &quot;&lt;type&gt;: &lt;summary&gt; (#&lt;first-issue&gt;)&quot; \
   --body  &quot;&lt;what changed, how validated. ${ISSUES_CLOSES}. trailers&gt;&quot;</code></pre>
