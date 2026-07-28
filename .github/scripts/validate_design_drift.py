@@ -9,7 +9,7 @@ human spots in seconds and a reader feels without being able to name.
 
 Three checks, described in #131:
 
-  1. section rhythm   — every section's container resolves to the same width
+  1. section rhythm   — within a page, every section shares one container width
   2. component drift  — one component role, one implementation
   3. token bypass     — no raw colour/length literal outside the token block
 
@@ -29,7 +29,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SITE = ROOT / "site"
 CSS = SITE / "styles.css"
-INDEX = SITE / "index.html"
 
 failures: list[str] = []
 notes: list[str] = []
@@ -89,13 +88,24 @@ def read(p: Path) -> str:
 
 
 # --- check 1: section rhythm -------------------------------------------------
-def check_section_rhythm(html: str) -> None:
-    """Every <section> should wrap its content in the same container width.
+def check_section_rhythm(pages: list[Path]) -> None:
+    """Within one page, every <section> should share a container width.
 
     A section that starts further in than its neighbours breaks the page's left
     edge — the reader sees the misalignment even when they cannot name it.
+
+    The comparison is per page, not across the site, because a page that is
+    entirely prose may legitimately be narrow throughout; what it may not do is
+    change its mind halfway down. Checking only the landing page would have
+    repeated this gate's own founding mistake — reviewing part of a surface and
+    reporting on all of it.
     """
     print("\nsection rhythm")
+    for page in pages:
+        _rhythm_one(page.relative_to(SITE).as_posix(), page.read_text(encoding="utf-8"))
+
+
+def _rhythm_one(rel: str, html: str) -> None:
     # <section ... id="x" ...> followed by its first container div
     pattern = re.compile(
         r'<section[^>]*\bid="(?P<id>[a-z0-9-]+)"[^>]*>\s*'
@@ -104,8 +114,7 @@ def check_section_rhythm(html: str) -> None:
     )
     found = list(pattern.finditer(html))
     if not found:
-        fail("no <section> + .container pairs found — has the markup changed shape?")
-        return
+        return  # not every page is section-structured; nothing to compare
 
     widths: dict[str, list[str]] = {}
     for m in found:
@@ -115,7 +124,7 @@ def check_section_rhythm(html: str) -> None:
         widths.setdefault(" ".join(key), []).append(m.group("id"))
 
     if len(widths) == 1:
-        ok(f"all {len(found)} sections share one container width")
+        ok(f"{rel}: all {len(found)} sections share one container width")
         return
 
     dominant = max(widths, key=lambda k: len(widths[k]))
@@ -124,10 +133,10 @@ def check_section_rhythm(html: str) -> None:
             continue
         for sid in ids:
             if sid in BASELINE["section-width"]:
-                note(f"#{sid}: container '{key}' — accepted deviation")
+                note(f"{rel} #{sid}: container '{key}' — accepted deviation")
                 continue
             fail(
-                f"#{sid}: container '{key}' but {len(widths[dominant])} sections use "
+                f"{rel} #{sid}: container '{key}' but {len(widths[dominant])} sections use "
                 f"'{dominant}' — this section will not share the page's left edge. "
                 f"Constrain the prose block instead, or record the deviation in BASELINE."
             )
@@ -254,10 +263,13 @@ def main() -> int:
     # Strip comments first — prose inside a comment is not a declaration, and
     # parsing it produced a confident false positive on a hex value in a note.
     css = COMMENT.sub("", read(CSS))
-    html = read(INDEX)
+    pages = sorted(SITE.rglob("*.html"))
+    if not pages:
+        print("  FAIL no HTML pages found under site/")
+        return 1
 
-    print("design drift")
-    check_section_rhythm(html)
+    print(f"design drift  ({len(pages)} pages)")
+    check_section_rhythm(pages)
     check_component_drift(css)
     check_token_bypass(css)
 
