@@ -7,11 +7,21 @@ them notices that one component has been built two different ways, or that a
 section quietly stopped sharing the page's left edge. Those are the defects a
 human spots in seconds and a reader feels without being able to name.
 
-Three checks, described in #131:
+Five checks. The first three are described in #131:
 
   1. section rhythm   — within a page, every section shares one container width
   2. component drift  — one component role, one implementation
   3. token bypass     — no raw colour/length literal outside the token block
+
+Two more, described in #136, catch the class of bug where a rule reads fine
+in isolation but only shows its defect once real content and real navigation
+land on it:
+
+  4. grid slack       — a multi-row grid with align-items but no align-content
+                         lets equal-height stretch leak into row gaps instead
+                         of the rows themselves
+  5. sticky anchor target — an href="#x" that points at a position:sticky/
+                         fixed element, which can never be scrolled to
 
 Each gates on NEW violations only. Everything currently known and accepted lives
 in BASELINE below, so the check can land without a flag day; a deviation that is
@@ -65,6 +75,14 @@ BASELINE = {
         # `.visually-hidden` needs the exact 1px clip rect from the a11y recipe;
         # naming it as a token would imply it is tunable, and it is not.
         ".visually-hidden",
+    },
+    # check 4: multi-row grids allowed to skip align-content
+    "grid-slack": {
+        # (empty — #136 fixed the only two, .how-step and .order-stage)
+    },
+    # check 5: href="#x" allowed to target a sticky/fixed element
+    "sticky-anchor-target": {
+        # (empty — #136 removed the sticky #top target)
     },
 }
 
@@ -248,6 +266,124 @@ def check_token_bypass(css: str) -> None:
         ok("no raw colour/length literals outside the token block")
 
 
+# --- check 4: grid slack ------------------------------------------------------
+GRID_AREAS_ROW = re.compile(r'"[^"]*"')
+
+
+def _track_count(value: str) -> int:
+    # Collapse repeat(...)/minmax(...) argument lists first, so the commas and
+    # spaces inside them cannot be mistaken for extra top-level tracks.
+    collapsed = re.sub(r"\([^)]*\)", "()", value)
+    return len(collapsed.split())
+
+
+def check_grid_slack(css: str) -> None:
+    """A multi-row grid with align-items but no align-content leaks slack.
+
+    align-items positions an item within its own row; align-content decides
+    whether the rows themselves stretch to fill spare container height. A
+    grid with more than one row that sets align-items but leaves
+    align-content at its default (stretch) hands unlabelled height straight
+    into the row gaps — two nominally identical cards, stretched to the same
+    outer height by a shared grid parent, start their second/third rows at
+    different pixel offsets even though every item is still "aligned" (#136:
+    .how-step and .order-stage both shipped this way before align-content
+    was added).
+    """
+    print("\ngrid slack")
+    offenders = 0
+    for m in RULE.finditer(css):
+        sel = m.group("sel").strip()
+        body = m.group("body")
+        if not re.search(r"\bdisplay\s*:\s*grid\b", body):
+            continue
+        if "align-items" not in body or re.search(r"\balign-content\s*:", body):
+            continue
+        areas = GRID_AREAS_ROW.findall(body)
+        rows_m = re.search(r"grid-template-rows\s*:\s*([^;]+);", body)
+        multi_row = len(areas) >= 2 or (rows_m and _track_count(rows_m.group(1)) >= 2)
+        if not multi_row:
+            continue
+        if sel in BASELINE["grid-slack"]:
+            note(f"{sel}: multi-row grid without align-content — accepted deviation")
+            continue
+        offenders += 1
+        fail(
+            f"{sel} {{...}}: display:grid with a multi-row layout and align-items "
+            f"but no align-content — spare container height will stretch into the "
+            f"row gaps instead of packing rows at their intrinsic size. Add "
+            f"align-content, or record the deviation in BASELINE."
+        )
+    if not offenders:
+        ok("no multi-row grid leaks stretch slack into its rows")
+
+
+# --- check 5: sticky anchor target --------------------------------------------
+STICKY_CLASS = re.compile(r"^\.(?P<cls>[\w-]+)$")
+TAG_WITH_ID = re.compile(r'<[a-zA-Z][^>]*\bid="(?P<id>[^"]+)"[^>]*>', re.DOTALL)
+HREF_FRAGMENT = re.compile(r'href="#([^"]+)"')
+CLASS_ATTR = re.compile(r'class="([^"]*)"')
+
+
+def _sticky_fixed_classes(css: str) -> set[str]:
+    """Class names whose own rule sets position:sticky or position:fixed.
+
+    Only plain single-class selectors are read (a comma-separated group of
+    them is fine); a selector with a combinator, pseudo-class or attribute
+    selector is skipped rather than guessed at — a wrong "this is sticky"
+    match would make the anchor check itself untrustworthy, and nothing in
+    this file currently needs anything more expressive than a class rule.
+    """
+    classes: set[str] = set()
+    for m in RULE.finditer(css):
+        if not re.search(r"\bposition\s*:\s*(sticky|fixed)\b", m.group("body")):
+            continue
+        for part in m.group("sel").split(","):
+            hit = STICKY_CLASS.match(part.strip())
+            if hit:
+                classes.add(hit.group("cls"))
+    return classes
+
+
+def check_sticky_anchor_target(pages: list[Path], css: str) -> None:
+    """An in-page anchor can never scroll to a sticky/fixed element.
+
+    position:sticky/fixed take an element out of normal scroll flow, so it is
+    already wherever the viewport keeps it — href="#id" navigation to it is a
+    dead click every time (#136: `#top` on the sticky site header). Cross-
+    checks every href="#fragment" against every element in the same page that
+    carries one of the classes `_sticky_fixed_classes` found.
+    """
+    print("\nsticky anchor target")
+    sticky = _sticky_fixed_classes(css)
+    offenders = 0
+    for page in pages:
+        rel = page.relative_to(SITE).as_posix()
+        html = page.read_text(encoding="utf-8")
+        targets: dict[str, set[str]] = {}
+        for m in TAG_WITH_ID.finditer(html):
+            cls_m = CLASS_ATTR.search(m.group(0))
+            targets[m.group("id")] = set(cls_m.group(1).split()) if cls_m else set()
+        for m in HREF_FRAGMENT.finditer(html):
+            frag = m.group(1)
+            hit = targets.get(frag, set()) & sticky
+            if not hit:
+                continue
+            key = f"{rel}#{frag}"
+            if key in BASELINE["sticky-anchor-target"]:
+                note(f"{key}: targets sticky/fixed '{sorted(hit)[0]}' — accepted deviation")
+                continue
+            offenders += 1
+            fail(
+                f'{rel}: href="#{frag}" targets an element with class '
+                f"'{sorted(hit)[0]}' (position:sticky/fixed) — that element never "
+                f"scrolls, so the link can never reach it. Point at a plain element "
+                f"instead, or record the deviation in BASELINE."
+            )
+    if not offenders:
+        ok("no in-page anchor targets a sticky/fixed element")
+
+
 def main() -> int:
     # Strip comments first — prose inside a comment is not a declaration, and
     # parsing it produced a confident false positive on a hex value in a note.
@@ -261,6 +397,8 @@ def main() -> int:
     check_section_rhythm(pages)
     check_component_drift(css)
     check_token_bypass(css)
+    check_grid_slack(css)
+    check_sticky_anchor_target(pages, css)
 
     print()
     if failures:
