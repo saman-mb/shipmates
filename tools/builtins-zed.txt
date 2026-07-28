@@ -1,0 +1,10 @@
+# Built-in commands: Zed
+# Source: https://zed.dev/docs/ai/skills
+# Last updated: 2026-07-28
+#
+# This list is manually maintained. Refresh when Zed ships new built-ins.
+# Zed's built-in skills are invocable as slash commands (/create-skill);
+# /compact is a built-in thread command (https://zed.dev/docs/ai/agent-panel).
+
+/compact
+/create-skill

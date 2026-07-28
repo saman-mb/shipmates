@@ -74,7 +74,17 @@ def main():
         print("No skills found in skills/")
         sys.exit(0)
     
-    harnesses = ["claude-code", "cursor", "codex", "opencode"]
+    # Same set and order as ALL_HARNESSES in install.sh.
+    harnesses = [
+        "claude-code",
+        "github-copilot",
+        "codex",
+        "cursor",
+        "gemini",
+        "windsurf",
+        "zed",
+        "opencode",
+    ]
     collisions = []
     warnings = []
     

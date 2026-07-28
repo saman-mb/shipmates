@@ -38,6 +38,8 @@ jobs:
         run: python3 tools/validate_skill_names.py --check
       - name: Check generated command pages are up to date
         run: python3 tools/gen_command_pages.py --check
+      - name: Check harness payloads are up to date
+        run: python3 tools/build_harness_payloads.py --check
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check install.sh is executable (#100)
