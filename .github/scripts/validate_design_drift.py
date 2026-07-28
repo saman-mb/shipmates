@@ -53,26 +53,15 @@ def note(msg: str) -> None:
 BASELINE = {
     # check 1: sections whose container legitimately differs
     "section-width": {
-        # Known-bad, being fixed in #130: both use --maxw-prose (760px) against
-        # 1100px everywhere else, so they start 170px further in and visibly
-        # break the page's left edge. Listed so this check can land before the
-        # fix does; DELETE BOTH when #130 merges.
-        "next",
-        "faq",
+        # (empty — #130 moved the narrow measure onto the prose blocks, so every
+        # section shares the page's left edge again)
     },
     # check 2: component roles known to have divergent implementations
     "component-drift": {
-        # Known-bad, being fixed in #130: .section__eyebrow spaces its emoji
-        # with a literal space in the HTML while .order-detail__eyebrow uses a
-        # real `gap` token, so spacing cannot match across the two surfaces.
-        # DELETE when #130 merges.
-        "eyebrow",
+        # (empty — #130 converged the two eyebrow implementations onto one)
     },
     # check 3: selectors allowed to carry a raw literal
     "token-bypass": {
-        # Known-bad, being fixed in #128: `max-width: 940px` is the demo asset's
-        # native width hardcoded into layout. DELETE when #128 merges.
-        ".hero__demo",
         # `.visually-hidden` needs the exact 1px clip rect from the a11y recipe;
         # naming it as a token would imply it is tunable, and it is not.
         ".visually-hidden",

@@ -47,6 +47,7 @@
           <li class="site-nav__item"><a class="site-nav__link" href="#faq">FAQ</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="docs/">Docs</a></li>
         </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="#install">Install</a>
         <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           <span>GitHub</span>
@@ -61,8 +62,8 @@
       <div class="container hero__inner">
         <div class="hero__copy">
           <img class="hero__logo" src="assets/logo.png" width="120" height="120" alt="Pixel-art sailboat sailing into a sunset">
-          <h1 class="hero__title" id="hero-title"><span class="hero__title-emoji" aria-hidden="true">🚢</span> Shipmates</h1>
-          <p class="hero__subtitle">Custom subagents &amp; command workflows — runs on Claude Code today.</p>
+          <p class="section__eyebrow">Custom subagents &amp; command workflows — runs on Claude Code today.</p>
+          <h1 class="hero__title" id="hero-title">Shipmates</h1>
           <p class="hero__tagline">Stop being your AI's for-loop. Give it a crew.&nbsp;<span aria-hidden="true">⚓</span></p>
           <p class="hero__hook">One command takes a GitHub issue from open to a reviewed, CI-green pull request — autonomously.</p>
           <div class="hero__actions">
@@ -79,10 +80,8 @@
           </ul>
         </div>
         <figure class="hero__figure">
-          <picture>
-            <source media="(prefers-reduced-motion: reduce)" srcset="assets/demo-poster.png">
-            <img class="hero__demo" src="assets/demo.gif" width="940" height="604" alt="A /ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request.">
-          </picture>
+          <img class="hero__demo" id="hero-demo" src="assets/demo-poster.png" width="940" height="604" alt="A /ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request.">
+          <button type="button" class="btn btn--secondary hero__demo-toggle" id="hero-demo-toggle" aria-pressed="false" aria-controls="hero-demo">Play the run</button>
           <figcaption class="hero__figcaption">Illustrative — the stages <code>/ship-issue</code> runs, in order.</figcaption>
         </figure>
       </div>
@@ -328,7 +327,7 @@
     </section>
 
     <section class="section next" id="next" aria-labelledby="next-title">
-      <div class="container container--prose">
+      <div class="container">
         <div class="section__head">
           <p class="section__eyebrow"><span aria-hidden="true">🌊</span> What's next</p>
           <h2 class="section__title" id="next-title">Which harnesses the crew runs on</h2>
@@ -361,7 +360,7 @@
     </section>
 
     <section class="section faq" id="faq" aria-labelledby="faq-title">
-      <div class="container container--prose">
+      <div class="container">
         <div class="section__head">
           <p class="section__eyebrow"><span aria-hidden="true">❓</span> FAQ</p>
           <h2 class="section__title" id="faq-title">Frequently asked questions</h2>
@@ -488,6 +487,21 @@
             if (status) status.textContent = 'Copy failed — select the text and press Ctrl/Cmd+C';
           });
         });
+      });
+    })();
+
+    (function () {
+      var demo = document.getElementById('hero-demo');
+      var toggle = document.getElementById('hero-demo-toggle');
+      if (!demo || !toggle) return;
+      var poster = demo.getAttribute('src');
+      var gif = 'assets/demo.gif';
+      var playing = false;
+      toggle.addEventListener('click', function () {
+        playing = !playing;
+        demo.src = playing ? gif : poster;
+        toggle.setAttribute('aria-pressed', String(playing));
+        toggle.textContent = playing ? 'Pause the run' : 'Play the run';
       });
     })();
   </script>

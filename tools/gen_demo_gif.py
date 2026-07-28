@@ -41,7 +41,7 @@ STAGES = [
     ("BUILD",      "senior-engineer ×3, in parallel …","built to the plan"),
     ("SELF-CHECK", "sdet runs the real test/build …",   "tests pass"),
     ("CI GATE",    "waiting for CI to go green …",       "CI green on the pushed PR"),
-    ("REVIEW",     "board reviews the PR head …",        "product-manager · sdet · security — accept"),
+    ("REVIEW",     "board reviews the PR head …",        "product-manager · sdet · flagged specialists — accept"),
     ("REMEDIATE",  "apply fixes, re-review …",           "0 blockers · nits filed as follow-ups"),
     ("DELIVER",    "",                                        "PR #143 — reviewed, CI-green, yours to merge"),
 ]
