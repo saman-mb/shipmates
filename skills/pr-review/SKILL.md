@@ -1,12 +1,12 @@
 ---
-name: review
+name: pr-review
 description: Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.
 argument-hint: <pr-number or PR url> [optional emphasis passed to every reviewer — e.g. "weight the schema change"]
 allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 
-# /review — classify → convene the board → consolidate
+# /pr-review — classify → convene the board → consolidate
 
 Point the crew at a pull request **somebody else wrote** — a teammate's, an outside contributor's, a
 dependency bump, or one you opened by hand before you thought to use Shipmates. Every other order

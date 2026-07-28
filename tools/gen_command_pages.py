@@ -43,7 +43,7 @@ SLUGS = (
     "document",
     "release",
     "polish",
-    "review",
+    "pr-review",
     "onboard",
     "refactor",
 )

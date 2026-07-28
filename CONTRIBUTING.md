@@ -27,7 +27,10 @@ A workflow ships as a **skill** on disk and is invoked as a **command** in Claud
 are correct; which one belongs in a given sentence is set by the
 [naming register](docs/BRAND.md#naming-register). Work the checklist top to bottom:
 
-1. Create `skills/<name>/SKILL.md` (lowercase-and-hyphens `<name>`). Only `name` and `description`
+1. Create `skills/<name>/SKILL.md` (lowercase-and-hyphens `<name>`). **Check the name against
+   harness built-ins first** — run `python3 tools/validate_skill_names.py` and pick a name that
+   doesn't collide. A collision silently shadows a first-party feature (e.g. `/review` shadowed
+   Claude Code's built-in code review; see #102). Only `name` and `description`
    are required, and they must come first, in that order. After them, in any order: the standard's
    optional `license`, `compatibility`, `metadata`, and the Claude Code extensions `argument-hint`,
    `allowed-tools`, `disable-model-invocation`. Unknown keys are rejected, so a typo fails the gate.
