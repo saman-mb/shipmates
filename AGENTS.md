@@ -16,7 +16,7 @@ Developers using Claude Code who want to hand off whole *tickets* — not just s
 
 ## The commands (12)
 
-`/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` · `/migrate` · `/document` · `/release` · `/polish` · `/review` · `/onboard` · `/refactor` — each defined in `skills/<name>/SKILL.md`.
+`/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` · `/migrate` · `/document` · `/release` · `/polish` · `/pr-review` · `/onboard` · `/refactor` — each defined in `skills/<name>/SKILL.md`.
 
 ## Install
 
