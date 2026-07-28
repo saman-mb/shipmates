@@ -11,6 +11,7 @@
 #   ...| bash -s -- --project PATH     # install into PATH/.claude
 #   ...| bash -s -- --dir PATH         # install into an explicit .claude dir
 #   ...| bash -s -- --uninstall        # remove the files Shipmates installed
+#   ...| bash -s -- --force            # skip SHA checks, overwrite everything (escape hatch)
 #
 # Run from a local clone it copies the files sitting next to it; piped from the
 # web there is no local copy to trust, so it always downloads the main branch
@@ -44,7 +45,7 @@ TARBALL="https://github.com/${REPO}/archive/refs/heads/main.tar.gz"
 # Update this when tagging a release: SHIPMATES_VERSION=v1.2.3
 SHIPMATES_VERSION="${SHIPMATES_VERSION:-v0.0.0-dev}"
 
-SCOPE="global"; EXPLICIT_DIR=""; PROJECT_PATH=""; UNINSTALL=false
+SCOPE="global"; EXPLICIT_DIR=""; PROJECT_PATH=""; UNINSTALL=false; FORCE=false
 
 # Gate ANSI colors on tty — piped/captured output stays clean for grep/CI logs (#97)
 if [ -t 1 ]; then
@@ -62,6 +63,7 @@ while [ $# -gt 0 ]; do
     --project) SCOPE="project"; if [ $# -gt 1 ] && [[ "$2" != --* ]]; then PROJECT_PATH="$2"; shift; fi ;;
     --dir)     SCOPE="explicit"; EXPLICIT_DIR="${2:?--dir needs a path}"; shift ;;
     --uninstall) UNINSTALL=true ;;
+    --force)     FORCE=true ;;
     -h|--help) usage 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -76,6 +78,7 @@ case "$SCOPE" in
 esac
 
 MANIFEST="$TARGET/shipmates/manifest"
+MANIFEST_OLD_VERSION=""
 
 ts="$(date +%Y%m%d%H%M%S)"; installed=0; backed_up=0; removed=0; kept=0; swept=0; unchanged=0; upgraded=0; skipped=0
 IDENTITY_CHANGES=""
@@ -175,6 +178,7 @@ manifest_read() {
     }
   ' "$MANIFEST" > "$MANIFEST_PARSED"; then
     MANIFEST_STATE=0
+    MANIFEST_OLD_VERSION="$(awk -F= '/^version=/{print $2; exit}' "$MANIFEST")"
   else
     MANIFEST_STATE=2
   fi
@@ -342,6 +346,14 @@ install_file() {
     echo "  ${c_green}installed${c_reset} $rel"; installed=$((installed+1))
     record_entry "$rel"; return
   fi
+  # --force: skip all SHA checks, always backup + overwrite. Escape hatch for
+  # when the manifest is wrong or you want a clean slate regardless.
+  if $FORCE; then
+    stash_file "$dst" "forced backup of"; backed_up=$((backed_up+1))
+    copy_atomic "$src" "$dst"
+    echo "  ${c_green}installed${c_reset} $rel ${c_dim}(forced)${c_reset}"; installed=$((installed+1))
+    record_entry "$rel"; return
+  fi
   need_sha256
   src_sha="$(sha256 "$src")"; dst_sha="$(sha256 "$dst")"
   if [ "$src_sha" = "$dst_sha" ]; then
@@ -434,16 +446,21 @@ sweep_legacy_commands() {
 
 if $UNINSTALL; then
   manifest_read
-  case "$MANIFEST_STATE" in
-    2)
-      # A corrupt manifest is an unreadable ownership claim: refuse ALL
-      # deletion rather than guess. Falling back to name-based removal here
-      # would recreate the exact data loss the manifest exists to prevent.
+  # First pass: handle corrupt manifest (may downgrade to legacy via --force)
+  if [ "$MANIFEST_STATE" = "2" ]; then
+    if $FORCE; then
+      echo "${c_yellow}Manifest at $MANIFEST failed validation — --force set, falling back to${c_reset}" >&2
+      echo "${c_yellow}name-based uninstall (same risks as a legacy install).${c_reset}" >&2
+      MANIFEST_STATE=1
+    else
       echo >&2 "Shipmates: $MANIFEST is present but failed validation (see above)."
       echo >&2 "Refusing to uninstall against a corrupt manifest."
       echo >&2 "Delete it and re-run to force name-based uninstall:  rm '$MANIFEST'"
       exit 1
-      ;;
+    fi
+  fi
+  # Second pass: manifest-driven or legacy uninstall
+  case "$MANIFEST_STATE" in
     0)
       need_sha256
       # Iterate the canonicalized parse (relpath + sha per line, both
@@ -456,7 +473,7 @@ if $UNINSTALL; then
         if [ ! -e "$dst" ]; then
           echo "  ${c_dim}already gone${c_reset} $rel"; continue
         fi
-        if [ "$(sha256 "$dst")" = "$sha" ]; then
+        if $FORCE || [ "$(sha256 "$dst")" = "$sha" ]; then
           rm -f "$dst"
           echo "  ${c_yellow}removed${c_reset}  $rel"; removed=$((removed+1))
           restore_bak "$dst"
@@ -590,11 +607,21 @@ if $UNINSTALL; then
     echo "${c_dim}${kept} file(s) were yours or hand-edited: left in place (see above).${c_reset}"
   fi
 else
-  summary="Installed ${installed} file(s)"
-  [ "$upgraded" -gt 0 ] && summary="$summary, upgraded ${upgraded}"
-  [ "$unchanged" -gt 0 ] && summary="$summary, ${unchanged} unchanged"
-  [ "$backed_up" -gt 0 ] && summary="$summary (${backed_up} existing backed up)"
-  echo "$summary."
+  if [ "$MANIFEST_STATE" = "0" ] && [ -n "$MANIFEST_OLD_VERSION" ]; then
+    # Upgrade summary: changed = upgraded + backed_up, new = installed - changed
+    changed=$((upgraded + backed_up))
+    new_files=$((installed - changed))
+    NEW_VERSION="$(git -C "$SELF_DIR" rev-parse --short HEAD 2>/dev/null || printf unknown)"
+    if [ "$MANIFEST_OLD_VERSION" != "$NEW_VERSION" ]; then
+      echo "${c_bold}shipmates ${MANIFEST_OLD_VERSION} → ${NEW_VERSION}:${c_reset} ${changed} changed, ${new_files} new, ${removed} removed, ${unchanged} unchanged."
+    else
+      echo "${changed} changed, ${new_files} new, ${removed} removed, ${unchanged} unchanged."
+    fi
+  else
+    summary="Installed ${installed} file(s)"
+    [ "$backed_up" -gt 0 ] && summary="$summary (${backed_up} existing backed up)"
+    echo "$summary."
+  fi
   echo "${c_dim}Manifest: ${MANIFEST}${c_reset}"
   echo "${c_dim}If a skills/ or agents/ dir was created for the first time, restart Claude Code"
   echo "so it picks them up. Then run ${c_reset}${c_bold}/ship-issue <issue#>${c_reset}${c_dim}.${c_reset}"
