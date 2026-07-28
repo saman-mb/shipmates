@@ -1338,6 +1338,7 @@ def render_header() -> str:
         <ul class="site-nav__list">
 {nav}
         </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="{link("../../#install")}">Install</a>
         <a class="btn btn--secondary site-nav__cta" href="{link("https://github.com/saman-mb/shipmates")}">
           {GITHUB_ICON}
           <span>GitHub</span>
@@ -1392,7 +1393,7 @@ def render_hero(cmd: Command, src: str) -> str:
       <div class="container container--prose">
         {render_back_link()}
         <div class="order-detail">
-          <p class="order-detail__eyebrow"><span aria-hidden="true">\U0001f4dc</span> Command</p>{flag}
+          <p class="section__eyebrow"><span aria-hidden="true">\U0001f4dc</span> Command</p>{flag}
           <h1 class="order-detail__title" id="order-title"><code>/{esc(cmd.slug)}</code></h1>
           <p class="order-detail__tagline">{esc(cmd.tagline)}</p>
           <p class="order-detail__desc">{esc(cmd.frontmatter.description)}</p>{intro}

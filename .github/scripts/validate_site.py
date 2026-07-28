@@ -57,7 +57,7 @@ DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture")
 # C3 — every class the generator emits on a detail page (plus the two the
 # homepage order cards gained) must have a rule in styles.css.
 C3_CLASSES = (
-    "order-detail", "order-detail__eyebrow", "order-detail__flag",
+    "order-detail", "section__eyebrow", "order-detail__flag",
     "order-detail__title", "order-detail__tagline", "order-detail__desc",
     "order-back",
     "order-invoke", "order-invoke__hint",
@@ -455,9 +455,12 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
         )
 
     # --- reduced-motion demo poster wired (a11y / WCAG 2.2.2) ---
-    # Two valid approaches:
+    # Three valid approaches:
     #   1. <picture> with <source media="(prefers-reduced-motion: reduce)">
     #   2. CSS swap with .hero__demo-poster <img> + prefers-reduced-motion in styles
+    #   3. Poster paints by default; a real button starts/stops the motion —
+    #      the only one of the three that is itself a WCAG 2.2.2 mechanism (the
+    #      other two are OS-level mitigations, not a control in the content)
     has_picture_motion = (
         '<source media="(prefers-reduced-motion: reduce)"' in page.html
     )
@@ -466,12 +469,18 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
         and "hero__demo-poster" in css
         and "prefers-reduced-motion" in css
     )
-    if has_picture_motion or has_css_swap:
+    has_toggle_control = (
+        "hero__demo-toggle" in page.html
+        and 'aria-pressed="false"' in page.html
+        and "demo-poster.png" in page.html
+    )
+    if has_picture_motion or has_css_swap or has_toggle_control:
         ok(f"{page.rel}: reduced-motion demo poster wired")
     else:
         fail(
             f"{page.rel}: reduced-motion demo poster not wired (need a <picture> with "
-            "<source media=\"(prefers-reduced-motion: reduce)\"> or a CSS swap)"
+            "<source media=\"(prefers-reduced-motion: reduce)\">, a CSS swap, or a "
+            "real play/pause control)"
         )
 
 
