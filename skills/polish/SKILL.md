@@ -29,11 +29,40 @@ a chart, a piece of output…) and optionally which reviewer. If it's empty, ask
 - `MAX_ROUNDS` = 5 — loop cap before escalating to the user with the current state and the reviewer's
   outstanding notes. Never loop forever; never declare a sign-off the reviewer didn't give.
 - `BUILDER` = `senior-engineer` — applies the reviewer's fixes each round.
+- `MODE` = `pr` (default) — run the loop in a worktree on its own branch and hand back a CI-gated
+  PR, reusing `/ship-issue`'s Stage 1 (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate);
+  the caller's checkout is never written to. `edit-in-place` refines the working tree directly —
+  still available, but ask for it.
+  **One guard:** if the run starts on a branch that is not `BASE_BRANCH`, you are already isolated —
+  typically inside the worktree `/ship-issue` just left behind, which is how `/polish` is usually
+  chained. Stay on that branch and do not cut a second one: a fresh worktree off the base branch
+  would not contain the work you were asked to polish.
+- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch.
+  `WORKTREE_DIR` = `../<repo>--polish-<slug>`. `BRANCH` = `polish/<slug>`.
+  `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). The orchestrator owns all git/gh;
+  agents never push.
+- The renders are **evidence, not deliverables.** The fixes land in tracked source; the captured
+  artifact is often gitignored build output. Never force-add an ignored render to the branch — cite
+  its path in the report and the PR body instead.
 - **Quality bar** = the project's stated visual/UX bar (README/CLAUDE.md), passed to the reviewer.
 
 ---
 
-## Stage 0 — Secure a way to SEE the output  (the loop can't converge without it)
+## Stage 0 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
+
+Resolve `MODE` and the guard above first. If a worktree is called for:
+
+```bash
+git -C <repo> fetch origin
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
+```
+
+Every round — the harness, the renders, the fixes — happens inside `<WORKTREE_DIR>`. Under
+`MODE=edit-in-place`, or when the guard keeps you on an existing feature branch, work where you are.
+Either way, name the location in the report **before** the first round runs, so nobody discovers
+after five rounds where the edits went.
+
+## Stage 1 — Secure a way to SEE the output  (the loop can't converge without it)
 
 The reviewer must judge the ACTUAL produced artifact, not the code. Find the project's way to produce
 it headlessly — a render / screenshot / build / export / preview harness (check its tools/scripts/
@@ -42,12 +71,12 @@ headless script that writes a PNG, or a preview export). If it is genuinely impo
 view the artifact, say so plainly, fall back to a single static review flagged **"needs a human visual
 pass,"** and tell the user the loop cannot truly converge blind — don't fake iterations.
 
-## Stage 1 — Baseline
+## Stage 2 — Baseline
 
 Produce the artifact once (run the harness) and capture it (PNG / output file). Call this round 0 and
 keep it, so the final report can show a before → after.
 
-## Stage 2 — The loop  (repeat up to `MAX_ROUNDS`)
+## Stage 3 — The loop  (repeat up to `MAX_ROUNDS`)
 
 Each round:
 1. **Critique** — spawn the `REVIEWER` against the CURRENT produced artifact (the actual image/output
@@ -57,20 +86,21 @@ Each round:
    the loop.
 2. **Signed off?** `ACCEPT` → leave the loop. `ACCEPT-WITH-NITS` → leave the loop too (the nits become
    follow-ups) unless the caller asked to resolve nits as well. `REJECT` → continue.
-3. **Fix** — spawn a `senior-engineer` with the reviewer's exact blocker list; apply the changes in
-   place (this is refinement, not a PR unless the caller asked for one). Keep the change scoped to the
-   notes — no unrelated drift.
+3. **Fix** — spawn a `senior-engineer` with the reviewer's exact blocker list; apply the changes where
+   Stage 0 put you — the worktree branch under `MODE=pr`, the working tree under `MODE=edit-in-place`.
+   Keep the change scoped to the notes — no unrelated drift.
 4. **Re-produce** — re-run the harness and capture the new artifact.
 5. Keep a one-line changelog per round so the trajectory is visible.
 
 If `MAX_ROUNDS` is reached without a sign-off, **STOP** and hand the user the current artifact plus the
 reviewer's remaining notes. Escalate; don't spin.
 
-## Stage 3 — Report
+## Stage 4 — Report
 
 Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the
 number of rounds, and a short before → after of what changed. Optionally file any allowed nits as
-follow-up issues.
+follow-up issues. Under `MODE=pr`, commit the rounds on the branch, run the CI gate, open the PR with
+the before → after renders cited by path, and stop there unless `MERGE_MODE=auto`.
 
 ---
 
@@ -86,5 +116,8 @@ follow-up issues.
 - Reviewer choice follows the project's domain: `art-director` for art, `ux-ui-designer` for UI,
   `product-manager` for general output. When ambiguous, ask.
 - Runs standalone, or as the visual pass inside/after `/ship-issue` on a UI/visual story.
+- **The loop runs on its own branch by default.** Five rounds of edits belong in a diff a human can
+  read, not in someone's checkout. `MODE=edit-in-place` is an explicit request — except when you are
+  already on a feature branch, where staying put *is* the isolation.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the role's
   brief inlined, and note the fallback.

@@ -42,29 +42,36 @@
       {
         "@type": "HowToStep",
         "position": 2,
+        "name": "Stage 0.5 — Isolate",
+        "text": "The worktree exists before anything writes. Exactly as /ship-issue Stage 1:",
+        "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-0-5"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
         "name": "Stage 1 — Draft from the actual code",
         "text": "Spawn the technical-writer to write/refresh the doc from the real source — read the actual signatures, flags, paths, config, and outputs first; every command, parameter, and result must match what the repo does today. Minimal (least that gets to done), scannable, consistent terminology, runnable…",
         "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-1"
       },
       {
         "@type": "HowToStep",
-        "position": 3,
+        "position": 4,
         "name": "Stage 2 — Fresh-reader test",
         "text": "Spawn a fresh agent that gets ONLY the doc and the repo (not the writer's context). It plays the newcomer: follows the steps literally, runs the commands/examples as written, and reports where it got stuck, what didn't match reality, what was assumed-but-unstated, and whether it reached the Stage…",
         "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-2"
       },
       {
         "@type": "HowToStep",
-        "position": 4,
+        "position": 5,
         "name": "Stage 3 — Fix drift & loop",
         "text": "Feed the reader's failures back to the technical-writer; fix the drift, the broken example, the missing prerequisite, the undefined jargon. Re-run the fresh-reader test (Stage 2) on the revised doc. Loop up to MAX_ROUNDS. If it still can't be completed after that, STOP and hand the user the doc…",
         "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-3"
       },
       {
         "@type": "HowToStep",
-        "position": 5,
+        "position": 6,
         "name": "Stage 4 — Deliver",
-        "text": "edit-in-place: leave the finished docs in the repo and report. pr: commit on a worktree branch, run the CI gate (docs build/link-check if the repo has one), open a PR. Report: what was documented, the doc type, the fresh-reader's final result (in its words), rounds taken, and any follow-ups…",
+        "text": "pr (the default): commit on the worktree branch, run the CI gate (docs build/link-check if the repo has one), open the PR, and stop there unless MERGE_MODE=auto. edit-in-place: leave the finished docs in the working tree and report. Report: what was documented, the doc type, the fresh-reader's…",
         "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-4"
       }
     ]
@@ -135,7 +142,7 @@
         <div class="section__head">
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
-          <p class="section__lead">Five stages, in order. One is a hard gate — the run stops there until it passes.</p>
+          <p class="section__lead">Six stages, in order. One is a hard gate — the run stops there until it passes.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -144,6 +151,19 @@
             <div class="order-stage__body">
               <div class="order-prose">
                 <p>Decide <strong>who reads this and what they&#x27;re trying to do</strong>, then the right <strong>Diátaxis</strong> type — tutorial (first success), how-to (accomplish one task), reference (accurate/exhaustive), or explanation (the why). Don&#x27;t blend them. State the concrete &quot;reader can now do X&quot; success condition the fresh-reader test will check.</p>
+              </div>
+            </div>
+          </li>
+          <li class="order-stage" id="stage-0-5">
+            <span class="order-stage__num" aria-hidden="true">0.5</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 0.5 — </span>Isolate</h3>
+            <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <p>The worktree exists before anything writes. Exactly as <code>/ship-issue</code> Stage 1:</p>
+                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
+git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
+                <p>Drafting, the fresh-reader run and every fix round happen inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, skip this stage and work in the repo as it stands.</p>
               </div>
             </div>
           </li>
@@ -182,7 +202,7 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Deliver</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p><code>edit-in-place</code>: leave the finished docs in the repo and report. <code>pr</code>: commit on a worktree branch, run the CI gate (docs build/link-check if the repo has one), open a PR. Report: what was documented, the doc type, the fresh-reader&#x27;s final result (in its words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).</p>
+                <p><code>pr</code> (the default): commit on the worktree branch, run the CI gate (docs build/link-check if the repo has one), open the PR, and stop there unless <code>MERGE_MODE=auto</code>. <code>edit-in-place</code>: leave the finished docs in the working tree and report. Report: what was documented, the doc type, the fresh-reader&#x27;s final result (in its words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).</p>
               </div>
             </div>
           </li>
@@ -198,7 +218,8 @@
         <div class="order-prose">
           <ul>
             <li><code>WRITER</code> = <code>technical-writer</code>. <code>READER</code> = a <strong>fresh</strong> <code>general-purpose</code> (or <code>technical-writer</code>) agent that has NOT seen the drafting — it only gets the doc + the repo, like a real newcomer.</li>
-            <li><code>MAX_ROUNDS</code> = <code>3</code>. <code>MODE</code> = <code>edit-in-place</code> (default) or <code>pr</code> (worktree + CI-gated PR, like <code>/ship-issue</code>).</li>
+            <li><code>MAX_ROUNDS</code> = <code>3</code>. <code>MODE</code> = <code>pr</code> (default) — a worktree, a branch and a CI-gated PR, reusing <code>/ship-issue</code>&#x27;s Stage 1 (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate); your checkout is left exactly as you left it. <code>edit-in-place</code> writes the docs straight into the working tree — still available, but ask for it.</li>
+            <li>Under <code>MODE=pr</code>: <code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--docs-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>docs/&lt;slug&gt;</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). The orchestrator owns all git/gh; agents never push. If there is no remote for <code>gh</code> to open a PR against, stop at the branch and say so — never silently downgrade to writing in the tree.</li>
             <li><strong>Audience, voice &amp; format</strong> = the repo&#x27;s own (README tone, docs framework, terminology). Match it; don&#x27;t invent a competing style.</li>
           </ul>
         </div>
@@ -217,6 +238,7 @@
             <li>Right doc for the reader&#x27;s job (Diátaxis) — don&#x27;t turn a how-to into a history lesson.</li>
             <li>Minimal and honest: cut filler; call out breaking changes and their upgrade path in changelogs/migration guides.</li>
             <li>Bounded loop; escalate with the reader&#x27;s blockers rather than shipping docs that don&#x27;t work.</li>
+            <li><strong>Docs are source, so they get a branch.</strong> A doc rewrite lands as a diff a human can read, not as a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption.</li>
             <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>

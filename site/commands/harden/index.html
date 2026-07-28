@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/harden — threat-model → remediate → re-review · Shipmates</title>
-  <meta name="description" content="Security-harden a surface — threat-model it, rank the findings, remediate the blockers, and re-review until every finding has a fix or an explicit…">
+  <meta name="description" content="Security-harden a surface — threat-model it, rank the findings, and re-review until every finding has a fix or an explicit accepted-risk note (and…">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/harden/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/harden — threat-model → remediate → re-review">
-  <meta property="og:description" content="Security-harden a surface — threat-model it, rank the findings, remediate the blockers, and re-review until every finding has a fix or an explicit…">
+  <meta property="og:description" content="Security-harden a surface — threat-model it, rank the findings, and re-review until every finding has a fix or an explicit accepted-risk note (and…">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/harden/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/harden — threat-model → remediate → re-review">
-  <meta name="twitter:description" content="Security-harden a surface — threat-model it, rank the findings, remediate the blockers, and re-review until every finding has a fix or an explicit…">
+  <meta name="twitter:description" content="Security-harden a surface — threat-model it, rank the findings, and re-review until every finding has a fix or an explicit accepted-risk note (and…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/harden",
-    "description": "Security-harden a surface — threat-model it, rank the findings, remediate the blockers, and re-review until every finding has a fix or an explicit accepted-risk note (and secrets/dependency scans are clean).",
+    "description": "Security-harden a surface — threat-model it, rank the findings, and re-review until every finding has a fix or an explicit accepted-risk note (and secrets/dependency scans are clean). Read-only by default — it reports; remediation happens on a branch, opt-in.",
     "url": "https://saman-mb.github.io/shipmates/commands/harden/",
     "step": [
       {
@@ -56,22 +56,29 @@
       {
         "@type": "HowToStep",
         "position": 4,
-        "name": "Stage 3 — Remediate",
-        "text": "Spawn a senior-engineer with the exact blocker list; apply scoped fixes (parameterise the query, add the authz check, move the secret to config, pin/upgrade the dep) — no unrelated rewrites. Where a fix changes behaviour, add/adjust a test so it's covered. Rotate any exposed secret is a human…",
-        "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-3"
+        "name": "Stage 2.5 — Isolate",
+        "text": "Nothing is edited until the branch exists. Exactly as /ship-issue Stage 1:",
+        "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-2-5"
       },
       {
         "@type": "HowToStep",
         "position": 5,
-        "name": "Stage 4 — Re-review",
-        "text": "Re-run the security-engineer against the remediated surface: confirm each blocker is actually closed (not moved), no fix introduced a new hole, and the secret/dependency scans are clean. Loop Stages 3–4 up to MAX_ROUNDS; if blockers remain after that, STOP and escalate with the open findings —…",
-        "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-4"
+        "name": "Stage 3 — Remediate",
+        "text": "MODE=fix-pr only. Under report this stage does not run: each blocker's fix is described in the findings table, not applied. The caller runs MODE=fix-pr when they want the change made.",
+        "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-3"
       },
       {
         "@type": "HowToStep",
         "position": 6,
+        "name": "Stage 4 — Re-review",
+        "text": "MODE=fix-pr only. Under report there is nothing remediated to re-review — go straight to Stage 5 with the ranked findings.",
+        "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-4"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 7,
         "name": "Stage 5 — Report (and PR, if MODE=fix-pr)",
-        "text": "Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk / deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config changes outside the repo). In fix-pr mode, open a CI-gated PR (reuse /ship-issue's worktree + CI…",
+        "text": "Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk / deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config changes outside the repo). Under report (the default) that report is the deliverable and the…",
         "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-5"
       }
     ]
@@ -113,7 +120,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <h1 class="order-detail__title" id="order-title"><code>/harden</code></h1>
           <p class="order-detail__tagline">threat-model → remediate → re-review</p>
-          <p class="order-detail__desc">Security-harden a surface — threat-model it, rank the findings, remediate the blockers, and re-review until every finding has a fix or an explicit accepted-risk note (and secrets/dependency scans are clean).</p>
+          <p class="order-detail__desc">Security-harden a surface — threat-model it, rank the findings, and re-review until every finding has a fix or an explicit accepted-risk note (and secrets/dependency scans are clean). Read-only by default — it reports; remediation happens on a branch, opt-in.</p>
           <div class="order-prose">
             <p>Take a surface and make it defensibly secure: a <code>security-engineer</code> threat-models it, findings are ranked and fixed, and the loop closes only when <strong>every finding is either remediated or carries an explicit, reasoned accepted-risk note</strong> — and the secrets/dependency scans are clean. The gate is &quot;nothing Critical/High left unaddressed,&quot; not &quot;looks fine.&quot;</p>
             <p>Input (<strong>$ARGUMENTS</strong>): the surface to harden — a module, an endpoint/route, an auth or payment flow, a dependency set, or the whole app. If empty, ask which surface (don&#x27;t silently pick the whole repo).</p>
@@ -142,7 +149,7 @@
         <div class="section__head">
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
-          <p class="section__lead">Six stages, in order.</p>
+          <p class="section__lead">Seven stages, in order.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -173,12 +180,26 @@
               </div>
             </div>
           </li>
+          <li class="order-stage" id="stage-2-5">
+            <span class="order-stage__num" aria-hidden="true">2.5</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 2.5 — </span>Isolate</h3>
+            <p class="order-stage__crew">Crew: (<code>MODE=fix-pr</code> only — orchestrator, deterministic, no agent)</p>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <p>Nothing is edited until the branch exists. Exactly as <code>/ship-issue</code> Stage 1:</p>
+                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
+git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
+                <p>Every remediation and re-review below runs inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=report</code> this stage does not run, because nothing is written.</p>
+              </div>
+            </div>
+          </li>
           <li class="order-stage" id="stage-3">
             <span class="order-stage__num" aria-hidden="true">3</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Remediate</h3>
             <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>senior-engineer</code></span> (agent: <code>senior-engineer</code>)</p>
             <div class="order-stage__body">
               <div class="order-prose">
+                <p><strong><code>MODE=fix-pr</code> only.</strong> Under <code>report</code> this stage does not run: each blocker&#x27;s fix is <em>described</em> in the findings table, not applied. The caller runs <code>MODE=fix-pr</code> when they want the change made.</p>
                 <p>Spawn a <code>senior-engineer</code> with the exact blocker list; apply <strong>scoped</strong> fixes (parameterise the query, add the authz check, move the secret to config, pin/upgrade the dep) — no unrelated rewrites. Where a fix changes behaviour, add/adjust a test so it&#x27;s covered. Rotate any exposed secret is a human action — flag it loudly; don&#x27;t just delete it from the diff and consider it solved.</p>
               </div>
             </div>
@@ -189,6 +210,7 @@
             <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>security-engineer</code></span> (agent: <code>security-engineer</code>, fresh pass)</p>
             <div class="order-stage__body">
               <div class="order-prose">
+                <p><strong><code>MODE=fix-pr</code> only.</strong> Under <code>report</code> there is nothing remediated to re-review — go straight to Stage 5 with the ranked findings.</p>
                 <p>Re-run the <code>security-engineer</code> against the remediated surface: confirm each blocker is actually closed (not moved), no fix introduced a new hole, and the secret/dependency scans are clean. Loop Stages 3–4 up to <code>MAX_ROUNDS</code>; if blockers remain after that, <strong>STOP and escalate</strong> with the open findings — never declare a surface hardened while a Critical/High stands.</p>
               </div>
             </div>
@@ -198,7 +220,7 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Report (and PR, if <code>MODE=fix-pr</code>)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk / deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config changes outside the repo). In <code>fix-pr</code> mode, open a CI-gated PR (reuse <code>/ship-issue</code>&#x27;s worktree + CI gate + trailers) and file Medium/Low items as labelled follow-up issues.</p>
+                <p>Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk / deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config changes outside the repo). Under <code>report</code> (the default) that report <strong>is</strong> the deliverable and the working tree is exactly as you found it — say so explicitly. Under <code>fix-pr</code>, open the CI-gated PR (<code>/ship-issue</code>&#x27;s Stage 4 and Stage 4.5, with the same trailers), stop there unless <code>MERGE_MODE=auto</code>, and file Medium/Low items as labelled follow-up issues.</p>
               </div>
             </div>
           </li>
@@ -214,7 +236,8 @@
         <div class="order-prose">
           <ul>
             <li><code>REVIEWER</code> = <code>security-engineer</code>. <code>BUILDER</code> = <code>senior-engineer</code>. <code>MAX_ROUNDS</code> = <code>4</code>.</li>
-            <li><code>MODE</code> = <code>report</code> (default: produce a prioritised remediation report, fixing what&#x27;s safe and in-scope) or <code>fix-pr</code> (apply remediations on a worktree branch and open a CI-gated PR, like <code>/ship-issue</code>). Infer from the request; when ambiguous, default to <code>report</code>.</li>
+            <li><code>MODE</code> = <code>report</code> (default) — <strong>read-only</strong>: threat-model, rank, report. It writes nothing to the working tree, not even a fix that looks safe; a mode that edits is named for it. <code>fix-pr</code> — apply the remediations in a worktree on a branch and open a CI-gated PR, reusing <code>/ship-issue</code>&#x27;s Stage 1 (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate) rather than a second path of its own. Infer from the request; when ambiguous, default to <code>report</code>, and state which mode you ran.</li>
+            <li>Under <code>MODE=fix-pr</code> only: <code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--harden-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>chore/harden-&lt;slug&gt;</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). The orchestrator owns all git/gh; agents never push.</li>
             <li><strong>Threat model / sensitivity</strong> = from the repo (what data it handles, what&#x27;s exposed). Assume the repo is public and input is hostile.</li>
           </ul>
         </div>
@@ -228,6 +251,7 @@
         </div>
         <div class="order-prose">
           <ul>
+            <li><strong><code>report</code> is read-only, and that is the whole point.</strong> No <code>Write</code>, no <code>Edit</code>, no <code>git</code> mutation, no &quot;while I was in there&quot; fix. <code>allowed-tools</code> still carries <code>Write</code> and <code>Edit</code> because <code>fix-pr</code> needs them — the mode is the gate. A security pass that quietly edits someone&#x27;s checkout is the surprise this command exists to remove.</li>
             <li><strong>Proportionate, not paranoid</strong> — harden to the real threat model; don&#x27;t gold-plate a low-value surface.</li>
             <li>Show the <strong>exploit path</strong>, not a scanner hit — a finding without a plausible attack isn&#x27;t a blocker.</li>
             <li>Never write a secret/token into a commit, PR, issue, or log; flag exposed secrets for <strong>rotation</strong> (deleting them from the diff does not un-leak them).</li>

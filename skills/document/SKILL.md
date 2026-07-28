@@ -22,7 +22,15 @@ a migration guide, or the whole repo. If empty, ask what to document and for who
 
 - `WRITER` = `technical-writer`. `READER` = a **fresh** `general-purpose` (or `technical-writer`) agent that
   has NOT seen the drafting — it only gets the doc + the repo, like a real newcomer.
-- `MAX_ROUNDS` = `3`. `MODE` = `edit-in-place` (default) or `pr` (worktree + CI-gated PR, like `/ship-issue`).
+- `MAX_ROUNDS` = `3`. `MODE` = `pr` (default) — a worktree, a branch and a CI-gated PR, reusing
+  `/ship-issue`'s Stage 1 (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate); your
+  checkout is left exactly as you left it. `edit-in-place` writes the docs straight into the working
+  tree — still available, but ask for it.
+- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch.
+  `WORKTREE_DIR` = `../<repo>--docs-<slug>`. `BRANCH` = `docs/<slug>`.
+  `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). The orchestrator owns all git/gh;
+  agents never push. If there is no remote for `gh` to open a PR against, stop at the branch and say
+  so — never silently downgrade to writing in the tree.
 - **Audience, voice & format** = the repo's own (README tone, docs framework, terminology). Match it; don't
   invent a competing style.
 
@@ -31,6 +39,18 @@ a migration guide, or the whole repo. If empty, ask what to document and for who
 Decide **who reads this and what they're trying to do**, then the right **Diátaxis** type — tutorial
 (first success), how-to (accomplish one task), reference (accurate/exhaustive), or explanation (the why).
 Don't blend them. State the concrete "reader can now do X" success condition the fresh-reader test will check.
+
+## Stage 0.5 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
+
+The worktree exists before anything writes. Exactly as `/ship-issue` Stage 1:
+
+```bash
+git -C <repo> fetch origin
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
+```
+
+Drafting, the fresh-reader run and every fix round happen inside `<WORKTREE_DIR>`. Under
+`MODE=edit-in-place`, skip this stage and work in the repo as it stands.
 
 ## Stage 1 — Draft from the actual code  (agent: `technical-writer`)
 
@@ -55,10 +75,10 @@ reader's outstanding blockers — don't ship docs that don't work.
 
 ## Stage 4 — Deliver
 
-`edit-in-place`: leave the finished docs in the repo and report. `pr`: commit on a worktree branch, run the
-CI gate (docs build/link-check if the repo has one), open a PR. Report: what was documented, the doc type,
-the fresh-reader's final result (in its words), rounds taken, and any follow-ups (things worth documenting
-next, discovered gaps).
+`pr` (the default): commit on the worktree branch, run the CI gate (docs build/link-check if the repo has
+one), open the PR, and stop there unless `MERGE_MODE=auto`. `edit-in-place`: leave the finished docs in the
+working tree and report. Report: what was documented, the doc type, the fresh-reader's final result (in its
+words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).
 
 ---
 
@@ -69,5 +89,7 @@ next, discovered gaps).
 - Right doc for the reader's job (Diátaxis) — don't turn a how-to into a history lesson.
 - Minimal and honest: cut filler; call out breaking changes and their upgrade path in changelogs/migration guides.
 - Bounded loop; escalate with the reader's blockers rather than shipping docs that don't work.
+- **Docs are source, so they get a branch.** A doc rewrite lands as a diff a human can read, not as
+  a surprise in someone's checkout. `MODE=edit-in-place` is an explicit request, never an assumption.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the brief
   inlined and note it.

@@ -200,7 +200,6 @@
                           <li><code>IS_UI_STORY = yes/no</code> — does it create/modify on-screen UI (screens, HUD, panels, overlays, menus, components, styling)? Gates <code>ux-ui-designer</code>.</li>
                           <li><code>IS_VISUAL_STORY = yes/no</code> — gate the <code>art-director</code> on the PROJECT&#x27;S DOMAIN, not merely on whether a story touches pixels. Set it only when the project&#x27;s actual deliverable is rendered visual <em>art</em> — a game&#x27;s world/sprites/shaders, illustration/brand/motion assets, generative imagery — and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only visual surface is its interface is a <strong>UI</strong> story (<code>ux-ui-designer</code>), NOT an art story: the art-director reviews pictures judged <em>as art</em>, not application chrome. Most projects never set this — when in doubt, prefer <code>IS_UI_STORY</code> and leave the art-director out.</li>
                           <li><code>IS_ARCH_SIGNIFICANT = yes/no</code> — does it add a new subsystem, change a persisted data/schema format, or cross-cut many modules in a way a narrow code review would miss? Gates <code>architect</code>.</li>
-                          <li><code>IS_SECURITY_SENSITIVE = yes/no</code> — does it touch authn/authz, untrusted input, secrets/credentials, crypto, file/network/OS access, or dependencies? Gates <code>security-engineer</code>.</li>
                           <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>. This flag vocabulary is shared with <code>/review</code>, which classifies a PR diff the same way — a new flag must be added to both files.</li>
                         </ul>
                       </li>
@@ -317,8 +316,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                   <li><strong><code>ux-ui-designer</code></strong> (only if <code>IS_UI_STORY</code>): reviews the pushed head against the Stage 1.5 spec and the UI bar — shared-token/theme usage (not per-component override sprawl), responsive layout, focus navigation, interaction states, contrast/readability. If it cannot actually render the UI, it reviews statically and MUST flag the PR <strong>&quot;needs a human visual pass&quot;</strong> — carry that into the report.</li>
                   <li><strong><code>art-director</code></strong> (only if <code>IS_VISUAL_STORY</code>): renders the actual change via the project&#x27;s render/preview harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the visual bar — the render, not the source. If it cannot render, it says so and flags <strong>&quot;needs a human visual pass&quot;</strong>.</li>
                   <li><strong><code>architect</code></strong> (only if <code>IS_ARCH_SIGNIFICANT</code>): reviews structural fit, coupling/blast radius, and schema/migration safety.</li>
-                  <li><strong><code>security-engineer</code></strong> (only if <code>IS_SECURITY_SENSITIVE</code>): threat-models the change (STRIDE / OWASP) — broken access control, injection, secrets/crypto, vulnerable deps — and returns severity-ranked findings with the exploit path; a credible Critical/High is a blocking defect.</li>
-                  <li><strong><code>devops-engineer</code></strong> (only if <code>IS_DELIVERY_SENSITIVE</code>): reviews the delivery definitions for reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety to <code>site-reliability-engineer</code>, and the severity of secret exposure or dependency trust to <code>security-engineer</code>.</li>
+                  <li><strong><code>devops-engineer</code></strong> (only if <code>IS_DELIVERY_SENSITIVE</code>): reviews the delivery definitions for reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety to <code>site-reliability-engineer</code>.</li>
                 </ul>
                 <p>Decision (each specialist participates only when its flag is set):</p>
                 <ul>
@@ -368,7 +366,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         </ol>
         <h3 id="final-report-to-the-user">Final report to the user</h3>
         <div class="order-prose">
-          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, and anything that could only be validated statically.</p>
+          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and the <code>/harden</code> recommendation when the change touched a security-relevant surface.</p>
         </div>
       </div>
     </section>
@@ -401,7 +399,6 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                 <tr><td><code>architect</code></td><td>Structural / schema review — gated by <code>IS_ARCH_SIGNIFICANT</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>ux-ui-designer</code></td><td>On-screen UI design + review — gated by <code>IS_UI_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>art-director</code></td><td>Visual-art direction + review — <strong>art-producing domains only</strong>, gated by <code>IS_VISUAL_STORY</code> (Stages 1.5, 5)</td></tr>
-                <tr><td><code>security-engineer</code></td><td>Threat-model + security review — gated by <code>IS_SECURITY_SENSITIVE</code> (Stage 5)</td></tr>
                 <tr><td><code>devops-engineer</code></td><td>Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by <code>IS_DELIVERY_SENSITIVE</code> (Stage 5)</td></tr>
               </tbody>
             </table>
@@ -425,7 +422,8 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li>Keep the base branch and the user&#x27;s working tree untouched throughout (all work in the worktree).</li>
             <li>Respect <code>MERGE_MODE</code> — do not auto-merge unless it is explicitly set to <code>auto</code>.</li>
             <li>If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan requires), stop and surface it — autonomy does not mean forcing a bad merge.</li>
-            <li><strong>Secrets &amp; security hygiene.</strong> Never write secrets, tokens, or credentials into commits, PR/issue bodies, or logs — assume the repo is public. When the change touches auth, input handling, crypto, or dependencies, the <code>security-engineer</code> (gated by <code>IS_SECURITY_SENSITIVE</code>) threat-models it and the <code>sdet</code> also flags secret leakage; a real leak or a clear injection path is a blocking defect.</li>
+            <li><strong>Secrets &amp; security hygiene.</strong> Never write secrets, tokens, or credentials into commits, PR/issue bodies, or logs — assume the repo is public. The <code>sdet</code> flags secret leakage as a defect; a real leak is blocking. Deeper security work is not this command&#x27;s job — see the next bullet.</li>
+            <li><strong>Security review lives in <code>/harden</code>, not here.</strong> This command does not threat-model. When the change touched authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies, say so in the final report and recommend a <code>/harden</code> pass on the surface — one line, so the risk is named rather than silently dropped.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work. Every stage should be safe to repeat.</li>
             <li>Static review cannot verify pixels. When neither the <code>ux-ui-designer</code> (UI) nor the <code>art-director</code> (visual-art) could actually render and inspect the result, surface their <strong>&quot;needs human visual pass&quot;</strong> flag in the final report rather than implying the visuals are confirmed. Both are auto-gated by the Planner&#x27;s <code>IS_UI_STORY</code> / <code>IS_VISUAL_STORY</code> flags, as <code>architect</code> is by <code>IS_ARCH_SIGNIFICANT</code>.</li>
           </ul>

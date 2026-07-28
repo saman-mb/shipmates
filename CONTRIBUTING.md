@@ -49,8 +49,14 @@ are correct; which one belongs in a given sentence is set by the
    for field two gets the literal word `on`.) If you genuinely need a literal, escape it as `\$2` —
    but prefer restructuring so you don't, e.g. `cut -f2` rather than an `awk` field reference.
 5. Prefer invoking the shared agents by `subagent_type` over inlining personas.
-6. Anything with side effects (merging, publishing) should be **opt-in**, not the default — be a
-   good guest on other people's repos.
+6. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
+   repo works on its own branch in its own worktree and proposes the result as a pull request; the
+   caller's checkout is left as they left it. Writing straight into the working tree is an opt-in
+   (`MODE=edit-in-place`), never a default. **Irreversible side effects are a separate axis, and
+   they are opt-in too:** merging (`MERGE_MODE=auto`), publishing (`PUBLISH_MODE=auto`) and posting
+   on a third party's pull request (`MODE=post`) stay off unless the caller sets them. Opening a PR
+   is not in that class — it is a proposal the reader can close. Be a good guest on other people's
+   repos: a branch is a suggestion, a merge is a decision.
 7. Add `<name>` to `SLUGS` in `tools/gen_command_pages.py`.
 8. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
    `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the skill sources.

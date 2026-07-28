@@ -26,10 +26,16 @@ want is a README or a tutorial, stop and run `/document`.
 
 ## Config (override only if the repo needs it)
 
-- `MODE` = `edit-in-place` (default) or `pr` — where the result lands. `pr` opens a worktree, a branch
-  and a CI-gated PR rather than writing to the tree, like `/document`. Prefer it on a repo that isn't
-  yours. `SURVEY` (`create` / `refresh`) is set by Stage 0 and describes what was *found* — it is a
-  separate axis and never overwrites `MODE`.
+- `MODE` = `pr` (default) or `edit-in-place` — where the result lands. `pr` opens a worktree, a
+  branch and a CI-gated PR rather than writing to the tree, reusing `/ship-issue`'s Stage 1
+  (isolate), Stage 4 (commit, push, PR) and Stage 4.5 (CI gate). This file is the contract every
+  later run inherits, so it earns a diff and a human's eye before it lands; `edit-in-place` is an
+  explicit request. `SURVEY` (`create` / `refresh`) is set by Stage 0 and describes what was *found* —
+  it is a separate axis and never overwrites `MODE`.
+- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch. `WORKTREE_DIR` = `../<repo>--onboard`.
+  `BRANCH` = `docs/onboard-context-file`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto`
+  opt-in). A repo with no remote to open a PR against is the one fallback: build the branch, stop
+  there, and report the branch as the undo path — never quietly write to the tree instead.
 - `TARGET` = auto-detected. `CLAUDE.md` if one exists, else `AGENTS.md` if one exists, else
   `CLAUDE.md`. **Never write both** — see below.
 - `MAX_ROUNDS` = `3` verification loops before escalating.
@@ -49,6 +55,19 @@ Detect what already exists before writing anything:
 
 Also read the repo's `README`, contributing docs, CI config and any existing rules files, so the
 context file agrees with them instead of competing.
+
+## Stage 0.5 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
+
+The branch exists before the context file does. Exactly as `/ship-issue` Stage 1:
+
+```bash
+git -C <repo> fetch origin
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
+```
+
+Recon reads the repo either way; the draft and every verification round write inside
+`<WORKTREE_DIR>`. Under `MODE=edit-in-place`, skip this stage — the Stage 0 backup is the undo path
+instead.
 
 ## Stage 1 — Recon  (agents, in parallel)
 
@@ -90,17 +109,18 @@ then escalate with the unanswerable questions listed.
 
 ## Stage 4 — Deliver
 
-Write to `TARGET`. If a file was replaced, **show the diff** — a human must be able to see what was
-changed on their behalf. If `MODE=pr`, open a branch and a PR instead of writing to the tree. Report:
-the file written, the undo path (the backup, or the branch), which commands were proven versus
-recorded as unverified, and the verification round it passed on.
+Write to `TARGET` — inside `<WORKTREE_DIR>` under `MODE=pr` (the default), in the repo itself under
+`MODE=edit-in-place`. If a file was replaced, **show the diff** — a human must be able to see what was
+changed on their behalf. Under `MODE=pr`, commit on the branch, run the CI gate, open the PR and stop
+there unless `MERGE_MODE=auto`. Report: the file written, the undo path (the backup, or the branch),
+which commands were proven versus recorded as unverified, and the verification round it passed on.
 
 ---
 
 ### Guardrails
 - **An undo path is mandatory, not best-effort.** A bad context file degrades every future run in
-  that repo with no failing signal, so the way back has to exist before the write does — a backup
-  under `MODE=edit-in-place`, the branch itself under `MODE=pr`.
+  that repo with no failing signal, so the way back has to exist before the write does — the branch
+  itself under `MODE=pr` (the default), a backup under `MODE=edit-in-place`.
 - **One context file, never two.** Two sources of truth for the quality bar is the problem, not a
   tidy outcome.
 - Proven over plausible: a command that wasn't run is labelled unverified, never presented as fact.

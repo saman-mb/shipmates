@@ -217,7 +217,7 @@
           </li>
           <li class="order-card">
             <h3 class="order-card__cmd"><a class="order-card__link" href="commands/harden/"><code>/harden</code></a></h3>
-            <p class="order-card__desc">Threat-models a surface and remediates until every finding is fixed or accepted.</p>
+            <p class="order-card__desc">Threat-models a surface and ranks every finding — read-only by default, fixes opt-in.</p>
             <span class="order-card__more" aria-hidden="true">Read the stages →</span>
           </li>
           <li class="order-card">
@@ -306,7 +306,7 @@
             <span class="how-step__num" aria-hidden="true">6</span>
             <span class="how-step__icon" aria-hidden="true">⚖️</span>
             <h3 class="how-step__title">Acceptance board</h3>
-            <p class="how-step__desc">product-manager + sdet (+ gated ux-ui-designer / art-director / architect / security-engineer) review the pushed PR head, adversarially.</p>
+            <p class="how-step__desc">product-manager + sdet (+ gated ux-ui-designer / art-director / architect) review the pushed PR head, adversarially.</p>
           </li>
           <li class="how-step">
             <span class="how-step__num" aria-hidden="true">7</span>
@@ -318,7 +318,7 @@
             <span class="how-step__num" aria-hidden="true">8</span>
             <span class="how-step__icon" aria-hidden="true">🏁</span>
             <h3 class="how-step__title">Deliver</h3>
-            <p class="how-step__desc">Files the non-blocking nits as follow-ups, and opens (or, opt-in, merges) the PR.</p>
+            <p class="how-step__desc">Files the non-blocking nits as follow-ups, names a <code>/harden</code> follow-up if the change touched a security-relevant surface, and opens (or, opt-in, merges) the PR.</p>
           </li>
         </ol>
       </div>

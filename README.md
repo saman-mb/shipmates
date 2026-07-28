@@ -67,7 +67,7 @@ from anything hardcoded into the role.
 | `/ship-issue <n>` | Drives GitHub issue `#n` from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
 | `/fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
 | `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
-| `/harden <surface>` | Threat-models a surface and remediates until every finding is fixed or an explicit accepted-risk |
+| `/harden <surface>` | Threat-models a surface and ranks every finding — read-only by default; remediation on a branch, opt-in |
 | `/spike <question>` | De-risks a decision — prototypes the options in parallel, judges them, records the pick as an ADR |
 | `/migrate <from→to>` | Sweeps a mechanical migration across the codebase — every call site, verified, no remnants left |
 | `/document <target>` | Writes docs from the real code, gated on a *fresh reader* actually completing the steps |
@@ -76,6 +76,11 @@ from anything hardcoded into the role.
 | `/review <pr>` | Runs the board against a PR the crew didn't author — read-only, it reports and never repairs |
 | `/onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
+
+**Where a command writes.** Anything that changes your repo does it on its own branch, in its own
+worktree, and hands you a pull request — your checkout is left as you left it. `/review` and
+`/harden`'s default `report` mode write nothing at all. Writing straight into the working tree is
+opt-in (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
 **There's deliberately no `code-reviewer`.** Review is split by discipline instead of pooled into one
 generalist: `architect` takes structure, `sdet` takes verification, `product-manager` takes acceptance,
@@ -141,9 +146,11 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 5. **Self-check → CI gate** 🚦 — the SDET runs the tests; then **CI must go green** on the pushed PR
    before anything moves on. Red? It reads the logs and fixes — bounded to a few rounds.
 6. **Acceptance board** ⚖️ — `product-manager` + `sdet` (+ gated `ux-ui-designer` / `art-director` /
-   `architect` / `security-engineer`) review the *pushed PR head*, independently and adversarially.
+   `architect`) review the *pushed PR head*, independently and adversarially.
 7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-reviews. Bounded, then escalates.
-8. **Deliver** 🏁 — files the non-blocking nits as follow-ups, and opens (or, opt-in, merges) the PR.
+8. **Deliver** 🏁 — files the non-blocking nits as follow-ups, names a `/harden` follow-up if the
+   change touched a security-relevant surface (this board doesn't threat-model), and opens (or,
+   opt-in, merges) the PR.
 
 The tricks that make the loop hold together:
 
@@ -195,7 +202,9 @@ parallel, then everything is created and cross-linked.
 ```
 The `ux-ui-designer` reviews the *rendered* screen (not the code), lists concrete fixes, a
 `senior-engineer` applies them, it re-renders, and the loop repeats until the designer signs off — or
-hands you the outstanding notes after a few rounds.
+hands you the outstanding notes after a few rounds. Run it from your default branch and the loop
+happens on its own branch, ending in a PR; run it from a feature branch — say, one `/ship-issue` just
+made — and it polishes right there, where the work already is.
 
 **Polish rendered art the same way:**
 ```
@@ -216,8 +225,10 @@ not the symptom. You get a PR with the proof attached.
 ```
 /harden the auth + session flow
 ```
-The `security-engineer` walks it with STRIDE / OWASP, ranks findings by severity with the exploit path, a
-`senior-engineer` remediates the blockers, and it re-reviews until nothing Critical/High is left open.
+The `security-engineer` walks it with STRIDE / OWASP and ranks findings by severity with the exploit path.
+That pass is **read-only** — it reports, it doesn't touch your tree. Ask for the fixes (`MODE=fix-pr`)
+and a `senior-engineer` remediates the blockers on a branch, re-reviewing until nothing Critical/High is
+left open, then hands you a CI-gated PR.
 
 **De-risk a decision before committing to it:**
 ```
@@ -253,6 +264,9 @@ tagged commit, and the `site-reliability-engineer` checks rollback + migration s
 /ship-issue 148                     # → builds & reviews one story to a PR
 /polish the settings screen         # → iterates the visuals to sign-off
 ```
+Run that third step **from the worktree `/ship-issue` left behind** (`../<repo>--issue-148`), so the
+polish lands on the same branch. Started from your base branch, `/polish` would begin from a baseline
+that doesn't contain the new screen yet.
 
 ## 🗂️ Scopes & precedence
 
