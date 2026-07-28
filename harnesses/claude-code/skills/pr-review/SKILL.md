@@ -103,7 +103,9 @@ misses) above **nits** (style, naming, taste). Attribute each finding to the rol
 the author can weigh it. One verdict for the PR: `APPROVE` / `APPROVE-WITH-NITS` / `REQUEST-CHANGES`.
 
 If a visual specialist could not actually render the change, carry its **"needs a human visual pass"**
-flag into the output rather than implying the visuals were confirmed.
+flag into the output rather than implying the visuals were confirmed. The same rule holds for any
+reviewer whose inspection was partial — carry its stated gap forward; an ACCEPT/PASS never reads as
+covering ground the reviewer said it didn't see.
 
 ## Stage 4 — Deliver
 

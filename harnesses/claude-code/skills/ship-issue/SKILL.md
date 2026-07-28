@@ -290,7 +290,10 @@ Stage 0 — the `/harden` recommendation, carried here mechanically rather than 
   made while writing the summary.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work. Every stage should be safe to repeat.
-- Static review cannot verify pixels. When neither the `ux-ui-designer` (UI) nor the `art-director`
-  (visual-art) could actually render and inspect the result, surface their **"needs human visual
-  pass"** flag in the final report rather than implying the visuals are confirmed. Both are auto-gated
-  by the Planner's `IS_UI_STORY` / `IS_VISUAL_STORY` flags, as `architect` is by `IS_ARCH_SIGNIFICANT`.
+- Static review cannot verify pixels, and no reviewer can verify what it didn't examine. When neither
+  the `ux-ui-designer` (UI) nor the `art-director` (visual-art) could actually render and inspect the
+  result, surface their **"needs human visual pass"** flag in the final report rather than implying
+  the visuals are confirmed. The same holds for any Stage 5 reviewer that names a gap in what it
+  covered — carry it into the final report; never let an ACCEPT/PASS silently stand in for ground it
+  didn't see. Both visual roles are auto-gated by the Planner's `IS_UI_STORY` / `IS_VISUAL_STORY`
+  flags, as `architect` is by `IS_ARCH_SIGNIFICANT`.

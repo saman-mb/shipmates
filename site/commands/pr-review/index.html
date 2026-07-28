@@ -202,7 +202,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
             <div class="order-stage__body">
               <div class="order-prose">
                 <p><strong>You</strong> synthesise; don&#x27;t delegate it. Merge the reports, dedupe findings several reviewers raised, and rank them: <strong>blocking</strong> (correctness, security, data loss, a criterion the PR itself claims and misses) above <strong>nits</strong> (style, naming, taste). Attribute each finding to the role that raised it so the author can weigh it. One verdict for the PR: <code>APPROVE</code> / <code>APPROVE-WITH-NITS</code> / <code>REQUEST-CHANGES</code>.</p>
-                <p>If a visual specialist could not actually render the change, carry its <strong>&quot;needs a human visual pass&quot;</strong> flag into the output rather than implying the visuals were confirmed.</p>
+                <p>If a visual specialist could not actually render the change, carry its <strong>&quot;needs a human visual pass&quot;</strong> flag into the output rather than implying the visuals were confirmed. The same rule holds for any reviewer whose inspection was partial — carry its stated gap forward; an ACCEPT/PASS never reads as covering ground the reviewer said it didn&#x27;t see.</p>
               </div>
             </div>
           </li>

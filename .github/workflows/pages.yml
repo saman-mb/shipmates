@@ -42,6 +42,8 @@ jobs:
         run: python3 tools/build_harness_payloads.py --check
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
+      - name: Check for design-system drift (#131)
+        run: python3 .github/scripts/validate_design_drift.py
       - name: Check install.sh is executable (#100)
         run: |
           mode=$(git ls-files -s install.sh | awk '{print $1}')
