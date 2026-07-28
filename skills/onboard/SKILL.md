@@ -26,13 +26,26 @@ want is a README or a tutorial, stop and run `/document`.
 
 ## Config (override only if the repo needs it)
 
-- `MODE` = `edit-in-place` (default) or `pr` — where the result lands. `pr` opens a worktree, a branch
-  and a CI-gated PR rather than writing to the tree, like `/document`. Prefer it on a repo that isn't
-  yours. `SURVEY` (`create` / `refresh`) is set by Stage 0 and describes what was *found* — it is a
-  separate axis and never overwrites `MODE`.
+- `MODE` = `pr` (default) or `edit-in-place` — where the result lands. `pr` opens a worktree, a
+  branch and a CI-gated PR rather than writing to the tree, reusing `/ship-issue`'s isolate stage and
+  its commit-push-PR stage. This file is the contract every later run inherits, so it earns a diff
+  and a human's eye before it lands; `edit-in-place` is an explicit request. `SURVEY` (`create` /
+  `refresh`) is set by Stage 0 and describes what was *found* — it is a separate axis and never
+  overwrites `MODE`.
+- Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
+  worktree is cut from (that's current `HEAD`, so Stage 0's survey sees your actual checkout).
+  `WORKTREE_DIR` = `../<repo>--onboard-<SURVEY>`. `BRANCH` = `docs/onboard-context-file-<SURVEY>` —
+  onboard has no topic slug to build a name from (it always produces the one context file), so the
+  identifier is `SURVEY` instead: a still-open `create` PR then can't collide with a later `refresh`
+  run, which is the failure this suffix exists to prevent. `MERGE_MODE` = `manual` (stop at a
+  reviewed PR; `auto` opt-in). `MAX_FIX_ROUNDS` = `2` — a separate cap, on CI-fix rounds at Stage 4,
+  so a permanently-red check escalates to the user instead of looping, distinct from the
+  verification-loop `MAX_ROUNDS` below. A repo with no remote to open a PR against is the one
+  fallback: build the branch, stop there, and report the branch as the undo path — never quietly
+  write to the tree instead.
 - `TARGET` = auto-detected. `CLAUDE.md` if one exists, else `AGENTS.md` if one exists, else
   `CLAUDE.md`. **Never write both** — see below.
-- `MAX_ROUNDS` = `3` verification loops before escalating.
+- `MAX_ROUNDS` = `3` verification loops before escalating (Stage 3).
 
 ## Stage 0 — Survey & mode
 
@@ -49,6 +62,23 @@ Detect what already exists before writing anything:
 
 Also read the repo's `README`, contributing docs, CI config and any existing rules files, so the
 context file agrees with them instead of competing.
+
+## Stage 0.5 — Isolate  (`MODE=pr` only — orchestrator, deterministic, no agent)
+
+The branch exists before the context file does. First check `git -C <repo> status --porcelain`; if
+the caller's tree is dirty, **warn loudly** — a worktree cut from `HEAD` holds committed work only,
+so an uncommitted rule Stage 0's survey just saw won't carry into the draft — then proceed. Exactly
+as `/ship-issue`'s isolate stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>` — so
+an unpushed `CLAUDE.md`/`AGENTS.md` that Stage 0's survey already saw is actually present in the
+worktree the draft and refresh work against:
+
+```bash
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
+```
+
+Recon reads the repo either way; the draft and every verification round write inside
+`<WORKTREE_DIR>`. Under `MODE=edit-in-place`, skip this stage — the Stage 0 backup is the undo path
+instead.
 
 ## Stage 1 — Recon  (agents, in parallel)
 
@@ -90,20 +120,31 @@ then escalate with the unanswerable questions listed.
 
 ## Stage 4 — Deliver
 
-Write to `TARGET`. If a file was replaced, **show the diff** — a human must be able to see what was
-changed on their behalf. If `MODE=pr`, open a branch and a PR instead of writing to the tree. Report:
-the file written, the undo path (the backup, or the branch), which commands were proven versus
-recorded as unverified, and the verification round it passed on.
+Write to `TARGET` — inside `<WORKTREE_DIR>` under `MODE=pr` (the default), in the repo itself under
+`MODE=edit-in-place`. If a file was replaced, **show the diff** — a human must be able to see what was
+changed on their behalf. Under `MODE=pr`, commit on the branch — staging only the paths this run
+produced, never `git add -A` — push, and open the PR against `BASE_BRANCH`. Then gate on CI: poll
+`gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing it,
+re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and escalate to the
+user with the failing log rather than looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`,
+in which case merge the PR and remove `<WORKTREE_DIR>`; the manual default leaves the worktree in
+place with the PR open. The context file only exists on that branch until it's merged, though — merge
+or check out `BRANCH` before running other commands in this session if you need it in place now, or
+pass `MODE=edit-in-place` up front instead. Report: the file written, the undo path (the backup, or
+the branch), which commands were proven versus recorded as unverified, and the verification round it
+passed on.
 
 ---
 
 ### Guardrails
 - **An undo path is mandatory, not best-effort.** A bad context file degrades every future run in
-  that repo with no failing signal, so the way back has to exist before the write does — a backup
-  under `MODE=edit-in-place`, the branch itself under `MODE=pr`.
+  that repo with no failing signal, so the way back has to exist before the write does — the branch
+  itself under `MODE=pr` (the default), a backup under `MODE=edit-in-place`.
 - **One context file, never two.** Two sources of truth for the quality bar is the problem, not a
   tidy outcome.
 - Proven over plausible: a command that wasn't run is labelled unverified, never presented as fact.
+- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
+  than erroring or duplicating work.
 - Preserve hand-written rules on a refresh. You are augmenting someone's judgement, not replacing it.
 - Don't write a README. If the content is for humans, it belongs in `/document`.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the brief
