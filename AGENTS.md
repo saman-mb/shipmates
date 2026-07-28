@@ -1,6 +1,6 @@
 # Shipmates
 
-A crew of specialist AI agents and command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request — autonomously. On Claude Code.
+A crew of specialist AI agents and command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request — autonomously. Runs on Claude Code today.
 
 ## What it is
 
