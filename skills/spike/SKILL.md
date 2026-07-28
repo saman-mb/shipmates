@@ -33,9 +33,10 @@ Input (**$ARGUMENTS**): the open question or decision to resolve. If empty, ask 
   (the ADR) ends up, and defaults to a reviewed PR. Under `MODE=pr`: `BASE_BRANCH` = the repo's
   default branch — the PR's target, not what the worktree is cut from (that's current `HEAD`).
   `WORKTREE_DIR` = `../<repo>--adr-<slug>`. `BRANCH` = `docs/adr-<slug>`. `MERGE_MODE` = `manual`
-  (stop at a reviewed PR; `auto` opt-in). A repo with no remote to open a PR against is the one
-  fallback: build the branch, stop there, and report the branch as the undo path — never quietly
-  write to the tree instead.
+  (stop at a reviewed PR; `auto` opt-in). `MAX_FIX_ROUNDS` = `2` — the cap on CI-fix rounds at
+  Stage 3.5, so a permanently-red check escalates to the user instead of looping. A repo with no
+  remote to open a PR against is the one fallback: build the branch, stop there, and report the
+  branch as the undo path — never quietly write to the tree instead.
 
 ## Stage 0 — Frame the decision
 
@@ -87,9 +88,10 @@ delivers it.
 
 Commit on the ADR branch — staging only the ADR file this run produced, never `git add -A` — push,
 and open the PR against `BASE_BRANCH`. Then gate on CI: poll `gh pr checks` until nothing is pending;
-a red check means pulling the failing log, fixing it, re-pushing, and re-polling. Stop there unless
-`MERGE_MODE=auto`. Under `MODE=edit-in-place`, there's nothing to deliver — the ADR is already in the
-tree.
+a red check means pulling the failing log, fixing it, re-pushing, and re-polling — bounded by
+`MAX_FIX_ROUNDS`, after which you stop and escalate to the user with the failing log rather than
+looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`. Under `MODE=edit-in-place`,
+there's nothing to deliver — the ADR is already in the tree.
 
 ## Stage 4 — Report & hand off
 
