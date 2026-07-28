@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>data-scientist — Data/model work — metrics, leakage, validation, reproducibility. · Shipmates</title>
+  <meta name="description" content="Data scientist for data-and-model work on data/ML/analytics projects — problem framing, metric choice, evaluation soundness, data-quality and leakage…">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/agents/data-scientist/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="data-scientist — Data/model work — metrics, leakage, validation, reproducibility.">
+  <meta property="og:description" content="Data scientist for data-and-model work on data/ML/analytics projects — problem framing, metric choice, evaluation soundness, data-quality and leakage…">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/agents/data-scientist/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="data-scientist — Data/model work — metrics, leakage, validation, reproducibility.">
+  <meta name="twitter:description" content="Data scientist for data-and-model work on data/ML/analytics projects — problem framing, metric choice, evaluation soundness, data-quality and leakage…">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "data-scientist",
+    "description": "Data scientist for data-and-model work on data/ML/analytics projects — problem framing, metric choice, evaluation soundness, data-quality and leakage checks, and reproducibility. Use on projects whose deliverable is analysis or a model (not conventional apps) to design or review an experiment, model, or analysis.",
+    "url": "https://saman-mb.github.io/shipmates/agents/data-scientist/",
+    "isPartOf": {
+      "@type": "CollectionPage",
+      "url": "https://saman-mb.github.io/shipmates/#crew"
+    }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+        </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="../../#install">Install</a>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../../#crew"><span aria-hidden="true">←</span> All crew</a>
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">🧭</span> Subagent</p>
+          <h1 class="order-detail__title" id="order-title"><code>data-scientist</code></h1>
+          <p class="order-detail__tagline">Data/model work — metrics, leakage, validation, reproducibility.</p>
+          <p class="order-detail__desc">Data scientist for data-and-model work on data/ML/analytics projects — problem framing, metric choice, evaluation soundness, data-quality and leakage checks, and reproducibility. Use on projects whose deliverable is analysis or a model (not conventional apps) to design or review an experiment, model, or analysis.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="what" aria-labelledby="what-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="what-title">What this agent does</h2>
+        </div>
+        <div class="order-prose">
+          <p>The data scientist engages where the actual deliverable is analysis or a model — experiments, pipelines, metrics, statistical claims. A model that scores well but answers the wrong question, or scores well only because of a leak, counts as a failure.</p>
+          <p>Framing and metric choice come first, then the ways results lie: target leakage, train-test contamination, missing baselines, and evaluation on data the model has seen. Where feasible, the pipeline gets rerun or the metric recomputed rather than trusting the reported figure. On a conventional app with no data deliverable, it says so instead of inventing work.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="scenarios" aria-labelledby="scenarios-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="scenarios-title">When you&#x27;d want it</h2>
+        </div>
+        <div class="agent-scenarios">
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">A model claims a number</h3>
+            <p class="agent-scenario__desc">The evaluation gets audited — an honest split, a sensible baseline, metrics on unseen data — before the number is believed.</p>
+          </div>
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">An experiment needs designing</h3>
+            <p class="agent-scenario__desc">Problem framing, metric choice, and validation strategy get set up front, matched to the real-world cost of the errors that matter.</p>
+          </div>
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">Results look too good</h3>
+            <p class="agent-scenario__desc">Target leakage and train-test contamination get hunted first — the number one way results lie.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="checks" aria-labelledby="checks-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="checks-title">What it checks</h2>
+        </div>
+        <div class="order-prose">
+          <ul>
+            <li><strong>Problem framing.</strong> The question well-posed and the metric reflecting real success — accuracy on imbalanced data is a trap.</li>
+            <li><strong>Leakage.</strong> Features encoding the label or the future, tuning on the test set, duplicates, and shift between train and serve.</li>
+            <li><strong>Honest evaluation.</strong> Held-out or cross-validated correctly, a sensible baseline to beat, and metrics reported only on unseen data.</li>
+            <li><strong>Statistical soundness.</strong> Real effect or noise — sample size, variance across runs, multiple comparisons, and correlation not read as cause.</li>
+            <li><strong>Bias and fairness.</strong> Where decisions affect people, disparate performance across relevant groups and unrepresentative training data.</li>
+            <li><strong>Reproducibility.</strong> Fixed seeds, pinned data and dependencies, and a runnable path from raw data to result — an irreproducible number is a finding.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="crew-fit" aria-labelledby="crew-fit-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="crew-fit-title">How it fits the crew</h2>
+        </div>
+        <div class="order-prose">
+          <p>The data scientist is the crew&#x27;s specialist for data-and-model deliverables — designing experiments in <code>/spike</code>, reviewing analysis and model changes in <code>/pr-review</code>. Findings hand to the <code>senior-engineer</code> as specific fixes, and anything outside data work routes back to the rest of the crew.</p>
+        </div>
+        <p class="order-stage__crew">Related roles: <a class="chip order-stage__crew-item" href="../senior-engineer/"><code>senior-engineer</code></a> <a class="chip order-stage__crew-item" href="../sdet/"><code>sdet</code></a> <a class="chip order-stage__crew-item" href="../product-manager/"><code>product-manager</code></a></p>
+        <p class="order-stage__crew">Called in by: <a class="chip order-stage__crew-item" href="../../commands/spike/"><code>/spike</code></a> <a class="chip order-stage__crew-item" href="../../commands/pr-review/"><code>/pr-review</code></a></p>
+      </div>
+    </section>
+
+    <section class="section" id="reference" aria-labelledby="reference-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="reference-title">Reference</h2>
+        </div>
+        <dl class="agent-ref">
+          <dt>Name</dt>
+          <dd><code>data-scientist</code></dd>
+          <dt>Description</dt>
+          <dd>Data scientist for data-and-model work on data/ML/analytics projects — problem framing, metric choice, evaluation soundness, data-quality and leakage checks, and reproducibility. Use on projects whose deliverable is analysis or a model (not conventional apps) to design or review an experiment, model, or analysis.</dd>
+          <dt>Tools</dt>
+          <dd><code>Read</code>, <code>Grep</code>, <code>Glob</code>, <code>Bash</code></dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>agents/data-scientist.md</code>. The installer copies it to <code>~/.claude/agents/data-scientist.md</code> for every project, or <code>.claude/agents/data-scientist.md</code> inside a single repo.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/agents/data-scientist.md">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>View agents/data-scientist.md on GitHub</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="other-agents" aria-labelledby="other-agents-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-agents-title">Other agents</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other agents">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../architect/"><code>architect</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../senior-engineer/"><code>senior-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../sdet/"><code>sdet</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../security-engineer/"><code>security-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../site-reliability-engineer/"><code>site-reliability-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../performance-engineer/"><code>performance-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../devops-engineer/"><code>devops-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../product-manager/"><code>product-manager</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../ux-ui-designer/"><code>ux-ui-designer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../art-director/"><code>art-director</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../technical-writer/"><code>technical-writer</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>data-scientist</code><span class="visually-hidden"> (current page)</span></span></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../../#crew"><span aria-hidden="true">←</span> All crew</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — on Claude Code today.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>
