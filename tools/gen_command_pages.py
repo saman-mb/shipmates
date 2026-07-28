@@ -1420,6 +1420,32 @@ def render_invoke(cmd: Command) -> str:
     </section>"""
 
 
+ANNOTATION_PREFIX_RE = re.compile(r"^agents?:\s*")
+ANNOTATION_CONNECTOR_RE = r",\s*(?:or|and)\s*"
+
+
+def annotation_residue(st: Stage) -> str:
+    """The part of a crew annotation the chips can't already say.
+
+    Strips the outer parens, the leading `agent:`/`agents:` scaffolding, and
+    each chip's own codespan (plus one adjacent ", or"/", and" connector, so
+    removing a name doesn't leave a dangling conjunction) — what's left is
+    the genuine qualifier ("fresh pass", "x N, parallel", "for runtime/ops
+    bugs" ...). Empty when the annotation said nothing beyond the names.
+    """
+    inner = st.annotation.strip()
+    if inner.startswith("(") and inner.endswith(")"):
+        inner = inner[1:-1]
+    inner = ANNOTATION_PREFIX_RE.sub("", inner)
+    for name in st.crew:
+        inner = re.sub(
+            rf"(?:{ANNOTATION_CONNECTOR_RE})?`{re.escape(name)}`(?:{ANNOTATION_CONNECTOR_RE})?",
+            " ",
+            inner,
+        )
+    return re.sub(r"\s+", " ", inner).strip(" ,")
+
+
 def render_stage(st: Stage, src: str) -> str:
     """DOM order is visual order: num, title, gate, crew, body. No `order:` shuffling."""
     parts = [
@@ -1435,15 +1461,26 @@ def render_stage(st: Stage, src: str) -> str:
             f"{render_inline(st.gate, src, st.lineno)}</p>"
         )
     if st.crew or st.annotation:
-        # [C-2] the source's own parenthetical is kept verbatim alongside the chips —
-        # it carries detail the extracted crew list cannot ("x N, parallel", "fresh pass").
+        # [C-2] Names live in the chips now, so the source's parenthetical only
+        # earns a place beside them when it says something the chips can't — a
+        # qualifier ("fresh pass", "x N, parallel", "for runtime/ops bugs"). An
+        # annotation that reduces to nothing but the names and the agent:/
+        # agents: scaffolding is dropped instead of repeating the chips in
+        # prose (#136). Annotations with no recognised crew (MODE=pr notes,
+        # "specialist agents, in parallel") have nothing to de-duplicate
+        # against and still render verbatim.
         bits = ["Crew:"]
         bits.extend(
             f'<span class="chip order-stage__crew-item"><code>{esc(name)}</code></span>'
             for name in st.crew
         )
         if st.annotation:
-            bits.append(render_inline(st.annotation, src, st.lineno))
+            if st.crew:
+                residue = annotation_residue(st)
+                if residue:
+                    bits.append(render_inline(f"({residue})", src, st.lineno))
+            else:
+                bits.append(render_inline(st.annotation, src, st.lineno))
         parts.append('  <p class="order-stage__crew">' + " ".join(bits) + "</p>")
     if st.blocks:
         parts.append('  <div class="order-stage__body">')

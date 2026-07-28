@@ -178,7 +178,13 @@ a:hover{ text-decoration-thickness:2px; }
   margin-inline:auto;
   padding-inline:var(--gutter);
 }
-.container--prose{ max-width:var(--maxw-prose); }
+/* margin-inline:auto is redundant when paired with .container (which already
+   centres) but load-bearing when this class is used alone, nested a level
+   deeper, to narrow-and-centre a sub-block without changing its section's own
+   outer container width — e.g. #next/#faq (index.html), so a heading and the
+   prose/list below it share a left edge without pulling that section out of
+   step with its siblings' rhythm (#136). */
+.container--prose{ max-width:var(--maxw-prose); margin-inline:auto; }
 
 /* --- Section rhythm --- */
 .section{ padding-block:var(--section-pad-y); }
@@ -647,6 +653,10 @@ html.js .codeblock__copy{ display:inline-flex; }
   column-gap:var(--space-4);
   row-gap:var(--space-1);
   align-items:start;
+  align-content:start;         /* rows pack at intrinsic size; .how__steps still
+                                   stretches the CARD to row height, but that
+                                   spare height must not leak into num/icon/
+                                   title/desc row gaps (#136) */
   padding:var(--space-5);
   background:var(--surface-2);
   border:1px solid var(--border);
@@ -687,8 +697,12 @@ html.js .codeblock__copy{ display:inline-flex; }
 }
 
 /* --- 5.7 FAQ (§3): native <details>; marker rotates on [open] ---
-   max-width constrains only the list, not the section head, so #faq keeps the
-   same left edge as every other landing section (#130). */
+   max-width alone doesn't centre — a bare .container--prose does, since it now
+   carries its own margin-inline:auto (:187). index.html nests a
+   .container--prose inside #faq's plain .container, wrapping the section head
+   together with this list, so the two share a left edge without narrowing the
+   section's own outer container — that would put #faq out of step with its
+   sibling sections' width (#136, superseding the #130 flush-left rationale). */
 .faq__list{
   display:flex;
   flex-direction:column;
@@ -863,6 +877,9 @@ summary::-webkit-details-marker{ display:none; }
   column-gap:var(--space-4);
   row-gap:var(--space-3);
   align-items:start;
+  align-content:start;         /* same fix as .how-step (#136) — rows pack at
+                                   intrinsic size instead of absorbing spare
+                                   card height into row gaps */
   padding:var(--space-5);
   background:var(--surface-2);
   border:1px solid var(--border);
@@ -947,9 +964,13 @@ summary::-webkit-details-marker{ display:none; }
 /* --- Long-form content inside a stage body. --- */
 /* Markdown can't carry a class per element, so this is the deliberate
    descendant-sprawl exception — one block, every value still a token.
-   max-width keeps the reading measure narrow without narrowing the section
-   head that precedes it (#130) — a no-op where the ancestor container is
-   already container--prose, load-bearing where it is plain .container. */
+   max-width keeps the reading measure narrow; the nearest .container--prose
+   ancestor this sits in — combined with .container right after <section>
+   (generated pages), or nested one level deeper inside a plain .container
+   (landing #next, since #136) — already caps at the same maxw-prose and
+   centres itself, so there is no leftover space here to centre. Nested inside
+   .order-stage__body the available width is already narrower than maxw-prose,
+   so max-width is likewise a no-op there. */
 .order-prose{ min-width:0; max-width:var(--maxw-prose); color:var(--text); }
 .order-prose > * + *{ margin-top:var(--space-3); }   /* single rhythm rule */
 .order-prose ul,
