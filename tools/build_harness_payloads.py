@@ -617,12 +617,21 @@ def main(argv=None) -> int:
         emit_jsonl(result.warnings)
         if result.refusals:
             emit_jsonl(result.refusals)
-            print(
-                f"harnesses/{harness.name}/: refused — {len(result.refusals)} "
-                "safety polic(ies) cannot be honoured; nothing written",
-                file=sys.stderr,
-            )
-            failures += 1
+            if args.check:
+                # Refusal is expected for harnesses the matrix gates — no tree
+                # was committed, so there is nothing to check. Report but don't
+                # fail.
+                print(
+                    f"refused (expected): harnesses/{harness.name}/ — "
+                    f"{len(result.refusals)} safety polic(ies) cannot be honoured"
+                )
+            else:
+                print(
+                    f"harnesses/{harness.name}/: refused — {len(result.refusals)} "
+                    "safety polic(ies) cannot be honoured; nothing written",
+                    file=sys.stderr,
+                )
+                failures += 1
             continue
         hint = (
             f"run: python3 tools/build_harness_payloads.py --target {harness.name} "
