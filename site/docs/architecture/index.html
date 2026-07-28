@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture · Shipmates docs</title>
+  <meta name="description" content="How the skills and agents trees, the capability matrix, the payload generator, and the installer fit together — and the CI gates that keep them honest.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/architecture/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="Architecture — Shipmates docs">
+  <meta property="og:description" content="How the skills and agents trees, the capability matrix, the payload generator, and the installer fit together — and the CI gates that keep them honest.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/architecture/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Architecture — Shipmates docs">
+  <meta name="twitter:description" content="How the skills and agents trees, the capability matrix, the payload generator, and the installer fit together — and the CI gates that keep them honest.">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "Architecture",
+    "description": "How the skills and agents trees, the capability matrix, the payload generator, and the installer fit together — and the CI gates that keep them honest.",
+    "url": "https://saman-mb.github.io/shipmates/docs/architecture/",
+    "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../" aria-current="location">Docs</a></li>
+        </ul>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="architecture-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../"><span aria-hidden="true">←</span> All docs</a>
+        <div class="order-detail">
+          <p class="order-detail__eyebrow"><span aria-hidden="true">🧭</span> Architecture</p>
+          <h1 class="order-detail__title" id="architecture-title">Architecture</h1>
+          <p class="order-detail__tagline">How the matrix, generator, and installer fit together.</p>
+          <p class="order-detail__desc">One canonical source tree, one declarative matrix, one generator, one installer. The rule that keeps them honest: generated trees are committed, and CI fails on drift.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="toc-title">
+      <div class="container container--prose">
+        <nav class="docs-toc" aria-labelledby="toc-title">
+          <h2 id="toc-title">On this page</h2>
+          <ul>
+            <li><a href="#two-trees">The two trees</a></li>
+            <li><a href="#frontmatter">Frontmatter contract</a></li>
+            <li><a href="#matrix">The capability matrix</a></li>
+            <li><a href="#payloads">Payload generation</a></li>
+            <li><a href="#install-flow">Install flow</a></li>
+            <li><a href="#ci-gates">CI gates</a></li>
+          </ul>
+        </nav>
+      </div>
+    </section>
+
+    <section class="section" id="two-trees" aria-labelledby="two-trees-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="two-trees-title">The two trees</h2>
+          <p class="section__lead">The canonical source is Claude Code&#x27;s shape. Everything else is derived.</p>
+        </div>
+        <div class="order-prose">
+          <pre class="order-code" tabindex="0"><code>agents/                      skills/
+  architect.md                 ship-issue/
+  senior-engineer.md             SKILL.md
+  sdet.md                        fix-bug/
+  … (12 personas)                  SKILL.md
+                               … (12 commands)</code></pre>
+          <p><code>agents/*.md</code> are the subagent personas — frontmatter (<code>name</code> / <code>description</code> / <code>tools</code>) plus a system-prompt body. <code>skills/&lt;name&gt;/SKILL.md</code> are the command workflows, in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape. The installer drops both trees into a harness root: <code>agents/</code> lands at <code>&lt;root&gt;/agents/</code>, and each <code>skills/&lt;name&gt;/</code> directory lands at <code>&lt;root&gt;/skills/&lt;name&gt;/</code> — copied whole, so whatever a skill bundles (<code>references/</code>, <code>scripts/</code>, <code>assets/</code>) travels with its <code>SKILL.md</code>.</p>
+          <p>The same split holds on the published site: <code>site/commands/&lt;name&gt;/index.html</code> pages are <strong>generated</strong> from the skills, while these docs pages are hand-authored.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="frontmatter" aria-labelledby="frontmatter-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="frontmatter-title">Frontmatter contract</h2>
+          <p class="section__lead">What a <code>SKILL.md</code> may declare, and in what order.</p>
+        </div>
+        <div class="order-table" tabindex="0">
+          <table>
+            <thead><tr><th scope="col">Key</th><th scope="col">Status</th><th scope="col">Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code></td><td>required, first</td><td>Must equal the parent directory name — the standard&#x27;s rule, and the skill will not resolve without it.</td></tr>
+              <tr><td><code>description</code></td><td>required, second</td><td>What the workflow does; the only other required key.</td></tr>
+              <tr><td><code>argument-hint</code></td><td>vendor extension</td><td>Claude Code extension, not part of the Agent Skills standard — the usage hint shown when you type the command.</td></tr>
+              <tr><td><code>allowed-tools</code></td><td>vendor extension</td><td>Comma-separated in the canonical sources because that is what Claude Code parses; the standard&#x27;s experimental form is space-separated.</td></tr>
+              <tr><td><code>disable-model-invocation</code></td><td>vendor extension</td><td><code>true</code> on all twelve — every command is user-invoked only; the model never loads one on its own.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="order-prose">
+          <p>The standard&#x27;s optional <code>license</code>, <code>compatibility</code>, and <code>metadata</code> keys may appear after the two required ones, in any order. <strong>Unknown keys are rejected</strong>, so a typo fails the gate rather than being silently ignored. In the body, <code>$ARGUMENTS</code> is the only argument placeholder a skill may contain — positional substitution is not in the standard, and <code>tools/validate_skills.py</code> enforces it.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="matrix" aria-labelledby="matrix-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="matrix-title">The capability matrix</h2>
+          <p class="section__lead"><code>tools/harness_matrix.json</code> — the single source of truth for what may leave the repo.</p>
+        </div>
+        <div class="order-prose">
+          <p>The matrix is declarative: <strong>feature × harness → policy</strong>. A top-level <code>harnesses</code> block records whether a target gets an <code>agents/</code> tree at all (today: <code>claude-code</code> and <code>opencode</code> — though opencode&#x27;s payload is refused for a different reason, see below). Under <code>features</code>, each frontmatter key (<code>name</code>, <code>description</code>, <code>license</code>, <code>allowed-tools</code>, <code>disable-model-invocation</code>, <code>tools</code>, <code>model</code>, …) carries an <code>applies_to</code> list (<code>skills</code> / <code>agents</code>) and, per harness, either <code>supported: true</code> — optionally with a <code>separator</code> for list values — or a policy: <code>drop</code>, <code>warn</code>, <code>emulate</code>, or <code>refuse</code>.</p>
+          <p>The matrix itself is validated at load: version, known policies, every feature covering every harness exactly, an <code>emulation</code> note present if and only if the policy is <code>emulate</code>. And the contract cuts both ways — a frontmatter key the matrix does <em>not</em> cover is a hard error, not a silent passthrough. Adding a key to a canonical skill means adding a matrix entry per harness, or the build fails.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="payloads" aria-labelledby="payloads-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="payloads-title">Payload generation</h2>
+          <p class="section__lead"><code>tools/build_harness_payloads.py</code> projects the canonical trees into <code>harnesses/&lt;target&gt;/</code>.</p>
+        </div>
+        <div class="order-prose">
+          <p>For each (feature, target) pair, the matrix entry decides what the generator emits:</p>
+          <ul>
+            <li><strong>supported</strong> — emit the key, respelled if the matrix names a different spelling, and with comma-separated values rewritten to the standard&#x27;s space-separated form when the entry declares <code>separator: &#x22;space&#x22;</code>.</li>
+            <li><strong>drop</strong> — omit the key silently; cosmetic loss only (<code>argument-hint</code> is dropped everywhere but claude-code).</li>
+            <li><strong>warn</strong> — omit the key and print one machine-readable JSON line on stderr recording exactly what was lost.</li>
+            <li><strong>emulate</strong> — omit the key and append a deterministic &#x201C;Harness adaptation&#x201D; section to the body expressing it in prose.</li>
+            <li><strong>refuse</strong> — fail the whole target before anything is written. Reserved for safety properties: every shipped command sets <code>disable-model-invocation: true</code>, and a harness with no equivalent gets no payload rather than an auto-invocable command.</li>
+          </ul>
+          <p>Output is deterministic and committed, matching the repo&#x27;s other generators — regenerate with <code>python3 tools/build_harness_payloads.py</code>, never hand-edit. The <code>claude-code</code> tree is a byte-for-byte mirror of the canonical sources; today it is the only tree under <code>harnesses/</code>, because every other target refuses on <code>disable-model-invocation</code> — see the <a href="../harnesses/">harness matrix</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install-flow" aria-labelledby="install-flow-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="install-flow-title">Install flow</h2>
+          <p class="section__lead"><code>install.sh --harness</code> consumes the generated tree, never the canonical one.</p>
+        </div>
+        <div class="order-prose">
+          <p>With <code>--harness &lt;name&gt;</code>, the payload comes from <code>harnesses/&lt;name&gt;/</code> — the matrix-generated, transformed tree — not from <code>skills/</code> + <code>agents/</code>. A missing tree means the matrix refused to build it, and the installer refuses too: <code>Shipmates: no payload for &#x27;&lt;name&gt;&#x27; — the capability matrix refused to build one</code>. The gate runs <strong>before any directory is created</strong>, so a refused harness fails without touching the filesystem.</p>
+          <p>No <code>--harness</code> is one implicit <code>claude-code</code> run, byte-identical to a pre-harness install (<code>claude-code</code> is the exception that reads the canonical tree, since its generated tree is identical anyway). <code>--harness all</code> expands to every known harness; the flag is repeatable and dedupes; unknown names are a hard error listing the known ones. Every harness root gets its own manifest, so <code>--uninstall</code> works per harness. Subagents ship for <code>claude-code</code> only — no other harness documents a compatible subagent directory for the frontmatter format Shipmates ships, so those targets get a skip note instead of files they may mishandle.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="ci-gates" aria-labelledby="ci-gates-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="ci-gates-title">CI gates</h2>
+          <p class="section__lead">The <code>Validate site</code> job in <code>pages.yml</code> gates every PR; deploy runs only on pushes to <code>main</code>.</p>
+        </div>
+        <div class="order-prose">
+          <p>The job gates the sources (<code>skills/</code>) and the site built from them, in that order — a bad <code>SKILL.md</code> is reported against the file someone edited, not against a derived page:</p>
+          <ol>
+            <li><code>python3 tools/validate_skills.py</code> — the frontmatter contract and the <code>$ARGUMENTS</code> rule.</li>
+            <li><code>python3 tools/validate_skill_names.py --check</code> — skill names must not collide with harness built-ins.</li>
+            <li><code>python3 tools/gen_command_pages.py --check</code> — the generated command pages (and sitemap) are up to date.</li>
+            <li><code>python3 tools/build_harness_payloads.py --check</code> — the committed <code>harnesses/</code> trees match what the matrix would generate.</li>
+            <li><code>python3 .github/scripts/validate_site.py</code> — the static site: one <code>&lt;h1&gt;</code> per page, heading outlines, self-containment, local refs, SEO metadata, JSON-LD, page and docs coverage, and the sitemap.</li>
+            <li>An executable-bit check on <code>install.sh</code>, so the piped-to-Bash entry point never loses its mode.</li>
+          </ol>
+          <p>The <code>--check</code> steps are drift detectors: they regenerate in memory and fail on any difference, so a hand-edited generated file — a command page or a harness payload — cannot merge.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="more-docs-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="more-docs-title">More docs</h2>
+        </div>
+        <nav class="order-siblings" aria-label="More docs">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../install/">Install reference</a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../harnesses/">Harness matrix</a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../troubleshooting/">Troubleshooting</a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page">Architecture<span class="visually-hidden"> (current page)</span></span></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../"><span aria-hidden="true">←</span> All docs</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — on Claude Code today.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../">Docs</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>
