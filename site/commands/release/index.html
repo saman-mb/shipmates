@@ -165,7 +165,7 @@
           <li class="order-stage" id="stage-1">
             <span class="order-stage__num" aria-hidden="true">1</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Changelog</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>technical-writer</code></span> (agent: <code>technical-writer</code>)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>technical-writer</code></span></p>
             <div class="order-stage__body">
               <div class="order-prose">
                 <p>Spawn the <code>technical-writer</code> to draft release notes from the actual merged changes — grouped (Added / Changed / Fixed / Removed / Security), written for the reader, <strong>every user-visible change covered</strong>, and <strong>breaking changes called out with the upgrade path</strong>. It writes to the repo&#x27;s changelog format. Cross-check: no merged user-facing PR is missing from the notes.</p>
@@ -194,7 +194,7 @@
           <li class="order-stage" id="stage-4">
             <span class="order-stage__num" aria-hidden="true">4</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>SRE pre-flight</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> (agent: <code>site-reliability-engineer</code>)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span></p>
             <div class="order-stage__body">
               <div class="order-prose">
                 <p>Before tagging, spawn the <code>site-reliability-engineer</code> to confirm the release is <strong>safe to roll out and to roll back</strong>: any DB/data migrations are backward-compatible (expand/contract, not destructive-in-place), there&#x27;s a rollback path, config/secrets needed by the new version are documented, and no change silently breaks a running deployment. A one-way, unrecoverable release is a <strong>blocking</strong> finding unless justified.</p>

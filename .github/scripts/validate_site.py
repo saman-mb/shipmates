@@ -646,13 +646,46 @@ def _tokens(s: str) -> str:
     return " ".join(re.sub(r"[*`#>]", " ", s).split())
 
 
-def _needles(raw: str, in_fence: bool) -> list[str]:
+_ANNOTATION_PREFIX = re.compile(r"^agents?:\s*")
+_ANNOTATION_CONNECTOR = r",\s*(?:or|and)\s*"
+
+
+def _crew_annotation_needles(paren: str, agents: list[str]) -> list[str]:
+    """Independent re-derivation of the chip/annotation split tools/gen_command_pages.py
+    renders (#136): a name that moved into its own chip no longer needs the whole
+    parenthetical repeated verbatim — only the codespan itself (still required,
+    now via the chip) and whatever qualifier survives stripping the names and the
+    agent:/agents: scaffolding. An annotation with no recognised name (MODE=pr
+    notes, "specialist agents") is untouched — the renderer keeps it verbatim too.
+    """
+    names = [name for name in agents if f"`{name}`" in paren]
+    if not names:
+        return [paren]
+    inner = paren.strip()
+    if inner.startswith("(") and inner.endswith(")"):
+        inner = inner[1:-1]
+    inner = _ANNOTATION_PREFIX.sub("", inner)
+    for name in names:
+        inner = re.sub(
+            rf"(?:{_ANNOTATION_CONNECTOR})?`{re.escape(name)}`(?:{_ANNOTATION_CONNECTOR})?",
+            " ",
+            inner,
+        )
+    residue = re.sub(r"\s+", " ", inner).strip(" ,")
+    out = [f"`{name}`" for name in names]
+    if residue:
+        out.append(f"({residue})")
+    return out
+
+
+def _needles(raw: str, in_fence: bool, agents: list[str]) -> list[str]:
     """The plain-text fragments one source line must contribute to the page.
 
     A stage heading is checked piecewise, not contiguously, because the
     renderer deliberately relocates two of its parts: the ⛔ gate text moves
     into .order-stage__gate and the trailing crew parenthetical into
-    .order-stage__crew.
+    .order-stage__crew — itself split further into chips plus qualifier, see
+    _crew_annotation_needles.
     """
     if in_fence:
         return [raw]
@@ -662,13 +695,13 @@ def _needles(raw: str, in_fence: bool) -> list[str]:
         out: list[str] = []
         hit = _TRAILING_PAREN.search(rest)
         if hit:
-            out.append(hit.group(0))
+            out.extend(_crew_annotation_needles(hit.group(0), agents))
             rest = rest[: hit.start()]
         head, mark, gate = rest.partition("⛔")
         if mark:
             hit = _TRAILING_PAREN.search(gate)
             if hit:
-                out.append(hit.group(0))
+                out.extend(_crew_annotation_needles(hit.group(0), agents))
                 gate = gate[: hit.start()]
             out.append(gate)
         out.append(head)
@@ -681,6 +714,7 @@ def check_fidelity(page: Page, src: Path) -> None:
     """C8: no sentence on the page that is not in skills/<slug>/SKILL.md, and no
     line of skills/<slug>/SKILL.md that is missing from the page."""
     prose = " " + _tokens("".join(page.collector.flow)) + " "
+    agents = crew_roles()
     lines = src.read_text(encoding="utf-8").split("\n")
     try:
         start = lines.index("---", 1) + 1
@@ -700,7 +734,7 @@ def check_fidelity(page: Page, src: Path) -> None:
             continue
         if not in_fence and _DELIMITER_ROW.fullmatch(s):
             continue  # GFM table delimiter row is syntax, not prose
-        for needle in (_tokens(n) for n in _needles(raw, in_fence)):
+        for needle in (_tokens(n) for n in _needles(raw, in_fence, agents)):
             if needle and f" {needle} " not in prose:
                 missing.append(f"skills/{page.slug}/SKILL.md:{lineno}: {needle[:70]!r}")
 
