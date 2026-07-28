@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>site-reliability-engineer — Reliability, failure modes, rollback safety — and bug root-cause. · Shipmates</title>
+  <meta name="description" content="SRE for reliability review, incident root-cause, and safe-delivery checks on any system — failure modes, observability, idempotency, rollback, and deploy…">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/agents/site-reliability-engineer/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="site-reliability-engineer — Reliability, failure modes, rollback safety — and bug root-cause.">
+  <meta property="og:description" content="SRE for reliability review, incident root-cause, and safe-delivery checks on any system — failure modes, observability, idempotency, rollback, and deploy…">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/agents/site-reliability-engineer/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="site-reliability-engineer — Reliability, failure modes, rollback safety — and bug root-cause.">
+  <meta name="twitter:description" content="SRE for reliability review, incident root-cause, and safe-delivery checks on any system — failure modes, observability, idempotency, rollback, and deploy…">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "site-reliability-engineer",
+    "description": "SRE for reliability review, incident root-cause, and safe-delivery checks on any system — failure modes, observability, idempotency, rollback, and deploy safety. Use to reproduce and root-cause a defect/incident, and to review whether a change is safe to run in production.",
+    "url": "https://saman-mb.github.io/shipmates/agents/site-reliability-engineer/",
+    "isPartOf": {
+      "@type": "CollectionPage",
+      "url": "https://saman-mb.github.io/shipmates/#crew"
+    }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+        </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="../../#install">Install</a>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../../#crew"><span aria-hidden="true">←</span> All crew</a>
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">🧭</span> Subagent</p>
+          <h1 class="order-detail__title" id="order-title"><code>site-reliability-engineer</code></h1>
+          <p class="order-detail__tagline">Reliability, failure modes, rollback safety — and bug root-cause.</p>
+          <p class="order-detail__desc">SRE for reliability review, incident root-cause, and safe-delivery checks on any system — failure modes, observability, idempotency, rollback, and deploy safety. Use to reproduce and root-cause a defect/incident, and to review whether a change is safe to run in production.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="what" aria-labelledby="what-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="what-title">What this agent does</h2>
+        </div>
+        <div class="order-prose">
+          <p>The site reliability engineer judges a change by how it behaves when things go wrong, not just on the happy path. It is also the crew&#x27;s root-cause specialist: reproduce the failure deterministically, work back to the mechanism, then specify the minimal fix and the regression check that would have caught it.</p>
+          <p>On review it walks the failure surface — timeouts and retries, idempotency, observability, and whether the rollout can be undone. Findings are ranked by severity, with blockers like data loss, no rollback path, or unbounded failure separated from nits.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="scenarios" aria-labelledby="scenarios-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="scenarios-title">When you&#x27;d want it</h2>
+        </div>
+        <div class="agent-scenarios">
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">A bug needs a real cause</h3>
+            <p class="agent-scenario__desc">The SRE finds the smallest input that triggers the failure, names the mechanism, and hands back the minimal fix plus the regression check — blameless, fix once.</p>
+          </div>
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">A change is going to production</h3>
+            <p class="agent-scenario__desc">Failure modes, rollback safety, and migration compatibility get reviewed before deploy; a one-way, irreversible deploy is a blocking concern unless justified.</p>
+          </div>
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">Something wakes people up</h3>
+            <p class="agent-scenario__desc">Toil and unobservable systems get flagged: if it can&#x27;t be diagnosed at 3am from what it emits, it can&#x27;t be operated.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="checks" aria-labelledby="checks-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="checks-title">What it checks</h2>
+        </div>
+        <div class="order-prose">
+          <ul>
+            <li><strong>Reproduction.</strong> The smallest input or state that triggers the failure, captured deterministically — no reproduction, no confirmed root cause.</li>
+            <li><strong>Root cause.</strong> Work backwards from the failure with logs, traces, and bisection until the actual defect is named, not the place it surfaced.</li>
+            <li><strong>Failure modes.</strong> Slow or dead dependencies, malformed input, full disks, and mid-operation crashes — every remote call gets a timeout and sane retries.</li>
+            <li><strong>Idempotency.</strong> Running twice — retry, redelivery, restart — must not double-apply; partial failures left recoverable, resources bounded.</li>
+            <li><strong>Observability.</strong> Meaningful logs, metrics, and traces at the right boundaries, with no secrets in them — diagnosable at 3am.</li>
+            <li><strong>Safe delivery.</strong> A rollback path, backward-compatible migrations, and flag or canary guards — irreversible deploys blocked unless justified.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="crew-fit" aria-labelledby="crew-fit-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="crew-fit-title">How it fits the crew</h2>
+        </div>
+        <div class="order-prose">
+          <p>On <code>/fix-bug</code> the SRE owns the root cause and hands the <code>senior-engineer</code> the minimal fix and its regression check; the <code>sdet</code> then proves the fix. On <code>/release</code> it gates deploy safety. Build-time questions — pipelines, caching, pinning — belong to the <code>devops-engineer</code>, and the SRE defers there explicitly.</p>
+        </div>
+        <p class="order-stage__crew">Related roles: <a class="chip order-stage__crew-item" href="../senior-engineer/"><code>senior-engineer</code></a> <a class="chip order-stage__crew-item" href="../sdet/"><code>sdet</code></a> <a class="chip order-stage__crew-item" href="../devops-engineer/"><code>devops-engineer</code></a></p>
+        <p class="order-stage__crew">Called in by: <a class="chip order-stage__crew-item" href="../../commands/ship-issue/"><code>/ship-issue</code></a> <a class="chip order-stage__crew-item" href="../../commands/fix-bug/"><code>/fix-bug</code></a> <a class="chip order-stage__crew-item" href="../../commands/release/"><code>/release</code></a> <a class="chip order-stage__crew-item" href="../../commands/pr-review/"><code>/pr-review</code></a></p>
+      </div>
+    </section>
+
+    <section class="section" id="reference" aria-labelledby="reference-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="reference-title">Reference</h2>
+        </div>
+        <dl class="agent-ref">
+          <dt>Name</dt>
+          <dd><code>site-reliability-engineer</code></dd>
+          <dt>Description</dt>
+          <dd>SRE for reliability review, incident root-cause, and safe-delivery checks on any system — failure modes, observability, idempotency, rollback, and deploy safety. Use to reproduce and root-cause a defect/incident, and to review whether a change is safe to run in production.</dd>
+          <dt>Tools</dt>
+          <dd><code>Read</code>, <code>Grep</code>, <code>Glob</code>, <code>Bash</code></dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>agents/site-reliability-engineer.md</code>. The installer copies it to <code>~/.claude/agents/site-reliability-engineer.md</code> for every project, or <code>.claude/agents/site-reliability-engineer.md</code> inside a single repo.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/agents/site-reliability-engineer.md">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>View agents/site-reliability-engineer.md on GitHub</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="other-agents" aria-labelledby="other-agents-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-agents-title">Other agents</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other agents">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../architect/"><code>architect</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../senior-engineer/"><code>senior-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../sdet/"><code>sdet</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../security-engineer/"><code>security-engineer</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>site-reliability-engineer</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../performance-engineer/"><code>performance-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../devops-engineer/"><code>devops-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../product-manager/"><code>product-manager</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../ux-ui-designer/"><code>ux-ui-designer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../art-director/"><code>art-director</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../technical-writer/"><code>technical-writer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../data-scientist/"><code>data-scientist</code></a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../../#crew"><span aria-hidden="true">←</span> All crew</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — on Claude Code today.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -17,6 +17,12 @@ The docs section (site/docs/index.html plus one leaf per DOCS_SLUGS) is
 hand-maintained: every slug must have a page, the hub is a CollectionPage and
 each leaf a TechArticle, and every docs page links back to its parent.
 
+The crew section (site/agents/<role>/index.html) carries one page per
+agents/*.md file: a TechArticle with a back-link to the homepage crew grid,
+the four required section anchors, a reference card whose values match the
+agent's frontmatter, and prose that paraphrases rather than lifts the persona
+body verbatim.
+
 Exit 0 = all green; exit 1 = one or more failures (printed)."""
 
 from __future__ import annotations
@@ -54,6 +60,12 @@ DOCS_LEAF_BACK_HREF = "../"
 # is missing (the hub is checked separately in check_docs_coverage).
 DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture")
 
+# One published detail page per agents/*.md — the filename is the role handle.
+AGENT_SLUGS = tuple(p.stem for p in sorted(CREW.glob("*.md")))
+AGENT_BACK_HREF = "../../#crew"
+# Section anchors every agent page must carry.
+AGENT_SECTIONS = ("scenarios", "checks", "crew-fit", "reference")
+
 # C3 — every class the generator emits on a detail page (plus the two the
 # homepage order cards gained) must have a rule in styles.css.
 C3_CLASSES = (
@@ -69,6 +81,10 @@ C3_CLASSES = (
     "order-siblings", "order-siblings__list", "order-siblings__item",
     "order-siblings__link", "order-siblings__link--current",
     "order-card__link", "order-card__more",
+    "agent-scenarios", "agent-scenario", "agent-scenario__title",
+    "agent-scenario__desc",
+    "agent-ref",
+    "crew-card__link", "crew-card__more",
 )
 
 # Markdown markers that must never survive tokenization into rendered text.
@@ -224,6 +240,8 @@ def discover_pages(site: Path) -> list[Page]:
     if (docs / "index.html").is_file():
         paths.append(docs / "index.html")
     paths += sorted(p for p in docs.glob("*/index.html") if p.is_file())
+    agents = site / "agents"
+    paths += sorted(p for p in agents.glob("*/index.html") if p.is_file())
     return [load_page(p) for p in paths]
 
 
@@ -414,6 +432,18 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
             f"{page.rel}: order-card__link: found {n_links}, expected one per order-card "
             f"({n_cards}) and one per skills/*/SKILL.md ({n_commands}) — a card with no link "
             "strands its detail page"
+        )
+
+    # --- every crew card links to its agent page (same tripwire as the order cards) ---
+    n_crew = counts["crew-card"][0]
+    n_crew_links = page.collector.classes.count("crew-card__link")
+    if n_crew_links == n_crew == len(crew_roles()):
+        ok(f"{page.rel}: crew-card__link: {n_crew_links} (one per card)")
+    else:
+        fail(
+            f"{page.rel}: crew-card__link: found {n_crew_links}, expected one per crew-card "
+            f"({n_crew}) and one per agents/*.md ({len(crew_roles())}) — a card with no link "
+            "strands its agent page"
         )
 
     # --- crew cards name real roles, not merely the right number of them ---
@@ -747,6 +777,114 @@ def check_fidelity(page: Page, src: Path) -> None:
         ok(f"{page.rel}: every line of skills/{page.slug}/SKILL.md appears verbatim in the page")
 
 
+# --- agent detail pages ----------------------------------------------------
+
+_PUNCT_SPACE = re.compile(r"\s+([,.;:!?])")
+
+
+def _prose_norm(s: str) -> str:
+    """_tokens plus punctuation tightening, so a value split across inline tags
+    ("Read</code>, <code>Grep") still matches its single-string source."""
+    return _PUNCT_SPACE.sub(r"\1", _tokens(s))
+
+
+def agent_frontmatter(src: Path) -> dict[str, str]:
+    """The flat key: value pairs of an agents/*.md frontmatter block."""
+    lines = src.read_text(encoding="utf-8").split("\n")
+    try:
+        end = lines.index("---", 1)
+    except ValueError:
+        return {}
+    out: dict[str, str] = {}
+    for line in lines[1:end]:
+        key, sep, value = line.partition(":")
+        if sep:
+            out[key.strip()] = value.strip()
+    return out
+
+
+def check_agent_page(page: Page) -> None:
+    role = page.slug
+    src = CREW / f"{role}.md"
+
+    # --- back-navigation to the crew grid on the homepage ---
+    if any(a.get("href") == AGENT_BACK_HREF for _t, a in page.collector.refs):
+        ok(f"{page.rel}: back link to {AGENT_BACK_HREF}")
+    else:
+        fail(f"{page.rel}: no back-navigation link (expected an href of {AGENT_BACK_HREF!r})")
+
+    # --- required section anchors ---
+    ids = set(page.collector.ids)
+    absent = [s for s in AGENT_SECTIONS if s not in ids]
+    if absent:
+        fail(f"{page.rel}: missing section id(s): {', '.join('#' + s for s in absent)}")
+    else:
+        ok(f"{page.rel}: all {len(AGENT_SECTIONS)} required section ids present")
+
+    if not src.is_file():
+        return  # coverage check already reported the orphan
+    check_agent_reference(page, src)
+    check_agent_inverse_fidelity(page, src)
+
+
+def check_agent_reference(page: Page, src: Path) -> None:
+    """The reference card restates the persona frontmatter: name, description, tools."""
+    front = agent_frontmatter(src)
+    if not front:
+        fail(f"{src.relative_to(ROOT).as_posix()}: no closing frontmatter '---' — cannot audit the reference card")
+        return
+    prose = " " + _prose_norm("".join(page.collector.flow)) + " "
+    missing = []
+    for key in ("name", "description", "tools"):
+        value = front.get(key, "")
+        if not value:
+            missing.append(f"agents/{page.slug}.md: frontmatter has no '{key}:'")
+            continue
+        if f" {_prose_norm(value)} " not in prose:
+            missing.append(f"frontmatter '{key}' value not found in the page — {value[:70]!r}")
+    if missing:
+        for m in missing:
+            fail(f"{page.rel}: reference card mismatch — {m}")
+    else:
+        ok(f"{page.rel}: reference card matches agents/{page.slug}.md frontmatter (name, description, tools)")
+
+
+def check_agent_inverse_fidelity(page: Page, src: Path) -> None:
+    """The inverse of the command-page fidelity rule: an agent page paraphrases
+    its persona, so no body line of agents/<role>.md may survive verbatim into
+    the page prose (frontmatter is exempt — the reference card restates it)."""
+    prose = " " + _prose_norm("".join(page.collector.flow)) + " "
+    lines = src.read_text(encoding="utf-8").split("\n")
+    try:
+        start = lines.index("---", 1) + 1
+    except ValueError:
+        return  # check_agent_reference already failed on this
+
+    leaked: list[str] = []
+    in_fence = False
+    for offset, raw in enumerate(lines[start:]):
+        lineno = start + offset + 1
+        s = raw.strip()
+        if s.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not s or in_fence:
+            continue
+        needle = _prose_norm(re.sub(r"^([-*]|\d+\.)\s+", "", s))
+        if len(needle) < 20:
+            continue  # too short to prove a lift rather than a coincidence
+        if f" {needle} " in prose:
+            leaked.append(f"agents/{page.slug}.md:{lineno}: {needle[:70]!r}")
+
+    if leaked:
+        for line in leaked[:5]:
+            fail(f"{page.rel}: persona body line appears verbatim in the page — {line}")
+        if len(leaked) > 5:
+            fail(f"{page.rel}: … and {len(leaked) - 5} more lifted line(s)")
+    else:
+        ok(f"{page.rel}: no body line of agents/{page.slug}.md appears verbatim in the page")
+
+
 # --- whole-site checks -----------------------------------------------------
 
 
@@ -768,6 +906,25 @@ def check_coverage(pages: list[Page], slugs: list[str]) -> None:
             )
     if len(published) == len(slugs) and all(s in published for s in slugs):
         ok(f"page coverage: {len(slugs)} command(s) in skills/, {len(published)} published")
+
+
+def check_agent_coverage(pages: list[Page]) -> None:
+    """One published page per agents/*.md, and no agent page without a source."""
+    published = {p.slug: p for p in pages if p.path.parent.parent.name == "agents"}
+    for slug in AGENT_SLUGS:
+        if slug not in published:
+            fail(
+                f"no published page for agents/{slug}.md — expected "
+                f"site/agents/{slug}/index.html"
+            )
+    for slug in sorted(published):
+        if slug not in AGENT_SLUGS:
+            fail(
+                f"site/agents/{slug}/index.html has no source agents/{slug}.md "
+                "(renamed or removed a crew role? delete the stale page)"
+            )
+    if len(published) == len(AGENT_SLUGS) and all(s in published for s in AGENT_SLUGS):
+        ok(f"agent coverage: {len(AGENT_SLUGS)} role(s) in agents/, {len(published)} published")
 
 
 def check_docs_coverage(pages: list[Page]) -> None:
@@ -836,7 +993,7 @@ def check_css(css: str) -> None:
         ok(f"all {len(C3_CLASSES)} detail-page class(es) styled")
 
 
-def check_sitemap(pages: list[Page], n_commands: int, n_docs: int) -> None:
+def check_sitemap(pages: list[Page], n_commands: int, n_docs: int, n_agents: int) -> None:
     if not SITEMAP.is_file():
         fail(f"missing {SITEMAP.relative_to(ROOT).as_posix()}")
         return
@@ -869,11 +1026,11 @@ def check_sitemap(pages: list[Page], n_commands: int, n_docs: int) -> None:
         if lastmod is None or not LASTMOD_RE.match(lastmod.strip()):
             fail(f"sitemap.xml: {loc} has no valid <lastmod> (YYYY-MM-DD), got {lastmod!r}")
 
-    want = 1 + n_commands + n_docs
+    want = 1 + n_commands + n_docs + n_agents
     if len(entries) != want:
         fail(
             f"sitemap.xml: {len(entries)} <url> entries, expected {want} "
-            "(homepage + one per command + docs hub and leaves)"
+            "(homepage + one per command + docs hub and leaves + one per agent)"
         )
     if len(failures) == before:
         ok(f"sitemap.xml: {len(entries)} URLs, all resolve to a page and carry a lastmod")
@@ -900,6 +1057,8 @@ def main() -> int:
     docs_hub = [p for p in pages if p.path.parent.name == "docs"]
     docs_leaves = [p for p in pages if p.path.parent.parent.name == "docs"]
     n_docs = len(docs_hub) + len(docs_leaves)
+    agent_pages = [p for p in pages if p.path.parent.parent.name == "agents"]
+    n_agents = len(AGENT_SLUGS)
 
     check_page_common(homepage, expect_ldjson_type="SoftwareApplication")
     check_homepage(homepage, css, n_commands)
@@ -916,11 +1075,16 @@ def main() -> int:
         check_page_common(page, expect_ldjson_type="TechArticle")
         check_docs_leaf_page(page)
 
+    for page in agent_pages:
+        check_page_common(page, expect_ldjson_type="TechArticle")
+        check_agent_page(page)
+
     check_coverage(pages, slugs)
     check_docs_coverage(pages)
+    check_agent_coverage(pages)
     check_uniqueness(pages)
     check_css(css)
-    check_sitemap(pages, n_commands, n_docs)
+    check_sitemap(pages, n_commands, n_docs, n_agents)
 
     return report()
 
