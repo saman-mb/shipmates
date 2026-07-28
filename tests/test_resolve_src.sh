@@ -69,7 +69,11 @@ assert "piped: install dir NOT created by decoy" test ! -d "$WORK/case1"
 # --- Case 2: positive control — real checkout installs offline ---
 
 rm -f "$CURL_LOG"
-bash "$INSTALLER" --dir "$WORK/case2" >/dev/null 2>&1
+# Capture the status: the assertions below check side effects, and a partial or
+# late failure that still wrote files would otherwise pass unnoticed.
+checkout_rc=0
+bash "$INSTALLER" --dir "$WORK/case2" >/dev/null 2>&1 || checkout_rc=$?
+assert "checkout: installer exits 0" test "$checkout_rc" -eq 0
 assert "checkout: no curl call (offline)" test ! -s "$CURL_LOG"
 assert "checkout: skills installed" test -f "$WORK/case2/skills/ship-issue/SKILL.md"
 assert "checkout: agents installed" test -f "$WORK/case2/agents/sdet.md"
