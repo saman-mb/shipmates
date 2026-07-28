@@ -45,6 +45,7 @@
           <li class="site-nav__item"><a class="site-nav__link" href="#how">How</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#next">What's next</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#faq">FAQ</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="docs/">Docs</a></li>
         </ul>
         <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -116,7 +117,7 @@
             </div>
           </div>
         </div>
-        <p class="install__note">Prefer to read the script first? Clone the repo and run ./install.sh — same flags. It backs up any file it would overwrite, and --uninstall removes what it installed.</p>
+        <p class="install__note">Prefer to read the script first? See the <a href="docs/install/">full install reference</a> for all flags and per-harness paths. Clone the repo and run ./install.sh — same flags. It backs up any file it would overwrite, and --uninstall removes what it installed.</p>
         <p class="visually-hidden" aria-live="polite" data-copy-status></p>
       </div>
     </section>
@@ -420,6 +421,15 @@
               <p>No. Install once, then /ship-issue 42. The crew picks up your project's quality bar automatically. In Claude Code, a project-level .claude/agents/ definition overrides the global one when you want to specialise a crew member — skills go the other way, so a personal ~/.claude/skills/ copy beats a project one of the same name.</p>
             </div>
           </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span class="faq__q-text">Where are the full install docs?</span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p>The <a href="docs/install/">install reference</a> covers every flag and path. See also the <a href="docs/harnesses/">harness matrix</a>, <a href="docs/troubleshooting/">troubleshooting</a>, and <a href="docs/architecture/">architecture</a> pages.</p>
+            </div>
+          </details>
         </div>
       </div>
     </section>
@@ -439,6 +449,7 @@
           <li><a href="#install">Install</a></li>
           <li><a href="#crew">Crew</a></li>
           <li><a href="#commands">Commands</a></li>
+          <li><a href="docs/">Docs</a></li>
           <li><a href="#next">What's next</a></li>
           <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
           <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>

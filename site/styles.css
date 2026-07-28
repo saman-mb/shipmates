@@ -1017,6 +1017,37 @@ summary::-webkit-details-marker{ display:none; }
   background:var(--surface);
 }
 
+/* --- 5.10 Docs ---
+   Hand-authored reference pages under site/docs/. One component so far: the
+   "On this page" table-of-contents card atop the long reference leaves. */
+.docs-toc{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  padding:var(--space-4);
+  margin-bottom:var(--space-6);
+}
+.docs-toc h2{
+  font-size:var(--fs-500);
+  font-weight:600;
+  margin:0 0 var(--space-3);
+}
+.docs-toc ul{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-wrap:wrap;
+  gap:var(--space-2);
+}
+.docs-toc a{
+  color:var(--accent-strong);
+  text-decoration:none;
+}
+.docs-toc a:hover{
+  text-decoration:underline;
+}
+
 
 /* =============================================================================
    6. RESPONSIVE — mobile-first; breakpoints sm 480 · md 640 · lg 900 · xl 1120
