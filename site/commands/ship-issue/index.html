@@ -200,7 +200,7 @@
                           <li><code>IS_UI_STORY = yes/no</code> — does it create/modify on-screen UI (screens, HUD, panels, overlays, menus, components, styling)? Gates <code>ux-ui-designer</code>.</li>
                           <li><code>IS_VISUAL_STORY = yes/no</code> — gate the <code>art-director</code> on the PROJECT&#x27;S DOMAIN, not merely on whether a story touches pixels. Set it only when the project&#x27;s actual deliverable is rendered visual <em>art</em> — a game&#x27;s world/sprites/shaders, illustration/brand/motion assets, generative imagery — and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only visual surface is its interface is a <strong>UI</strong> story (<code>ux-ui-designer</code>), NOT an art story: the art-director reviews pictures judged <em>as art</em>, not application chrome. Most projects never set this — when in doubt, prefer <code>IS_UI_STORY</code> and leave the art-director out.</li>
                           <li><code>IS_ARCH_SIGNIFICANT = yes/no</code> — does it add a new subsystem, change a persisted data/schema format, or cross-cut many modules in a way a narrow code review would miss? Gates <code>architect</code>.</li>
-                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>. This flag vocabulary is shared with <code>/review</code>, which classifies a PR diff the same way — a new flag must be added to both files.</li>
+                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>. This flag vocabulary is shared with <code>/pr-review</code>, which classifies a PR diff the same way — a new flag must be added to both files.</li>
                         </ul>
                       </li>
                     </ul>
@@ -460,7 +460,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li class="order-siblings__item"><a class="order-siblings__link" href="../document/"><code>/document</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../release/"><code>/release</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../polish/"><code>/polish</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../review/"><code>/review</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../pr-review/"><code>/pr-review</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../onboard/"><code>/onboard</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../refactor/"><code>/refactor</code></a></li>
           </ul>

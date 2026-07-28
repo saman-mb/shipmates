@@ -73,12 +73,12 @@ from anything hardcoded into the role.
 | `/document <target>` | Writes docs from the real code, gated on a *fresh reader* actually completing the steps |
 | `/release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
 | `/polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
-| `/review <pr>` | Runs the board against a PR the crew didn't author — read-only, it reports and never repairs |
+| `/pr-review <pr>` | Runs the board against a PR the crew didn't author — read-only, it reports and never repairs |
 | `/onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
-worktree, and hands you a pull request — your checkout is left as you left it. `/review` and
+worktree, and hands you a pull request — your checkout is left as you left it. `/pr-review` and
 `/harden`'s default `report` mode write nothing at all. Writing straight into the working tree is
 opt-in (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 

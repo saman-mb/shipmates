@@ -91,7 +91,7 @@ and note the fallback in the final report — never silently skip a gated review
      - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
        or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
        infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
-   This flag vocabulary is shared with `/review`, which classifies a PR diff the same way — a new flag
+   This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
    must be added to both files.
 3. If the plan reveals the issue is too big/ambiguous to finish autonomously, stop and tell the user
    what's blocking — otherwise continue.

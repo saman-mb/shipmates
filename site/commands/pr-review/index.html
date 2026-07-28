@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>/review — classify → convene the board → consolidate · Shipmates</title>
+  <title>/pr-review — classify → convene the board → consolidate · Shipmates</title>
   <meta name="description" content="Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one…">
-  <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/review/">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/pr-review/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
-  <meta property="og:title" content="/review — classify → convene the board → consolidate">
+  <meta property="og:title" content="/pr-review — classify → convene the board → consolidate">
   <meta property="og:description" content="Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one…">
-  <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/review/">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/pr-review/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="/review — classify → convene the board → consolidate">
+  <meta name="twitter:title" content="/pr-review — classify → convene the board → consolidate">
   <meta name="twitter:description" content="Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
@@ -28,44 +28,44 @@
   {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    "name": "/review",
+    "name": "/pr-review",
     "description": "Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.",
-    "url": "https://saman-mb.github.io/shipmates/commands/review/",
+    "url": "https://saman-mb.github.io/shipmates/commands/pr-review/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Intake & classify",
         "text": "Pull the change itself, not a description of it:",
-        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-0"
+        "url": "https://saman-mb.github.io/shipmates/commands/pr-review/#stage-0"
       },
       {
         "@type": "HowToStep",
         "position": 2,
         "name": "Stage 1 — CI state (read it, don't fix it)",
         "text": "Report what CI says; never try to repair it. You cannot push to a fork, and pushing to a colleague's branch uninvited is rude at best. Red CI is a finding, recorded with the failing job and a link — not a loop. If checks are still pending, say so and review the diff on its merits, flagging that…",
-        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-1"
+        "url": "https://saman-mb.github.io/shipmates/commands/pr-review/#stage-1"
       },
       {
         "@type": "HowToStep",
         "position": 3,
         "name": "Stage 2 — The board",
         "text": "Spawn these in a single message so they run concurrently, each pinned to the head commit so they review exactly what would merge. Two always run; the rest only when their flag is set:",
-        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-2"
+        "url": "https://saman-mb.github.io/shipmates/commands/pr-review/#stage-2"
       },
       {
         "@type": "HowToStep",
         "position": 4,
         "name": "Stage 3 — Consolidate",
         "text": "You synthesise; don't delegate it. Merge the reports, dedupe findings several reviewers raised, and rank them: blocking (correctness, security, data loss, a criterion the PR itself claims and misses) above nits (style, naming, taste). Attribute each finding to the role that raised it so the author…",
-        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-3"
+        "url": "https://saman-mb.github.io/shipmates/commands/pr-review/#stage-3"
       },
       {
         "@type": "HowToStep",
         "position": 5,
         "name": "Stage 4 — Deliver",
         "text": "Return the consolidated review. If MODE=post, publish it:",
-        "url": "https://saman-mb.github.io/shipmates/commands/review/#stage-4"
+        "url": "https://saman-mb.github.io/shipmates/commands/pr-review/#stage-4"
       }
     ]
   }
@@ -104,7 +104,7 @@
         <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>
         <div class="order-detail">
           <p class="order-detail__eyebrow"><span aria-hidden="true">📜</span> Command</p>
-          <h1 class="order-detail__title" id="order-title"><code>/review</code></h1>
+          <h1 class="order-detail__title" id="order-title"><code>/pr-review</code></h1>
           <p class="order-detail__tagline">classify → convene the board → consolidate</p>
           <p class="order-detail__desc">Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.</p>
           <div class="order-prose">
@@ -123,7 +123,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in Claude Code</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/review &lt;pr-number or PR url&gt; [optional emphasis passed to every reviewer — e.g. &quot;weight the schema change&quot;]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/pr-review &lt;pr-number or PR url&gt; [optional emphasis passed to every reviewer — e.g. &quot;weight the schema change&quot;]</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -259,10 +259,10 @@ gh pr diff &lt;PR#&gt;</code></pre>
         <div class="section__head">
           <h2 class="section__title" id="source-title">Where this lives</h2>
         </div>
-        <p>This page is generated from <code>skills/review/SKILL.md</code>. The installer copies it to <code>~/.claude/skills/review/SKILL.md</code> for every project, or <code>.claude/skills/review/SKILL.md</code> inside a single repo.</p>
-        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/skills/review/SKILL.md">
+        <p>This page is generated from <code>skills/pr-review/SKILL.md</code>. The installer copies it to <code>~/.claude/skills/pr-review/SKILL.md</code> for every project, or <code>.claude/skills/pr-review/SKILL.md</code> inside a single repo.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/skills/pr-review/SKILL.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View skills/review/SKILL.md on GitHub</span>
+          <span>View skills/pr-review/SKILL.md on GitHub</span>
         </a>
       </div>
     </section>
@@ -283,7 +283,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../document/"><code>/document</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../release/"><code>/release</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../polish/"><code>/polish</code></a></li>
-            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/review</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/pr-review</code><span class="visually-hidden"> (current page)</span></span></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../onboard/"><code>/onboard</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../refactor/"><code>/refactor</code></a></li>
           </ul>
