@@ -38,12 +38,14 @@ want is a README or a tutorial, stop and run `/document`.
   onboard has no topic slug to build a name from (it always produces the one context file), so the
   identifier is `SURVEY` instead: a still-open `create` PR then can't collide with a later `refresh`
   run, which is the failure this suffix exists to prevent. `MERGE_MODE` = `manual` (stop at a
-  reviewed PR; `auto` opt-in). A repo with no remote to open a PR against is the one fallback: build
-  the branch, stop there, and report the branch as the undo path — never quietly write to the tree
-  instead.
+  reviewed PR; `auto` opt-in). `MAX_FIX_ROUNDS` = `2` — a separate cap, on CI-fix rounds at Stage 4,
+  so a permanently-red check escalates to the user instead of looping, distinct from the
+  verification-loop `MAX_ROUNDS` below. A repo with no remote to open a PR against is the one
+  fallback: build the branch, stop there, and report the branch as the undo path — never quietly
+  write to the tree instead.
 - `TARGET` = auto-detected. `CLAUDE.md` if one exists, else `AGENTS.md` if one exists, else
   `CLAUDE.md`. **Never write both** — see below.
-- `MAX_ROUNDS` = `3` verification loops before escalating.
+- `MAX_ROUNDS` = `3` verification loops before escalating (Stage 3).
 
 ## Stage 0 — Survey & mode
 
@@ -123,8 +125,8 @@ Write to `TARGET` — inside `<WORKTREE_DIR>` under `MODE=pr` (the default), in 
 changed on their behalf. Under `MODE=pr`, commit on the branch — staging only the paths this run
 produced, never `git add -A` — push, and open the PR against `BASE_BRANCH`. Then gate on CI: poll
 `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing it,
-re-pushing, and re-polling — bounded by `MAX_ROUNDS`, after which you stop and escalate to the user
-with the failing log rather than looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`,
+re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and escalate to the
+user with the failing log rather than looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`,
 in which case merge the PR and remove `<WORKTREE_DIR>`; the manual default leaves the worktree in
 place with the PR open. The context file only exists on that branch until it's merged, though — merge
 or check out `BRANCH` before running other commands in this session if you need it in place now, or

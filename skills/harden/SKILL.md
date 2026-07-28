@@ -20,7 +20,9 @@ a dependency set, or the whole app. If empty, ask which surface (don't silently 
 
 ## Config
 
-- `REVIEWER` = `security-engineer`. `BUILDER` = `senior-engineer`. `MAX_ROUNDS` = `4`.
+- `REVIEWER` = `security-engineer`. `BUILDER` = `senior-engineer`. `MAX_ROUNDS` = `4` — the
+  remediate/re-review loop cap (Stage 4). `MAX_FIX_ROUNDS` = `2` — a separate cap, on CI-fix rounds
+  at Stage 5, so a permanently-red PR escalates to the user instead of looping.
 - `MODE` = `report` (default) — **read-only**: threat-model, rank, report. It writes nothing to the
   working tree, not even a fix that looks safe; a mode that edits is named for it. `pr` — apply
   the remediations in a worktree on a branch and open a CI-gated PR, reusing the shape of
@@ -100,8 +102,8 @@ changes outside the repo). Under `report` (the default) that report **is** the d
 working tree is exactly as you found it — say so explicitly. Under `pr`, commit and push `<BRANCH>`
 and open the PR, same as `/ship-issue`'s commit-push-PR stage, with the same trailers. Then gate on
 CI: poll `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing
-it, re-pushing, and re-polling — bounded by `MAX_ROUNDS`, after which you stop and escalate to the
-user with the failing log rather than looping. Never advance a red PR. Only once green do you stop
+it, re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and escalate to
+the user with the failing log rather than looping. Never advance a red PR. Only once green do you stop
 there unless `MERGE_MODE=auto`, and file Medium/Low items as labelled follow-up issues. Under
 `MERGE_MODE=auto`, merge the PR and remove `<WORKTREE_DIR>`; the manual default leaves the worktree
 in place with the PR open for a human to merge.
