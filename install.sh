@@ -12,6 +12,17 @@
 #   ...| bash -s -- --dir PATH         # install into an explicit .claude dir
 #   ...| bash -s -- --uninstall        # remove the files Shipmates installed
 #   ...| bash -s -- --force            # skip SHA checks, overwrite everything (escape hatch)
+#   ...| bash -s -- --harness cursor   # install into another harness's skills dir (repeatable)
+#   ...| bash -s -- --harness all      # install into every known harness
+#
+# --harness targets a specific agent harness's skills directory instead of
+# Claude Code's (the default, byte-identical when the flag is absent). Repeat
+# it to install to several, or pass 'all'. Known harnesses: claude-code,
+# github-copilot, codex, cursor, gemini, windsurf, zed, opencode. It composes
+# with --project and --dir, and every harness root gets its own manifest, so
+# --uninstall works per harness. Subagents (agents/) ship to claude-code only:
+# no other harness documents a compatible subagent directory, so for the rest
+# they are skipped with a note.
 #
 # Run from a local clone it copies the files sitting next to it; piped from the
 # web there is no local copy to trust, so it always downloads the main branch
@@ -46,6 +57,7 @@ TARBALL="https://github.com/${REPO}/archive/refs/heads/main.tar.gz"
 SHIPMATES_VERSION="${SHIPMATES_VERSION:-v0.0.0-dev}"
 
 SCOPE="global"; EXPLICIT_DIR=""; PROJECT_PATH=""; UNINSTALL=false; FORCE=false
+HARNESSES=""; TARGET=""
 
 # Gate ANSI colors on tty — piped/captured output stays clean for grep/CI logs (#97)
 if [ -t 1 ]; then
@@ -62,6 +74,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --project) SCOPE="project"; if [ $# -gt 1 ] && [[ "$2" != --* ]]; then PROJECT_PATH="$2"; shift; fi ;;
     --dir)     SCOPE="explicit"; EXPLICIT_DIR="${2:?--dir needs a path}"; shift ;;
+    --harness) HARNESSES="${HARNESSES:+$HARNESSES }${2:?--harness needs a name (or 'all')}"; shift ;;
     --uninstall) UNINSTALL=true ;;
     --force)     FORCE=true ;;
     -h|--help) usage 0 ;;
@@ -70,18 +83,112 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# Where to install.
-case "$SCOPE" in
-  global)   TARGET="${CLAUDE_CONFIG_DIR:-$HOME/.claude}" ;;
-  project)  base="${PROJECT_PATH:-.}"; mkdir -p "$base"; TARGET="$(cd "$base" && pwd)/.claude" ;;
-  explicit) TARGET="$EXPLICIT_DIR" ;;
-esac
+# --- harnesses ----------------------------------------------------------------
+#
+# Harness install roots, each verified against first-party docs on 2026-07-28.
+# The issue's table came from secondary sources; verification corrected three
+# entries: codex and zed read the shared .agents/skills/ standard (there is no
+# .codex/skills/ or .zed/skills/), and opencode's dir is plural skills/ with
+# its global root at ~/.config/opencode, not ~/.opencode.
+#
+#   harness         global root              project root   first-party doc
+#   claude-code     ~/.claude                .claude        https://code.claude.com/docs/en/skills
+#   github-copilot  ~/.copilot               .github        https://docs.github.com/en/copilot/concepts/agents/about-agent-skills
+#   codex           ~/.agents                .agents        https://developers.openai.com/codex/build-skills
+#   cursor          ~/.cursor                .cursor        https://cursor.com/docs/skills
+#   gemini          ~/.gemini                .gemini        https://geminicli.com/docs/cli/skills/
+#   windsurf        ~/.codeium/windsurf      .windsurf      https://docs.windsurf.com/windsurf/cascade/skills
+#   zed             ~/.agents                .agents        https://zed.dev/docs/ai/skills
+#   opencode        ~/.config/opencode       .opencode      https://opencode.ai/docs/skills/
+#
+# All eight read skills from <root>/skills/<name>/SKILL.md. Note codex and zed
+# share a root — installing to both lands in the same place by design (the
+# second run simply reports every file unchanged, against the same manifest).
+#
+# Subagents have no cross-harness standard. Only Claude Code reads
+# <root>/agents/*.md in the frontmatter format we ship, so agents/ is
+# installed for claude-code alone. Other harnesses document their own
+# incompatible subagent directories — Copilot: .github/agents/, Gemini:
+# .gemini/agents/, opencode: .opencode/agent/ (singular), Cursor: via its
+# /create-subagent skill, Codex: config-driven — and get a skip note instead
+# of files in a format they may mishandle.
+ALL_HARNESSES="claude-code github-copilot codex cursor gemini windsurf zed opencode"
 
-MANIFEST="$TARGET/shipmates/manifest"
-MANIFEST_OLD_VERSION=""
+harness_known() {
+  case " $ALL_HARNESSES " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
 
-ts="$(date +%Y%m%d%H%M%S)"; installed=0; backed_up=0; removed=0; kept=0; swept=0; unchanged=0; upgraded=0; skipped=0
-IDENTITY_CHANGES=""
+# Subagents (agents/) ship for claude-code only — see the table comment above.
+harness_has_agents() { [ "$1" = "claude-code" ]; }
+
+# Resolve the install root for harness $1 under the current SCOPE. --dir pins
+# the root exactly, so the harness choice changes nothing there — every known
+# harness reads <root>/skills/ anyway.
+resolve_target() {
+  case "$SCOPE" in
+    global)
+      case "$1" in
+        claude-code)    TARGET="${CLAUDE_CONFIG_DIR:-$HOME/.claude}" ;;
+        github-copilot) TARGET="$HOME/.copilot" ;;
+        codex|zed)      TARGET="$HOME/.agents" ;;
+        cursor)         TARGET="$HOME/.cursor" ;;
+        gemini)         TARGET="$HOME/.gemini" ;;
+        windsurf)       TARGET="$HOME/.codeium/windsurf" ;;
+        opencode)       TARGET="$HOME/.config/opencode" ;;
+      esac ;;
+    project)
+      local base="${PROJECT_PATH:-.}" root
+      mkdir -p "$base"
+      case "$1" in
+        claude-code)    root=".claude" ;;
+        github-copilot) root=".github" ;;
+        codex|zed)      root=".agents" ;;
+        cursor)         root=".cursor" ;;
+        gemini)         root=".gemini" ;;
+        windsurf)       root=".windsurf" ;;
+        opencode)       root=".opencode" ;;
+      esac
+      TARGET="$(cd "$base" && pwd)/$root" ;;
+    explicit)
+      TARGET="$EXPLICIT_DIR" ;;
+  esac
+}
+
+# Expand --harness selections into TARGET_HARNESSES, the list process_target
+# loops over. No --harness = one implicit claude-code run, byte-identical to a
+# pre-harness install. 'all' expands to every known harness; repeats dedupe.
+# Unknown names are a hard error here, before anything on disk is touched.
+TARGET_HARNESSES=""
+if [ -n "$HARNESSES" ]; then
+  # Word-splitting HARNESSES/ALL_HARNESSES is intentional: both hold only
+  # whitespace-separated names validated against the table above.
+  # shellcheck disable=SC2086
+  for h in $HARNESSES; do
+    if [ "$h" = "all" ]; then
+      # shellcheck disable=SC2086
+      for ha in $ALL_HARNESSES; do
+        case " $TARGET_HARNESSES " in
+          *" $ha "*) ;;
+          *) TARGET_HARNESSES="${TARGET_HARNESSES:+$TARGET_HARNESSES }$ha" ;;
+        esac
+      done
+      continue
+    fi
+    if ! harness_known "$h"; then
+      echo "Shipmates: unknown harness '$h'." >&2
+      echo "Known harnesses: $ALL_HARNESSES — or 'all'." >&2
+      exit 1
+    fi
+    case " $TARGET_HARNESSES " in
+      *" $h "*) ;;
+      *) TARGET_HARNESSES="${TARGET_HARNESSES:+$TARGET_HARNESSES }$h" ;;
+    esac
+  done
+else
+  TARGET_HARNESSES="claude-code"
+fi
+
+ts="$(date +%Y%m%d%H%M%S)"
 
 CLEANUP=""
 # Paths from mktemp contain no spaces; word-splitting CLEANUP here is intentional.
@@ -248,9 +355,6 @@ resolve_src() {
   fi
 }
 
-echo "${c_bold}Shipmates${c_reset} ${c_dim}→${c_reset} ${c_bold}${TARGET}${c_reset}"
-echo
-
 # --- file helpers, shared by the flat agents/ and nested skills/ loops --------
 
 # Echo a backup name nothing occupies yet. Two runs in the same second would
@@ -289,7 +393,7 @@ agent_name() {
 
 # Record a file in the new manifest: hash of the destination POST-copy, so the
 # manifest is always a true statement about what is on disk right now.
-NEW_ENTRIES="$(mktemp)"; CLEANUP="${CLEANUP:+$CLEANUP }$NEW_ENTRIES"
+# NEW_ENTRIES is a fresh temp file per harness, created in process_target.
 record_entry() {
   local rel="$1" sha nm=""
   need_sha256
@@ -457,7 +561,41 @@ sweep_legacy_commands() {
   fi
 }
 
+# The legacy flat commands/*.md payload only ever shipped to .claude, so the
+# sweep is a Claude Code-only migration: another harness's <root>/commands/
+# dir (if any) holds its own files, which are not ours to move.
+sweep_legacy_commands_for_harness() {
+  [ "$HARNESS" = "claude-code" ] || return 0
+  sweep_legacy_commands
+}
+
 # --- install / uninstall ------------------------------------------------------
+
+# One full install or uninstall against a single harness root, run once per
+# entry of TARGET_HARNESSES. The body keeps the original single-target flow at
+# file-scope indentation on purpose — re-indenting ~190 lines would bury the
+# real --harness changes in whitespace. Every variable it touches (TARGET,
+# MANIFEST*, counters, NEW_ENTRIES) is global, reset here per harness.
+process_target() {
+
+resolve_target "$HARNESS"
+
+MANIFEST="$TARGET/shipmates/manifest"
+MANIFEST_OLD_VERSION=""
+MANIFEST_STATE=1
+MANIFEST_PARSED=""
+installed=0; backed_up=0; removed=0; kept=0; swept=0; unchanged=0; upgraded=0; skipped=0
+IDENTITY_CHANGES=""
+NEW_ENTRIES="$(mktemp)"; CLEANUP="${CLEANUP:+$CLEANUP }$NEW_ENTRIES"
+
+# The banner names the harness only when --harness was passed; without it the
+# output stays byte-identical to a pre-harness install.
+if [ -n "$HARNESSES" ]; then
+  echo "${c_bold}Shipmates${c_reset} ${c_dim}→${c_reset} ${c_bold}${TARGET}${c_reset} ${c_dim}(harness: ${HARNESS})${c_reset}"
+else
+  echo "${c_bold}Shipmates${c_reset} ${c_dim}→${c_reset} ${c_bold}${TARGET}${c_reset}"
+fi
+echo
 
 if $UNINSTALL; then
   manifest_read
@@ -503,7 +641,7 @@ if $UNINSTALL; then
       done < "$MANIFEST_PARSED"
       rmdir "$TARGET/skills" 2>/dev/null || :
       rmdir "$TARGET/agents" 2>/dev/null || :
-      sweep_legacy_commands
+      sweep_legacy_commands_for_harness
       if [ "$skipped" -eq 0 ]; then
         rm -f "$MANIFEST"
         rmdir "$TARGET/shipmates" 2>/dev/null || :
@@ -527,10 +665,13 @@ if $UNINSTALL; then
         echo "${c_yellow}Files you wrote whose names match Shipmates' will be moved aside, not deleted.${c_reset}" >&2
       fi
       echo >&2
-      for f in "$SRC/agents"/*.md; do
-        [ -e "$f" ] || continue
-        remove_file "$f" "$TARGET/agents/$(basename "$f")"
-      done
+      # Same rule as install: agents/ only ever shipped to claude-code roots.
+      if harness_has_agents "$HARNESS"; then
+        for f in "$SRC/agents"/*.md; do
+          [ -e "$f" ] || continue
+          remove_file "$f" "$TARGET/agents/$(basename "$f")"
+        done
+      fi
       for d in "$SRC/skills"/*/; do
         [ -d "$d" ] || continue
         d="${d%/}"; [ -f "$d/SKILL.md" ] || continue
@@ -548,7 +689,7 @@ if $UNINSTALL; then
       done
       rmdir "$TARGET/skills" 2>/dev/null || :
       rmdir "$TARGET/agents" 2>/dev/null || :
-      sweep_legacy_commands
+      sweep_legacy_commands_for_harness
       ;;
   esac
 else
@@ -564,10 +705,16 @@ else
     MANIFEST_STATE=1
   fi
 
-  for f in "$SRC/agents"/*.md; do
-    [ -e "$f" ] || continue
-    install_file "$f" "$TARGET/agents/$(basename "$f")" "agents/$(basename "$f")"
-  done
+  # Subagents have no cross-harness standard (see the harness table above), so
+  # agents/ only ships where its format is documented to be read as-is.
+  if harness_has_agents "$HARNESS"; then
+    for f in "$SRC/agents"/*.md; do
+      [ -e "$f" ] || continue
+      install_file "$f" "$TARGET/agents/$(basename "$f")" "agents/$(basename "$f")"
+    done
+  else
+    echo "  ${c_dim}note: ${HARNESS} has no documented Claude-format subagent directory — skipping agents/${c_reset}"
+  fi
 
   for d in "$SRC/skills"/*/; do
     [ -d "$d" ] || continue
@@ -606,7 +753,7 @@ else
     done < "$MANIFEST_PARSED"
   fi
 
-  sweep_legacy_commands
+  sweep_legacy_commands_for_harness
   manifest_write
 
   if [ -n "$IDENTITY_CHANGES" ]; then
@@ -643,8 +790,12 @@ else
     echo "$summary."
   fi
   echo "${c_dim}Manifest: ${MANIFEST}${c_reset}"
-  echo "${c_dim}If a skills/ or agents/ dir was created for the first time, restart Claude Code"
-  echo "so it picks them up. Then run ${c_reset}${c_bold}/ship-issue <issue#>${c_reset}${c_dim}.${c_reset}"
+  if [ -n "$HARNESSES" ] && [ "$HARNESS" != "claude-code" ]; then
+    echo "${c_dim}If a skills/ dir was created for the first time, restart ${HARNESS} so it picks them up.${c_reset}"
+  else
+    echo "${c_dim}If a skills/ or agents/ dir was created for the first time, restart Claude Code"
+    echo "so it picks them up. Then run ${c_reset}${c_bold}/ship-issue <issue#>${c_reset}${c_dim}.${c_reset}"
+  fi
 fi
 if [ "$swept" -gt 0 ]; then
   echo "${c_dim}Swept ${swept} legacy commands/*.md aside (kept as .bak-*) — this only covers ${TARGET}.${c_reset}"
@@ -652,3 +803,14 @@ if [ "$swept" -gt 0 ]; then
     echo "${c_dim}Re-run without --project/--dir to clear a global install too.${c_reset}"
   fi
 fi
+
+}
+
+# Install to (or uninstall from) each selected harness in turn. A failure in
+# one — including the corrupt-manifest uninstall refusal — stops the run, same
+# trust posture as a single-target install.
+# Word-splitting TARGET_HARNESSES is intentional (validated names only).
+# shellcheck disable=SC2086
+for HARNESS in $TARGET_HARNESSES; do
+  process_target
+done
