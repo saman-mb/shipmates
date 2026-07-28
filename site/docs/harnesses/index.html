@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harness matrix · Shipmates docs</title>
+  <meta name="description" content="Which agent harnesses Shipmates builds for today, which are refused, and the disable-model-invocation safety policy behind the refusal.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/harnesses/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="Harness matrix — Shipmates docs">
+  <meta property="og:description" content="Which agent harnesses Shipmates builds for today, which are refused, and the disable-model-invocation safety policy behind the refusal.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/harnesses/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Harness matrix — Shipmates docs">
+  <meta name="twitter:description" content="Which agent harnesses Shipmates builds for today, which are refused, and the disable-model-invocation safety policy behind the refusal.">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "Harness matrix",
+    "description": "Which agent harnesses Shipmates builds for today, which are refused, and the disable-model-invocation safety policy behind the refusal.",
+    "url": "https://saman-mb.github.io/shipmates/docs/harnesses/",
+    "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../" aria-current="location">Docs</a></li>
+        </ul>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="harnesses-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../"><span aria-hidden="true">←</span> All docs</a>
+        <div class="order-detail">
+          <p class="order-detail__eyebrow"><span aria-hidden="true">🌊</span> Harnesses</p>
+          <h1 class="order-detail__title" id="harnesses-title">Harness matrix</h1>
+          <p class="order-detail__tagline">Which harnesses the crew runs on, and why some are refused.</p>
+          <p class="order-detail__desc">The installer knows eight harness roots, but <em>known</em> is not <em>shipped</em>: a payload is built for a harness only when the capability matrix can keep every safety property the commands rely on.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="matrix" aria-labelledby="matrix-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="matrix-title">The matrix</h2>
+        </div>
+        <div class="order-table" tabindex="0">
+          <table>
+            <thead><tr><th scope="col">Harness</th><th scope="col">Status</th><th scope="col">Tracking epic</th></tr></thead>
+            <tbody>
+              <tr><td><code>claude-code</code></td><td><span class="chip">Shipped</span></td><td>—</td></tr>
+              <tr><td><code>github-copilot</code></td><td><span class="chip">Refused</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/16">#16</a></td></tr>
+              <tr><td><code>codex</code></td><td><span class="chip">Refused</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/17">#17</a></td></tr>
+              <tr><td><code>cursor</code></td><td><span class="chip">Refused</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/15">#15</a></td></tr>
+              <tr><td><code>gemini</code></td><td><span class="chip">Refused</span></td><td>—</td></tr>
+              <tr><td><code>windsurf</code></td><td><span class="chip">Refused</span></td><td>—</td></tr>
+              <tr><td><code>zed</code></td><td><span class="chip">Refused</span></td><td>—</td></tr>
+              <tr><td><code>opencode</code></td><td><span class="chip">Refused</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/14">#14</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="order-prose">
+          <p><strong>Shipped</strong> means <code>harnesses/claude-code/</code> is built, committed, and installable — a byte-for-byte mirror of the canonical <code>skills/</code> and <code>agents/</code> trees. <strong>Refused</strong> means the payload generator declines to build a tree for that harness at all, and the installer in turn refuses to install one: <code>install.sh --harness cursor</code> stops with &#x201C;no payload for &#x27;cursor&#x27; — the capability matrix refused to build one&#x201D;. Today <code>harnesses/</code> holds <code>claude-code</code> alone; every other target is refused on the same single feature.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="why-refused" aria-labelledby="why-refused-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="why-refused-title">Why refused?</h2>
+        </div>
+        <div class="order-prose">
+          <p>Every one of the twelve commands ships <code>disable-model-invocation: true</code> — you start one by typing <code>/ship-issue</code>; the model never loads one on its own. These workflows create worktrees, push branches, and open pull requests, so the decision to start one stays with the captain. No other harness documents a way to keep a skill user-invoked only, so the matrix refuses rather than ship an auto-invocable command. The reason recorded in <code>tools/harness_matrix.json</code>, verbatim, for each refused target:</p>
+          <blockquote>
+            <p>No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that.</p>
+          </blockquote>
+          <p>A refused harness is not a rejected harness — it is a missing safety property, not a verdict. The moment a harness documents an equivalent guard, the matrix entry flips to supported and a payload appears. The four harnesses with tracking epics are in active development; the rest wait for their docs to catch up.</p>
+          <p>The mechanics — how a feature × harness entry becomes a built tree or a refusal — are on the <a href="../architecture/">architecture page</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="more-docs-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="more-docs-title">More docs</h2>
+        </div>
+        <nav class="order-siblings" aria-label="More docs">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../install/">Install reference</a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page">Harness matrix<span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../troubleshooting/">Troubleshooting</a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../architecture/">Architecture</a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../"><span aria-hidden="true">←</span> All docs</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — on Claude Code today.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../">Docs</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>
