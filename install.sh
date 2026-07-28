@@ -40,9 +40,18 @@ set -Eeuo pipefail
 REPO="saman-mb/shipmates"
 TARBALL="https://github.com/${REPO}/archive/refs/heads/main.tar.gz"
 
+# Stamped at release time so curl|bash installs record a real version (#98)
+# Update this when tagging a release: SHIPMATES_VERSION=v1.2.3
+SHIPMATES_VERSION="${SHIPMATES_VERSION:-v0.0.0-dev}"
+
 SCOPE="global"; EXPLICIT_DIR=""; PROJECT_PATH=""; UNINSTALL=false
 
-c_bold=$'\033[1m'; c_dim=$'\033[2m'; c_green=$'\033[32m'; c_yellow=$'\033[33m'; c_reset=$'\033[0m'
+# Gate ANSI colors on tty — piped/captured output stays clean for grep/CI logs (#97)
+if [ -t 1 ]; then
+  c_bold=$'\033[1m'; c_dim=$'\033[2m'; c_green=$'\033[32m'; c_yellow=$'\033[33m'; c_reset=$'\033[0m'
+else
+  c_bold=""; c_dim=""; c_green=""; c_yellow=""; c_reset=""
+fi
 
 # Help is the header block above: from line 3 to the first non-comment line.
 # Terminator-driven, so editing the header can't desync a hardcoded range.
@@ -186,6 +195,9 @@ manifest_write() {
   ver="unknown"
   if [ -n "$SELF_DIR" ]; then
     ver="$(git -C "$SELF_DIR" rev-parse --short HEAD 2>/dev/null || printf unknown)"
+  else
+    # curl|bash: use stamped version (#98)
+    ver="$SHIPMATES_VERSION"
   fi
   mkdir -p "$TARGET/shipmates"
   tmp="$MANIFEST.shipmates-tmp.$$"
@@ -288,7 +300,9 @@ record_entry() {
         if [[ "$nm" =~ ^[A-Za-z0-9._-]+$ ]]; then
           nm=" name=$nm"
         else
-          echo "  ${c_yellow}WARNING${c_reset} $rel: name '$nm' has unsafe characters — omitted from manifest" >&2
+          # Sanitize before echo (#101): strip control chars, keep printable ASCII
+          nm_safe="$(printf '%s' "$nm" | tr -cd '[:print:]')"
+          echo "  ${c_yellow}WARNING${c_reset} $rel: name '${nm_safe}' has unsafe characters — omitted from manifest" >&2
           nm=""
         fi
       fi
@@ -308,8 +322,11 @@ check_identity() {
   esac
   old_nm="$(agent_name "$dst")"; new_nm="$(agent_name "$src")"
   if [ -n "$old_nm" ] && [ -n "$new_nm" ] && [ "$old_nm" != "$new_nm" ]; then
-    echo "  ${c_yellow}WARNING${c_reset} $rel currently provides '${old_nm}', will be replaced by '${new_nm}'"
-    IDENTITY_CHANGES="${IDENTITY_CHANGES}    $rel: '${old_nm}' -> '${new_nm}'\n"
+    # Sanitize before echo (#101): strip control chars, keep printable ASCII
+    old_safe="$(printf '%s' "$old_nm" | tr -cd '[:print:]')"
+    new_safe="$(printf '%s' "$new_nm" | tr -cd '[:print:]')"
+    echo "  ${c_yellow}WARNING${c_reset} $rel currently provides '${old_safe}', will be replaced by '${new_safe}'"
+    IDENTITY_CHANGES="${IDENTITY_CHANGES}    $rel: '${old_safe}' -> '${new_safe}'\n"
   fi
 }
 
@@ -390,6 +407,7 @@ sweep_legacy_commands() {
     local d
     for d in "$SRC/skills"/*/; do
       [ -d "$d" ] || continue
+      [ -f "$d/SKILL.md" ] || continue  # skip stray non-skill dirs (#99)
       slugs="$slugs$(basename "$d")"$'\n'
     done
   elif [ "$MANIFEST_STATE" = "0" ]; then

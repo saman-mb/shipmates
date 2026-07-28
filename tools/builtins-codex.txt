@@ -1,0 +1,7 @@
+# Built-in commands: Codex CLI
+# Source: https://learn.chatgpt.com/docs/developer-commands?surface=cli
+# Last updated: 2026-07-28
+#
+# This list is manually maintained. Refresh when Codex CLI ships new built-ins.
+
+# (no known built-in slash commands as of 2026-07-28)

@@ -11,8 +11,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Allow one concurrent deployment; don't cancel an in-progress one.
 concurrency:
@@ -27,6 +25,8 @@ jobs:
   validate:
     name: Validate site
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,16 +34,29 @@ jobs:
           python-version: "3.x"
       - name: Validate skills
         run: python3 tools/validate_skills.py
+      - name: Check skill names don't collide with harness built-ins (#105)
+        run: python3 tools/validate_skill_names.py --check
       - name: Check generated command pages are up to date
         run: python3 tools/gen_command_pages.py --check
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
+      - name: Check install.sh is executable (#100)
+        run: |
+          mode=$(git ls-files -s install.sh | awk '{print $1}')
+          if [ "$mode" != "100755" ]; then
+            echo "install.sh mode is $mode, expected 100755"
+            echo "Fix: git update-index --chmod=+x install.sh && git commit"
+            exit 1
+          fi
 
   deploy:
     name: Deploy to GitHub Pages
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
