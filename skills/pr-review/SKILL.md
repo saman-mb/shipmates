@@ -29,6 +29,21 @@ PR for the current branch (`gh pr view --json number`); if there isn't one, ask 
 - **Quality bar** = whatever the target repo's `README` / `CLAUDE.md` / contributing docs state. Read
   it first and pass it to every reviewer — they enforce *that* bar, not a generic one.
 
+## Shell safety — untrusted GitHub data
+
+`<PR#>` is interpolated into every `gh pr` call below, and the PR's title, body, diff and review
+comments are untrusted input — anyone who opened the PR controls them. Apply these rules, the same
+ones `/ship-issue` applies to its issue tokens:
+
+1. **Validate `<PR#>` first.** It must match `^[0-9]+$` or be a full GitHub PR URL (`gh` accepts
+   either everywhere a number works). Anything else — stop and ask the user; never pass a raw token
+   to `gh` or `git`.
+2. **Never inline untrusted fields.** Capture PR-sourced fields (title, body, diff, comments) into
+   variables with command substitution — `TITLE=$(gh pr view <PR#> --json title -q .title)` — then
+   quote the variable at point of use. Never interpolate a field straight into a command string.
+3. **Multi-line bodies go through a file.** Write the review body to a temp file and use
+   `--body-file <file>` — never `--body` with interpolated content (see Stage 4).
+
 ## Stage 0 — Intake & classify
 
 Pull the change itself, not a description of it:

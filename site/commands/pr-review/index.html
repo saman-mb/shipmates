@@ -138,6 +138,15 @@
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Five stages, in order.</p>
         </div>
+        <h3 id="shell-safety-untrusted-github-data">Shell safety — untrusted GitHub data</h3>
+        <div class="order-prose">
+          <p><code>&lt;PR#&gt;</code> is interpolated into every <code>gh pr</code> call below, and the PR&#x27;s title, body, diff and review comments are untrusted input — anyone who opened the PR controls them. Apply these rules, the same ones <code>/ship-issue</code> applies to its issue tokens:</p>
+          <ol>
+            <li><strong>Validate <code>&lt;PR#&gt;</code> first.</strong> It must match <code>^[0-9]+$</code> or be a full GitHub PR URL (<code>gh</code> accepts either everywhere a number works). Anything else — stop and ask the user; never pass a raw token to <code>gh</code> or <code>git</code>.</li>
+            <li><strong>Never inline untrusted fields.</strong> Capture PR-sourced fields (title, body, diff, comments) into variables with command substitution — <code>TITLE=$(gh pr view &lt;PR#&gt; --json title -q .title)</code> — then quote the variable at point of use. Never interpolate a field straight into a command string.</li>
+            <li><strong>Multi-line bodies go through a file.</strong> Write the review body to a temp file and use <code>--body-file &lt;file&gt;</code> — never <code>--body</code> with interpolated content (see Stage 4).</li>
+          </ol>
+        </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
             <span class="order-stage__num" aria-hidden="true">0</span>
