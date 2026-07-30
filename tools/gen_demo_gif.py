@@ -5,7 +5,17 @@ Honest by construction: it depicts the *actual stage sequence* the workflow perf
 (Plan → Isolate → Build → Self-check → CI gate → Review → Remediate → Deliver) with
 generic labels — no fabricated test counts or invented file names. Deterministic and
 committed, matching the repo's other generators. Regenerate with:  python3 tools/gen_demo_gif.py
+
+Writes three artifacts, all derived from the same frames:
+  assets/demo.gif             — canonical animation (README)
+  site/assets/demo.gif        — the site's copy, byte-identical
+  site/assets/demo-poster.png — final frame, served under prefers-reduced-motion
 """
+import os
+import shutil
+import subprocess
+import sys
+
 from PIL import Image, ImageDraw, ImageFont
 
 # ---- palette (Night-Owl-ish terminal) ----
@@ -49,9 +59,46 @@ STAGES = [
 W, H = 940, 604
 PADX, TOPBAR = 34, 40
 LINE_H = 30
-FONT_DIR = "/usr/share/fonts/truetype/dejavu/"
-f  = ImageFont.truetype(FONT_DIR + "DejaVuSansMono.ttf", 19)
-fb = ImageFont.truetype(FONT_DIR + "DejaVuSansMono-Bold.ttf", 19)
+# DejaVu Sans Mono is the reference face — the committed GIF is rendered with it,
+# so a different face silently re-renders every glyph. Distros disagree about where
+# it lives, so search the known layouts and fall back to fontconfig.
+FONT_DIRS = [
+    "/usr/share/fonts/truetype/dejavu/",          # Debian, Ubuntu
+    "/usr/share/fonts/dejavu-sans-mono-fonts/",   # Fedora, RHEL
+    "/usr/share/fonts/dejavu/",                   # Arch, older Fedora
+    "/usr/local/share/fonts/dejavu/",             # BSD, manual installs
+    "/opt/homebrew/share/fonts/",                 # macOS (font-dejavu cask)
+    "/Library/Fonts/",                            # macOS system-wide
+]
+
+
+def _find_font(filename):
+    """Locate FILENAME across the known font layouts, then via fc-match."""
+    for directory in FONT_DIRS:
+        candidate = os.path.join(directory, filename)
+        if os.path.isfile(candidate):
+            return candidate
+    try:
+        matched = subprocess.run(
+            ["fc-match", "--format=%{file}", filename],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        matched = ""
+    # fc-match always answers, so only trust it if it found the face we asked for.
+    if matched and os.path.basename(matched) == filename:
+        return matched
+    sys.exit(
+        f"gen_demo_gif: {filename} not found.\n"
+        f"  Debian/Ubuntu:  sudo apt install fonts-dejavu-core\n"
+        f"  Fedora/RHEL:    sudo dnf install dejavu-sans-mono-fonts\n"
+        f"  Arch:           sudo pacman -S ttf-dejavu\n"
+        f"  macOS:          brew install --cask font-dejavu"
+    )
+
+
+f  = ImageFont.truetype(_find_font("DejaVuSansMono.ttf"), 19)
+fb = ImageFont.truetype(_find_font("DejaVuSansMono-Bold.ttf"), 19)
 CH = fb.getlength("M")  # mono advance
 
 SPIN = ["⠂", "⡆", "⣤", "⣰", "⢸", "⠹", "⠛", "⠏"]
@@ -138,7 +185,22 @@ for _ in range(6):
 pal = frames[0].convert("P", palette=Image.ADAPTIVE, colors=64)
 qframes = [fr.convert("RGB").quantize(palette=pal, dither=Image.NONE) for fr in frames]
 
+# Every artifact derived from these frames is written here. They used to be
+# produced by hand — the site's copy of the GIF and the reduced-motion poster
+# were extracted once and never regenerated, so a generator edit left them
+# showing a review board the workflow no longer convenes. One writer, no drift.
 out = "assets/demo.gif"
 qframes[0].save(out, save_all=True, append_images=qframes[1:], duration=durations,
                 loop=0, optimize=True, disposal=2)
 print(f"wrote {out}  ({len(qframes)} frames)")
+
+# The site serves its own copy; keep it byte-identical to the canonical one.
+site_gif = "site/assets/demo.gif"
+shutil.copyfile(out, site_gif)
+print(f"wrote {site_gif}  (copy of {out})")
+
+# prefers-reduced-motion poster — the finished-run frame, shown in place of the
+# animation. It must be the *last* frame, or it depicts a run that never ended.
+poster = "site/assets/demo-poster.png"
+frames[-1].convert("RGB").save(poster)
+print(f"wrote {poster}  (final frame)")
