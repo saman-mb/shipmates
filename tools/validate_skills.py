@@ -75,6 +75,13 @@ NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 # `\$1` is the documented literal, so the lookbehind lets it through.
 POSITIONAL_RE = re.compile(r"(?<!\\)\$\{?[0-9]")
 
+# `--body "..."` (or `--body=...`) puts interpolated content inside a shell
+# command string, where a crafted title/body/diff/comment can break out of
+# the quoting — the exact defect fixed twice already (#82 in ship-issue,
+# #138 in pr-review). `--body-file <path>` is the only safe form; the
+# negative lookahead excludes it.
+BODY_FLAG_RE = re.compile(r"--body(?!-file)\b\s*=?\s*\"")
+
 MAX_NAME = 64
 MAX_DESCRIPTION = 1024
 
@@ -314,6 +321,37 @@ def check_body(rel: str, lines: list[str], start: int) -> None:
         )
 
 
+def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
+    """No `--body "..."` inside a ```bash fence — that puts interpolated
+    content (a PR/issue title, body, diff, or review comment — all
+    attacker-controlled on anything the crew didn't write) inside a shell
+    command string, where a crafted value can break out of the quoting. This
+    is the same defect fixed twice already, once per command (#82, #138) —
+    a lint that fails the build is cheaper than a third fix.
+    """
+    fence_lineno = 0
+    fence_lang = ""
+    for offset, raw in enumerate(lines[start:]):
+        lineno = start + offset + 1
+        stripped = raw.strip()
+        if stripped.startswith("```"):
+            if fence_lineno:
+                fence_lineno = 0
+                fence_lang = ""
+            else:
+                fence_lineno = lineno
+                fence_lang = stripped[3:].strip().lower()
+            continue
+        if fence_lineno and fence_lang == "bash" and BODY_FLAG_RE.search(raw):
+            fail(
+                f"{rel}:{lineno}: {raw.strip()[:70]!r} interpolates content into `--body` "
+                f"inside the bash fence opened on line {fence_lineno} — a crafted "
+                "title/body/diff/comment can break out of the shell quoting (the #82 / #138 "
+                "defect class); write the content to a temp file and use `--body-file <path>` "
+                "instead"
+            )
+
+
 def check_skill(directory: Path) -> None:
     slug = directory.name
     rel = f"skills/{slug}/SKILL.md"
@@ -335,11 +373,13 @@ def check_skill(directory: Path) -> None:
     check_values(rel, slug, entries)
     check_frontmatter(rel, lines, start)
     check_body(rel, lines, start)
+    check_no_inline_body(rel, lines, start)
 
     if len(failures) == before:
         ok(
             f"{rel}: frontmatter opens with {REQUIRED_LIST}, every key known and non-empty, "
-            "name matches directory, no unescaped '$n' anywhere, fences closed"
+            "name matches directory, no unescaped '$n' anywhere, fences closed, no inline "
+            "--body in a bash fence"
         )
 
 
