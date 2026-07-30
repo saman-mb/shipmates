@@ -40,6 +40,13 @@ jobs:
         run: python3 tools/gen_command_pages.py --check
       - name: Check harness payloads are up to date
         run: python3 tools/build_harness_payloads.py --check
+      - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y fonts-dejavu-core
+          pip install Pillow
+      - name: Check demo GIF/poster artifacts are up to date
+        run: python3 tools/gen_demo_gif.py --check
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
