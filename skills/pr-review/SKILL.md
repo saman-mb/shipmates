@@ -112,7 +112,12 @@ covering ground the reviewer said it didn't see.
 Return the consolidated review. If `MODE=post`, publish it:
 
 ```bash
-gh pr review <PR#> --comment --body "<consolidated findings>"
+# The findings quote untrusted PR content (title, description, diff, review
+# comments). Write them to a file and post that — never interpolate them into
+# the command string.
+REVIEW_BODY_FILE=$(mktemp)
+# ... write the consolidated review to "$REVIEW_BODY_FILE" ...
+gh pr review <PR#> --comment --body-file "$REVIEW_BODY_FILE"
 ```
 
 Use `--comment`, not `--approve`/`--request-changes`, unless the caller explicitly asked for a binding
@@ -129,6 +134,10 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
   script. Hence `RUN_TESTS=no` for cross-repository PRs: the `sdet` reviews statically and says so.
   Never silently upgrade that to a real run.
 - Never post to a third party's PR unless `MODE=post` was explicitly set.
+- **Never inline PR-sourced text into a command.** The title, body, diff and review comments
+  are attacker-controlled on any PR you did not write. Capture them into quoted variables
+  (`TITLE=$(gh pr view <PR#> --json title -q .title)`) and pass multi-line bodies with
+  `--body-file <file>` — never `--body` with interpolated content.
 - Review the **head commit**, so "reviewed" means "what would merge" — re-run if the author pushes.
 - Don't pad the board. A flag that isn't set means that specialist has nothing to say.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the brief

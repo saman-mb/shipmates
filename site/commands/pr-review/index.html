@@ -213,7 +213,12 @@ gh pr diff &lt;PR#&gt;</code></pre>
             <div class="order-stage__body">
               <div class="order-prose">
                 <p>Return the consolidated review. If <code>MODE=post</code>, publish it:</p>
-                <pre class="order-code" tabindex="0"><code>gh pr review &lt;PR#&gt; --comment --body &quot;&lt;consolidated findings&gt;&quot;</code></pre>
+                <pre class="order-code" tabindex="0"><code># The findings quote untrusted PR content (title, description, diff, review
+# comments). Write them to a file and post that — never interpolate them into
+# the command string.
+REVIEW_BODY_FILE=$(mktemp)
+# ... write the consolidated review to &quot;$REVIEW_BODY_FILE&quot; ...
+gh pr review &lt;PR#&gt; --comment --body-file &quot;$REVIEW_BODY_FILE&quot;</code></pre>
                 <p>Use <code>--comment</code>, not <code>--approve</code>/<code>--request-changes</code>, unless the caller explicitly asked for a binding verdict — an automated approval carries weight the crew hasn&#x27;t earned on someone else&#x27;s work.</p>
               </div>
             </div>
@@ -247,6 +252,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
             <li><strong>Read-only by default.</strong> No worktree, no commits, no pushes, no fix loop. If the findings need fixing, hand them to <code>/fix-bug</code> or <code>/ship-issue</code> — don&#x27;t fork a remediation loop into this command.</li>
             <li><strong>This command crosses a trust boundary the others don&#x27;t.</strong> <code>/ship-issue</code>, <code>/fix-bug</code> and <code>/migrate</code> all run code the crew itself wrote; here the code is a stranger&#x27;s. Running a fork&#x27;s test suite executes untrusted code on your machine — a PR can put arbitrary commands in a test file or a build script. Hence <code>RUN_TESTS=no</code> for cross-repository PRs: the <code>sdet</code> reviews statically and says so. Never silently upgrade that to a real run.</li>
             <li>Never post to a third party&#x27;s PR unless <code>MODE=post</code> was explicitly set.</li>
+            <li><strong>Never inline PR-sourced text into a command.</strong> The title, body, diff and review comments are attacker-controlled on any PR you did not write. Capture them into quoted variables (<code>TITLE=$(gh pr view &lt;PR#&gt; --json title -q .title)</code>) and pass multi-line bodies with <code>--body-file &lt;file&gt;</code> — never <code>--body</code> with interpolated content.</li>
             <li>Review the <strong>head commit</strong>, so &quot;reviewed&quot; means &quot;what would merge&quot; — re-run if the author pushes.</li>
             <li>Don&#x27;t pad the board. A flag that isn&#x27;t set means that specialist has nothing to say.</li>
             <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
