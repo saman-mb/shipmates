@@ -133,16 +133,34 @@ Agent Skills standard is filesystem-based, so the same `SKILL.md` payload works 
 the target path differs. Subagents (`agents/`) ship for Claude Code only — no cross-harness
 subagent standard exists yet.
 
-**Safety:** payloads are generated per harness by `tools/build_harness_payloads.py` against
-`tools/harness_matrix.json`. If the matrix can't honour a safety property on a target (e.g. no
-equivalent of `disable-model-invocation`), the payload is **refused** and the install fails
+**Safety:** Claude payloads are exported from `canonical/` by `tools/export.py` and carry an
+attestation that the installer verifies. If the matrix can't honour a safety property on a target
+(e.g. no equivalent of `disable-model-invocation`), the payload is **refused** and install fails
 loudly rather than shipping a more permissive artifact. Currently only `claude-code` builds;
-others refuse until their harness documents a user-invoked-only equivalent.
+others refuse until their adapter and user-invoked-only equivalent are approved.
 
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
 >
 > ↩️ Upgrading and `/ship-issue` stops resolving? Put the old file back with
 > `mv ~/.claude/commands/ship-issue.md.bak-<ts> ~/.claude/commands/ship-issue.md`.
+
+### Canonical exporter foundation
+
+Portability work starts from authoritative `canonical/`: full persona/workflow bodies, semantic crew
+capabilities, ordered command stages, neutral `@role({{argument}})` invocations, and named arguments.
+Existing `agents/` and `skills/` remain compatibility/site sources and Claude golden files. The
+exporter renders neutral canonical bodies into Claude's established dialect; it never reads
+compatibility bodies. Generate/check Claude's committed target:
+
+```bash
+python3 tools/export.py build --target claude-code
+python3 tools/export.py check --target claude-code
+```
+
+`tools/capability_registry.json` is the single semantic-to-harness tool map. New adapters implement
+`tools/adapter_contract.py`, register in `tools/adapters/registry.py`, and receive independent
+golden/check coverage before becoming installable. `opencode` is registered for future work but
+`tools/export.py build --target opencode` refuses until its adapter exists.
 
 ## 🚀 Weigh anchor (use it)
 

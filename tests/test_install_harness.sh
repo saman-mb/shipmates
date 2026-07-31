@@ -65,8 +65,9 @@ global_root_for() {
 }
 
 ALL="claude-code github-copilot codex cursor gemini windsurf zed opencode"
-N_AGENTS=$(find "$REPO/agents" -maxdepth 1 -name '*.md' | wc -l)
-N_SKILLS=$(find "$REPO/skills" -maxdepth 1 -mindepth 1 -type d | wc -l)
+PAYLOAD="$REPO/harnesses/claude-code"
+N_AGENTS=$(find "$PAYLOAD/agents" -maxdepth 1 -name '*.md' | wc -l)
+N_SKILLS=$(find "$PAYLOAD/skills" -maxdepth 1 -mindepth 1 -type d | wc -l)
 
 run() { bash "$INSTALLER" "$@"; }
 
@@ -175,7 +176,7 @@ edited="$p/.claude/skills/ship-issue/SKILL.md"
 printf '# hand edit\n' >> "$edited"
 run --harness claude-code --project "$p" >/dev/null 2>&1
 assert "backup: .bak-* kept for hand edit" bash -c "ls '$edited'.bak-* >/dev/null 2>&1"
-assert "backup: payload restored over edit" cmp -s "$REPO/skills/ship-issue/SKILL.md" "$edited"
+assert "backup: payload restored over edit" cmp -s "$PAYLOAD/skills/ship-issue/SKILL.md" "$edited"
 
 # --- 8. unknown harness errors non-zero, touches nothing -----------------------
 

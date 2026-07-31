@@ -96,7 +96,7 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="two-trees-title">The two trees</h2>
-          <p class="section__lead">The canonical source is Claude Code&#x27;s shape. Everything else is derived.</p>
+          <p class="section__lead">Canonical sources are neutral. Adapters render each committed target dialect.</p>
         </div>
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>agents/                      skills/
@@ -163,7 +163,7 @@
             <li><strong>emulate</strong> — omit the key and append a deterministic &#x201C;Harness adaptation&#x201D; section to the body expressing it in prose.</li>
             <li><strong>refuse</strong> — fail the whole target before anything is written. Reserved for safety properties: every shipped command sets <code>disable-model-invocation: true</code>, and a harness with no equivalent gets no payload rather than an auto-invocable command.</li>
           </ul>
-          <p>Output is deterministic and committed, matching the repo&#x27;s other generators — regenerate with <code>python3 tools/build_harness_payloads.py</code>, never hand-edit. The <code>claude-code</code> tree is a byte-for-byte mirror of the canonical sources; today it is the only tree under <code>harnesses/</code>, because every other target refuses on <code>disable-model-invocation</code> — see the <a href="../harnesses/">harness matrix</a>.</p>
+          <p>Output is deterministic and committed, matching the repo&#x27;s other generators — regenerate with <code>python3 tools/export.py build --target claude-code</code>, never hand-edit. Claude&#x27;s tree is rendered from neutral canonical sources and byte-compared with its compatibility golden files; today it is the only approved tree under <code>harnesses/</code>, because every other target refuses on <code>disable-model-invocation</code> — see the <a href="../harnesses/">harness matrix</a>.</p>
         </div>
       </div>
     </section>
@@ -175,8 +175,8 @@
           <p class="section__lead"><code>install.sh --harness</code> consumes the generated tree, never the canonical one.</p>
         </div>
         <div class="order-prose">
-          <p>With <code>--harness &lt;name&gt;</code>, the payload comes from <code>harnesses/&lt;name&gt;/</code> — the matrix-generated, transformed tree — not from <code>skills/</code> + <code>agents/</code>. A missing tree means the matrix refused to build it, and the installer refuses too: <code>Shipmates: no payload for &#x27;&lt;name&gt;&#x27; — the capability matrix refused to build one</code>. The gate runs <strong>before any directory is created</strong>, so a refused harness fails without touching the filesystem.</p>
-          <p>No <code>--harness</code> is one implicit <code>claude-code</code> run, byte-identical to a pre-harness install (<code>claude-code</code> is the exception that reads the canonical tree, since its generated tree is identical anyway). <code>--harness all</code> expands to every known harness; the flag is repeatable and dedupes; unknown names are a hard error listing the known ones. Every harness root gets its own manifest, so <code>--uninstall</code> works per harness. Subagents ship for <code>claude-code</code> only — no other harness documents a compatible subagent directory for the frontmatter format Shipmates ships, so those targets get a skip note instead of files they may mishandle.</p>
+          <p>With <code>--harness &lt;name&gt;</code>, the payload comes from <code>harnesses/&lt;name&gt;/</code> — the exporter-approved, transformed tree — not from <code>skills/</code> + <code>agents/</code>. A missing or stale attestation means the installer refuses: <code>Shipmates: no payload for &#x27;&lt;name&gt;&#x27;</code>. The gate runs <strong>before any directory is created</strong>, so a refused harness fails without touching the filesystem.</p>
+          <p>No <code>--harness</code> is one implicit <code>claude-code</code> run, using the same attested generated payload as an explicit selection. <code>--harness all</code> expands to every known harness; the flag is repeatable and dedupes; unknown names are a hard error listing the known ones. Every harness root gets its own manifest, so <code>--uninstall</code> works per harness. Subagents ship for <code>claude-code</code> only — no other harness documents a compatible subagent directory for the frontmatter format Shipmates ships, so those targets get a skip note instead of files they may mishandle.</p>
         </div>
       </div>
     </section>

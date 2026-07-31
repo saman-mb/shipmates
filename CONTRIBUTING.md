@@ -88,6 +88,18 @@ are correct; which one belongs in a given sentence is set by the
 
 ## Testing your change
 
+### Portability sources
+
+Harness-neutral role and workflow content lives authoritatively in `canonical/`; `agents/` and
+`skills/` remain compatibility/site sources. Exporters must never emit compatibility bodies.
+Keep semantic capabilities in
+`tools/capability_registry.json`, implement new targets through `tools/adapter_contract.py`, and
+run the Claude golden check before changing generated payloads:
+
+```bash
+python3 tools/export.py check --target claude-code
+```
+
 Install into a throwaway scope and try it on a real repo:
 
 ```bash

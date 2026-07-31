@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "schema": "canonical/schema.json",
+  "project_instructions": {
+    "canonical": "AGENTS.md",
+    "claude-code": "CLAUDE.md"
+  },
+  "crew": {
+    "source_root": "agents",
+    "format": "markdown-frontmatter"
+  },
+  "orders": {
+    "source_root": "skills",
+    "format": "agent-skills"
+  },
+  "targets": ["claude-code"],
+  "target_status": {
+    "claude-code": "implemented",
+    "opencode": "registered-not-implemented"
+  }
+}

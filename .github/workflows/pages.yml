@@ -40,6 +40,8 @@ jobs:
         run: python3 tools/gen_command_pages.py --check
       - name: Check harness payloads are up to date
         run: python3 tools/build_harness_payloads.py --check
+      - name: Check canonical Claude export
+        run: python3 tools/export.py check --target claude-code
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
