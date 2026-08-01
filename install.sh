@@ -168,6 +168,22 @@ need_python3() {
   }
 }
 
+# Enabled targets, asked of the exporter once and cached. A failure here is
+# fatal on every path: if we cannot even read the target list, we cannot tell a
+# not-yet-implemented harness from a broken source tree, and guessing is what
+# this function exists to stop.
+BUILDABLE_HARNESSES=""
+harness_is_buildable() {
+  if [ -z "$BUILDABLE_HARNESSES" ]; then
+    BUILDABLE_HARNESSES="$(python3 "$REPO_SRC/tools/export.py" targets --root "$REPO_SRC")" || {
+      echo "Shipmates: could not read the exporter's target list — the canonical" >&2
+      echo "sources look invalid or incomplete (see the error above)." >&2
+      exit 1
+    }
+  fi
+  case " $(printf '%s ' $BUILDABLE_HARNESSES) " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
 resolve_harness_src() {
   local harness="$1"
   local exporter="$REPO_SRC/tools/export.py"
@@ -176,28 +192,34 @@ resolve_harness_src() {
     exit 1
   fi
   need_python3
-  local build_dir
-  build_dir="$(mktemp -d)"
-  cleanup_add "$build_dir"
-  # stdout is build chatter naming paths under harnesses/, which reads as if we
-  # wrote into the user's tree; drop it and keep stderr, which carries the
-  # exporter's actual error.
-  if ! python3 "$exporter" build --target "$harness" --root "$REPO_SRC" --out "$build_dir" >/dev/null 2>/dev/null; then
-    rm -rf "$build_dir"
-    # Came from 'all' rather than an explicit --harness: skip it and carry on,
-    # so one adapterless harness can't stop the harnesses listed after it.
+  # "Has no adapter" is a fact we ask the exporter for, never a guess from a
+  # failed build. Those are different situations with opposite handling: under
+  # 'all' the first is skipped and the second must stop the run. Inferring one
+  # from the other made a corrupt canonical tree — or a truncated download on
+  # the curl | bash path — report every harness as "no adapter yet" and exit 0
+  # having installed nothing.
+  if ! harness_is_buildable "$harness"; then
     case " $EXPANDED_HARNESSES " in
       *" $harness "*)
         echo "  ${c_dim}skipped ${harness} — no adapter yet${c_reset}"
         return 1 ;;
     esac
-    # Explicitly requested: the user asked for this harness by name, so a
-    # payload we cannot build is an error, not a note. Re-run to surface the
-    # exporter's own diagnosis, which was suppressed above.
-    python3 "$exporter" build --target "$harness" --root "$REPO_SRC" --out "$build_dir" >/dev/null || true
+    echo "Shipmates: no '$harness' payload — its adapter is not implemented." >&2
+    echo "Implemented harnesses: $(printf '%s ' $BUILDABLE_HARNESSES)" >&2
+    exit 1
+  fi
+  local build_dir
+  build_dir="$(mktemp -d)"
+  cleanup_add "$build_dir"
+  # stdout is build chatter naming paths under harnesses/, which reads as if we
+  # wrote into the user's tree; drop it and keep stderr, which carries the
+  # exporter's real diagnosis.
+  if ! python3 "$exporter" build --target "$harness" --root "$REPO_SRC" --out "$build_dir" >/dev/null; then
     rm -rf "$build_dir"
-    echo "Shipmates: no '$harness' payload — its adapter is not implemented, or the" >&2
-    echo "canonical sources are invalid (see the exporter's error above)." >&2
+    # The adapter exists, so this is a genuine build failure — invalid canonical
+    # sources, an unwritable temp dir, a truncated download. Always fatal, on
+    # every path, including 'all'.
+    echo "Shipmates: failed to build the '$harness' payload (see the error above)." >&2
     exit 1
   fi
   GENERATED_SRC="$build_dir/harnesses/$harness"
@@ -278,6 +300,24 @@ if [ -n "$HARNESSES" ]; then
 else
   TARGET_HARNESSES="claude-code"
 fi
+
+# --dir pins one root exactly, so two harnesses installed into it write over
+# each other: the second pass overwrites the first's agents/ in a format the
+# first harness cannot read, reports our own files as "yours or hand-edited",
+# and rewrites the manifest without the first harness's entries — orphaning
+# them and making --uninstall refuse the result as corrupt. Every other scope
+# gives each harness its own root, so this is the one combination that has to
+# be refused rather than made to work.
+case "$TARGET_HARNESSES" in
+  *" "*)
+    if [ "$SCOPE" = "explicit" ]; then
+      echo "Shipmates: --dir installs one harness into one directory, but" >&2
+      echo "$(printf '%s ' $TARGET_HARNESSES)were selected." >&2
+      echo "Install them one at a time with --dir, or drop --dir so each harness" >&2
+      echo "gets its own root." >&2
+      exit 1
+    fi ;;
+esac
 
 ts="$(date +%Y%m%d%H%M%S)"
 

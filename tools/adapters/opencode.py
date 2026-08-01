@@ -212,7 +212,13 @@ class OpencodeAdapter:
                 },
             )
             destination = self._destination(self.target_paths().agents, role.name)
-            files[destination] = frontmatter + "\n" + self.render_neutral(role.body) + "\n"
+            rendered = self.render_neutral(role.body)
+            # Agent bodies are prompt files opencode loads too, so they get the
+            # same guard as commands. The exporter runs against whatever
+            # canonical/ a user's clone or fork contains, which is what makes
+            # this a build-time refusal rather than a CI-time assertion.
+            _reject_shell_expansion(destination, rendered)
+            files[destination] = frontmatter + "\n" + rendered + "\n"
         for command in sorted(commands, key=lambda item: item.name):
             body = self.render_args(
                 command.narrative,

@@ -171,6 +171,30 @@ assert "all: opencode commands installed" test -f "$WORK/all/.opencode/commands/
 assert "all: opencode has no skills/ dir" test ! -e "$WORK/all/.opencode/skills"
 assert "all: adapterless harness left untouched" test ! -e "$WORK/all/.cursor"
 
+# A harness WITH an adapter that fails to build must stop the run even under
+# 'all' — otherwise a corrupt canonical tree (or a truncated curl|bash
+# download) reports every harness as "no adapter yet" and exits 0 having
+# installed nothing. "No adapter" is queried from the exporter, never inferred
+# from a build failure.
+BROKEN="$WORK/broken-repo"
+cp -R "$REPO" "$BROKEN"
+printf '{ broken' > "$BROKEN/canonical/manifest.json"
+if bash "$BROKEN/install.sh" --harness all --project "$WORK/broken" >/dev/null 2>&1; then
+  bad "all: a broken canonical tree fails the run"
+else
+  ok  "all: a broken canonical tree fails the run"
+fi
+assert "all: broken tree installs nothing" test ! -e "$WORK/broken/.claude"
+
+# --dir pins one root, so two harnesses would overwrite each other's payload
+# and orphan the first one's manifest entries. Refuse rather than corrupt.
+if run --harness all --dir "$WORK/dircollide" >/dev/null 2>&1; then
+  bad "all + --dir is refused"
+else
+  ok  "all + --dir is refused"
+fi
+assert "all + --dir creates nothing" test ! -e "$WORK/dircollide"
+
 
 # --- 4. repeated --harness flags ----------------------------------------------
 

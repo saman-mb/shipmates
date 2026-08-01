@@ -129,7 +129,7 @@ Install for a different harness with `--harness`:
 ```bash
 ./install.sh --harness claude-code     # default — the proven target
 ./install.sh --harness opencode        # builds both trees; format-verified, not runtime-verified
-./install.sh --harness all             # every known harness (refused ones fail loudly)
+./install.sh --harness all             # every harness that builds; the rest are skipped
 ./install.sh --harness cursor          # fails: no adapter, so the exporter refuses
 ```
 
@@ -385,7 +385,7 @@ auditable rather than a promise.
 
 - **Now** — Claude Code: the full crew and all 12 commands, and the only harness Shipmates has
   actually been run on.
-- **Installable, not yet runtime-verified** — [opencode](https://github.com/saman-mb/shipmates/issues/14):
+- **Builds, not runtime-verified** — [opencode](https://github.com/saman-mb/shipmates/issues/14):
   `--harness opencode` builds the full crew and all 12 commands. The format was verified against
   opencode's parsing source and first-party docs; a live run has not been done. Tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and

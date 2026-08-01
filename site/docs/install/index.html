@@ -130,7 +130,7 @@
             <tbody>
               <tr><td><code>--project [PATH]</code></td><td>global</td><td>Install into <code>PATH/.claude</code> (or <code>./.claude</code> when PATH is omitted).</td></tr>
               <tr><td><code>--dir PATH</code></td><td>global</td><td>Install into an explicit <code>.claude</code> directory — pins the root exactly, so the harness choice changes nothing there.</td></tr>
-              <tr><td><code>--harness NAME</code></td><td><code>claude-code</code></td><td>Install into another harness&#x27;s root. Repeatable, or pass <code>all</code> for every known harness. Composes with <code>--project</code> and <code>--dir</code>. Only <code>claude-code</code> and <code>opencode</code> build today; the other six are refused before any directory is created.</td></tr>
+              <tr><td><code>--harness NAME</code></td><td><code>claude-code</code></td><td>Install into another harness&#x27;s root. Repeatable, or pass <code>all</code>. Composes with <code>--project</code>; <code>--dir</code> pins a single root, so it takes one harness at a time. Only <code>claude-code</code> and <code>opencode</code> build today. Naming one of the other six explicitly is refused before any directory is created; <code>all</code> installs what it can and skips the rest with a note.</td></tr>
               <tr><td><code>--uninstall</code></td><td>install</td><td>Remove the files Shipmates installed, using the manifest; restores your <code>.bak-*</code> originals.</td></tr>
               <tr><td><code>--force</code></td><td>off</td><td>Skip SHA checks, overwrite everything — escape hatch for a wrong manifest or a clean slate. Still backs up first.</td></tr>
             </tbody>
