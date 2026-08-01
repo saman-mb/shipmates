@@ -97,6 +97,9 @@ unresolved role name silently falls back to a generic agent rather than erroring
 
 ## ⚓ Come aboard (install)
 
+**Requires** `bash`, `curl`, `tar`, and **`python3` (>= 3.9)** — the installer compiles the payload
+from the canonical sources at install time. macOS and every mainstream Linux ship all four.
+
 One line, no clone required:
 
 ```bash
@@ -111,7 +114,8 @@ curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh 
 ```
 
 Prefer to read the script first? Clone the repo and run `./install.sh` (same flags). Either way it
-drops `skills/<name>/SKILL.md` and `agents/*.md` into your `.claude/` and records a manifest at
+compiles `skills/<name>/SKILL.md` and `agents/*.md` from `canonical/`, drops them into your
+`.claude/`, and records a manifest at
 `.claude/shipmates/manifest` (one SHA-256 per file), so re-runs skip what is identical, update what
 only Shipmates touched, and **back up** anything you wrote or edited to `<file>.bak-<timestamp>` —
 including a loud warning when a pre-existing file's `name:` says it is a *different* agent or skill
@@ -133,16 +137,38 @@ Agent Skills standard is filesystem-based, so the same `SKILL.md` payload works 
 the target path differs. Subagents (`agents/`) ship for Claude Code only — no cross-harness
 subagent standard exists yet.
 
-**Safety:** payloads are generated per harness by `tools/build_harness_payloads.py` against
-`tools/harness_matrix.json`. If the matrix can't honour a safety property on a target (e.g. no
-equivalent of `disable-model-invocation`), the payload is **refused** and the install fails
+**Safety:** Claude payloads are compiled from `canonical/` by `tools/export.py` at install time,
+and carry a `.shipmates-payload` build manifest recording the inputs they came from. That manifest
+is provenance, not an integrity check — the installer compiles from the tree it just fetched, so
+re-hashing that same tree would prove nothing. If the matrix can't honour a safety property on a target
+(e.g. no equivalent of `disable-model-invocation`), the payload is **refused** and install fails
 loudly rather than shipping a more permissive artifact. Currently only `claude-code` builds;
-others refuse until their harness documents a user-invoked-only equivalent.
+others refuse until their adapter and user-invoked-only equivalent are approved.
 
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
 >
 > ↩️ Upgrading and `/ship-issue` stops resolving? Put the old file back with
 > `mv ~/.claude/commands/ship-issue.md.bak-<ts> ~/.claude/commands/ship-issue.md`.
+
+### Canonical exporter foundation
+
+Portability work starts from authoritative `canonical/`: full persona/workflow bodies, semantic crew
+capabilities, ordered command stages, neutral `@role({{argument}})` invocations, and named arguments.
+`agents/` and `skills/` are **generated mirrors** of the Claude export, kept in the repository
+because the site generator and the skills validator read them; CI proves they match, so editing
+them directly fails rather than silently shipping nothing. The exporter renders neutral canonical
+bodies into Claude's established dialect; it never reads the mirrors. Build, check, or regenerate:
+
+```bash
+python3 tools/export.py build --target claude-code --out /tmp/shipmates-build
+python3 tools/export.py check --target claude-code
+python3 tools/export.py build --target claude-code --update   # regenerate references
+```
+
+`tools/capability_registry.json` is the single semantic-to-harness tool map. New adapters implement
+`tools/adapter_contract.py`, register in `tools/adapters/registry.py`, and receive independent
+golden/check coverage before becoming installable. `opencode` is registered for future work but
+`tools/export.py build --target opencode` refuses until its adapter exists.
 
 ## 🚀 Weigh anchor (use it)
 

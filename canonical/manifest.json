@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "schema": "canonical/schema.json",
+  "project_instructions": {
+    "canonical": "AGENTS.md",
+    "claude-code": "CLAUDE.md"
+  },
+  "crew": {
+    "canonical_root": "canonical/crew",
+    "format": "markdown-frontmatter"
+  },
+  "commands": {
+    "canonical_root": "canonical/commands",
+    "format": "agent-skills"
+  },
+  "targets": ["claude-code"],
+  "target_status": {
+    "claude-code": "implemented",
+    "opencode": "registered-not-implemented"
+  },
+  "compatibility": {
+    "target": "claude-code",
+    "roots": ["agents", "skills"],
+    "exempt": [".shipmates-payload"]
+  }
+}

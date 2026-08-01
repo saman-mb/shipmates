@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "capabilities": ["read", "edit", "bash", "web", "agent"],
+  "harnesses": {
+    "claude-code": {
+      "agent_path": ".claude/agents/{name}.md",
+      "skill_path": ".claude/skills/{name}/SKILL.md",
+      "project_instructions": "CLAUDE.md",
+      "permission_model": "allowlist",
+      "scopes": {
+        "read": "Read",
+        "search": "Grep",
+        "glob": "Glob",
+        "write": "Write",
+        "edit": "Edit",
+        "bash": "Bash",
+        "web-search": "WebSearch",
+        "web-fetch": "WebFetch",
+        "agent": "Agent"
+      },
+      "tools": {
+        "read": ["Read", "Grep", "Glob"],
+        "edit": ["Write", "Edit"],
+        "bash": "Bash",
+        "web": {
+          "search": "WebSearch",
+          "fetch": "WebFetch"
+        },
+        "agent": "Agent"
+      }
+    },
+    "opencode": {
+      "agent_path": ".opencode/agent/{name}.md",
+      "skill_path": ".opencode/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "permission_model": "permission-map",
+      "tools": {
+        "read": {"read": "allow"},
+        "edit": {"edit": "allow"},
+        "bash": {"bash": "allow"},
+        "web": {"webfetch": "allow"},
+        "agent": {"task": "allow"}
+      }
+    }
+  }
+}

@@ -80,7 +80,7 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="global-title">Global install</h2>
-          <p class="section__lead">One command, every project.</p>
+          <p class="section__lead">One command, every project. Requires <code>bash</code>, <code>curl</code>, <code>tar</code>, and <code>python3</code> (&gt;= 3.9) — the installer compiles the payload from the canonical sources at install time.</p>
         </div>
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash</code></pre>
@@ -109,7 +109,7 @@
         </div>
         <div class="order-prose">
           <ul>
-            <li>Copies the twelve <code>skills/&lt;name&gt;/</code> trees <strong>whole</strong> — whatever a skill bundles (<code>references/</code>, <code>scripts/</code>, <code>assets/</code>) comes along with its <code>SKILL.md</code> — and the twelve <code>agents/*.md</code> personas into the target root. Subagents ship to <strong>claude-code only</strong>: no other harness documents a compatible subagent directory, so for the rest they are skipped with a note.</li>
+            <li>Compiles the payload from the repository&#x27;s <code>canonical/</code> sources with <code>tools/export.py</code>, into a temporary directory it removes on exit. Copies the resulting twelve <code>skills/&lt;name&gt;/</code> trees <strong>whole</strong> — whatever a skill bundles (<code>references/</code>, <code>scripts/</code>, <code>assets/</code>) comes along with its <code>SKILL.md</code> — and the twelve <code>agents/*.md</code> personas into the target root. Subagents ship to <strong>claude-code only</strong>: no other harness documents a compatible subagent directory, so for the rest they are skipped with a note.</li>
             <li>Records a manifest at <code>&lt;target&gt;/shipmates/manifest</code>: one line per file with its SHA-256, so later runs can tell Shipmates&#x27; files from yours. Every harness root gets its own manifest, so <code>--uninstall</code> works per harness.</li>
             <li>Re-installing <strong>skips</strong> files that are already identical and <strong>upgrades</strong> ones only Shipmates touched — without making backups.</li>
             <li>A file <strong>you</strong> wrote or edited is backed up to <code>&lt;file&gt;.bak-&lt;timestamp&gt;</code> first, and if its frontmatter <code>name:</code> says it is a <em>different</em> agent or skill than the one replacing it, you get a loud warning.</li>

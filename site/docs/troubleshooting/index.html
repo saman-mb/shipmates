@@ -115,6 +115,15 @@
           </details>
           <details class="faq__item">
             <summary class="faq__q">
+              <span class="faq__q-text"><code>Shipmates: &#x27;python3&#x27; (&gt;= 3.9) is required</code></span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p><strong>Cause:</strong> the installer compiles the payload from the canonical sources at install time, so <code>python3</code> is required alongside <code>curl</code> and <code>tar</code>. You either have no <code>python3</code> on <code>PATH</code>, or one older than 3.9. <strong>Fix:</strong> check with <code>python3 --version</code>, then install or upgrade Python 3 (macOS: <code>brew install python</code>; Debian/Ubuntu: <code>sudo apt install python3</code>). If a newer Python is already installed but not first on <code>PATH</code>, put it there and re-run. Nothing is written before this check, so a failed install leaves no partial state.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
               <span class="faq__q-text">Skills don&#x27;t load after install</span>
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>

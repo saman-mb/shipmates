@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Generate harnesses/<target>/ payload trees from skills/ + agents/ — stdlib only.
+"""Generate harnesses/<target>/ payload trees — stdlib only.
+
+Claude Code is delegated to tools/export.py and compiled from canonical/. The
+legacy matrix transformer below remains for non-Claude targets as they become
+implementable.
 
 Reads tools/harness_matrix.json, the declarative feature x harness matrix, and
-projects the canonical Claude Code sources (skills/<slug>/SKILL.md and
-agents/<name>.md) into one payload tree per target harness:
+projects non-Claude source documents into one payload tree per target harness.
+Claude Code is compiled by tools/export.py from canonical/:
 
     harnesses/<target>/skills/<slug>/SKILL.md   (frontmatter transformed)
     harnesses/<target>/agents/<name>.md         (only when the matrix says the
@@ -71,6 +75,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MATRIX_REL = "tools/harness_matrix.json"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 SKILLS = "skills"
 AGENTS = "agents"
@@ -598,6 +604,20 @@ def main(argv=None) -> int:
             file=sys.stderr,
         )
         return 2
+
+    # Claude Code is now compiled from canonical/ by tools/export.py. Keep this
+    # legacy entry point as a compatibility check so CI and existing contributor
+    # commands still gate the committed harnesses/ tree without maintaining a
+    # second Claude source pipeline.
+    if args.target in ("claude-code", "all"):
+        from tools import export as canonical_export
+
+        claude_rc = canonical_export.run(root, "claude-code", args.check)
+        if args.target == "claude-code":
+            return claude_rc
+        if claude_rc:
+            return claude_rc
+        targets = [target for target in targets if target.name != "claude-code"]
 
     try:
         skills, agents = load_sources(root)

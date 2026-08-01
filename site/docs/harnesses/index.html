@@ -97,7 +97,7 @@
           </table>
         </div>
         <div class="order-prose">
-          <p><strong>Shipped</strong> means <code>harnesses/claude-code/</code> is built, committed, and installable — a byte-for-byte mirror of the canonical <code>skills/</code> and <code>agents/</code> trees. <strong>In development</strong> means the harness has a tracking epic and we're actively building its adapter. <strong>Planned</strong> means we intend to support it but haven't started. Today <code>harnesses/</code> holds <code>claude-code</code> alone; the others are pending safety verification.</p>
+          <p><strong>Shipped</strong> means the <code>claude-code</code> payload is exported from neutral canonical sources, byte-compared against the committed golden reference and the generated <code>agents/</code> + <code>skills/</code> mirrors, and compiled at install time. <strong>In development</strong> means the harness has a tracking epic and we're actively building its adapter. <strong>Planned</strong> means we intend to support it but haven't started. Today <code>claude-code</code> is the only implemented target; the others are pending adapter and safety verification.</p>
         </div>
       </div>
     </section>
