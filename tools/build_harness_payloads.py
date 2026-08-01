@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Generate harnesses/<target>/ payload trees — stdlib only.
 
-Claude Code is delegated to tools/export.py and compiled from canonical/. The
-legacy matrix transformer below remains for non-Claude targets as they become
-implementable.
+Every target with a registered adapter in tools/adapters/registry.py is compiled
+from canonical/ by tools/export.py, and is delegated to it here once
+canonical/manifest.json enables the target. The legacy matrix transformer below
+remains for the targets canonical has not taken over yet.
 
 Reads tools/harness_matrix.json, the declarative feature x harness matrix, and
-projects non-Claude source documents into one payload tree per target harness.
-Claude Code is compiled by tools/export.py from canonical/:
+projects those remaining source documents into one payload tree per target
+harness:
 
     harnesses/<target>/skills/<slug>/SKILL.md   (frontmatter transformed)
     harnesses/<target>/agents/<name>.md         (only when the matrix says the
@@ -605,19 +606,44 @@ def main(argv=None) -> int:
         )
         return 2
 
-    # Claude Code is now compiled from canonical/ by tools/export.py. Keep this
-    # legacy entry point as a compatibility check so CI and existing contributor
-    # commands still gate the committed harnesses/ tree without maintaining a
-    # second Claude source pipeline.
-    if args.target in ("claude-code", "all"):
-        from tools import export as canonical_export
+    # Canonical ownership. Any target with a registered adapter is compiled from
+    # canonical/ by tools/export.py, not from skills/ + agents/ by the legacy
+    # transformer below. Targets canonical/manifest.json has *enabled* are
+    # delegated; a registered-but-not-yet-enabled one is skipped outright rather
+    # than built here, because a second, differently-shaped tree under the same
+    # harnesses/<target>/ path would put this generator's --check permanently at
+    # odds with the canonical export's.
+    from tools import export as canonical_export
+    from tools.adapters.registry import ADAPTERS
 
-        claude_rc = canonical_export.run(root, "claude-code", args.check)
-        if args.target == "claude-code":
-            return claude_rc
-        if claude_rc:
-            return claude_rc
-        targets = [target for target in targets if target.name != "claude-code"]
+    try:
+        enabled = frozenset(canonical_export.load_manifest(root)["targets"])
+    except canonical_export.ExportError as err:
+        print(f"error: {err}", file=sys.stderr)
+        return 2
+    unknown = sorted(enabled - set(known))
+    if unknown:
+        print(
+            f"error: canonical/manifest.json enables target(s) absent from "
+            f"{MATRIX_REL}: {', '.join(unknown)} — add them to the matrix",
+            file=sys.stderr,
+        )
+        return 2
+
+    canonical_owned = frozenset(ADAPTERS) | enabled
+    for harness in targets:
+        if harness.name not in enabled:
+            continue
+        canonical_rc = canonical_export.run(root, harness.name, args.check)
+        if canonical_rc:
+            return canonical_rc
+    for harness in targets:
+        if harness.name in canonical_owned and harness.name not in enabled:
+            print(
+                f"skipped: harnesses/{harness.name}/ — a canonical adapter is "
+                "registered but canonical/manifest.json has not enabled the target"
+            )
+    targets = [target for target in targets if target.name not in canonical_owned]
 
     try:
         skills, agents = load_sources(root)

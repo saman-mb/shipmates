@@ -188,16 +188,44 @@ class ExporterTests(unittest.TestCase):
                 self.assertEqual(before, after)
                 temporary.cleanup()
 
-    def test_opencode_is_explicitly_refused(self) -> None:
-        result = subprocess.run(
-            [sys.executable, "tools/export.py", "build", "--target", "opencode"],
-            cwd=ROOT,
-            text=True,
-            capture_output=True,
-        )
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("opencode", result.stderr)
-        self.assertIn("not implemented", result.stderr)
+    #: Harnesses install.sh advertises that have no adapter yet. The refusal is a
+    #: safety path, not a TODO: a target that fell through to some default adapter
+    #: would write another harness's dialect into its paths and still look like a
+    #: successful install.
+    TARGETS_WITHOUT_ADAPTERS = ("cursor", "codex", "github-copilot", "gemini", "windsurf", "zed")
+
+    def test_target_without_an_adapter_is_explicitly_refused(self) -> None:
+        """Every unimplemented target must fail closed and print nothing to stdout.
+
+        This assertion used to point at opencode. opencode now has an adapter, so
+        the coverage moved rather than being deleted — the fail-closed path still
+        needs a subject, and there are six of them.
+        """
+        for target in self.TARGETS_WITHOUT_ADAPTERS:
+            with self.subTest(target=target):
+                result = subprocess.run(
+                    [sys.executable, "tools/export.py", "build", "--target", target],
+                    cwd=ROOT,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(target, result.stderr)
+                self.assertIn("not enabled by canonical manifest", result.stderr)
+                self.assertEqual("", result.stdout)
+
+    def test_implemented_targets_are_accepted(self) -> None:
+        """The counterpart to the refusal: an enabled target must actually build."""
+        for target in ("claude-code", "opencode"):
+            with self.subTest(target=target):
+                result = subprocess.run(
+                    [sys.executable, "tools/export.py", "check", "--target", target],
+                    cwd=ROOT,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("up to date", result.stdout)
 
     def test_installer_generates_claude_payload_at_install_time(self) -> None:
         temporary, root = self.temp_repo()
@@ -216,18 +244,51 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("GENERATED PAYLOAD MARKER", installed.read_text(encoding="utf-8"))
 
     def test_installer_refuses_unsupported_adapter(self) -> None:
+        """The installer must refuse an adapterless harness AND create nothing.
+
+        Retargeted from opencode, which now ships an adapter. `cursor` keeps the
+        property under test: a half-created harness root would leave a manifest
+        `--uninstall` cannot reconcile, so the refusal has to be atomic.
+        """
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
         target = Path(temporary.name) / "installed"
+        result = subprocess.run(
+            ["bash", str(root / "install.sh"), "--harness", "cursor", "--dir", str(target)],
+            cwd=root,
+            text=True,
+            capture_output=True,
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("cursor", result.stderr)
+        self.assertIn("not implemented", result.stderr)
+        self.assertFalse(target.exists())
+
+    def test_installer_generates_opencode_payload_with_no_skills_dir(self) -> None:
+        """opencode installs as commands only — a skills/ dir would be model-invokable.
+
+        opencode skills have no `disable-model-invocation` equivalent, so twelve
+        worktree-creating, branch-pushing workflows shipped there could be started
+        by the model unprompted. Asserted at install time, not just at build time.
+        """
+        temporary, root = self.temp_repo()
+        self.addCleanup(temporary.cleanup)
+        canonical = root / "canonical/commands/ship-issue.md"
+        canonical.write_text(
+            canonical.read_text(encoding="utf-8") + "\nOPENCODE PAYLOAD MARKER\n", encoding="utf-8"
+        )
+        target = Path(temporary.name) / "installed-opencode"
         result = subprocess.run(
             ["bash", str(root / "install.sh"), "--harness", "opencode", "--dir", str(target)],
             cwd=root,
             text=True,
             capture_output=True,
         )
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("opencode", result.stderr)
-        self.assertFalse(target.exists())
+        self.assertEqual(0, result.returncode, result.stderr)
+        installed = target / "commands/ship-issue.md"
+        self.assertIn("OPENCODE PAYLOAD MARKER", installed.read_text(encoding="utf-8"))
+        self.assertFalse((target / "skills").exists())
+        self.assertTrue((target / "agents/architect.md").exists())
 
     def test_compatibility_source_drift_is_caught(self) -> None:
         """Editing agents/ or skills/ directly must fail, not silently ship nothing.
@@ -304,7 +365,10 @@ class ExporterTests(unittest.TestCase):
         registry = load_registry(ROOT / "tools/capability_registry.json")
         adapter = ClaudeCodeAdapter(registry["claude-code"])
         self.assertEqual([], conformance_report(adapter, "claude-code"))
-        self.assertIn("does not match target", " ".join(conformance_report(adapter, "opencode")))
+        # The wrong-name probe must name a target that has NO adapter, otherwise
+        # it reads as "opencode is unsupported" rather than "this adapter is the
+        # claude-code one". `cursor` has no adapter, so the intent stays legible.
+        self.assertIn("does not match target", " ".join(conformance_report(adapter, "cursor")))
 
         class Partial:
             name = "claude-code"
