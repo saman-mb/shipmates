@@ -40,6 +40,20 @@ jobs:
         run: python3 tools/gen_command_pages.py --check
       - name: Check harness payloads are up to date
         run: python3 tools/build_harness_payloads.py --check
+      - name: Run the skill-lint regression suite
+        run: bash tests/test_validate_skills.sh
+      - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
+        # Both are pinned: the artifacts are compared as pixels, and the pixels
+        # come from Pillow's bundled freetype and this exact font version. An
+        # unpinned bump would re-render every glyph and red-build an unrelated
+        # PR. Bump these deliberately, regenerating the artifacts in the same
+        # commit.
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y fonts-dejavu-core=2.37-8
+          pip install "Pillow==12.3.0"
+      - name: Check demo GIF/poster artifacts are up to date
+        run: python3 tools/gen_demo_gif.py --check
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
