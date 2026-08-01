@@ -24,10 +24,13 @@
 # no other harness documents a compatible subagent directory, so for the rest
 # they are skipped with a note.
 #
-# Run from a local clone it copies the files sitting next to it; piped from the
+# Run from a local clone it uses the sources sitting next to it; piped from the
 # web there is no local copy to trust, so it always downloads the main branch
-# tarball first. Skills are copied whole, so whatever a skill bundles
-# (references/, scripts/, assets/) comes along with its SKILL.md.
+# tarball first. Either way the payload is compiled from canonical/ by
+# tools/export.py into a temp directory and installed from there, so python3
+# (>= 3.9) is required alongside curl and tar. Skills are copied whole, so
+# whatever a skill bundles (references/, scripts/, assets/) comes along with
+# its SKILL.md.
 #
 # Every install records a manifest at <target>/shipmates/manifest: one line per
 # file with its SHA-256, so later runs can tell Shipmates' files from yours.

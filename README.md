@@ -97,6 +97,9 @@ unresolved role name silently falls back to a generic agent rather than erroring
 
 ## ⚓ Come aboard (install)
 
+**Requires** `bash`, `curl`, `tar`, and **`python3` (>= 3.9)** — the installer compiles the payload
+from the canonical sources at install time. macOS and every mainstream Linux ship all four.
+
 One line, no clone required:
 
 ```bash
@@ -111,7 +114,8 @@ curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh 
 ```
 
 Prefer to read the script first? Clone the repo and run `./install.sh` (same flags). Either way it
-drops `skills/<name>/SKILL.md` and `agents/*.md` into your `.claude/` and records a manifest at
+compiles `skills/<name>/SKILL.md` and `agents/*.md` from `canonical/`, drops them into your
+`.claude/`, and records a manifest at
 `.claude/shipmates/manifest` (one SHA-256 per file), so re-runs skip what is identical, update what
 only Shipmates touched, and **back up** anything you wrote or edited to `<file>.bak-<timestamp>` —
 including a loud warning when a pre-existing file's `name:` says it is a *different* agent or skill
