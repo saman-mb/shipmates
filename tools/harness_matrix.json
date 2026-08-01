@@ -64,7 +64,7 @@
         "gemini": { "supported": false, "policy": "warn" },
         "windsurf": { "supported": false, "policy": "warn" },
         "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": true }
+        "opencode": { "supported": false, "policy": "drop" }
       }
     },
     "compatibility": {
@@ -77,7 +77,7 @@
         "gemini": { "supported": false, "policy": "warn" },
         "windsurf": { "supported": false, "policy": "warn" },
         "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": true }
+        "opencode": { "supported": false, "policy": "drop" }
       }
     },
     "metadata": {
@@ -90,7 +90,7 @@
         "gemini": { "supported": false, "policy": "warn" },
         "windsurf": { "supported": false, "policy": "warn" },
         "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": true }
+        "opencode": { "supported": false, "policy": "drop" }
       }
     },
     "allowed-tools": {
@@ -103,7 +103,7 @@
         "gemini": { "supported": false, "policy": "warn" },
         "windsurf": { "supported": false, "policy": "warn" },
         "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": true, "separator": "space" }
+        "opencode": { "supported": false, "policy": "drop" }
       }
     },
     "argument-hint": {
@@ -154,9 +154,8 @@
           "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
         },
         "opencode": {
-          "supported": false,
-          "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "supported": true,
+          "reason": "Honoured structurally rather than as a frontmatter key: the payload ships the twelve as `/`-invoked entries under .opencode/commands/, and deliberately does NOT use .opencode/skills/, whose entries opencode's model invokes itself through its native `skill` tool and which has no `disable-model-invocation` equivalent."
         }
       }
     },
@@ -171,9 +170,8 @@
         "windsurf": { "supported": false, "policy": "warn" },
         "zed": { "supported": false, "policy": "warn" },
         "opencode": {
-          "supported": false,
-          "policy": "emulate",
-          "emulation": "opencode gates tools per-name in its own configuration rather than as a markdown frontmatter allowlist, so the allowlist is expressed as a prompt-level instruction in the agent body"
+          "supported": true,
+          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow — a prompt is not a permission boundary."
         }
       }
     },

@@ -20,9 +20,9 @@
 # it to install to several, or pass 'all'. Known harnesses: claude-code,
 # github-copilot, codex, cursor, gemini, windsurf, zed, opencode. It composes
 # with --project and --dir, and every harness root gets its own manifest, so
-# --uninstall works per harness. Subagents (agents/) ship to claude-code only:
-# no other harness documents a compatible subagent directory, so for the rest
-# they are skipped with a note.
+# --uninstall works per harness. Subagents (agents/) ship to claude-code and
+# opencode — the only two that document a compatible subagent directory; the
+# rest are skipped with a note.
 #
 # Run from a local clone it uses the sources sitting next to it; piped from the
 # web there is no local copy to trust, so it always downloads the main branch
@@ -104,25 +104,41 @@ done
 #   zed             ~/.agents                .agents        https://zed.dev/docs/ai/skills
 #   opencode        ~/.config/opencode       .opencode      https://opencode.ai/docs/skills/
 #
-# All eight read skills from <root>/skills/<name>/SKILL.md. Note codex and zed
-# share a root — installing to both lands in the same place by design (the
-# second run simply reports every file unchanged, against the same manifest).
+# Seven of the eight read our workflows from <root>/skills/<name>/SKILL.md.
+# opencode is the exception: its skills are model-invoked with no
+# user-invoked-only equivalent, and every Shipmates command must stay
+# captain-initiated, so its workflows ship as opencode *commands* — flat
+# <root>/commands/<name>.md files, one per command, no nested dir. The
+# exporter emits whichever layout the target wants; the loops below follow
+# harness_commands_layout.
 #
-# Subagents have no cross-harness standard. Only Claude Code reads
-# <root>/agents/*.md in the frontmatter format we ship, so agents/ is
-# installed for claude-code alone. Other harnesses document their own
+# Note codex and zed share a root — installing to both lands in the same place
+# by design (the second run simply reports every file unchanged, against the
+# same manifest).
+#
+# Subagents have no cross-harness standard. Claude Code reads <root>/agents/*.md
+# and opencode reads <root>/agents/*.md too, both in the frontmatter format we
+# ship, so agents/ installs for those two. The rest document their own
 # incompatible subagent directories — Copilot: .github/agents/, Gemini:
-# .gemini/agents/, opencode: .opencode/agent/ (singular), Cursor: via its
-# /create-subagent skill, Codex: config-driven — and get a skip note instead
-# of files in a format they may mishandle.
+# .gemini/agents/, Cursor: via its /create-subagent skill, Codex: config-driven
+# — and get a skip note instead of files in a format they may mishandle.
 ALL_HARNESSES="claude-code github-copilot codex cursor gemini windsurf zed opencode"
 
 harness_known() {
   case " $ALL_HARNESSES " in *" $1 "*) return 0 ;; *) return 1 ;; esac
 }
 
-# Subagents (agents/) ship for claude-code only — see the table comment above.
-harness_has_agents() { [ "$1" = "claude-code" ]; }
+# Subagents (agents/) ship for the harnesses that document a directory of
+# Claude-format subagent files — see the table comment above.
+harness_has_agents() { case "$1" in claude-code|opencode) return 0 ;; *) return 1 ;; esac; }
+
+# Where a harness reads our workflows from, and therefore the shape the
+# exporter emitted into the payload:
+#   nested  <root>/skills/<name>/SKILL.md   (+ any files the skill bundles)
+#   flat    <root>/commands/<name>.md       (one file per command)
+# The installer never guesses the layout from the payload — an empty or
+# half-built tree would then silently install nothing.
+harness_commands_layout() { case "$1" in opencode) printf 'flat' ;; *) printf 'nested' ;; esac; }
 
 # Generate the target's payload at install time from the canonical sources in
 # canonical/ — the single source of truth. No harness tree is committed; agents/
@@ -152,6 +168,22 @@ need_python3() {
   }
 }
 
+# Enabled targets, asked of the exporter once and cached. A failure here is
+# fatal on every path: if we cannot even read the target list, we cannot tell a
+# not-yet-implemented harness from a broken source tree, and guessing is what
+# this function exists to stop.
+BUILDABLE_HARNESSES=""
+harness_is_buildable() {
+  if [ -z "$BUILDABLE_HARNESSES" ]; then
+    BUILDABLE_HARNESSES="$(python3 "$REPO_SRC/tools/export.py" targets --root "$REPO_SRC")" || {
+      echo "Shipmates: could not read the exporter's target list — the canonical" >&2
+      echo "sources look invalid or incomplete (see the error above)." >&2
+      exit 1
+    }
+  fi
+  case " $(printf '%s ' $BUILDABLE_HARNESSES) " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
 resolve_harness_src() {
   local harness="$1"
   local exporter="$REPO_SRC/tools/export.py"
@@ -160,16 +192,34 @@ resolve_harness_src() {
     exit 1
   fi
   need_python3
+  # "Has no adapter" is a fact we ask the exporter for, never a guess from a
+  # failed build. Those are different situations with opposite handling: under
+  # 'all' the first is skipped and the second must stop the run. Inferring one
+  # from the other made a corrupt canonical tree — or a truncated download on
+  # the curl | bash path — report every harness as "no adapter yet" and exit 0
+  # having installed nothing.
+  if ! harness_is_buildable "$harness"; then
+    case " $EXPANDED_HARNESSES " in
+      *" $harness "*)
+        echo "  ${c_dim}skipped ${harness} — no adapter yet${c_reset}"
+        return 1 ;;
+    esac
+    echo "Shipmates: no '$harness' payload — its adapter is not implemented." >&2
+    echo "Implemented harnesses: $(printf '%s ' $BUILDABLE_HARNESSES)" >&2
+    exit 1
+  fi
   local build_dir
   build_dir="$(mktemp -d)"
   cleanup_add "$build_dir"
   # stdout is build chatter naming paths under harnesses/, which reads as if we
   # wrote into the user's tree; drop it and keep stderr, which carries the
-  # exporter's actual error.
+  # exporter's real diagnosis.
   if ! python3 "$exporter" build --target "$harness" --root "$REPO_SRC" --out "$build_dir" >/dev/null; then
-    echo "Shipmates: no '$harness' payload — its adapter is not implemented, or the" >&2
-    echo "canonical sources are invalid (see the exporter's error above)." >&2
     rm -rf "$build_dir"
+    # The adapter exists, so this is a genuine build failure — invalid canonical
+    # sources, an unwritable temp dir, a truncated download. Always fatal, on
+    # every path, including 'all'.
+    echo "Shipmates: failed to build the '$harness' payload (see the error above)." >&2
     exit 1
   fi
   GENERATED_SRC="$build_dir/harnesses/$harness"
@@ -177,8 +227,8 @@ resolve_harness_src() {
 }
 
 # Resolve the install root for harness $1 under the current SCOPE. --dir pins
-# the root exactly, so the harness choice changes nothing there — every known
-# harness reads <root>/skills/ anyway.
+# the root exactly, so the harness choice picks only the layout written under
+# that root (skills/ vs commands/) and whether agents/ ships.
 resolve_target() {
   case "$SCOPE" in
     global)
@@ -212,7 +262,15 @@ resolve_target() {
 # loops over. No --harness = one implicit claude-code run, byte-identical to a
 # pre-harness install. 'all' expands to every known harness; repeats dedupe.
 # Unknown names are a hard error here, before anything on disk is touched.
+# EXPANDED_HARNESSES records the subset that came from 'all' rather than from an
+# explicit --harness. The two are treated differently when a payload can't be
+# built: naming a harness is a request for that harness, so a refusal is an
+# error; 'all' is a request for everything installable, so a harness with no
+# adapter yet is skipped with a note. Without the distinction the first
+# adapterless harness aborts the run and every harness after it is never
+# reached — which silently excluded opencode, second-to-last in the table.
 TARGET_HARNESSES=""
+EXPANDED_HARNESSES=""
 if [ -n "$HARNESSES" ]; then
   # Word-splitting HARNESSES/ALL_HARNESSES is intentional: both hold only
   # whitespace-separated names validated against the table above.
@@ -223,7 +281,8 @@ if [ -n "$HARNESSES" ]; then
       for ha in $ALL_HARNESSES; do
         case " $TARGET_HARNESSES " in
           *" $ha "*) ;;
-          *) TARGET_HARNESSES="${TARGET_HARNESSES:+$TARGET_HARNESSES }$ha" ;;
+          *) TARGET_HARNESSES="${TARGET_HARNESSES:+$TARGET_HARNESSES }$ha"
+             EXPANDED_HARNESSES="${EXPANDED_HARNESSES:+$EXPANDED_HARNESSES }$ha" ;;
         esac
       done
       continue
@@ -241,6 +300,24 @@ if [ -n "$HARNESSES" ]; then
 else
   TARGET_HARNESSES="claude-code"
 fi
+
+# --dir pins one root exactly, so two harnesses installed into it write over
+# each other: the second pass overwrites the first's agents/ in a format the
+# first harness cannot read, reports our own files as "yours or hand-edited",
+# and rewrites the manifest without the first harness's entries — orphaning
+# them and making --uninstall refuse the result as corrupt. Every other scope
+# gives each harness its own root, so this is the one combination that has to
+# be refused rather than made to work.
+case "$TARGET_HARNESSES" in
+  *" "*)
+    if [ "$SCOPE" = "explicit" ]; then
+      echo "Shipmates: --dir installs one harness into one directory, but" >&2
+      echo "$(printf '%s ' $TARGET_HARNESSES)were selected." >&2
+      echo "Install them one at a time with --dir, or drop --dir so each harness" >&2
+      echo "gets its own root." >&2
+      exit 1
+    fi ;;
+esac
 
 ts="$(date +%Y%m%d%H%M%S)"
 
@@ -293,8 +370,9 @@ sha256() { $SHA256_BIN "$1" | awk '{print $1}'; }
 #   installed_at=<epoch>                     (informational)
 #   scope=global|project|explicit            (informational)
 #   file=<relpath> sha256=<64-hex> [name=<frontmatter-name>]
-# name= appears on agents/*.md and skills/*/SKILL.md entries (files whose
-# frontmatter carries an identity); payload files under a skill dir go without.
+# name= appears on agents/*.md, skills/*/SKILL.md and commands/*.md entries
+# (files whose frontmatter carries an identity); payload files under a skill
+# dir go without.
 
 MANIFEST_STATE=1  # 0 = present and valid, 1 = absent, 2 = present but corrupt
 MANIFEST_PARSED=""  # temp file of canonicalized "relpath sha256" pairs, valid state only
@@ -306,8 +384,11 @@ MANIFEST_PARSED=""  # temp file of canonicalized "relpath sha256" pairs, valid s
 # validation while extracting to something else (a traversal path hiding in a
 # name= field, say). Corrupt means: unreadable, missing/unknown
 # manifest_version, duplicate paths, absolute or ..-traversing paths, paths
-# outside agents|skills, unsafe characters in a path or name, bad sha. A
-# manifest is a deletion instruction list; anything suspicious must stop us.
+# outside the directories this harness installs into, unsafe characters in a
+# path or name, bad sha. A manifest is a deletion instruction list; anything
+# suspicious must stop us. The allowed prefixes are narrowed to the harness's
+# own layout — a nested-layout root never lists commands/, so accepting one
+# there would only ever widen what a tampered manifest can order deleted.
 manifest_read() {
   MANIFEST_STATE=1
   [ -e "$MANIFEST" ] || return 0
@@ -315,9 +396,11 @@ manifest_read() {
     echo "Shipmates: manifest exists but is not readable: $MANIFEST" >&2
     MANIFEST_STATE=2; return 0
   fi
+  local roots="agents|skills"
+  [ "$(harness_commands_layout "$HARNESS")" = "flat" ] && roots="agents|commands"
   MANIFEST_PARSED="$(mktemp)"; cleanup_add "$MANIFEST_PARSED"
-  if awk '
-    BEGIN { mv=0; bad=0 }
+  if awk -v roots="$roots" '
+    BEGIN { mv=0; bad=0; root_re="^(" roots ")/" }
     /^[[:space:]]*$/ { next }
     /^#/ { next }
     $0 == "manifest_version=1" { mv=1; next }
@@ -332,7 +415,7 @@ manifest_read() {
         else bad_field=1
       }
       if (bad_field || path == "" || sha == "") { print "malformed record: " $0 > "/dev/stderr"; bad=1; exit }
-      if (path ~ /^\// || path ~ /\.\./ || path !~ /^(agents|skills)\//) { print "unsafe path: " path > "/dev/stderr"; bad=1; exit }
+      if (path ~ /^\// || path ~ /\.\./ || path !~ root_re) { print "unsafe path: " path > "/dev/stderr"; bad=1; exit }
       if (path !~ /^[A-Za-z0-9._\/-]+$/) { print "unsafe characters in path: " path > "/dev/stderr"; bad=1; exit }
       if (nm != "" && nm !~ /^[A-Za-z0-9._-]+$/) { print "unsafe characters in name for " path > "/dev/stderr"; bad=1; exit }
       if (length(sha) != 64 || sha !~ /^[0-9a-f]+$/) { print "bad sha256 for " path > "/dev/stderr"; bad=1; exit }
@@ -469,7 +552,7 @@ record_entry() {
   need_sha256
   sha="$(sha256 "$TARGET/$rel")"
   case "$rel" in
-    agents/*.md|skills/*/SKILL.md)
+    agents/*.md|skills/*/SKILL.md|commands/*.md)
       nm="$(agent_name "$TARGET/$rel")"
       if [ -n "$nm" ]; then
         # Writer enforces the same charset the reader whitelists, or a
@@ -495,7 +578,7 @@ record_entry() {
 check_identity() {
   local src="$1" dst="$2" rel="$3" old_nm new_nm
   case "$rel" in
-    agents/*.md|skills/*/SKILL.md) ;;
+    agents/*.md|skills/*/SKILL.md|commands/*.md) ;;
     *) return 0 ;;
   esac
   old_nm="$(agent_name "$dst")"; new_nm="$(agent_name "$src")"
@@ -633,7 +716,8 @@ sweep_legacy_commands() {
 
 # The legacy flat commands/*.md payload only ever shipped to .claude, so the
 # sweep is a Claude Code-only migration: another harness's <root>/commands/
-# dir (if any) holds its own files, which are not ours to move.
+# dir holds its own files, which are not ours to move — and for a flat-layout
+# harness it is the live install target, which the sweep must never touch.
 sweep_legacy_commands_for_harness() {
   [ "$HARNESS" = "claude-code" ] || return 0
   sweep_legacy_commands
@@ -658,7 +742,10 @@ MANIFEST="$TARGET/shipmates/manifest"
 # a manifest-driven uninstall works offline.
 if ! $UNINSTALL || [ ! -e "$MANIFEST" ]; then
   resolve_src
-  resolve_harness_src "$HARNESS"
+  # A non-zero return means this harness came from 'all' and has no adapter
+  # yet — skip it and let the loop reach the ones that do. An explicitly
+  # named harness exits inside resolve_harness_src instead of returning.
+  resolve_harness_src "$HARNESS" || return 0
 fi
 
 # Create the project base dir now that the gate has passed.
@@ -721,7 +808,12 @@ if $UNINSTALL; then
           kept=$((kept+1)); skipped=$((skipped+1))
         fi
       done < "$MANIFEST_PARSED"
-      rmdir "$TARGET/skills" 2>/dev/null || :
+      # A flat layout has no per-command dir to prune, only the one root.
+      if [ "$(harness_commands_layout "$HARNESS")" = "flat" ]; then
+        rmdir "$TARGET/commands" 2>/dev/null || :
+      else
+        rmdir "$TARGET/skills" 2>/dev/null || :
+      fi
       rmdir "$TARGET/agents" 2>/dev/null || :
       sweep_legacy_commands_for_harness
       if [ "$skipped" -eq 0 ]; then
@@ -754,22 +846,30 @@ if $UNINSTALL; then
           remove_file "$f" "$TARGET/agents/$(basename "$f")"
         done
       fi
-      for d in "$SRC/skills"/*/; do
-        [ -d "$d" ] || continue
-        d="${d%/}"; [ -f "$d/SKILL.md" ] || continue
-        slug="$(basename "$d")"
-        # Walk the payload, not the target: only files this version ships are
-        # candidates for removal, so anything you dropped in yourself is
-        # invisible to this loop and survives.
-        while IFS= read -r f; do
-          remove_file "$f" "$TARGET/skills/$slug/${f#"$d/"}"
-        done < <(find "$d" -type f | sort)
-        while IFS= read -r sub; do
-          rmdir "$TARGET/skills/$slug/${sub#"$d/"}" 2>/dev/null || :
-        done < <(find "$d" -mindepth 1 -type d | sort -r)
-        rmdir "$TARGET/skills/$slug" 2>/dev/null || :
-      done
-      rmdir "$TARGET/skills" 2>/dev/null || :
+      # Walk the payload, not the target: only files this version ships are
+      # candidates for removal, so anything you dropped in yourself is
+      # invisible to these loops and survives.
+      if [ "$(harness_commands_layout "$HARNESS")" = "flat" ]; then
+        for f in "$SRC/commands"/*.md; do
+          [ -e "$f" ] || continue
+          remove_file "$f" "$TARGET/commands/$(basename "$f")"
+        done
+        rmdir "$TARGET/commands" 2>/dev/null || :
+      else
+        for d in "$SRC/skills"/*/; do
+          [ -d "$d" ] || continue
+          d="${d%/}"; [ -f "$d/SKILL.md" ] || continue
+          slug="$(basename "$d")"
+          while IFS= read -r f; do
+            remove_file "$f" "$TARGET/skills/$slug/${f#"$d/"}"
+          done < <(find "$d" -type f | sort)
+          while IFS= read -r sub; do
+            rmdir "$TARGET/skills/$slug/${sub#"$d/"}" 2>/dev/null || :
+          done < <(find "$d" -mindepth 1 -type d | sort -r)
+          rmdir "$TARGET/skills/$slug" 2>/dev/null || :
+        done
+        rmdir "$TARGET/skills" 2>/dev/null || :
+      fi
       rmdir "$TARGET/agents" 2>/dev/null || :
       sweep_legacy_commands_for_harness
       ;;
@@ -798,17 +898,26 @@ else
     echo "  ${c_dim}note: ${HARNESS} has no documented Claude-format subagent directory — skipping agents/${c_reset}"
   fi
 
-  for d in "$SRC/skills"/*/; do
-    [ -d "$d" ] || continue
-    d="${d%/}"; [ -f "$d/SKILL.md" ] || continue
-    slug="$(basename "$d")"
-    # The whole skill dir, file by file: the Agent Skills standard lets a skill
-    # bundle references/, scripts/ and assets/ beside SKILL.md, and per-file
-    # keeps the back-up-before-overwrite rule over every one of them.
-    while IFS= read -r f; do
-      install_file "$f" "$TARGET/skills/$slug/${f#"$d/"}" "skills/$slug/${f#"$d/"}"
-    done < <(find "$d" -type f | sort)
-  done
+  if [ "$(harness_commands_layout "$HARNESS")" = "flat" ]; then
+    # One file per command, no bundled payload to walk — the exporter folds
+    # whatever a canonical command needs into the single .md.
+    for f in "$SRC/commands"/*.md; do
+      [ -e "$f" ] || continue
+      install_file "$f" "$TARGET/commands/$(basename "$f")" "commands/$(basename "$f")"
+    done
+  else
+    for d in "$SRC/skills"/*/; do
+      [ -d "$d" ] || continue
+      d="${d%/}"; [ -f "$d/SKILL.md" ] || continue
+      slug="$(basename "$d")"
+      # The whole skill dir, file by file: the Agent Skills standard lets a skill
+      # bundle references/, scripts/ and assets/ beside SKILL.md, and per-file
+      # keeps the back-up-before-overwrite rule over every one of them.
+      while IFS= read -r f; do
+        install_file "$f" "$TARGET/skills/$slug/${f#"$d/"}" "skills/$slug/${f#"$d/"}"
+      done < <(find "$d" -type f | sort)
+    done
+  fi
 
   # Orphan sweep: files the previous install owned that this version no longer
   # ships. Untouched (still matching the old manifest) → remove; modified →
@@ -873,7 +982,12 @@ else
   fi
   echo "${c_dim}Manifest: ${MANIFEST}${c_reset}"
   if [ -n "$HARNESSES" ] && [ "$HARNESS" != "claude-code" ]; then
-    echo "${c_dim}If a skills/ dir was created for the first time, restart ${HARNESS} so it picks them up.${c_reset}"
+    if [ "$(harness_commands_layout "$HARNESS")" = "flat" ]; then
+      workflow_dir="commands/"
+    else
+      workflow_dir="skills/"
+    fi
+    echo "${c_dim}If a ${workflow_dir} dir was created for the first time, restart ${HARNESS} so it picks them up.${c_reset}"
   else
     echo "${c_dim}If a skills/ or agents/ dir was created for the first time, restart Claude Code"
     echo "so it picks them up. Then run ${c_reset}${c_bold}/ship-issue <issue#>${c_reset}${c_dim}.${c_reset}"

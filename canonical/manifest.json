@@ -13,14 +13,22 @@
     "canonical_root": "canonical/commands",
     "format": "agent-skills"
   },
-  "targets": ["claude-code"],
+  "targets": [
+    "claude-code",
+    "opencode"
+  ],
   "target_status": {
     "claude-code": "implemented",
-    "opencode": "registered-not-implemented"
+    "opencode": "implemented"
   },
   "compatibility": {
     "target": "claude-code",
-    "roots": ["agents", "skills"],
-    "exempt": [".shipmates-payload"]
+    "roots": [
+      "agents",
+      "skills"
+    ],
+    "exempt": [
+      ".shipmates-payload"
+    ]
   }
 }

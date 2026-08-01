@@ -344,13 +344,18 @@
           <div class="section__head">
             <p class="section__eyebrow"><span aria-hidden="true">🌊</span> What's next</p>
             <h2 class="section__title" id="next-title">Which harnesses the crew runs on</h2>
-            <p class="section__lead">Claude Code today, with four more in development. Every entry links to the epic that tracks it, so the claim is auditable rather than a promise.</p>
+            <p class="section__lead">Claude Code today, opencode installable, three more in development. Every entry links to the epic that tracks it, so the claim is auditable rather than a promise.</p>
           </div>
           <div class="order-prose">
             <ul>
               <li><strong>Now</strong>
                 <ul>
-                  <li>Claude Code — the full crew and all 12 commands.</li>
+                  <li>Claude Code — the full crew and all 12 commands, and the only harness Shipmates has actually been run on.</li>
+                </ul>
+              </li>
+              <li><strong>Builds, not runtime-verified</strong>
+                <ul>
+                  <li>opencode — <a href="https://github.com/saman-mb/shipmates/issues/14">epic #14</a>. <code>--harness opencode</code> builds the full crew and all 12 commands. The payload format was verified against opencode's own parsing source and first-party docs; it has not been exercised against a running opencode. Live verification is tracked in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
                 </ul>
               </li>
               <li><strong>In development</strong> — listed alphabetically, which is not a delivery order; none is settled yet.
@@ -358,7 +363,6 @@
                   <li>Codex CLI — <a href="https://github.com/saman-mb/shipmates/issues/17">epic #17</a></li>
                   <li>Cursor — <a href="https://github.com/saman-mb/shipmates/issues/15">epic #15</a></li>
                   <li>GitHub Copilot — <a href="https://github.com/saman-mb/shipmates/issues/16">epic #16</a></li>
-                  <li>opencode — <a href="https://github.com/saman-mb/shipmates/issues/14">epic #14</a></li>
                 </ul>
               </li>
               <li><strong>Planned</strong>
@@ -367,7 +371,7 @@
                 </ul>
               </li>
             </ul>
-            <p>Why that's credible: the crew's system prompts name no harness, and the twelve commands ship in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape rather than a Claude-specific one — so most of a port is mapping frontmatter fields, not rewriting the crew.</p>
+            <p>Why that's credible: the crew's system prompts name no harness, and the twelve commands ship in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape rather than a Claude-specific one — so most of a port is mapping frontmatter fields, not rewriting the crew. opencode is the first test of that: every persona and workflow body carried over unchanged, and what remained was path mapping and translating an allowlist into a permission map. Details on the <a href="docs/harnesses/">harness matrix</a>.</p>
           </div>
         </div>
       </div>

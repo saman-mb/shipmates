@@ -6,10 +6,14 @@ from collections.abc import Callable
 from typing import Any
 
 from .claude_code import ClaudeCodeAdapter
+from .opencode import OpencodeAdapter
 
 
 AdapterFactory = Callable[[Any], Any]
-ADAPTERS: dict[str, AdapterFactory] = {"claude-code": ClaudeCodeAdapter}
+ADAPTERS: dict[str, AdapterFactory] = {
+    "claude-code": ClaudeCodeAdapter,
+    "opencode": OpencodeAdapter,
+}
 
 
 def register(name: str, factory: AdapterFactory) -> None:
