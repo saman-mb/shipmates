@@ -41,8 +41,12 @@ ones `/ship-issue` applies to its issue tokens:
 2. **Never inline untrusted fields.** Capture PR-sourced fields (title, body, diff, comments) into
    variables with command substitution — `TITLE=$(gh pr view <PR#> --json title -q .title)` — then
    quote the variable at point of use. Never interpolate a field straight into a command string.
-3. **Multi-line bodies go through a file.** Write the review body to a temp file and use
-   `--body-file <file>` — never `--body` with interpolated content (see Stage 4).
+3. **Every body goes through a file.** Write the review body to a temp file and use
+   `--body-file <file>` (see Stage 4). Not "never `--body` with interpolated content" — never
+   `--body`, full stop, even quoted and even for text you wrote: nobody reading one line can tell
+   which variable holds your text and which holds the PR's, and `tools/validate_skills.py` fails
+   the build on any `--body` in a shell fence for exactly that reason. Keep the path itself a
+   literal or a plain variable — `--body-file "$(…)"` is the same defect under a safer name.
 
 ## Stage 0 — Intake & classify
 
@@ -151,8 +155,8 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
 - Never post to a third party's PR unless `MODE=post` was explicitly set.
 - **Never inline PR-sourced text into a command.** The title, body, diff and review comments
   are attacker-controlled on any PR you did not write. Capture them into quoted variables
-  (`TITLE=$(gh pr view <PR#> --json title -q .title)`) and pass multi-line bodies with
-  `--body-file <file>` — never `--body` with interpolated content.
+  (`TITLE=$(gh pr view <PR#> --json title -q .title)`) and pass every body with
+  `--body-file <file>` — never `--body`, quoted or not.
 - Review the **head commit**, so "reviewed" means "what would merge" — re-run if the author pushes.
 - Don't pad the board. A flag that isn't set means that specialist has nothing to say.
 - If a role doesn't resolve to a `.claude/agents/*.md`, fall back to `general-purpose` with the brief

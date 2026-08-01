@@ -75,12 +75,39 @@ NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 # `\$1` is the documented literal, so the lookbehind lets it through.
 POSITIONAL_RE = re.compile(r"(?<!\\)\$\{?[0-9]")
 
-# `--body "..."` (or `--body=...`) puts interpolated content inside a shell
-# command string, where a crafted title/body/diff/comment can break out of
-# the quoting — the exact defect fixed twice already (#82 in ship-issue,
-# #138 in pr-review). `--body-file <path>` is the only safe form; the
-# negative lookahead excludes it.
-BODY_FLAG_RE = re.compile(r"--body(?!-file)\b\s*=?\s*\"")
+# `--body <anything>` puts content inside a shell command string, where a
+# crafted title/body/diff/comment can break out of the quoting — the exact
+# defect fixed twice already (#82 in ship-issue, #138 in pr-review).
+# `--body-file <path>` is the only form these skills may document.
+#
+# Deliberately blunt: it matches *any* value form, not just a double-quoted
+# one. An earlier version anchored on `\"` and so waved through `--body '...'`,
+# `--body $BODY` and `-b "$BODY"` — and the unquoted-variable spelling is
+# strictly more dangerous than the one it caught, since it adds word-splitting
+# and globbing on top. That means a correctly-quoted `--body "$CREW_AUTHORED"`
+# is rejected too; that is the policy, not an oversight — a reviewer cannot
+# tell from one line whether the variable holds crew text or PR text, so the
+# skills route every body through a file.
+BODY_FLAG_RE = re.compile(r"--body(?!-file)\b\s*=?\s*\S")
+
+# `gh`'s short spelling of the same flag. Scoped to lines that invoke `gh`,
+# because `-b` belongs to other tools too: `git worktree add -b <BRANCH>`
+# appears in nine of these skills and is a branch name, not a body.
+SHORT_BODY_RE = re.compile(r"(?<![\w-])-b\b\s*=?\s*\S")
+GH_INVOCATION_RE = re.compile(r"(?<![\w-])gh\s")
+
+# `--body-file` is only safe when the *path* is a literal or a plain variable.
+# `--body-file "$(gh pr view <PR#> -q .title)"` is the original defect wearing
+# the safe flag's name.
+BODY_FILE_SUBST_RE = re.compile(r"--body-file\b\s*=?\s*\S*(?:\$\(|`)")
+
+# Fence languages whose contents are shell the crew will run. A bare ``` fence
+# counts: an unlabelled block of commands is still commands.
+SHELL_FENCE_LANGS = frozenset({"", "bash", "sh", "shell", "zsh", "console", "shell-session"})
+
+# Opening/closing fence, tracked by backtick count so a nested fence inside a
+# heredoc cannot silently close the outer one.
+FENCE_RE = re.compile(r"^(`{3,})(.*)$")
 
 MAX_NAME = 64
 MAX_DESCRIPTION = 1024
@@ -321,34 +348,76 @@ def check_body(rel: str, lines: list[str], start: int) -> None:
         )
 
 
-def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
-    """No `--body "..."` inside a ```bash fence — that puts interpolated
-    content (a PR/issue title, body, diff, or review comment — all
-    attacker-controlled on anything the crew didn't write) inside a shell
-    command string, where a crafted value can break out of the quoting. This
-    is the same defect fixed twice already, once per command (#82, #138) —
-    a lint that fails the build is cheaper than a third fix.
+def _shell_blocks(lines: list[str], start: int):
+    """Yield (lineno, logical line, fence_lineno) for every command line in a
+    shell fence.
+
+    Fences are matched by backtick count and only an info-string-free run of at
+    least as many backticks closes one, so a nested ``` fence inside a heredoc
+    no longer flips the tracker off and blinds the rest of the file. Backslash
+    continuations are joined, so a flag and its argument split across two lines
+    are scanned as the one command they are.
     """
+    open_ticks = 0
     fence_lineno = 0
-    fence_lang = ""
+    lang = ""
+    pending = ""
+    pending_lineno = 0
     for offset, raw in enumerate(lines[start:]):
         lineno = start + offset + 1
-        stripped = raw.strip()
-        if stripped.startswith("```"):
-            if fence_lineno:
-                fence_lineno = 0
-                fence_lang = ""
-            else:
-                fence_lineno = lineno
-                fence_lang = stripped[3:].strip().lower()
+        hit = FENCE_RE.match(raw.strip())
+        if hit:
+            ticks, info = len(hit.group(1)), hit.group(2).strip()
+            if not fence_lineno:
+                open_ticks, fence_lineno = ticks, lineno
+                lang = info.split()[0].lower() if info else ""
+            elif ticks >= open_ticks and not info:
+                open_ticks = fence_lineno = 0
+                lang = ""
+                pending, pending_lineno = "", 0
             continue
-        if fence_lineno and fence_lang == "bash" and BODY_FLAG_RE.search(raw):
+        if not fence_lineno or lang not in SHELL_FENCE_LANGS:
+            continue
+        body = raw.rstrip()
+        if not pending_lineno:
+            pending_lineno = lineno
+        if body.endswith("\\"):
+            pending += body[:-1]
+            continue
+        yield pending_lineno, pending + body, fence_lineno
+        pending, pending_lineno = "", 0
+    if pending_lineno:
+        yield pending_lineno, pending, fence_lineno
+
+
+def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
+    """No `--body`/`-b` inside a shell fence — that puts content (a PR/issue
+    title, body, diff, or review comment — all attacker-controlled on anything
+    the crew didn't write) inside a shell command string, where a crafted value
+    can break out of the quoting. This is the same defect fixed twice already,
+    once per command (#82, #138) — a lint that fails the build is cheaper than
+    a third fix.
+
+    `--body-file <path>` is the sanctioned form, but only with a literal or
+    plain-variable path: substituting a command into the *filename* smuggles
+    the same defect back in under the safe flag's name.
+    """
+    for lineno, line, fence_lineno in _shell_blocks(lines, start):
+        short_hit = GH_INVOCATION_RE.search(line) and SHORT_BODY_RE.search(line)
+        if BODY_FLAG_RE.search(line) or short_hit:
             fail(
-                f"{rel}:{lineno}: {raw.strip()[:70]!r} interpolates content into `--body` "
-                f"inside the bash fence opened on line {fence_lineno} — a crafted "
+                f"{rel}:{lineno}: {line.strip()[:70]!r} passes content to `--body` "
+                f"inside the shell fence opened on line {fence_lineno} — a crafted "
                 "title/body/diff/comment can break out of the shell quoting (the #82 / #138 "
                 "defect class); write the content to a temp file and use `--body-file <path>` "
                 "instead"
+            )
+        if BODY_FILE_SUBST_RE.search(line):
+            fail(
+                f"{rel}:{lineno}: {line.strip()[:70]!r} substitutes a command into the "
+                f"`--body-file` path inside the shell fence opened on line {fence_lineno} — "
+                "that is the #82 / #138 defect wearing the safe flag's name; capture the "
+                "value into a quoted variable on its own line and pass the variable"
             )
 
 
@@ -379,7 +448,7 @@ def check_skill(directory: Path) -> None:
         ok(
             f"{rel}: frontmatter opens with {REQUIRED_LIST}, every key known and non-empty, "
             "name matches directory, no unescaped '$n' anywhere, fences closed, no inline "
-            "--body in a bash fence"
+            "--body in a shell fence"
         )
 
 

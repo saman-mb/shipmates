@@ -15,12 +15,13 @@ Regenerate:            python3 tools/gen_demo_gif.py
 Check for drift (CI):  python3 tools/gen_demo_gif.py --check
 """
 import argparse
+import hashlib
 import io
 import os
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageSequence
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -262,7 +263,10 @@ def build_artifacts():
     # of the animation. It must be the *last* frame, or it depicts a run that
     # never ended.
     poster_buf = io.BytesIO()
-    frames[-1].convert("RGB").save(poster_buf, format="PNG")
+    # compress_level pinned so the committed file is at least stable for a
+    # given Pillow. It is NOT stable across Pillow builds — see
+    # _content_signature — which is why the drift check compares pixels.
+    frames[-1].convert("RGB").save(poster_buf, format="PNG", compress_level=6)
 
     return (
         {
@@ -302,6 +306,30 @@ def write_all(files: dict, root: Path) -> list:
     return written
 
 
+def _content_signature(data: bytes) -> tuple:
+    """What an artifact *is* — format, size, frame count, per-frame durations
+    and a hash of every frame's decoded RGB pixels.
+
+    Encoded bytes are not a function of the pixels, so they are the wrong
+    thing to diff. Pillow's PNG deflate comes from whatever zlib the wheel was
+    linked against — classic zlib and the zlib-ng that Pillow 11.3+ bundles
+    emit different streams for identical input — so one poster encodes to
+    47861 / 48818 / 49101 bytes on three machines whose pixels are
+    bit-identical. It also moves with compress_level and with any future
+    change to Pillow's PNG defaults. The GIF happens to be stable today only
+    because Pillow's LZW is its own C encoder and never touches zlib; that is
+    a Pillow implementation detail, not a contract, so it gets the same
+    treatment.
+    """
+    with Image.open(io.BytesIO(data)) as img:
+        fmt, size = img.format, img.size
+        digests, durations = [], []
+        for frame in ImageSequence.Iterator(img):
+            durations.append(frame.info.get("duration"))
+            digests.append(hashlib.sha256(frame.convert("RGB").tobytes()).hexdigest())
+    return (fmt, size, len(digests), tuple(durations), tuple(digests))
+
+
 def check_all(files: dict, root: Path) -> list:
     """Drift report lines. Writes NOTHING — this function never opens a path
     for writing."""
@@ -312,10 +340,26 @@ def check_all(files: dict, root: Path) -> list:
             report.append(f"missing: {rel}")
             continue
         actual = target.read_bytes()
-        if actual != files[rel]:
+        if actual == files[rel]:
+            continue
+        try:
+            committed = _content_signature(actual)
+        except Exception as exc:  # unreadable/corrupt committed artifact
+            report.append(f"unreadable: {rel} ({exc})")
+            continue
+        generated = _content_signature(files[rel])
+        if committed != generated:
             report.append(
-                f"drift: {rel} ({len(actual)} bytes committed, {len(files[rel])} bytes generated)"
+                f"drift: {rel} (committed {committed[0]} {committed[1]} "
+                f"{committed[2]} frame(s), generated {generated[0]} {generated[1]} "
+                f"{generated[2]} frame(s); pixel or timing content differs)"
             )
+
+    # The two GIF copies are one buffer written twice — byte-equality between
+    # them is a real invariant, not an encoder artifact, so assert it directly.
+    left, right = root / "assets/demo.gif", root / "site/assets/demo.gif"
+    if left.is_file() and right.is_file() and left.read_bytes() != right.read_bytes():
+        report.append("drift: assets/demo.gif and site/assets/demo.gif are not byte-identical")
     return report
 
 
