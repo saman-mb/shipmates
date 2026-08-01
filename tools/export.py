@@ -354,10 +354,16 @@ def _orphan_paths(root: Path, target: str, expected: set[str]) -> list[str]:
     )
 
 
-def check_files(root: Path, files: dict[str, str], target: str) -> list[str]:
+def check_files(root: Path, files: dict[str, str], target: str, golden_dir: Path | None = None) -> list[str]:
     report: list[str] = []
+    base = golden_dir if golden_dir is not None else root
+    prefix = f"harnesses/{target}/"
     for relative, expected in sorted(files.items()):
-        path = root / relative
+        if golden_dir is not None:
+            golden_rel = relative.removeprefix(prefix)
+            path = base / golden_rel
+        else:
+            path = root / relative
         if not path.is_file():
             report.append(f"missing: {relative}")
         elif path.read_text(encoding="utf-8") != expected:
@@ -366,13 +372,16 @@ def check_files(root: Path, files: dict[str, str], target: str) -> list[str]:
     return report
 
 
-def write_files(root: Path, files: dict[str, str]) -> list[str]:
+def write_files(root: Path, files: dict[str, str], out_dir: Path | None = None) -> list[str]:
     written = []
-    generated_root = (root / "harnesses").resolve()
     for relative, content in sorted(files.items()):
-        path = (root / relative).resolve()
-        if generated_root not in path.parents:
-            raise ExportError(f"refusing to write outside harnesses/: {relative}")
+        if out_dir is not None:
+            path = (out_dir / relative).resolve()
+        else:
+            path = (root / relative).resolve()
+            generated_root = (root / "harnesses").resolve()
+            if generated_root not in path.parents:
+                raise ExportError(f"refusing to write outside harnesses/: {relative}")
         if path.is_file() and path.read_text(encoding="utf-8") == content:
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -409,7 +418,7 @@ def payload_attestation(files: dict[str, str], target: str, source_digest: str) 
     return "\n".join(lines) + "\n"
 
 
-def run(root: Path, target: str, check: bool) -> int:
+def run(root: Path, target: str, check: bool, out_dir: Path | None = None) -> int:
     try:
         roles, orders = load_catalog(root)
         adapter = adapter_for(root, target)
@@ -417,17 +426,19 @@ def run(root: Path, target: str, check: bool) -> int:
         files[f"harnesses/{target}/.shipmates-payload"] = payload_attestation(
             files, target, canonical_digest(root)
         )
-        report = check_files(root, files, target)
         if check:
+            golden_dir = root / "tests/golden" / target
+            report = check_files(root, files, target, golden_dir=golden_dir if golden_dir.is_dir() else None)
             if report:
                 print("\n".join(report))
                 return 1
-            print(f"up to date: harnesses/{target}/ ({len(files)} files)")
+            print(f"up to date: {target} ({len(files)} files)")
             return 0
-        written = write_files(root, files)
+        written = write_files(root, files, out_dir)
+        dest = out_dir / f"harnesses/{target}" if out_dir else root / f"harnesses/{target}"
         for path in written:
             print(f"wrote {path}")
-        print(f"harnesses/{target}/: {len(written)} of {len(files)} files updated")
+        print(f"{dest}: {len(written)} of {len(files)} files updated")
         return 0
     except (CapabilityError, ExportError, OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -441,10 +452,17 @@ def main(argv: list[str] | None = None) -> int:
         subparser = subparsers.add_parser(command)
         subparser.add_argument("--target", required=True)
         subparser.add_argument("--root", default=str(ROOT))
+        subparser.add_argument("--out", default=None, help="output root (default: write to harnesses/ in repo)")
         if command == "build":
             subparser.add_argument("--check", action="store_true", help="check generated golden files")
     args = parser.parse_args(argv)
-    return run(Path(args.root).resolve(), args.target, args.command == "check" or getattr(args, "check", False))
+    out_dir = Path(args.out).resolve() if args.out else None
+    return run(
+        Path(args.root).resolve(),
+        args.target,
+        args.command == "check" or getattr(args, "check", False),
+        out_dir=out_dir,
+    )
 
 
 if __name__ == "__main__":

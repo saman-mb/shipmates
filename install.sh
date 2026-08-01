@@ -121,81 +121,29 @@ harness_known() {
 # Subagents (agents/) ship for claude-code only — see the table comment above.
 harness_has_agents() { [ "$1" = "claude-code" ]; }
 
-# Payload always comes from harnesses/<target>/ (the generated, transformed
-# tree), not from canonical or compatibility sources. Claude Code uses the
-# exporter-generated tree too; this keeps install behavior behind the same
-# generation gate as every future harness.
-canonical_digest() {
-  local source="$1" file rel digest_input digest
-  digest_input="$(mktemp)"
-  while IFS= read -r file; do
-    rel="${file#"$source/"}"
-    printf '%s\n%s\n' "$rel" "$(sha256 "$file")" >> "$digest_input"
-  done < <(find "$source/canonical" -type f | LC_ALL=C sort)
-  digest="$(sha256 "$digest_input")"
-  rm -f "$digest_input"
-  printf '%s\n' "$digest"
-}
-
-payload_attestation_valid() {
-  local tree="$1" harness="$2" source="$3" attestation parsed rel sha listed source_digest
-  attestation="$tree/.shipmates-payload"
-  [ -f "$attestation" ] || return 1
-  need_sha256
-  source_digest="$(canonical_digest "$source")"
-  parsed="$(mktemp)"
-  if ! awk -v expected="$harness" -v digest="$source_digest" '
-    BEGIN { version=0; generator=0; target=0; canonical=0; bad=0 }
-    $0 == "payload_version=1" { version++; next }
-    $0 == "generator=shipmates-exporter" { generator++; next }
-    $0 == "target=" expected { target++; next }
-    $0 == "canonical_sha256=" digest { canonical++; next }
-    /^file=/ {
-      path=""; sha=""
-      for (i=1; i<=NF; i++) {
-        if ($i ~ /^file=/) path=substr($i, 6)
-        else if ($i ~ /^sha256=/) sha=substr($i, 8)
-        else { bad=1 }
-      }
-      if (path == "" || sha !~ /^[0-9a-f]{64}$/ || path !~ /^(agents|skills)\// || path ~ /\.\./ || path ~ /[^A-Za-z0-9._\/-]/) bad=1
-      if (!bad && seen[path]++) bad=1
-      if (!bad) print path " " sha
-      next
-    }
-    { bad=1 }
-    END {
-      if (version != 1 || generator != 1 || target != 1 || canonical != 1 || bad || NR == 0) exit 1
-    }
-  ' "$attestation" > "$parsed"; then
-    rm -f "$parsed"
-    return 1
-  fi
-  while read -r rel sha; do
-    [ -n "$rel" ] || continue
-    [ -f "$tree/$rel" ] || { rm -f "$parsed"; return 1; }
-    [ "$(sha256 "$tree/$rel")" = "$sha" ] || { rm -f "$parsed"; return 1; }
-  done < "$parsed"
-  while IFS= read -r file; do
-    rel="${file#"$tree/"}"
-    listed="$(awk -v p="$rel" '$1 == p { print $2; exit }' "$parsed")"
-    [ -n "$listed" ] || { rm -f "$parsed"; return 1; }
-  done < <(find "$tree/agents" "$tree/skills" -type f 2>/dev/null | sort)
-  rm -f "$parsed"
-  return 0
-}
-
+# Generate target-specific payload at install time from canonical sources.
+# No pre-committed harness trees — single source of truth is agents/ + skills/.
+# The exporter writes to a temp dir; we install from there. If the adapter
+# doesn't exist (e.g. opencode), the exporter refuses and we exit.
+REPO_SRC=""
+GENERATED_SRC=""
 resolve_harness_src() {
   local harness="$1"
-  # $SRC is set by resolve_src (checkout or extracted tarball); it carries
-  # harnesses/ either way since the tree is committed to the repo.
-  local tree="$SRC/harnesses/$harness"
-  if [ -d "$tree/skills" ] && payload_attestation_valid "$tree" "$harness" "$SRC"; then
-    SRC="$tree"
-    return 0
+  local exporter="$REPO_SRC/tools/export.py"
+  if [ ! -f "$exporter" ]; then
+    echo "Shipmates: exporter not found at $exporter" >&2
+    exit 1
   fi
-  echo "Shipmates: no payload for '$harness' — refusing stale or ungenerated tree" >&2
-  echo "The exporter must generate/approve it before install; run 'python3 tools/build_harness_payloads.py --target $harness' to see why (opencode remains unavailable)." >&2
-  exit 1
+  local build_dir
+  build_dir="$(mktemp -d)"
+  CLEANUP="${CLEANUP:+$CLEANUP }$build_dir"
+  if ! python3 "$exporter" build --target "$harness" --root "$REPO_SRC" --out "$build_dir" 2>&1; then
+    echo "Shipmates: exporter failed for '$harness' — adapter not implemented or canonical sources invalid" >&2
+    rm -rf "$build_dir"
+    exit 1
+  fi
+  GENERATED_SRC="$build_dir/harnesses/$harness"
+  SRC="$GENERATED_SRC"
 }
 
 # Resolve the install root for harness $1 under the current SCOPE. --dir pins
@@ -429,6 +377,7 @@ resolve_src() {
     SRC="$(find "$TMP" -maxdepth 1 -mindepth 1 -type d | head -1)"
     [ -n "$SRC" ] && [ -d "$SRC/agents" ] && [ -d "$SRC/skills" ] || { echo "Shipmates: unexpected archive layout." >&2; exit 1; }
   fi
+  REPO_SRC="$SRC"
 }
 
 # --- file helpers, shared by the flat agents/ and nested skills/ loops --------

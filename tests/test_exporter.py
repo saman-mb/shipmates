@@ -29,6 +29,10 @@ class ExporterTests(unittest.TestCase):
         )
         return temporary, destination.resolve()
 
+    def temp_out(self) -> tuple[tempfile.TemporaryDirectory, Path]:
+        temporary = tempfile.TemporaryDirectory()
+        return temporary, Path(temporary.name).resolve()
+
     def test_canonical_catalog_covers_crew_and_orders(self) -> None:
         roles, orders = exporter.load_catalog(ROOT)
         self.assertEqual(12, len(roles))
@@ -89,8 +93,18 @@ class ExporterTests(unittest.TestCase):
             compatibility = ROOT / relative.removeprefix("harnesses/claude-code/")
             self.assertEqual(compatibility.read_text(encoding="utf-8"), content, relative)
 
-    def test_claude_golden_is_current(self) -> None:
-        self.assertEqual(0, exporter.run(ROOT, "claude-code", check=True))
+    def test_claude_export_matches_golden(self) -> None:
+        """Generated output must match committed golden reference files."""
+        out_dir = self.temp_out()[1]
+        self.addCleanup(shutil.rmtree, out_dir, True)
+        self.assertEqual(0, exporter.run(ROOT, "claude-code", check=False, out_dir=out_dir))
+        for path in sorted((out_dir / "harnesses/claude-code").rglob("*")):
+            if not path.is_file():
+                continue
+            relative = str(path.relative_to(out_dir / "harnesses/claude-code"))
+            golden = ROOT / "tests/golden/claude-code" / relative
+            self.assertTrue(golden.exists(), f"golden file missing: {golden}")
+            self.assertEqual(golden.read_text(encoding="utf-8"), path.read_text(encoding="utf-8"), relative)
 
     def test_canonical_edits_change_export_not_compatibility_edits(self) -> None:
         temporary, root = self.temp_repo()
@@ -105,20 +119,26 @@ class ExporterTests(unittest.TestCase):
             compatibility_role.read_text(encoding="utf-8") + "\nCOMPATIBILITY MARKER\n",
             encoding="utf-8",
         )
-        self.assertEqual(0, exporter.run(root, "claude-code", check=False))
-        output = (root / "harnesses/claude-code/agents/architect.md").read_text(encoding="utf-8")
+        out_dir = self.temp_out()[1]
+        self.addCleanup(shutil.rmtree, out_dir, True)
+        self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir))
+        output = (out_dir / "harnesses/claude-code/agents/architect.md").read_text(encoding="utf-8")
         self.assertIn("CANONICAL ROLE MARKER", output)
         self.assertNotIn("COMPATIBILITY MARKER", output)
 
         compatibility_role.unlink()
-        self.assertEqual(0, exporter.run(root, "claude-code", check=False))
+        out_dir2 = self.temp_out()[1]
+        self.addCleanup(shutil.rmtree, out_dir2, True)
+        self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir2))
 
         order = root / "canonical/orders/ship-issue.md"
         order.write_text(order.read_text(encoding="utf-8") + "\nCANONICAL ORDER MARKER\n", encoding="utf-8")
-        self.assertEqual(0, exporter.run(root, "claude-code", check=False))
+        out_dir3 = self.temp_out()[1]
+        self.addCleanup(shutil.rmtree, out_dir3, True)
+        self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir3))
         self.assertIn(
             "CANONICAL ORDER MARKER",
-            (root / "harnesses/claude-code/skills/ship-issue/SKILL.md").read_text(encoding="utf-8"),
+            (out_dir3 / "harnesses/claude-code/skills/ship-issue/SKILL.md").read_text(encoding="utf-8"),
         )
 
     def test_generated_tree_drift_is_detected(self) -> None:
@@ -128,6 +148,7 @@ class ExporterTests(unittest.TestCase):
         files = ClaudeCodeAdapter(load_registry(root / "tools/capability_registry.json")["claude-code"]).build(
             root, roles, orders
         )
+        exporter.write_files(root, files)
         generated = root / "harnesses/claude-code/agents/architect.md"
         generated.write_text(generated.read_text(encoding="utf-8") + "drift\n", encoding="utf-8")
         self.assertIn("drift: harnesses/claude-code/agents/architect.md", exporter.check_files(root, files, "claude-code"))
@@ -146,17 +167,20 @@ class ExporterTests(unittest.TestCase):
                 text = order.read_text(encoding="utf-8")
                 self.assertIn(needle, text)
                 order.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
-                sentinel = root / "harnesses/claude-code/sentinel.txt"
+                out_dir = self.temp_out()[1]
+                self.addCleanup(shutil.rmtree, out_dir, True)
+                sentinel = out_dir / "harnesses/claude-code/sentinel.txt"
+                sentinel.parent.mkdir(parents=True, exist_ok=True)
                 sentinel.write_text("untouched\n", encoding="utf-8")
                 before = {
                     path: path.read_bytes()
-                    for path in (root / "harnesses/claude-code").rglob("*")
+                    for path in (out_dir / "harnesses/claude-code").rglob("*")
                     if path.is_file()
                 }
-                self.assertNotEqual(0, exporter.run(root, "claude-code", check=False))
+                self.assertNotEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir))
                 after = {
                     path: path.read_bytes()
-                    for path in (root / "harnesses/claude-code").rglob("*")
+                    for path in (out_dir / "harnesses/claude-code").rglob("*")
                     if path.is_file()
                 }
                 self.assertEqual(before, after)
@@ -173,13 +197,11 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("opencode", result.stderr)
         self.assertIn("not implemented", result.stderr)
 
-    def test_installer_consumes_generated_claude_payload(self) -> None:
+    def test_installer_generates_claude_payload_at_install_time(self) -> None:
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        generated = root / "harnesses/claude-code/skills/ship-issue/SKILL.md"
         canonical = root / "canonical/orders/ship-issue.md"
         canonical.write_text(canonical.read_text(encoding="utf-8") + "\nGENERATED PAYLOAD MARKER\n", encoding="utf-8")
-        self.assertEqual(0, exporter.run(root, "claude-code", check=False))
         target = Path(temporary.name) / "installed"
         result = subprocess.run(
             ["bash", str(root / "install.sh"), "--dir", str(target)],
@@ -191,12 +213,9 @@ class ExporterTests(unittest.TestCase):
         installed = target / "skills/ship-issue/SKILL.md"
         self.assertIn("GENERATED PAYLOAD MARKER", installed.read_text(encoding="utf-8"))
 
-    def test_installer_refuses_stale_opencode_payload(self) -> None:
+    def test_installer_refuses_unsupported_adapter(self) -> None:
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        stale = root / "harnesses/opencode/skills/stale"
-        stale.mkdir(parents=True)
-        (stale / "SKILL.md").write_text("stale\n", encoding="utf-8")
         target = Path(temporary.name) / "installed"
         result = subprocess.run(
             ["bash", str(root / "install.sh"), "--harness", "opencode", "--dir", str(target)],
@@ -205,25 +224,11 @@ class ExporterTests(unittest.TestCase):
             capture_output=True,
         )
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("no payload for 'opencode'", result.stderr)
-        self.assertFalse(target.exists())
-
-    def test_installer_refuses_payload_stale_against_canonical(self) -> None:
-        temporary, root = self.temp_repo()
-        self.addCleanup(temporary.cleanup)
-        canonical = root / "canonical/crew/architect.md"
-        canonical.write_text(canonical.read_text(encoding="utf-8") + "\nSTALE CANONICAL CHANGE\n", encoding="utf-8")
-        target = Path(temporary.name) / "installed"
-        result = subprocess.run(
-            ["bash", str(root / "install.sh"), "--dir", str(target)],
-            cwd=root,
-            text=True,
-            capture_output=True,
-        )
-        self.assertNotEqual(0, result.returncode)
+        self.assertIn("opencode", result.stderr)
         self.assertFalse(target.exists())
 
     def test_cli_build_check(self) -> None:
+        """--check generates to temp and compares against golden reference files."""
         result = subprocess.run(
             [sys.executable, "tools/export.py", "build", "--target", "claude-code", "--check"],
             cwd=ROOT,

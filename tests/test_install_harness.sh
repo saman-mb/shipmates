@@ -65,9 +65,13 @@ global_root_for() {
 }
 
 ALL="claude-code github-copilot codex cursor gemini windsurf zed opencode"
-PAYLOAD="$REPO/harnesses/claude-code"
-N_AGENTS=$(find "$PAYLOAD/agents" -maxdepth 1 -name '*.md' | wc -l)
-N_SKILLS=$(find "$PAYLOAD/skills" -maxdepth 1 -mindepth 1 -type d | wc -l)
+
+# Generate the canonical payload to count expected files (no committed harnesses/).
+PAYLOAD="$WORK/payload"
+python3 "$REPO/tools/export.py" build --target claude-code --root "$REPO" --out "$PAYLOAD" >/dev/null 2>&1
+PAYLOAD_TREE="$PAYLOAD/harnesses/claude-code"
+N_AGENTS=$(find "$PAYLOAD_TREE/agents" -maxdepth 1 -name '*.md' | wc -l)
+N_SKILLS=$(find "$PAYLOAD_TREE/skills" -maxdepth 1 -mindepth 1 -type d | wc -l)
 
 run() { bash "$INSTALLER" "$@"; }
 
@@ -112,8 +116,7 @@ for h in github-copilot codex cursor gemini windsurf zed opencode; do
   else
     ok  "$h: refuses without payload (exits non-zero)"
   fi
-  assert "$h: refusal mentions matrix" grep -q "no payload for" "$WORK/$h.err"
-  assert "$h: refusal mentions generator" grep -q "build_harness_payloads.py" "$WORK/$h.err"
+  assert "$h: refusal mentions exporter" grep -q "exporter failed\|not implemented" "$WORK/$h.err"
   assert "$h: nothing created" test ! -e "$p"
 done
 
@@ -127,7 +130,7 @@ if run --harness all --project "$WORK/all" >/dev/null 2>"$WORK/all.err"; then
 else
   ok  "all: fails on refused harness (exits non-zero)"
 fi
-assert "all: refusal mentions matrix" grep -q "no payload for" "$WORK/all.err"
+assert "all: refusal mentions exporter" grep -q "exporter failed\|not implemented" "$WORK/all.err"
 
 # --- 4. repeated --harness flags ----------------------------------------------
 
@@ -137,7 +140,7 @@ if run --harness cursor --harness codex --project "$WORK/repeat" >/dev/null 2>"$
 else
   ok  "repeat: fails on refused harness (exits non-zero)"
 fi
-assert "repeat: refusal mentions matrix" grep -q "no payload for" "$WORK/repeat.err"
+assert "repeat: refusal mentions exporter" grep -q "exporter failed\|not implemented" "$WORK/repeat.err"
 
 # --- 5. --project + --harness compose -----------------------------------------
 
@@ -147,7 +150,7 @@ if run --project "$WORK/compose" --harness gemini >/dev/null 2>"$WORK/compose.er
 else
   ok  "compose: fails on refused harness (exits non-zero)"
 fi
-assert "compose: refusal mentions matrix" grep -q "no payload for" "$WORK/compose.err"
+assert "compose: refusal mentions exporter" grep -q "exporter failed\|not implemented" "$WORK/compose.err"
 
 # --dir pins the root exactly; the harness only governs the agents skip rule.
 # Refused harness fails before touching the --dir path.
@@ -156,7 +159,7 @@ if run --harness cursor --dir "$WORK/dir-cursor" >/dev/null 2>"$WORK/dir-cursor.
 else
   ok  "compose --dir: fails on refused harness (exits non-zero)"
 fi
-assert "compose --dir: refusal mentions matrix" grep -q "no payload for" "$WORK/dir-cursor.err"
+assert "compose --dir: refusal mentions exporter" grep -q "exporter failed\|not implemented" "$WORK/dir-cursor.err"
 
 # --- 6. --uninstall per harness (claude-code only for now) -------------------
 
@@ -176,7 +179,8 @@ edited="$p/.claude/skills/ship-issue/SKILL.md"
 printf '# hand edit\n' >> "$edited"
 run --harness claude-code --project "$p" >/dev/null 2>&1
 assert "backup: .bak-* kept for hand edit" bash -c "ls '$edited'.bak-* >/dev/null 2>&1"
-assert "backup: payload restored over edit" cmp -s "$PAYLOAD/skills/ship-issue/SKILL.md" "$edited"
+# Payload is generated fresh each install; verify the installed file matches the golden output.
+assert "backup: payload restored over edit" diff -q "$PAYLOAD_TREE/skills/ship-issue/SKILL.md" "$edited"
 
 # --- 8. unknown harness errors non-zero, touches nothing -----------------------
 
@@ -198,7 +202,7 @@ if run --harness github-copilot >/dev/null 2>"$WORK/global-copilot.err"; then
 else
   ok  "global: github-copilot refuses (exits non-zero)"
 fi
-assert "global: refusal mentions matrix" grep -q "no payload for" "$WORK/global-copilot.err"
+assert "global: refusal mentions exporter" grep -q "exporter failed\|not implemented" "$WORK/global-copilot.err"
 
 # --- summary -------------------------------------------------------------------
 
