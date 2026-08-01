@@ -263,14 +263,14 @@ Two rules that belong here, because they are judgement rather than values:
 
 ### Logo
 
-[`assets/logo.png`](../assets/logo.png) — a pixel-art sailboat sailing into the sunset, drawn as a
+[`site/assets/logo.png`](../site/assets/logo.png) — a pixel-art sailboat sailing into the sunset, drawn as a
 circular badge with a dark navy outline ring.
 
 | Property | Value |
 |---|---|
-| Master | `assets/logo.png`, 672 × 672, PNG RGBA, transparent outside the badge |
-| Small | `assets/logo-240.png`, 240 × 240 — used in the site footer at 32 px |
-| Social | `assets/social-preview.png`, 1280 × 640, PNG RGB |
+| Master | `site/assets/logo.png`, 672 × 672, PNG RGBA, transparent outside the badge |
+| Small | `site/assets/logo-240.png`, 240 × 240 — used in the site footer at 32 px |
+| Social | `site/assets/social-preview.png`, 1280 × 640, PNG RGB |
 | Palette | 39 colours total — deliberately limited, in keeping with the pixel-art style |
 | Style | Hard-edged pixel art. Chunky, aliased, no anti-aliasing on the pixel grid, no gradients other than the banded sky. |
 

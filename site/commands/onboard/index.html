@@ -116,8 +116,8 @@
           <p class="order-detail__tagline">recon → draft → prove it answers</p>
           <p class="order-detail__desc">Read an unfamiliar repo and write the agent-facing context file every other order depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew&#x27;s real questions from the file alone.</p>
           <div class="order-prose">
-            <p>Every role in this crew is told to hold the work to the standard in <em>your</em> repo&#x27;s <code>README</code> / <code>CLAUDE.md</code>. Nothing produces that file. On a repo without a good one the whole crew quietly degrades to generic advice — and the failure is silent, because a vague context file still yields confident output. This order writes it, and <strong>gates on a fresh agent being able to answer the crew&#x27;s actual questions from the file alone</strong>.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): a path to a repo. Empty means the current one.</p>
+            <p>Every role in this crew is told to hold the work to the standard in <em>your</em> repo&#x27;s <code>README</code> / <code>AGENTS.md</code>. Nothing produces that file. On a repo without a good one the whole crew quietly degrades to generic advice — and the failure is silent, because a vague context file still yields confident output. This order writes it, and <strong>gates on a fresh agent being able to answer the crew&#x27;s actual questions from the file alone</strong>.</p>
+            <p>Input (<strong>{{path}}</strong>): a path to a repo. Empty means the current one.</p>
             <p><strong>This is not <code>/document</code>.</strong> The difference is the <em>audience</em>, not the topic. <code>/document</code> writes for <strong>humans</strong> and gates on a fresh reader completing a task. <code>/onboard</code> writes the <strong>agent-facing contract</strong> that every other order loads at run time, and gates on a fresh agent answering the crew&#x27;s questions correctly. Same philosophy, different question — so neither forks the other. If what you want is a README or a tutorial, stop and run <code>/document</code>.</p>
           </div>
         </div>
@@ -168,7 +168,7 @@
             <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>The branch exists before the context file does. First check <code>git -C &lt;repo&gt; status --porcelain</code>; if the caller&#x27;s tree is dirty, <strong>warn loudly</strong> — a worktree cut from <code>HEAD</code> holds committed work only, so an uncommitted rule Stage 0&#x27;s survey just saw won&#x27;t carry into the draft — then proceed. Exactly as <code>/ship-issue</code>&#x27;s isolate stage, but cut from current <code>HEAD</code> rather than <code>origin/&lt;BASE_BRANCH&gt;</code> — so an unpushed <code>CLAUDE.md</code>/<code>AGENTS.md</code> that Stage 0&#x27;s survey already saw is actually present in the worktree the draft and refresh work against:</p>
+                <p>The branch exists before the context file does. First check <code>git -C &lt;repo&gt; status --porcelain</code>; if the caller&#x27;s tree is dirty, <strong>warn loudly</strong> — a worktree cut from <code>HEAD</code> holds committed work only, so an uncommitted rule Stage 0&#x27;s survey just saw won&#x27;t carry into the draft — then proceed. Exactly as <code>/ship-issue</code>&#x27;s isolate stage, but cut from current <code>HEAD</code> rather than <code>origin/&lt;BASE_BRANCH&gt;</code> — so an unpushed <code>TARGET.md</code>/<code>AGENTS.md</code> that Stage 0&#x27;s survey already saw is actually present in the worktree the draft and refresh work against:</p>
                 <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
                 <p>Recon reads the repo either way; the draft and every verification round write inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, skip this stage — the Stage 0 backup is the undo path instead.</p>
               </div>
@@ -240,7 +240,7 @@
           <ul>
             <li><code>MODE</code> = <code>pr</code> (default) or <code>edit-in-place</code> — where the result lands. <code>pr</code> opens a worktree, a branch and a CI-gated PR rather than writing to the tree, reusing <code>/ship-issue</code>&#x27;s isolate stage and its commit-push-PR stage. This file is the contract every later run inherits, so it earns a diff and a human&#x27;s eye before it lands; <code>edit-in-place</code> is an explicit request. <code>SURVEY</code> (<code>create</code> / <code>refresh</code>) is set by Stage 0 and describes what was <em>found</em> — it is a separate axis and never overwrites <code>MODE</code>.</li>
             <li>Under <code>MODE=pr</code>: <code>BASE_BRANCH</code> = the repo&#x27;s default branch — the PR&#x27;s target, not what the worktree is cut from (that&#x27;s current <code>HEAD</code>, so Stage 0&#x27;s survey sees your actual checkout). <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--onboard-&lt;SURVEY&gt;</code>. <code>BRANCH</code> = <code>docs/onboard-context-file-&lt;SURVEY&gt;</code> — onboard has no topic slug to build a name from (it always produces the one context file), so the identifier is <code>SURVEY</code> instead: a still-open <code>create</code> PR then can&#x27;t collide with a later <code>refresh</code> run, which is the failure this suffix exists to prevent. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). <code>MAX_FIX_ROUNDS</code> = <code>2</code> — a separate cap, on CI-fix rounds at Stage 4, so a permanently-red check escalates to the user instead of looping, distinct from the verification-loop <code>MAX_ROUNDS</code> below. A repo with no remote to open a PR against is the one fallback: build the branch, stop there, and report the branch as the undo path — never quietly write to the tree instead.</li>
-            <li><code>TARGET</code> = auto-detected. <code>CLAUDE.md</code> if one exists, else <code>AGENTS.md</code> if one exists, else <code>CLAUDE.md</code>. <strong>Never write both</strong> — see below.</li>
+            <li><code>TARGET</code> = auto-detected. <code>TARGET.md</code> if one exists, else <code>AGENTS.md</code> if one exists, else <code>TARGET.md</code>. <strong>Never write both</strong> — see below.</li>
             <li><code>MAX_ROUNDS</code> = <code>3</code> verification loops before escalating (Stage 3).</li>
           </ul>
         </div>
@@ -260,7 +260,7 @@
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
             <li>Preserve hand-written rules on a refresh. You are augmenting someone&#x27;s judgement, not replacing it.</li>
             <li>Don&#x27;t write a README. If the content is for humans, it belongs in <code>/document</code>.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
           </ul>
         </div>
       </div>

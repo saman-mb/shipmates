@@ -311,32 +311,27 @@ def parse_document(rel: str, text: str) -> Document:
 
 
 def load_sources(root: Path) -> tuple[dict, dict]:
-    """({slug: Document}, {agent-name: Document}) from the canonical trees."""
-    skills_dir = root / "skills"
-    agents_dir = root / "agents"
-    if not skills_dir.is_dir():
-        raise SourceError("skills/: directory not found — the canonical command sources")
-    if not agents_dir.is_dir():
-        raise SourceError("agents/: directory not found — the canonical agent sources")
+    """({slug: Document}, {agent-name: Document}) from the source trees."""
+    commands_dir = root / "commands"
+    crew_dir = root / "crew"
+    if not commands_dir.is_dir():
+        raise SourceError("commands/: directory not found")
+    if not crew_dir.is_dir():
+        raise SourceError("crew/: directory not found")
     skills = {}
-    for directory in sorted(skills_dir.iterdir()):
-        if not directory.is_dir():
-            continue
-        path = directory / "SKILL.md"
-        if not path.is_file():
-            raise SourceError(f"skills/{directory.name}/SKILL.md: file not found")
-        skills[directory.name] = parse_document(
-            f"skills/{directory.name}/SKILL.md", path.read_text(encoding="utf-8")
+    for path in sorted(commands_dir.glob("*.md")):
+        skills[path.stem] = parse_document(
+            f"commands/{path.name}", path.read_text(encoding="utf-8")
         )
     agents = {}
-    for path in sorted(agents_dir.glob("*.md")):
+    for path in sorted(crew_dir.glob("*.md")):
         agents[path.stem] = parse_document(
-            f"agents/{path.name}", path.read_text(encoding="utf-8")
+            f"crew/{path.name}", path.read_text(encoding="utf-8")
         )
     if not skills:
-        raise SourceError("skills/: no skill directories found")
+        raise SourceError("commands/: no command sources found")
     if not agents:
-        raise SourceError("agents/: no agent files found")
+        raise SourceError("crew/: no agent files found")
     return skills, agents
 
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="200" alt="Shipmates — a pixel-art sailboat sailing into the sunset" />
+  <img src="site/assets/logo.png" width="200" alt="Shipmates — a pixel-art sailboat sailing into the sunset" />
 </p>
 
 # 🚢 Shipmates
@@ -19,7 +19,7 @@
 [![Issues](https://img.shields.io/github/issues/saman-mb/shipmates)](https://github.com/saman-mb/shipmates/issues)
 
 <p align="center">
-  <img src="assets/demo.gif" width="760" alt="A /ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request." />
+  <img src="site/assets/demo.gif" width="760" alt="A /ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request." />
 </p>
 <p align="center"><sub><i>Illustrative — the actual stages <code>/ship-issue</code> runs, in order.</i></sub></p>
 

@@ -124,7 +124,7 @@
           <p class="order-detail__desc">De-risk an open technical decision with a time-boxed spike — frame the question, prototype several approaches in parallel as throwaways, judge them against the project&#x27;s constraints, and return a recommendation as an ADR. Produces a decision, not production code.</p>
           <div class="order-prose">
             <p>Answer a hard &quot;which way should we build this?&quot; question with evidence instead of a hunch. Frame the decision, have engineers prototype <strong>several approaches in parallel as disposable spikes</strong>, judge them against the project&#x27;s real constraints, and record the outcome as an <strong>ADR</strong> (Architecture Decision Record). The output is a <em>decision with reasoning</em>, not shippable code — the prototypes are throwaway.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): the open question or decision to resolve. If empty, ask what decision is blocked.</p>
+            <p>Input (<strong>{{question}}</strong>): the open question or decision to resolve. If empty, ask what decision is blocked.</p>
           </div>
         </div>
       </div>
@@ -236,7 +236,7 @@
             <li><code>APPROACHES</code> = 2–4 — the distinct options to prototype (derive from the question; name them up front).</li>
             <li><code>JUDGE</code> = <code>architect</code> (structural/quality-attribute trade-offs) — add <code>security-engineer</code>, <code>performance-engineer</code>, or <code>data-scientist</code> as extra judges when the decision hinges on their axis.</li>
             <li><code>PROTOTYPER</code> = <code>senior-engineer</code>. <code>TIME_BOX</code> = keep each spike minimal — just enough to answer the question, thrown away after. <code>ISOLATION</code> = each prototype in its own throwaway worktree/branch so they don&#x27;t collide and nothing lands on the base branch.</li>
-            <li><strong>Constraints &amp; priorities</strong> = from the repo (quality attributes that matter here — performance, simplicity, reversibility, team familiarity, cost) plus anything in <code>$ARGUMENTS</code>.</li>
+            <li><strong>Constraints &amp; priorities</strong> = from the repo (quality attributes that matter here — performance, simplicity, reversibility, team familiarity, cost) plus anything in <code>{{question}}</code>.</li>
             <li><strong>ADR delivery</strong> — <code>MODE</code> = <code>pr</code> (default) or <code>edit-in-place</code>: where the <strong>ADR</strong> lands. This is a different axis from <code>ISOLATION</code> above: <code>ISOLATION</code> governs the throwaway prototype worktrees in Stage 1, which always exist and are always torn down; <code>MODE</code> governs only where the <em>deliverable</em> (the ADR) ends up, and defaults to a reviewed PR. Under <code>MODE=pr</code>: <code>BASE_BRANCH</code> = the repo&#x27;s default branch — the PR&#x27;s target, not what the worktree is cut from (that&#x27;s current <code>HEAD</code>). <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--adr-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>docs/adr-&lt;slug&gt;</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). <code>MAX_FIX_ROUNDS</code> = <code>2</code> — the cap on CI-fix rounds at Stage 3.5, so a permanently-red check escalates to the user instead of looping. A repo with no remote to open a PR against is the one fallback: build the branch, stop there, and report the branch as the undo path — never quietly write to the tree instead.</li>
           </ul>
         </div>
@@ -256,7 +256,7 @@
             <li>The decision and its trade-offs are <strong>recorded</strong> (the ADR) so the &quot;why&quot; survives — an unrecorded decision gets re-litigated in six months.</li>
             <li>Keep spikes minimal and time-boxed; more prototypes ≠ better if they don&#x27;t sharpen the criteria.</li>
             <li><strong>The ADR is the deliverable, so it gets a branch.</strong> Prototypes stay disposable; the ADR itself lands as a diff a human can read, not a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption — and it&#x27;s a different switch from <code>ISOLATION</code>, which only governs the throwaway prototype worktrees.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
           </ul>
         </div>

@@ -39,8 +39,8 @@ SITE = ROOT / "site"
 INDEX = SITE / "index.html"
 CSS = SITE / "styles.css"
 SITEMAP = SITE / "sitemap.xml"
-SKILLS = ROOT / "skills"
-CREW = ROOT / "agents"
+COMMANDS = ROOT / "commands"
+CREW = ROOT / "crew"
 
 SITE_URL = "https://saman-mb.github.io/shipmates/"
 SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -210,7 +210,7 @@ def is_local_asset(url: str) -> bool:
 
 
 def source_slugs() -> list[str]:
-    return [p.parent.name for p in sorted(SKILLS.glob("*/SKILL.md"))]
+    return [p.stem for p in sorted(COMMANDS.glob("*.md"))]
 
 
 def crew_roles() -> list[str]:
@@ -516,7 +516,7 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
 
 def check_command_page(page: Page) -> None:
     slug = page.slug
-    src = SKILLS / slug / "SKILL.md"
+    src = COMMANDS / f"{slug}.md"
 
     # --- back-navigation to the commands list on the homepage ---
     if any(a.get("href") == BACK_HREF for _t, a in page.collector.refs):
@@ -828,17 +828,17 @@ def check_agent_page(page: Page) -> None:
 
 
 def check_agent_reference(page: Page, src: Path) -> None:
-    """The reference card restates the persona frontmatter: name, description, tools."""
+    """The reference card restates the persona frontmatter: name, description."""
     front = agent_frontmatter(src)
     if not front:
         fail(f"{src.relative_to(ROOT).as_posix()}: no closing frontmatter '---' — cannot audit the reference card")
         return
     prose = " " + _prose_norm("".join(page.collector.flow)) + " "
     missing = []
-    for key in ("name", "description", "tools"):
+    for key in ("name", "description"):
         value = front.get(key, "")
         if not value:
-            missing.append(f"agents/{page.slug}.md: frontmatter has no '{key}:'")
+            missing.append(f"crew/{page.slug}.md: frontmatter has no '{key}:'")
             continue
         if f" {_prose_norm(value)} " not in prose:
             missing.append(f"frontmatter '{key}' value not found in the page — {value[:70]!r}")
@@ -846,7 +846,7 @@ def check_agent_reference(page: Page, src: Path) -> None:
         for m in missing:
             fail(f"{page.rel}: reference card mismatch — {m}")
     else:
-        ok(f"{page.rel}: reference card matches agents/{page.slug}.md frontmatter (name, description, tools)")
+        ok(f"{page.rel}: reference card matches crew/{page.slug}.md frontmatter (name, description)")
 
 
 def check_agent_inverse_fidelity(page: Page, src: Path) -> None:
@@ -1047,7 +1047,7 @@ def main() -> int:
 
     slugs = source_slugs()
     if not slugs:
-        fail("no skills/*/SKILL.md found — nothing to publish")
+        fail("no commands/*.md found — nothing to publish")
         return report()
     n_commands = len(slugs)
 

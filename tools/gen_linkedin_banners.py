@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Generate assets/linkedin-*.png — the LinkedIn cover banners.
+"""Generate site/assets/linkedin-*.png — the LinkedIn cover banners.
 
-Reuses the committed pixel-art mark (assets/logo.png) unchanged and composes the
+Reuses the committed pixel-art mark (site/assets/logo.png) unchanged and composes the
 brand lockup around it, so the banner and the social preview stay the same brand.
 Palette and copy are lifted from site/styles.css and site/index.html rather than
 re-typed, so the banner can't drift from the landing page.
 
 Two sizes, both at LinkedIn's documented spec:
-  assets/linkedin-profile-cover.png  1584x396  — personal profile background
-  assets/linkedin-page-cover.png     1128x191  — company / showcase Page cover
+  site/assets/linkedin-profile-cover.png  1584x396  — personal profile background
+  site/assets/linkedin-page-cover.png     1128x191  — company / showcase Page cover
 
 The left 400px (300px on the Page size) is kept clear of all content: the profile
 avatar overlaps the banner's bottom-left and would otherwise cover the lockup.
@@ -18,7 +18,7 @@ the banner needs real text layout (Inter Display, negative tracking, gradients,
 rounded pills) that PIL would only approximate. Deterministic and committed;
 regenerate by hand, it is not wired into CI:
 
-    python3 tools/gen_linkedin_banners.py            # -> assets/
+    python3 tools/gen_linkedin_banners.py            # -> site/assets/
     python3 tools/gen_linkedin_banners.py --no-stats # omit the 11/9 counters
 
 Requires: google-chrome, ImageMagick, and the Inter font family.
@@ -30,7 +30,7 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-ASSETS = ROOT / "assets"
+ASSETS = ROOT / "site" / "assets"
 
 # ---- palette (lifted from site/styles.css) ----
 INK = "#14110F"        # warm near-black page

@@ -13,11 +13,12 @@ Without --check: print report, always exit 0.
 
 import sys
 import os
+import json
 from pathlib import Path
 from typing import Set, Tuple
 
 REPO_ROOT = Path(__file__).parent.parent
-SKILLS_DIR = REPO_ROOT / "skills"
+COMMANDS_DIR = REPO_ROOT / "commands"
 BUILTINS_DIR = REPO_ROOT / "tools"
 
 # Near-misses: warn but don't fail
@@ -47,10 +48,10 @@ def load_builtins(harness: str) -> Set[str]:
 
 
 def get_skill_names() -> Set[str]:
-    """Get all skill names from skills/ directory."""
-    if not SKILLS_DIR.exists():
+    """Get all skill names from commands/ directory."""
+    if not COMMANDS_DIR.exists():
         return set()
-    return {d.name for d in SKILLS_DIR.iterdir() if d.is_dir()}
+    return {f.stem for f in COMMANDS_DIR.glob("*.md")}
 
 
 def check_collision(skill: str, builtins: Set[str], harness: str) -> Tuple[bool, str]:
@@ -71,20 +72,11 @@ def main():
     
     skills = get_skill_names()
     if not skills:
-        print("No skills found in skills/")
+        print("No commands found in commands/")
         sys.exit(0)
     
-    # Same set and order as ALL_HARNESSES in install.sh.
-    harnesses = [
-        "claude-code",
-        "github-copilot",
-        "codex",
-        "cursor",
-        "gemini",
-        "windsurf",
-        "zed",
-        "opencode",
-    ]
+    with open(REPO_ROOT / "tools" / "harness_matrix.json", encoding="utf-8") as f:
+        harnesses = list(json.load(f).keys())
     collisions = []
     warnings = []
     

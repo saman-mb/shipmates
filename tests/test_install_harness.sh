@@ -178,11 +178,11 @@ assert "all: adapterless harness left untouched" test ! -e "$WORK/all/.cursor"
 # from a build failure.
 BROKEN="$WORK/broken-repo"
 cp -R "$REPO" "$BROKEN"
-printf '{ broken' > "$BROKEN/canonical/manifest.json"
+printf '{ broken' > "$BROKEN/tools/manifest.json"
 if bash "$BROKEN/install.sh" --harness all --project "$WORK/broken" >/dev/null 2>&1; then
-  bad "all: a broken canonical tree fails the run"
+  bad "all: a broken manifest fails the run"
 else
-  ok  "all: a broken canonical tree fails the run"
+  ok  "all: a broken manifest fails the run"
 fi
 assert "all: broken tree installs nothing" test ! -e "$WORK/broken/.claude"
 

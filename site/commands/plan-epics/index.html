@@ -36,7 +36,7 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Intake & context (orchestrator)",
-        "text": "Parse $ARGUMENTS into one or more briefs; read any referenced files/dirs.",
+        "text": "Parse {{brief}} into one or more briefs; read any referenced files/dirs.",
         "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#stage-0"
       },
       {
@@ -109,8 +109,8 @@
           <p class="order-detail__tagline">briefs → GitHub epics + user stories</p>
           <p class="order-detail__desc">Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic&#x27;s stories in parallel.</p>
           <div class="order-prose">
-            <p>Turn the brief(s) in <strong>$ARGUMENTS</strong> into a tracked backlog: one or more <strong>epics</strong> (labelled <code>epic</code>), each broken into <strong>user stories</strong> (labelled <code>user-story</code> + area tags), created as GitHub issues and cross-linked. When the work spans <strong>multiple epics, a <code>product-manager</code> subagent authors each epic&#x27;s stories in parallel</strong> — one PM per epic.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): the brief(s). May be inline text, a path to a file/dir of briefs, or several briefs separated by <code>---</code> or numbered. If it&#x27;s empty, ask the user for the brief before doing anything.</p>
+            <p>Turn the brief(s) in <strong>{{brief}}</strong> into a tracked backlog: one or more <strong>epics</strong> (labelled <code>epic</code>), each broken into <strong>user stories</strong> (labelled <code>user-story</code> + area tags), created as GitHub issues and cross-linked. When the work spans <strong>multiple epics, a <code>product-manager</code> subagent authors each epic&#x27;s stories in parallel</strong> — one PM per epic.</p>
+            <p>Input (<strong>{{brief}}</strong>): the brief(s). May be inline text, a path to a file/dir of briefs, or several briefs separated by <code>---</code> or numbered. If it&#x27;s empty, ask the user for the brief before doing anything.</p>
           </div>
         </div>
       </div>
@@ -145,8 +145,8 @@
             <div class="order-stage__body">
               <div class="order-prose">
                 <ol>
-                  <li>Parse <code>$ARGUMENTS</code> into one or more briefs; read any referenced files/dirs.</li>
-                  <li>Gather repo context so the backlog fits the project: <code>README</code> / <code>CLAUDE.md</code> (domain, conventions, quality bar), <code>gh label list</code>, and the <strong>existing open issues</strong> (<code>gh issue list --state open --limit 300 --json number,title,labels</code>) so you can dedupe against work already tracked.</li>
+                  <li>Parse <code>{{brief}}</code> into one or more briefs; read any referenced files/dirs.</li>
+                  <li>Gather repo context so the backlog fits the project: <code>README</code> / <code>AGENTS.md</code> (domain, conventions, quality bar), <code>gh label list</code>, and the <strong>existing open issues</strong> (<code>gh issue list --state open --limit 300 --json number,title,labels</code>) so you can dedupe against work already tracked.</li>
                   <li>Decide the shape: does the brief map to <strong>one</strong> cohesive epic, or <strong>several</strong> independent ones? (A brief naming multiple distinct capabilities → multiple epics.)</li>
                   <li>If a brief is too vague to scope responsibly, ask the user ONE round of clarifying questions before creating anything — don&#x27;t invent a backlog from thin air.</li>
                 </ol>
@@ -222,7 +222,7 @@
             <li><code>REPO</code> = current repo (<code>gh repo view --json nameWithOwner -q .nameWithOwner</code>).</li>
             <li><code>EPIC_LABEL</code> = <code>epic</code>; <code>STORY_LABEL</code> = <code>user-story</code> (create if missing).</li>
             <li><code>AREA_LABELS</code> = derived from the repo&#x27;s existing <code>gh label list</code> (prefer the <code>area:*</code> family). Create a new area label only when a story clearly needs one that doesn&#x27;t exist — and say which you created.</li>
-            <li>Issue-body trailer: <code>Claude-Session: ...</code> on every epic and story (read from the harness/session context; do not invent).</li>
+            <li>Issue-body trailer: <code>Harness-Session: ...</code> on every epic and story (read from the harness/session context; do not invent).</li>
             <li><code>DRY_RUN</code> = on if the caller says &quot;dry run&quot; / &quot;preview&quot;: print the full plan and create NOTHING.</li>
           </ul>
         </div>
@@ -241,7 +241,7 @@
             <li><strong>Don&#x27;t over-scope.</strong> A brief becomes the smallest coherent set of epics/stories that delivers it — no speculative epics the brief didn&#x27;t ask for.</li>
             <li>Respect <code>DRY_RUN</code> — when set, create nothing.</li>
             <li>Every epic and story must be individually valuable and traceable (<code>Part of #</code>), so the backlog is ready to hand to <code>/ship-issue</code> one story at a time.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the product-manager brief inlined, and note the fallback.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the product-manager brief inlined, and note the fallback.</li>
           </ul>
         </div>
       </div>
