@@ -68,10 +68,10 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("subagent_type: architect", adapter.render_invocation("architect", "#42"))
 
     def test_canonical_bodies_are_neutral(self) -> None:
-        for path in (ROOT / "canonical/crew").glob("*.md"):
+        for path in (ROOT / "crew").glob("*.md"):
             body = path.read_text(encoding="utf-8").split("---", 2)[2]
             self.assertNotRegex(body, r"CLAUDE|\.claude|subagent_type|Claude-Session")
-        for path in (ROOT / "canonical/commands").glob("*.md"):
+        for path in (ROOT / "commands").glob("*.md"):
             body = path.read_text(encoding="utf-8").split("---", 2)[2]
             self.assertNotRegex(body, r"CLAUDE|\.claude|subagent_type|Claude-Session")
 
@@ -86,61 +86,28 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("tools: Read, Grep, Glob, Bash, WebSearch, WebFetch", files["harnesses/claude-code/agents/product-manager.md"])
         self.assertNotIn("Write", files["harnesses/claude-code/agents/architect.md"])
 
-    def test_generated_claude_payload_matches_compatibility_sources(self) -> None:
-        roles, commands = exporter.load_catalog(ROOT)
-        files = ClaudeCodeAdapter(load_registry(ROOT / "tools/capability_registry.json")["claude-code"]).build(
-            ROOT, roles, commands
-        )
-        for relative, content in files.items():
-            compatibility = ROOT / relative.removeprefix("harnesses/claude-code/")
-            self.assertEqual(compatibility.read_text(encoding="utf-8"), content, relative)
-
-    def test_claude_export_matches_golden(self) -> None:
-        """Generated output must match committed golden reference files."""
-        out_dir = self.temp_out()[1]
-        self.addCleanup(shutil.rmtree, out_dir, True)
-        self.assertEqual(0, exporter.run(ROOT, "claude-code", check=False, out_dir=out_dir))
-        for path in sorted((out_dir / "harnesses/claude-code").rglob("*")):
-            if not path.is_file():
-                continue
-            relative = str(path.relative_to(out_dir / "harnesses/claude-code"))
-            golden = ROOT / "tests/golden/claude-code" / relative
-            self.assertTrue(golden.exists(), f"golden file missing: {golden}")
-            self.assertEqual(golden.read_text(encoding="utf-8"), path.read_text(encoding="utf-8"), relative)
-
-    def test_canonical_edits_change_export_not_compatibility_edits(self) -> None:
+    def test_source_edits_change_export(self) -> None:
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        canonical_role = root / "canonical/crew/architect.md"
-        canonical_role.write_text(
-            canonical_role.read_text(encoding="utf-8") + "\nCANONICAL ROLE MARKER\n",
-            encoding="utf-8",
-        )
-        compatibility_role = root / "agents/architect.md"
-        compatibility_role.write_text(
-            compatibility_role.read_text(encoding="utf-8") + "\nCOMPATIBILITY MARKER\n",
+        role = root / "crew/architect.md"
+        role.write_text(
+            role.read_text(encoding="utf-8") + "\nROLE MARKER\n",
             encoding="utf-8",
         )
         out_dir = self.temp_out()[1]
         self.addCleanup(shutil.rmtree, out_dir, True)
         self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir))
         output = (out_dir / "harnesses/claude-code/agents/architect.md").read_text(encoding="utf-8")
-        self.assertIn("CANONICAL ROLE MARKER", output)
-        self.assertNotIn("COMPATIBILITY MARKER", output)
+        self.assertIn("ROLE MARKER", output)
 
-        compatibility_role.unlink()
+        command = root / "commands/ship-issue.md"
+        command.write_text(command.read_text(encoding="utf-8") + "\nCOMMAND MARKER\n", encoding="utf-8")
         out_dir2 = self.temp_out()[1]
         self.addCleanup(shutil.rmtree, out_dir2, True)
         self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir2))
-
-        command = root / "canonical/commands/ship-issue.md"
-        command.write_text(command.read_text(encoding="utf-8") + "\nCANONICAL COMMAND MARKER\n", encoding="utf-8")
-        out_dir3 = self.temp_out()[1]
-        self.addCleanup(shutil.rmtree, out_dir3, True)
-        self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir3))
         self.assertIn(
-            "CANONICAL COMMAND MARKER",
-            (out_dir3 / "harnesses/claude-code/skills/ship-issue/SKILL.md").read_text(encoding="utf-8"),
+            "COMMAND MARKER",
+            (out_dir2 / "harnesses/claude-code/skills/ship-issue/SKILL.md").read_text(encoding="utf-8"),
         )
 
     def test_generated_tree_drift_is_detected(self) -> None:
@@ -165,7 +132,7 @@ class ExporterTests(unittest.TestCase):
         for needle, replacement in cases:
             with self.subTest(replacement=replacement):
                 temporary, root = self.temp_repo()
-                command = root / "canonical/commands/ship-issue.md"
+                command = root / "commands/ship-issue.md"
                 text = command.read_text(encoding="utf-8")
                 self.assertIn(needle, text)
                 command.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
@@ -230,7 +197,7 @@ class ExporterTests(unittest.TestCase):
     def test_installer_generates_claude_payload_at_install_time(self) -> None:
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        canonical = root / "canonical/commands/ship-issue.md"
+        canonical = root / "commands/ship-issue.md"
         canonical.write_text(canonical.read_text(encoding="utf-8") + "\nGENERATED PAYLOAD MARKER\n", encoding="utf-8")
         target = Path(temporary.name) / "installed"
         result = subprocess.run(
@@ -273,7 +240,7 @@ class ExporterTests(unittest.TestCase):
         """
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        canonical = root / "canonical/commands/ship-issue.md"
+        canonical = root / "commands/ship-issue.md"
         canonical.write_text(
             canonical.read_text(encoding="utf-8") + "\nOPENCODE PAYLOAD MARKER\n", encoding="utf-8"
         )
@@ -290,22 +257,6 @@ class ExporterTests(unittest.TestCase):
         self.assertFalse((target / "skills").exists())
         self.assertTrue((target / "agents/architect.md").exists())
 
-    def test_compatibility_source_drift_is_caught(self) -> None:
-        """Editing agents/ or skills/ directly must fail, not silently ship nothing.
-
-        These trees stay in the repository for the site generator and the skills
-        validator, which makes them a second writable copy of the payload. Without
-        this gate a contributor edits the tree the layout docs point at, every
-        check passes, and the change never reaches an installed crew.
-        """
-        for relative in ("agents/architect.md", "skills/spike/SKILL.md"):
-            with self.subTest(relative=relative):
-                temporary, root = self.temp_repo()
-                mirror = root / relative
-                mirror.write_text(mirror.read_text(encoding="utf-8") + "\nDRIFT\n", encoding="utf-8")
-                self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
-                temporary.cleanup()
-
     def test_positional_placeholder_is_refused(self) -> None:
         """`$1` in a canonical body must fail the build, not reach a payload.
 
@@ -314,7 +265,7 @@ class ExporterTests(unittest.TestCase):
         """
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        command = root / "canonical/commands/spike.md"
+        command = root / "commands/spike.md"
         command.write_text(
             command.read_text(encoding="utf-8") + "\n```bash\nawk '{print $2}'\n```\n",
             encoding="utf-8",
@@ -327,38 +278,13 @@ class ExporterTests(unittest.TestCase):
         """A stage table naming a role the workflow never dispatches is fiction."""
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        command = root / "canonical/commands/spike.md"
+        command = root / "commands/spike.md"
         text = command.read_text(encoding="utf-8")
         self.assertIn('"roles":["architect"]', text)
         command.write_text(
             text.replace('"roles":["architect"]', '"roles":["art-director"]', 1), encoding="utf-8"
         )
         self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
-
-    def test_golden_tree_rejects_stray_files(self) -> None:
-        """An extra golden file is drift too — a generated-side-only walk misses it."""
-        temporary, root = self.temp_repo()
-        self.addCleanup(temporary.cleanup)
-        (root / "tests/golden/claude-code/agents/stray.md").write_text("stray\n", encoding="utf-8")
-        self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
-
-    def test_update_regenerates_references(self) -> None:
-        """--update is the only supported way to refresh the golden tree and mirrors."""
-        temporary, root = self.temp_repo()
-        self.addCleanup(temporary.cleanup)
-        canonical = root / "canonical/crew/architect.md"
-        canonical.write_text(
-            canonical.read_text(encoding="utf-8") + "\nREGENERATED MARKER\n", encoding="utf-8"
-        )
-        (root / "tests/golden/claude-code/agents/stray.md").write_text("stray\n", encoding="utf-8")
-        self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
-        self.assertEqual(0, exporter.run(root, "claude-code", check=False, update=True))
-        self.assertEqual(0, exporter.run(root, "claude-code", check=True))
-        self.assertFalse((root / "tests/golden/claude-code/agents/stray.md").exists())
-        for tree in ("tests/golden/claude-code/agents", "agents"):
-            self.assertIn(
-                "REGENERATED MARKER", (root / tree / "architect.md").read_text(encoding="utf-8")
-            )
 
     def test_adapter_conformance_is_enforced(self) -> None:
         """A half-implemented adapter must be refused, not silently registered."""

@@ -124,7 +124,7 @@
           <p class="order-detail__desc">Fix a bug the honest way — reproduce it as a failing test first, root-cause it, apply the minimal fix, and prove it with the test flipping red→green while the suite stays green. Worktree-isolated, CI-gated, opens a PR.</p>
           <div class="order-prose">
             <p>Take a bug from report to a <strong>reviewed, CI-green PR</strong> — but gated on the one signal that actually proves a bug is fixed: a <strong>regression test that fails before the change and passes after</strong>. No repro, no fix. Symptom-patching without a root cause is rejected.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): a GitHub issue number <em>or</em> a plain-text description of the bug, plus any repro hints. If it&#x27;s a number, pull it with <code>gh issue view</code>. If it&#x27;s empty, ask what&#x27;s broken.</p>
+            <p>Input (<strong>{{issue}}</strong>): a GitHub issue number <em>or</em> a plain-text description of the bug, plus any repro hints. If it&#x27;s a number, pull it with <code>gh issue view</code>. If it&#x27;s empty, ask what&#x27;s broken.</p>
           </div>
         </div>
       </div>
@@ -242,7 +242,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
           <ul>
             <li><code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--bug-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>fix/&lt;slug&gt;</code>.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in).</li>
-            <li><strong>Quality bar / test commands</strong> = whatever the repo&#x27;s README / CLAUDE.md / test config states. Read it first.</li>
+            <li><strong>Quality bar / test commands</strong> = whatever the repo&#x27;s README / AGENTS.md / test config states. Read it first.</li>
             <li>Reuse required trailers from the session context (a <code>Co-Authored-By:</code> line at minimum); the orchestrator owns all git/gh — agents never push.</li>
           </ul>
         </div>
@@ -261,7 +261,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <li>Minimal, scoped change; unrelated improvements become follow-ups, not part of this PR.</li>
             <li>Bounded loops; escalate with the log rather than spinning. Never advance a red PR.</li>
             <li>The reviewer is a <strong>fresh</strong> agent, never the one who wrote the fix.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
           </ul>
         </div>
       </div>

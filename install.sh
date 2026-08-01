@@ -486,10 +486,10 @@ resolve_src() {
   if [ -n "$self" ] && [ -f "$self" ] \
      && SELF_DIR="$(cd "$(dirname "$self")" 2>/dev/null && pwd)" \
      && [ -f "$SELF_DIR/install.sh" ] \
-     && [ -d "$SELF_DIR/agents" ] \
-     && [ -f "$SELF_DIR/canonical/manifest.json" ] \
+     && [ -d "$SELF_DIR/crew" ] \
+     && [ -f "$SELF_DIR/tools/manifest.json" ] \
      && [ -f "$SELF_DIR/tools/export.py" ] \
-     && [ -f "$SELF_DIR/skills/ship-issue/SKILL.md" ]; then
+     && [ -f "$SELF_DIR/commands/ship-issue.md" ]; then
     SRC="$SELF_DIR"
   else
     command -v curl >/dev/null 2>&1 || { echo "Shipmates: 'curl' is required." >&2; exit 1; }
@@ -498,11 +498,11 @@ resolve_src() {
     TMP="$(mktemp -d)"; cleanup_add "$TMP"
     curl -fsSL "$TARBALL" | tar -xz -C "$TMP" || { echo "Shipmates: download failed." >&2; exit 1; }
     SRC="$(find "$TMP" -maxdepth 1 -mindepth 1 -type d | head -1)"
-    # canonical/ and tools/ are checked here, not later: the payload is compiled
+    # commands/, crew/ and tools/ are checked here, not later: the payload is compiled
     # from them, so an archive missing either fails at the exporter with a much
     # less obvious message than "unexpected archive layout".
-    [ -n "$SRC" ] && [ -d "$SRC/agents" ] && [ -d "$SRC/skills" ] \
-      && [ -f "$SRC/canonical/manifest.json" ] && [ -f "$SRC/tools/export.py" ] \
+    [ -n "$SRC" ] && [ -d "$SRC/crew" ] && [ -d "$SRC/commands" ] \
+      && [ -f "$SRC/tools/manifest.json" ] && [ -f "$SRC/tools/export.py" ] \
       || { echo "Shipmates: unexpected archive layout." >&2; exit 1; }
   fi
   REPO_SRC="$SRC"

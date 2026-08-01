@@ -1175,7 +1175,7 @@ REQUIRED_FRONTMATTER_KEYS = ("name", "description")
 # page, the rest are parsed so a standard-legal SKILL.md renders instead of
 # raising. Keep in step with tools/validate_skills.py.
 STANDARD_OPTIONAL_FRONTMATTER_KEYS = ("license", "compatibility", "metadata")
-EXTENSION_FRONTMATTER_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation")
+EXTENSION_FRONTMATTER_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation", "arguments", "loop_max", "stages", "invocation", "board")
 ALLOWED_FRONTMATTER_KEYS = (
     REQUIRED_FRONTMATTER_KEYS
     + STANDARD_OPTIONAL_FRONTMATTER_KEYS
@@ -1193,11 +1193,11 @@ ALLOWED_FRONTMATTER_KEY_LIST = ", ".join(ALLOWED_FRONTMATTER_KEYS)
 BLOCK_FRONTMATTER_KEY = "metadata"
 INDENTED_RE = re.compile(r"^[ \t]")
 
-# Agent frontmatter (agents/<role>.md): name and description required and first,
+# Agent frontmatter (crew/<role>.md): name and description required and first,
 # in that order; `tools` optional. No other keys — a typo fails here rather than
 # reaching a page in silence, same rule as the skill parser.
 AGENT_REQUIRED_FRONTMATTER_KEYS = ("name", "description")
-AGENT_FRONTMATTER_KEYS = AGENT_REQUIRED_FRONTMATTER_KEYS + ("tools",)
+AGENT_FRONTMATTER_KEYS = AGENT_REQUIRED_FRONTMATTER_KEYS + ("tools", "capabilities", "writes", "web-scopes", "read-scopes", "tool-order")
 AGENT_FRONTMATTER_KEY_LIST = ", ".join(AGENT_FRONTMATTER_KEYS)
 
 # Agent Skills limits on the two standard keys.
@@ -1249,12 +1249,9 @@ def _is_structural(raw: str) -> bool:
 
 
 def parse_agent(path: Path) -> AgentFrontmatter:
-    """The frontmatter of one agents/<role>.md. The body is a system prompt — no
-    page reads it, so only the fence block is parsed. Unknown keys raise, same as
-    the skill parser: a typo no reader honours must not reach a page in silence.
-    """
+    """The frontmatter of one crew/<role>.md."""
     slug = path.stem
-    src = f"agents/{path.name}"
+    src = f"crew/{path.name}"
     lines = path.read_text(encoding="utf-8").split("\n")
     if not lines or lines[0].strip() != "---":
         raise SourceError(
@@ -1287,7 +1284,7 @@ def parse_agent(path: Path) -> AgentFrontmatter:
                 name=values["name"],
                 description=values["description"],
                 tools=tuple(
-                    t.strip() for t in values.get("tools", "").split(",") if t.strip()
+                    t.strip() for t in values.get("tools", values.get("capabilities", "")).split(",") if t.strip()
                 ),
             )
             lineno = _key_lineno(lines, i, "name")
@@ -1301,7 +1298,7 @@ def parse_agent(path: Path) -> AgentFrontmatter:
                 raise SourceError(
                     src, lineno, "frontmatter name does not match the file name", lines[lineno - 1],
                     f"the `name:` key must equal the file name — write `name: {slug}` here, "
-                    f"or rename the file to agents/{fm.name}.md",
+                    f"or rename the file to crew/{fm.name}.md",
                 )
             return fm
         if not raw.strip():
@@ -1372,14 +1369,14 @@ def check_agent_copy(role: str, copy: AgentCopy) -> None:
 
 
 def derive_called_by(skills_dir: Path, roles: tuple) -> dict:
-    """role -> slugs of the commands whose SKILL.md mentions the role, in canonical
-    SLUGS order. Derived from the skill sources, never hand-maintained: a skill
-    that starts or stops calling an agent moves the pill on the next regen."""
+    """role -> slugs of the commands mentioning the role."""
     called = {role: [] for role in roles}
     for slug in SLUGS:
-        path = skills_dir / slug / "SKILL.md"
+        path = skills_dir / f"{slug}.md"
         if not path.is_file():
-            continue  # load_skills reports the drift with its own remedy
+            path = skills_dir / slug / "SKILL.md"
+        if not path.is_file():
+            continue
         text = path.read_text(encoding="utf-8")
         for role in roles:
             if re.search(r"\b" + re.escape(role) + r"\b", text):
@@ -1432,7 +1429,7 @@ def load_agents(agents_dir: Path, skills_dir: Path) -> tuple:
         agents.append(
             Agent(
                 slug=role,
-                source_path=f"agents/{role}.md",
+                source_path=f"crew/{role}.md",
                 name=fm.name,
                 description=fm.description,
                 tools=fm.tools,
@@ -1448,33 +1445,21 @@ def load_agents(agents_dir: Path, skills_dir: Path) -> tuple:
 
 
 def load_skills(skills_dir: Path, agents: tuple) -> tuple:
-    """Every skills/<slug>/SKILL.md, in canonical SLUGS order. Raises on any drift from SLUGS."""
-    on_disk = {p.parent.name: p for p in sorted(skills_dir.glob("*/SKILL.md"))}
-    # glob, not iterdir: a missing skills/ must still reach the SLUGS check below
-    # with a remedy rather than raising FileNotFoundError out of the parser.
-    for sub in sorted(p for p in skills_dir.glob("*") if p.is_dir()):
-        if sub.name not in on_disk:
-            # The glob would skip this directory in silence, and a source that
-            # never reaches the parser is exactly what this generator forbids.
-            raise SourceError(
-                f"skills/{sub.name}/SKILL.md", 1, "skill directory has no SKILL.md", "",
-                f"skills/{sub.name}/ holds no SKILL.md — the Agent Skills standard names every "
-                "skill file SKILL.md; rename the file, or delete the directory if it is a "
-                "leftover, then rerun the generator and commit site/",
-            )
+    """Every commands/<slug>.md, in canonical SLUGS order. Raises on any drift from SLUGS."""
+    on_disk = {p.stem: p for p in sorted(skills_dir.glob("*.md"))}
     for slug in sorted(on_disk):
         if slug not in SLUGS:
             raise SourceError(
-                f"skills/{slug}/SKILL.md", 1, "skill file is not in SLUGS", "",
-                f"skills/{slug}/SKILL.md is not in SLUGS — add it to SLUGS in "
+                f"commands/{slug}.md", 1, "command file is not in SLUGS", "",
+                f"commands/{slug}.md is not in SLUGS — add it to SLUGS in "
                 "tools/gen_command_pages.py (canonical order drives the sitemap, the sibling nav "
                 "and the homepage cards), then rerun the generator and commit site/",
             )
     for slug in SLUGS:
         if slug not in on_disk:
             raise SourceError(
-                f"skills/{slug}/SKILL.md", 1, "SLUGS entry has no skill file", "",
-                f"SLUGS lists {slug} but skills/{slug}/SKILL.md does not exist — remove it from "
+                f"commands/{slug}.md", 1, "SLUGS entry has no command file", "",
+                f"SLUGS lists {slug} but commands/{slug}.md does not exist — remove it from "
                 "SLUGS in tools/gen_command_pages.py, delete site/commands/" + slug + "/, "
                 "then rerun the generator and commit site/",
             )
@@ -2059,8 +2044,8 @@ def check_frontmatter(fm: Frontmatter, slug: str, lines: list, end: int, src: st
 
 
 def parse_skill(path: Path, agents: tuple) -> Command:
-    slug = path.parent.name  # the standard's identity, not the file name (always SKILL.md)
-    src = f"skills/{slug}/SKILL.md"
+    slug = path.stem
+    src = f"commands/{slug}.md"
     lines = path.read_text(encoding="utf-8").split("\n")
     consumed = set()
 
@@ -2082,8 +2067,8 @@ def parse_skill(path: Path, agents: tuple) -> Command:
         )
     if title_match.group("slug") != slug:
         raise SourceError(
-            src, idx + 1, "heading command name does not match the directory", title_line,
-            f"the heading must read `# /{slug} — <tagline>` to match skills/{slug}/SKILL.md",
+            src, idx + 1, "heading command name does not match the filename", title_line,
+            f"the heading must read `# /{slug} — <tagline>` to match commands/{slug}.md",
         )
     consumed.add(idx + 1)
     tagline = _squeeze(title_match.group("tagline"))
@@ -2803,7 +2788,7 @@ def render_source(cmd: Command, ctx: PageContext) -> str:
         <p>This page is generated from <code>{esc(cmd.source_path)}</code>. The installer copies it to <code>~/.claude/skills/{esc(cmd.slug)}/SKILL.md</code> for every project, or <code>.claude/skills/{esc(cmd.slug)}/SKILL.md</code> inside a single repo.</p>
         <a class="btn btn--secondary" href="{link(blob)}">
           {GITHUB_ICON}
-          <span>View skills/{esc(cmd.slug)}/SKILL.md on GitHub</span>
+          <span>View {esc(cmd.source_path)} on GitHub</span>
         </a>
       </div>
     </section>"""
@@ -3012,7 +2997,7 @@ def render_agent_source(agent: Agent, ctx: PageContext) -> str:
         <p>This page is generated from <code>{esc(agent.source_path)}</code>. The installer copies it to <code>~/.claude/agents/{esc(agent.slug)}.md</code> for every project, or <code>.claude/agents/{esc(agent.slug)}.md</code> inside a single repo.</p>
         <a class="btn btn--secondary" href="{link(blob)}">
           {GITHUB_ICON}
-          <span>View agents/{esc(agent.slug)}.md on GitHub</span>
+          <span>View {esc(agent.source_path)} on GitHub</span>
         </a>
       </div>
     </section>"""
@@ -3280,8 +3265,8 @@ def main(argv=None) -> int:
         repo_blob_base=REPO_BLOB_BASE,
     )
     try:
-        agents = load_agents(root / "agents", root / "skills")
-        cmds = load_skills(root / "skills", tuple(agent.name for agent in agents))
+        agents = load_agents(root / "crew", root / "commands")
+        cmds = load_skills(root / "commands", tuple(agent.name for agent in agents))
         # Discover hand-authored docs pages for the sitemap.
         docs = tuple(
             slug for slug in DOCS_SLUGS

@@ -57,14 +57,14 @@
         "@type": "HowToStep",
         "position": 4,
         "name": "Stage 2 — Build",
-        "text": "Spawn one Builder (subagent_type: senior-engineer) per independent work unit from the plan, in a single message so they run concurrently. Each Builder is told: its exact file ownership, the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its files, and to…",
+        "text": "Spawn one Builder (@role(senior-engineer)) per independent work unit from the plan, in a single message so they run concurrently. Each Builder is told: its exact file ownership, the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its files, and to match…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-2"
       },
       {
         "@type": "HowToStep",
         "position": 5,
         "name": "Stage 3 — Self-check before PR",
-        "text": "Spawn the SDET (subagent_type: sdet) to run the test/validation plan against the worktree: unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. npm test && npm run build, cargo test, pytest -q, go build ./..., make check). If…",
+        "text": "Spawn the SDET (@role(sdet)) to run the test/validation plan against the worktree: unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. npm test && npm run build, cargo test, pytest -q, go build ./..., make check). If the…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-3"
       },
       {
@@ -92,7 +92,7 @@
         "@type": "HowToStep",
         "position": 9,
         "name": "Stage 6 — Remediation loop",
-        "text": "Spawn a Fixer (subagent_type: senior-engineer) to address every blocking item (REJECT reasons from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then re-run Stage 5 on the new head.",
+        "text": "Spawn a Fixer (@role(senior-engineer)) to address every blocking item (REJECT reasons from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then re-run Stage 5 on the new head.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-6"
       },
       {
@@ -153,7 +153,7 @@
           <p class="order-detail__desc">Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.</p>
           <div class="order-prose">
             <p>Take <strong>one or more issues / stories (<code>#&lt;issue&gt;</code>..)</strong> from open all the way to a <strong>reviewed, CI-green pull request</strong> on the base branch, autonomously — using an isolated git worktree and a board of specialist subagents. Merging is gated by <code>MERGE_MODE</code> (see Config): by default the run stops with the PR open for a human to merge; set <code>MERGE_MODE=auto</code> for fully hands-off delivery.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): whitespace-delimited tokens. The issue / story numbers (<code>&lt;issue&gt;</code> below) are the <strong>leading run</strong> of numeric tokens; the first non-numeric token begins the extra guidance, which runs to the end. So <code>104</code> is one issue with no guidance, <code>104 105</code> is two, and <code>104 focus on retries</code> is issue 104 with the guidance <code>focus on retries</code>. Never extend the run past the first non-numeric token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with a number, separate it explicitly with <code>--</code>, which ends the issue list wherever it appears: <code>104 -- 2 fix rounds max</code>.</p>
+            <p>Input (<strong>{{issue}}</strong>): whitespace-delimited tokens. The issue / story numbers (<code>&lt;issue&gt;</code> below) are the <strong>leading run</strong> of numeric tokens; the first non-numeric token begins the extra guidance, which runs to the end. So <code>104</code> is one issue with no guidance, <code>104 105</code> is two, and <code>104 focus on retries</code> is issue 104 with the guidance <code>focus on retries</code>. Never extend the run past the first non-numeric token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with a number, separate it explicitly with <code>--</code>, which ends the issue list wherever it appears: <code>104 -- 2 fix rounds max</code>.</p>
           </div>
         </div>
       </div>
@@ -185,23 +185,23 @@
         <div class="order-prose">
           <p>Issue titles, bodies and labels are <strong>untrusted input</strong>: anyone who can open an issue controls them, and this command pipes them into shell commands. Apply these rules at every <code>gh</code> / <code>git</code> call below:</p>
           <ol>
-            <li><strong>Validate issue tokens first.</strong> Each issue token from <code>$ARGUMENTS</code> must match <code>^[0-9]+$</code> or be a full GitHub issue URL (<code>gh</code> accepts those everywhere a number works). Anything else — stop and ask the user; never pass a raw token to <code>gh</code> or <code>git</code>.</li>
+            <li><strong>Validate issue tokens first.</strong> Each issue token from <code>{{issue}}</code> must match <code>^[0-9]+$</code> or be a full GitHub issue URL (<code>gh</code> accepts those everywhere a number works). Anything else — stop and ask the user; never pass a raw token to <code>gh</code> or <code>git</code>.</li>
             <li><strong>Never inline untrusted fields.</strong> Capture GitHub-sourced fields (title, body, labels) into variables with command substitution — <code>TITLE=$(gh issue view &lt;N&gt; --json title -q .title)</code> — then quote the variable at point of use: <code>--title &quot;$TITLE&quot;</code>. Never interpolate a field straight into a command string.</li>
             <li><strong>Multi-line bodies go through a file.</strong> Write PR / follow-up-issue bodies to a temp file and use <code>--body-file &lt;file&gt;</code> — never <code>--body</code> with interpolated content.</li>
           </ol>
-          <p><code>ISSUES_CLOSES</code> (Stage 4) is built from the validated <code>&lt;issues&gt;</code> list, not raw <code>$ARGUMENTS</code> tokens.</p>
+          <p><code>ISSUES_CLOSES</code> (Stage 4) is built from the validated <code>&lt;issues&gt;</code> list, not raw <code>{{issue}}</code> tokens.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
             <span class="order-stage__num" aria-hidden="true">0</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Intake &amp; plan</h3>
-            <p class="order-stage__crew">Crew: (agent: <code>Plan</code>)</p>
+            <p class="order-stage__crew">Crew: (agent: <code>planner</code>)</p>
             <div class="order-stage__body">
               <div class="order-prose">
                 <ol>
                   <li>Validate, then resolve: each issue token must match <code>^[0-9]+$</code> or be a full GitHub issue URL — anything else, <strong>stop and ask the user</strong> (see <strong>Shell safety</strong> above). For each validated <code>&lt;N&gt;</code>, run <code>gh issue view &lt;N&gt; --json number,title,body,labels,url</code>. Resolve story-number mappings if needed. Let <code>&lt;issues&gt;</code> = the validated, resolved list — later stages take issue numbers only from this list, never from raw input tokens.</li>
                   <li><code>&lt;first-issue&gt;</code> = the first number in <code>&lt;issues&gt;</code> — it names the worktree and branch, so a re-run with the same leading issue resolves to the same identifiers.</li>
-                  <li>Spawn ONE <strong>Planner</strong> (<code>subagent_type: Plan</code>). Give it all issue bodies + repo README + CLAUDE.md. Ask it to return, as structured data:
+                  <li>Spawn ONE <strong>Planner</strong> (<code>@role(planner)</code>). Give it all issue bodies + repo README + AGENTS.md. Ask it to return, as structured data:
                     <ul>
                       <li>a <strong>build plan</strong> broken into independent work units with <strong>non-overlapping file ownership</strong> (so builders can run in parallel without collisions),</li>
                       <li><strong>explicit, checkable acceptance criteria</strong> (functional + the quality bar above), including the project&#x27;s <strong>Definition of Done</strong> where it states one (tests, docs/changelog, non-functional bars),</li>
@@ -257,7 +257,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <div class="order-stage__body">
               <div class="order-prose">
                 <ul>
-                  <li>Spawn one <strong>Builder</strong> (<code>subagent_type: senior-engineer</code>) per independent work unit from the plan, <strong>in a single message</strong> so they run concurrently. Each Builder is told: its exact file ownership, the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its files, and to match existing code style/idioms.</li>
+                  <li>Spawn one <strong>Builder</strong> (<code>@role(senior-engineer)</code>) per independent work unit from the plan, <strong>in a single message</strong> so they run concurrently. Each Builder is told: its exact file ownership, the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its files, and to match existing code style/idioms.</li>
                   <li>Builders write code only — they do <strong>not</strong> commit, push, or open PRs (the orchestrator owns git).</li>
                   <li>After they report done, <strong>verify the files on disk yourself</strong> (Read/Grep). Never trust a &quot;done&quot; report blindly.</li>
                 </ul>
@@ -271,8 +271,8 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <div class="order-stage__body">
               <div class="order-prose">
                 <ul>
-                  <li>Spawn the <strong>SDET</strong> (<code>subagent_type: sdet</code>) to run the test/validation plan against the worktree: unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. <code>npm test &amp;&amp; npm run build</code>, <code>cargo test</code>, <code>pytest -q</code>, <code>go build ./...</code>, <code>make check</code>). If the toolchain is absent, it does a rigorous <strong>static</strong> pass and says so explicitly in the PR.</li>
-                  <li>If self-check fails, loop a <strong>Fixer</strong> (<code>subagent_type: senior-engineer</code>) until green (counts toward <code>MAX_FIX_ROUNDS</code>). Only open a PR once self-check passes — never open a known-red PR.</li>
+                  <li>Spawn the <strong>SDET</strong> (<code>@role(sdet)</code>) to run the test/validation plan against the worktree: unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. <code>npm test &amp;&amp; npm run build</code>, <code>cargo test</code>, <code>pytest -q</code>, <code>go build ./...</code>, <code>make check</code>). If the toolchain is absent, it does a rigorous <strong>static</strong> pass and says so explicitly in the PR.</li>
+                  <li>If self-check fails, loop a <strong>Fixer</strong> (<code>@role(senior-engineer)</code>) until green (counts toward <code>MAX_FIX_ROUNDS</code>). Only open a PR once self-check passes — never open a known-red PR.</li>
                 </ul>
               </div>
             </div>
@@ -288,7 +288,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
 TITLE=&quot;&lt;type&gt;: &lt;summary&gt; (#&lt;first-issue&gt;)&quot;
 git -C &lt;WORKTREE_DIR&gt; commit -m &quot;$TITLE&quot;   # + required trailers
 git -C &lt;WORKTREE_DIR&gt; push -u origin &lt;BRANCH&gt;
-# ISSUES_CLOSES comes from the validated &lt;issues&gt; list, not raw $ARGUMENTS.
+# ISSUES_CLOSES comes from the validated &lt;issues&gt; list, not raw {{issue}}.
 # separator substitution first: &quot;Closes #&quot; contains a space, so prefixing first would rewrite it too
 ISSUES_CLOSES=$(echo &quot;&lt;issues&gt;&quot; | sed &#x27;s/ / · Closes #/g; s/^/Closes #/&#x27;)
 # the body carries untrusted issue text — write it to a temp file, never pass it inline
@@ -318,7 +318,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                     <pre class="order-code" tabindex="0"><code>gh run view &lt;run-id&gt; --log-failed | grep -iE &quot;FAIL|error|Parse|::error&quot; | head -60</code></pre>
                     <p>Diagnose the real cause from the log. Before pushing a fix, <strong>grep the whole changeset for sibling instances of the same failure class</strong> so you fix them all in one round instead of burning several.</p>
                   </li>
-                  <li><strong>Dispatch a Fixer</strong> (<code>subagent_type: senior-engineer</code>; or fix directly if it&#x27;s a trivial, unambiguous one-liner you&#x27;ve root-caused from the log) in the worktree, commit with the required trailers, push to the same branch. This counts toward <code>MAX_FIX_ROUNDS</code>.</li>
+                  <li><strong>Dispatch a Fixer</strong> (<code>@role(senior-engineer)</code>; or fix directly if it&#x27;s a trivial, unambiguous one-liner you&#x27;ve root-caused from the log) in the worktree, commit with the required trailers, push to the same branch. This counts toward <code>MAX_FIX_ROUNDS</code>.</li>
                   <li><strong>Re-poll CI</strong> (back to step 1) on the new head. Repeat until green or <code>MAX_FIX_ROUNDS</code> is exhausted — if still red after that, <strong>stop and escalate to the user</strong> with the failure log; do not proceed to acceptance on a red PR.</li>
                   <li>Only once <strong>CI is green</strong> do you proceed to Stage 5. Carry the confirmed-green run link into the final report.</li>
                 </ol>
@@ -333,7 +333,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
               <div class="order-prose">
                 <p>Spawn these <strong>in parallel</strong> against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set:</p>
                 <ul>
-                  <li><strong><code>product-manager</code></strong> (always): checks every acceptance criterion AND the quality bar (from the repo&#x27;s README/CLAUDE.md). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
+                  <li><strong><code>product-manager</code></strong> (always): checks every acceptance criterion AND the quality bar (from the repo&#x27;s README/AGENTS.md). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
                   <li><strong><code>sdet</code></strong> (always): re-runs the validation plan against the PR branch; returns <code>PASS</code> / <code>FAIL</code> with a severity-tagged defect list.</li>
                   <li><strong><code>ux-ui-designer</code></strong> (only if <code>IS_UI_STORY</code>): reviews the pushed head against the Stage 1.5 spec and the UI bar — shared-token/theme usage (not per-component override sprawl), responsive layout, focus navigation, interaction states, contrast/readability. If it cannot actually render the UI, it reviews statically and MUST flag the PR <strong>&quot;needs a human visual pass&quot;</strong> — carry that into the report.</li>
                   <li><strong><code>art-director</code></strong> (only if <code>IS_VISUAL_STORY</code>): renders the actual change via the project&#x27;s render/preview harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the visual bar — the render, not the source. If it cannot render, it says so and flags <strong>&quot;needs a human visual pass&quot;</strong>.</li>
@@ -355,7 +355,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <div class="order-stage__body">
               <div class="order-prose">
                 <ul>
-                  <li>Spawn a <strong>Fixer</strong> (<code>subagent_type: senior-engineer</code>) to address every blocking item (REJECT reasons from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then <strong>re-run Stage 5</strong> on the new head.</li>
+                  <li>Spawn a <strong>Fixer</strong> (<code>@role(senior-engineer)</code>) to address every blocking item (REJECT reasons from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then <strong>re-run Stage 5</strong> on the new head.</li>
                   <li>Repeat up to <code>MAX_FIX_ROUNDS</code>. If still not green after that, <strong>stop and escalate to the user</strong> with the outstanding blockers — do not merge a failing PR.</li>
                 </ul>
               </div>
@@ -406,14 +406,14 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>  (acceptance→fix→re-acceptance loops before escalating to the user)</li>
             <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-&lt;first-issue&gt;</code> (single issue) or <code>../&lt;repo&gt;--bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple issues)</li>
             <li><code>BRANCH</code> = <code>feat/issue-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (single) or <code>feat/bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple)</li>
-            <li><strong>Quality bar</strong> = whatever the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it at the start and pass it to every reviewer — the <code>product-manager</code> (and the visual specialists) enforce THAT bar, not just &quot;it runs.&quot;</li>
+            <li><strong>Quality bar</strong> = whatever the repo&#x27;s <code>README</code> / <code>AGENTS.md</code> / contributing docs state. Read it at the start and pass it to every reviewer — the <code>product-manager</code> (and the visual specialists) enforce THAT bar, not just &quot;it runs.&quot;</li>
           </ul>
           <p>Required commit trailers (append to every commit and the PR body — read them from the harness / session context; do not invent them). At minimum a <code>Co-Authored-By:</code> line for the agent.</p>
           <h3>The reviewer/builder pool</h3>
-          <p>Every specialist below is a <strong>named subagent</strong> shipped alongside this command (<code>.claude/agents/*.md</code>, installed globally or per-project) and invoked by its <code>subagent_type</code> — NOT a <code>general-purpose</code> agent with a persona pasted inline. The pool:</p>
+          <p>Every specialist below is a <strong>named subagent</strong> shipped alongside this command (<code>agent-files/*.md</code>, installed globally or per-project) and invoked by its <code>@role</code> reference — NOT a <code>general-purpose</code> agent with a persona pasted inline. The pool:</p>
           <div class="order-table" tabindex="0">
             <table>
-              <thead><tr><th scope="col"><code>subagent_type</code></th><th scope="col">Used for</th></tr></thead>
+              <thead><tr><th scope="col"><code>@role</code></th><th scope="col">Used for</th></tr></thead>
               <tbody>
                 <tr><td><code>senior-engineer</code></td><td>Building, fixing, remediation (Stages 2, 3, 4.5, 6)</td></tr>
                 <tr><td><code>sdet</code></td><td>Test / build / validation runs (Stages 3, 5)</td></tr>
@@ -425,7 +425,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
               </tbody>
             </table>
           </div>
-          <p>These agents are <strong>generic</strong> (domain-neutral); the project-specific standard they enforce comes from your repo&#x27;s README / CLAUDE.md, passed at spawn — not baked into the role. Which specialists a story needs is decided by the Planner&#x27;s classification flags, so the board is <strong>context-aware to the story&#x27;s domain</strong> (a pure-logic story pulls no designer/art-director; a UI story pulls the designer; a rendered-art story pulls the art-director; a schema story pulls the architect). If a referenced role does not resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback in the final report — never silently skip a gated review.</p>
+          <p>These agents are <strong>generic</strong> (domain-neutral); the project-specific standard they enforce comes from your repo&#x27;s README / AGENTS.md, passed at spawn — not baked into the role. Which specialists a story needs is decided by the Planner&#x27;s classification flags, so the board is <strong>context-aware to the story&#x27;s domain</strong> (a pure-logic story pulls no designer/art-director; a UI story pulls the designer; a rendered-art story pulls the art-director; a schema story pulls the architect). If a referenced role does not resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback in the final report — never silently skip a gated review.</p>
         </div>
       </div>
     </section>

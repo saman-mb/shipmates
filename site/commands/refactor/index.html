@@ -131,7 +131,7 @@
           <p class="order-detail__desc">Change the shape of the code without changing what it does — pin current behaviour in characterization tests first, transform, then prove equivalence by those tests passing unmodified and no existing test being deleted, skipped or loosened.</p>
           <div class="order-prose">
             <p>A refactor that quietly changes behaviour is a bug with good PR copy. The gate here is the one thing that distinguishes the two: <strong>behaviour is pinned in tests written before the change, and those tests pass unmodified afterwards.</strong> If a test had to be edited to make the refactor pass, it wasn&#x27;t a refactor.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): what to restructure <strong>and why</strong>. The motivation is not optional — Stage 5 has to judge whether the structure actually improved, and &quot;it&#x27;s cleaner&quot; is not reviewable. If it&#x27;s empty, ask what hurts and what it&#x27;s costing.</p>
+            <p>Input (<strong>{{target}}</strong>): what to restructure <strong>and why</strong>. The motivation is not optional — Stage 5 has to judge whether the structure actually improved, and &quot;it&#x27;s cleaner&quot; is not reviewable. If it&#x27;s empty, ask what hurts and what it&#x27;s costing.</p>
             <p><strong>If the ask is &quot;rename/replace X with Y across N call sites&quot;, stop and run <code>/migrate</code> instead.</strong> That is a census job: it&#x27;s provable by re-grepping for the old pattern and finding nothing. A refactor has no such grep, which is exactly why it needs behaviour pinned first.</p>
           </div>
         </div>
@@ -264,7 +264,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
           <ul>
             <li><code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--refactor-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>refactor/&lt;slug&gt;</code>.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in).</li>
-            <li><strong>Quality bar / test commands</strong> = whatever the repo&#x27;s README / CLAUDE.md / test config states.</li>
+            <li><strong>Quality bar / test commands</strong> = whatever the repo&#x27;s README / AGENTS.md / test config states.</li>
             <li>The orchestrator owns all git/gh; agents never push.</li>
           </ul>
         </div>
@@ -283,7 +283,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <li>The two gates are not interchangeable: characterization tests are byte-frozen; pre-existing tests may be moved and renamed but never weakened.</li>
             <li>Behaviour-preserving means <em>observable</em> behaviour — public API, output, side effects, error cases.</li>
             <li>A refactor with no stated motivation is unreviewable; ask before starting.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
           </ul>
         </div>
       </div>
