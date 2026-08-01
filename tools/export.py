@@ -638,9 +638,30 @@ def run(
         return 1
 
 
+def list_targets(root: Path) -> int:
+    """Print the enabled targets, one per line.
+
+    Exists so a caller can ask "which targets can be built?" instead of inferring
+    it from a failed build. install.sh needs that distinction: under `--harness
+    all` a target with no adapter is skipped, but a target that *has* one and
+    fails to build is a hard error. Inferring the difference from an exit code
+    conflates "not implemented yet" with "your canonical sources are corrupt",
+    and reports the second as a cheerful skip.
+    """
+    try:
+        for target in load_manifest(root)["targets"]:
+            print(target)
+        return 0
+    except (CapabilityError, ExportError, OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Export canonical Shipmates sources for a harness.")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    targets_parser = subparsers.add_parser("targets", help="list enabled targets, one per line")
+    targets_parser.add_argument("--root", default=str(ROOT))
     for command in ("build", "check"):
         subparser = subparsers.add_parser(command)
         subparser.add_argument("--target", required=True)
@@ -654,6 +675,8 @@ def main(argv: list[str] | None = None) -> int:
                 help="rewrite tests/golden/<target>/ and the agents/ + skills/ mirrors",
             )
     args = parser.parse_args(argv)
+    if args.command == "targets":
+        return list_targets(Path(args.root).resolve())
     out_dir = Path(args.out).resolve() if args.out else None
     return run(
         Path(args.root).resolve(),

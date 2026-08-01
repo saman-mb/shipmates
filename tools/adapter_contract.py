@@ -80,6 +80,8 @@ class Adapter(Protocol):
         tool_order: Iterable[str] = (),
     ) -> tuple[str, ...]: ...
 
+    def render_neutral(self, text: str) -> str: ...
+
     def render_args(self, text: str, arguments: dict[str, str]) -> str: ...
 
     def render_invocation(self, role: str, argument: str) -> str: ...
@@ -99,6 +101,7 @@ REQUIRED_MEMBERS = (
     "target_paths",
     "emit_frontmatter",
     "map_tools",
+    "render_neutral",
     "render_args",
     "render_invocation",
     "degrade_board",
