@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/spike/SKILL.md
 arguments: question
 loop_max: 1
-stages: [{"order":1,"stage":"frame","role":"architect","gate":"question-framed","max_loops":1},{"order":2,"stage":"prototype","role":"senior-engineer","gate":"options-prototyped","max_loops":1},{"order":3,"stage":"judge","role":"architect","gate":"decision-made","max_loops":1},{"order":4,"stage":"record","role":"technical-writer","gate":"adr-ready","max_loops":1}]
+stages: [{"order":1,"stage":"frame","roles":["architect"],"gate":"question-framed","max_loops":1},{"order":2,"stage":"prototype","roles":["senior-engineer"],"gate":"options-prototyped","max_loops":1},{"order":3,"stage":"judge","roles":["architect"],"gate":"decision-made","max_loops":1}]
 invocation: @{{role}}({{question}})
 board: native
 ---

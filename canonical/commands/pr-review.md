@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/pr-review/SKILL.md
 arguments: pull-request
 loop_max: 1
-stages: [{"order":1,"stage":"classify","role":"architect","gate":"diff-classified","max_loops":1},{"order":2,"stage":"board","role":"product-manager","gate":"board-complete","max_loops":1},{"order":3,"stage":"report","role":"technical-writer","gate":"verdict-written","max_loops":1}]
+stages: [{"order":1,"stage":"classify","roles":["architect"],"gate":"diff-classified","max_loops":1},{"order":2,"stage":"board","roles":["product-manager","sdet"],"gate":"board-complete","max_loops":1}]
 invocation: @{{role}}({{pull-request}})
 board: native
 ---

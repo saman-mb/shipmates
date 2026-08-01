@@ -6,9 +6,9 @@
     "capabilities": ["read", "edit", "bash", "web", "agent"],
     "body": "authoritative-persona-body"
   },
-  "orders": {
+  "commands": {
     "required_frontmatter": ["name", "source", "description", "argument-hint", "allowed-tools", "disable-model-invocation", "arguments", "loop_max", "stages", "invocation", "board"],
-    "stage_columns": ["order", "stage", "role", "gate", "max_loops"],
+    "stage_columns": ["order", "stage", "roles", "gate", "max_loops"],
     "stages": "JSON array of stage objects",
     "invocation": "@{{role}}({{named-argument}})",
     "board": ["native", "explicit"],

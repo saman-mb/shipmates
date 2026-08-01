@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/document/SKILL.md
 arguments: target
 loop_max: 3
-stages: [{"order":1,"stage":"survey","role":"technical-writer","gate":"source-understood","max_loops":1},{"order":2,"stage":"draft","role":"technical-writer","gate":"docs-written","max_loops":1},{"order":3,"stage":"verify","role":"technical-writer","gate":"fresh-reader-complete","max_loops":3}]
+stages: [{"order":1,"stage":"survey","roles":["technical-writer"],"gate":"source-understood","max_loops":1},{"order":2,"stage":"draft","roles":["technical-writer"],"gate":"docs-written","max_loops":1},{"order":3,"stage":"verify","roles":["technical-writer"],"gate":"fresh-reader-complete","max_loops":3}]
 invocation: @{{role}}({{target}})
 board: native
 ---

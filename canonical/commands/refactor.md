@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/refactor/SKILL.md
 arguments: target
 loop_max: 3
-stages: [{"order":1,"stage":"characterize","role":"sdet","gate":"behaviour-pinned","max_loops":1},{"order":2,"stage":"transform","role":"senior-engineer","gate":"shape-changed","max_loops":3},{"order":3,"stage":"prove","role":"sdet","gate":"equivalent","max_loops":3},{"order":4,"stage":"review","role":"architect","gate":"accepted","max_loops":1}]
+stages: [{"order":1,"stage":"characterize","roles":["sdet"],"gate":"behaviour-pinned","max_loops":1},{"order":2,"stage":"transform","roles":["senior-engineer"],"gate":"shape-changed","max_loops":3},{"order":3,"stage":"prove","roles":["sdet"],"gate":"equivalent","max_loops":3},{"order":4,"stage":"review","roles":["architect"],"gate":"accepted","max_loops":1}]
 invocation: @{{role}}({{target}})
 board: native
 ---

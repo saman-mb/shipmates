@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.adapter_contract import CanonicalOrder, CanonicalRole
+from tools.adapter_contract import CanonicalCommand, CanonicalRole, conformance_report
 from tools.adapters.registry import create as create_adapter
 from tools.capability_registry import CAPABILITIES, CapabilityError, load_registry
 
@@ -37,6 +37,11 @@ KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 ARGUMENT_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
 INVOCATION_RE = re.compile(r"^@\{\{role\}\}\(\{\{([a-z][a-z0-9_-]*)\}\}\)$")
+# Mirrors tools/validate_skills.py. Positional substitution is not in the Agent
+# Skills standard and its index base has moved between harness versions, so a
+# `$` before a digit anywhere in a source or a generated payload is a defect —
+# fenced code blocks included, because substitution is textual over the file.
+POSITIONAL_RE = re.compile(r"(?<!\\)\$\{?[0-9]")
 WEB_SCOPES = ("search", "fetch")
 READ_SCOPES = ("read", "search", "glob")
 TOOL_SCOPES = (
@@ -97,15 +102,15 @@ def _arguments(value: str, path: Path) -> tuple[str, ...]:
 
 def _stages(
     value: str, path: Path, loop_max: int, role_names: set[str]
-) -> tuple[dict[str, str | int], ...]:
+) -> tuple[dict[str, object], ...]:
     try:
         raw = json.loads(value)
     except json.JSONDecodeError as exc:
         raise ExportError(f"{path}: stages must be valid JSON") from exc
     if not isinstance(raw, list) or not raw:
         raise ExportError(f"{path}: stages must be a non-empty list")
-    expected = ("order", "stage", "role", "gate", "max_loops")
-    parsed: list[dict[str, str | int]] = []
+    expected = ("order", "stage", "roles", "gate", "max_loops")
+    parsed: list[dict[str, object]] = []
     for index, stage in enumerate(raw, 1):
         if not isinstance(stage, dict) or set(stage) != set(expected):
             raise ExportError(f"{path}: stage {index} must contain {', '.join(expected)}")
@@ -115,9 +120,15 @@ def _stages(
             or stage["order"] != index
         ):
             raise ExportError(f"{path}: stages must be ordered starting at 1")
-        role = stage["role"]
-        if not isinstance(role, str) or not NAME_RE.fullmatch(role) or role not in role_names:
-            raise ExportError(f"{path}: stage {index} references unknown role {role!r}")
+        # `roles` is a list because a stage can fan out: /pr-review's board runs
+        # a product-manager and an sdet on every PR. A singular field forced that
+        # to be written as two sequential stages, which is not what happens.
+        roles = stage["roles"]
+        if not isinstance(roles, list) or not roles or len(set(roles)) != len(roles):
+            raise ExportError(f"{path}: stage {index} roles must be a unique non-empty list")
+        for role in roles:
+            if not isinstance(role, str) or not NAME_RE.fullmatch(role) or role not in role_names:
+                raise ExportError(f"{path}: stage {index} references unknown role {role!r}")
         for field in ("stage", "gate"):
             if not isinstance(stage[field], str) or not stage[field].strip():
                 raise ExportError(f"{path}: stage {index} field {field} must be non-empty")
@@ -126,6 +137,22 @@ def _stages(
             raise ExportError(f"{path}: stage {index} max_loops must be between 1 and loop_max")
         parsed.append(dict(stage))
     return tuple(parsed)
+
+
+def _reject_positional(label: str, text: str) -> None:
+    """Fail on `$1`-style placeholders anywhere in `text`, fences included."""
+    for lineno, line in enumerate(text.splitlines(), 1):
+        hit = POSITIONAL_RE.search(line)
+        if hit:
+            raise ExportError(
+                f"{label}:{lineno}: {hit.group(0)!r} — a command has no positional "
+                "arguments; use a named `{{argument}}` token, describe the input in "
+                "prose, or escape a literal as `\\$1`"
+            )
+
+
+def _mentioned(body: str, role_names: set[str]) -> set[str]:
+    return {role for role in role_names if role in body}
 
 
 def _source(root: Path, relative: str, owner: Path) -> Path:
@@ -145,7 +172,12 @@ def _reference(root: Path, relative: str, owner: Path) -> Path:
     return candidate
 
 
-def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalOrder]]:
+def load_manifest(root: Path) -> dict:
+    """Read and validate canonical/manifest.json — the exporter's only entry point.
+
+    Every root the exporter reads from or gates against is declared here, so a
+    reader can answer "what is authoritative?" from one file, not from the code.
+    """
     root = root.resolve()
     manifest_path = root / "canonical/manifest.json"
     try:
@@ -165,16 +197,19 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalOrder]]
         not isinstance(schema, dict)
         or schema.get("schema_version") != 1
         or not isinstance(schema.get("crew"), dict)
-        or not isinstance(schema.get("orders"), dict)
+        or not isinstance(schema.get("commands"), dict)
         or schema["crew"].get("body") != "authoritative-persona-body"
-        or schema["orders"].get("narrative") != "authoritative workflow body"
+        or schema["commands"].get("narrative") != "authoritative workflow body"
     ):
         raise ExportError(f"invalid canonical schema: {schema_path}")
-    for section in ("crew", "orders"):
+    for section in ("crew", "commands"):
         if not isinstance(manifest.get(section), dict) or not isinstance(
-            manifest[section].get("source_root"), str
+            manifest[section].get("canonical_root"), str
         ):
-            raise ExportError(f"canonical manifest: {section}.source_root is required")
+            raise ExportError(f"canonical manifest: {section}.canonical_root is required")
+        canonical_root = (root / manifest[section]["canonical_root"]).resolve()
+        if root not in canonical_root.parents or not canonical_root.is_dir():
+            raise ExportError(f"canonical manifest: {section}.canonical_root is not a directory")
     targets = manifest.get("targets")
     if (
         not isinstance(targets, list)
@@ -193,10 +228,27 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalOrder]]
     for target in manifest["targets"]:
         if statuses.get(target) != "implemented":
             raise ExportError(f"canonical manifest: enabled target {target!r} is not implemented")
+    compatibility = manifest.get("compatibility")
+    if compatibility is not None:
+        if (
+            not isinstance(compatibility, dict)
+            or not isinstance(compatibility.get("target"), str)
+            or not isinstance(compatibility.get("exempt"), list)
+            or any(not isinstance(item, str) for item in compatibility["exempt"])
+        ):
+            raise ExportError("canonical manifest: compatibility must declare target and exempt")
+        if compatibility["target"] not in manifest["targets"]:
+            raise ExportError("canonical manifest: compatibility target is not enabled")
+    return manifest
+
+
+def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalCommand]]:
+    root = root.resolve()
+    manifest = load_manifest(root)
 
     roles: list[CanonicalRole] = []
     role_names: set[str] = set()
-    crew_dir = root / "canonical/crew"
+    crew_dir = root / manifest["crew"]["canonical_root"]
     for path in sorted(crew_dir.glob("*.md")):
         values, body = _frontmatter(path)
         _required(values, path, ("name", "description", "capabilities", "writes", "source"))
@@ -256,10 +308,10 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalOrder]]
     if not roles:
         raise ExportError("canonical/crew: no role sources")
 
-    orders: list[CanonicalOrder] = []
-    order_names: set[str] = set()
-    orders_dir = root / "canonical/orders"
-    for path in sorted(orders_dir.glob("*.md")):
+    commands: list[CanonicalCommand] = []
+    command_names: set[str] = set()
+    commands_dir = root / manifest["commands"]["canonical_root"]
+    for path in sorted(commands_dir.glob("*.md")):
         values, body = _frontmatter(path)
         _required(
             values,
@@ -281,9 +333,9 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalOrder]]
         name = values["name"]
         if name != path.stem or not NAME_RE.fullmatch(name):
             raise ExportError(f"{path}: name must match lowercase filename")
-        if name in order_names:
-            raise ExportError(f"{path}: duplicate order name {name!r}")
-        order_names.add(name)
+        if name in command_names:
+            raise ExportError(f"{path}: duplicate command name {name!r}")
+        command_names.add(name)
         try:
             loop_max = int(values["loop_max"])
         except ValueError as exc:
@@ -304,8 +356,19 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalOrder]]
         source_path = _reference(root, values["source"], path)
         if not body.strip():
             raise ExportError(f"{path}: canonical narrative must not be empty")
-        orders.append(
-            CanonicalOrder(
+        _reject_positional(path.relative_to(root).as_posix(), path.read_text(encoding="utf-8"))
+        # Stage metadata is only worth carrying if it describes the narrative it
+        # ships beside. Requiring every declared role to appear in the body stops
+        # a stage table drifting into fiction while the export stays green — the
+        # failure mode of metadata no adapter reads yet.
+        declared_roles = {str(role) for stage in stages for role in stage["roles"]}  # type: ignore[union-attr]
+        absent = sorted(declared_roles - _mentioned(body, role_names))
+        if absent:
+            raise ExportError(
+                f"{path}: stage role(s) never mentioned in the narrative: {', '.join(absent)}"
+            )
+        commands.append(
+            CanonicalCommand(
                 name=name,
                 source=source_path,
                 description=values["description"],
@@ -320,55 +383,105 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalOrder]]
                 board=values["board"],
             )
         )
-    if not orders:
-        raise ExportError("canonical/orders: no order sources")
-    return roles, orders
+    if not commands:
+        raise ExportError("canonical/commands: no command sources")
+    return roles, commands
 
 
-def adapter_for(root: Path, target: str):
-    if target == "opencode":
-        raise ExportError(
-            "target 'opencode' is registered for future work but its adapter is not implemented; "
-            "this prerequisite export supports claude-code only"
-        )
-    registries = load_registry(root / "tools/capability_registry.json")
-    manifest = json.loads((root / "canonical/manifest.json").read_text(encoding="utf-8"))
+def adapter_for(root: Path, target: str, manifest: dict | None = None):
+    """Resolve a target's adapter, refusing anything the manifest hasn't enabled.
+
+    The refusal is declarative: a target's status lives in canonical/manifest.json,
+    not in a hardcoded name here, so enabling a second adapter is one manifest
+    edit rather than a code change an author has to remember to make.
+    """
+    manifest = manifest if manifest is not None else load_manifest(root)
     if target not in manifest["targets"]:
+        status = manifest["target_status"].get(target)
+        if status == "registered-not-implemented":
+            raise ExportError(
+                f"target {target!r} is registered for future work but its adapter is "
+                "not implemented; canonical export supports "
+                f"{', '.join(manifest['targets'])} only"
+            )
         raise ExportError(f"target {target!r} is not enabled by canonical manifest")
+    registries = load_registry(root / "tools/capability_registry.json")
     try:
-        return create_adapter(target, registries[target])
+        adapter = create_adapter(target, registries[target])
     except KeyError as exc:
         raise ExportError(f"capability registry has no target: {target}") from exc
     except ValueError as exc:
         raise ExportError(str(exc)) from exc
+    reasons = conformance_report(adapter, target)
+    if reasons:
+        raise ExportError(f"adapter for {target!r} does not conform: {'; '.join(reasons)}")
+    return adapter
 
 
-def _orphan_paths(root: Path, target: str, expected: set[str]) -> list[str]:
-    base = root / "harnesses" / target
+def _orphan_paths(base: Path, label: str, expected: set[str]) -> list[str]:
+    """Files present under `base` that the export does not produce.
+
+    Run against whichever tree is being compared — the in-repo harnesses/ tree or
+    the committed golden reference. Without this, an extra or renamed reference
+    file is invisible: every generated file matches, and the stray one is never
+    looked at.
+    """
     if not base.is_dir():
         return []
     return sorted(
-        path.relative_to(root).as_posix()
+        f"{label}{path.relative_to(base).as_posix()}"
         for path in base.rglob("*")
-        if path.is_file() and path.relative_to(root).as_posix() not in expected
+        if path.is_file() and f"{label}{path.relative_to(base).as_posix()}" not in expected
     )
 
 
 def check_files(root: Path, files: dict[str, str], target: str, golden_dir: Path | None = None) -> list[str]:
     report: list[str] = []
-    base = golden_dir if golden_dir is not None else root
     prefix = f"harnesses/{target}/"
     for relative, expected in sorted(files.items()):
         if golden_dir is not None:
-            golden_rel = relative.removeprefix(prefix)
-            path = base / golden_rel
+            path = golden_dir / relative[len(prefix) :]
         else:
             path = root / relative
         if not path.is_file():
             report.append(f"missing: {relative}")
         elif path.read_text(encoding="utf-8") != expected:
             report.append(f"drift: {relative}")
-    report.extend(f"unexpected generated file: {path}" for path in _orphan_paths(root, target, set(files)))
+    base = golden_dir if golden_dir is not None else root / "harnesses" / target
+    report.extend(
+        f"unexpected reference file: {path}" for path in _orphan_paths(base, prefix, set(files))
+    )
+    return report
+
+
+def check_compatibility(root: Path, files: dict[str, str], manifest: dict) -> list[str]:
+    """Compare the generated payload against the committed compatibility trees.
+
+    `agents/` and `skills/` stay in the repository because the site generator and
+    the skills validator read them. That makes them a second writable copy of the
+    shipped payload, and a second writable copy with no gate is a trap: a
+    contributor edits the tree the layout docs point at and ships nothing. This
+    pins them as provably frozen mirrors of the canonical export, so such an edit
+    fails CI with the file name in the message instead of passing silently.
+    """
+    compatibility = manifest.get("compatibility")
+    if not isinstance(compatibility, dict):
+        return []
+    target = compatibility["target"]
+    prefix = f"harnesses/{target}/"
+    exempt = set(compatibility["exempt"])
+    report: list[str] = []
+    for relative, expected in sorted(files.items()):
+        if not relative.startswith(prefix):
+            continue
+        payload_relative = relative[len(prefix) :]
+        if payload_relative in exempt:
+            continue
+        path = root / payload_relative
+        if not path.is_file():
+            report.append(f"missing compatibility source: {payload_relative}")
+        elif path.read_text(encoding="utf-8") != expected:
+            report.append(f"compatibility drift: {payload_relative}")
     return report
 
 
@@ -386,22 +499,49 @@ def write_files(root: Path, files: dict[str, str], out_dir: Path | None = None) 
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_name(f".{path.name}.tmp-{os.getpid()}")
-        temporary.write_text(content, encoding="utf-8", newline="\n")
-        os.replace(temporary, path)
+        # Written through open() rather than Path.write_text(newline=...): the
+        # newline keyword only exists on Python 3.10+, and the installer runs
+        # this on whatever python3 the machine has (macOS ships 3.9).
+        try:
+            with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
+                handle.write(content)
+            os.replace(temporary, path)
+        except OSError:
+            temporary.unlink(missing_ok=True)
+            raise
         written.append(relative)
     return written
 
 
-def canonical_digest(root: Path) -> str:
+def canonical_digest(root: Path, manifest: dict) -> str:
+    """Digest exactly the files the exporter reads — the manifest, the schema, and
+    the two canonical roots.
+
+    Scoped deliberately rather than hashing all of canonical/: a digest that moves
+    when canonical/README.md is reworded is noise, and noise in a tripwire is how
+    people learn to regenerate it without reading the diff.
+    """
+    inputs = [root / "canonical/manifest.json", _source(root, manifest["schema"], root)]
+    for section in ("crew", "commands"):
+        inputs.extend(sorted((root / manifest[section]["canonical_root"]).glob("*.md")))
     lines: list[str] = []
-    for path in sorted(path for path in (root / "canonical").rglob("*") if path.is_file()):
+    for path in inputs:
         relative = path.relative_to(root).as_posix()
         lines.extend((relative, hashlib.sha256(path.read_bytes()).hexdigest()))
     return hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
 
 
-def payload_attestation(files: dict[str, str], target: str, source_digest: str) -> str:
-    """Return exporter-owned provenance for installer trust checks."""
+def payload_manifest(files: dict[str, str], target: str, source_digest: str) -> str:
+    """Return a build manifest: what the exporter produced, and from which inputs.
+
+    This is provenance, not a trust boundary. The installer compiles the payload
+    from the canonical sources in the tree it just fetched, so re-hashing that
+    same tree at install time proves nothing an attacker could not also arrange —
+    do not present this as an integrity check. Its real value is as a build
+    tripwire: because `canonical_sha256` covers every canonical file, a canonical
+    edit that leaves the rendered output byte-identical still moves this digest,
+    so the committed golden reference goes red and the edit gets reviewed.
+    """
     lines = [
         "payload_version=1",
         "generator=shipmates-exporter",
@@ -418,18 +558,71 @@ def payload_attestation(files: dict[str, str], target: str, source_digest: str) 
     return "\n".join(lines) + "\n"
 
 
-def run(root: Path, target: str, check: bool, out_dir: Path | None = None) -> int:
+def update_references(root: Path, files: dict[str, str], target: str, manifest: dict) -> list[str]:
+    """Rewrite the golden tree, and the compatibility sources, to match `files`.
+
+    Both are references, not inputs: tests/golden/<target>/ pins the export, and
+    agents/ + skills/ are frozen mirrors the site generator and skills validator
+    still read. Regenerating them from one command is what keeps the "canonical
+    is authoritative" claim true — a hand-maintained copy of 25 files rots, and a
+    partial manual update leaves stale entries that a generated-side-only
+    comparison never looks at. Stray files are removed for the same reason.
+    """
+    prefix = f"harnesses/{target}/"
+    expected = {relative[len(prefix) :] for relative in files}
+    payload = {path: files[prefix + path] for path in expected}
+    changed: list[str] = []
+
+    golden_dir = root / "tests/golden" / target
+    changed.extend(f"tests/golden/{target}/{path}" for path in write_files(root, payload, out_dir=golden_dir))
+    for path in sorted(golden_dir.rglob("*"), reverse=True) if golden_dir.is_dir() else []:
+        relative = path.relative_to(golden_dir).as_posix()
+        if path.is_file() and relative not in expected:
+            path.unlink()
+            changed.append(f"removed tests/golden/{target}/{relative}")
+        elif path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+
+    compatibility = manifest.get("compatibility")
+    if isinstance(compatibility, dict) and compatibility["target"] == target:
+        exempt = set(compatibility["exempt"])
+        mirror = {path: content for path, content in payload.items() if path not in exempt}
+        changed.extend(write_files(root, mirror, out_dir=root))
+    return changed
+
+
+def run(
+    root: Path,
+    target: str,
+    check: bool,
+    out_dir: Path | None = None,
+    update: bool = False,
+) -> int:
     try:
-        roles, orders = load_catalog(root)
-        adapter = adapter_for(root, target)
-        files = adapter.build(root, roles, orders)
-        files[f"harnesses/{target}/.shipmates-payload"] = payload_attestation(
-            files, target, canonical_digest(root)
+        manifest = load_manifest(root)
+        roles, commands = load_catalog(root)
+        adapter = adapter_for(root, target, manifest)
+        files = adapter.build(root, roles, commands)
+        for relative, content in sorted(files.items()):
+            _reject_positional(relative, content)
+        files[f"harnesses/{target}/.shipmates-payload"] = payload_manifest(
+            files, target, canonical_digest(root, manifest)
         )
+        if update:
+            for entry in update_references(root, files, target, manifest):
+                print(f"updated {entry}")
+            print(f"references for {target} rewritten ({len(files)} files)")
+            return 0
         if check:
             golden_dir = root / "tests/golden" / target
             report = check_files(root, files, target, golden_dir=golden_dir if golden_dir.is_dir() else None)
+            report.extend(check_compatibility(root, files, manifest))
             if report:
+                report.append(
+                    "fix: canonical/ is the only input — edit it, then run "
+                    f"`python3 tools/export.py build --target {target} --update` to "
+                    "regenerate the golden tree and the agents/ + skills/ mirrors."
+                )
                 print("\n".join(report))
                 return 1
             print(f"up to date: {target} ({len(files)} files)")
@@ -455,6 +648,11 @@ def main(argv: list[str] | None = None) -> int:
         subparser.add_argument("--out", default=None, help="output root (default: write to harnesses/ in repo)")
         if command == "build":
             subparser.add_argument("--check", action="store_true", help="check generated golden files")
+            subparser.add_argument(
+                "--update",
+                action="store_true",
+                help="rewrite tests/golden/<target>/ and the agents/ + skills/ mirrors",
+            )
     args = parser.parse_args(argv)
     out_dir = Path(args.out).resolve() if args.out else None
     return run(
@@ -462,6 +660,7 @@ def main(argv: list[str] | None = None) -> int:
         args.target,
         args.command == "check" or getattr(args, "check", False),
         out_dir=out_dir,
+        update=getattr(args, "update", False),
     )
 
 

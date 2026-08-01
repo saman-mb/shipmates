@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/harden/SKILL.md
 arguments: surface
 loop_max: 3
-stages: [{"order":1,"stage":"threat-model","role":"security-engineer","gate":"surface-mapped","max_loops":1},{"order":2,"stage":"review","role":"security-engineer","gate":"findings-ranked","max_loops":3},{"order":3,"stage":"report","role":"product-manager","gate":"report-ready","max_loops":1}]
+stages: [{"order":1,"stage":"threat-model","roles":["security-engineer"],"gate":"surface-mapped","max_loops":1},{"order":2,"stage":"remediate","roles":["senior-engineer"],"gate":"blockers-fixed","max_loops":3},{"order":3,"stage":"re-review","roles":["security-engineer"],"gate":"findings-ranked","max_loops":3}]
 invocation: @{{role}}({{surface}})
 board: native
 ---

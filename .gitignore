@@ -2,6 +2,7 @@
 .DS_Store
 __pycache__/
 *.py[cod]
-# Generated harness trees — created at install time by tools/export.py,
-# never committed. Canonical source of truth is agents/ + skills/.
+# Generated harness trees — built at install time by tools/export.py into a
+# temp dir, never committed. The source of truth is canonical/; agents/ and
+# skills/ are generated mirrors of the Claude export, gated by CI.
 harnesses/*/

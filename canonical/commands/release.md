@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/release/SKILL.md
 arguments: version
 loop_max: 2
-stages: [{"order":1,"stage":"assemble","role":"technical-writer","gate":"changelog-ready","max_loops":1},{"order":2,"stage":"preflight","role":"site-reliability-engineer","gate":"rollback-safe","max_loops":2},{"order":3,"stage":"verify","role":"sdet","gate":"ci-green","max_loops":2},{"order":4,"stage":"publish","role":"product-manager","gate":"release-approved","max_loops":1}]
+stages: [{"order":1,"stage":"assemble","roles":["technical-writer"],"gate":"changelog-ready","max_loops":1},{"order":2,"stage":"preflight","roles":["site-reliability-engineer"],"gate":"rollback-safe","max_loops":2}]
 invocation: @{{role}}({{version}})
 board: native
 ---

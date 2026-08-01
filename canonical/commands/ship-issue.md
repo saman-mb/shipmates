@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/ship-issue/SKILL.md
 arguments: issue, guidance
 loop_max: 3
-stages: [{"order":1,"stage":"plan","role":"product-manager","gate":"plan-ready","max_loops":1},{"order":2,"stage":"isolate","role":"senior-engineer","gate":"isolated-worktree","max_loops":1},{"order":3,"stage":"build","role":"senior-engineer","gate":"implementation-complete","max_loops":3},{"order":4,"stage":"verify","role":"sdet","gate":"tests-green","max_loops":3},{"order":5,"stage":"review","role":"product-manager","gate":"board-accepted","max_loops":3},{"order":6,"stage":"deliver","role":"senior-engineer","gate":"pr-ready","max_loops":1}]
+stages: [{"order":1,"stage":"plan","roles":["product-manager"],"gate":"plan-ready","max_loops":1},{"order":2,"stage":"isolate","roles":["senior-engineer"],"gate":"isolated-worktree","max_loops":1},{"order":3,"stage":"build","roles":["senior-engineer"],"gate":"implementation-complete","max_loops":3},{"order":4,"stage":"verify","roles":["sdet"],"gate":"tests-green","max_loops":3},{"order":5,"stage":"review","roles":["product-manager"],"gate":"board-accepted","max_loops":3},{"order":6,"stage":"deliver","roles":["senior-engineer"],"gate":"pr-ready","max_loops":1}]
 invocation: @{{role}}({{issue}})
 board: native
 ---

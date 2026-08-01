@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/plan-epics/SKILL.md
 arguments: brief
 loop_max: 1
-stages: [{"order":1,"stage":"intake","role":"product-manager","gate":"brief-understood","max_loops":1},{"order":2,"stage":"scope","role":"product-manager","gate":"epics-scoped","max_loops":1},{"order":3,"stage":"author","role":"product-manager","gate":"stories-authored","max_loops":1},{"order":4,"stage":"verify","role":"sdet","gate":"backlog-valid","max_loops":1}]
+stages: [{"order":1,"stage":"scope","roles":["product-manager"],"gate":"epics-scoped","max_loops":1},{"order":2,"stage":"author","roles":["product-manager"],"gate":"stories-authored","max_loops":1}]
 invocation: @{{role}}({{brief}})
 board: native
 ---

@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Iterable
 
 try:
-    from ..adapter_contract import CanonicalOrder, CanonicalRole, TargetPaths
+    from ..adapter_contract import CanonicalCommand, CanonicalRole, TargetPaths
     from ..capability_registry import HarnessCapabilities
 except ImportError:  # pragma: no cover - direct script development convenience.
-    from adapter_contract import CanonicalOrder, CanonicalRole, TargetPaths
+    from adapter_contract import CanonicalCommand, CanonicalRole, TargetPaths
     from capability_registry import HarnessCapabilities
 
 
@@ -23,7 +23,7 @@ class ClaudeCodeAdapter:
     def target_paths(self) -> TargetPaths:
         return TargetPaths(
             agents=self.capabilities.agent_path,
-            orders=self.capabilities.skill_path,
+            commands=self.capabilities.skill_path,
             project_instructions=self.capabilities.project_instructions,
         )
 
@@ -115,7 +115,7 @@ class ClaudeCodeAdapter:
         return f"Claude Code board stage `{stage}` is native; no degradation."
 
     def build(
-        self, root: Path, roles: Iterable[CanonicalRole], orders: Iterable[CanonicalOrder]
+        self, root: Path, roles: Iterable[CanonicalRole], commands: Iterable[CanonicalCommand]
     ) -> dict[str, str]:
         files: dict[str, str] = {}
         for role in sorted(roles, key=lambda item: item.name):
@@ -133,33 +133,38 @@ class ClaudeCodeAdapter:
             )
             destination = self._destination(self.target_paths().agents, role.name)
             files[destination] = frontmatter + "\n" + self.render_neutral(role.body) + "\n"
-        for order in sorted(orders, key=lambda item: item.name):
+        for command in sorted(commands, key=lambda item: item.name):
             # Render neutral argument tokens into Claude's runtime token. These
             # calls are deliberately made here, rather than copying a source
             # body, so canonical narrative edits remain authoritative.
             body = self.render_args(
-                order.narrative,
-                {argument: "$ARGUMENTS" for argument in order.arguments},
+                command.narrative,
+                {argument: "$ARGUMENTS" for argument in command.arguments},
             )
-            # Validate/render every stage invocation and board policy. Metadata
-            # remains canonical authority, but is not appended as pretend runtime
-            # enforcement to the compatibility skill body.
+            # Claude Code drives these stages from the narrative itself, so the
+            # rendered contract is asserted rather than appended: emitting it
+            # would be pretend runtime enforcement, and would break byte identity
+            # with the compatibility sources. The stage table stays honest
+            # because load_catalog requires every declared role to appear in the
+            # narrative it ships beside.
             invocations = tuple(
-                self.render_invocation(str(stage["role"]), "$ARGUMENTS") for stage in order.stages
+                self.render_invocation(str(stage_role), "$ARGUMENTS")
+                for stage in command.stages
+                for stage_role in stage["roles"]  # type: ignore[index]
             )
-            if not invocations or not self.degrade_board(order.board):
-                raise ValueError(f"{order.name}: Claude execution contract rendered empty")
+            if not invocations or not self.degrade_board(command.board):
+                raise ValueError(f"{command.name}: Claude execution contract rendered empty")
             frontmatter = self.emit_frontmatter(
-                "order",
+                "command",
                 {
-                    "name": order.name,
-                    "description": order.description,
-                    "argument-hint": order.argument_hint,
-                    "allowed-tools": order.allowed_tools,
-                    "disable-model-invocation": str(order.disable_model_invocation).lower(),
+                    "name": command.name,
+                    "description": command.description,
+                    "argument-hint": command.argument_hint,
+                    "allowed-tools": command.allowed_tools,
+                    "disable-model-invocation": str(command.disable_model_invocation).lower(),
                 },
             )
-            destination = self._destination(self.target_paths().orders, order.name)
+            destination = self._destination(self.target_paths().commands, command.name)
             files[destination] = frontmatter + "\n" + self.render_neutral(body) + "\n"
         return files
 

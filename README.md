@@ -133,8 +133,10 @@ Agent Skills standard is filesystem-based, so the same `SKILL.md` payload works 
 the target path differs. Subagents (`agents/`) ship for Claude Code only — no cross-harness
 subagent standard exists yet.
 
-**Safety:** Claude payloads are exported from `canonical/` by `tools/export.py` and carry an
-attestation that the installer verifies. If the matrix can't honour a safety property on a target
+**Safety:** Claude payloads are compiled from `canonical/` by `tools/export.py` at install time,
+and carry a `.shipmates-payload` build manifest recording the inputs they came from. That manifest
+is provenance, not an integrity check — the installer compiles from the tree it just fetched, so
+re-hashing that same tree would prove nothing. If the matrix can't honour a safety property on a target
 (e.g. no equivalent of `disable-model-invocation`), the payload is **refused** and install fails
 loudly rather than shipping a more permissive artifact. Currently only `claude-code` builds;
 others refuse until their adapter and user-invoked-only equivalent are approved.
@@ -148,13 +150,15 @@ others refuse until their adapter and user-invoked-only equivalent are approved.
 
 Portability work starts from authoritative `canonical/`: full persona/workflow bodies, semantic crew
 capabilities, ordered command stages, neutral `@role({{argument}})` invocations, and named arguments.
-Existing `agents/` and `skills/` remain compatibility/site sources and Claude golden files. The
-exporter renders neutral canonical bodies into Claude's established dialect; it never reads
-compatibility bodies. Generate/check Claude's committed target:
+`agents/` and `skills/` are **generated mirrors** of the Claude export, kept in the repository
+because the site generator and the skills validator read them; CI proves they match, so editing
+them directly fails rather than silently shipping nothing. The exporter renders neutral canonical
+bodies into Claude's established dialect; it never reads the mirrors. Build, check, or regenerate:
 
 ```bash
-python3 tools/export.py build --target claude-code
+python3 tools/export.py build --target claude-code --out /tmp/shipmates-build
 python3 tools/export.py check --target claude-code
+python3 tools/export.py build --target claude-code --update   # regenerate references
 ```
 
 `tools/capability_registry.json` is the single semantic-to-harness tool map. New adapters implement

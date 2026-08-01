@@ -40,12 +40,21 @@ jobs:
         run: python3 tools/gen_command_pages.py --check
       - name: Check harness payloads are up to date
         run: python3 tools/build_harness_payloads.py --check
+      # Gates the golden reference AND the generated agents/ + skills/ mirrors.
+      # Without the mirror comparison, an edit to the tree the layout docs point
+      # at passes every check and ships nothing.
       - name: Check canonical Claude export
         run: python3 tools/export.py check --target claude-code
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
         run: python3 .github/scripts/validate_design_drift.py
+      - name: Run the test suite
+        run: python3 -m unittest discover -s tests -v
+      - name: Test installer source resolution
+        run: bash tests/test_resolve_src.sh
+      - name: Test harness install paths
+        run: bash tests/test_install_harness.sh
       - name: Check install.sh is executable (#100)
         run: |
           mode=$(git ls-files -s install.sh | awk '{print $1}')
@@ -55,9 +64,33 @@ jobs:
             exit 1
           fi
 
+  # install.sh compiles the payload with whatever python3 the user's machine
+  # has, so the floor is a supported configuration, not a footnote. The main job
+  # pins "3.x" (newest), which is exactly why a 3.10-only call slipped through
+  # once: it is invisible there and fatal on stock macOS.
+  exporter-floor:
+    name: Exporter on the minimum Python
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Build and check the Claude export
+        run: |
+          python3 tools/export.py check --target claude-code
+          python3 tools/export.py build --target claude-code --out "$RUNNER_TEMP/floor"
+          diff -r "$RUNNER_TEMP/floor/harnesses/claude-code" tests/golden/claude-code
+      - name: Install end to end
+        run: |
+          bash install.sh --dir "$RUNNER_TEMP/install"
+          test -f "$RUNNER_TEMP/install/skills/ship-issue/SKILL.md"
+
   deploy:
     name: Deploy to GitHub Pages
-    needs: validate
+    needs: [validate, exporter-floor]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

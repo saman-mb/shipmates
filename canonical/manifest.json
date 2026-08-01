@@ -6,16 +6,21 @@
     "claude-code": "CLAUDE.md"
   },
   "crew": {
-    "source_root": "agents",
+    "canonical_root": "canonical/crew",
     "format": "markdown-frontmatter"
   },
-  "orders": {
-    "source_root": "skills",
+  "commands": {
+    "canonical_root": "canonical/commands",
     "format": "agent-skills"
   },
   "targets": ["claude-code"],
   "target_status": {
     "claude-code": "implemented",
     "opencode": "registered-not-implemented"
+  },
+  "compatibility": {
+    "target": "claude-code",
+    "roots": ["agents", "skills"],
+    "exempt": [".shipmates-payload"]
   }
 }

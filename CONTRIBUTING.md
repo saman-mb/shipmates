@@ -90,14 +90,19 @@ are correct; which one belongs in a given sentence is set by the
 
 ### Portability sources
 
-Harness-neutral role and workflow content lives authoritatively in `canonical/`; `agents/` and
-`skills/` remain compatibility/site sources. Exporters must never emit compatibility bodies.
-Keep semantic capabilities in
-`tools/capability_registry.json`, implement new targets through `tools/adapter_contract.py`, and
-run the Claude golden check before changing generated payloads:
+**`canonical/` is the only thing you edit.** Harness-neutral role and workflow content lives
+there authoritatively. `agents/`, `skills/` and `tests/golden/claude-code/` are all **generated**
+from it — `agents/` and `skills/` stay in the repository only because the site generator and the
+skills validator read them. Editing one of them directly changes nothing that ships and fails CI
+with a `compatibility drift:` line naming the file.
+
+Keep semantic capabilities in `tools/capability_registry.json`, implement new targets through
+`tools/adapter_contract.py` (run `conformance_report` against your adapter before registering it
+in `canonical/manifest.json`), and regenerate rather than hand-edit:
 
 ```bash
-python3 tools/export.py check --target claude-code
+python3 tools/export.py check --target claude-code            # what CI runs
+python3 tools/export.py build --target claude-code --update   # after a canonical/ edit
 ```
 
 Install into a throwaway scope and try it on a real repo:

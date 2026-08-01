@@ -7,7 +7,7 @@ disable-model-invocation: true
 source: skills/migrate/SKILL.md
 arguments: migration
 loop_max: 3
-stages: [{"order":1,"stage":"discover","role":"architect","gate":"call-sites-found","max_loops":1},{"order":2,"stage":"transform","role":"senior-engineer","gate":"sites-updated","max_loops":3},{"order":3,"stage":"sweep","role":"sdet","gate":"no-old-patterns","max_loops":1},{"order":4,"stage":"deliver","role":"product-manager","gate":"migration-accepted","max_loops":1}]
+stages: [{"order":1,"stage":"discover","roles":["architect"],"gate":"call-sites-found","max_loops":1},{"order":2,"stage":"transform","roles":["senior-engineer"],"gate":"sites-updated","max_loops":3},{"order":3,"stage":"sweep","roles":["sdet"],"gate":"no-old-patterns","max_loops":1},{"order":4,"stage":"review","roles":["sdet","architect"],"gate":"migration-accepted","max_loops":1}]
 invocation: @{{role}}({{migration}})
 board: native
 ---
