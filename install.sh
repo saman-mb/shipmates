@@ -24,10 +24,13 @@
 # no other harness documents a compatible subagent directory, so for the rest
 # they are skipped with a note.
 #
-# Run from a local clone it copies the files sitting next to it; piped from the
+# Run from a local clone it uses the sources sitting next to it; piped from the
 # web there is no local copy to trust, so it always downloads the main branch
-# tarball first. Skills are copied whole, so whatever a skill bundles
-# (references/, scripts/, assets/) comes along with its SKILL.md.
+# tarball first. Either way the payload is compiled from canonical/ by
+# tools/export.py into a temp directory and installed from there, so python3
+# (>= 3.9) is required alongside curl and tar. Skills are copied whole, so
+# whatever a skill bundles (references/, scripts/, assets/) comes along with
+# its SKILL.md.
 #
 # Every install records a manifest at <target>/shipmates/manifest: one line per
 # file with its SHA-256, so later runs can tell Shipmates' files from yours.
@@ -121,26 +124,56 @@ harness_known() {
 # Subagents (agents/) ship for claude-code only — see the table comment above.
 harness_has_agents() { [ "$1" = "claude-code" ]; }
 
-# When --harness is used, the payload comes from harnesses/<target>/ (the
-# matrix-generated, transformed tree), not from the canonical skills/+agents/.
-# claude-code is the exception — its generated tree is byte-identical to the
-# canonical, so either source works. For other harnesses, a missing tree means
-# the matrix refused to build it (safety policy), and we refuse to install.
+# Generate the target's payload at install time from the canonical sources in
+# canonical/ — the single source of truth. No harness tree is committed; agents/
+# and skills/ are generated mirrors kept for the site generator and the skills
+# validator, and CI proves they match. The exporter writes to a temp dir and we
+# install from there; if the adapter doesn't exist (e.g. opencode) it refuses.
+#
+# This makes python3 a hard dependency of every install, including the plain
+# curl | bash path that needed nothing but curl and tar before. Preflight it the
+# same way curl and tar are preflighted, and say the real reason — a generic
+# "adapter not implemented" for a missing or too-old interpreter sends the user
+# looking in entirely the wrong place.
+PYTHON_MIN="3.9"
+REPO_SRC=""
+GENERATED_SRC=""
+
+need_python3() {
+  command -v python3 >/dev/null 2>&1 || {
+    echo "Shipmates: 'python3' (>= $PYTHON_MIN) is required — the installer compiles the" >&2
+    echo "payload from canonical sources at install time. Install Python 3 and re-run." >&2
+    exit 1
+  }
+  python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 9) else 1)' 2>/dev/null || {
+    echo "Shipmates: python3 is $(python3 -c 'import platform; print(platform.python_version())' 2>/dev/null || echo unknown)," >&2
+    echo "but >= $PYTHON_MIN is required. Point PATH at a newer python3 and re-run." >&2
+    exit 1
+  }
+}
+
 resolve_harness_src() {
   local harness="$1"
-  if [ "$harness" = "claude-code" ]; then
-    return 0  # use canonical $SRC
+  local exporter="$REPO_SRC/tools/export.py"
+  if [ ! -f "$exporter" ]; then
+    echo "Shipmates: exporter not found at $exporter" >&2
+    exit 1
   fi
-  # $SRC is set by resolve_src (checkout or extracted tarball); it carries
-  # harnesses/ either way since the tree is committed to the repo.
-  local tree="$SRC/harnesses/$harness"
-  if [ -d "$tree/skills" ]; then
-    SRC="$tree"
-    return 0
+  need_python3
+  local build_dir
+  build_dir="$(mktemp -d)"
+  cleanup_add "$build_dir"
+  # stdout is build chatter naming paths under harnesses/, which reads as if we
+  # wrote into the user's tree; drop it and keep stderr, which carries the
+  # exporter's actual error.
+  if ! python3 "$exporter" build --target "$harness" --root "$REPO_SRC" --out "$build_dir" >/dev/null; then
+    echo "Shipmates: no '$harness' payload — its adapter is not implemented, or the" >&2
+    echo "canonical sources are invalid (see the exporter's error above)." >&2
+    rm -rf "$build_dir"
+    exit 1
   fi
-  echo "Shipmates: no payload for '$harness' — the capability matrix refused" >&2
-  echo "to build one (run 'python3 tools/build_harness_payloads.py --target $harness' to see why)." >&2
-  exit 1
+  GENERATED_SRC="$build_dir/harnesses/$harness"
+  SRC="$GENERATED_SRC"
 }
 
 # Resolve the install root for harness $1 under the current SCOPE. --dir pins
@@ -211,11 +244,19 @@ fi
 
 ts="$(date +%Y%m%d%H%M%S)"
 
+# Newline-delimited, not space-delimited: mktemp honours TMPDIR, and a TMPDIR
+# containing a space would split one path into fragments resolved against $PWD —
+# an rm -rf on whatever those fragments happen to name. Read line by line so a
+# path with spaces is one entry. Entries never contain newlines (mktemp does not
+# produce them), which is what makes the delimiter safe.
 CLEANUP=""
-# Paths from mktemp contain no spaces; word-splitting CLEANUP here is intentional.
+cleanup_add() { CLEANUP="${CLEANUP:+$CLEANUP
+}$1"; }
 on_exit() {
-  # shellcheck disable=SC2086
-  [ -n "$CLEANUP" ] && rm -rf $CLEANUP
+  [ -n "$CLEANUP" ] || return 0
+  printf '%s\n' "$CLEANUP" | while IFS= read -r path; do
+    [ -n "$path" ] && rm -rf "$path"
+  done
   return 0
 }
 # Nothing here deletes, so a half-finished run leaves every original on disk —
@@ -274,7 +315,7 @@ manifest_read() {
     echo "Shipmates: manifest exists but is not readable: $MANIFEST" >&2
     MANIFEST_STATE=2; return 0
   fi
-  MANIFEST_PARSED="$(mktemp)"; CLEANUP="${CLEANUP:+$CLEANUP }$MANIFEST_PARSED"
+  MANIFEST_PARSED="$(mktemp)"; cleanup_add "$MANIFEST_PARSED"
   if awk '
     BEGIN { mv=0; bad=0 }
     /^[[:space:]]*$/ { next }
@@ -363,17 +404,25 @@ resolve_src() {
      && SELF_DIR="$(cd "$(dirname "$self")" 2>/dev/null && pwd)" \
      && [ -f "$SELF_DIR/install.sh" ] \
      && [ -d "$SELF_DIR/agents" ] \
+     && [ -f "$SELF_DIR/canonical/manifest.json" ] \
+     && [ -f "$SELF_DIR/tools/export.py" ] \
      && [ -f "$SELF_DIR/skills/ship-issue/SKILL.md" ]; then
     SRC="$SELF_DIR"
   else
     command -v curl >/dev/null 2>&1 || { echo "Shipmates: 'curl' is required." >&2; exit 1; }
     command -v tar  >/dev/null 2>&1 || { echo "Shipmates: 'tar' is required." >&2; exit 1; }
     echo "${c_dim}Fetching Shipmates…${c_reset}"
-    TMP="$(mktemp -d)"; CLEANUP="${CLEANUP:+$CLEANUP }$TMP"
+    TMP="$(mktemp -d)"; cleanup_add "$TMP"
     curl -fsSL "$TARBALL" | tar -xz -C "$TMP" || { echo "Shipmates: download failed." >&2; exit 1; }
     SRC="$(find "$TMP" -maxdepth 1 -mindepth 1 -type d | head -1)"
-    [ -n "$SRC" ] && [ -d "$SRC/agents" ] && [ -d "$SRC/skills" ] || { echo "Shipmates: unexpected archive layout." >&2; exit 1; }
+    # canonical/ and tools/ are checked here, not later: the payload is compiled
+    # from them, so an archive missing either fails at the exporter with a much
+    # less obvious message than "unexpected archive layout".
+    [ -n "$SRC" ] && [ -d "$SRC/agents" ] && [ -d "$SRC/skills" ] \
+      && [ -f "$SRC/canonical/manifest.json" ] && [ -f "$SRC/tools/export.py" ] \
+      || { echo "Shipmates: unexpected archive layout." >&2; exit 1; }
   fi
+  REPO_SRC="$SRC"
 }
 
 # --- file helpers, shared by the flat agents/ and nested skills/ loops --------
@@ -619,7 +668,7 @@ MANIFEST_STATE=1
 MANIFEST_PARSED=""
 installed=0; backed_up=0; removed=0; kept=0; swept=0; unchanged=0; upgraded=0; skipped=0
 IDENTITY_CHANGES=""
-NEW_ENTRIES="$(mktemp)"; CLEANUP="${CLEANUP:+$CLEANUP }$NEW_ENTRIES"
+NEW_ENTRIES="$(mktemp)"; cleanup_add "$NEW_ENTRIES"
 
 # The banner names the harness only when --harness was passed; without it the
 # output stays byte-identical to a pre-harness install.
@@ -766,7 +815,7 @@ else
   # leave and warn. Only meaningful with a valid prior manifest. Iterates the
   # canonicalized parse — same single-parser rule as uninstall.
   if [ "$MANIFEST_STATE" = "0" ]; then
-    NEW_RELS="$(mktemp)"; CLEANUP="${CLEANUP:+$CLEANUP }$NEW_RELS"
+    NEW_RELS="$(mktemp)"; cleanup_add "$NEW_RELS"
     sed -n 's/^file=\([^[:space:]]*\).*/\1/p' "$NEW_ENTRIES" | sort > "$NEW_RELS"
     while read -r rel old_sha; do
       [ -n "$rel" ] || continue

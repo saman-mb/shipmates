@@ -150,17 +150,25 @@ real_rc=0
 python3 "$REPO/tools/validate_skills.py" >/dev/null 2>&1 || real_rc=$?
 if [ "$real_rc" -eq 0 ]; then ok "real skills/ passes the lint"; else bad "real skills/ passes the lint"; fi
 
-if grep -q -- '--body-file "\$REVIEW_BODY_FILE"' "$REPO/skills/pr-review/SKILL.md"; then
-  ok "pr-review still posts via --body-file (#138 fix present)"
-else
-  bad "pr-review still posts via --body-file (#138 fix present)"
-fi
+# skills/ is now a generated mirror of canonical/, so assert the fix at its
+# source as well as in the mirror — a canonical/ file without it would silently
+# regenerate the vulnerable command on the next export.
+for f in skills/pr-review/SKILL.md canonical/commands/pr-review.md; do
+  if grep -q -- '--body-file "\$REVIEW_BODY_FILE"' "$REPO/$f"; then
+    ok "$f still posts via --body-file (#138 fix present)"
+  else
+    bad "$f still posts via --body-file (#138 fix present)"
+  fi
+done
 
+# harnesses/ is built at install time and gitignored; tests/golden/ is the
+# committed reference the export is checked against, so it is what proves the
+# shipped payload carries the fix.
 if diff -q "$REPO/skills/pr-review/SKILL.md" \
-           "$REPO/harnesses/claude-code/skills/pr-review/SKILL.md" >/dev/null 2>&1; then
-  ok "harness copy of pr-review is identical to skills/"
+           "$REPO/tests/golden/claude-code/skills/pr-review/SKILL.md" >/dev/null 2>&1; then
+  ok "golden copy of pr-review is identical to skills/"
 else
-  bad "harness copy of pr-review is identical to skills/"
+  bad "golden copy of pr-review is identical to skills/"
 fi
 
 # --- summary ---
