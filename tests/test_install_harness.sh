@@ -73,6 +73,15 @@ PAYLOAD_TREE="$PAYLOAD/harnesses/claude-code"
 N_AGENTS=$(find "$PAYLOAD_TREE/agents" -maxdepth 1 -name '*.md' | wc -l)
 N_SKILLS=$(find "$PAYLOAD_TREE/skills" -maxdepth 1 -mindepth 1 -type d | wc -l)
 
+# opencode's payload is the other layout: agents/*.md plus flat commands/*.md
+# (its skills are model-invoked, and every Shipmates command is user-invoked
+# only), so its expected counts come from its own payload.
+OC_PAYLOAD="$WORK/payload-opencode"
+python3 "$REPO/tools/export.py" build --target opencode --root "$REPO" --out "$OC_PAYLOAD" >/dev/null 2>&1
+OC_TREE="$OC_PAYLOAD/harnesses/opencode"
+N_OC_AGENTS=$(find "$OC_TREE/agents" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l)
+N_OC_COMMANDS=$(find "$OC_TREE/commands" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l)
+
 run() { bash "$INSTALLER" "$@"; }
 
 # --- 1. default install (no --harness) is the pre-harness behaviour ---------
@@ -105,11 +114,35 @@ assert "$h: skills installed at $root/skills"    test -f "$p/$root/skills/ship-i
 assert "$h: manifest at $root/shipmates"         test -f "$p/$root/shipmates/manifest"
 assert "$h: agents installed" test "$N_AGENTS" -eq "$(find "$p/$root/agents" -name '*.md' | wc -l)"
 
-# --- 2b. non-claude-code harnesses refuse without a payload -------------------
+# --- 2b. opencode: the flat commands/ layout (project scope) ------------------
+
+h=opencode
+p="$WORK/per-$h"
+run --harness "$h" --project "$p" >/dev/null 2>&1
+root="$(project_root_for "$h")"
+assert "$h: agents installed at $root/agents"      test -f "$p/$root/agents/architect.md"
+assert "$h: all agents installed" \
+  test "$N_OC_AGENTS" -eq "$(find "$p/$root/agents" -name '*.md' | wc -l)"
+assert "$h: commands installed flat at $root/commands" test -f "$p/$root/commands/ship-issue.md"
+assert "$h: all commands installed" \
+  test "$N_OC_COMMANDS" -eq "$(find "$p/$root/commands" -maxdepth 1 -name '*.md' | wc -l)"
+# The safety property: opencode skills are model-invoked and every Shipmates
+# command is user-invoked only, so nothing of ours may land in skills/.
+assert "$h: no skills/ dir created"                test ! -e "$p/$root/skills"
+assert "$h: manifest at $root/shipmates"           test -f "$p/$root/shipmates/manifest"
+assert "$h: manifest lists commands/, not skills/" \
+  bash -c "grep -q '^file=commands/ship-issue.md ' '$p/$root/shipmates/manifest' && ! grep -q '^file=skills/' '$p/$root/shipmates/manifest'"
+
+run --harness "$h" --project "$p" --uninstall >/dev/null 2>&1
+assert "$h: uninstall removed commands/"  test ! -e "$p/$root/commands"
+assert "$h: uninstall removed agents/"    test ! -e "$p/$root/agents"
+assert "$h: uninstall removed manifest"   test ! -e "$p/$root/shipmates/manifest"
+
+# --- 2c. harnesses with no adapter refuse without a payload -------------------
 
 # The capability matrix refuses to build for harnesses with no user-invoked-only
 # equivalent — so install.sh refuses too, with a clear message.
-for h in github-copilot codex cursor gemini windsurf zed opencode; do
+for h in github-copilot codex cursor gemini windsurf zed; do
   p="$WORK/per-$h"
   if run --harness "$h" --project "$p" >/dev/null 2>"$WORK/$h.err"; then
     bad "$h: refuses without payload (exits non-zero)"
@@ -120,17 +153,24 @@ for h in github-copilot codex cursor gemini windsurf zed opencode; do
   assert "$h: nothing created" test ! -e "$p"
 done
 
-# --- 3. --harness all fails on first refused harness ----------------------------
+# --- 3. --harness all installs every buildable harness, skips the rest ----------
 
-# 'all' expands to every harness; the first refused one (github-copilot) stops
-# the run before anything is installed — same trust posture as a single-target
-# install.
+# 'all' means "every harness that can be built", so a harness with no adapter is
+# skipped with a note rather than aborting the run. The distinction matters:
+# ALL_HARNESSES lists opencode second-to-last, so aborting on the first
+# adapterless harness (github-copilot, 2nd of 8) silently excluded it.
+# Naming a harness explicitly still hard-fails — that is section 2c.
 if run --harness all --project "$WORK/all" >/dev/null 2>"$WORK/all.err"; then
-  bad "all: fails on refused harness (exits non-zero)"
+  ok  "all: succeeds, skipping harnesses without an adapter"
 else
-  ok  "all: fails on refused harness (exits non-zero)"
+  bad "all: succeeds, skipping harnesses without an adapter"
 fi
-assert "all: refusal mentions exporter" grep -q "exporter failed\|not implemented" "$WORK/all.err"
+assert "all: claude-code installed" test -f "$WORK/all/.claude/skills/ship-issue/SKILL.md"
+assert "all: opencode agents installed" test -f "$WORK/all/.opencode/agents/architect.md"
+assert "all: opencode commands installed" test -f "$WORK/all/.opencode/commands/ship-issue.md"
+assert "all: opencode has no skills/ dir" test ! -e "$WORK/all/.opencode/skills"
+assert "all: adapterless harness left untouched" test ! -e "$WORK/all/.cursor"
+
 
 # --- 4. repeated --harness flags ----------------------------------------------
 
@@ -163,8 +203,9 @@ assert "compose --dir: refusal mentions exporter" grep -q "exporter failed\|not 
 
 # --- 6. --uninstall per harness (claude-code only for now) -------------------
 
-# Only claude-code installs succeed today; uninstall tests use it as the
-# working harness. Non-claude-code uninstall would fail at the same gate.
+# claude-code and opencode are the harnesses with an adapter; the opencode
+# uninstall is covered in 2b, this is the nested-layout half. A harness with
+# no adapter would fail at the same payload gate.
 p="$WORK/uninst"
 run --harness claude-code --project "$p" >/dev/null 2>&1
 run --harness claude-code --project "$p" --uninstall >/dev/null 2>&1
@@ -194,9 +235,11 @@ assert "unknown harness: nothing created" test ! -e "$WORK/bogus"
 
 # --- 9. global roots land under the right per-harness homes -------------------
 
-# Only claude-code succeeds; the rest refuse at the payload gate.
+# Only the harnesses with an adapter succeed; the rest refuse at the payload gate.
 run --harness claude-code >/dev/null 2>&1
 assert "global: claude-code → ~/.claude" test -f "$HOME/.claude/skills/ship-issue/SKILL.md"
+run --harness opencode >/dev/null 2>&1
+assert "global: opencode → ~/.config/opencode" test -f "$HOME/$(global_root_for opencode)/commands/ship-issue.md"
 if run --harness github-copilot >/dev/null 2>"$WORK/global-copilot.err"; then
   bad "global: github-copilot refuses (exits non-zero)"
 else

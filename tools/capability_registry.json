@@ -30,16 +30,31 @@
       }
     },
     "opencode": {
-      "agent_path": ".opencode/agent/{name}.md",
-      "skill_path": ".opencode/skills/{name}/SKILL.md",
+      "notes": "skill_path targets .opencode/commands/ rather than .opencode/skills/ as a safety property, not a preference: opencode skills are model-invoked through its native `skill` tool and have no `disable-model-invocation` equivalent, so shipping twelve worktree-creating, branch-pushing workflows as skills would make them auto-startable. Commands are `/`-invoked only. Subdirectories under .opencode take their plural names.",
+      "agent_path": ".opencode/agents/{name}.md",
+      "skill_path": ".opencode/commands/{name}.md",
       "project_instructions": "AGENTS.md",
       "permission_model": "permission-map",
+      "scopes": {
+        "read": "read",
+        "search": "grep",
+        "glob": "glob",
+        "write": "edit",
+        "edit": "edit",
+        "bash": "bash",
+        "web-search": "websearch",
+        "web-fetch": "webfetch",
+        "agent": "task"
+      },
       "tools": {
-        "read": {"read": "allow"},
-        "edit": {"edit": "allow"},
-        "bash": {"bash": "allow"},
-        "web": {"webfetch": "allow"},
-        "agent": {"task": "allow"}
+        "read": ["read", "grep", "glob"],
+        "edit": ["edit"],
+        "bash": "bash",
+        "web": {
+          "search": "websearch",
+          "fetch": "webfetch"
+        },
+        "agent": "task"
       }
     }
   }

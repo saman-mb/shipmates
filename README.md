@@ -127,23 +127,46 @@ still created).
 Install for a different harness with `--harness`:
 
 ```bash
-./install.sh --harness claude-code     # default — works today
+./install.sh --harness claude-code     # default — the proven target
+./install.sh --harness opencode        # builds both trees; format-verified, not runtime-verified
 ./install.sh --harness all             # every known harness (refused ones fail loudly)
-./install.sh --harness cursor          # fails: no payload (matrix refused)
+./install.sh --harness cursor          # fails: no adapter, so the exporter refuses
 ```
 
-Each harness's skills land in its own directory (`.cursor/skills/`, `.codex/skills/`, …) — the
-Agent Skills standard is filesystem-based, so the same `SKILL.md` payload works everywhere, only
-the target path differs. Subagents (`agents/`) ship for Claude Code only — no cross-harness
-subagent standard exists yet.
+Two targets build today. **Claude Code** gets `.claude/skills/<name>/SKILL.md` plus the twelve
+subagents in `.claude/agents/`. **opencode** gets the twelve commands as flat
+`.opencode/commands/<name>.md` files plus subagents in `.opencode/agents/`. The other six
+(`cursor`, `codex`, `github-copilot`, `gemini`, `windsurf`, `zed`) have no adapter and are refused.
 
-**Safety:** Claude payloads are compiled from `canonical/` by `tools/export.py` at install time,
+opencode is the only non-Claude harness that receives subagents, because it is the only one with a
+documented native subagent directory — there is still no cross-harness subagent standard.
+
+**Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
+thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
+`disable-model-invocation` is not a frontmatter key a `SKILL.md` recognises there, so declaring it
+would be silently dropped. The twelve create worktrees, push branches and open pull requests, so
+shipping them as skills would let the model start one unprompted. `commands/` is `/`-invoked only,
+which keeps user-invoked-only structural rather than dependent on a key the target ignores.
+
+**Least privilege still holds, by inversion.** opencode's defaults are permissive — effectively
+`"*": "allow"` — so listing the tools a role needs would grant nothing. Each generated agent emits
+a `"*": deny` catch-all first and its specific allows after; opencode resolves permissions
+last-match-wins, so the ordering is the mechanism. The result is marginally stronger than Claude's
+allowlist: a tool a wildcard denies is hidden from the model rather than refused at call time.
+
+> ⚠️ **opencode is not runtime-verified.** Its payload format was checked against opencode's own
+> parsing source and first-party docs, not by installing and running it. Whether agents resolve,
+> whether argument passing behaves, and whether `/ship-issue` completes end to end are open —
+> tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
+> [#32](https://github.com/saman-mb/shipmates/issues/32).
+
+**Safety:** payloads are compiled from `canonical/` by `tools/export.py` at install time,
 and carry a `.shipmates-payload` build manifest recording the inputs they came from. That manifest
 is provenance, not an integrity check — the installer compiles from the tree it just fetched, so
 re-hashing that same tree would prove nothing. If the matrix can't honour a safety property on a target
 (e.g. no equivalent of `disable-model-invocation`), the payload is **refused** and install fails
-loudly rather than shipping a more permissive artifact. Currently only `claude-code` builds;
-others refuse until their adapter and user-invoked-only equivalent are approved.
+loudly rather than shipping a more permissive artifact. Today `claude-code` and `opencode` build;
+the other six refuse until their adapter and user-invoked-only equivalent are approved.
 
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
 >
@@ -165,10 +188,14 @@ python3 tools/export.py check --target claude-code
 python3 tools/export.py build --target claude-code --update   # regenerate references
 ```
 
-`tools/capability_registry.json` is the single semantic-to-harness tool map. New adapters implement
+`tools/capability_registry.json` is the single semantic-to-harness tool map — including the
+`scopes` map each adapter uses to honour role-level refinements. `art-director` declares
+`web-scopes: search` once, and gets `WebSearch` without `WebFetch` on Claude Code and
+`websearch: allow` without `webfetch` on opencode. New adapters implement
 `tools/adapter_contract.py`, register in `tools/adapters/registry.py`, and receive independent
-golden/check coverage before becoming installable. `opencode` is registered for future work but
-`tools/export.py build --target opencode` refuses until its adapter exists.
+check coverage before becoming installable. `canonical/manifest.json` marks `claude-code` and
+`opencode` as `implemented`; every other target refuses on that declared status, not on a
+hardcoded name in the exporter.
 
 ## 🚀 Weigh anchor (use it)
 
@@ -356,17 +383,24 @@ universal one.
 **Which harnesses the crew runs on.** Every entry links to the epic that tracks it, so the claim is
 auditable rather than a promise.
 
-- **Now** — Claude Code: the full crew and all 12 commands.
+- **Now** — Claude Code: the full crew and all 12 commands, and the only harness Shipmates has
+  actually been run on.
+- **Installable, not yet runtime-verified** — [opencode](https://github.com/saman-mb/shipmates/issues/14):
+  `--harness opencode` builds the full crew and all 12 commands. The format was verified against
+  opencode's parsing source and first-party docs; a live run has not been done. Tracked in
+  [#31](https://github.com/saman-mb/shipmates/issues/31) and
+  [#32](https://github.com/saman-mb/shipmates/issues/32).
 - **In development** — [Codex CLI](https://github.com/saman-mb/shipmates/issues/17) ·
   [Cursor](https://github.com/saman-mb/shipmates/issues/15) ·
-  [GitHub Copilot](https://github.com/saman-mb/shipmates/issues/16) ·
-  [opencode](https://github.com/saman-mb/shipmates/issues/14). Listed alphabetically — that is not a
-  delivery order, and none is settled yet.
+  [GitHub Copilot](https://github.com/saman-mb/shipmates/issues/16). Listed alphabetically — that is
+  not a delivery order, and none is settled yet.
 - **Planned** — more harnesses to follow.
 
 Why that's credible: the crew's system prompts name no harness, and the twelve commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
-of a port is mapping frontmatter fields, not rewriting the crew.
+of a port is mapping frontmatter fields, not rewriting the crew. The opencode adapter is the first
+test of that claim: it reused every persona and workflow body unchanged, and the work that remained
+was path mapping and translating Claude's tool allowlist into opencode's permission map.
 
 The crew also keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new
 commands keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs very welcome.
@@ -377,8 +411,8 @@ commands keep shipping. Want a role or a workflow aboard? Open an issue — idea
 A ready-made crew of **subagents** and **command workflows**. Instead of you playing
 planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
 `/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It runs on
-[Claude Code](https://claude.com/product/claude-code) today; see [on the horizon](#-on-the-horizon)
-for the other harnesses.
+[Claude Code](https://claude.com/product/claude-code) today and installs for
+[opencode](https://opencode.ai); see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
