@@ -3247,7 +3247,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools import export as exporter  # noqa: E402
+import subprocess
 
 REGENERATE_HINT = "run: python3 tools/gen_command_pages.py && git add site/"
 
@@ -3298,14 +3298,16 @@ def main(argv=None) -> int:
         # exporter and is not valid in any harness. Reading the source published
         # those placeholders live.
         payload = stack.enter_context(tempfile.TemporaryDirectory())
-        # The exporter narrates each file it writes, which here is a temp dir the
-        # caller never sees; only its errors are useful.
-        with contextlib.redirect_stdout(io.StringIO()):
-            rc = exporter.run(root, SITE_TARGET, check=False, out_dir=Path(payload))
-        if rc:
-            print(f"error: could not build the {SITE_TARGET} payload for the site", file=sys.stderr)
-            return rc
-        rendered = Path(payload) / "harnesses" / SITE_TARGET
+        res = subprocess.run(
+            ["cargo", "run", "--", "build", "--target", SITE_TARGET, "--out", str(payload)],
+            cwd=root,
+            capture_output=True,
+            text=True,
+        )
+        if res.returncode != 0:
+            print(f"error: could not build the {SITE_TARGET} payload for the site: {res.stderr}", file=sys.stderr)
+            return res.returncode
+        rendered = Path(payload) / "harnesses" / SITE_TARGET / ".claude"
         agents = load_agents(rendered / "agents", rendered / "skills")
         cmds = load_skills(rendered / "skills", tuple(agent.name for agent in agents))
         # Discover hand-authored docs pages for the sitemap.

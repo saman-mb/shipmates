@@ -124,7 +124,7 @@
           <p class="order-detail__desc">Cut a release safely — assemble the changelog from what actually merged, bump the version, gate on green CI at the tag, run an SRE pre-flight (rollback + migration safety), then tag and (opt-in) publish.</p>
           <div class="order-prose">
             <p>Turn &quot;what&#x27;s merged since the last release&quot; into a clean, reversible release. The <code>technical-writer</code> builds the changelog from the real merge history (every user-visible change covered), the version is bumped consistently, and it&#x27;s gated on <strong>green CI at the exact commit being tagged</strong> plus an SRE pre-flight for rollback and migration safety. Publishing is opt-in.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): an explicit version (<code>v1.4.0</code>) or a bump keyword (<code>patch</code>/<code>minor</code>/<code>major</code>) to derive it from the last tag via semver. If empty, infer the bump from the change set (breaking → major, features → minor, fixes only → patch) and propose it.</p>
+            <p>Input (<strong>{{version}}</strong>): an explicit version (<code>v1.4.0</code>) or a bump keyword (<code>patch</code>/<code>minor</code>/<code>major</code>) to derive it from the last tag via semver. If empty, infer the bump from the change set (breaking → major, features → minor, fixes only → patch) and propose it.</p>
           </div>
         </div>
       </div>
@@ -138,7 +138,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/release [version — e.g. v1.4.0, or &quot;patch&quot;/&quot;minor&quot;/&quot;major&quot; to derive it]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/release</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -254,7 +254,7 @@
             <li>Version is consistent across every file that records it.</li>
             <li>Reversibility is a release requirement: no rollback / destructive migration is a blocker to justify or fix.</li>
             <li>Respect <code>PUBLISH_MODE</code> — never publish unattended unless explicitly set to <code>auto</code>.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>
       </div>

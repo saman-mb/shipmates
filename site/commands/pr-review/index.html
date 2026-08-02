@@ -110,7 +110,7 @@
           <p class="order-detail__desc">Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.</p>
           <div class="order-prose">
             <p>Point the crew at a pull request <strong>somebody else wrote</strong> — a teammate&#x27;s, an outside contributor&#x27;s, a dependency bump, or one you opened by hand before you thought to use Shipmates. Every other order assumes the crew authored the change; this one doesn&#x27;t, and that single fact sets its shape: <strong>no worktree, no build, no fix loop.</strong> You don&#x27;t own the branch, so the deliverable is findings, not commits.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): a PR number or URL, plus an optional focus hint. If it&#x27;s empty, default to the PR for the current branch (<code>gh pr view --json number</code>); if there isn&#x27;t one, ask which PR to review.</p>
+            <p>Input (<strong>{{pull-request}}</strong>): a PR number or URL, plus an optional focus hint. If it&#x27;s empty, default to the PR for the current branch (<code>gh pr view --json number</code>); if there isn&#x27;t one, ask which PR to review.</p>
           </div>
         </div>
       </div>
@@ -124,7 +124,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/pr-review &lt;pr-number or PR url&gt; [optional emphasis passed to every reviewer — e.g. &quot;weight the schema change&quot;]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/pr-review</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -156,7 +156,7 @@
                 <p>Pull the change itself, not a description of it:</p>
                 <pre class="order-code" tabindex="0"><code>gh pr view &lt;PR#&gt; --json number,title,body,author,headRefOid,isCrossRepository,files,url
 gh pr diff &lt;PR#&gt;</code></pre>
-                <p>Then read the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> for the bar. Set the <strong>same classification flags <code>/ship-issue</code> uses</strong> — with one deliberate exception, <code>IS_SECURITY_SENSITIVE</code> (see below) — but derive them from the <strong>diff</strong>, not from an issue body. That is the real difference: there are no stated acceptance criteria here, so the criteria are <em>the repo&#x27;s own bar plus what the PR claims to do</em>. Where the PR description and the diff disagree, that mismatch is itself a finding.</p>
+                <p>Then read the repo&#x27;s <code>README</code> / <code>AGENTS.md</code> for the bar. Set the <strong>same classification flags <code>/ship-issue</code> uses</strong> — with one deliberate exception, <code>IS_SECURITY_SENSITIVE</code> (see below) — but derive them from the <strong>diff</strong>, not from an issue body. That is the real difference: there are no stated acceptance criteria here, so the criteria are <em>the repo&#x27;s own bar plus what the PR claims to do</em>. Where the PR description and the diff disagree, that mismatch is itself a finding.</p>
                 <ul>
                   <li><code>IS_UI_STORY</code> — does the diff create or change on-screen UI? Gates <code>ux-ui-designer</code>.</li>
                   <li><code>IS_VISUAL_STORY</code> — is the project&#x27;s deliverable rendered visual <strong>art</strong>, and does this touch it? Almost always <code>no</code> for conventional apps — prefer <code>IS_UI_STORY</code>. Gates <code>art-director</code>.</li>
@@ -187,7 +187,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
                 <p>Spawn these in a single message so they run concurrently, each pinned to the <strong>head commit</strong> so they review exactly what would merge. Two always run; the rest only when their flag is set:</p>
                 <div class="order-table" tabindex="0">
                   <table>
-                    <thead><tr><th scope="col"><code>subagent_type</code></th><th scope="col">Runs</th></tr></thead>
+                    <thead><tr><th scope="col"><code>@role</code></th><th scope="col">Runs</th></tr></thead>
                     <tbody>
                       <tr><td><code>product-manager</code></td><td>always — does it solve the stated problem, and does it clear the repo&#x27;s bar?</td></tr>
                       <tr><td><code>sdet</code></td><td>always — test coverage and quality of the change (see <code>RUN_TESTS</code> before executing anything)</td></tr>
@@ -245,7 +245,7 @@ gh pr review &lt;PR#&gt; --comment --body-file &quot;$REVIEW_BODY_FILE&quot;</co
           <ul>
             <li><code>MODE</code> = <code>report</code> — <code>report</code>: return the verdict to the caller only. <code>post</code>: also publish it with <code>gh pr review</code>. Posting onto someone else&#x27;s PR is a <strong>social side effect and irreversible</strong>, so it is opt-in, never the default.</li>
             <li><code>RUN_TESTS</code> = <code>no</code> for a PR from a <strong>fork</strong>, <code>ask</code> otherwise. See the trust boundary below — this command is the only one that executes code the crew did not write.</li>
-            <li><strong>Quality bar</strong> = whatever the target repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it first and pass it to every reviewer — they enforce <em>that</em> bar, not a generic one.</li>
+            <li><strong>Quality bar</strong> = whatever the target repo&#x27;s <code>README</code> / <code>AGENTS.md</code> / contributing docs state. Read it first and pass it to every reviewer — they enforce <em>that</em> bar, not a generic one.</li>
           </ul>
         </div>
       </div>
@@ -264,7 +264,7 @@ gh pr review &lt;PR#&gt; --comment --body-file &quot;$REVIEW_BODY_FILE&quot;</co
             <li><strong>Never inline PR-sourced text into a command.</strong> The title, body, diff and review comments are attacker-controlled on any PR you did not write. Capture them into quoted variables (<code>TITLE=$(gh pr view &lt;PR#&gt; --json title -q .title)</code>) and pass every body with <code>--body-file &lt;file&gt;</code> — never <code>--body</code>, quoted or not.</li>
             <li>Review the <strong>head commit</strong>, so &quot;reviewed&quot; means &quot;what would merge&quot; — re-run if the author pushes.</li>
             <li>Don&#x27;t pad the board. A flag that isn&#x27;t set means that specialist has nothing to say.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
           </ul>
         </div>
       </div>
