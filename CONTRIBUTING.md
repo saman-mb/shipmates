@@ -28,7 +28,7 @@ are correct; which one belongs in a given sentence is set by the
 [naming register](docs/BRAND.md#naming-register). Work the checklist top to bottom:
 
 1. Create `skills/<name>/SKILL.md` (lowercase-and-hyphens `<name>`). **Check the name against
-   harness built-ins first** — run `python3 tools/validate_skill_names.py` and pick a name that
+   harness built-ins first** — run `cargo run -- check` and pick a name that
    doesn't collide. A collision silently shadows a first-party feature (e.g. `/review` shadowed
    Claude Code's built-in code review; see #102). Only `name` and `description`
    are required, and they must come first, in that order. After them, in any order: the standard's
@@ -51,6 +51,7 @@ are correct; which one belongs in a given sentence is set by the
    reference there. That was wrong: run `/ship-issue 42 focus on retries` and a fenced snippet asking
    for field two gets the literal word `on`.) If you genuinely need a literal, escape it as `\$2` —
    but prefer restructuring so you don't, e.g. `cut -f2` rather than an `awk` field reference.
+   `cargo run -- check` enforces this over the whole file, fenced or not.
 5. Prefer invoking the shared agents by `subagent_type` over inlining personas.
 6. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
    repo works on its own branch in its own worktree and proposes the result as a pull request; the
@@ -83,7 +84,7 @@ are correct; which one belongs in a given sentence is set by the
 8. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
    `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the skill sources.
 9. Add a matching card to the `#commands` grid in `site/index.html`, linking to `commands/<name>/`.
-10. Both validators must exit 0 before you open the PR: `python3 tools/validate_skills.py` and
+10. Both validators must exit 0 before you open the PR: `cargo run -- check` and
     `python3 .github/scripts/validate_site.py`.
 
 ## Testing your change

@@ -97,8 +97,6 @@ unresolved role name silently falls back to a generic agent rather than erroring
 
 ## ⚓ Come aboard (install)
 
-**Requires** `bash`, `curl`, `tar`, and **`python3` (>= 3.9)** — the installer compiles the payload
-from the canonical sources at install time. macOS and every mainstream Linux ship all four.
 
 **macOS / Linux (Homebrew):**
 ```bash
