@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "schema": "tools/schema.json",
+  "project_instructions": {
+    "source": "AGENTS.md",
+    "claude-code": "CLAUDE.md"
+  },
+  "crew": {
+    "source_root": "crew",
+    "format": "markdown-frontmatter"
+  },
+  "commands": {
+    "source_root": "commands",
+    "format": "agent-skills"
+  },
+  "targets": [
+    "claude-code",
+    "opencode"
+  ],
+  "target_status": {
+    "claude-code": "implemented",
+    "opencode": "implemented"
+  }
+}

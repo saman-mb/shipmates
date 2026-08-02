@@ -179,13 +179,15 @@ def load_manifest(root: Path) -> dict:
     reader can answer "what is authoritative?" from one file, not from the code.
     """
     root = root.resolve()
-    manifest_path = root / "canonical/manifest.json"
+    manifest_path = root / "tools/manifest.json"
+    if not manifest_path.is_file():
+        manifest_path = root / "canonical/manifest.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError) as exc:
-        raise ExportError(f"invalid canonical manifest: {manifest_path}") from exc
+        raise ExportError(f"invalid manifest: {manifest_path}") from exc
     if not isinstance(manifest, dict) or manifest.get("schema_version") != 1:
-        raise ExportError("canonical manifest schema_version must be 1")
+        raise ExportError("manifest schema_version must be 1")
     if not isinstance(manifest.get("schema"), str):
         raise ExportError("canonical manifest: schema is required")
     schema_path = _source(root, manifest["schema"], manifest_path)
@@ -203,20 +205,21 @@ def load_manifest(root: Path) -> dict:
     ):
         raise ExportError(f"invalid canonical schema: {schema_path}")
     for section in ("crew", "commands"):
-        if not isinstance(manifest.get(section), dict) or not isinstance(
-            manifest[section].get("canonical_root"), str
+        if not isinstance(manifest.get(section), dict) or not (
+            isinstance(manifest[section].get("source_root"), str) or isinstance(manifest[section].get("canonical_root"), str)
         ):
-            raise ExportError(f"canonical manifest: {section}.canonical_root is required")
-        canonical_root = (root / manifest[section]["canonical_root"]).resolve()
+            raise ExportError(f"manifest: {section}.source_root is required")
+        root_dir = manifest[section].get("source_root", manifest[section].get("canonical_root"))
+        canonical_root = (root / root_dir).resolve()
         if root not in canonical_root.parents or not canonical_root.is_dir():
-            raise ExportError(f"canonical manifest: {section}.canonical_root is not a directory")
+            raise ExportError(f"manifest: {section}.source_root is not a directory")
     targets = manifest.get("targets")
     if (
         not isinstance(targets, list)
         or not all(isinstance(target, str) and NAME_RE.fullmatch(target) for target in targets)
         or len(set(targets)) != len(targets)
     ):
-        raise ExportError("canonical manifest: targets must be a list of valid target names")
+        raise ExportError("manifest: targets must be a list of valid target names")
     statuses = manifest.get("target_status")
     if not isinstance(statuses, dict) or any(
         not isinstance(name, str)
@@ -224,21 +227,10 @@ def load_manifest(root: Path) -> dict:
         or status not in ("implemented", "registered-not-implemented")
         for name, status in statuses.items()
     ):
-        raise ExportError("canonical manifest: target_status must contain known status strings")
+        raise ExportError("manifest: target_status must contain known status strings")
     for target in manifest["targets"]:
         if statuses.get(target) != "implemented":
-            raise ExportError(f"canonical manifest: enabled target {target!r} is not implemented")
-    compatibility = manifest.get("compatibility")
-    if compatibility is not None:
-        if (
-            not isinstance(compatibility, dict)
-            or not isinstance(compatibility.get("target"), str)
-            or not isinstance(compatibility.get("exempt"), list)
-            or any(not isinstance(item, str) for item in compatibility["exempt"])
-        ):
-            raise ExportError("canonical manifest: compatibility must declare target and exempt")
-        if compatibility["target"] not in manifest["targets"]:
-            raise ExportError("canonical manifest: compatibility target is not enabled")
+            raise ExportError(f"manifest: enabled target {target!r} is not implemented")
     return manifest
 
 
@@ -248,10 +240,10 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalCommand
 
     roles: list[CanonicalRole] = []
     role_names: set[str] = set()
-    crew_dir = root / manifest["crew"]["canonical_root"]
+    crew_dir = root / manifest["crew"].get("source_root", manifest["crew"].get("canonical_root"))
     for path in sorted(crew_dir.glob("*.md")):
         values, body = _frontmatter(path)
-        _required(values, path, ("name", "description", "capabilities", "writes", "source"))
+        _required(values, path, ("name", "description", "capabilities", "writes"))
         name = values["name"]
         if name != path.stem or not NAME_RE.fullmatch(name):
             raise ExportError(f"{path}: name must match lowercase filename")
@@ -274,7 +266,7 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalCommand
                 f"{path}: writes must match edit capability (writes={writes}, "
                 f"capabilities={','.join(capabilities)})"
             )
-        source_path = _reference(root, values["source"], path)
+        source_path = path.relative_to(root)
         web_scopes = tuple(item.strip() for item in values.get("web-scopes", "").split(",") if item.strip())
         if len(set(web_scopes)) != len(web_scopes) or any(scope not in WEB_SCOPES for scope in web_scopes):
             raise ExportError(f"{path}: web-scopes must contain unique values from {WEB_SCOPES}")
@@ -310,7 +302,7 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalCommand
 
     commands: list[CanonicalCommand] = []
     command_names: set[str] = set()
-    commands_dir = root / manifest["commands"]["canonical_root"]
+    commands_dir = root / manifest["commands"].get("source_root", manifest["commands"].get("canonical_root"))
     for path in sorted(commands_dir.glob("*.md")):
         values, body = _frontmatter(path)
         _required(
@@ -318,7 +310,6 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalCommand
             path,
             (
                 "name",
-                "source",
                 "description",
                 "argument-hint",
                 "allowed-tools",
@@ -353,7 +344,7 @@ def load_catalog(root: Path) -> tuple[list[CanonicalRole], list[CanonicalCommand
         disable_model_invocation = _bool(
             values["disable-model-invocation"], path, "disable-model-invocation"
         )
-        source_path = _reference(root, values["source"], path)
+        source_path = path.relative_to(root)
         if not body.strip():
             raise ExportError(f"{path}: canonical narrative must not be empty")
         _reject_positional(path.relative_to(root).as_posix(), path.read_text(encoding="utf-8"))
@@ -435,53 +426,70 @@ def _orphan_paths(base: Path, label: str, expected: set[str]) -> list[str]:
     )
 
 
-def check_files(root: Path, files: dict[str, str], target: str, golden_dir: Path | None = None) -> list[str]:
-    report: list[str] = []
-    prefix = f"harnesses/{target}/"
-    for relative, expected in sorted(files.items()):
-        if golden_dir is not None:
-            path = golden_dir / relative[len(prefix) :]
-        else:
-            path = root / relative
-        if not path.is_file():
-            report.append(f"missing: {relative}")
-        elif path.read_text(encoding="utf-8") != expected:
-            report.append(f"drift: {relative}")
-    base = golden_dir if golden_dir is not None else root / "harnesses" / target
-    report.extend(
-        f"unexpected reference file: {path}" for path in _orphan_paths(base, prefix, set(files))
-    )
-    return report
+def digest_path(root: Path, target: str) -> Path:
+    return root / "tests/payload-digests" / f"{target}.sha256"
 
 
-def check_compatibility(root: Path, files: dict[str, str], manifest: dict) -> list[str]:
-    """Compare the generated payload against the committed compatibility trees.
+def payload_digest(files: dict[str, str], target: str) -> str:
+    """Per-file SHA-256 of a built payload, as committed reference text.
 
-    `agents/` and `skills/` stay in the repository because the site generator and
-    the skills validator read them. That makes them a second writable copy of the
-    shipped payload, and a second writable copy with no gate is a trap: a
-    contributor edits the tree the layout docs point at and ships nothing. This
-    pins them as provably frozen mirrors of the canonical export, so such an edit
-    fails CI with the file name in the message instead of passing silently.
+    This is the whole regression detector, and it deliberately is not a tree of
+    committed copies. Deleting the golden trees removed a real duplication, but
+    it also removed the only thing that would notice a *renderer* regression —
+    a bad substitution rule in an adapter rewrites all 25 files at once, which
+    is strictly worse than the copy drift the trees were added for. A digest
+    keeps that alarm at one file per target instead of twenty-five.
+
+    `canonical_sha256` is deliberately excluded: it moves on every source edit,
+    which is correct for a build manifest and useless as a rendering reference —
+    it would force a regeneration on every commit and train people to accept the
+    diff without reading it.
     """
-    compatibility = manifest.get("compatibility")
-    if not isinstance(compatibility, dict):
-        return []
-    target = compatibility["target"]
+    lines = [f"payload_digest_version=1", f"target={target}"]
     prefix = f"harnesses/{target}/"
-    exempt = set(compatibility["exempt"])
-    report: list[str] = []
-    for relative, expected in sorted(files.items()):
-        if not relative.startswith(prefix):
-            continue
+    for relative, content in sorted(files.items()):
         payload_relative = relative[len(prefix) :]
-        if payload_relative in exempt:
+        if payload_relative == ".shipmates-payload":
             continue
-        path = root / payload_relative
-        if not path.is_file():
-            report.append(f"missing compatibility source: {payload_relative}")
-        elif path.read_text(encoding="utf-8") != expected:
-            report.append(f"compatibility drift: {payload_relative}")
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        lines.append(f"{payload_relative} {digest}")
+    return "\n".join(lines) + "\n"
+
+
+def check_files(root: Path, files: dict[str, str], target: str) -> list[str]:
+    """Compare a freshly built payload against the committed digest.
+
+    Returns a non-empty report when they disagree. A caller that prints "up to
+    date" without consulting this is asserting something it never checked.
+    """
+    reference = digest_path(root, target)
+    if not reference.is_file():
+        return [
+            f"missing payload digest: {reference.relative_to(root).as_posix()} — "
+            f"run `python3 tools/export.py build --target {target} --update` to create it"
+        ]
+    expected = reference.read_text(encoding="utf-8")
+    actual = payload_digest(files, target)
+    if expected == actual:
+        return []
+    report = ["payload digest mismatch — the rendered output changed:"]
+    expected_map = dict(
+        line.split(" ", 1) for line in expected.splitlines() if " " in line and "=" not in line
+    )
+    actual_map = dict(
+        line.split(" ", 1) for line in actual.splitlines() if " " in line and "=" not in line
+    )
+    for name in sorted(set(expected_map) | set(actual_map)):
+        if name not in actual_map:
+            report.append(f"  removed: {name}")
+        elif name not in expected_map:
+            report.append(f"  added:   {name}")
+        elif expected_map[name] != actual_map[name]:
+            report.append(f"  changed: {name}")
+    report.append(
+        f"if intended, run `python3 tools/export.py build --target {target} --update` "
+        "and review the digest diff in the same commit"
+    )
     return report
 
 
@@ -515,15 +523,14 @@ def write_files(root: Path, files: dict[str, str], out_dir: Path | None = None) 
 
 def canonical_digest(root: Path, manifest: dict) -> str:
     """Digest exactly the files the exporter reads — the manifest, the schema, and
-    the two canonical roots.
-
-    Scoped deliberately rather than hashing all of canonical/: a digest that moves
-    when canonical/README.md is reworded is noise, and noise in a tripwire is how
-    people learn to regenerate it without reading the diff.
+    the two source roots.
     """
-    inputs = [root / "canonical/manifest.json", _source(root, manifest["schema"], root)]
+    manifest_file = root / "tools/manifest.json"
+    if not manifest_file.is_file():
+        manifest_file = root / "canonical/manifest.json"
+    inputs = [manifest_file, _source(root, manifest["schema"], root)]
     for section in ("crew", "commands"):
-        inputs.extend(sorted((root / manifest[section]["canonical_root"]).glob("*.md")))
+        inputs.extend(sorted((root / manifest[section].get("source_root", manifest[section].get("canonical_root"))).glob("*.md")))
     lines: list[str] = []
     for path in inputs:
         relative = path.relative_to(root).as_posix()
@@ -559,36 +566,20 @@ def payload_manifest(files: dict[str, str], target: str, source_digest: str) -> 
 
 
 def update_references(root: Path, files: dict[str, str], target: str, manifest: dict) -> list[str]:
-    """Rewrite the golden tree, and the compatibility sources, to match `files`.
+    """Rewrite the committed payload digest for `target`.
 
-    Both are references, not inputs: tests/golden/<target>/ pins the export, and
-    agents/ + skills/ are frozen mirrors the site generator and skills validator
-    still read. Regenerating them from one command is what keeps the "canonical
-    is authoritative" claim true — a hand-maintained copy of 25 files rots, and a
-    partial manual update leaves stale entries that a generated-side-only
-    comparison never looks at. Stray files are removed for the same reason.
+    The only generated artefact still committed. Everything a user receives is
+    compiled at install time; this exists solely so CI can notice when the
+    rendering changes.
     """
-    prefix = f"harnesses/{target}/"
-    expected = {relative[len(prefix) :] for relative in files}
-    payload = {path: files[prefix + path] for path in expected}
-    changed: list[str] = []
-
-    golden_dir = root / "tests/golden" / target
-    changed.extend(f"tests/golden/{target}/{path}" for path in write_files(root, payload, out_dir=golden_dir))
-    for path in sorted(golden_dir.rglob("*"), reverse=True) if golden_dir.is_dir() else []:
-        relative = path.relative_to(golden_dir).as_posix()
-        if path.is_file() and relative not in expected:
-            path.unlink()
-            changed.append(f"removed tests/golden/{target}/{relative}")
-        elif path.is_dir() and not any(path.iterdir()):
-            path.rmdir()
-
-    compatibility = manifest.get("compatibility")
-    if isinstance(compatibility, dict) and compatibility["target"] == target:
-        exempt = set(compatibility["exempt"])
-        mirror = {path: content for path, content in payload.items() if path not in exempt}
-        changed.extend(write_files(root, mirror, out_dir=root))
-    return changed
+    reference = digest_path(root, target)
+    content = payload_digest(files, target)
+    if reference.is_file() and reference.read_text(encoding="utf-8") == content:
+        return []
+    reference.parent.mkdir(parents=True, exist_ok=True)
+    with open(reference, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(content)
+    return [reference.relative_to(root).as_posix()]
 
 
 def run(
@@ -609,20 +600,14 @@ def run(
             files, target, canonical_digest(root, manifest)
         )
         if update:
-            for entry in update_references(root, files, target, manifest):
+            written = update_references(root, files, target, manifest)
+            for entry in written:
                 print(f"updated {entry}")
-            print(f"references for {target} rewritten ({len(files)} files)")
+            print(f"payload digest for {target} is current ({len(files)} files)")
             return 0
         if check:
-            golden_dir = root / "tests/golden" / target
-            report = check_files(root, files, target, golden_dir=golden_dir if golden_dir.is_dir() else None)
-            report.extend(check_compatibility(root, files, manifest))
+            report = check_files(root, files, target)
             if report:
-                report.append(
-                    "fix: canonical/ is the only input — edit it, then run "
-                    f"`python3 tools/export.py build --target {target} --update` to "
-                    "regenerate the golden tree and the agents/ + skills/ mirrors."
-                )
                 print("\n".join(report))
                 return 1
             print(f"up to date: {target} ({len(files)} files)")

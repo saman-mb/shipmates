@@ -14,7 +14,7 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
 
 ## Adding an agent
 
-1. Create `agents/<name>.md` (lowercase-and-hyphens name).
+1. Create `crew/<name>.md` (lowercase-and-hyphens name). This is an authored file — `agents/` is a build output and is gitignored.
 2. Frontmatter: `name`, `description` (when Claude should delegate to it), and `tools` (least
    privilege — a reviewer usually needs `Read, Grep, Glob, Bash`, not `Write`/`Edit`).
 3. Body = the system prompt: the role's focus, how it reviews/builds, and the verdict format it
@@ -23,11 +23,11 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
 
 ## Adding a skill (workflow)
 
-A workflow ships as a **skill** on disk and is invoked as a **command** in Claude Code. Both names
+A workflow ships as a **skill** on disk — the exact layout depends on the target harness — and is invoked as a **command**. Both names
 are correct; which one belongs in a given sentence is set by the
 [naming register](docs/BRAND.md#naming-register). Work the checklist top to bottom:
 
-1. Create `skills/<name>/SKILL.md` (lowercase-and-hyphens `<name>`). **Check the name against
+1. Create `commands/<name>.md` (lowercase-and-hyphens `<name>`). This is an authored file — `skills/` is a build output and is gitignored. **Check the name against
    harness built-ins first** — run `python3 tools/validate_skill_names.py` and pick a name that
    doesn't collide. A collision silently shadows a first-party feature (e.g. `/review` shadowed
    Claude Code's built-in code review; see #102). Only `name` and `description`
@@ -90,19 +90,20 @@ are correct; which one belongs in a given sentence is set by the
 
 ### Portability sources
 
-**`canonical/` is the only thing you edit.** Harness-neutral role and workflow content lives
-there authoritatively. `agents/`, `skills/` and `tests/golden/claude-code/` are all **generated**
+**`crew/` and `commands/` are the only things you edit.** Harness-neutral role and workflow
+content lives there authoritatively. Nothing else is a source: `agents/`, `skills/` and
+`harnesses/` are all **generated**
 from it — `agents/` and `skills/` stay in the repository only because the site generator and the
 skills validator read them. Editing one of them directly changes nothing that ships and fails CI
 with a `compatibility drift:` line naming the file.
 
 Keep semantic capabilities in `tools/capability_registry.json`, implement new targets through
 `tools/adapter_contract.py` (run `conformance_report` against your adapter before registering it
-in `canonical/manifest.json`), and regenerate rather than hand-edit:
+in `tools/manifest.json`), and regenerate rather than hand-edit:
 
 ```bash
 python3 tools/export.py check --target claude-code            # what CI runs
-python3 tools/export.py build --target claude-code --update   # after a canonical/ edit
+python3 tools/export.py build --target claude-code --update   # after a crew/ or commands/ edit
 ```
 
 Install into a throwaway scope and try it on a real repo:
@@ -111,7 +112,7 @@ Install into a throwaway scope and try it on a real repo:
 ./install.sh --project /tmp/some-test-repo
 ```
 
-Then run the command in Claude Code and confirm the agents resolve (no "falling back to
+Then run the command in your harness and confirm the agents resolve (no "falling back to
 general-purpose" notes in the report).
 
 ## PRs
