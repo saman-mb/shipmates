@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Install reference · Shipmates docs</title>
-  <meta name="description" content="Every install.sh flag, scope, and path — global and project installs, per-harness roots, the manifest, backups, verification, and uninstall.">
+  <meta name="description" content="Every shipmates CLI flag, scope, and path — global and project installs, per-harness roots, the manifest, backups, verification, and uninstall.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/install/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="Install reference — Shipmates docs">
-  <meta property="og:description" content="Every install.sh flag, scope, and path — global and project installs, per-harness roots, the manifest, backups, verification, and uninstall.">
+  <meta property="og:description" content="Every shipmates CLI flag, scope, and path — global and project installs, per-harness roots, the manifest, backups, verification, and uninstall.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/install/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Install reference — Shipmates docs">
-  <meta name="twitter:description" content="Every install.sh flag, scope, and path — global and project installs, per-harness roots, the manifest, backups, verification, and uninstall.">
+  <meta name="twitter:description" content="Every shipmates CLI flag, scope, and path — global and project installs, per-harness roots, the manifest, backups, verification, and uninstall.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "name": "Install reference",
-    "description": "Every install.sh flag, scope, and path — global and project installs, per-harness roots, the manifest, backups, verification, and uninstall.",
+    "description": "Every shipmates CLI flag, scope, and path — global and project installs, per-harness roots, the manifest, backups, verification, and uninstall.",
     "url": "https://saman-mb.github.io/shipmates/docs/install/",
     "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
   }
@@ -71,7 +71,24 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">📦</span> Install</p>
           <h1 class="order-detail__title" id="install-title">Install reference</h1>
           <p class="order-detail__tagline">Every flag, every scope, every path the installer touches.</p>
-          <p class="order-detail__desc">The installer is a single Bash script, <code>install.sh</code>. Run it straight from the web, no clone required — everything below applies identically to a local <code>./install.sh</code> from a clone.</p>
+          <p class="order-detail__desc">The installer is the <code>shipmates</code> CLI. Install it via Homebrew, Cargo, or the binary installer script.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="cli" aria-labelledby="cli-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="cli-title">1. Install the CLI</h2>
+          <p class="section__lead">Get the <code>shipmates</code> CLI via Homebrew, Cargo, or a binary installer.</p>
+        </div>
+        <div class="order-prose">
+          <p><strong>macOS / Linux (Homebrew)</strong></p>
+          <pre class="order-code" tabindex="0"><code>brew install saman-mb/tap/shipmates</code></pre>
+          <p><strong>Anywhere (Cargo)</strong></p>
+          <pre class="order-code" tabindex="0"><code>cargo install shipmates</code></pre>
+          <p><strong>Binary Installer</strong></p>
+          <pre class="order-code" tabindex="0"><code>curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh</code></pre>
         </div>
       </div>
     </section>
@@ -79,12 +96,12 @@
     <section class="section" id="global" aria-labelledby="global-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="global-title">Global install</h2>
-          <p class="section__lead">One command, every project. Requires <code>bash</code>, <code>curl</code>, <code>tar</code>, and <code>python3</code> (&gt;= 3.9) — the installer compiles the payload from the canonical sources at install time.</p>
+          <h2 class="section__title" id="global-title">2. Install the agents (Global)</h2>
+          <p class="section__lead">One command, every project.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash</code></pre>
-          <p>Installs into <code>~/.claude</code> (or <code>$CLAUDE_CONFIG_DIR</code> if you have it set), so the crew and the twelve commands are available in every project. Piped from the web there is no local copy to trust, so the script downloads the <code>main</code>-branch tarball first; run from a clone it copies the files sitting next to it instead.</p>
+          <pre class="order-code" tabindex="0"><code>shipmates install</code></pre>
+          <p>Installs into <code>~/.claude</code> (or <code>$CLAUDE_CONFIG_DIR</code> if you have it set), so the crew and the twelve commands are available in every project. The CLI compiles the payload from its built-in canonical sources.</p>
         </div>
       </div>
     </section>
@@ -96,7 +113,7 @@
           <p class="section__lead">One repo only.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash -s -- --project /path/to/repo</code></pre>
+          <pre class="order-code" tabindex="0"><code>shipmates install --project /path/to/repo</code></pre>
           <p>Installs into <code>/path/to/repo/.claude</code>. A bare <code>--project</code> with no path scopes to the current directory&#x27;s <code>./.claude</code>. The project base directory is created if it doesn&#x27;t exist yet.</p>
         </div>
       </div>
@@ -109,7 +126,7 @@
         </div>
         <div class="order-prose">
           <ul>
-            <li>Compiles the payload from the repository&#x27;s <code>canonical/</code> sources with <code>tools/export.py</code>, into a temporary directory it removes on exit. Copies the resulting twelve <code>skills/&lt;name&gt;/</code> trees <strong>whole</strong> — whatever a skill bundles (<code>references/</code>, <code>scripts/</code>, <code>assets/</code>) comes along with its <code>SKILL.md</code> — and the twelve <code>agents/*.md</code> personas into the target root. On <code>opencode</code> the same twelve commands are written as flat <code>commands/&lt;name&gt;.md</code> files instead. Subagents ship to <strong><code>claude-code</code> and <code>opencode</code> only</strong> — those are the two harnesses with a documented native subagent directory; for the rest they are skipped with a note.</li>
+            <li>Compiles the payload from its built-in canonical sources. Copies the resulting twelve <code>skills/&lt;name&gt;/</code> trees <strong>whole</strong> — whatever a skill bundles (<code>references/</code>, <code>scripts/</code>, <code>assets/</code>) comes along with its <code>SKILL.md</code> — and the twelve <code>agents/*.md</code> personas into the target root. On <code>opencode</code> the same twelve commands are written as flat <code>commands/&lt;name&gt;.md</code> files instead. Subagents ship to <strong><code>claude-code</code> and <code>opencode</code> only</strong> — those are the two harnesses with a documented native subagent directory; for the rest they are skipped with a note.</li>
             <li>Records a manifest at <code>&lt;target&gt;/shipmates/manifest</code>: one line per file with its SHA-256, so later runs can tell Shipmates&#x27; files from yours. Every harness root gets its own manifest, so <code>--uninstall</code> works per harness.</li>
             <li>Re-installing <strong>skips</strong> files that are already identical and <strong>upgrades</strong> ones only Shipmates touched — without making backups.</li>
             <li>A file <strong>you</strong> wrote or edited is backed up to <code>&lt;file&gt;.bak-&lt;timestamp&gt;</code> first, and if its frontmatter <code>name:</code> says it is a <em>different</em> agent or skill than the one replacing it, you get a loud warning.</li>
@@ -192,7 +209,7 @@ cat ~/.config/opencode/shipmates/manifest</code></pre>
           <h2 class="section__title" id="uninstall-title">Uninstall</h2>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash -s -- --uninstall</code></pre>
+          <pre class="order-code" tabindex="0"><code>shipmates uninstall</code></pre>
           <p>Uses the manifest to delete only what Shipmates put there <strong>and left untouched</strong>; anything you modified is left alone. When a file is removed and a <code>.bak-&lt;timestamp&gt;</code> exists beside it, your original is restored. Works offline — no tarball download just to remove files.</p>
           <p>Without a manifest (installs from before the manifest existed) it falls back to the old behaviour — deleting only payload-identical files — and says so loudly. A manifest that fails validation is <strong>corrupt</strong>: uninstall refuses, and tells you to either delete it (<code>rm ~/.claude/shipmates/manifest</code>) and re-run for a name-based uninstall, or pass <code>--force</code> to take the same fallback directly.</p>
         </div>
