@@ -1,6 +1,6 @@
 # Shipmates
 
-A crew of specialist AI agents and command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request — autonomously. Runs on Claude Code today.
+A crew of specialist AI agents and command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request — autonomously. Two harnesses build today: Claude Code, and opencode (not yet runtime-verified).
 
 ## What it is
 
@@ -8,7 +8,7 @@ Shipmates is an open-source (MIT) crew of specialist AI agents: **12 domain-neut
 
 ## Who it's for
 
-Developers using Claude Code who want to hand off whole *tickets* — not just single prompts — to a crew of specialist agents. The agents are domain-neutral: they hold the work to the standard in **your** repo's `README` / `CLAUDE.md`, so the same crew works on a game engine, a web app, or a CLI, in any language.
+Developers using Claude Code or opencode who want to hand off whole *tickets* — not just single prompts — to a crew of specialist agents. The agents are domain-neutral: they hold the work to the standard in **your** repo's `README` / `AGENTS.md` (or `CLAUDE.md` on Claude Code), so the same crew works on a game engine, a web app, or a CLI, in any language.
 
 ## The crew (12)
 

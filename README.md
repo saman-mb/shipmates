@@ -5,12 +5,13 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — on <a href="https://claude.com/product/claude-code">Claude Code</a> today.</b><br/>
+  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a> and <a href="https://opencode.ai">opencode</a>.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
 [![License: MIT](https://img.shields.io/github/license/saman-mb/shipmates?color=blue)](LICENSE)
-[![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/product/claude-code)
+[![Claude Code](https://img.shields.io/badge/harness-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/product/claude-code)
+[![opencode](https://img.shields.io/badge/harness-opencode-6b7280)](https://opencode.ai)
 [![Website](https://img.shields.io/badge/website-saman--mb.github.io%2Fshipmates-D97757?logo=github)](https://saman-mb.github.io/shipmates/)
 [![Crew aboard](https://img.shields.io/badge/crew-12%20specialists-orange)](#-meet-the-crew)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -127,7 +128,7 @@ still created).
 Install for a different harness with `--harness`:
 
 ```bash
-./install.sh --harness claude-code     # default — the proven target
+./install.sh --harness claude-code     # default — the runtime-verified target
 ./install.sh --harness opencode        # builds both trees; format-verified, not runtime-verified
 ./install.sh --harness all             # every harness that builds; the rest are skipped
 ./install.sh --harness cursor          # fails: no adapter, so the exporter refuses
