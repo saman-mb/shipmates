@@ -51,9 +51,10 @@ REQUIRED_KEYS = ("name", "description")
 STANDARD_OPTIONAL_KEYS = ("license", "compatibility", "metadata")
 # Claude Code extensions the standard does not define. Permitted in any order.
 EXTENSION_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation")
+SOURCE_KEYS = ("arguments", "loop_max", "stages", "invocation", "board")
 # Everything a SKILL.md may declare. Anything else is a typo or a private key
 # no reader honours, and is rejected.
-ALLOWED_KEYS = REQUIRED_KEYS + STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS
+ALLOWED_KEYS = REQUIRED_KEYS + STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS + SOURCE_KEYS
 # The canonical order for the keys the nine ship — recommended, and what the ok()
 # note describes, but only the REQUIRED_KEYS prefix is enforced.
 FRONTMATTER_KEYS = REQUIRED_KEYS + EXTENSION_KEYS
@@ -254,8 +255,8 @@ def check_values(rel: str, slug: str, entries: dict) -> None:
         lineno, name = entries["name"]
         if name != slug:
             fail(
-                f"{rel}:{lineno}: name is {name!r} but the directory is skills/{slug}/ — "
-                f"set `name: {slug}`, or rename the directory to skills/{name}/"
+                f"{rel}:{lineno}: name is {name!r} but the file is commands/{slug}.md — "
+                f"set `name: {slug}`, or rename the file to commands/{name}.md"
             )
         elif not NAME_RE.fullmatch(name):
             fail(
@@ -421,18 +422,10 @@ def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
             )
 
 
-def check_skill(directory: Path) -> None:
-    slug = directory.name
-    rel = f"skills/{slug}/SKILL.md"
-    path = directory / "SKILL.md"
+def check_command(path: Path) -> None:
+    slug = path.stem
+    rel = f"commands/{path.name}"
     before = len(failures)
-
-    if not path.is_file():
-        fail(
-            f"{rel}:1: file not found — every directory under skills/ is a skill and "
-            f"must contain a SKILL.md; add it, or delete skills/{slug}/"
-        )
-        return
 
     lines = path.read_text(encoding="utf-8").split("\n")
     parsed = parse_frontmatter(rel, lines)
@@ -447,44 +440,29 @@ def check_skill(directory: Path) -> None:
     if len(failures) == before:
         ok(
             f"{rel}: frontmatter opens with {REQUIRED_LIST}, every key known and non-empty, "
-            "name matches directory, no unescaped '$n' anywhere, fences closed, no inline "
+            "name matches filename, no unescaped '$n' anywhere, fences closed, no inline "
             "--body in a shell fence"
         )
 
 
 def main() -> int:
-    if COMMANDS.exists():
+    if not COMMANDS.is_dir():
         fail(
-            "commands/: directory still exists — the workflows moved to "
-            "skills/<slug>/SKILL.md; run `git rm -r commands/` so there is one source"
-        )
-    else:
-        ok("commands/: absent — skills/ is the single source for the workflows")
-
-    if not SKILLS.is_dir():
-        fail(
-            "skills/: directory not found — the workflows live in skills/<slug>/SKILL.md, "
-            "one directory per skill"
+            "commands/: directory not found — the workflows live in commands/<slug>.md, "
+            "one file per command"
         )
         return report()
 
-    entries = sorted(SKILLS.iterdir())
-    directories = [p for p in entries if p.is_dir()]
-    for path in entries:
-        if not path.is_dir():
-            fail(
-                f"skills/{path.name}:1: not a directory — every entry under skills/ is a "
-                f"skill directory holding a SKILL.md; move it into skills/<slug>/ or delete it"
-            )
-    if not directories:
-        fail("skills/: no skill directories — add skills/<slug>/SKILL.md, one per workflow")
+    files = sorted(COMMANDS.glob("*.md"))
+    if not files:
+        fail("commands/: no command files — add commands/<slug>.md, one per workflow")
         return report()
 
     before = len(failures)
-    for directory in directories:
-        check_skill(directory)
+    for path in files:
+        check_command(path)
     if len(failures) == before:
-        ok(f"skills/: {len(directories)} skill directory(ies), each with a valid SKILL.md")
+        ok(f"commands/: {len(files)} command files, each valid")
     return report()
 
 

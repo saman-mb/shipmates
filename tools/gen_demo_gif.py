@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Generate assets/demo.gif — an illustrative animated terminal of a `/ship-issue` run.
+"""Generate site/assets/demo.gif — an illustrative animated terminal of a `/ship-issue` run.
 
 Honest by construction: it depicts the *actual stage sequence* the workflow performs
 (Plan → Isolate → Build → Self-check → CI gate → Review → Remediate → Deliver) with
 generic labels — no fabricated test counts or invented file names. Deterministic and
 committed, matching the repo's other generators.
 
-Writes three artifacts, all derived from the same frames:
-  assets/demo.gif             — canonical animation (README)
-  site/assets/demo.gif        — the site's copy, byte-identical
+Writes two artifacts, both derived from the same frames:
+  site/assets/demo.gif        — canonical animation (README and site)
   site/assets/demo-poster.png — final frame, served under prefers-reduced-motion
 
 Regenerate:            python3 tools/gen_demo_gif.py
@@ -270,7 +269,6 @@ def build_artifacts():
 
     return (
         {
-            "assets/demo.gif": gif_bytes,
             "site/assets/demo.gif": gif_bytes,
             "site/assets/demo-poster.png": poster_buf.getvalue(),
         },
@@ -355,11 +353,6 @@ def check_all(files: dict, root: Path) -> list:
                 f"{generated[2]} frame(s); pixel or timing content differs)"
             )
 
-    # The two GIF copies are one buffer written twice — byte-equality between
-    # them is a real invariant, not an encoder artifact, so assert it directly.
-    left, right = root / "assets/demo.gif", root / "site/assets/demo.gif"
-    if left.is_file() and right.is_file() and left.read_bytes() != right.read_bytes():
-        report.append("drift: assets/demo.gif and site/assets/demo.gif are not byte-identical")
     return report
 
 
@@ -371,14 +364,14 @@ def check_all(files: dict, root: Path) -> list:
 
 REGENERATE_HINT = (
     "run: python3 tools/gen_demo_gif.py && "
-    "git add assets/demo.gif site/assets/demo.gif site/assets/demo-poster.png"
+    "git add site/assets/demo.gif site/assets/demo-poster.png"
 )
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate assets/demo.gif, site/assets/demo.gif and "
+            "Generate site/assets/demo.gif and "
             "site/assets/demo-poster.png from one set of rendered frames."
         )
     )
@@ -405,13 +398,12 @@ def main(argv=None) -> int:
                 print(line)
             print(REGENERATE_HINT)
             return 1
-        print(f"up to date: 3 artifacts, {frame_count} encoded GIF frames")
+        print(f"up to date: 2 artifacts, {frame_count} encoded GIF frames")
         return 0
 
     written = write_all(files, root)
     notes = {
-        "assets/demo.gif": f"({frame_count} frames)",
-        "site/assets/demo.gif": "(copy of assets/demo.gif)",
+        "site/assets/demo.gif": f"({frame_count} frames)",
         "site/assets/demo-poster.png": "(final frame)",
     }
     for rel in sorted(files):
