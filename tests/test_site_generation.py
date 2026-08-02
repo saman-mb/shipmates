@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools import export as exporter  # noqa: E402
+import subprocess
 
 # gen_command_pages uses @dataclass(slots=True) and so needs Python 3.10+. That
 # is fine — it is a CI-and-maintainer tool, not part of the installer, which
@@ -112,8 +112,9 @@ class SiteGenerationTests(unittest.TestCase):
 
         out = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, out, True)
-        self.assertEqual(0, exporter.run(ROOT, "claude-code", check=False, out_dir=Path(out)))
-        rendered = Path(out) / "harnesses/claude-code"
+        res = subprocess.run(["cargo", "run", "--", "build", "--target", "claude-code", "--out", out], cwd=ROOT)
+        self.assertEqual(0, res.returncode)
+        rendered = Path(out) / "harnesses/claude-code/.claude"
 
         nested = rendered / "skills"
         agents = generator.load_agents(rendered / "agents", nested)

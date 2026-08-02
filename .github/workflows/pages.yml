@@ -38,11 +38,12 @@ jobs:
         run: python3 tools/validate_skill_names.py --check
       - name: Check generated command pages are up to date
         run: python3 tools/gen_command_pages.py --check
-      # Gates target payloads against reference digests
-      - name: Check canonical Claude export
-        run: cargo run -- check --target claude-code
-      - name: Check canonical opencode export
-        run: cargo run -- check --target opencode
+      # Gates every target payload against its reference digest
+      - name: Check target payload digests
+        run: |
+          for target in claude-code opencode gemini codex cursor github-copilot windsurf zed; do
+            cargo run -- check --target "$target"
+          done
       - name: Run the skill-lint regression suite
         run: bash tests/test_validate_skills.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
@@ -84,22 +85,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.9"
-      - name: Build and check the Claude export
+      - name: Build and check every target payload
         run: |
-          cargo run -- check --target claude-code
-          cargo run -- build --target claude-code --out "$RUNNER_TEMP/floor"
-      - name: Build and check the opencode export
-        run: |
-          cargo run -- check --target opencode
-          cargo run -- build --target opencode --out "$RUNNER_TEMP/floor-opencode"
+          for target in claude-code opencode gemini codex cursor github-copilot windsurf zed; do
+            cargo run -- check --target "$target"
+            cargo run -- build --target "$target" --out "$RUNNER_TEMP/floor"
+          done
       - name: Install end to end
         run: |
           cargo run -- install --harness claude-code --dir "$RUNNER_TEMP/install"
-          test -f "$RUNNER_TEMP/install/skills/ship-issue/SKILL.md"
+          test -f "$RUNNER_TEMP/install/.claude/skills/ship-issue/SKILL.md"
+          test -f "$RUNNER_TEMP/install/.claude/agents/sdet.md"
       - name: Install the opencode harness end to end
         run: |
           cargo run -- install --harness opencode --dir "$RUNNER_TEMP/install-opencode"
-          test -f "$RUNNER_TEMP/install-opencode/commands/ship-issue.md"
+          test -f "$RUNNER_TEMP/install-opencode/.opencode/commands/ship-issue.md"
+          test -f "$RUNNER_TEMP/install-opencode/.opencode/agents/sdet.md"
+      - name: Install a skill-only harness end to end
+        run: |
+          cargo run -- install --harness codex --dir "$RUNNER_TEMP/install-codex"
+          test -f "$RUNNER_TEMP/install-codex/.codex/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-codex/.codex/agents"
 
   deploy:
     name: Deploy to GitHub Pages

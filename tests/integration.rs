@@ -1,5 +1,6 @@
 use shipmates::adapters::Adapter;
 use shipmates::adapters::claude_code::ClaudeCodeAdapter;
+use shipmates::adapters::codex::CodexAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
 use shipmates::catalog::{reject_positional, CanonicalCommand, CanonicalRole};
 use shipmates::digest;
@@ -86,15 +87,69 @@ fn test_cli_targets() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("claude-code"));
-    assert!(stdout.contains("opencode"));
+    for target in [
+        "claude-code",
+        "opencode",
+        "gemini",
+        "antigravity",
+        "codex",
+        "cursor",
+        "github-copilot",
+        "windsurf",
+        "zed",
+    ] {
+        assert!(stdout.contains(target), "targets output missing {target}");
+    }
+}
+
+#[test]
+fn test_skill_only_targets_build_via_cli() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    for target in ["codex", "cursor", "github-copilot", "windsurf", "zed"] {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+            .args(["build", "--target", target, "--out", temp_dir.path().to_str().unwrap()])
+            .output()
+            .expect("failed to execute shipmates build");
+        assert!(output.status.success(), "{target} build failed: {}", String::from_utf8_lossy(&output.stderr));
+    }
+    let codex_skill = temp_dir.path().join("harnesses/codex/.codex/skills/ship-issue/SKILL.md");
+    assert!(codex_skill.is_file(), "codex ship-issue skill not emitted");
+    let copilot_skill = temp_dir.path().join("harnesses/github-copilot/.github/skills/ship-issue/SKILL.md");
+    assert!(copilot_skill.is_file(), "copilot ship-issue skill not emitted");
+}
+
+#[test]
+fn test_codex_adapter_renders_dialect() {
+    let command = CanonicalCommand {
+        name: "onboard".into(),
+        description: "Onboard".into(),
+        argument_hint: "".into(),
+        allowed_tools: "".into(),
+        disable_model_invocation: true,
+        arguments: vec![],
+        loop_max: 1,
+        stages: vec![],
+        narrative: "Write `TARGET.md` if one exists, else `AGENTS.md`; resolve via `agent-files/*.md`; use {{repo}}."
+            .into(),
+        invocation: "invoke".into(),
+        board: "board".into(),
+        source: PathBuf::from("cmd.md"),
+    };
+    let files = CodexAdapter.build(&[], &[command]).unwrap();
+    let content = files.get("harnesses/codex/.codex/skills/onboard/SKILL.md").unwrap();
+    assert!(content.contains("`AGENTS.md` if one exists, else `CLAUDE.md`"));
+    assert!(content.contains(".codex/agents/*.md"));
+    assert!(content.contains("$ARGUMENTS"));
+    assert!(!content.contains("TARGET.md"));
+    assert!(!content.contains("agent-files/"));
+    assert!(!content.contains("{{repo}}"));
 }
 
 #[test]
 fn test_cli_build_and_install() {
     let temp_dir = tempfile::tempdir().unwrap();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
-        .args(&["install", "--harness", "claude-code", "--dir", temp_dir.path().to_str().unwrap()])
+        .args(["install", "--harness", "claude-code", "--dir", temp_dir.path().to_str().unwrap()])
         .output()
         .expect("failed to execute shipmates install");
 

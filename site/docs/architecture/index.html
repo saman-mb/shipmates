@@ -70,8 +70,8 @@
         <div class="order-detail">
           <p class="order-detail__eyebrow"><span aria-hidden="true">🧭</span> Architecture</p>
           <h1 class="order-detail__title" id="architecture-title">Architecture</h1>
-          <p class="order-detail__tagline">How the matrix, generator, and installer fit together.</p>
-          <p class="order-detail__desc">One canonical source tree, one declarative matrix, one generator, one installer. The rule that keeps them honest: generated trees are committed, and CI fails on drift.</p>
+          <p class="order-detail__tagline">How the canonical sources, adapters, and installer fit together.</p>
+          <p class="order-detail__desc">Neutral canonical sources, one Rust CLI, per-harness adapters. The rule that keeps them honest: every target's output is byte-compared against a committed digest, and CI fails on drift.</p>
         </div>
       </div>
     </section>
@@ -81,9 +81,10 @@
         <nav class="docs-toc" aria-labelledby="toc-title">
           <h2 id="toc-title">On this page</h2>
           <ul>
-            <li><a href="#two-trees">The two trees</a></li>
+            <li><a href="#canonical">The canonical sources</a></li>
             <li><a href="#frontmatter">Frontmatter contract</a></li>
-            <li><a href="#matrix">The capability matrix</a></li>
+            <li><a href="#adapters">Adapters &amp; dialects</a></li>
+            <li><a href="#registries">The registries</a></li>
             <li><a href="#payloads">Payload generation</a></li>
             <li><a href="#install-flow">Install flow</a></li>
             <li><a href="#ci-gates">CI gates</a></li>
@@ -92,21 +93,20 @@
       </div>
     </section>
 
-    <section class="section" id="two-trees" aria-labelledby="two-trees-title">
+    <section class="section" id="canonical" aria-labelledby="canonical-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="two-trees-title">The two trees</h2>
-          <p class="section__lead">Canonical sources are neutral. Adapters render each committed target dialect.</p>
+          <h2 class="section__title" id="canonical-title">The canonical sources</h2>
+          <p class="section__lead">Neutral, harness-agnostic, and the only files you edit for crew or command content.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>agents/                      skills/
-  architect.md                 ship-issue/
-  senior-engineer.md             SKILL.md
-  sdet.md                        fix-bug/
-  … (12 personas)                  SKILL.md
-                               … (12 commands)</code></pre>
-          <p><code>agents/*.md</code> are the subagent personas — frontmatter (<code>name</code> / <code>description</code> / <code>tools</code>) plus a system-prompt body. <code>skills/&lt;name&gt;/SKILL.md</code> are the command workflows, in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape. The installer renders both trees into the layout its target expects. On Claude Code that is <code>&lt;root&gt;/agents/&lt;name&gt;.md</code> and <code>&lt;root&gt;/skills/&lt;name&gt;/</code> — the skill directory copied whole, so whatever it bundles (<code>references/</code>, <code>scripts/</code>, <code>assets/</code>) travels with its <code>SKILL.md</code>. On opencode it is <code>&lt;root&gt;/agents/&lt;name&gt;.md</code> and flat <code>&lt;root&gt;/commands/&lt;name&gt;.md</code> files; see the <a href="../harnesses/#opencode">harness matrix</a> for why commands and not skills.</p>
-          <p>The same split holds on the published site: <code>site/commands/&lt;name&gt;/index.html</code> pages are <strong>generated</strong> from the skills, while these docs pages are hand-authored.</p>
+          <pre class="order-code" tabindex="0"><code>commands/                  crew/
+  ship-issue.md               architect.md
+  fix-bug.md                  senior-engineer.md
+  plan-epics.md               sdet.md
+  … (12 commands)             … (12 personas)</code></pre>
+          <p><code>commands/*.md</code> are the twelve workflows, in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape. <code>crew/*.md</code> are the twelve subagent personas. Both are written in a neutral dialect — <code>$ARGUMENTS</code> is the only argument placeholder a command may contain, and no file may name-drop a stack, framework, or product. Every harness's payload is rendered from these two trees; nothing domain-specific belongs here.</p>
+          <p>The published site mirrors the split: <code>site/commands/&lt;name&gt;/index.html</code> pages are <strong>generated</strong> from the rendered Claude Code payload, while these docs pages are hand-authored.</p>
         </div>
       </div>
     </section>
@@ -130,20 +130,35 @@
           </table>
         </div>
         <div class="order-prose">
-          <p>The standard&#x27;s optional <code>license</code>, <code>compatibility</code>, and <code>metadata</code> keys may appear after the two required ones, in any order. <strong>Unknown keys are rejected</strong>, so a typo fails the gate rather than being silently ignored. In the body, <code>$ARGUMENTS</code> is the only argument placeholder a skill may contain — positional substitution is not in the standard, and <code>tools/validate_skills.py</code> enforces it.</p>
+          <p>The standard&#x27;s optional <code>license</code>, <code>compatibility</code>, and <code>metadata</code> keys may appear after the two required ones, in any order. <strong>Unknown keys are rejected</strong>, so a typo fails the gate rather than being silently ignored. In the body, <code>$ARGUMENTS</code> is the only argument placeholder a command may contain — positional substitution is not in the standard, and <code>tools/validate_skills.py</code> enforces it over the whole file, fenced code blocks included.</p>
         </div>
       </div>
     </section>
 
-    <section class="section" id="matrix" aria-labelledby="matrix-title">
+    <section class="section" id="adapters" aria-labelledby="adapters-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="matrix-title">The capability matrix</h2>
-          <p class="section__lead"><code>tools/harness_matrix.json</code> — the single source of truth for what may leave the repo.</p>
+          <h2 class="section__title" id="adapters-title">Adapters &amp; dialects</h2>
+          <p class="section__lead">One adapter per harness in <code>src/adapters/</code>, sharing one render layer.</p>
         </div>
         <div class="order-prose">
-          <p>The matrix is declarative: <strong>feature × harness → policy</strong>. A top-level <code>harnesses</code> block records whether a target gets an <code>agents/</code> tree at all — today <code>claude-code</code> and <code>opencode</code>, the only two with a documented native subagent directory. Under <code>features</code>, each frontmatter key (<code>name</code>, <code>description</code>, <code>license</code>, <code>allowed-tools</code>, <code>disable-model-invocation</code>, <code>tools</code>, <code>model</code>, …) carries an <code>applies_to</code> list (<code>skills</code> / <code>agents</code>) and, per harness, either <code>supported: true</code> — optionally with a <code>separator</code> for list values — or a policy: <code>drop</code>, <code>warn</code>, <code>emulate</code>, or <code>refuse</code>.</p>
-          <p>The matrix itself is validated at load: version, known policies, every feature covering every harness exactly, an <code>emulation</code> note present if and only if the policy is <code>emulate</code>. And the contract cuts both ways — a frontmatter key the matrix does <em>not</em> cover is a hard error, not a silent passthrough. Adding a key to a canonical skill means adding a matrix entry per harness, or the build fails.</p>
+          <p>Each harness is a Rust adapter (<code>src/adapters/&lt;harness&gt;.rs</code>) that declares a <code>Dialect</code>: where its agents live (<code>.claude/agents/</code>, <code>.opencode/agents/</code>, <code>.gemini/agents/</code>, …), what its session metadata is called, which project-instructions file it reads (<code>CLAUDE.md</code>, <code>AGENTS.md</code>), and how a role is spawned. The shared render layer (<code>src/adapters/render.rs</code>) rewrites the neutral prose into the harness&#x27;s real dialect.</p>
+          <p>Tools are resolved from semantic capabilities, never hardcoded per harness: <code>read</code> → <code>Read</code>/<code>Grep</code>/<code>Glob</code>, <code>edit</code> → <code>Write</code>/<code>Edit</code>, <code>bash</code> → <code>Bash</code>, <code>web</code> → <code>WebSearch</code>/<code>WebFetch</code>, <code>agent</code> → <code>Agent</code>. A role&#x27;s <code>*-scopes</code> refinements are preserved in each harness&#x27;s own permission model.</p>
+          <p><strong>Least privilege is the adapter&#x27;s job, not the target&#x27;s default.</strong> Claude Code&#x27;s permission model is an allowlist, so naming the tools a role needs is sufficient. opencode&#x27;s shipped defaults are effectively <code>&#x22;*&#x22;: &#x22;allow&#x22;</code>, so an allow-list alone grants nothing — every generated opencode agent emits a <code>&#x22;*&#x22;: deny</code> catch-all first and its specific allows after, and opencode resolves permissions last-match-wins, so the ordering is the mechanism.</p>
+          <p>A harness with no subagent mechanic ships the crew as skills only (<code>emit_skill_files</code>): the twelve commands as <code>skills/&lt;name&gt;/SKILL.md</code>, with the Agent Skills standard&#x27;s <code>name</code>/<code>description</code> pair and nothing else — vendor keys like <code>allowed-tools</code> or <code>disable-model-invocation</code> would be rejected by a strict parser. That covers <code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>, and <code>zed</code>; the crew drops out entirely.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="registries" aria-labelledby="registries-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="registries-title">The registries</h2>
+          <p class="section__lead"><code>tools/manifest.json</code> and <code>tools/capability_registry.json</code> — what the CLI knows about its targets.</p>
+        </div>
+        <div class="order-prose">
+          <p><code>tools/manifest.json</code> declares the canonical source roots (<code>commands/</code>, <code>crew/</code>), the project-instructions mapping, and every target with its build status — nine names today (<code>claude-code</code>, <code>opencode</code>, <code>gemini</code>, <code>antigravity</code>, <code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>, <code>zed</code>), all marked <code>implemented</code>. <code>tools/capability_registry.json</code> maps the semantic capabilities and role <code>*-scopes</code> to each harness&#x27;s tool names — the thing adapters consult, and the only place a harness&#x27;s tool names live (never in canonical content).</p>
+          <p>The contract cuts both ways: adding a frontmatter key to a canonical command means registering it in the capability registry and regenerating every target&#x27;s reference digest, or the build fails.</p>
         </div>
       </div>
     </section>
@@ -152,19 +167,11 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="payloads-title">Payload generation</h2>
-          <p class="section__lead">The Rust compiler engine (<code>shipmates</code> crate) projects the canonical trees into <code>harnesses/&lt;target&gt;/</code>.</p>
+          <p class="section__lead"><code>shipmates build --target &lt;name&gt;</code> renders the canonical trees into <code>harnesses/&lt;target&gt;/</code>.</p>
         </div>
         <div class="order-prose">
-          <p>For each (feature, target) pair, the matrix entry decides what the generator emits:</p>
-          <ul>
-            <li><strong>supported</strong> — emit the key, respelled if the matrix names a different spelling, and with comma-separated values rewritten to the standard&#x27;s space-separated form when the entry declares <code>separator: &#x22;space&#x22;</code>.</li>
-            <li><strong>drop</strong> — omit the key silently; cosmetic loss only (<code>argument-hint</code> is dropped everywhere but claude-code).</li>
-            <li><strong>warn</strong> — omit the key and print one machine-readable JSON line on stderr recording exactly what was lost.</li>
-            <li><strong>emulate</strong> — omit the key and append a deterministic &#x201C;Harness adaptation&#x201D; section to the body expressing it in prose.</li>
-            <li><strong>refuse</strong> — fail the whole target before anything is written. Reserved for safety properties: every shipped command sets <code>disable-model-invocation: true</code>, and a harness with no equivalent gets no payload rather than an auto-invocable command.</li>
-          </ul>
-          <p>Output is deterministic but <strong>not committed</strong>: <code>harnesses/</code> is gitignored and built at install time into a temp directory. What is committed is the reference the export is checked against — <code>tests/golden/claude-code/</code> — and the generated mirrors <code>agents/</code> and <code>skills/</code>, which stay in the repository because the site generator and the skills validator read them. All three are regenerated with <code>shipmates build --target claude-code --update</code>; never hand-edit them. Claude&#x27;s tree is rendered from neutral canonical sources and byte-compared against both the golden reference and those mirrors.</p>
-          <p>Two targets are marked <code>implemented</code> in <code>canonical/manifest.json</code> and build today: <code>claude-code</code> and <code>opencode</code>. The remaining six have no adapter and the exporter refuses them on that declared status — not on a hardcoded name. opencode is the only one of the two without committed mirrors: its payload exists only as an install-time build. It also satisfies the user-invoked-only property by structure rather than by frontmatter, which is why it clears a gate the other six do not — the full explanation is on the <a href="../harnesses/">harness matrix</a>.</p>
+          <p>For a chosen target the adapter renders every command and persona into that harness&#x27;s dialect, returning the complete file map. <code>shipmates build --target &lt;name&gt;</code> writes it under <code>harnesses/&lt;target&gt;/</code>; <code>--out</code> redirects. Output is deterministic and byte-compared against a committed reference: <code>shipmates check --target &lt;name&gt;</code> verifies the fresh build matches <code>tests/payload-digests/&lt;name&gt;.sha256</code>, and <code>shipmates update --target &lt;name&gt;</code> (or <code>build --update</code>) regenerates the digest. Never hand-edit a digest — they are regression fixtures; CI proves each freshly built payload matches.</p>
+          <p>Two dialect choices are load-bearing. The <code>name</code> of a skill must equal its parent directory name, and the twelve commands ship <code>disable-model-invocation: true</code> — every command is user-invoked only. On opencode, which has no such frontmatter key, the twelve land in <code>.opencode/commands/</code> where user-invocation holds structurally; the full reasoning is on the <a href="../harnesses/">harness matrix</a>.</p>
         </div>
       </div>
     </section>
@@ -173,12 +180,11 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="install-flow-title">Install flow</h2>
-          <p class="section__lead">The <code>shipmates</code> CLI compiles the payload from <code>canonical/</code> at install time.</p>
+          <p class="section__lead"><code>shipmates install --harness &lt;name&gt; [--dir &lt;path&gt;]</code> drops the harness&#x27;s own tree at the target root.</p>
         </div>
         <div class="order-prose">
-          <p>Every install — with or without <code>--harness</code> — runs the Rust compiler engine against <code>canonical/</code>, writes the payload to a temp directory, and installs from there. A target whose adapter is not implemented is refused by the exporter and the install stops. The gate runs <strong>before any directory is created</strong>, so a refused harness fails without touching the filesystem. This makes the Rust CLI the single unified binary replacing the old Python/Bash scripts.</p>
-          <p>No <code>--harness</code> is one implicit <code>claude-code</code> run, compiled exactly like an explicit selection. The generated tree carries a <code>.shipmates-payload</code> build manifest recording which canonical inputs produced it — that is provenance for auditing a build, not an install-time integrity check, since the payload is compiled from the same tree it would be checked against. <code>--harness all</code> expands to every known harness; the flag is repeatable and dedupes; unknown names are a hard error listing the known ones. Every harness root gets its own manifest, so <code>--uninstall</code> works per harness.</p>
-          <p>Subagents ship to <code>claude-code</code> and <code>opencode</code> only — those are the two harnesses with a documented native subagent directory, so any other target gets a skip note instead of files it may mishandle. The two trees differ in shape: Claude Code takes <code>.claude/agents/&lt;name&gt;.md</code> plus <code>.claude/skills/&lt;name&gt;/SKILL.md</code>, while opencode takes <code>.opencode/agents/&lt;name&gt;.md</code> (each with <code>mode: subagent</code> and an enforced <code>permission:</code> map) plus the twelve commands as flat <code>.opencode/commands/&lt;name&gt;.md</code> files.</p>
+          <p>The CLI reads the canonical sources from the current directory (or <code>--root</code> for the build/check/update commands), runs the selected adapter, and writes the payload — stripping the <code>harnesses/&lt;target&gt;/</code> container so the harness&#x27;s own tree (<code>.claude/</code>, <code>.opencode/</code>, <code>.codex/</code>, …) lands where the harness actually reads it. Default target directory is the current one; <code>--dir</code> pins an explicit root. <code>--harness all</code> expands to every harness, and <code>shipmates targets</code> lists them.</p>
+          <p>Subagents ship to <code>claude-code</code>, <code>opencode</code>, and <code>gemini</code> — the harnesses with a documented native subagent directory. The five skill-only harnesses get the twelve skills and nothing else; there is nowhere for <code>agents/*.md</code> to go.</p>
         </div>
       </div>
     </section>
@@ -190,16 +196,19 @@
           <p class="section__lead">The <code>Validate site</code> job in <code>pages.yml</code> gates every PR; deploy runs only on pushes to <code>main</code>.</p>
         </div>
         <div class="order-prose">
-          <p>The job gates the sources (<code>skills/</code>) and the site built from them, in that order — a bad <code>SKILL.md</code> is reported against the file someone edited, not against a derived page:</p>
+          <p>The <code>validate</code> job gates the sources (<code>commands/</code> + <code>crew/</code>) and the site built from them, in that order — a bad <code>SKILL.md</code> is reported against the file someone edited, not against a derived page:</p>
           <ol>
             <li><code>python3 tools/validate_skills.py</code> — the frontmatter contract and the <code>$ARGUMENTS</code> rule.</li>
             <li><code>python3 tools/validate_skill_names.py --check</code> — skill names must not collide with harness built-ins.</li>
             <li><code>python3 tools/gen_command_pages.py --check</code> — the generated command pages (and sitemap) are up to date.</li>
-            <li><code>shipmates build --check</code> — the payloads the matrix generates still match what the generator produces.</li>
-            <li><code>shipmates check --target claude-code</code> — the committed <code>agents/</code>, <code>skills/</code> and <code>tests/golden/claude-code/</code> mirrors match a fresh export from <code>canonical/</code>.</li>
+            <li><code>cargo run -- check --target &lt;name&gt;</code> for every one of the eight targets — each fresh payload matches its committed <code>tests/payload-digests/&lt;name&gt;.sha256</code>.</li>
+            <li><code>bash tests/test_validate_skills.sh</code> — the skill-lint regression suite.</li>
+            <li><code>python3 tools/gen_demo_gif.py --check</code> — the demo GIF/poster artifacts are up to date (pinned Pillow + font, byte-compared as pixels).</li>
             <li><code>python3 .github/scripts/validate_site.py</code> — the static site: one <code>&lt;h1&gt;</code> per page, heading outlines, self-containment, local refs, SEO metadata, JSON-LD, page and docs coverage, and the sitemap.</li>
+            <li><code>python3 .github/scripts/validate_design_drift.py</code> — design-system drift check.</li>
+            <li><code>python3 -m unittest discover -s tests</code> and <code>bash tests/test_resolve_src.sh</code> — the Python test suite and the install source-resolution regression.</li>
           </ol>
-          <p>The <code>--check</code> steps are drift detectors: they regenerate in memory and fail on any difference, so a hand-edited generated file — a command page or a harness payload — cannot merge.</p>
+          <p>A second job, <code>exporter-floor</code>, builds and checks every target on a minimum environment, then runs three real installs end to end (claude-code, opencode, and a skill-only harness) asserting the right files land in the right trees. The <code>--check</code> steps are drift detectors: they regenerate in memory and fail on any difference, so a hand-edited generated file — a command page, a site asset, or a digest — cannot merge.</p>
         </div>
       </div>
     </section>

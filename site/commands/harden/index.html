@@ -36,7 +36,7 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Scope the attack surface",
-        "text": "Map what's in scope: the entry points (routes, CLI, message handlers), the trust boundaries, what data crosses them, and what an attacker controls. List the assets worth protecting. Keep the surface bounded to {{surface}} — note explicitly what you're not covering so it isn't mistaken for cleared.",
+        "text": "Map what's in scope: the entry points (routes, CLI, message handlers), the trust boundaries, what data crosses them, and what an attacker controls. List the assets worth protecting. Keep the surface bounded to $ARGUMENTS — note explicitly what you're not covering so it isn't mistaken for cleared.",
         "url": "https://saman-mb.github.io/shipmates/commands/harden/#stage-0"
       },
       {
@@ -124,7 +124,7 @@
           <p class="order-detail__desc">Security-harden a surface — threat-model it, rank the findings, and re-review until every finding has a fix or an explicit accepted-risk note (and secrets/dependency scans are clean). Read-only by default — it reports; remediation happens on a branch, opt-in.</p>
           <div class="order-prose">
             <p>Take a surface and make it defensibly secure: a <code>security-engineer</code> threat-models it, findings are ranked and fixed, and the loop closes only when <strong>every finding is either remediated or carries an explicit, reasoned accepted-risk note</strong> — and the secrets/dependency scans are clean. The gate is &quot;nothing Critical/High left unaddressed,&quot; not &quot;looks fine.&quot;</p>
-            <p>Input (<strong>{{surface}}</strong>): the surface to harden — a module, an endpoint/route, an auth or payment flow, a dependency set, or the whole app. If empty, ask which surface (don&#x27;t silently pick the whole repo).</p>
+            <p>Input (<strong>$ARGUMENTS</strong>): the surface to harden — a module, an endpoint/route, an auth or payment flow, a dependency set, or the whole app. If empty, ask which surface (don&#x27;t silently pick the whole repo).</p>
           </div>
         </div>
       </div>
@@ -138,7 +138,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/harden</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/harden &lt;what to harden — a module, an endpoint, an auth flow, or the whole app&gt;</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -158,7 +158,7 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Scope the attack surface</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Map what&#x27;s in scope: the entry points (routes, CLI, message handlers), the trust boundaries, what data crosses them, and what an attacker controls. List the assets worth protecting. Keep the surface bounded to <code>{{surface}}</code> — note explicitly what you&#x27;re <em>not</em> covering so it isn&#x27;t mistaken for cleared.</p>
+                <p>Map what&#x27;s in scope: the entry points (routes, CLI, message handlers), the trust boundaries, what data crosses them, and what an attacker controls. List the assets worth protecting. Keep the surface bounded to <code>$ARGUMENTS</code> — note explicitly what you&#x27;re <em>not</em> covering so it isn&#x27;t mistaken for cleared.</p>
               </div>
             </div>
           </li>
@@ -258,7 +258,7 @@
             <li>Every Critical/High ends as fixed or explicitly accepted — never silently dropped.</li>
             <li>Bounded loop; escalate with open findings rather than rubber-stamping.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
-            <li><strong>Security review lives here, not in <code>/ship-issue</code>.</strong> <code>/ship-issue</code> doesn&#x27;t seat <code>security-engineer</code> on its acceptance board — when a story it&#x27;s shipping touches a security-sensitive surface, it classifies the change as such and <strong>recommends</strong> a <code>/harden</code> pass rather than convening the review itself. If the <code>security-engineer</code> role doesn&#x27;t resolve to an <code>agent-files/*.md</code> here, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li><strong>Security review lives here, not in <code>/ship-issue</code>.</strong> <code>/ship-issue</code> doesn&#x27;t seat <code>security-engineer</code> on its acceptance board — when a story it&#x27;s shipping touches a security-sensitive surface, it classifies the change as such and <strong>recommends</strong> a <code>/harden</code> pass rather than convening the review itself. If the <code>security-engineer</code> role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code> here, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>
       </div>

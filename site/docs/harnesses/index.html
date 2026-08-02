@@ -71,7 +71,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">🌊</span> Harnesses</p>
           <h1 class="order-detail__title" id="harnesses-title">Harness matrix</h1>
           <p class="order-detail__tagline">Which harnesses the crew runs on, and what's coming next.</p>
-          <p class="order-detail__desc">The installer knows eight harness roots, but <em>known</em> is not <em>shipped</em>: a payload is built for a harness only when we've verified it can keep every safety property the commands rely on. Two clear that bar today — and only one of them has been run for real.</p>
+          <p class="order-detail__desc">The installer builds payloads for eight harnesses. Only one has been run for real — the rest are format-verified against each harness&#x27;s own parsing source and first-party docs, but not exercised against a running harness.</p>
         </div>
       </div>
     </section>
@@ -85,34 +85,33 @@
           <table>
             <thead><tr><th scope="col">Harness</th><th scope="col">Status</th><th scope="col">Tracking epic</th></tr></thead>
             <tbody>
-              <tr><td><code>claude-code</code></td><td><span class="chip">Shipped</span></td><td>—</td></tr>
-              <tr><td><code>opencode</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/14">#14</a>, <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a></td></tr>
-              <tr><td><code>github-copilot</code></td><td><span class="chip">In development</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/16">#16</a></td></tr>
-              <tr><td><code>codex</code></td><td><span class="chip">In development</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/17">#17</a></td></tr>
-              <tr><td><code>cursor</code></td><td><span class="chip">In development</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/15">#15</a></td></tr>
-              <tr><td><code>gemini</code></td><td><span class="chip">Planned</span></td><td>—</td></tr>
-              <tr><td><code>windsurf</code></td><td><span class="chip">Planned</span></td><td>—</td></tr>
-              <tr><td><code>zed</code></td><td><span class="chip">Planned</span></td><td>—</td></tr>
+              <tr><td><code>claude-code</code></td><td><span class="chip">Runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>opencode</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a></td></tr>
+              <tr><td><code>gemini</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>github-copilot</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
+              <tr><td><code>codex</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
+              <tr><td><code>cursor</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
+              <tr><td><code>windsurf</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
+              <tr><td><code>zed</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
             </tbody>
           </table>
         </div>
         <div class="order-prose">
-          <p><strong>Shipped</strong> means the payload is exported from neutral canonical sources, byte-compared against the committed golden reference and the generated <code>agents/</code> + <code>skills/</code> mirrors, compiled at install time, <em>and</em> the harness is one Shipmates has actually been run on. Only <code>claude-code</code> meets all of that.</p>
-          <p><strong>Builds, not runtime-verified</strong> is <code>opencode</code>, and it is a deliberately narrower claim. <code>install.sh --harness opencode</code> produces the full crew and all twelve commands, and the payload format was verified against opencode's own parsing source and its first-party docs. It has <strong>not</strong> been exercised against a running opencode — whether agents resolve, whether argument passing behaves, and whether <code>/ship-issue</code> completes end to end are open questions tracked in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>. Nothing on this site should be read as &#x201C;tested on opencode&#x201D;.</p>
-          <p><strong>In development</strong> means the harness has a tracking epic and we&#x27;re actively building its adapter. <strong>Planned</strong> means we intend to support it but haven&#x27;t started. Six targets still have no adapter and the exporter refuses them.</p>
+          <p><strong>Runtime-verified</strong> means the payload is compiled from neutral canonical sources, byte-compared against its committed reference digest, and the harness is one Shipmates has actually been run on. Only <code>claude-code</code> meets all of that.</p>
+          <p><strong>Builds, not runtime-verified</strong> is every other harness. <code>shipmates install --harness &lt;name&gt;</code> produces the payload, and each format was verified against the harness's own parsing source and first-party docs. None has been exercised against a running harness — whether agents resolve, whether argument passing behaves, and whether <code>/ship-issue</code> completes end to end are open questions, tracked for opencode in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>. Nothing on this site should be read as &#x201C;tested on <em>&lt;harness&gt;</em>&#x201D; until those close.</p>
+          <p><strong>Builds (skills only)</strong> marks the five harnesses with no documented native subagent directory — <code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code> and <code>zed</code>. For them the crew drops out entirely and only the twelve skills land; there is nowhere for <code>agents/*.md</code> to go.</p>
         </div>
       </div>
     </section>
 
-    <section class="section" id="why-not-yet" aria-labelledby="why-not-yet-title">
+    <section class="section" id="not-verified" aria-labelledby="not-verified-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="why-not-yet-title">Why not yet?</h2>
+          <h2 class="section__title" id="not-verified-title">Why only one runtime-verified?</h2>
         </div>
         <div class="order-prose">
-          <p>Every one of the twelve commands ships <code>disable-model-invocation: true</code> — you start one by typing <code>/ship-issue</code>; the model never loads one on its own. These workflows create worktrees, push branches, and open pull requests, so the decision to start one stays with the captain.</p>
-          <p>Before we build a payload for a new harness, we verify it has an equivalent guard. The six harnesses without an adapter don&#x27;t document one yet, so the capability matrix holds their payloads back. The moment a harness documents an equivalent, the matrix entry flips and a payload appears.</p>
-          <p>The three harnesses with tracking epics are in active development — their adapter stories include verifying this exact property. The mechanics of how the matrix works are on the <a href="../architecture/">architecture page</a>.</p>
+          <p>Building a payload is the easy half — the format is documented and the CLI validates each target's output against a committed reference digest on every build. Verifying it <em>works</em> means installing into a running harness and exercising <code>/ship-issue</code> end to end: subagents resolve, argument passing behaves, worktrees, CI gates, the review board. That is real work per harness, and it hasn't been done yet for any of the seven.</p>
+          <p>Until it has, treat every non-Claude payload as format-correct-but-unproven. The tracking for the harnesses we plan to exercise first lives in the issue list; opencode's is <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</p>
         </div>
       </div>
     </section>
@@ -127,7 +126,7 @@
           <p><strong>The twelve install as commands, not skills.</strong> opencode has both, and they are different things. Its <em>skills</em> are model-invoked: the model loads one on demand through a native <code>skill</code> tool, and <code>disable-model-invocation</code> is not among the frontmatter keys a <code>SKILL.md</code> recognises there — declaring it would be silently dropped rather than rejected. So the twelve go to <code>.opencode/commands/&lt;name&gt;.md</code>, which is <code>/</code>-invoked only. The captain still decides when a run starts, and that now rests on the directory rather than on a key the target ignores.</p>
           <p><strong>Least privilege survived, by inversion.</strong> Claude Code&#x27;s permission model is an allowlist, so naming the tools a role needs is enough. opencode&#x27;s defaults are permissive — effectively <code>&#x22;*&#x22;: &#x22;allow&#x22;</code> — so an allow list alone would restrict nothing. Every generated opencode agent instead writes a <code>&#x22;*&#x22;: deny</code> catch-all first and its specific allows after; opencode resolves permissions last-match-wins, so that ordering is what makes it hold. The result is marginally stronger than the Claude posture: a tool a wildcard denies is hidden from the model entirely rather than refused when it is called.</p>
           <p>Role-level refinements survive the translation too. <code>art-director</code> declares <code>web-scopes: search</code> once in the canonical sources, and gets <code>WebSearch</code> without <code>WebFetch</code> on Claude Code, and <code>websearch: allow</code> without <code>webfetch</code> on opencode.</p>
-          <p>opencode is also the only non-Claude harness that receives subagents — <code>.opencode/agents/&lt;name&gt;.md</code>, each with <code>mode: subagent</code> — because it is the only one with a documented native subagent directory.</p>
+          <p>opencode is also one of only two non-Claude harnesses that receive subagents — <code>.opencode/agents/&lt;name&gt;.md</code>, each with <code>mode: subagent</code> — because it is one of the few with a documented native subagent directory (<code>gemini</code> is the other). The other five harnesses ship skills only.</p>
         </div>
       </div>
     </section>
