@@ -102,3 +102,24 @@ fn test_cli_build_and_install() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("Installed harness: claude-code"));
 }
+
+use shipmates::adapters::gemini::GeminiAdapter;
+
+#[test]
+fn test_gemini_adapter_integration() {
+    let role = CanonicalRole {
+        name: "architect".into(),
+        description: "Architect role".into(),
+        capabilities: vec!["read".into()],
+        writes: false,
+        web_scopes: vec![],
+        read_scopes: vec![],
+        tool_order: vec![],
+        source: PathBuf::from("architect.md"),
+        body: "system prompt body".into(),
+    };
+    let files = GeminiAdapter.build(&[role], &[]).unwrap();
+    let content = files.get("harnesses/gemini/.gemini/agents/architect.md").unwrap();
+    assert!(content.contains("name: architect"));
+    assert!(content.contains("system prompt body"));
+}
