@@ -101,14 +101,14 @@ Keep semantic capabilities in `tools/capability_registry.json`, implement new ta
 in `canonical/manifest.json`), and regenerate rather than hand-edit:
 
 ```bash
-python3 tools/export.py check --target claude-code            # what CI runs
-python3 tools/export.py build --target claude-code --update   # after a canonical/ edit
+cargo run -- check --target claude-code            # what CI runs
+cargo run -- build --target claude-code --update   # after a canonical/ edit
 ```
 
 Install into a throwaway scope and try it on a real repo:
 
 ```bash
-./install.sh --project /tmp/some-test-repo
+shipmates install --project /tmp/some-test-repo
 ```
 
 Then run the command in Claude Code and confirm the agents resolve (no "falling back to
@@ -116,4 +116,4 @@ general-purpose" notes in the report).
 
 ## PRs
 
-Keep changes focused, explain the intent, and make sure `./install.sh` still installs cleanly.
+Keep changes focused, explain the intent, and make sure `shipmates install` still installs cleanly.

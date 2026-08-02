@@ -100,26 +100,34 @@ unresolved role name silently falls back to a generic agent rather than erroring
 **Requires** `bash`, `curl`, `tar`, and **`python3` (>= 3.9)** — the installer compiles the payload
 from the canonical sources at install time. macOS and every mainstream Linux ship all four.
 
-One line, no clone required:
-
+**macOS / Linux (Homebrew):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash
+brew install saman-mb/tap/shipmates
+```
+
+**Anywhere (Cargo):**
+```bash
+cargo install shipmates
+```
+
+**Binary Installer (cargo-dist):**
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
 That brings the crew aboard for **every** project (`~/.claude`). Scope it to a single repo instead
 (checked in, shared with your team):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh | bash -s -- --project /path/to/your/repo
+shipmates install --project /path/to/your/repo
 ```
 
-Prefer to read the script first? Clone the repo and run `./install.sh` (same flags). Either way it
-compiles `skills/<name>/SKILL.md` and `agents/*.md` from `canonical/`, drops them into your
+The CLI compiles `skills/<name>/SKILL.md` and `agents/*.md` from its built-in canonical sources, drops them into your
 `.claude/`, and records a manifest at
 `.claude/shipmates/manifest` (one SHA-256 per file), so re-runs skip what is identical, update what
 only Shipmates touched, and **back up** anything you wrote or edited to `<file>.bak-<timestamp>` —
 including a loud warning when a pre-existing file's `name:` says it is a *different* agent or skill
-than the one replacing it. `--uninstall` removes only files the manifest proves are Shipmates' and
+than the one replacing it. `shipmates uninstall` removes only files the manifest proves are Shipmates' and
 untouched, then restores your originals from their `.bak-<timestamp>` backups. If the manifest is
 wrong or you want a clean slate, `--force` skips SHA checks and overwrites everything (backups
 still created).
@@ -127,10 +135,10 @@ still created).
 Install for a different harness with `--harness`:
 
 ```bash
-./install.sh --harness claude-code     # default — the proven target
-./install.sh --harness opencode        # builds both trees; format-verified, not runtime-verified
-./install.sh --harness all             # every harness that builds; the rest are skipped
-./install.sh --harness cursor          # fails: no adapter, so the exporter refuses
+shipmates install --harness claude-code     # default — the proven target
+shipmates install --harness opencode        # builds both trees; format-verified, not runtime-verified
+shipmates install --harness all             # every harness that builds; the rest are skipped
+shipmates install --harness cursor          # fails: no adapter, so the exporter refuses
 ```
 
 Two targets build today. **Claude Code** gets `.claude/skills/<name>/SKILL.md` plus the twelve
@@ -160,7 +168,7 @@ allowlist: a tool a wildcard denies is hidden from the model rather than refused
 > tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
 > [#32](https://github.com/saman-mb/shipmates/issues/32).
 
-**Safety:** payloads are compiled from `canonical/` by `tools/export.py` at install time,
+**Safety:** payloads are compiled from `canonical/` by the `shipmates` CLI at install time,
 and carry a `.shipmates-payload` build manifest recording the inputs they came from. That manifest
 is provenance, not an integrity check — the installer compiles from the tree it just fetched, so
 re-hashing that same tree would prove nothing. If the matrix can't honour a safety property on a target
@@ -183,9 +191,9 @@ them directly fails rather than silently shipping nothing. The exporter renders 
 bodies into Claude's established dialect; it never reads the mirrors. Build, check, or regenerate:
 
 ```bash
-python3 tools/export.py build --target claude-code --out /tmp/shipmates-build
-python3 tools/export.py check --target claude-code
-python3 tools/export.py build --target claude-code --update   # regenerate references
+cargo run -- build --target claude-code --out /tmp/shipmates-build
+cargo run -- check --target claude-code
+cargo run -- build --target claude-code --update   # regenerate references
 ```
 
 `tools/capability_registry.json` is the single semantic-to-harness tool map — including the
