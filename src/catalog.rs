@@ -41,17 +41,15 @@ pub fn reject_positional(label: &str, text: &str) -> Result<(), String> {
             if c == '$' && prev_char != '\\' {
                 let rest = &line[j+1..];
                 if rest.starts_with('{') {
-                    if let Some(c2) = rest.chars().nth(1) {
-                        if c2.is_ascii_digit() {
+                    if let Some(c2) = rest.chars().nth(1)
+                        && c2.is_ascii_digit() {
                             return Err(format!("{}:{}: a command has no positional arguments", label, i + 1));
                         }
-                    }
                 } else {
-                    if let Some(c2) = rest.chars().next() {
-                        if c2.is_ascii_digit() {
+                    if let Some(c2) = rest.chars().next()
+                        && c2.is_ascii_digit() {
                             return Err(format!("{}:{}: a command has no positional arguments", label, i + 1));
                         }
-                    }
                 }
             }
             prev_char = c;
@@ -102,7 +100,7 @@ pub fn load_roles(path: &Path) -> Result<Vec<CanonicalRole>, String> {
         return Ok(roles);
     }
     for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
-        if entry.path().is_file() && entry.path().extension().map_or(false, |ext| ext == "md") {
+        if entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "md") {
             let (fm, body) = parse_frontmatter(entry.path())?;
             roles.push(CanonicalRole {
                 name: fm.get("name").cloned().unwrap_or_default(),
@@ -126,7 +124,7 @@ pub fn load_commands(path: &Path) -> Result<Vec<CanonicalCommand>, String> {
         return Ok(commands);
     }
     for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
-        if entry.path().is_file() && entry.path().extension().map_or(false, |ext| ext == "md") {
+        if entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "md") {
             let (fm, body) = parse_frontmatter(entry.path())?;
             reject_positional(&entry.path().to_string_lossy(), &body)?;
             commands.push(CanonicalCommand {
