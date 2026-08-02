@@ -60,9 +60,13 @@ pub fn reject_positional(label: &str, text: &str) -> Result<(), String> {
 
 pub fn parse_frontmatter(path: &Path) -> Result<(HashMap<String, String>, String), String> {
     let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    parse_frontmatter_from(&content, &path.to_string_lossy())
+}
+
+pub fn parse_frontmatter_from(content: &str, label: &str) -> Result<(HashMap<String, String>, String), String> {
     let mut lines = content.lines();
     if lines.next().unwrap_or("").trim() != "---" {
-        return Err(format!("{:?}: missing opening frontmatter", path));
+        return Err(format!("{:?}: missing opening frontmatter", label));
     }
     let mut values = HashMap::new();
     let mut close_idx = 0;
@@ -76,17 +80,17 @@ pub fn parse_frontmatter(path: &Path) -> Result<(HashMap<String, String>, String
         }
         let parts: Vec<&str> = line.splitn(2, ':').collect();
         if parts.len() != 2 {
-            return Err(format!("{:?}:{}: expected `key: value`", path, i + 2));
+            return Err(format!("{:?}:{}: expected `key: value`", label, i + 2));
         }
         let key = parts[0].trim().to_string();
         let value = parts[1].trim().to_string();
         if values.contains_key(&key) {
-            return Err(format!("{:?}:{}: duplicate key {:?}", path, i + 2, key));
+            return Err(format!("{:?}:{}: duplicate key {:?}", label, i + 2, key));
         }
         values.insert(key, value);
     }
     if close_idx == 0 {
-        return Err(format!("{:?}: unterminated frontmatter", path));
+        return Err(format!("{:?}: unterminated frontmatter", label));
     }
     let remaining = content.lines().skip(close_idx + 1).collect::<Vec<&str>>().join("\n");
     Ok((values, remaining))
@@ -98,8 +102,7 @@ pub fn load_roles(path: &Path) -> anyhow::Result<Vec<CanonicalRole>> {
     let _ = HashSet::<String>::new();
     if !path.exists() {
         return Ok(roles);
-    }
-    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+    }    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
         if entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "md") {
             let (fm, body) = parse_frontmatter(entry.path()).map_err(|e| anyhow::anyhow!(e))?;
             roles.push(CanonicalRole {
@@ -140,6 +143,56 @@ pub fn load_commands(path: &Path) -> anyhow::Result<Vec<CanonicalCommand>> {
                 invocation: String::new(),
                 board: String::new(),
                 source: entry.path().to_path_buf(),
+            });
+        }
+    }
+    Ok(commands)
+}
+
+/// Roles compiled into the binary at build time by `build.rs` — the payload
+/// a `brew`/`cargo`-installed `shipmates` ships, since it has no checkout to
+/// read `crew/` from at runtime.
+pub fn load_roles_embedded() -> anyhow::Result<Vec<CanonicalRole>> {
+    let mut roles = Vec::new();
+    for (rel, content) in crate::embedded::embedded_sources() {
+        if let Some(name) = rel.strip_prefix("crew/") {
+            let (fm, body) = parse_frontmatter_from(content, rel).map_err(|e| anyhow::anyhow!(e))?;
+            roles.push(CanonicalRole {
+                name: fm.get("name").cloned().unwrap_or_else(|| name.to_string()),
+                description: fm.get("description").cloned().unwrap_or_default(),
+                capabilities: fm.get("capabilities").map(|s| s.split(',').map(|s| s.trim().to_string()).collect()).unwrap_or_default(),
+                writes: fm.get("writes").map(|s| s == "true").unwrap_or(false),
+                web_scopes: Vec::new(),
+                read_scopes: Vec::new(),
+                tool_order: Vec::new(),
+                source: std::path::PathBuf::from(rel),
+                body,
+            });
+        }
+    }
+    Ok(roles)
+}
+
+/// Commands compiled into the binary at build time by `build.rs`.
+pub fn load_commands_embedded() -> anyhow::Result<Vec<CanonicalCommand>> {
+    let mut commands = Vec::new();
+    for (rel, content) in crate::embedded::embedded_sources() {
+        if let Some(name) = rel.strip_prefix("commands/") {
+            let (fm, body) = parse_frontmatter_from(content, rel).map_err(|e| anyhow::anyhow!(e))?;
+            reject_positional(rel, &body).map_err(|e| anyhow::anyhow!(e))?;
+            commands.push(CanonicalCommand {
+                name: fm.get("name").cloned().unwrap_or_else(|| name.to_string()),
+                description: fm.get("description").cloned().unwrap_or_default(),
+                argument_hint: fm.get("argument-hint").cloned().unwrap_or_default(),
+                allowed_tools: fm.get("allowed-tools").cloned().unwrap_or_default(),
+                disable_model_invocation: fm.get("disable-model-invocation").map(|s| s == "true").unwrap_or(false),
+                arguments: Vec::new(),
+                loop_max: 0,
+                stages: Vec::new(),
+                narrative: body,
+                invocation: String::new(),
+                board: String::new(),
+                source: std::path::PathBuf::from(rel),
             });
         }
     }

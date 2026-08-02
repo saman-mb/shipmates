@@ -2,6 +2,7 @@ mod cli;
 mod manifest;
 mod catalog;
 mod digest;
+mod embedded;
 mod adapters;
 mod installer;
 
@@ -35,8 +36,20 @@ fn main() -> Result<()> {
             let roles_path = root.join("crew");
             let commands_path = root.join("commands");
 
-            let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
-            let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
+            // A `brew`/`cargo`-installed binary has no checkout, so the
+            // canonical sources are compiled in by `build.rs`. Fall back to
+            // the on-disk `crew/` + `commands/` when present (the repo dev
+            // loop), else the embedded payload.
+            let roles = if roles_path.is_dir() {
+                catalog::load_roles(&roles_path).context("Failed to load roles")?
+            } else {
+                catalog::load_roles_embedded().context("Failed to load embedded roles")?
+            };
+            let cmds = if commands_path.is_dir() {
+                catalog::load_commands(&commands_path).context("Failed to load commands")?
+            } else {
+                catalog::load_commands_embedded().context("Failed to load embedded commands")?
+            };
 
             let adapter = select(&harness)?;
             let files = adapter.build(&roles, &cmds)?;

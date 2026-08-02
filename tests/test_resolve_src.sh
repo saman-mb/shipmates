@@ -67,6 +67,16 @@ done
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"
 
+# --- embedded sources: a project dir has no crew/ or commands/, so the CLI
+# must fall back to the payload compiled into the binary by build.rs ---
+EMBED="$WORK/embedded"
+mkdir -p "$EMBED"
+assert "embedded: install from empty cwd exits 0" bash -c "cd '$EMBED' && cargo run --quiet --manifest-path '$REPO/Cargo.toml' -- install --harness claude-code --dir '$EMBED'"
+assert "embedded: skill from embedded payload" test -f "$EMBED/.claude/skills/ship-issue/SKILL.md"
+assert "embedded: agent from embedded payload" test -f "$EMBED/.claude/agents/sdet.md"
+assert "embedded: twelve skills emitted" test "$(ls "$EMBED/.claude/skills" | wc -l | tr -d ' ')" -eq 12
+assert "embedded: twelve agents emitted" test "$(ls "$EMBED/.claude/agents" | wc -l | tr -d ' ')" -eq 12
+
 # --- summary ---
 
 echo
