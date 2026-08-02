@@ -2,5 +2,6 @@ pub mod adapters;
 pub mod catalog;
 pub mod cli;
 pub mod digest;
+pub mod embedded;
 pub mod installer;
 pub mod manifest;
