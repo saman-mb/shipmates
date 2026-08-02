@@ -1,6 +1,6 @@
 [package]
 name = "shipmates"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "A crew of specialist AI agents and command workflows that drive a GitHub issue to a reviewed, CI-green pull request"
 homepage = "https://saman-mb.github.io/shipmates/"
