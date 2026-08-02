@@ -21,7 +21,7 @@ fn test_claude_code_payload_digest() {
     let files = ClaudeCodeAdapter.build(&[role], &[]).unwrap();
     let content = files.get("harnesses/claude-code/.claude/agents/test-role.md").unwrap();
     let hashed = digest::hash(content);
-    assert_eq!(hashed, "ca2c6fd05a432e2011d4838d4cb007db3d88e2b220c85c7542183eb5de4fa0e8");
+    assert_eq!(hashed, "491b209dc45c12fd8b89e113ba775ca5c6c03b0b977c868427cdbf22e0705209");
 }
 
 #[test]

@@ -50,14 +50,17 @@ SITEMAP = SITE / "sitemap.xml"
 SITE_TARGET = "claude-code"
 _PAYLOAD = tempfile.TemporaryDirectory()
 atexit.register(_PAYLOAD.cleanup)
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-from tools import export as _exporter  # noqa: E402
+import subprocess
 
-with contextlib.redirect_stdout(io.StringIO()):
-    if _exporter.run(ROOT, SITE_TARGET, check=False, out_dir=Path(_PAYLOAD.name)):
-        raise SystemExit(f"error: could not build the {SITE_TARGET} payload to validate against")
-_RENDERED = Path(_PAYLOAD.name) / "harnesses" / SITE_TARGET
+res = subprocess.run(
+    ["cargo", "run", "--", "build", "--target", SITE_TARGET, "--out", _PAYLOAD.name],
+    cwd=ROOT,
+    capture_output=True,
+    text=True,
+)
+if res.returncode != 0:
+    raise SystemExit(f"error: could not build the {SITE_TARGET} payload to validate against: {res.stderr}")
+_RENDERED = Path(_PAYLOAD.name) / "harnesses" / SITE_TARGET / ".claude"
 COMMANDS = _RENDERED / "skills"
 CREW = _RENDERED / "agents"
 

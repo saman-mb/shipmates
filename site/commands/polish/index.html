@@ -110,7 +110,7 @@
           <p class="order-detail__desc">Iterate a visual / UI / output artifact to a specialist&#x27;s sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or product-manager is genuinely happy (or a round cap).</p>
           <div class="order-prose">
             <p>Take a visual / UI / output artifact and refine it in a <strong>loop</strong>: produce it, have the right specialist critique what they actually SEE (not the source that made it), apply the concrete fixes, re-produce, re-review — until that specialist <strong>genuinely signs off</strong> or a round cap is hit. This is the render → critique → refine loop, formalised.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): what to polish (a screen/panel, a generated art asset, a rendered game view, a chart, a piece of output…) and optionally which reviewer. If it&#x27;s empty, ask what to polish.</p>
+            <p>Input (<strong>{{target}}</strong>): what to polish (a screen/panel, a generated art asset, a rendered game view, a chart, a piece of output…) and optionally which reviewer. If it&#x27;s empty, ask what to polish.</p>
           </div>
         </div>
       </div>
@@ -124,7 +124,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/polish &lt;what to polish — a screen, an asset, a rendered surface&gt; [reviewer: art-director|ux-ui-designer|product-manager]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/polish</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -231,13 +231,13 @@ gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
         </div>
         <div class="order-prose">
           <ul>
-            <li><code>REVIEWER</code> — chosen by the artifact&#x27;s domain (or named in <code>$ARGUMENTS</code>):
+            <li><code>REVIEWER</code> — chosen by the artifact&#x27;s domain (or named in <code>{{target}}</code>):
               <ul>
                 <li>rendered visual <strong>art</strong> (game world, sprites, shaders, generative imagery, brand/motion) → <code>art-director</code></li>
                 <li>on-screen application <strong>UI</strong> (screens, HUD, panels, components) → <code>ux-ui-designer</code></li>
                 <li>general <strong>output quality</strong> / does-it-meet-the-goal (copy, a data view, a non-visual deliverable) → <code>product-manager</code></li>
               </ul>
-              <p>Infer from the repo&#x27;s README/CLAUDE.md domain; when genuinely ambiguous, ask the user which reviewer.</p>
+              <p>Infer from the repo&#x27;s README/AGENTS.md domain; when genuinely ambiguous, ask the user which reviewer.</p>
             </li>
             <li><code>MAX_ROUNDS</code> = 5 — loop cap before escalating to the user with the current state and the reviewer&#x27;s outstanding notes. Never loop forever; never declare a sign-off the reviewer didn&#x27;t give.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>2</code> — bounds the Stage 4 CI-fix loop only; separate from <code>MAX_ROUNDS</code>, which bounds the Stage 3 critique loop.</li>
@@ -251,7 +251,7 @@ gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
               <p>Inside a linked worktree: stay put, do not cut a second one. Otherwise Stage 0 decides between the caller&#x27;s own branch (if it already has an open PR) and a fresh <code>polish/&lt;slug&gt;</code> branch.</p>
             </li>
             <li>The renders are <strong>evidence, not deliverables.</strong> The fixes land in tracked source; the captured artifact is often gitignored build output. Never force-add an ignored render to the branch — cite its path in the report and the PR body instead.</li>
-            <li><strong>Quality bar</strong> = the project&#x27;s stated visual/UX bar (README/CLAUDE.md), passed to the reviewer.</li>
+            <li><strong>Quality bar</strong> = the project&#x27;s stated visual/UX bar (README/AGENTS.md), passed to the reviewer.</li>
           </ul>
         </div>
       </div>
@@ -273,7 +273,7 @@ gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
             <li>Reviewer choice follows the project&#x27;s domain: <code>art-director</code> for art, <code>ux-ui-designer</code> for UI, <code>product-manager</code> for general output. When ambiguous, ask.</li>
             <li>Runs standalone, or as the visual pass inside/after <code>/ship-issue</code> on a UI/visual story.</li>
             <li><strong>The loop runs on its own branch by default.</strong> Five rounds of edits belong in a diff a human can read, not in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request — except when you&#x27;re already inside an isolated worktree, where staying put <em>is</em> the isolation.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback.</li>
           </ul>
         </div>
       </div>
