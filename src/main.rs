@@ -5,6 +5,7 @@ mod digest;
 mod adapters;
 mod installer;
 
+use adapters::Adapter;
 use clap::Parser;
 use cli::{Cli, Command};
 use std::path::{Path, PathBuf};
@@ -27,9 +28,9 @@ fn main() -> Result<()> {
             let mut files = std::collections::HashMap::new();
             
             if harness == "opencode" {
-                files = adapters::opencode::OpencodeAdapter::build(&roles, &cmds);
+                files = adapters::opencode::OpencodeAdapter.build(&roles, &cmds)?;
             } else if harness == "claude-code" {
-                files = adapters::claude_code::ClaudeCodeAdapter::build(&roles, &cmds);
+                files = adapters::claude_code::ClaudeCodeAdapter.build(&roles, &cmds)?;
             }
             
             let target_dir = dir.map(PathBuf::from).unwrap_or_else(|| root.to_path_buf());

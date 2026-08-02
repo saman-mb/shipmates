@@ -2,6 +2,7 @@
 name = "shipmates"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/saman-mb/shipmates"
 
 [dependencies]
 anyhow = "1.0"
@@ -17,3 +18,8 @@ sha2 = "0.11.0"
 tar = "0.4.46"
 tempfile = "3.27.0"
 walkdir = "2.5.0"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

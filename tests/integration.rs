@@ -1,3 +1,4 @@
+use shipmates::adapters::Adapter;
 use shipmates::adapters::claude_code::ClaudeCodeAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
 use shipmates::catalog::{reject_positional, CanonicalCommand, CanonicalRole};
@@ -17,7 +18,7 @@ fn test_claude_code_payload_digest() {
         source: PathBuf::from("test.md"),
         body: "body content".into(),
     };
-    let files = ClaudeCodeAdapter::build(&[role], &[]);
+    let files = ClaudeCodeAdapter.build(&[role], &[]).unwrap();
     let content = files.get("harnesses/claude-code/.claude/agents/test-role.md").unwrap();
     let hashed = digest::hash(content);
     assert_eq!(hashed, "ca2c6fd05a432e2011d4838d4cb007db3d88e2b220c85c7542183eb5de4fa0e8");
@@ -39,7 +40,7 @@ fn test_opencode_payload_digest() {
         board: "board".into(),
         source: PathBuf::from("cmd.md"),
     };
-    let files = OpencodeAdapter::build(&[], &[command]);
+    let files = OpencodeAdapter.build(&[], &[command]).unwrap();
     let content = files.get("harnesses/opencode/.opencode/commands/test-cmd.md").unwrap();
     let hashed = digest::hash(content);
     assert_eq!(hashed, "d7f5ef7b388b4472f7005bd7788b93ff8a637cc2e889528f8a505af60d3fbe5f");
@@ -58,7 +59,7 @@ fn test_opencode_permissions_deny_first() {
         source: PathBuf::from("test.md"),
         body: "body content".into(),
     };
-    let files = OpencodeAdapter::build(&[role], &[]);
+    let files = OpencodeAdapter.build(&[role], &[]).unwrap();
     let content = files.get("harnesses/opencode/.opencode/agents/test-role.md").unwrap();
     assert!(content.starts_with("---\n"));
     assert!(content.contains("  \"*\": deny\n"));

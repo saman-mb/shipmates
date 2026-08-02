@@ -1,10 +1,11 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole};
 use std::collections::HashMap;
+use super::Adapter;
 
 pub struct OpencodeAdapter;
 
-impl OpencodeAdapter {
-    pub fn build(roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> HashMap<String, String> {
+impl Adapter for OpencodeAdapter {
+    fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
         let mut files = HashMap::new();
         for role in roles {
             let mut content = String::new();
@@ -29,7 +30,7 @@ impl OpencodeAdapter {
             content.push_str(&command.narrative);
             files.insert(format!("harnesses/opencode/.opencode/commands/{}.md", command.name), content);
         }
-        files
+        Ok(files)
     }
 }
 
@@ -51,7 +52,7 @@ mod tests {
             body: "test body".to_string(),
         };
 
-        let result = OpencodeAdapter::build(&[role], &[]);
+        let result = OpencodeAdapter.build(&[role], &[]).unwrap();
         let content = result.get("harnesses/opencode/.opencode/agents/test-role.md").unwrap();
         
         // Assert the frontmatter
