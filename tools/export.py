@@ -426,53 +426,70 @@ def _orphan_paths(base: Path, label: str, expected: set[str]) -> list[str]:
     )
 
 
-def check_files(root: Path, files: dict[str, str], target: str, golden_dir: Path | None = None) -> list[str]:
-    report: list[str] = []
-    prefix = f"harnesses/{target}/"
-    for relative, expected in sorted(files.items()):
-        if golden_dir is not None:
-            path = golden_dir / relative[len(prefix) :]
-        else:
-            path = root / relative
-        if not path.is_file():
-            report.append(f"missing: {relative}")
-        elif path.read_text(encoding="utf-8") != expected:
-            report.append(f"drift: {relative}")
-    base = golden_dir if golden_dir is not None else root / "harnesses" / target
-    report.extend(
-        f"unexpected reference file: {path}" for path in _orphan_paths(base, prefix, set(files))
-    )
-    return report
+def digest_path(root: Path, target: str) -> Path:
+    return root / "tests/payload-digests" / f"{target}.sha256"
 
 
-def check_compatibility(root: Path, files: dict[str, str], manifest: dict) -> list[str]:
-    """Compare the generated payload against the committed compatibility trees.
+def payload_digest(files: dict[str, str], target: str) -> str:
+    """Per-file SHA-256 of a built payload, as committed reference text.
 
-    `agents/` and `skills/` stay in the repository because the site generator and
-    the skills validator read them. That makes them a second writable copy of the
-    shipped payload, and a second writable copy with no gate is a trap: a
-    contributor edits the tree the layout docs point at and ships nothing. This
-    pins them as provably frozen mirrors of the canonical export, so such an edit
-    fails CI with the file name in the message instead of passing silently.
+    This is the whole regression detector, and it deliberately is not a tree of
+    committed copies. Deleting the golden trees removed a real duplication, but
+    it also removed the only thing that would notice a *renderer* regression —
+    a bad substitution rule in an adapter rewrites all 25 files at once, which
+    is strictly worse than the copy drift the trees were added for. A digest
+    keeps that alarm at one file per target instead of twenty-five.
+
+    `canonical_sha256` is deliberately excluded: it moves on every source edit,
+    which is correct for a build manifest and useless as a rendering reference —
+    it would force a regeneration on every commit and train people to accept the
+    diff without reading it.
     """
-    compatibility = manifest.get("compatibility")
-    if not isinstance(compatibility, dict):
-        return []
-    target = compatibility["target"]
+    lines = [f"payload_digest_version=1", f"target={target}"]
     prefix = f"harnesses/{target}/"
-    exempt = set(compatibility["exempt"])
-    report: list[str] = []
-    for relative, expected in sorted(files.items()):
-        if not relative.startswith(prefix):
-            continue
+    for relative, content in sorted(files.items()):
         payload_relative = relative[len(prefix) :]
-        if payload_relative in exempt:
+        if payload_relative == ".shipmates-payload":
             continue
-        path = root / payload_relative
-        if not path.is_file():
-            report.append(f"missing compatibility source: {payload_relative}")
-        elif path.read_text(encoding="utf-8") != expected:
-            report.append(f"compatibility drift: {payload_relative}")
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        lines.append(f"{payload_relative} {digest}")
+    return "\n".join(lines) + "\n"
+
+
+def check_files(root: Path, files: dict[str, str], target: str) -> list[str]:
+    """Compare a freshly built payload against the committed digest.
+
+    Returns a non-empty report when they disagree. A caller that prints "up to
+    date" without consulting this is asserting something it never checked.
+    """
+    reference = digest_path(root, target)
+    if not reference.is_file():
+        return [
+            f"missing payload digest: {reference.relative_to(root).as_posix()} — "
+            f"run `python3 tools/export.py build --target {target} --update` to create it"
+        ]
+    expected = reference.read_text(encoding="utf-8")
+    actual = payload_digest(files, target)
+    if expected == actual:
+        return []
+    report = ["payload digest mismatch — the rendered output changed:"]
+    expected_map = dict(
+        line.split(" ", 1) for line in expected.splitlines() if " " in line and "=" not in line
+    )
+    actual_map = dict(
+        line.split(" ", 1) for line in actual.splitlines() if " " in line and "=" not in line
+    )
+    for name in sorted(set(expected_map) | set(actual_map)):
+        if name not in actual_map:
+            report.append(f"  removed: {name}")
+        elif name not in expected_map:
+            report.append(f"  added:   {name}")
+        elif expected_map[name] != actual_map[name]:
+            report.append(f"  changed: {name}")
+    report.append(
+        f"if intended, run `python3 tools/export.py build --target {target} --update` "
+        "and review the digest diff in the same commit"
+    )
     return report
 
 
@@ -549,8 +566,20 @@ def payload_manifest(files: dict[str, str], target: str, source_digest: str) -> 
 
 
 def update_references(root: Path, files: dict[str, str], target: str, manifest: dict) -> list[str]:
-    """No-op under zero-duplication architecture."""
-    return []
+    """Rewrite the committed payload digest for `target`.
+
+    The only generated artefact still committed. Everything a user receives is
+    compiled at install time; this exists solely so CI can notice when the
+    rendering changes.
+    """
+    reference = digest_path(root, target)
+    content = payload_digest(files, target)
+    if reference.is_file() and reference.read_text(encoding="utf-8") == content:
+        return []
+    reference.parent.mkdir(parents=True, exist_ok=True)
+    with open(reference, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(content)
+    return [reference.relative_to(root).as_posix()]
 
 
 def run(
@@ -571,9 +600,16 @@ def run(
             files, target, canonical_digest(root, manifest)
         )
         if update:
-            print(f"up to date: {target} (zero-duplication architecture enabled)")
+            written = update_references(root, files, target, manifest)
+            for entry in written:
+                print(f"updated {entry}")
+            print(f"payload digest for {target} is current ({len(files)} files)")
             return 0
         if check:
+            report = check_files(root, files, target)
+            if report:
+                print("\n".join(report))
+                return 1
             print(f"up to date: {target} ({len(files)} files)")
             return 0
         written = write_files(root, files, out_dir)

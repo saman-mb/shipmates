@@ -114,7 +114,7 @@ curl -fsSL https://raw.githubusercontent.com/saman-mb/shipmates/main/install.sh 
 ```
 
 Prefer to read the script first? Clone the repo and run `./install.sh` (same flags). Either way it
-compiles `skills/<name>/SKILL.md` and `agents/*.md` from `canonical/`, drops them into your
+compiles `skills/<name>/SKILL.md` and `agents/*.md` from `crew/` + `commands/`, drops them into your
 `.claude/`, and records a manifest at
 `.claude/shipmates/manifest` (one SHA-256 per file), so re-runs skip what is identical, update what
 only Shipmates touched, and **back up** anything you wrote or edited to `<file>.bak-<timestamp>` —
@@ -160,7 +160,7 @@ allowlist: a tool a wildcard denies is hidden from the model rather than refused
 > tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
 > [#32](https://github.com/saman-mb/shipmates/issues/32).
 
-**Safety:** payloads are compiled from `canonical/` by `tools/export.py` at install time,
+**Safety:** payloads are compiled from `crew/` + `commands/` by `tools/export.py` at install time,
 and carry a `.shipmates-payload` build manifest recording the inputs they came from. That manifest
 is provenance, not an integrity check — the installer compiles from the tree it just fetched, so
 re-hashing that same tree would prove nothing. If the matrix can't honour a safety property on a target
@@ -175,7 +175,7 @@ the other six refuse until their adapter and user-invoked-only equivalent are ap
 
 ### Canonical exporter foundation
 
-Portability work starts from authoritative `canonical/`: full persona/workflow bodies, semantic crew
+Portability work starts from the authoritative `crew/` and `commands/` trees: full persona/workflow bodies, semantic crew
 capabilities, ordered command stages, neutral `@role({{argument}})` invocations, and named arguments.
 `agents/` and `skills/` are **generated mirrors** of the Claude export, kept in the repository
 because the site generator and the skills validator read them; CI proves they match, so editing
@@ -185,7 +185,7 @@ bodies into Claude's established dialect; it never reads the mirrors. Build, che
 ```bash
 python3 tools/export.py build --target claude-code --out /tmp/shipmates-build
 python3 tools/export.py check --target claude-code
-python3 tools/export.py build --target claude-code --update   # regenerate references
+python3 tools/export.py build --target claude-code --update   # regenerate the payload digest
 ```
 
 `tools/capability_registry.json` is the single semantic-to-harness tool map — including the
@@ -193,7 +193,7 @@ python3 tools/export.py build --target claude-code --update   # regenerate refer
 `web-scopes: search` once, and gets `WebSearch` without `WebFetch` on Claude Code and
 `websearch: allow` without `webfetch` on opencode. New adapters implement
 `tools/adapter_contract.py`, register in `tools/adapters/registry.py`, and receive independent
-check coverage before becoming installable. `canonical/manifest.json` marks `claude-code` and
+check coverage before becoming installable. `tools/manifest.json` marks `claude-code` and
 `opencode` as `implemented`; every other target refuses on that declared status, not on a
 hardcoded name in the exporter.
 
