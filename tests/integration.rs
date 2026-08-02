@@ -76,3 +76,29 @@ fn test_positional_args_rejected() {
     let ok_result = reject_positional("test", "some text with \\$1 here");
     assert!(ok_result.is_ok());
 }
+
+#[test]
+fn test_cli_targets() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .arg("targets")
+        .output()
+        .expect("failed to execute shipmates CLI binary");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("claude-code"));
+    assert!(stdout.contains("opencode"));
+}
+
+#[test]
+fn test_cli_build_and_install() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .args(&["install", "--harness", "claude-code", "--dir", temp_dir.path().to_str().unwrap()])
+        .output()
+        .expect("failed to execute shipmates install");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Installed harness: claude-code"));
+}

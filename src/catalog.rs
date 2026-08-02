@@ -92,16 +92,16 @@ pub fn parse_frontmatter(path: &Path) -> Result<(HashMap<String, String>, String
     Ok((values, remaining))
 }
 
-pub fn load_roles(path: &Path) -> Result<Vec<CanonicalRole>, String> {
+pub fn load_roles(path: &Path) -> anyhow::Result<Vec<CanonicalRole>> {
     let mut roles = Vec::new();
-    let _re = Regex::new(r"^[a-z0-9-]+$").unwrap();
+    let _re = Regex::new(r"^[a-z0-9-]+$")?;
     let _ = HashSet::<String>::new();
     if !path.exists() {
         return Ok(roles);
     }
     for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
         if entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "md") {
-            let (fm, body) = parse_frontmatter(entry.path())?;
+            let (fm, body) = parse_frontmatter(entry.path()).map_err(|e| anyhow::anyhow!(e))?;
             roles.push(CanonicalRole {
                 name: fm.get("name").cloned().unwrap_or_default(),
                 description: fm.get("description").cloned().unwrap_or_default(),
@@ -118,15 +118,15 @@ pub fn load_roles(path: &Path) -> Result<Vec<CanonicalRole>, String> {
     Ok(roles)
 }
 
-pub fn load_commands(path: &Path) -> Result<Vec<CanonicalCommand>, String> {
+pub fn load_commands(path: &Path) -> anyhow::Result<Vec<CanonicalCommand>> {
     let mut commands = Vec::new();
     if !path.exists() {
         return Ok(commands);
     }
     for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
         if entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "md") {
-            let (fm, body) = parse_frontmatter(entry.path())?;
-            reject_positional(&entry.path().to_string_lossy(), &body)?;
+            let (fm, body) = parse_frontmatter(entry.path()).map_err(|e| anyhow::anyhow!(e))?;
+            reject_positional(&entry.path().to_string_lossy(), &body).map_err(|e| anyhow::anyhow!(e))?;
             commands.push(CanonicalCommand {
                 name: fm.get("name").cloned().unwrap_or_default(),
                 description: fm.get("description").cloned().unwrap_or_default(),

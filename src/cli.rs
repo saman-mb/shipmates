@@ -25,8 +25,35 @@ pub enum Command {
         #[arg(long, default_value_t = false)]
         force: bool,
     },
-    Build,
-    Check,
-    Update,
+    Build {
+        #[arg(long, default_value = "claude-code")]
+        target: String,
+
+        #[arg(long, default_value = ".")]
+        root: String,
+
+        #[arg(long)]
+        out: Option<String>,
+
+        #[arg(long, default_value_t = false)]
+        check: bool,
+
+        #[arg(long, default_value_t = false)]
+        update: bool,
+    },
+    Check {
+        #[arg(long, default_value = "claude-code")]
+        target: String,
+
+        #[arg(long, default_value = ".")]
+        root: String,
+    },
+    Update {
+        #[arg(long, default_value = "claude-code")]
+        target: String,
+
+        #[arg(long, default_value = ".")]
+        root: String,
+    },
     Targets,
 }
