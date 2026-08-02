@@ -86,6 +86,61 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("tools: Read, Grep, Glob, Bash, WebSearch, WebFetch", files["harnesses/claude-code/agents/product-manager.md"])
         self.assertNotIn("Write", files["harnesses/claude-code/agents/architect.md"])
 
+    def test_adapter_regression_is_caught_by_the_payload_digest(self) -> None:
+        """A changed rendering rule must fail `check`, for every target.
+
+        Run as a subprocess: the adapter modules are already imported in this
+        process, so editing a copy on disk would have no effect and the test
+        would pass while proving nothing.
+
+        This is the regression the committed golden trees used to catch.
+        Deleting them removed a real duplication, but a bad substitution rule
+        rewrites every generated file at once — strictly worse than the copy
+        drift the trees were originally added for. Every mutation below shipped
+        silently before the payload digest existed.
+        """
+        mutations = (
+            ("claude_code.py", '("AGENTS.md", "CLAUDE.md")', '("AGENTS.md", "MUTANT.md")'),
+            ("claude_code.py", '("Harness-Session", "Claude-Session")', '("Harness-Session", "X")'),
+            ("claude_code.py", '("agent-files/*.md", ".claude/agents/*.md")', '("agent-files/*.md", ".x/*.md")'),
+            ("opencode.py", '("Harness-Session", "Opencode-Session")', '("Harness-Session", "X")'),
+        )
+        for filename, needle, replacement in mutations:
+            with self.subTest(mutation=needle):
+                temporary, root = self.temp_repo()
+                adapter = root / "tools/adapters" / filename
+                text = adapter.read_text(encoding="utf-8")
+                self.assertIn(needle, text, f"{filename} no longer contains {needle}")
+                adapter.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+                target = "claude-code" if filename == "claude_code.py" else "opencode"
+                result = subprocess.run(
+                    [sys.executable, "tools/export.py", "check", "--target", target],
+                    cwd=root, text=True, capture_output=True,
+                )
+                self.assertNotEqual(0, result.returncode, f"{needle} survived: {result.stdout}")
+                self.assertIn("digest mismatch", result.stdout)
+                temporary.cleanup()
+
+    def test_check_fails_when_the_digest_is_missing(self) -> None:
+        """`check` must never report success against a reference it did not read."""
+        temporary, root = self.temp_repo()
+        self.addCleanup(temporary.cleanup)
+        exporter.digest_path(root, "claude-code").unlink()
+        self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
+
+    def test_update_rewrites_the_digest(self) -> None:
+        """`--update` is the documented regeneration step; it must do work."""
+        temporary, root = self.temp_repo()
+        self.addCleanup(temporary.cleanup)
+        reference = exporter.digest_path(root, "claude-code")
+        before = reference.read_text(encoding="utf-8")
+        crew = root / "crew/architect.md"
+        crew.write_text(crew.read_text(encoding="utf-8") + "\nMARKER\n", encoding="utf-8")
+        self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
+        self.assertEqual(0, exporter.run(root, "claude-code", check=False, update=True))
+        self.assertEqual(0, exporter.run(root, "claude-code", check=True))
+        self.assertNotEqual(before, reference.read_text(encoding="utf-8"))
+
     def test_source_edits_change_export(self) -> None:
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
@@ -110,17 +165,23 @@ class ExporterTests(unittest.TestCase):
             (out_dir2 / "harnesses/claude-code/skills/ship-issue/SKILL.md").read_text(encoding="utf-8"),
         )
 
-    def test_generated_tree_drift_is_detected(self) -> None:
+    def test_payload_content_drift_is_detected(self) -> None:
+        """check_files must report the specific file whose rendering changed.
+
+        harnesses/ is a build output, not a reference — it is gitignored and
+        built into a temp dir at install time. The committed digest is what a
+        freshly built payload is compared against.
+        """
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
         roles, commands = exporter.load_catalog(root)
         files = ClaudeCodeAdapter(load_registry(root / "tools/capability_registry.json")["claude-code"]).build(
             root, roles, commands
         )
-        exporter.write_files(root, files)
-        generated = root / "harnesses/claude-code/agents/architect.md"
-        generated.write_text(generated.read_text(encoding="utf-8") + "drift\n", encoding="utf-8")
-        self.assertIn("drift: harnesses/claude-code/agents/architect.md", exporter.check_files(root, files, "claude-code"))
+        self.assertEqual([], exporter.check_files(root, files, "claude-code"))
+        files["harnesses/claude-code/agents/architect.md"] += "drift\n"
+        report = exporter.check_files(root, files, "claude-code")
+        self.assertTrue(any("changed: agents/architect.md" in line for line in report), report)
 
     def test_invalid_catalog_fails_before_writes(self) -> None:
         cases = (

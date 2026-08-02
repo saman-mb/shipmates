@@ -75,8 +75,12 @@ def main():
         print("No commands found in commands/")
         sys.exit(0)
     
+    # The harness names live under the "harnesses" key. Reading the top level
+    # yields ["version", "harnesses", "features"], none of which is a harness,
+    # so every lookup missed and the gate reported "no collisions" having
+    # compared our command names against zero builtins.
     with open(REPO_ROOT / "tools" / "harness_matrix.json", encoding="utf-8") as f:
-        harnesses = list(json.load(f).keys())
+        harnesses = list(json.load(f)["harnesses"].keys())
     collisions = []
     warnings = []
     
