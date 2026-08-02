@@ -14,9 +14,9 @@
     "cursor": {
       "agents": false
     },
-    "gemini": {
+    "antigravity": {
       "agents": true,
-      "notes": "Adapter emits both agents and skills under .gemini/."
+      "notes": "Adapter emits both agents and skills under .agents/."
     },
     "windsurf": {
       "agents": false
@@ -47,7 +47,7 @@
         "cursor": {
           "supported": true
         },
-        "gemini": {
+        "antigravity": {
           "supported": true
         },
         "windsurf": {
@@ -79,7 +79,7 @@
         "cursor": {
           "supported": true
         },
-        "gemini": {
+        "antigravity": {
           "supported": true
         },
         "windsurf": {
@@ -111,7 +111,7 @@
         "cursor": {
           "supported": true
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "warn"
         },
@@ -147,7 +147,7 @@
         "cursor": {
           "supported": true
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "warn"
         },
@@ -183,7 +183,7 @@
         "cursor": {
           "supported": true
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "warn"
         },
@@ -222,7 +222,7 @@
           "supported": true,
           "separator": "space"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "warn"
         },
@@ -260,7 +260,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -301,7 +301,7 @@
           "policy": "drop",
           "reason": "Shipped as skills carrying only the standard's name/description pair. The harness has no user-invoked-only equivalent, so the model can start one unprompted; the caveat is documented in Scope & honesty."
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "refuse",
           "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
@@ -343,7 +343,7 @@
           "supported": false,
           "policy": "warn"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "warn"
         },
@@ -381,7 +381,7 @@
           "supported": false,
           "policy": "warn"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "warn"
         },
@@ -419,7 +419,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -458,7 +458,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -497,7 +497,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -536,7 +536,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -575,7 +575,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -614,7 +614,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -653,7 +653,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -692,7 +692,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -731,7 +731,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },
@@ -770,7 +770,7 @@
           "supported": false,
           "policy": "drop"
         },
-        "gemini": {
+        "antigravity": {
           "supported": false,
           "policy": "drop"
         },

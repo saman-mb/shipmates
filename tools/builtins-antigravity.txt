@@ -1,0 +1,39 @@
+# Built-in commands: Antigravity CLI (agy)
+# Source: https://antigravity.google/docs/cli/reference
+# Last updated: 2026-08-02
+#
+# This list is manually maintained. Refresh when Antigravity CLI ships new built-ins.
+# A stale list that looks authoritative is worse than none — see CONTRIBUTING.md.
+
+/about
+/add-dir
+/agents
+/artifact
+/btw
+/clear
+/config
+/context
+/copy
+/credits
+/diff
+/exit
+/fast
+/feedback
+/fork
+/help
+/hooks
+/keybindings
+/logout
+/mcp
+/model
+/open
+/permissions
+/planning
+/rename
+/resume
+/rewind
+/skills
+/statusline
+/tasks
+/title
+/usage

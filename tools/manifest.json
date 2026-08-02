@@ -16,7 +16,6 @@
   "targets": [
     "claude-code",
     "opencode",
-    "gemini",
     "antigravity",
     "codex",
     "cursor",
@@ -27,7 +26,6 @@
   "target_status": {
     "claude-code": "implemented",
     "opencode": "implemented",
-    "gemini": "implemented",
     "antigravity": "implemented",
     "codex": "implemented",
     "cursor": "implemented",

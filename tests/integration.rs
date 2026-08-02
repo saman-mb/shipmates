@@ -1,4 +1,5 @@
 use shipmates::adapters::Adapter;
+use shipmates::adapters::antigravity::AntigravityAdapter;
 use shipmates::adapters::claude_code::ClaudeCodeAdapter;
 use shipmates::adapters::codex::CodexAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
@@ -90,7 +91,6 @@ fn test_cli_targets() {
     for target in [
         "claude-code",
         "opencode",
-        "gemini",
         "antigravity",
         "codex",
         "cursor",
@@ -158,10 +158,8 @@ fn test_cli_build_and_install() {
     assert!(stdout.contains("Installed harness: claude-code"));
 }
 
-use shipmates::adapters::gemini::GeminiAdapter;
-
 #[test]
-fn test_gemini_adapter_integration() {
+fn test_antigravity_adapter_integration() {
     let role = CanonicalRole {
         name: "architect".into(),
         description: "Architect role".into(),
@@ -173,8 +171,9 @@ fn test_gemini_adapter_integration() {
         source: PathBuf::from("architect.md"),
         body: "system prompt body".into(),
     };
-    let files = GeminiAdapter.build(&[role], &[]).unwrap();
-    let content = files.get("harnesses/gemini/.gemini/agents/architect.md").unwrap();
+    let files = AntigravityAdapter.build(&[role], &[]).unwrap();
+    let content = files.get("harnesses/antigravity/.agents/agents/architect.md").unwrap();
     assert!(content.contains("name: architect"));
+    assert!(content.contains("subagent: true"));
     assert!(content.contains("system prompt body"));
 }

@@ -17,7 +17,7 @@ fn select(target: &str) -> Result<Box<dyn Adapter>> {
     let adapter: Box<dyn Adapter> = match target {
         "opencode" => Box::new(adapters::opencode::OpencodeAdapter),
         "claude-code" => Box::new(adapters::claude_code::ClaudeCodeAdapter),
-        "gemini" | "antigravity" => Box::new(adapters::gemini::GeminiAdapter),
+        "antigravity" => Box::new(adapters::antigravity::AntigravityAdapter),
         "codex" => Box::new(adapters::codex::CodexAdapter),
         "cursor" => Box::new(adapters::cursor::CursorAdapter),
         "github-copilot" => Box::new(adapters::github_copilot::GithubCopilotAdapter),
@@ -54,8 +54,9 @@ fn main() -> Result<()> {
             let adapter = select(&harness)?;
             let files = adapter.build(&roles, &cmds)?;
             let target_dir = dir.map(PathBuf::from).unwrap_or_else(|| root.to_path_buf());
-            // `harnesses/<target>/` — derived from the adapter's base dir so an
-            // alias like `antigravity` strips the `gemini` container it built.
+            // `harnesses/<target>/` — derived from the adapter's base dir so
+            // the harness's own container (`harnesses/antigravity/.agents`) is
+            // stripped, leaving `.agents/` at the target root.
             let base = adapter.base_dir();
             let container = base.rsplit_once('/').map(|(c, _)| c).unwrap_or(base);
             let strip = format!("{}/", container);
