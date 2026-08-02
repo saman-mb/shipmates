@@ -40,11 +40,15 @@ jobs:
         run: python3 tools/gen_command_pages.py --check
       - name: Check harness payloads are up to date
         run: python3 tools/build_harness_payloads.py --check
-      # Verify that exported target builds match what is expected.
-      - name: Check Claude export
-        run: python3 tools/export.py check --target claude-code
-      - name: Check opencode export
-        run: python3 tools/export.py check --target opencode
+      # Gates the golden reference AND the generated agents/ + skills/ mirrors.
+      # Without the mirror comparison, an edit to the tree the layout docs point
+      # at passes every check and ships nothing.
+      - name: Check canonical Claude export
+        run: cargo run -- check --target claude-code
+      # opencode has no agents/ + skills/ mirror, so the golden tree is the only
+      # thing standing between a canonical edit and a payload nobody regenerated.
+      - name: Check canonical opencode export
+        run: cargo run -- check --target opencode
       - name: Run the skill-lint regression suite
         run: bash tests/test_validate_skills.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
@@ -94,14 +98,16 @@ jobs:
           python-version: "3.9"
       - name: Build and check the Claude export
         run: |
-          python3 tools/export.py check --target claude-code
-          python3 tools/export.py build --target claude-code --out "$RUNNER_TEMP/floor"
+          cargo run -- check --target claude-code
+          cargo run -- build --target claude-code --out "$RUNNER_TEMP/floor"
+          diff -r "$RUNNER_TEMP/floor/harnesses/claude-code" tests/golden/claude-code
       # The installer compiles the opencode payload on the user's own python3
       # exactly as it does the Claude one, so the floor covers both or neither.
       - name: Build and check the opencode export
         run: |
-          python3 tools/export.py check --target opencode
-          python3 tools/export.py build --target opencode --out "$RUNNER_TEMP/floor-opencode"
+          cargo run -- check --target opencode
+          cargo run -- build --target opencode --out "$RUNNER_TEMP/floor-opencode"
+          diff -r "$RUNNER_TEMP/floor-opencode/harnesses/opencode" tests/golden/opencode
       - name: Install end to end
         run: |
           bash install.sh --dir "$RUNNER_TEMP/install"

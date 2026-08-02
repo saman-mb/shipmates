@@ -14,7 +14,7 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
 
 ## Adding an agent
 
-1. Create `crew/<name>.md` (lowercase-and-hyphens name). This is an authored file — `agents/` is a build output and is gitignored.
+1. Create `agents/<name>.md` (lowercase-and-hyphens name).
 2. Frontmatter: `name`, `description` (when Claude should delegate to it), and `tools` (least
    privilege — a reviewer usually needs `Read, Grep, Glob, Bash`, not `Write`/`Edit`).
 3. Body = the system prompt: the role's focus, how it reviews/builds, and the verdict format it
@@ -23,12 +23,12 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
 
 ## Adding a skill (workflow)
 
-A workflow ships as a **skill** on disk — the exact layout depends on the target harness — and is invoked as a **command**. Both names
+A workflow ships as a **skill** on disk and is invoked as a **command** in Claude Code. Both names
 are correct; which one belongs in a given sentence is set by the
 [naming register](docs/BRAND.md#naming-register). Work the checklist top to bottom:
 
-1. Create `commands/<name>.md` (lowercase-and-hyphens `<name>`). This is an authored file — `skills/` is a build output and is gitignored. **Check the name against
-   harness built-ins first** — run `python3 tools/validate_skill_names.py` and pick a name that
+1. Create `skills/<name>/SKILL.md` (lowercase-and-hyphens `<name>`). **Check the name against
+   harness built-ins first** — run `cargo run -- check` and pick a name that
    doesn't collide. A collision silently shadows a first-party feature (e.g. `/review` shadowed
    Claude Code's built-in code review; see #102). Only `name` and `description`
    are required, and they must come first, in that order. After them, in any order: the standard's
@@ -51,6 +51,7 @@ are correct; which one belongs in a given sentence is set by the
    reference there. That was wrong: run `/ship-issue 42 focus on retries` and a fenced snippet asking
    for field two gets the literal word `on`.) If you genuinely need a literal, escape it as `\$2` —
    but prefer restructuring so you don't, e.g. `cut -f2` rather than an `awk` field reference.
+   `cargo run -- check` enforces this over the whole file, fenced or not.
 5. Prefer invoking the shared agents by `subagent_type` over inlining personas.
 6. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
    repo works on its own branch in its own worktree and proposes the result as a pull request; the
@@ -83,38 +84,37 @@ are correct; which one belongs in a given sentence is set by the
 8. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
    `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the skill sources.
 9. Add a matching card to the `#commands` grid in `site/index.html`, linking to `commands/<name>/`.
-10. Both validators must exit 0 before you open the PR: `python3 tools/validate_skills.py` and
+10. Both validators must exit 0 before you open the PR: `cargo run -- check` and
     `python3 .github/scripts/validate_site.py`.
 
 ## Testing your change
 
 ### Portability sources
 
-**`crew/` and `commands/` are the only things you edit.** Harness-neutral role and workflow
-content lives there authoritatively. Nothing else is a source: `agents/`, `skills/` and
-`harnesses/` are all **generated**
+**`canonical/` is the only thing you edit.** Harness-neutral role and workflow content lives
+there authoritatively. `agents/`, `skills/` and `tests/golden/claude-code/` are all **generated**
 from it — `agents/` and `skills/` stay in the repository only because the site generator and the
 skills validator read them. Editing one of them directly changes nothing that ships and fails CI
 with a `compatibility drift:` line naming the file.
 
 Keep semantic capabilities in `tools/capability_registry.json`, implement new targets through
 `tools/adapter_contract.py` (run `conformance_report` against your adapter before registering it
-in `tools/manifest.json`), and regenerate rather than hand-edit:
+in `canonical/manifest.json`), and regenerate rather than hand-edit:
 
 ```bash
-python3 tools/export.py check --target claude-code            # what CI runs
-python3 tools/export.py build --target claude-code --update   # after a crew/ or commands/ edit
+cargo run -- check --target claude-code            # what CI runs
+cargo run -- build --target claude-code --update   # after a canonical/ edit
 ```
 
 Install into a throwaway scope and try it on a real repo:
 
 ```bash
-./install.sh --project /tmp/some-test-repo
+shipmates install --project /tmp/some-test-repo
 ```
 
-Then run the command in your harness and confirm the agents resolve (no "falling back to
+Then run the command in Claude Code and confirm the agents resolve (no "falling back to
 general-purpose" notes in the report).
 
 ## PRs
 
-Keep changes focused, explain the intent, and make sure `./install.sh` still installs cleanly.
+Keep changes focused, explain the intent, and make sure `shipmates install` still installs cleanly.
