@@ -26,6 +26,7 @@ fn main() -> Result<()> {
             let adapter: Box<dyn Adapter> = match harness.as_str() {
                 "opencode" => Box::new(adapters::opencode::OpencodeAdapter),
                 "claude-code" => Box::new(adapters::claude_code::ClaudeCodeAdapter),
+                "gemini" | "antigravity" => Box::new(adapters::gemini::GeminiAdapter),
                 other => bail!("Unsupported harness target: {}", other),
             };
             
@@ -50,6 +51,7 @@ fn main() -> Result<()> {
             let adapter: Box<dyn Adapter> = match target.as_str() {
                 "opencode" => Box::new(adapters::opencode::OpencodeAdapter),
                 "claude-code" => Box::new(adapters::claude_code::ClaudeCodeAdapter),
+                "gemini" | "antigravity" => Box::new(adapters::gemini::GeminiAdapter),
                 other => bail!("Unsupported target: {}", other),
             };
             
@@ -98,6 +100,7 @@ fn main() -> Result<()> {
             let adapter: Box<dyn Adapter> = match target.as_str() {
                 "opencode" => Box::new(adapters::opencode::OpencodeAdapter),
                 "claude-code" => Box::new(adapters::claude_code::ClaudeCodeAdapter),
+                "gemini" | "antigravity" => Box::new(adapters::gemini::GeminiAdapter),
                 other => bail!("Unsupported target: {}", other),
             };
             
@@ -110,6 +113,8 @@ fn main() -> Result<()> {
         Command::Targets => {
             println!("claude-code");
             println!("opencode");
+            println!("gemini");
+            println!("antigravity");
         }
     }
     Ok(())
