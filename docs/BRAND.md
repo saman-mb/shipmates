@@ -11,7 +11,7 @@ descriptions, release notes, issue titles, or social text for this project.
 | Subject | Canonical source |
 |---|---|
 | Colour, type scale, spacing, radius, shadow values | [`site/styles.css`](../site/styles.css), section 1 "Design tokens" |
-| The exact wording of any shipped string | The file that ships it (`README.md`, `site/index.html`, `agents/*.md`, `skills/*/SKILL.md`) |
+| The exact wording of any shipped string | The file that ships it (`README.md`, `site/index.html`, `crew/*.md`, `commands/*.md`) |
 
 Everything else — the metaphor, the naming register, voice, emoji, naming rules for new roles and
 commands, trademark wording — is stated here and nowhere else, so this is where to change it.
@@ -50,9 +50,9 @@ delegation) land in one read.
 | Term | Maps to | Where it appears today |
 |---|---|---|
 | **captain** | the user — you decide, you approve, you merge | README: "You stay the captain." |
-| **crew** / **shipmates** | the 12 subagents in `agents/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
+| **crew** / **shipmates** | the 12 subagents, authored in `crew/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
 | **shipmate** | a single subagent role | README crew table column header |
-| **command** | one of the 12 workflows in `skills/*/SKILL.md`, as the captain issues it | README "The commands"; site `#commands`; `order-card` components |
+| **command** | one of the 12 workflows, authored in `commands/*.md`, as the captain issues it | README "The commands"; site `#commands`; `order-card` components |
 | **order** | what one subagent is told to do *inside* a command | Nowhere yet — reserved for per-subagent copy; see [The narrow sense of "order"](#the-narrow-sense-of-order) |
 | **voyage** | one end-to-end run of a command | README + site "How the voyage works" |
 | **come aboard** | installing Shipmates | README + site "Come aboard" / "Get the crew aboard" |
@@ -104,10 +104,14 @@ Shipmates ships reusable **skills** — the [Agent Skills](https://agentskills.i
 artifact, one directory per skill with a `SKILL.md` inside:
 
 ```
-skills/ship-issue/SKILL.md
-skills/fix-bug/SKILL.md
+.claude/skills/ship-issue/SKILL.md
+.claude/skills/fix-bug/SKILL.md
 …
 ```
+
+That is the *installed* shape on Claude Code. In this repository the authored
+source is `commands/ship-issue.md`; the `skills/` layout is produced by the
+exporter at install time and is never committed.
 
 `install.sh` copies them to `~/.claude/skills/<name>/SKILL.md` (global) or
 `<repo>/.claude/skills/<name>/SKILL.md` (project-scoped). In the Shipmates product domain,
@@ -133,7 +137,7 @@ workflows — README's `## 📜 The orders (commands)`, the site's `#orders` sec
 Worked examples:
 
 - ✅ "Install the crew, then run your first **command**: `/ship-issue 42`." — brand, the whole workflow.
-- ✅ "`/ship-issue` is defined by the `ship-issue` **skill** at `skills/ship-issue/SKILL.md`." — technical, the file on disk.
+- ✅ "`/ship-issue` is defined by the `ship-issue` **skill**, installed at `.claude/skills/ship-issue/SKILL.md`." — technical, the file on disk.
 - ✅ "Every reviewer on the acceptance board gets the same **order**: judge the pushed PR head, independently." — brand, one subagent's instruction inside one command.
 - ❌ "Shipmates ships twelve **orders**." — they are **commands**.
 - ❌ "Install the **orders** into `~/.claude/`." — wrong twice: wrong tier, and install paths are tech-leading, so it is **skills**.
@@ -146,7 +150,7 @@ Worked examples:
 | **Tech-leading** — "skill" | Install paths, repo layout and reference docs, frontmatter documentation, contributor instructions, validation tooling, portability / cross-harness material | The reader is being told a fact they must act on. The fact is the open standard. |
 
 The two overlap in one place and that is fine: a doc may say "the `/ship-issue` **command**,
-defined by the `ship-issue` **skill** at `skills/ship-issue/SKILL.md`." Naming the bridge once,
+defined by the `ship-issue` **skill**, installed at `.claude/skills/ship-issue/SKILL.md`." Naming the bridge once,
 where the reader first meets it, is better than picking a side.
 
 ### Retired terms

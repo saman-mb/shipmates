@@ -1286,8 +1286,12 @@ def parse_agent(path: Path) -> AgentFrontmatter:
             fm = AgentFrontmatter(
                 name=values["name"],
                 description=values["description"],
+                # No fallback to `capabilities`. The generator reads a rendered
+                # payload, where `tools:` always carries the harness's real tool
+                # names; falling back would publish semantic capability names
+                # ("read, bash") as if they were tools, which is what #158 was.
                 tools=tuple(
-                    t.strip() for t in values.get("tools", values.get("capabilities", "")).split(",") if t.strip()
+                    t.strip() for t in values["tools"].split(",") if t.strip()
                 ),
             )
             lineno = _key_lineno(lines, i, "name")
@@ -2212,7 +2216,7 @@ def parse_skill(path: Path, agents: tuple) -> Command:
     crew = find_crew(tuple(stage.heading_raw for stage in stages), agents)
     return Command(
         slug=slug,
-        source_path=f"skills/{slug}/SKILL.md",
+        source_path=f"commands/{slug}.md",
         tagline=tagline,
         frontmatter=frontmatter,
         intro=intro,
