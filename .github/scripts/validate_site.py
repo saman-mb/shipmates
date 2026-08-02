@@ -533,6 +533,19 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
         )
 
 
+def _src_label(src: Path) -> str:
+    """Report a source path relative to the repo when it is inside it.
+
+    Sources are read from a rendered payload in a temp dir, so relative_to(ROOT)
+    raises ValueError there — turning a clean failure report into a crash on the
+    exact path that only runs when something is already wrong.
+    """
+    try:
+        return src.relative_to(ROOT).as_posix()
+    except ValueError:
+        return f"{SITE_TARGET}:{src.name}" if src.name != "SKILL.md" else f"{SITE_TARGET}:{src.parent.name}/SKILL.md"
+
+
 def check_command_page(page: Page) -> None:
     slug = page.slug
     src = COMMANDS / slug / "SKILL.md"
@@ -768,7 +781,7 @@ def check_fidelity(page: Page, src: Path) -> None:
     try:
         start = lines.index("---", 1) + 1
     except ValueError:
-        fail(f"{src.relative_to(ROOT).as_posix()}: no closing frontmatter '---' — cannot audit fidelity")
+        fail(f"{_src_label(src)}: no closing frontmatter '---' — cannot audit fidelity")
         return
 
     missing: list[str] = []
@@ -850,7 +863,7 @@ def check_agent_reference(page: Page, src: Path) -> None:
     """The reference card restates the persona frontmatter: name, description."""
     front = agent_frontmatter(src)
     if not front:
-        fail(f"{src.relative_to(ROOT).as_posix()}: no closing frontmatter '---' — cannot audit the reference card")
+        fail(f"{_src_label(src)}: no closing frontmatter '---' — cannot audit the reference card")
         return
     prose = " " + _prose_norm("".join(page.collector.flow)) + " "
     missing = []

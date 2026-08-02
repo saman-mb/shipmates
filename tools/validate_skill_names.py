@@ -33,7 +33,17 @@ def load_builtins(harness: str) -> Set[str]:
     """Load built-in command names for a harness."""
     path = BUILTINS_DIR / f"builtins-{harness}.txt"
     if not path.exists():
-        return set()
+        # Harnesses now come from harness_matrix.json, so a new target arrives
+        # here the moment it is registered. Returning an empty set would compare
+        # our twelve names against nothing and report "no collisions" for that
+        # harness forever — the check would silently opt out of every target
+        # added after this one.
+        raise SystemExit(
+            f"error: no built-in list for harness {harness!r}\n"
+            f"  create {path.relative_to(REPO_ROOT).as_posix()} (one command name per line, "
+            "`#` for comments) listing that harness's built-in commands, or remove the harness "
+            "from tools/harness_matrix.json"
+        )
     
     names = set()
     with open(path) as f:
