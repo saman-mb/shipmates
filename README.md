@@ -129,9 +129,9 @@ Which harnesses can you install? `shipmates targets` lists them — today all of
 claude-code      .claude/          agents + skills
 opencode         .opencode/        agents + commands
 antigravity      .agents/          agents + skills   (agy — the successor to the retired Gemini CLI)
-codex            .codex/           skills only
+codex            .codex/           crew (TOML) + skills
 cursor           .cursor/          skills only
-github-copilot   .github/          skills only
+github-copilot   .github/          crew + skills
 windsurf         .windsurf/        skills only
 zed              .zed/             skills only
 ```
