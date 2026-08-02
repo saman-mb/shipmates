@@ -15,7 +15,8 @@
       "agents": false
     },
     "gemini": {
-      "agents": false
+      "agents": true,
+      "notes": "Adapter emits both agents and skills under .gemini/."
     },
     "windsurf": {
       "agents": false
@@ -287,33 +288,33 @@
         },
         "github-copilot": {
           "supported": false,
-          "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
+          "policy": "drop",
+          "reason": "Shipped as skills carrying only the standard's name/description pair. The harness has no user-invoked-only equivalent, so the model can start one unprompted; the caveat is documented in Scope & honesty."
         },
         "codex": {
           "supported": false,
-          "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
+          "policy": "drop",
+          "reason": "Shipped as skills carrying only the standard's name/description pair. The harness has no user-invoked-only equivalent, so the model can start one unprompted; the caveat is documented in Scope & honesty."
         },
         "cursor": {
           "supported": false,
-          "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
+          "policy": "drop",
+          "reason": "Shipped as skills carrying only the standard's name/description pair. The harness has no user-invoked-only equivalent, so the model can start one unprompted; the caveat is documented in Scope & honesty."
         },
         "gemini": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
         },
         "windsurf": {
           "supported": false,
-          "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
+          "policy": "drop",
+          "reason": "Shipped as skills carrying only the standard's name/description pair. The harness has no user-invoked-only equivalent, so the model can start one unprompted; the caveat is documented in Scope & honesty."
         },
         "zed": {
           "supported": false,
-          "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
+          "policy": "drop",
+          "reason": "Shipped as skills carrying only the standard's name/description pair. The harness has no user-invoked-only equivalent, so the model can start one unprompted; the caveat is documented in Scope & honesty."
         },
         "opencode": {
           "supported": true,
@@ -356,7 +357,7 @@
         },
         "opencode": {
           "supported": true,
-          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow \u2014 a prompt is not a permission boundary."
+          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow — a prompt is not a permission boundary."
         }
       }
     },

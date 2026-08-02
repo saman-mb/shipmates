@@ -1,10 +1,33 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole};
 use std::collections::HashMap;
+use super::render::{render_body, CLAUDE_CODE};
 use super::Adapter;
+
+const TOOL_MAP: [(&str, &[&str]); 5] = [
+    ("read", &["Read", "Grep", "Glob"]),
+    ("edit", &["Write", "Edit"]),
+    ("bash", &["Bash"]),
+    ("web", &["WebSearch", "WebFetch"]),
+    ("agent", &["Agent"]),
+];
+
+fn map_tools(capabilities: &[String]) -> String {
+    let mut out: Vec<String> = Vec::new();
+    for cap in capabilities {
+        if let Some((_, tools)) = TOOL_MAP.iter().find(|(c, _)| c == cap) {
+            out.extend(tools.iter().map(|t| t.to_string()));
+        }
+    }
+    out.join(", ")
+}
 
 pub struct ClaudeCodeAdapter;
 
 impl Adapter for ClaudeCodeAdapter {
+    fn base_dir(&self) -> &'static str {
+        "harnesses/claude-code/.claude"
+    }
+
     fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
         let mut files = HashMap::new();
         for role in roles {
@@ -13,17 +36,20 @@ impl Adapter for ClaudeCodeAdapter {
             content.push_str(&format!("name: {}\n", role.name));
             content.push_str(&format!("description: {}\n", role.description));
             if !role.capabilities.is_empty() {
-                content.push_str(&format!("tools: {}\n", role.capabilities.join(",")));
+                content.push_str(&format!("tools: {}\n", map_tools(&role.capabilities)));
             }
             content.push_str("---\n");
             content.push_str(&role.body);
-            files.insert(format!("harnesses/claude-code/.claude/agents/{}.md", role.name), content);
+            files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
         }
         for command in commands {
             let mut content = String::new();
             content.push_str("---\n");
             content.push_str(&format!("name: {}\n", command.name));
             content.push_str(&format!("description: {}\n", command.description));
+            if !command.argument_hint.is_empty() {
+                content.push_str(&format!("argument-hint: {}\n", command.argument_hint));
+            }
             if !command.allowed_tools.is_empty() {
                 content.push_str(&format!("allowed-tools: {}\n", command.allowed_tools));
             }
@@ -31,9 +57,62 @@ impl Adapter for ClaudeCodeAdapter {
                 content.push_str("disable-model-invocation: true\n");
             }
             content.push_str("---\n");
-            content.push_str(&command.narrative);
-            files.insert(format!("harnesses/claude-code/.claude/skills/{}/SKILL.md", command.name), content);
+            content.push_str(&render_body(&command.narrative, &CLAUDE_CODE));
+            files.insert(format!("{}/skills/{}/SKILL.md", self.base_dir(), command.name), content);
         }
         Ok(files)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn role(name: &str, capabilities: &[&str]) -> CanonicalRole {
+        CanonicalRole {
+            name: name.to_string(),
+            description: "desc".to_string(),
+            capabilities: capabilities.iter().map(|s| s.to_string()).collect(),
+            writes: false,
+            web_scopes: vec![],
+            read_scopes: vec![],
+            tool_order: vec![],
+            source: std::path::PathBuf::from(""),
+            body: "body".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_tool_names_are_mapped() {
+        let files = ClaudeCodeAdapter.build(&[role("architect", &["read", "bash"])], &[]).unwrap();
+        let content = files.get("harnesses/claude-code/.claude/agents/architect.md").unwrap();
+        assert!(content.contains("tools: Read, Grep, Glob, Bash\n"));
+        assert!(!content.contains("read,"));
+    }
+
+    #[test]
+    fn test_command_body_is_rendered() {
+        let command = CanonicalCommand {
+            name: "migrate".to_string(),
+            description: "desc".to_string(),
+            argument_hint: "<arg>".to_string(),
+            allowed_tools: "Bash".to_string(),
+            disable_model_invocation: true,
+            arguments: vec![],
+            loop_max: 0,
+            stages: vec![],
+            narrative: "Resolve via `agent-files/*.md`; use {{arg}}.".to_string(),
+            invocation: "".to_string(),
+            board: "".to_string(),
+            source: std::path::PathBuf::from(""),
+        };
+        let files = ClaudeCodeAdapter.build(&[], &[command]).unwrap();
+        let content = files.get("harnesses/claude-code/.claude/skills/migrate/SKILL.md").unwrap();
+        assert!(content.contains("argument-hint: <arg>\n"));
+        assert!(content.contains("disable-model-invocation: true\n"));
+        assert!(content.contains(".claude/agents/*.md"));
+        assert!(content.contains("$ARGUMENTS"));
+        assert!(!content.contains("agent-files/"));
+        assert!(!content.contains("{{arg}}"));
     }
 }

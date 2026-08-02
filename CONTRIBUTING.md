@@ -4,31 +4,33 @@ Thanks for wanting to add to the crew! New agents and commands are welcome.
 
 ## The one hard rule: agents stay domain-neutral
 
-An agent role in `agents/` must **not** mention any specific language, framework, product, or
+An agent role in `crew/` must **not** mention any specific language, framework, product, or
 project. It describes *how the role thinks and works*; the standard it enforces comes from the
-target repo's `README` / `CLAUDE.md` at run time. If you find yourself writing "Godot", "React",
-"our game", or a specific style guide into a role, move that into the repo that uses it instead.
+target repo's `README` / `AGENTS.md` (or `CLAUDE.md`) at run time. If you find yourself writing
+"Godot", "React", "our game", or a specific style guide into a role, move that into the repo that
+uses it instead.
 
 Good: *"Hold the work to whatever visual bar the project states for itself."*
 Not good: *"Match our SC2-style HD dark-chrome UI."*
 
 ## Adding an agent
 
-1. Create `agents/<name>.md` (lowercase-and-hyphens name).
-2. Frontmatter: `name`, `description` (when Claude should delegate to it), and `tools` (least
-   privilege — a reviewer usually needs `Read, Grep, Glob, Bash`, not `Write`/`Edit`).
+1. Create `crew/<name>.md` (lowercase-and-hyphens name).
+2. Frontmatter: `name`, `description` (when the harness should delegate to it), and `capabilities`
+   (semantic: `read`, `edit`, `bash`, `web`, `agent` — least privilege — a reviewer usually needs
+   `read, bash`, not `edit`). Adapters map capabilities to each harness's real tools.
 3. Body = the system prompt: the role's focus, how it reviews/builds, and the verdict format it
    returns (`ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT`, or `PASS` / `FAIL`).
 4. If a command should invoke it, wire it into that command's stages by `subagent_type`.
 
 ## Adding a skill (workflow)
 
-A workflow ships as a **skill** on disk and is invoked as a **command** in Claude Code. Both names
+A workflow ships as a **skill** on disk and is invoked as a **command** in the harness. Both names
 are correct; which one belongs in a given sentence is set by the
 [naming register](docs/BRAND.md#naming-register). Work the checklist top to bottom:
 
-1. Create `skills/<name>/SKILL.md` (lowercase-and-hyphens `<name>`). **Check the name against
-   harness built-ins first** — run `cargo run -- check` and pick a name that
+1. Create `commands/<name>.md` (lowercase-and-hyphens `<name>`). **Check the name against
+   harness built-ins first** — run `python3 tools/validate_skill_names.py` and pick a name that
    doesn't collide. A collision silently shadows a first-party feature (e.g. `/review` shadowed
    Claude Code's built-in code review; see #102). Only `name` and `description`
    are required, and they must come first, in that order. After them, in any order: the standard's
@@ -39,7 +41,7 @@ are correct; which one belongs in a given sentence is set by the
    [Agent Skills](https://agentskills.io) standard's rule, and the skill will not resolve without it.
 2. `argument-hint`, `allowed-tools` and `disable-model-invocation` are vendor extensions on top of
    the standard, kept comma-separated because that is what Claude Code parses. Set
-   `disable-model-invocation: true` unless the workflow is genuinely safe for Claude to start
+   `disable-model-invocation: true` unless the workflow is genuinely safe for the model to start
    unprompted — every shipped command sets it, because they create worktrees, push branches and open
    pull requests. It does not affect typing `/<name>` yourself.
 3. Make the first heading after the frontmatter `# /<name> — <tagline>` — the page generator parses
@@ -82,34 +84,35 @@ are correct; which one belongs in a given sentence is set by the
    and stop or warn, or it ends up surveying one thing and changing another.
 7. Add `<name>` to `SLUGS` in `tools/gen_command_pages.py`.
 8. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
-   `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the skill sources.
+   `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the rendered sources.
 9. Add a matching card to the `#commands` grid in `site/index.html`, linking to `commands/<name>/`.
-10. Both validators must exit 0 before you open the PR: `cargo run -- check` and
+10. Both validators must exit 0 before you open the PR: `cargo run -- check --target <target>` and
     `python3 .github/scripts/validate_site.py`.
 
 ## Testing your change
 
 ### Portability sources
 
-**`canonical/` is the only thing you edit.** Harness-neutral role and workflow content lives
-there authoritatively. `agents/`, `skills/` and `tests/golden/claude-code/` are all **generated**
-from it — `agents/` and `skills/` stay in the repository only because the site generator and the
-skills validator read them. Editing one of them directly changes nothing that ships and fails CI
-with a `compatibility drift:` line naming the file.
+**`commands/` and `crew/` are the only things you edit.** Harness-neutral role and workflow
+content lives there authoritatively. Per-harness payloads are compiled by the Rust CLI — the
+adapters in `src/adapters/` emit frontmatter, the render layer (`src/adapters/render.rs`) rewrites
+the neutral dialect (`agent-files/*.md`, `{{argument}}`, `Harness-Session`) into each harness's
+real one. `site/commands/**` is generated from the **rendered** Claude Code payload; the committed
+payload digests under `tests/payload-digests/` are regression fixtures, checked by
+`cargo run -- check --target <target>`. Editing a generated site page or a digest directly changes
+nothing that ships and fails CI.
 
-Keep semantic capabilities in `tools/capability_registry.json`, implement new targets through
-`tools/adapter_contract.py` (run `conformance_report` against your adapter before registering it
-in `canonical/manifest.json`), and regenerate rather than hand-edit:
+Keep semantic capabilities in `tools/capability_registry.json`, and regenerate rather than hand-edit:
 
 ```bash
 cargo run -- check --target claude-code            # what CI runs
-cargo run -- build --target claude-code --update   # after a canonical/ edit
+cargo run -- build --target claude-code --update   # after a commands/ or crew/ edit
 ```
 
 Install into a throwaway scope and try it on a real repo:
 
 ```bash
-shipmates install --project /tmp/some-test-repo
+shipmates install --harness claude-code --dir /tmp/some-test-repo
 ```
 
 Then run the command in Claude Code and confirm the agents resolve (no "falling back to

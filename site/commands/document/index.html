@@ -117,7 +117,7 @@
           <p class="order-detail__desc">Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against the repo and must reach the stated result. Loops until the docs are drift-free and completable.</p>
           <div class="order-prose">
             <p>Produce docs that get a reader to <em>done</em>, gated on the one check that catches bad docs: a <strong>fresh agent with no prior context follows the instructions against the real repo and must reach the stated result</strong>. Docs that drift from the code or can&#x27;t be completed are rejected and fixed. The gate is &quot;a newcomer can actually follow this,&quot; not &quot;it reads well.&quot;</p>
-            <p>Input (<strong>{{target}}</strong>): what to document — a module, a feature, a public API/CLI, the README/getting-started, a migration guide, or the whole repo. If empty, ask what to document and for whom.</p>
+            <p>Input (<strong>$ARGUMENTS</strong>): what to document — a module, a feature, a public API/CLI, the README/getting-started, a migration guide, or the whole repo. If empty, ask what to document and for whom.</p>
           </div>
         </div>
       </div>
@@ -131,7 +131,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/document</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/document &lt;what to document — a module, a feature, a public API, the README, the whole repo&gt;</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -240,7 +240,7 @@
             <li>Bounded loop; escalate with the reader&#x27;s blockers rather than shipping docs that don&#x27;t work.</li>
             <li><strong>Docs are source, so they get a branch.</strong> A doc rewrite lands as a diff a human can read, not as a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
-            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>
       </div>

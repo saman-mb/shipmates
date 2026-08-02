@@ -1,10 +1,15 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole};
 use std::collections::HashMap;
+use super::render::{render_body, GEMINI};
 use super::Adapter;
 
 pub struct GeminiAdapter;
 
 impl Adapter for GeminiAdapter {
+    fn base_dir(&self) -> &'static str {
+        "harnesses/gemini/.gemini"
+    }
+
     fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
         let mut files = HashMap::new();
         for role in roles {
@@ -14,7 +19,7 @@ impl Adapter for GeminiAdapter {
             content.push_str(&format!("description: {}\n", role.description));
             content.push_str("---\n");
             content.push_str(&role.body);
-            files.insert(format!("harnesses/gemini/.gemini/agents/{}.md", role.name), content);
+            files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
         }
         for command in commands {
             let mut content = String::new();
@@ -28,8 +33,8 @@ impl Adapter for GeminiAdapter {
                 content.push_str("disable-model-invocation: true\n");
             }
             content.push_str("---\n");
-            content.push_str(&command.narrative);
-            files.insert(format!("harnesses/gemini/.gemini/skills/{}/SKILL.md", command.name), content);
+            content.push_str(&render_body(&command.narrative, &GEMINI));
+            files.insert(format!("{}/skills/{}/SKILL.md", self.base_dir(), command.name), content);
         }
         Ok(files)
     }

@@ -124,7 +124,7 @@
           <p class="order-detail__desc">Run a mechanical migration across a whole codebase — discover every call site, transform each in isolation, verify per-site, and gate on a clean sweep (no old-pattern remnants) with the suite green. For API/dependency/pattern/framework migrations.</p>
           <div class="order-prose">
             <p>Carry a repeated, mechanical change across an entire codebase without missing a site or leaving it half-migrated. Discover <strong>every</strong> occurrence, transform each independently in isolation, verify per site, and close only when a <strong>grep for the old pattern comes back empty</strong> and the suite is green. The gate is &quot;zero remnants + still green,&quot; and nothing is dropped silently.</p>
-            <p>Input (<strong>{{migration}}</strong>): the migration — <code>from → to</code>: an API/signature change, a dependency swap, a language/framework idiom, a config format, a renamed symbol. If empty, ask what&#x27;s migrating to what.</p>
+            <p>Input (<strong>$ARGUMENTS</strong>): the migration — <code>from → to</code>: an API/signature change, a dependency swap, a language/framework idiom, a config format, a renamed symbol. If empty, ask what&#x27;s migrating to what.</p>
           </div>
         </div>
       </div>
@@ -138,7 +138,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/migrate</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/migrate &lt;from → to — e.g. &quot;moment.js → date-fns&quot; or &quot;callback API → async/await&quot;&gt;</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -266,7 +266,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <li>Mechanical ≠ semantic: sites where meaning (not just syntax) changes get individual human-grade handling.</li>
             <li>Isolated worktrees + non-overlapping ownership so parallel transforms don&#x27;t corrupt each other.</li>
             <li>Bounded loops; never advance a red PR; the reviewer is a <strong>fresh</strong> agent.</li>
-            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>
       </div>

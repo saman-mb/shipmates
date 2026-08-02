@@ -15,10 +15,24 @@
   },
   "targets": [
     "claude-code",
-    "opencode"
+    "opencode",
+    "gemini",
+    "antigravity",
+    "codex",
+    "cursor",
+    "github-copilot",
+    "windsurf",
+    "zed"
   ],
   "target_status": {
     "claude-code": "implemented",
-    "opencode": "implemented"
+    "opencode": "implemented",
+    "gemini": "implemented",
+    "antigravity": "implemented",
+    "codex": "implemented",
+    "cursor": "implemented",
+    "github-copilot": "implemented",
+    "windsurf": "implemented",
+    "zed": "implemented"
   }
 }

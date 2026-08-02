@@ -5,7 +5,7 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — on <a href="https://claude.com/product/claude-code">Claude Code</a> today.</b><br/>
+  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Codex, Cursor, GitHub Copilot, Gemini, Windsurf, and Zed.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
@@ -97,6 +97,7 @@ unresolved role name silently falls back to a generic agent rather than erroring
 
 ## ⚓ Come aboard (install)
 
+`shipmates` is a single Rust binary. Grab it any way you like:
 
 **macOS / Linux (Homebrew):**
 ```bash
@@ -113,39 +114,33 @@ cargo install shipmates
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
-That brings the crew aboard for **every** project (`~/.claude`). Scope it to a single repo instead
-(checked in, shared with your team):
+Then install the crew for a harness. By default it drops into the current directory; pass `--dir`
+to target a specific project:
 
 ```bash
-shipmates install --project /path/to/your/repo
+shipmates install --harness claude-code     # the proven target
+shipmates install --harness opencode        # format-verified, not runtime-verified
+shipmates install --harness codex
 ```
 
-The CLI compiles `skills/<name>/SKILL.md` and `agents/*.md` from its built-in canonical sources, drops them into your
-`.claude/`, and records a manifest at
-`.claude/shipmates/manifest` (one SHA-256 per file), so re-runs skip what is identical, update what
-only Shipmates touched, and **back up** anything you wrote or edited to `<file>.bak-<timestamp>` —
-including a loud warning when a pre-existing file's `name:` says it is a *different* agent or skill
-than the one replacing it. `shipmates uninstall` removes only files the manifest proves are Shipmates' and
-untouched, then restores your originals from their `.bak-<timestamp>` backups. If the manifest is
-wrong or you want a clean slate, `--force` skips SHA checks and overwrites everything (backups
-still created).
+Which harnesses can you install? `shipmates targets` lists them — today all of:
 
-Install for a different harness with `--harness`:
-
-```bash
-shipmates install --harness claude-code     # default — the proven target
-shipmates install --harness opencode        # builds both trees; format-verified, not runtime-verified
-shipmates install --harness all             # every harness that builds; the rest are skipped
-shipmates install --harness cursor          # fails: no adapter, so the exporter refuses
+```
+claude-code      .claude/          agents + skills
+opencode         .opencode/        agents + commands
+gemini           .gemini/          agents + skills   (aliased as `antigravity`)
+codex            .codex/           skills only
+cursor           .cursor/          skills only
+github-copilot   .github/          skills only
+windsurf         .windsurf/        skills only
+zed              .zed/             skills only
 ```
 
-Two targets build today. **Claude Code** gets `.claude/skills/<name>/SKILL.md` plus the twelve
-subagents in `.claude/agents/`. **opencode** gets the twelve commands as flat
-`.opencode/commands/<name>.md` files plus subagents in `.opencode/agents/`. The other six
-(`cursor`, `codex`, `github-copilot`, `gemini`, `windsurf`, `zed`) have no adapter and are refused.
-
-opencode is the only non-Claude harness that receives subagents, because it is the only one with a
-documented native subagent directory — there is still no cross-harness subagent standard.
+Every harness compiles the same canonical crew and commands. Three have a native subagent
+directory and receive the twelve specialists as agents; the other five have no subagent mechanic,
+so the crew ships as twelve skills only. Installing never touches your working tree — anything that
+changes a repo does so on a branch — and `shipmates uninstall` is not (yet) implemented; delete the
+tree the harness installed instead.
 
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
@@ -160,48 +155,38 @@ a `"*": deny` catch-all first and its specific allows after; opencode resolves p
 last-match-wins, so the ordering is the mechanism. The result is marginally stronger than Claude's
 allowlist: a tool a wildcard denies is hidden from the model rather than refused at call time.
 
-> ⚠️ **opencode is not runtime-verified.** Its payload format was checked against opencode's own
-> parsing source and first-party docs, not by installing and running it. Whether agents resolve,
-> whether argument passing behaves, and whether `/ship-issue` completes end to end are open —
-> tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
+> ⚠️ **Only Claude Code is runtime-verified.** Every other target's payload was checked against the
+> harness's own parsing source and first-party docs, not by installing and running it. Whether agents
+> resolve, whether argument passing behaves, and whether `/ship-issue` completes end to end are open
+> on those targets — for opencode, tracked in
+> [#31](https://github.com/saman-mb/shipmates/issues/31) and
 > [#32](https://github.com/saman-mb/shipmates/issues/32).
 
-**Safety:** payloads are compiled from `canonical/` by the `shipmates` CLI at install time,
-and carry a `.shipmates-payload` build manifest recording the inputs they came from. That manifest
-is provenance, not an integrity check — the installer compiles from the tree it just fetched, so
-re-hashing that same tree would prove nothing. If the matrix can't honour a safety property on a target
-(e.g. no equivalent of `disable-model-invocation`), the payload is **refused** and install fails
-loudly rather than shipping a more permissive artifact. Today `claude-code` and `opencode` build;
-the other six refuse until their adapter and user-invoked-only equivalent are approved.
+> 🔁 First time a `skills/` or `agents/` dir got created? Restart your harness so it spots them.
 
-> 🔁 First time a `skills/` or `agents/` dir got created? Restart Claude Code so it spots them.
->
-> ↩️ Upgrading and `/ship-issue` stops resolving? Put the old file back with
-> `mv ~/.claude/commands/ship-issue.md.bak-<ts> ~/.claude/commands/ship-issue.md`.
+### The exporter foundation
 
-### Canonical exporter foundation
+Portability work starts from the canonical `commands/` and `crew/` sources: full persona/workflow
+bodies, semantic crew capabilities, and harness-neutral prose that names abstract locations
+(`agent-files/*.md`, `Harness-Session`) and `{{arguments}}` instead of any harness's dialect. A
+per-harness **render layer** rewrites that prose into each harness's real dialect — where its agents
+live, what its session metadata is called, which project-instructions file it reads (`CLAUDE.md`,
+`AGENTS.md`), and how a role is spawned — and an adapter emits the harness's frontmatter shape.
+The published site is generated from the **rendered** Claude Code payload, never the neutral source.
 
-Portability work starts from authoritative `canonical/`: full persona/workflow bodies, semantic crew
-capabilities, ordered command stages, neutral `@role({{argument}})` invocations, and named arguments.
-`agents/` and `skills/` are **generated mirrors** of the Claude export, kept in the repository
-because the site generator and the skills validator read them; CI proves they match, so editing
-them directly fails rather than silently shipping nothing. The exporter renders neutral canonical
-bodies into Claude's established dialect; it never reads the mirrors. Build, check, or regenerate:
+Build, check, or regenerate the reference digests:
 
 ```bash
 cargo run -- build --target claude-code --out /tmp/shipmates-build
 cargo run -- check --target claude-code
-cargo run -- build --target claude-code --update   # regenerate references
+cargo run -- build --target claude-code --update   # regenerate reference digests
 ```
 
-`tools/capability_registry.json` is the single semantic-to-harness tool map — including the
-`scopes` map each adapter uses to honour role-level refinements. `art-director` declares
-`web-scopes: search` once, and gets `WebSearch` without `WebFetch` on Claude Code and
-`websearch: allow` without `webfetch` on opencode. New adapters implement
-`tools/adapter_contract.py`, register in `tools/adapters/registry.py`, and receive independent
-check coverage before becoming installable. `canonical/manifest.json` marks `claude-code` and
-`opencode` as `implemented`; every other target refuses on that declared status, not on a
-hardcoded name in the exporter.
+`tools/capability_registry.json` is the semantic-to-harness tool map — including the `scopes` map
+each adapter uses to honour role-level refinements. `art-director` declares `web-scopes: search`
+once, and gets `WebSearch` without `WebFetch` on Claude Code and `websearch: allow` without
+`webfetch` on opencode. `tools/manifest.json` declares every implemented target; an unknown target
+is refused on that declared status, not on a hardcoded name in the exporter.
 
 ## 🚀 Weigh anchor (use it)
 
@@ -362,8 +347,8 @@ only) are loaded. The two halves of the crew then resolve a name clash in **oppo
   `~/.claude/agents/architect.md`, so any repo can specialise a crew member without touching the
   shared copy.
 - **Skills — the personal copy wins.** `~/.claude/skills/ship-issue/SKILL.md` overrides
-  `<repo>/.claude/skills/ship-issue/SKILL.md`. If you have installed globally *and* with
-  `--project`, the **global** command is the one that runs — uninstall the one you don't want
+  `<repo>/.claude/skills/ship-issue/SKILL.md`. If you have installed globally *and* into a project
+  (via `--dir`), the **global** command is the one that runs — uninstall the one you don't want
   rather than editing the loser.
 
 A skill also beats a legacy `.claude/commands/<name>.md` of the same name.
@@ -373,7 +358,7 @@ universal one.
 
 ## 🎒 What you'll need
 
-- [Claude Code](https://claude.com/product/claude-code)
+- A supported harness (Claude Code is the proven one; the others build and are format-verified)
 - `git` + an authenticated [`gh`](https://cli.github.com/) CLI, for the GitHub flow
 - A repo with CI (strongly recommended — the green-CI gate is what makes autonomy trustworthy)
 
@@ -386,27 +371,25 @@ universal one.
 
 ## 🌊 On the horizon
 
-**Which harnesses the crew runs on.** Every entry links to the epic that tracks it, so the claim is
-auditable rather than a promise.
+**Where each harness stands.** Every target's payload is compiled and digest-checked in CI; the
+question is whether it's been *run*.
 
-- **Now** — Claude Code: the full crew and all 12 commands, and the only harness Shipmates has
-  actually been run on.
-- **Builds, not runtime-verified** — [opencode](https://github.com/saman-mb/shipmates/issues/14):
-  `--harness opencode` builds the full crew and all 12 commands. The format was verified against
-  opencode's parsing source and first-party docs; a live run has not been done. Tracked in
+- **Runtime-verified** — Claude Code: the full crew and all 12 commands, and the only harness
+  Shipmates has actually been run on.
+- **Builds, not runtime-verified** — opencode, Gemini/Antigravity, Codex CLI, Cursor, GitHub Copilot,
+  Windsurf and Zed all build from `shipmates install --harness <name>`, and each payload's format was
+  verified against that harness's parsing source and first-party docs. opencode and Gemini get the full
+  crew + all 12 commands; the other five have no native subagent directory, so they ship the 12 skills
+  only. A live run has not been done on any of them; opencode's open questions are tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32).
-- **In development** — [Codex CLI](https://github.com/saman-mb/shipmates/issues/17) ·
-  [Cursor](https://github.com/saman-mb/shipmates/issues/15) ·
-  [GitHub Copilot](https://github.com/saman-mb/shipmates/issues/16). Listed alphabetically — that is
-  not a delivery order, and none is settled yet.
-- **Planned** — more harnesses to follow.
 
 Why that's credible: the crew's system prompts name no harness, and the twelve commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
-of a port is mapping frontmatter fields, not rewriting the crew. The opencode adapter is the first
-test of that claim: it reused every persona and workflow body unchanged, and the work that remained
-was path mapping and translating Claude's tool allowlist into opencode's permission map.
+of a port is mapping frontmatter fields and rendering dialect tokens, not rewriting the crew. The
+opencode adapter is the first test of that claim: it reused every persona and workflow body unchanged,
+and the work that remained was path mapping and translating Claude's tool allowlist into opencode's
+permission map.
 
 The crew also keeps signing on (a `data-engineer`, an `ml-engineer`, a `mobile-engineer`…) and new
 commands keep shipping. Want a role or a workflow aboard? Open an issue — ideas and PRs very welcome.
@@ -416,15 +399,15 @@ commands keep shipping. Want a role or a workflow aboard? Open an issue — idea
 **What is Shipmates?**
 A ready-made crew of **subagents** and **command workflows**. Instead of you playing
 planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
-`/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It runs on
-[Claude Code](https://claude.com/product/claude-code) today and installs for
-[opencode](https://opencode.ai); see [on the horizon](#-on-the-horizon) for where each harness stands.
+`/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It ships for
+eight harnesses — Claude Code, opencode, Gemini, Codex, Cursor, GitHub Copilot, Windsurf, and Zed;
+see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
 in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/ship-issue`. Shipmates ships 12 agents
-and 12 commands you drop into `~/.claude/` (global, every project) or a repo's `.claude/`
-(project-scoped). See [install](#-come-aboard-install).
+and 12 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
+`.codex/` for codex, and so on). See [install](#-come-aboard-install).
 
 **Is this an official Anthropic project?**
 No. Shipmates is an independent, MIT-licensed community project that builds on Claude Code's public

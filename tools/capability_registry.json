@@ -56,6 +56,174 @@
         },
         "agent": "task"
       }
+    },
+    "gemini": {
+      "notes": "Covers the Gemini CLI and its Antigravity alias; `shipmates install --harness antigravity` writes the same `.gemini/` tree. The CLI reads project instructions from AGENTS.md.",
+      "agent_path": ".gemini/agents/{name}.md",
+      "skill_path": ".gemini/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "permission_model": "allowlist",
+      "scopes": {
+        "read": "read_file",
+        "search": "grep",
+        "glob": "glob",
+        "write": "write_file",
+        "edit": "edit",
+        "bash": "run_in_shell",
+        "web-search": "web_search",
+        "web-fetch": "web_fetch",
+        "agent": "task"
+      },
+      "tools": {
+        "read": ["read_file", "grep", "glob"],
+        "edit": ["write_file", "edit"],
+        "bash": "run_in_shell",
+        "web": {
+          "search": "web_search",
+          "fetch": "web_fetch"
+        },
+        "agent": "task"
+      }
+    },
+    "codex": {
+      "notes": "Codex CLI ships no subagents, so the adapter emits the crew as twelve skills under `.codex/skills/` and ignores `roles`.",
+      "agent_path": ".codex/agents/{name}.md",
+      "skill_path": ".codex/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "permission_model": "allowlist",
+      "scopes": {
+        "read": "read_file",
+        "search": "grep",
+        "glob": "glob",
+        "write": "write_file",
+        "edit": "apply_patch",
+        "bash": "run_in_shell",
+        "web-search": "web_search",
+        "web-fetch": "web_fetch",
+        "agent": "task"
+      },
+      "tools": {
+        "read": ["read_file", "grep", "glob"],
+        "edit": ["write_file", "apply_patch"],
+        "bash": "run_in_shell",
+        "web": {
+          "search": "web_search",
+          "fetch": "web_fetch"
+        },
+        "agent": "task"
+      }
+    },
+    "cursor": {
+      "notes": "Cursor ships no subagents, so the adapter emits the crew as twelve skills under `.cursor/skills/` and ignores `roles`.",
+      "agent_path": ".cursor/agents/{name}.md",
+      "skill_path": ".cursor/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "permission_model": "permission-map",
+      "scopes": {
+        "read": "read",
+        "search": "search",
+        "glob": "glob",
+        "write": "edit",
+        "edit": "edit",
+        "bash": "bash",
+        "web-search": "web_search",
+        "web-fetch": "web_fetch",
+        "agent": "agent"
+      },
+      "tools": {
+        "read": ["read", "search", "glob"],
+        "edit": ["edit"],
+        "bash": "bash",
+        "web": {
+          "search": "web_search",
+          "fetch": "web_fetch"
+        },
+        "agent": "agent"
+      }
+    },
+    "github-copilot": {
+      "notes": "Copilot CLI discovers skills under `.github/skills/` (project) or `~/.copilot/skills` (personal); a repo-scoped install writes the project tree. Copilot ships no subagents, so the adapter emits the crew as twelve skills and ignores `roles`.",
+      "agent_path": ".github/agents/{name}.md",
+      "skill_path": ".github/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "permission_model": "allowlist",
+      "scopes": {
+        "read": "read",
+        "search": "search",
+        "glob": "glob",
+        "write": "edit",
+        "edit": "edit",
+        "bash": "bash",
+        "web-search": "web_search",
+        "web-fetch": "web_fetch",
+        "agent": "agent"
+      },
+      "tools": {
+        "read": ["read", "search", "glob"],
+        "edit": ["edit"],
+        "bash": "bash",
+        "web": {
+          "search": "web_search",
+          "fetch": "web_fetch"
+        },
+        "agent": "agent"
+      }
+    },
+    "windsurf": {
+      "notes": "Windsurf (Cascade) discovers skills under `.windsurf/skills/`. It ships no subagents, so the adapter emits the crew as twelve skills and ignores `roles`.",
+      "agent_path": ".windsurf/agents/{name}.md",
+      "skill_path": ".windsurf/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "permission_model": "permission-map",
+      "scopes": {
+        "read": "read",
+        "search": "search",
+        "glob": "glob",
+        "write": "edit",
+        "edit": "edit",
+        "bash": "bash",
+        "web-search": "web_search",
+        "web-fetch": "web_fetch",
+        "agent": "agent"
+      },
+      "tools": {
+        "read": ["read", "search", "glob"],
+        "edit": ["edit"],
+        "bash": "bash",
+        "web": {
+          "search": "web_search",
+          "fetch": "web_fetch"
+        },
+        "agent": "agent"
+      }
+    },
+    "zed": {
+      "notes": "Zed discovers skills under `.zed/skills/`. It ships no subagents, so the adapter emits the crew as twelve skills and ignores `roles`.",
+      "agent_path": ".zed/agents/{name}.md",
+      "skill_path": ".zed/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "permission_model": "allowlist",
+      "scopes": {
+        "read": "read",
+        "search": "search",
+        "glob": "glob",
+        "write": "edit",
+        "edit": "edit",
+        "bash": "terminal",
+        "web-search": "web_search",
+        "web-fetch": "web_fetch",
+        "agent": "agent"
+      },
+      "tools": {
+        "read": ["read", "search", "glob"],
+        "edit": ["edit"],
+        "bash": "terminal",
+        "web": {
+          "search": "web_search",
+          "fetch": "web_fetch"
+        },
+        "agent": "agent"
+      }
     }
   }
 }
