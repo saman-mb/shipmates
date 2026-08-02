@@ -23,7 +23,7 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
 
 ## Adding a skill (workflow)
 
-A workflow ships as a **skill** on disk (a flat `commands/<name>.md` on opencode) and is invoked as a **command** in your harness. Both names
+A workflow ships as a **skill** on disk — the exact layout depends on the target harness — and is invoked as a **command**. Both names
 are correct; which one belongs in a given sentence is set by the
 [naming register](docs/BRAND.md#naming-register). Work the checklist top to bottom:
 

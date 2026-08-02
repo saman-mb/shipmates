@@ -5,13 +5,12 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a> and <a href="https://opencode.ai">opencode</a>.</b><br/>
+  <b>Custom subagents &amp; command workflows — harness-agnostic.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
 [![License: MIT](https://img.shields.io/github/license/saman-mb/shipmates?color=blue)](LICENSE)
-[![Claude Code](https://img.shields.io/badge/harness-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/product/claude-code)
-[![opencode](https://img.shields.io/badge/harness-opencode-6b7280)](https://opencode.ai)
+[![Harnesses](https://img.shields.io/badge/harnesses-see%20matrix-D97757)](https://saman-mb.github.io/shipmates/docs/harnesses/)
 [![Website](https://img.shields.io/badge/website-saman--mb.github.io%2Fshipmates-D97757?logo=github)](https://saman-mb.github.io/shipmates/)
 [![Crew aboard](https://img.shields.io/badge/crew-12%20specialists-orange)](#-meet-the-crew)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)

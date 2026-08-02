@@ -2466,7 +2466,7 @@ def _head(
 ) -> str:
     """The one <head> every detail page shares — command and agent pages differ
     only in the five values the callers pass in."""
-    alt = "Shipmates — Custom subagents and command workflows for Claude Code and opencode."
+    alt = "Shipmates — Custom subagents and command workflows for your AI coding harness."
     return f"""<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -2588,7 +2588,7 @@ def render_footer() -> str:
       <div class="site-footer__brand">
         <img class="site-footer__logo" src="{link("../../assets/logo-240.png")}" width="32" height="32" alt="">
         <span class="site-footer__name">Shipmates</span>
-        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for Claude Code and opencode.</p>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for your AI coding harness.</p>
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <ul class="site-footer__links">
