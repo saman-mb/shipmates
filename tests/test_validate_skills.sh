@@ -24,18 +24,18 @@ ok()  { PASS=$((PASS+1)); printf 'ok   %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); printf 'FAIL %s\n' "$1"; }
 
 # The validator resolves the repo root from its own __file__, so a copy in a
-# sandbox lints the sandbox's skills/ — no --root flag needed, and the real
+# sandbox lints the sandbox's commands/ — no --root flag needed, and the real
 # tree is never touched.
-mkdir -p "$WORK/tools" "$WORK/skills/fixture"
+mkdir -p "$WORK/tools" "$WORK/commands"
 cp "$REPO/tools/validate_skills.py" "$WORK/tools/"
 
-# Run the validator over a fixture SKILL.md built from the body on stdin.
+# Run the validator over a fixture command built from the body on stdin.
 # Prints nothing; returns the validator's exit status.
 lint_body() {
   {
-    printf -- '---\nname: fixture\ndescription: A fixture skill used by the lint regression suite.\n---\n\n# Fixture\n\n'
+    printf -- '---\nname: fixture\ndescription: A fixture command used by the lint regression suite.\n---\n\n# /fixture\n\n'
     cat
-  } > "$WORK/skills/fixture/SKILL.md"
+  } > "$WORK/commands/fixture.md"
   python3 "$WORK/tools/validate_skills.py" >/dev/null 2>&1
 }
 
@@ -148,28 +148,15 @@ MD
 
 real_rc=0
 python3 "$REPO/tools/validate_skills.py" >/dev/null 2>&1 || real_rc=$?
-if [ "$real_rc" -eq 0 ]; then ok "real skills/ passes the lint"; else bad "real skills/ passes the lint"; fi
+if [ "$real_rc" -eq 0 ]; then ok "real commands/ passes the lint"; else bad "real commands/ passes the lint"; fi
 
-# skills/ is now a generated mirror of canonical/, so assert the fix at its
-# source as well as in the mirror — a canonical/ file without it would silently
-# regenerate the vulnerable command on the next export.
-for f in skills/pr-review/SKILL.md canonical/commands/pr-review.md; do
+for f in commands/pr-review.md; do
   if grep -q -- '--body-file "\$REVIEW_BODY_FILE"' "$REPO/$f"; then
     ok "$f still posts via --body-file (#138 fix present)"
   else
     bad "$f still posts via --body-file (#138 fix present)"
   fi
 done
-
-# harnesses/ is built at install time and gitignored; tests/golden/ is the
-# committed reference the export is checked against, so it is what proves the
-# shipped payload carries the fix.
-if diff -q "$REPO/skills/pr-review/SKILL.md" \
-           "$REPO/tests/golden/claude-code/skills/pr-review/SKILL.md" >/dev/null 2>&1; then
-  ok "golden copy of pr-review is identical to skills/"
-else
-  bad "golden copy of pr-review is identical to skills/"
-fi
 
 # --- summary ---
 

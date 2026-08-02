@@ -6,3 +6,8 @@ __pycache__/
 # temp dir, never committed. The source of truth is canonical/; agents/ and
 # skills/ are generated mirrors of the Claude export, gated by CI.
 harnesses/*/
+
+
+# Added by cargo
+
+/target

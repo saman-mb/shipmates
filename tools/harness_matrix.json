@@ -29,129 +29,291 @@
   },
   "features": {
     "name": {
-      "applies_to": ["skills", "agents"],
+      "applies_to": [
+        "skills",
+        "agents"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true },
-        "github-copilot": { "supported": true },
-        "codex": { "supported": true },
-        "cursor": { "supported": true },
-        "gemini": { "supported": true },
-        "windsurf": { "supported": true },
-        "zed": { "supported": true },
-        "opencode": { "supported": true }
+        "claude-code": {
+          "supported": true
+        },
+        "github-copilot": {
+          "supported": true
+        },
+        "codex": {
+          "supported": true
+        },
+        "cursor": {
+          "supported": true
+        },
+        "gemini": {
+          "supported": true
+        },
+        "windsurf": {
+          "supported": true
+        },
+        "zed": {
+          "supported": true
+        },
+        "opencode": {
+          "supported": true
+        }
       }
     },
     "description": {
-      "applies_to": ["skills", "agents"],
+      "applies_to": [
+        "skills",
+        "agents"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true },
-        "github-copilot": { "supported": true },
-        "codex": { "supported": true },
-        "cursor": { "supported": true },
-        "gemini": { "supported": true },
-        "windsurf": { "supported": true },
-        "zed": { "supported": true },
-        "opencode": { "supported": true }
+        "claude-code": {
+          "supported": true
+        },
+        "github-copilot": {
+          "supported": true
+        },
+        "codex": {
+          "supported": true
+        },
+        "cursor": {
+          "supported": true
+        },
+        "gemini": {
+          "supported": true
+        },
+        "windsurf": {
+          "supported": true
+        },
+        "zed": {
+          "supported": true
+        },
+        "opencode": {
+          "supported": true
+        }
       }
     },
     "license": {
-      "applies_to": ["skills"],
+      "applies_to": [
+        "skills"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true },
-        "github-copilot": { "supported": true },
-        "codex": { "supported": false, "policy": "warn" },
-        "cursor": { "supported": true },
-        "gemini": { "supported": false, "policy": "warn" },
-        "windsurf": { "supported": false, "policy": "warn" },
-        "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": false, "policy": "drop" }
+        "claude-code": {
+          "supported": true
+        },
+        "github-copilot": {
+          "supported": true
+        },
+        "codex": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "cursor": {
+          "supported": true
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
       }
     },
     "compatibility": {
-      "applies_to": ["skills"],
+      "applies_to": [
+        "skills"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true },
-        "github-copilot": { "supported": true },
-        "codex": { "supported": false, "policy": "warn" },
-        "cursor": { "supported": true },
-        "gemini": { "supported": false, "policy": "warn" },
-        "windsurf": { "supported": false, "policy": "warn" },
-        "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": false, "policy": "drop" }
+        "claude-code": {
+          "supported": true
+        },
+        "github-copilot": {
+          "supported": true
+        },
+        "codex": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "cursor": {
+          "supported": true
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
       }
     },
     "metadata": {
-      "applies_to": ["skills"],
+      "applies_to": [
+        "skills"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true },
-        "github-copilot": { "supported": true },
-        "codex": { "supported": false, "policy": "warn" },
-        "cursor": { "supported": true },
-        "gemini": { "supported": false, "policy": "warn" },
-        "windsurf": { "supported": false, "policy": "warn" },
-        "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": false, "policy": "drop" }
+        "claude-code": {
+          "supported": true
+        },
+        "github-copilot": {
+          "supported": true
+        },
+        "codex": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "cursor": {
+          "supported": true
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
       }
     },
     "allowed-tools": {
-      "applies_to": ["skills"],
+      "applies_to": [
+        "skills"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true, "separator": "comma" },
-        "github-copilot": { "supported": true, "separator": "space" },
-        "codex": { "supported": false, "policy": "warn" },
-        "cursor": { "supported": true, "separator": "space" },
-        "gemini": { "supported": false, "policy": "warn" },
-        "windsurf": { "supported": false, "policy": "warn" },
-        "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": false, "policy": "drop" }
+        "claude-code": {
+          "supported": true,
+          "separator": "comma"
+        },
+        "github-copilot": {
+          "supported": true,
+          "separator": "space"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "cursor": {
+          "supported": true,
+          "separator": "space"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
       }
     },
     "argument-hint": {
-      "applies_to": ["skills"],
+      "applies_to": [
+        "skills"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true },
-        "github-copilot": { "supported": false, "policy": "drop" },
-        "codex": { "supported": false, "policy": "drop" },
-        "cursor": { "supported": false, "policy": "drop" },
-        "gemini": { "supported": false, "policy": "drop" },
-        "windsurf": { "supported": false, "policy": "drop" },
-        "zed": { "supported": false, "policy": "drop" },
-        "opencode": { "supported": false, "policy": "drop" }
+        "claude-code": {
+          "supported": true
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
       }
     },
     "disable-model-invocation": {
-      "applies_to": ["skills"],
+      "applies_to": [
+        "skills"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true },
+        "claude-code": {
+          "supported": true
+        },
         "github-copilot": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "codex": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "cursor": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "gemini": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "windsurf": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "zed": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "opencode": {
           "supported": true,
@@ -160,32 +322,469 @@
       }
     },
     "tools": {
-      "applies_to": ["agents"],
+      "applies_to": [
+        "agents"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true, "separator": "comma" },
-        "github-copilot": { "supported": false, "policy": "warn" },
-        "codex": { "supported": false, "policy": "warn" },
-        "cursor": { "supported": false, "policy": "warn" },
-        "gemini": { "supported": false, "policy": "warn" },
-        "windsurf": { "supported": false, "policy": "warn" },
-        "zed": { "supported": false, "policy": "warn" },
+        "claude-code": {
+          "supported": true,
+          "separator": "comma"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "warn"
+        },
         "opencode": {
           "supported": true,
-          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow — a prompt is not a permission boundary."
+          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow \u2014 a prompt is not a permission boundary."
         }
       }
     },
     "model": {
-      "applies_to": ["agents"],
+      "applies_to": [
+        "agents"
+      ],
       "harnesses": {
-        "claude-code": { "supported": true },
-        "github-copilot": { "supported": false, "policy": "warn" },
-        "codex": { "supported": false, "policy": "warn" },
-        "cursor": { "supported": false, "policy": "warn" },
-        "gemini": { "supported": false, "policy": "warn" },
-        "windsurf": { "supported": false, "policy": "warn" },
-        "zed": { "supported": false, "policy": "warn" },
-        "opencode": { "supported": true }
+        "claude-code": {
+          "supported": true
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "warn"
+        },
+        "opencode": {
+          "supported": true
+        }
+      }
+    },
+    "arguments": {
+      "applies_to": [
+        "skills"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "loop_max": {
+      "applies_to": [
+        "skills"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "stages": {
+      "applies_to": [
+        "skills"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "invocation": {
+      "applies_to": [
+        "skills"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "board": {
+      "applies_to": [
+        "skills"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "capabilities": {
+      "applies_to": [
+        "agents"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "writes": {
+      "applies_to": [
+        "agents"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "web-scopes": {
+      "applies_to": [
+        "agents"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "read-scopes": {
+      "applies_to": [
+        "agents"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
+      }
+    },
+    "tool-order": {
+      "applies_to": [
+        "agents"
+      ],
+      "harnesses": {
+        "claude-code": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "github-copilot": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "gemini": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "zed": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "drop"
+        }
       }
     }
   }
