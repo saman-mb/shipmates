@@ -42,7 +42,7 @@ fn test_opencode_payload_digest() {
     let files = OpencodeAdapter::build(&[], &[command]);
     let content = files.get("harnesses/opencode/.opencode/commands/test-cmd.md").unwrap();
     let hashed = digest::hash(content);
-    assert_eq!(hashed, "b3c903c9c4a4065db673be60723d152a64cd8a181f35163670645e96ddd183e4");
+    assert_eq!(hashed, "d7f5ef7b388b4472f7005bd7788b93ff8a637cc2e889528f8a505af60d3fbe5f");
 }
 
 #[test]
@@ -60,8 +60,9 @@ fn test_opencode_permissions_deny_first() {
     };
     let files = OpencodeAdapter::build(&[role], &[]);
     let content = files.get("harnesses/opencode/.opencode/agents/test-role.md").unwrap();
-    assert!(content.starts_with("\"*\": deny\n"));
-    assert!(content.contains("\"read\": allow\n"));
+    assert!(content.starts_with("---\n"));
+    assert!(content.contains("  \"*\": deny\n"));
+    assert!(content.contains("  read: allow\n"));
 }
 
 #[test]

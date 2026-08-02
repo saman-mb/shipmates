@@ -1,10 +1,10 @@
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CanonicalRole {
     pub name: String,
     pub description: String,
@@ -18,6 +18,7 @@ pub struct CanonicalRole {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CanonicalCommand {
     pub name: String,
     pub description: String,
@@ -31,14 +32,6 @@ pub struct CanonicalCommand {
     pub invocation: String,
     pub board: String,
     pub source: PathBuf,
-}
-
-#[derive(Debug, Clone)]
-pub struct Manifest {
-    pub targets: Vec<String>,
-    pub target_status: HashMap<String, String>,
-    pub crew_canonical_root: PathBuf,
-    pub commands_canonical_root: PathBuf,
 }
 
 pub fn reject_positional(label: &str, text: &str) -> Result<(), String> {
@@ -99,4 +92,97 @@ pub fn parse_frontmatter(path: &Path) -> Result<(HashMap<String, String>, String
     }
     let remaining = content.lines().skip(close_idx + 1).collect::<Vec<&str>>().join("\n");
     Ok((values, remaining))
+}
+
+pub fn load_roles(path: &Path) -> Result<Vec<CanonicalRole>, String> {
+    let mut roles = Vec::new();
+    let _re = Regex::new(r"^[a-z0-9-]+$").unwrap();
+    let _ = HashSet::<String>::new();
+    if !path.exists() {
+        return Ok(roles);
+    }
+    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+        if entry.path().is_file() && entry.path().extension().map_or(false, |ext| ext == "md") {
+            let (fm, body) = parse_frontmatter(entry.path())?;
+            roles.push(CanonicalRole {
+                name: fm.get("name").cloned().unwrap_or_default(),
+                description: fm.get("description").cloned().unwrap_or_default(),
+                capabilities: fm.get("capabilities").map(|s| s.split(',').map(|s| s.trim().to_string()).collect()).unwrap_or_default(),
+                writes: fm.get("writes").map(|s| s == "true").unwrap_or(false),
+                web_scopes: Vec::new(),
+                read_scopes: Vec::new(),
+                tool_order: Vec::new(),
+                source: entry.path().to_path_buf(),
+                body,
+            });
+        }
+    }
+    Ok(roles)
+}
+
+pub fn load_commands(path: &Path) -> Result<Vec<CanonicalCommand>, String> {
+    let mut commands = Vec::new();
+    if !path.exists() {
+        return Ok(commands);
+    }
+    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+        if entry.path().is_file() && entry.path().extension().map_or(false, |ext| ext == "md") {
+            let (fm, body) = parse_frontmatter(entry.path())?;
+            reject_positional(&entry.path().to_string_lossy(), &body)?;
+            commands.push(CanonicalCommand {
+                name: fm.get("name").cloned().unwrap_or_default(),
+                description: fm.get("description").cloned().unwrap_or_default(),
+                argument_hint: fm.get("argument-hint").cloned().unwrap_or_default(),
+                allowed_tools: fm.get("allowed-tools").cloned().unwrap_or_default(),
+                disable_model_invocation: fm.get("disable-model-invocation").map(|s| s == "true").unwrap_or(false),
+                arguments: Vec::new(),
+                loop_max: 0,
+                stages: Vec::new(),
+                narrative: body,
+                invocation: String::new(),
+                board: String::new(),
+                source: entry.path().to_path_buf(),
+            });
+        }
+    }
+    Ok(commands)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_reject_positional() {
+        assert!(reject_positional("test", "normal text").is_ok());
+        assert!(reject_positional("test", "some $1 text").is_err());
+        assert!(reject_positional("test", "some ${1} text").is_err());
+        assert!(reject_positional("test", "some \\$1 text").is_ok()); // escaped
+    }
+
+    #[test]
+    fn test_parse_frontmatter_valid() {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(file, "---").unwrap();
+        writeln!(file, "name: test").unwrap();
+        writeln!(file, "description: test desc").unwrap();
+        writeln!(file, "---").unwrap();
+        writeln!(file, "body text").unwrap();
+
+        let (fm, body) = parse_frontmatter(file.path()).unwrap();
+        assert_eq!(fm.get("name").unwrap(), "test");
+        assert_eq!(fm.get("description").unwrap(), "test desc");
+        assert_eq!(body, "body text");
+    }
+
+    #[test]
+    fn test_parse_frontmatter_invalid() {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(file, "no frontmatter here").unwrap();
+
+        assert!(parse_frontmatter(file.path()).is_err());
+    }
 }

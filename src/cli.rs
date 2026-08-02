@@ -9,7 +9,22 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    Install,
+    Install {
+        #[arg(long, default_value = "claude-code")]
+        harness: String,
+        
+        #[arg(long)]
+        project: Option<String>,
+        
+        #[arg(long)]
+        dir: Option<String>,
+        
+        #[arg(long, default_value_t = false)]
+        uninstall: bool,
+        
+        #[arg(long, default_value_t = false)]
+        force: bool,
+    },
     Build,
     Check,
     Update,
