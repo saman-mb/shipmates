@@ -17,12 +17,12 @@
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
-  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for Claude Code and opencode.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/document — draft from the code → fresh-reader test → fix drift">
   <meta name="twitter:description" content="Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
-  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows, on Claude Code today.">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for Claude Code and opencode.">
   <link rel="stylesheet" href="../../styles.css">
   <script type="application/ld+json">
   {
@@ -117,7 +117,7 @@
           <p class="order-detail__desc">Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against the repo and must reach the stated result. Loops until the docs are drift-free and completable.</p>
           <div class="order-prose">
             <p>Produce docs that get a reader to <em>done</em>, gated on the one check that catches bad docs: a <strong>fresh agent with no prior context follows the instructions against the real repo and must reach the stated result</strong>. Docs that drift from the code or can&#x27;t be completed are rejected and fixed. The gate is &quot;a newcomer can actually follow this,&quot; not &quot;it reads well.&quot;</p>
-            <p>Input (<strong>{{target}}</strong>): what to document — a module, a feature, a public API/CLI, the README/getting-started, a migration guide, or the whole repo. If empty, ask what to document and for whom.</p>
+            <p>Input (<strong>$ARGUMENTS</strong>): what to document — a module, a feature, a public API/CLI, the README/getting-started, a migration guide, or the whole repo. If empty, ask what to document and for whom.</p>
           </div>
         </div>
       </div>
@@ -129,7 +129,7 @@
           <h2 class="section__title" id="invoke-title">How to run it</h2>
         </div>
         <div class="codeblock">
-          <p class="codeblock__label">Run it in Claude Code</p>
+          <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
             <pre class="codeblock__pre"><code class="codeblock__code">/document &lt;what to document — a module, a feature, a public API, the README, the whole repo&gt;</code></pre>
           </div>
@@ -240,7 +240,7 @@
             <li>Bounded loop; escalate with the reader&#x27;s blockers rather than shipping docs that don&#x27;t work.</li>
             <li><strong>Docs are source, so they get a branch.</strong> A doc rewrite lands as a diff a human can read, not as a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
-            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>
       </div>
@@ -291,7 +291,7 @@
       <div class="site-footer__brand">
         <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
         <span class="site-footer__name">Shipmates</span>
-        <p class="site-footer__tagline">Custom subagents &amp; command workflows — on Claude Code today.</p>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for Claude Code and opencode.</p>
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <ul class="site-footer__links">

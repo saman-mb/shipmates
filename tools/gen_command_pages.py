@@ -28,12 +28,15 @@ Layers, in file order, with hard import discipline:
 """
 
 import argparse
+import contextlib
 import difflib
 import html
+import io
 import json
 import os
 import re
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -1445,8 +1448,15 @@ def load_agents(agents_dir: Path, skills_dir: Path) -> tuple:
 
 
 def load_skills(skills_dir: Path, agents: tuple) -> tuple:
-    """Every commands/<slug>.md, in canonical SLUGS order. Raises on any drift from SLUGS."""
+    """Every command, in canonical SLUGS order. Raises on any drift from SLUGS.
+
+    Accepts either layout: flat `<slug>.md` (the authored `commands/` tree, and
+    opencode's rendered payload) or nested `<slug>/SKILL.md` (Claude's rendered
+    payload). The site is generated from a rendered payload, so it has to read
+    the shape that target actually ships.
+    """
     on_disk = {p.stem: p for p in sorted(skills_dir.glob("*.md"))}
+    on_disk.update({p.parent.name: p for p in sorted(skills_dir.glob("*/SKILL.md"))})
     for slug in sorted(on_disk):
         if slug not in SLUGS:
             raise SourceError(
@@ -2044,7 +2054,10 @@ def check_frontmatter(fm: Frontmatter, slug: str, lines: list, end: int, src: st
 
 
 def parse_skill(path: Path, agents: tuple) -> Command:
-    slug = path.stem
+    # Both layouts carry the slug in a different place: flat `<slug>.md` puts it
+    # in the stem, nested `<slug>/SKILL.md` in the parent directory. Taking the
+    # stem unconditionally reads every nested command as "SKILL".
+    slug = path.parent.name if path.name == "SKILL.md" else path.stem
     src = f"commands/{slug}.md"
     lines = path.read_text(encoding="utf-8").split("\n")
     consumed = set()
@@ -2449,7 +2462,7 @@ def _head(
 ) -> str:
     """The one <head> every detail page shares — command and agent pages differ
     only in the five values the callers pass in."""
-    alt = "Shipmates — Custom subagents and command workflows, on Claude Code today."
+    alt = "Shipmates — Custom subagents and command workflows for Claude Code and opencode."
     return f"""<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -2571,7 +2584,7 @@ def render_footer() -> str:
       <div class="site-footer__brand">
         <img class="site-footer__logo" src="{link("../../assets/logo-240.png")}" width="32" height="32" alt="">
         <span class="site-footer__name">Shipmates</span>
-        <p class="site-footer__tagline">Custom subagents &amp; command workflows — on Claude Code today.</p>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for Claude Code and opencode.</p>
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <ul class="site-footer__links">
@@ -2628,7 +2641,7 @@ def render_invoke(cmd: Command) -> str:
           <h2 class="section__title" id="invoke-title">How to run it</h2>
         </div>
         <div class="codeblock">
-          <p class="codeblock__label">Run it in Claude Code</p>
+          <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
             <pre class="codeblock__pre"><code class="codeblock__code">{esc(invocation)}</code></pre>
           </div>
@@ -3128,6 +3141,11 @@ def render_sitemap(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (
 
 SITE_DIR = "site"
 
+#: The harness whose rendered payload the site documents. The detail pages show
+#: real invocation syntax and real tool names, so they have to come from one
+#: target's output rather than the harness-neutral source.
+SITE_TARGET = "claude-code"
+
 
 def page_path(slug: str) -> str:
     return f"{SITE_DIR}/commands/{slug}/index.html"
@@ -3222,6 +3240,10 @@ def check_all(files: dict, root: Path) -> list:
 # ---------------------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools import export as exporter  # noqa: E402
 
 REGENERATE_HINT = "run: python3 tools/gen_command_pages.py && git add site/"
 
@@ -3265,8 +3287,23 @@ def main(argv=None) -> int:
         repo_blob_base=REPO_BLOB_BASE,
     )
     try:
-        agents = load_agents(root / "crew", root / "commands")
-        cmds = load_skills(root / "commands", tuple(agent.name for agent in agents))
+      with contextlib.ExitStack() as stack:
+        # Generate from the RENDERED payload, not the neutral source. The site
+        # documents what a user installs; the neutral dialect (`{{issue}}`,
+        # `agent-files/*.md`, semantic capability names) exists only inside the
+        # exporter and is not valid in any harness. Reading the source published
+        # those placeholders live.
+        payload = stack.enter_context(tempfile.TemporaryDirectory())
+        # The exporter narrates each file it writes, which here is a temp dir the
+        # caller never sees; only its errors are useful.
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = exporter.run(root, SITE_TARGET, check=False, out_dir=Path(payload))
+        if rc:
+            print(f"error: could not build the {SITE_TARGET} payload for the site", file=sys.stderr)
+            return rc
+        rendered = Path(payload) / "harnesses" / SITE_TARGET
+        agents = load_agents(rendered / "agents", rendered / "skills")
+        cmds = load_skills(rendered / "skills", tuple(agent.name for agent in agents))
         # Discover hand-authored docs pages for the sitemap.
         docs = tuple(
             slug for slug in DOCS_SLUGS

@@ -23,7 +23,7 @@ Not good: *"Match our SC2-style HD dark-chrome UI."*
 
 ## Adding a skill (workflow)
 
-A workflow ships as a **skill** on disk and is invoked as a **command** in Claude Code. Both names
+A workflow ships as a **skill** on disk (a flat `commands/<name>.md` on opencode) and is invoked as a **command** in your harness. Both names
 are correct; which one belongs in a given sentence is set by the
 [naming register](docs/BRAND.md#naming-register). Work the checklist top to bottom:
 
@@ -112,7 +112,7 @@ Install into a throwaway scope and try it on a real repo:
 ./install.sh --project /tmp/some-test-repo
 ```
 
-Then run the command in Claude Code and confirm the agents resolve (no "falling back to
+Then run the command in your harness and confirm the agents resolve (no "falling back to
 general-purpose" notes in the report).
 
 ## PRs

@@ -27,7 +27,11 @@ Exit 0 = all green; exit 1 = one or more failures (printed)."""
 
 from __future__ import annotations
 import json
+import atexit
+import contextlib
+import io
 import re
+import tempfile
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -39,8 +43,23 @@ SITE = ROOT / "site"
 INDEX = SITE / "index.html"
 CSS = SITE / "styles.css"
 SITEMAP = SITE / "sitemap.xml"
-COMMANDS = ROOT / "commands"
-CREW = ROOT / "crew"
+# The site is generated from the RENDERED payload, not the neutral source, so
+# the independent gate has to read the same thing. Comparing pages against
+# `commands/` would flag every rendered token (`$ARGUMENTS` vs `{{issue}}`,
+# `.claude/agents/*.md` vs `agent-files/*.md`) as a fidelity failure.
+SITE_TARGET = "claude-code"
+_PAYLOAD = tempfile.TemporaryDirectory()
+atexit.register(_PAYLOAD.cleanup)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from tools import export as _exporter  # noqa: E402
+
+with contextlib.redirect_stdout(io.StringIO()):
+    if _exporter.run(ROOT, SITE_TARGET, check=False, out_dir=Path(_PAYLOAD.name)):
+        raise SystemExit(f"error: could not build the {SITE_TARGET} payload to validate against")
+_RENDERED = Path(_PAYLOAD.name) / "harnesses" / SITE_TARGET
+COMMANDS = _RENDERED / "skills"
+CREW = _RENDERED / "agents"
 
 SITE_URL = "https://saman-mb.github.io/shipmates/"
 SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -210,7 +229,7 @@ def is_local_asset(url: str) -> bool:
 
 
 def source_slugs() -> list[str]:
-    return [p.stem for p in sorted(COMMANDS.glob("*.md"))]
+    return [p.parent.name for p in sorted(COMMANDS.glob("*/SKILL.md"))]
 
 
 def crew_roles() -> list[str]:
@@ -516,7 +535,7 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
 
 def check_command_page(page: Page) -> None:
     slug = page.slug
-    src = COMMANDS / f"{slug}.md"
+    src = COMMANDS / slug / "SKILL.md"
 
     # --- back-navigation to the commands list on the homepage ---
     if any(a.get("href") == BACK_HREF for _t, a in page.collector.refs):
