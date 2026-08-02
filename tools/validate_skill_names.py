@@ -13,11 +13,12 @@ Without --check: print report, always exit 0.
 
 import sys
 import os
+import json
 from pathlib import Path
 from typing import Set, Tuple
 
 REPO_ROOT = Path(__file__).parent.parent
-SKILLS_DIR = REPO_ROOT / "skills"
+COMMANDS_DIR = REPO_ROOT / "commands"
 BUILTINS_DIR = REPO_ROOT / "tools"
 
 # Near-misses: warn but don't fail
@@ -32,7 +33,17 @@ def load_builtins(harness: str) -> Set[str]:
     """Load built-in command names for a harness."""
     path = BUILTINS_DIR / f"builtins-{harness}.txt"
     if not path.exists():
-        return set()
+        # Harnesses now come from harness_matrix.json, so a new target arrives
+        # here the moment it is registered. Returning an empty set would compare
+        # our twelve names against nothing and report "no collisions" for that
+        # harness forever — the check would silently opt out of every target
+        # added after this one.
+        raise SystemExit(
+            f"error: no built-in list for harness {harness!r}\n"
+            f"  create {path.relative_to(REPO_ROOT).as_posix()} (one command name per line, "
+            "`#` for comments) listing that harness's built-in commands, or remove the harness "
+            "from tools/harness_matrix.json"
+        )
     
     names = set()
     with open(path) as f:
@@ -47,10 +58,10 @@ def load_builtins(harness: str) -> Set[str]:
 
 
 def get_skill_names() -> Set[str]:
-    """Get all skill names from skills/ directory."""
-    if not SKILLS_DIR.exists():
+    """Get all skill names from commands/ directory."""
+    if not COMMANDS_DIR.exists():
         return set()
-    return {d.name for d in SKILLS_DIR.iterdir() if d.is_dir()}
+    return {f.stem for f in COMMANDS_DIR.glob("*.md")}
 
 
 def check_collision(skill: str, builtins: Set[str], harness: str) -> Tuple[bool, str]:
@@ -71,20 +82,15 @@ def main():
     
     skills = get_skill_names()
     if not skills:
-        print("No skills found in skills/")
+        print("No commands found in commands/")
         sys.exit(0)
     
-    # Same set and order as ALL_HARNESSES in install.sh.
-    harnesses = [
-        "claude-code",
-        "github-copilot",
-        "codex",
-        "cursor",
-        "gemini",
-        "windsurf",
-        "zed",
-        "opencode",
-    ]
+    # The harness names live under the "harnesses" key. Reading the top level
+    # yields ["version", "harnesses", "features"], none of which is a harness,
+    # so every lookup missed and the gate reported "no collisions" having
+    # compared our command names against zero builtins.
+    with open(REPO_ROOT / "tools" / "harness_matrix.json", encoding="utf-8") as f:
+        harnesses = list(json.load(f)["harnesses"].keys())
     collisions = []
     warnings = []
     
