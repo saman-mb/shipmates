@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "crew": {
+    "required_frontmatter": ["name", "description", "capabilities", "writes"],
+    "optional_frontmatter": ["web-scopes", "read-scopes", "tool-order"],
+    "capabilities": ["read", "edit", "bash", "web", "agent"],
+    "body": "authoritative-persona-body"
+  },
+  "commands": {
+    "required_frontmatter": ["name", "description", "argument-hint", "allowed-tools", "disable-model-invocation", "arguments", "loop_max", "stages", "invocation", "board"],
+    "stage_columns": ["order", "stage", "roles", "gate", "max_loops"],
+    "stages": "JSON array of stage objects",
+    "invocation": "@{{role}}({{named-argument}})",
+    "board": ["native", "explicit"],
+    "narrative": "authoritative workflow body"
+  },
+  "project_instructions": {
+    "source": "AGENTS.md",
+    "target_override_allowed": true
+  }
+}

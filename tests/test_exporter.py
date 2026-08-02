@@ -68,10 +68,10 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("subagent_type: architect", adapter.render_invocation("architect", "#42"))
 
     def test_canonical_bodies_are_neutral(self) -> None:
-        for path in (ROOT / "canonical/crew").glob("*.md"):
+        for path in (ROOT / "crew").glob("*.md"):
             body = path.read_text(encoding="utf-8").split("---", 2)[2]
             self.assertNotRegex(body, r"CLAUDE|\.claude|subagent_type|Claude-Session")
-        for path in (ROOT / "canonical/commands").glob("*.md"):
+        for path in (ROOT / "commands").glob("*.md"):
             body = path.read_text(encoding="utf-8").split("---", 2)[2]
             self.assertNotRegex(body, r"CLAUDE|\.claude|subagent_type|Claude-Session")
 
@@ -86,74 +86,102 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("tools: Read, Grep, Glob, Bash, WebSearch, WebFetch", files["harnesses/claude-code/agents/product-manager.md"])
         self.assertNotIn("Write", files["harnesses/claude-code/agents/architect.md"])
 
-    def test_generated_claude_payload_matches_compatibility_sources(self) -> None:
-        roles, commands = exporter.load_catalog(ROOT)
-        files = ClaudeCodeAdapter(load_registry(ROOT / "tools/capability_registry.json")["claude-code"]).build(
-            ROOT, roles, commands
+    def test_adapter_regression_is_caught_by_the_payload_digest(self) -> None:
+        """A changed rendering rule must fail `check`, for every target.
+
+        Run as a subprocess: the adapter modules are already imported in this
+        process, so editing a copy on disk would have no effect and the test
+        would pass while proving nothing.
+
+        This is the regression the committed golden trees used to catch.
+        Deleting them removed a real duplication, but a bad substitution rule
+        rewrites every generated file at once — strictly worse than the copy
+        drift the trees were originally added for. Every mutation below shipped
+        silently before the payload digest existed.
+        """
+        mutations = (
+            ("claude_code.py", '("AGENTS.md", "CLAUDE.md")', '("AGENTS.md", "MUTANT.md")'),
+            ("claude_code.py", '("Harness-Session", "Claude-Session")', '("Harness-Session", "X")'),
+            ("claude_code.py", '("agent-files/*.md", ".claude/agents/*.md")', '("agent-files/*.md", ".x/*.md")'),
+            ("opencode.py", '("Harness-Session", "Opencode-Session")', '("Harness-Session", "X")'),
         )
-        for relative, content in files.items():
-            compatibility = ROOT / relative.removeprefix("harnesses/claude-code/")
-            self.assertEqual(compatibility.read_text(encoding="utf-8"), content, relative)
+        for filename, needle, replacement in mutations:
+            with self.subTest(mutation=needle):
+                temporary, root = self.temp_repo()
+                adapter = root / "tools/adapters" / filename
+                text = adapter.read_text(encoding="utf-8")
+                self.assertIn(needle, text, f"{filename} no longer contains {needle}")
+                adapter.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+                target = "claude-code" if filename == "claude_code.py" else "opencode"
+                result = subprocess.run(
+                    [sys.executable, "tools/export.py", "check", "--target", target],
+                    cwd=root, text=True, capture_output=True,
+                )
+                self.assertNotEqual(0, result.returncode, f"{needle} survived: {result.stdout}")
+                self.assertIn("digest mismatch", result.stdout)
+                temporary.cleanup()
 
-    def test_claude_export_matches_golden(self) -> None:
-        """Generated output must match committed golden reference files."""
-        out_dir = self.temp_out()[1]
-        self.addCleanup(shutil.rmtree, out_dir, True)
-        self.assertEqual(0, exporter.run(ROOT, "claude-code", check=False, out_dir=out_dir))
-        for path in sorted((out_dir / "harnesses/claude-code").rglob("*")):
-            if not path.is_file():
-                continue
-            relative = str(path.relative_to(out_dir / "harnesses/claude-code"))
-            golden = ROOT / "tests/golden/claude-code" / relative
-            self.assertTrue(golden.exists(), f"golden file missing: {golden}")
-            self.assertEqual(golden.read_text(encoding="utf-8"), path.read_text(encoding="utf-8"), relative)
-
-    def test_canonical_edits_change_export_not_compatibility_edits(self) -> None:
+    def test_check_fails_when_the_digest_is_missing(self) -> None:
+        """`check` must never report success against a reference it did not read."""
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        canonical_role = root / "canonical/crew/architect.md"
-        canonical_role.write_text(
-            canonical_role.read_text(encoding="utf-8") + "\nCANONICAL ROLE MARKER\n",
-            encoding="utf-8",
-        )
-        compatibility_role = root / "agents/architect.md"
-        compatibility_role.write_text(
-            compatibility_role.read_text(encoding="utf-8") + "\nCOMPATIBILITY MARKER\n",
+        exporter.digest_path(root, "claude-code").unlink()
+        self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
+
+    def test_update_rewrites_the_digest(self) -> None:
+        """`--update` is the documented regeneration step; it must do work."""
+        temporary, root = self.temp_repo()
+        self.addCleanup(temporary.cleanup)
+        reference = exporter.digest_path(root, "claude-code")
+        before = reference.read_text(encoding="utf-8")
+        crew = root / "crew/architect.md"
+        crew.write_text(crew.read_text(encoding="utf-8") + "\nMARKER\n", encoding="utf-8")
+        self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
+        self.assertEqual(0, exporter.run(root, "claude-code", check=False, update=True))
+        self.assertEqual(0, exporter.run(root, "claude-code", check=True))
+        self.assertNotEqual(before, reference.read_text(encoding="utf-8"))
+
+    def test_source_edits_change_export(self) -> None:
+        temporary, root = self.temp_repo()
+        self.addCleanup(temporary.cleanup)
+        role = root / "crew/architect.md"
+        role.write_text(
+            role.read_text(encoding="utf-8") + "\nROLE MARKER\n",
             encoding="utf-8",
         )
         out_dir = self.temp_out()[1]
         self.addCleanup(shutil.rmtree, out_dir, True)
         self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir))
         output = (out_dir / "harnesses/claude-code/agents/architect.md").read_text(encoding="utf-8")
-        self.assertIn("CANONICAL ROLE MARKER", output)
-        self.assertNotIn("COMPATIBILITY MARKER", output)
+        self.assertIn("ROLE MARKER", output)
 
-        compatibility_role.unlink()
+        command = root / "commands/ship-issue.md"
+        command.write_text(command.read_text(encoding="utf-8") + "\nCOMMAND MARKER\n", encoding="utf-8")
         out_dir2 = self.temp_out()[1]
         self.addCleanup(shutil.rmtree, out_dir2, True)
         self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir2))
-
-        command = root / "canonical/commands/ship-issue.md"
-        command.write_text(command.read_text(encoding="utf-8") + "\nCANONICAL COMMAND MARKER\n", encoding="utf-8")
-        out_dir3 = self.temp_out()[1]
-        self.addCleanup(shutil.rmtree, out_dir3, True)
-        self.assertEqual(0, exporter.run(root, "claude-code", check=False, out_dir=out_dir3))
         self.assertIn(
-            "CANONICAL COMMAND MARKER",
-            (out_dir3 / "harnesses/claude-code/skills/ship-issue/SKILL.md").read_text(encoding="utf-8"),
+            "COMMAND MARKER",
+            (out_dir2 / "harnesses/claude-code/skills/ship-issue/SKILL.md").read_text(encoding="utf-8"),
         )
 
-    def test_generated_tree_drift_is_detected(self) -> None:
+    def test_payload_content_drift_is_detected(self) -> None:
+        """check_files must report the specific file whose rendering changed.
+
+        harnesses/ is a build output, not a reference — it is gitignored and
+        built into a temp dir at install time. The committed digest is what a
+        freshly built payload is compared against.
+        """
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
         roles, commands = exporter.load_catalog(root)
         files = ClaudeCodeAdapter(load_registry(root / "tools/capability_registry.json")["claude-code"]).build(
             root, roles, commands
         )
-        exporter.write_files(root, files)
-        generated = root / "harnesses/claude-code/agents/architect.md"
-        generated.write_text(generated.read_text(encoding="utf-8") + "drift\n", encoding="utf-8")
-        self.assertIn("drift: harnesses/claude-code/agents/architect.md", exporter.check_files(root, files, "claude-code"))
+        self.assertEqual([], exporter.check_files(root, files, "claude-code"))
+        files["harnesses/claude-code/agents/architect.md"] += "drift\n"
+        report = exporter.check_files(root, files, "claude-code")
+        self.assertTrue(any("changed: agents/architect.md" in line for line in report), report)
 
     def test_invalid_catalog_fails_before_writes(self) -> None:
         cases = (
@@ -165,7 +193,7 @@ class ExporterTests(unittest.TestCase):
         for needle, replacement in cases:
             with self.subTest(replacement=replacement):
                 temporary, root = self.temp_repo()
-                command = root / "canonical/commands/ship-issue.md"
+                command = root / "commands/ship-issue.md"
                 text = command.read_text(encoding="utf-8")
                 self.assertIn(needle, text)
                 command.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
@@ -230,7 +258,7 @@ class ExporterTests(unittest.TestCase):
     def test_installer_generates_claude_payload_at_install_time(self) -> None:
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        canonical = root / "canonical/commands/ship-issue.md"
+        canonical = root / "commands/ship-issue.md"
         canonical.write_text(canonical.read_text(encoding="utf-8") + "\nGENERATED PAYLOAD MARKER\n", encoding="utf-8")
         target = Path(temporary.name) / "installed"
         result = subprocess.run(
@@ -273,7 +301,7 @@ class ExporterTests(unittest.TestCase):
         """
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        canonical = root / "canonical/commands/ship-issue.md"
+        canonical = root / "commands/ship-issue.md"
         canonical.write_text(
             canonical.read_text(encoding="utf-8") + "\nOPENCODE PAYLOAD MARKER\n", encoding="utf-8"
         )
@@ -290,22 +318,6 @@ class ExporterTests(unittest.TestCase):
         self.assertFalse((target / "skills").exists())
         self.assertTrue((target / "agents/architect.md").exists())
 
-    def test_compatibility_source_drift_is_caught(self) -> None:
-        """Editing agents/ or skills/ directly must fail, not silently ship nothing.
-
-        These trees stay in the repository for the site generator and the skills
-        validator, which makes them a second writable copy of the payload. Without
-        this gate a contributor edits the tree the layout docs point at, every
-        check passes, and the change never reaches an installed crew.
-        """
-        for relative in ("agents/architect.md", "skills/spike/SKILL.md"):
-            with self.subTest(relative=relative):
-                temporary, root = self.temp_repo()
-                mirror = root / relative
-                mirror.write_text(mirror.read_text(encoding="utf-8") + "\nDRIFT\n", encoding="utf-8")
-                self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
-                temporary.cleanup()
-
     def test_positional_placeholder_is_refused(self) -> None:
         """`$1` in a canonical body must fail the build, not reach a payload.
 
@@ -314,7 +326,7 @@ class ExporterTests(unittest.TestCase):
         """
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        command = root / "canonical/commands/spike.md"
+        command = root / "commands/spike.md"
         command.write_text(
             command.read_text(encoding="utf-8") + "\n```bash\nawk '{print $2}'\n```\n",
             encoding="utf-8",
@@ -327,38 +339,13 @@ class ExporterTests(unittest.TestCase):
         """A stage table naming a role the workflow never dispatches is fiction."""
         temporary, root = self.temp_repo()
         self.addCleanup(temporary.cleanup)
-        command = root / "canonical/commands/spike.md"
+        command = root / "commands/spike.md"
         text = command.read_text(encoding="utf-8")
         self.assertIn('"roles":["architect"]', text)
         command.write_text(
             text.replace('"roles":["architect"]', '"roles":["art-director"]', 1), encoding="utf-8"
         )
         self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
-
-    def test_golden_tree_rejects_stray_files(self) -> None:
-        """An extra golden file is drift too — a generated-side-only walk misses it."""
-        temporary, root = self.temp_repo()
-        self.addCleanup(temporary.cleanup)
-        (root / "tests/golden/claude-code/agents/stray.md").write_text("stray\n", encoding="utf-8")
-        self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
-
-    def test_update_regenerates_references(self) -> None:
-        """--update is the only supported way to refresh the golden tree and mirrors."""
-        temporary, root = self.temp_repo()
-        self.addCleanup(temporary.cleanup)
-        canonical = root / "canonical/crew/architect.md"
-        canonical.write_text(
-            canonical.read_text(encoding="utf-8") + "\nREGENERATED MARKER\n", encoding="utf-8"
-        )
-        (root / "tests/golden/claude-code/agents/stray.md").write_text("stray\n", encoding="utf-8")
-        self.assertNotEqual(0, exporter.run(root, "claude-code", check=True))
-        self.assertEqual(0, exporter.run(root, "claude-code", check=False, update=True))
-        self.assertEqual(0, exporter.run(root, "claude-code", check=True))
-        self.assertFalse((root / "tests/golden/claude-code/agents/stray.md").exists())
-        for tree in ("tests/golden/claude-code/agents", "agents"):
-            self.assertIn(
-                "REGENERATED MARKER", (root / tree / "architect.md").read_text(encoding="utf-8")
-            )
 
     def test_adapter_conformance_is_enforced(self) -> None:
         """A half-implemented adapter must be refused, not silently registered."""

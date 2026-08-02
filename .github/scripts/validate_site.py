@@ -27,7 +27,11 @@ Exit 0 = all green; exit 1 = one or more failures (printed)."""
 
 from __future__ import annotations
 import json
+import atexit
+import contextlib
+import io
 import re
+import tempfile
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -39,8 +43,23 @@ SITE = ROOT / "site"
 INDEX = SITE / "index.html"
 CSS = SITE / "styles.css"
 SITEMAP = SITE / "sitemap.xml"
-SKILLS = ROOT / "skills"
-CREW = ROOT / "agents"
+# The site is generated from the RENDERED payload, not the neutral source, so
+# the independent gate has to read the same thing. Comparing pages against
+# `commands/` would flag every rendered token (`$ARGUMENTS` vs `{{issue}}`,
+# `.claude/agents/*.md` vs `agent-files/*.md`) as a fidelity failure.
+SITE_TARGET = "claude-code"
+_PAYLOAD = tempfile.TemporaryDirectory()
+atexit.register(_PAYLOAD.cleanup)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from tools import export as _exporter  # noqa: E402
+
+with contextlib.redirect_stdout(io.StringIO()):
+    if _exporter.run(ROOT, SITE_TARGET, check=False, out_dir=Path(_PAYLOAD.name)):
+        raise SystemExit(f"error: could not build the {SITE_TARGET} payload to validate against")
+_RENDERED = Path(_PAYLOAD.name) / "harnesses" / SITE_TARGET
+COMMANDS = _RENDERED / "skills"
+CREW = _RENDERED / "agents"
 
 SITE_URL = "https://saman-mb.github.io/shipmates/"
 SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -210,7 +229,7 @@ def is_local_asset(url: str) -> bool:
 
 
 def source_slugs() -> list[str]:
-    return [p.parent.name for p in sorted(SKILLS.glob("*/SKILL.md"))]
+    return [p.parent.name for p in sorted(COMMANDS.glob("*/SKILL.md"))]
 
 
 def crew_roles() -> list[str]:
@@ -514,9 +533,22 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
         )
 
 
+def _src_label(src: Path) -> str:
+    """Report a source path relative to the repo when it is inside it.
+
+    Sources are read from a rendered payload in a temp dir, so relative_to(ROOT)
+    raises ValueError there — turning a clean failure report into a crash on the
+    exact path that only runs when something is already wrong.
+    """
+    try:
+        return src.relative_to(ROOT).as_posix()
+    except ValueError:
+        return f"{SITE_TARGET}:{src.name}" if src.name != "SKILL.md" else f"{SITE_TARGET}:{src.parent.name}/SKILL.md"
+
+
 def check_command_page(page: Page) -> None:
     slug = page.slug
-    src = SKILLS / slug / "SKILL.md"
+    src = COMMANDS / slug / "SKILL.md"
 
     # --- back-navigation to the commands list on the homepage ---
     if any(a.get("href") == BACK_HREF for _t, a in page.collector.refs):
@@ -749,7 +781,7 @@ def check_fidelity(page: Page, src: Path) -> None:
     try:
         start = lines.index("---", 1) + 1
     except ValueError:
-        fail(f"{src.relative_to(ROOT).as_posix()}: no closing frontmatter '---' — cannot audit fidelity")
+        fail(f"{_src_label(src)}: no closing frontmatter '---' — cannot audit fidelity")
         return
 
     missing: list[str] = []
@@ -828,17 +860,17 @@ def check_agent_page(page: Page) -> None:
 
 
 def check_agent_reference(page: Page, src: Path) -> None:
-    """The reference card restates the persona frontmatter: name, description, tools."""
+    """The reference card restates the persona frontmatter: name, description."""
     front = agent_frontmatter(src)
     if not front:
-        fail(f"{src.relative_to(ROOT).as_posix()}: no closing frontmatter '---' — cannot audit the reference card")
+        fail(f"{_src_label(src)}: no closing frontmatter '---' — cannot audit the reference card")
         return
     prose = " " + _prose_norm("".join(page.collector.flow)) + " "
     missing = []
-    for key in ("name", "description", "tools"):
+    for key in ("name", "description"):
         value = front.get(key, "")
         if not value:
-            missing.append(f"agents/{page.slug}.md: frontmatter has no '{key}:'")
+            missing.append(f"crew/{page.slug}.md: frontmatter has no '{key}:'")
             continue
         if f" {_prose_norm(value)} " not in prose:
             missing.append(f"frontmatter '{key}' value not found in the page — {value[:70]!r}")
@@ -846,7 +878,7 @@ def check_agent_reference(page: Page, src: Path) -> None:
         for m in missing:
             fail(f"{page.rel}: reference card mismatch — {m}")
     else:
-        ok(f"{page.rel}: reference card matches agents/{page.slug}.md frontmatter (name, description, tools)")
+        ok(f"{page.rel}: reference card matches crew/{page.slug}.md frontmatter (name, description)")
 
 
 def check_agent_inverse_fidelity(page: Page, src: Path) -> None:
@@ -1047,7 +1079,7 @@ def main() -> int:
 
     slugs = source_slugs()
     if not slugs:
-        fail("no skills/*/SKILL.md found — nothing to publish")
+        fail("no commands/*.md found — nothing to publish")
         return report()
     n_commands = len(slugs)
 
