@@ -1,10 +1,10 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole};
 use std::collections::HashMap;
 
+pub mod antigravity;
 pub mod claude_code;
 pub mod codex;
 pub mod cursor;
-pub mod gemini;
 pub mod github_copilot;
 pub mod opencode;
 pub mod render;
@@ -25,11 +25,10 @@ pub trait Adapter {
 pub fn conformance_report() {}
 
 /// The harnesses a user can `shipmates install --harness <name>` for.
-pub fn targets() -> [&'static str; 9] {
+pub fn targets() -> [&'static str; 8] {
     [
         "claude-code",
         "opencode",
-        "gemini",
         "antigravity",
         "codex",
         "cursor",

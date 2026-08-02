@@ -93,14 +93,19 @@ pub const OPENCODE: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
-/// Gemini CLI / Antigravity's dialect.
-pub const GEMINI: Dialect = Dialect {
-    agents_glob: ".gemini/agents",
-    session_key: "Gemini-Session",
+/// Antigravity CLI's (`agy`) dialect.
+///
+/// The Gemini CLI is retired (shut down June 18, 2026); `agy` replaced it and
+/// reads workspace customizations from `.agents/` instead of `.gemini/`.
+/// Project instructions come from `AGENTS.md` (with `GEMINI.md` as the legacy
+/// fallback), and the built-in general-purpose subagent is `self`.
+pub const ANTIGRAVITY: Dialect = Dialect {
+    agents_glob: ".agents/agents",
+    session_key: "Antigravity-Session",
     instructions_primary: "AGENTS.md",
-    instructions_fallback: "CLAUDE.md",
-    general_purpose: "general-purpose",
-    planner: "planner",
+    instructions_fallback: "GEMINI.md",
+    general_purpose: "self",
+    planner: "architect",
     args_token: "$ARGUMENTS",
 };
 

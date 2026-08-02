@@ -41,7 +41,7 @@ jobs:
       # Gates every target payload against its reference digest
       - name: Check target payload digests
         run: |
-          for target in claude-code opencode gemini codex cursor github-copilot windsurf zed; do
+          for target in claude-code opencode antigravity codex cursor github-copilot windsurf zed; do
             cargo run -- check --target "$target"
           done
       - name: Run the skill-lint regression suite
@@ -87,7 +87,7 @@ jobs:
           python-version: "3.9"
       - name: Build and check every target payload
         run: |
-          for target in claude-code opencode gemini codex cursor github-copilot windsurf zed; do
+          for target in claude-code opencode antigravity codex cursor github-copilot windsurf zed; do
             cargo run -- check --target "$target"
             cargo run -- build --target "$target" --out "$RUNNER_TEMP/floor"
           done
@@ -101,6 +101,12 @@ jobs:
           cargo run -- install --harness opencode --dir "$RUNNER_TEMP/install-opencode"
           test -f "$RUNNER_TEMP/install-opencode/.opencode/commands/ship-issue.md"
           test -f "$RUNNER_TEMP/install-opencode/.opencode/agents/sdet.md"
+      - name: Install the antigravity harness end to end
+        run: |
+          cargo run -- install --harness antigravity --dir "$RUNNER_TEMP/install-antigravity"
+          test -f "$RUNNER_TEMP/install-antigravity/.agents/skills/ship-issue/SKILL.md"
+          test -f "$RUNNER_TEMP/install-antigravity/.agents/agents/sdet.md"
+          test ! -d "$RUNNER_TEMP/install-antigravity/.gemini"
       - name: Install a skill-only harness end to end
         run: |
           cargo run -- install --harness codex --dir "$RUNNER_TEMP/install-codex"

@@ -130,8 +130,8 @@ shipmates install --harness all</code></pre>
         <div class="order-prose">
           <ul>
             <li>Compiles the payload from its built-in canonical sources (<code>commands/</code> + <code>crew/</code>), rendering each command and persona into the harness&#x27;s own dialect — where its agents live, what its session metadata is called, which project-instructions file it reads.</li>
-            <li>Writes the harness&#x27;s own tree in the target directory — <code>.claude/</code>, <code>.opencode/</code>, <code>.codex/</code>, <code>.cursor/</code>, <code>.github/</code>, <code>.gemini/</code>, <code>.windsurf/</code>, or <code>.zed/</code>.</li>
-            <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on claude-code and opencode, the twelve <code>agents/*.md</code> personas. Skill-only harnesses get the skills and nothing else.</li>
+            <li>Writes the harness&#x27;s own tree in the target directory — <code>.claude/</code>, <code>.opencode/</code>, <code>.agents/</code>, <code>.codex/</code>, <code>.cursor/</code>, <code>.github/</code>, <code>.windsurf/</code>, or <code>.zed/</code>.</li>
+            <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on claude-code, opencode and antigravity, the twelve <code>agents/*.md</code> personas. Skill-only harnesses get the skills and nothing else.</li>
             <li>Re-running is idempotent: files already in place are skipped.</li>
           </ul>
         </div>
@@ -159,8 +159,7 @@ shipmates install --harness all</code></pre>
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="harness-paths-title">Per-harness paths</h2>
-          <p class="section__lead">Each root verified against first-party docs. All eight read skills from <code>&lt;root&gt;/skills/&lt;name&gt;/SKILL.md</code>.</p>
-        </div>
+          <p class="section__lead">Each root verified against first-party docs. All eight read skills from <code>&lt;root&gt;/skills/&lt;name&gt;/SKILL.md</code>.</p>        </div>
         <div class="order-table" tabindex="0">
           <table>
             <thead><tr><th scope="col">Harness</th><th scope="col">Tree installed</th><th scope="col">Commands land at</th><th scope="col">Subagents</th><th scope="col">First-party doc</th></tr></thead>
@@ -170,7 +169,7 @@ shipmates install --harness all</code></pre>
               <tr><td><code>github-copilot</code></td><td><code>.github/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://docs.github.com/en/copilot/concepts/agents/about-agent-skills">docs.github.com/en/copilot/concepts/agents/about-agent-skills</a></td></tr>
               <tr><td><code>codex</code></td><td><code>.codex/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://developers.openai.com/codex/build-skills">developers.openai.com/codex/build-skills</a></td></tr>
               <tr><td><code>cursor</code></td><td><code>.cursor/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://cursor.com/docs/skills">cursor.com/docs/skills</a></td></tr>
-              <tr><td><code>gemini</code></td><td><code>.gemini/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://geminicli.com/docs/cli/skills/">geminicli.com/docs/cli/skills</a></td></tr>
+              <tr><td><code>antigravity</code></td><td><code>.agents/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://antigravity.google/docs/cli/plugins">antigravity.google/docs/cli/plugins</a></td></tr>
               <tr><td><code>windsurf</code></td><td><code>.windsurf/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://docs.windsurf.com/windsurf/cascade/skills">docs.windsurf.com/windsurf/cascade/skills</a></td></tr>
               <tr><td><code>zed</code></td><td><code>.zed/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://zed.dev/docs/ai/skills">zed.dev/docs/ai/skills</a></td></tr>
             </tbody>
@@ -178,7 +177,7 @@ shipmates install --harness all</code></pre>
         </div>
         <div class="order-prose">
           <p><code>opencode</code> takes the twelve as flat <code>commands/&lt;name&gt;.md</code> files rather than skill directories. That is a safety decision, not a formatting one — opencode&#x27;s skills are model-invoked and its <code>SKILL.md</code> has no <code>disable-model-invocation</code> equivalent, so <code>commands/</code> is what keeps the twelve user-invoked only. The reasoning is on the <a href="../harnesses/#opencode">harness matrix</a>.</p>
-          <p><code>codex</code> and <code>zed</code> each install into their own root — <code>.codex/</code> and <code>.zed/</code> respectively.</p>
+          <p><code>codex</code> and <code>zed</code> each install into their own root — <code>.codex/</code> and <code>.zed/</code> respectively. <code>antigravity</code> is the Antigravity CLI (<code>agy</code>), the successor to the retired Gemini CLI; its workspace tree is <code>.agents/</code> with subagents at <code>agents/&lt;name&gt;.md</code> and skills at <code>skills/&lt;name&gt;/SKILL.md</code>.</p>
         </div>
       </div>
     </section>

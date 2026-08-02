@@ -47,12 +47,11 @@ assert "opencode: install exits 0" install_to opencode "$D"
 assert "opencode: command under .opencode/commands" test -f "$D/.opencode/commands/ship-issue.md"
 assert "opencode: agent under .opencode/agents" test -f "$D/.opencode/agents/sdet.md"
 
-# --- gemini (+ antigravity alias resolves to the same tree) ---
-D="$WORK/gemini"
-assert "gemini: install exits 0" install_to gemini "$D"
-assert "gemini: skill under .gemini/skills" test -f "$D/.gemini/skills/ship-issue/SKILL.md"
-assert "gemini: agent under .gemini/agents" test -f "$D/.gemini/agents/sdet.md"
-assert "gemini: antigravity alias installs the gemini tree" install_to antigravity "$D"
+# --- antigravity: agents + skills land under .agents/ ---
+D="$WORK/antigravity"
+assert "antigravity: install exits 0" install_to antigravity "$D"
+assert "antigravity: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
+assert "antigravity: agent under .agents/agents" test -f "$D/.agents/agents/sdet.md"
 
 # --- skill-only targets: skills only, no agent files ---
 for pair in "codex:.codex" "cursor:.cursor" "github-copilot:.github" "windsurf:.windsurf" "zed:.zed"; do

@@ -57,32 +57,32 @@
         "agent": "task"
       }
     },
-    "gemini": {
-      "notes": "Covers the Gemini CLI and its Antigravity alias; `shipmates install --harness antigravity` writes the same `.gemini/` tree. The CLI reads project instructions from AGENTS.md.",
-      "agent_path": ".gemini/agents/{name}.md",
-      "skill_path": ".gemini/skills/{name}/SKILL.md",
+    "antigravity": {
+      "notes": "Antigravity CLI (agy) replaced the retired Gemini CLI (shut down June 18, 2026). Workspace agents live at `.agents/agents/{name}.md` with YAML frontmatter (`subagent: true`, `mainAgent: false`), skills at `.agents/skills/{name}/SKILL.md`. The CLI reads project instructions from AGENTS.md with GEMINI.md as the legacy fallback.",
+      "agent_path": ".agents/agents/{name}.md",
+      "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
       "permission_model": "allowlist",
       "scopes": {
-        "read": "read_file",
-        "search": "grep",
-        "glob": "glob",
-        "write": "write_file",
-        "edit": "edit",
-        "bash": "run_in_shell",
-        "web-search": "web_search",
-        "web-fetch": "web_fetch",
-        "agent": "task"
+        "read": "view_file",
+        "search": "grep_search",
+        "glob": "list_dir",
+        "write": "write_to_file",
+        "edit": "replace_file_content",
+        "bash": "run_command",
+        "web-search": "search_web",
+        "web-fetch": "read_url_content",
+        "agent": "invoke_subagent"
       },
       "tools": {
-        "read": ["read_file", "grep", "glob"],
-        "edit": ["write_file", "edit"],
-        "bash": "run_in_shell",
+        "read": ["view_file", "grep_search", "list_dir"],
+        "edit": ["write_to_file", "replace_file_content"],
+        "bash": "run_command",
         "web": {
-          "search": "web_search",
-          "fetch": "web_fetch"
+          "search": "search_web",
+          "fetch": "read_url_content"
         },
-        "agent": "task"
+        "agent": "invoke_subagent"
       }
     },
     "codex": {

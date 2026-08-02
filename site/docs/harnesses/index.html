@@ -87,7 +87,7 @@
             <tbody>
               <tr><td><code>claude-code</code></td><td><span class="chip">Runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>opencode</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a></td></tr>
-              <tr><td><code>gemini</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>antigravity</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>github-copilot</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
               <tr><td><code>codex</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
               <tr><td><code>cursor</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
@@ -126,7 +126,7 @@
           <p><strong>The twelve install as commands, not skills.</strong> opencode has both, and they are different things. Its <em>skills</em> are model-invoked: the model loads one on demand through a native <code>skill</code> tool, and <code>disable-model-invocation</code> is not among the frontmatter keys a <code>SKILL.md</code> recognises there — declaring it would be silently dropped rather than rejected. So the twelve go to <code>.opencode/commands/&lt;name&gt;.md</code>, which is <code>/</code>-invoked only. The captain still decides when a run starts, and that now rests on the directory rather than on a key the target ignores.</p>
           <p><strong>Least privilege survived, by inversion.</strong> Claude Code&#x27;s permission model is an allowlist, so naming the tools a role needs is enough. opencode&#x27;s defaults are permissive — effectively <code>&#x22;*&#x22;: &#x22;allow&#x22;</code> — so an allow list alone would restrict nothing. Every generated opencode agent instead writes a <code>&#x22;*&#x22;: deny</code> catch-all first and its specific allows after; opencode resolves permissions last-match-wins, so that ordering is what makes it hold. The result is marginally stronger than the Claude posture: a tool a wildcard denies is hidden from the model entirely rather than refused when it is called.</p>
           <p>Role-level refinements survive the translation too. <code>art-director</code> declares <code>web-scopes: search</code> once in the canonical sources, and gets <code>WebSearch</code> without <code>WebFetch</code> on Claude Code, and <code>websearch: allow</code> without <code>webfetch</code> on opencode.</p>
-          <p>opencode is also one of only two non-Claude harnesses that receive subagents — <code>.opencode/agents/&lt;name&gt;.md</code>, each with <code>mode: subagent</code> — because it is one of the few with a documented native subagent directory (<code>gemini</code> is the other). The other five harnesses ship skills only.</p>
+          <p>opencode is also one of only two non-Claude harnesses that receive subagents — <code>.opencode/agents/&lt;name&gt;.md</code>, each with <code>mode: subagent</code> — because it is one of the few with a documented native subagent directory (<code>antigravity</code> is the other, as <code>.agents/agents/&lt;name&gt;.md</code>). The other five harnesses ship skills only.</p>
         </div>
       </div>
     </section>
