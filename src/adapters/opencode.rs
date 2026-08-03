@@ -13,12 +13,26 @@ pub struct OpencodeAdapter;
 fn opencode_tool_ts(tool: &CanonicalTool) -> String {
     let desc = serde_json::to_string(&tool.description).unwrap_or_else(|_| "\"\"".to_string());
     let name = &tool.name;
+    // Spawn the tool's actual bundled Python script, not `<name>.py`: a tool's
+    // runnable filename need not match its name (e.g. `social-card` ships
+    // `social_card.py`), so hardcoding the name would spawn a missing file.
+    let script_file = tool
+        .assets
+        .iter()
+        .map(|(rel, _)| rel.as_str())
+        .find(|rel| rel.ends_with(".py"))
+        .unwrap_or("");
+    let script_file = if script_file.is_empty() {
+        format!("{name}.py")
+    } else {
+        script_file.to_string()
+    };
     format!(
         r#"import {{ tool }} from "@opencode-ai/plugin"
 import {{ spawnSync }} from "node:child_process"
 import * as path from "node:path"
 
-// {name}: an agent-invoked tool. See {name}.py alongside this file.
+// {name}: an agent-invoked tool. See {script_file} alongside this file.
 export default tool({{
   description: {desc},
   args: {{
@@ -26,7 +40,7 @@ export default tool({{
     out: tool.schema.string().describe("output file path"),
   }},
   async execute(args) {{
-    const script = path.join(import.meta.dirname, "{name}.py")
+    const script = path.join(import.meta.dirname, "{script_file}")
     const res = spawnSync("python3", [script, "--out", args.out], {{ input: args.spec, encoding: "utf8" }})
     if (res.status !== 0) throw new Error(res.stderr || "{name} failed")
     return res.stdout.trim()
