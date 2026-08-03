@@ -1,0 +1,44 @@
+{
+  "title": "fixtures — deterministic fake data",
+  "width": 900,
+  "beats": [
+    {"type": "command", "text": "fixtures --schema users.json --count 3 --seed 7"},
+    {"type": "blank"},
+    {"type": "line", "text": "[", "color": "grey"},
+    {"type": "line", "segments": [
+      {"text": "  { ", "color": "grey"},
+      {"text": "\"email\"", "color": "cyan"},
+      {"text": ": ", "color": "grey"},
+      {"text": "\"priya.patel@test.dev\"", "color": "sage"},
+      {"text": ", ", "color": "grey"},
+      {"text": "\"age\"", "color": "cyan"},
+      {"text": ": ", "color": "grey"},
+      {"text": "52", "color": "gold"},
+      {"text": " },", "color": "grey"}
+    ]},
+    {"type": "line", "segments": [
+      {"text": "  { ", "color": "grey"},
+      {"text": "\"email\"", "color": "cyan"},
+      {"text": ": ", "color": "grey"},
+      {"text": "\"ivan.haddad@example.com\"", "color": "sage"},
+      {"text": ", ", "color": "grey"},
+      {"text": "\"age\"", "color": "cyan"},
+      {"text": ": ", "color": "grey"},
+      {"text": "23", "color": "gold"},
+      {"text": " },", "color": "grey"}
+    ]},
+    {"type": "line", "segments": [
+      {"text": "  { ", "color": "grey"},
+      {"text": "\"email\"", "color": "cyan"},
+      {"text": ": ", "color": "grey"},
+      {"text": "\"mei.tan@example.org\"", "color": "sage"},
+      {"text": ", ", "color": "grey"},
+      {"text": "\"age\"", "color": "cyan"},
+      {"text": ": ", "color": "grey"},
+      {"text": "41", "color": "gold"},
+      {"text": " }", "color": "grey"}
+    ]},
+    {"type": "line", "text": "]", "color": "grey"},
+    {"type": "done", "text": "3 records · same seed produces the same bytes"}
+  ]
+}
