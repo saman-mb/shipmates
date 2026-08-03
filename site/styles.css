@@ -598,7 +598,7 @@ html.js .codeblock__copy{ display:inline-flex; }
 }
 .tool-example__img{
   display:block;
-  width:100%;
+  max-width:100%;
   height:auto;
   border:1px solid var(--border);
   border-radius:var(--radius-md);

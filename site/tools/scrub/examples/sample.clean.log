@@ -1,0 +1,14 @@
+[2026-08-03 14:02:11] INFO  starting worker; build version 1.2.3, 42 modules loaded
+[2026-08-03 14:02:11] INFO  operator [REDACTED_EMAIL] opened session #8817
+[2026-08-03 14:02:12] DEBUG env AWS_ACCESS_KEY_ID=[REDACTED_AWS_KEY] region=eu-west-1
+[2026-08-03 14:02:12] DEBUG env api_key=[REDACTED_TOKEN]
+[2026-08-03 14:02:12] DEBUG env client_secret="[REDACTED_TOKEN]"
+[2026-08-03 14:02:13] DEBUG env token=[REDACTED_TOKEN]
+[2026-08-03 14:02:13] DEBUG GET /v1/status Authorization: Bearer [REDACTED_TOKEN]
+[2026-08-03 14:02:14] DEBUG decoded id_token=[REDACTED_JWT]
+[2026-08-03 14:02:15] INFO  inbound request from [REDACTED_IP] accepted
+[2026-08-03 14:02:15] TRACE const token = response.data.token;  // read the value from the payload
+[2026-08-03 14:02:15] INFO  see the README for the api_key rotation policy before next release
+[2026-08-03 14:02:16] WARN  signing key loaded from disk:
+[REDACTED_PRIVATE_KEY]
+[2026-08-03 14:02:17] INFO  handled 3 retries; on-call in #ops, docs at https://example.com/guide

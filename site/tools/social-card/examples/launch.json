@@ -1,0 +1,9 @@
+{
+  "eyebrow": "Now open source",
+  "title": "Aurora — a typed HTTP client that reads like prose",
+  "subtitle": "Composable requests, first-class retries, and a test recorder built in. Zero dependencies, one import.",
+  "accent": "#7c8cff",
+  "wordmark": "github.com/aurora-http/aurora",
+  "bg": "#0d1117",
+  "fg": "#e6edf3"
+}

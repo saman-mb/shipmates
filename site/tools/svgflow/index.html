@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>termgif — Renders an animated terminal demo GIF of a workflow run from a small JSON spec. · Shipmates</title>
-  <meta name="description" content="Render a polished animated terminal demo GIF of a command or workflow run — a typed prompt, staged progress with check-offs, and a closing line — from a…">
-  <link rel="canonical" href="https://saman-mb.github.io/shipmates/tools/termgif/">
+  <title>svgflow — Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec. · Shipmates</title>
+  <meta name="description" content="Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer.…">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/tools/svgflow/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
-  <meta property="og:title" content="termgif — Renders an animated terminal demo GIF of a workflow run from a small JSON spec.">
-  <meta property="og:description" content="Render a polished animated terminal demo GIF of a command or workflow run — a typed prompt, staged progress with check-offs, and a closing line — from a…">
-  <meta property="og:url" content="https://saman-mb.github.io/shipmates/tools/termgif/">
+  <meta property="og:title" content="svgflow — Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec.">
+  <meta property="og:description" content="Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer.…">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/tools/svgflow/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="termgif — Renders an animated terminal demo GIF of a workflow run from a small JSON spec.">
-  <meta name="twitter:description" content="Render a polished animated terminal demo GIF of a command or workflow run — a typed prompt, staged progress with check-offs, and a closing line — from a…">
+  <meta name="twitter:title" content="svgflow — Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec.">
+  <meta name="twitter:description" content="Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer.…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -28,9 +28,9 @@
   {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    "name": "termgif",
-    "description": "Render a polished animated terminal demo GIF of a command or workflow run — a typed prompt, staged progress with check-offs, and a closing line — from a small JSON spec. Reach for this whenever a task calls for a terminal recording or demo GIF (a README hero, docs page, release note, or social preview) rather than describing the run in prose. Never a slash command; use it implicitly when the intent calls for one.",
-    "url": "https://saman-mb.github.io/shipmates/tools/termgif/",
+    "name": "svgflow",
+    "description": "Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer. Reach for this whenever a task calls for a diagram to explain a design, pipeline, request path, or state machine in a README or docs page rather than describing it in prose or leaving a mermaid block for something else to render. The output self-sizes and is styled for dark pages. Never a slash command; the crew reach for it implicitly when the intent calls for one.",
+    "url": "https://saman-mb.github.io/shipmates/tools/svgflow/",
     "isPartOf": {
       "@type": "CollectionPage",
       "url": "https://saman-mb.github.io/shipmates/#tools"
@@ -73,9 +73,9 @@
         <a class="order-back" href="../../#tools"><span aria-hidden="true">←</span> All tools</a>
         <div class="order-detail">
           <p class="section__eyebrow"><span aria-hidden="true">🧰</span> Tool</p>
-          <h1 class="order-detail__title" id="order-title"><code>termgif</code></h1>
-          <p class="order-detail__tagline">Renders an animated terminal demo GIF of a workflow run from a small JSON spec.</p>
-          <p class="order-detail__desc">Render a polished animated terminal demo GIF of a command or workflow run — a typed prompt, staged progress with check-offs, and a closing line — from a small JSON spec. Reach for this whenever a task calls for a terminal recording or demo GIF (a README hero, docs page, release note, or social preview) rather than describing the run in prose. Never a slash command; use it implicitly when the intent calls for one.</p>
+          <h1 class="order-detail__title" id="order-title"><code>svgflow</code></h1>
+          <p class="order-detail__tagline">Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec.</p>
+          <p class="order-detail__desc">Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer. Reach for this whenever a task calls for a diagram to explain a design, pipeline, request path, or state machine in a README or docs page rather than describing it in prose or leaving a mermaid block for something else to render. The output self-sizes and is styled for dark pages. Never a slash command; the crew reach for it implicitly when the intent calls for one.</p>
         </div>
       </div>
     </section>
@@ -86,8 +86,8 @@
           <h2 class="section__title" id="what-title">What it does</h2>
         </div>
         <div class="order-prose">
-          <p><code>termgif</code> turns a small JSON spec — a typed prompt, staged progress with check-offs, and a closing line — into a polished animated terminal GIF. It is a self-contained Python renderer whose only dependency is Pillow, so a run produces the recording deterministically rather than asking anyone to capture their screen.</p>
-          <p>It is a <em>tool</em>, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is a terminal recording — a README hero, a docs page, a release note, or a social preview — instead of static text.</p>
+          <p><code>svgflow</code> turns a small JSON spec — a list of <code>nodes</code> and the <code>edges</code> between them — into a clean box-and-arrow diagram, emitted as a self-contained SVG. There is no browser, no mermaid runtime, and no headless renderer: the SVG is assembled as text and is byte-for-byte deterministic, so the same spec always produces the same file and it is safe to commit next to the docs it illustrates.</p>
+          <p>It does one thing well. Nodes lay out in a single column (<code>&quot;direction&quot;: &quot;down&quot;</code>) or row (<code>&quot;direction&quot;: &quot;right&quot;</code>) in declaration order, each box sized to its label; adjacent nodes join with a straight spine arrow while skips, back-edges, and self-loops bow out to the side so they stay legible. It is a <em>tool</em>, not a command: the crew reach for it on their own when the natural artifact of a task is a diagram of how the pieces connect — a CI pipeline, a request path, a state machine — instead of a paragraph of prose or a mermaid block something else has to render.</p>
         </div>
       </div>
     </section>
@@ -97,28 +97,19 @@
         <div class="section__head">
           <h2 class="section__title" id="examples-title">Examples</h2>
         </div>
-        <p>Each of these is <code>termgif</code> driving different input — nothing to do with shipmates. If you&#x27;ve set <code>prefers-reduced-motion</code>, any animation shows its final frame instead.</p>
+        <p>Each of these is <code>svgflow</code> driving different input — nothing to do with shipmates.</p>
         <div class="tool-gallery">
           <figure class="tool-example">
-            <picture>
-              <source media="(prefers-reduced-motion: reduce)" srcset="examples/deploy.png">
-              <img class="tool-example__img" src="examples/deploy.gif" width="820" height="370" alt="Terminal recording of a production deploy: BUILD, TEST and RELEASE stages check off, then a green &#x27;Shipped v2.4.0 to production&#x27; line." loading="lazy" decoding="async">
-            </picture>
-            <figcaption class="tool-example__caption">A production deploy — build, test, then a zero-downtime rollout to three regions.</figcaption>
+            <img class="tool-example__img" src="examples/pipeline.svg" width="274" height="384" alt="A vertical flow diagram titled &#x27;CI pipeline&#x27;: Build, Test and Deploy boxes joined by downward teal arrows labelled &#x27;on push&#x27; and &#x27;green&#x27;, with a back-edge from Test to Build labelled &#x27;red → retry&#x27;." loading="lazy" decoding="async">
+            <figcaption class="tool-example__caption">A CI pipeline as a column — build to deploy, with a labelled retry edge looping back on failure.</figcaption>
           </figure>
           <figure class="tool-example">
-            <picture>
-              <source media="(prefers-reduced-motion: reduce)" srcset="examples/train.png">
-              <img class="tool-example__img" src="examples/train.gif" width="820" height="370" alt="Terminal recording of a model training run: DATASET, TRAIN and EVAL stages, a top-1 98.7% metric line, then a green checkpoint-saved line." loading="lazy" decoding="async">
-            </picture>
-            <figcaption class="tool-example__caption">A model-training run — dataset to eval, with the headline metrics and a saved checkpoint.</figcaption>
+            <img class="tool-example__img" src="examples/request.svg" width="830" height="203" alt="A left-to-right flow diagram titled &#x27;Request flow&#x27;: Client, API gateway, Service and Database boxes joined by teal arrows labelled &#x27;HTTPS&#x27;, &#x27;authz&#x27; and &#x27;query&#x27;, with a return edge from Service to Client labelled &#x27;200 JSON&#x27;." loading="lazy" decoding="async">
+            <figcaption class="tool-example__caption">A request path as a row — client through gateway and service to the database, and the response back.</figcaption>
           </figure>
           <figure class="tool-example">
-            <picture>
-              <source media="(prefers-reduced-motion: reduce)" srcset="examples/launch.png">
-              <img class="tool-example__img" src="examples/launch.gif" width="820" height="370" alt="Terminal recording of a rocket launch sequence: FUEL, GUIDANCE and IGNITION stages, a T-minus countdown, then a green liftoff line." loading="lazy" decoding="async">
-            </picture>
-            <figcaption class="tool-example__caption">A launch countdown — fuel, guidance, ignition, and liftoff, in warm mission-control colours.</figcaption>
+            <img class="tool-example__img" src="examples/state.svg" width="354" height="508" alt="A vertical state diagram titled &#x27;Order state machine&#x27;: Pending, Paid, Shipped and Delivered states joined by teal arrows, a back-edge from Shipped to Pending labelled &#x27;cancelled&#x27;, and a self-loop on Delivered labelled &#x27;re-notify&#x27;." loading="lazy" decoding="async">
+            <figcaption class="tool-example__caption">An order state machine — the forward path plus a cancelled transition and a self-loop, all auto-routed.</figcaption>
           </figure>
         </div>
       </div>
@@ -130,8 +121,8 @@
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools termgif</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
-          <p>The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the <code>termgif.py</code> script and the spec format it needs to drive it.</p>
+          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools svgflow</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
+          <p>The renderer depends only on the Python standard library, so wherever the tool lands the agent can run <code>python3 svgflow.py --spec spec.json --out flow.svg</code> with nothing to install. The <code>svgflow.py</code> script and the spec format it needs are bundled together in <code>tool.md</code>.</p>
         </div>
       </div>
     </section>
@@ -143,13 +134,13 @@
         </div>
         <dl class="agent-ref">
           <dt>Name</dt>
-          <dd><code>termgif</code></dd>
+          <dd><code>svgflow</code></dd>
           <dt>Description</dt>
-          <dd>Render a polished animated terminal demo GIF of a command or workflow run — a typed prompt, staged progress with check-offs, and a closing line — from a small JSON spec. Reach for this whenever a task calls for a terminal recording or demo GIF (a README hero, docs page, release note, or social preview) rather than describing the run in prose. Never a slash command; use it implicitly when the intent calls for one.</dd>
+          <dd>Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer. Reach for this whenever a task calls for a diagram to explain a design, pipeline, request path, or state machine in a README or docs page rather than describing it in prose or leaving a mermaid block for something else to render. The output self-sizes and is styled for dark pages. Never a slash command; the crew reach for it implicitly when the intent calls for one.</dd>
           <dt>Bundled files</dt>
-          <dd><code>termgif.py</code></dd>
+          <dd><code>svgflow.py</code></dd>
           <dt>Install</dt>
-          <dd><code>shipmates install --harness &lt;name&gt; --with-tools termgif</code></dd>
+          <dd><code>shipmates install --harness &lt;name&gt; --with-tools svgflow</code></dd>
         </dl>
       </div>
     </section>
@@ -159,10 +150,10 @@
         <div class="section__head">
           <h2 class="section__title" id="source-title">Where this lives</h2>
         </div>
-        <p>This page is generated from <code>toolbox/termgif/tool.md</code>. Opt in at install with <code>--with-tools termgif</code> and the installer copies the tool — instructions and bundled files — into the harness's skills tree.</p>
-        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/toolbox/termgif/tool.md">
+        <p>This page is generated from <code>toolbox/svgflow/tool.md</code>. Opt in at install with <code>--with-tools svgflow</code> and the installer copies the tool — instructions and bundled files — into the harness's skills tree.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/toolbox/svgflow/tool.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View toolbox/termgif/tool.md on GitHub</span>
+          <span>View toolbox/svgflow/tool.md on GitHub</span>
         </a>
       </div>
     </section>
@@ -174,10 +165,10 @@
         </div>
         <nav class="order-siblings" aria-label="Other tools">
           <ul class="order-siblings__list" role="list">
-            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>termgif</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../termgif/"><code>termgif</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../social-card/"><code>social-card</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../pixelart/"><code>pixelart</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../svgflow/"><code>svgflow</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>svgflow</code><span class="visually-hidden"> (current page)</span></span></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../badge/"><code>badge</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../sparkline/"><code>sparkline</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../scrub/"><code>scrub</code></a></li>
