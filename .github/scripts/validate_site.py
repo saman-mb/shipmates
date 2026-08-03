@@ -114,6 +114,7 @@ C3_CLASSES = (
     "agent-scenario__desc",
     "agent-ref",
     "crew-card__link", "crew-card__more",
+    "tool-gallery", "tool-example", "tool-example__img", "tool-example__caption",
 )
 
 # Markdown markers that must never survive tokenization into rendered text.
