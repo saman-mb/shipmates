@@ -47,6 +47,10 @@ pub struct CanonicalTool {
     pub body: String,
     /// (relative filename, contents) for every bundled file except `tool.md`.
     pub assets: Vec<(String, String)>,
+    /// Runtime packages the tool self-provisions (from the `requires:` frontmatter
+    /// key, comma-separated). The installer pre-warms these so an installed tool
+    /// works without the user pip-installing anything.
+    pub requires: Vec<String>,
     pub source: PathBuf,
 }
 
@@ -72,6 +76,18 @@ pub fn reject_positional(label: &str, text: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Comma-separated `requires:` frontmatter → the tool's runtime package list.
+fn parse_requires(fm: &HashMap<String, String>) -> Vec<String> {
+    fm.get("requires")
+        .map(|s| {
+            s.split(',')
+                .map(|x| x.trim().to_string())
+                .filter(|x| !x.is_empty())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub fn parse_frontmatter(path: &Path) -> Result<(HashMap<String, String>, String), String> {
@@ -256,6 +272,7 @@ pub fn load_tools(path: &Path) -> anyhow::Result<Vec<CanonicalTool>> {
             description: fm.get("description").cloned().unwrap_or_default(),
             body,
             assets,
+            requires: parse_requires(&fm),
             source: tool_md,
         });
     }
@@ -281,6 +298,7 @@ pub fn load_tools_embedded() -> anyhow::Result<Vec<CanonicalTool>> {
         let mut name = dir.clone();
         let mut description = String::new();
         let mut body = String::new();
+        let mut requires: Vec<String> = Vec::new();
         let mut assets: Vec<(String, String)> = Vec::new();
         let mut found = false;
         for (file_rel, content) in files {
@@ -289,6 +307,7 @@ pub fn load_tools_embedded() -> anyhow::Result<Vec<CanonicalTool>> {
                     .map_err(|e| anyhow::anyhow!(e))?;
                 name = fm.get("name").cloned().unwrap_or(dir.clone());
                 description = fm.get("description").cloned().unwrap_or_default();
+                requires = parse_requires(&fm);
                 body = b;
                 found = true;
             } else {
@@ -303,6 +322,7 @@ pub fn load_tools_embedded() -> anyhow::Result<Vec<CanonicalTool>> {
             description,
             body,
             assets,
+            requires,
             source: PathBuf::from(format!("toolbox/{}/tool.md", dir)),
         });
     }

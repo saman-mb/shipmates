@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """pixelart — render pixel art (static PNG or animated GIF) from a JSON spec.
 
-Self-contained: the only dependency is Pillow. This is the runnable payload of
+Self-contained: its only dependency is Pillow, which it installs for itself on
+first run (into a private cache) if missing — see `_ensure_pillow` below — so a
+plain `python3 pixelart.py` works with nothing to set up. This is the runnable payload of
 the shipmates `pixelart` tool. An agent reaches for it, per tool.md, when a task
 implies producing a small pixel-art asset — an icon, sprite, favicon, or badge —
 in the same hard-edged style as the shipmates logo. It is never a slash command.
@@ -42,10 +44,52 @@ import argparse
 import json
 import sys
 
-try:
-    from PIL import Image
-except ImportError:
-    sys.exit("pixelart: Pillow is required — install it with: pip install Pillow")
+
+def _ensure_pillow():
+    """Make Pillow importable with no separate install by the user. If it is
+    already available, use it; otherwise install it once into a private library
+    dir under the cache and add that to `sys.path` — no virtualenv, no re-exec.
+    A plain `python3 pixelart.py` then works out of the box on any Python that can
+    reach pip. Needs the network the first time only; later runs reuse it."""
+    try:
+        import PIL  # noqa: F401
+        return
+    except ImportError:
+        pass
+    import os, subprocess, importlib
+    root = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
+    libdir = os.path.join(root, "shipmates", "pylib")
+    if libdir not in sys.path:
+        sys.path.insert(0, libdir)
+    try:
+        import PIL  # provisioned on an earlier run
+        return
+    except ImportError:
+        pass
+    os.makedirs(libdir, exist_ok=True)
+    installed = False
+    for pip_cmd in ([sys.executable, "-m", "pip"], ["pip3"], ["pip"]):
+        try:
+            r = subprocess.run(pip_cmd + ["install", "--target", libdir, "--quiet",
+                                          "--disable-pip-version-check", "Pillow"])
+        except (FileNotFoundError, OSError):
+            continue
+        if r.returncode == 0:
+            installed = True
+            break
+    if not installed:
+        sys.exit("pixelart: needs Pillow and could not install it automatically "
+                 "(no pip found, or offline). Run: python3 -m pip install Pillow")
+    importlib.invalidate_caches()
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        sys.exit("pixelart: installed Pillow into {} but could not import it. "
+                 "Run: python3 -m pip install Pillow".format(libdir))
+
+
+_ensure_pillow()
+from PIL import Image
 
 MAX_SCALE = 512          # a sane upper bound on the whole-number upscale factor
 TRANSPARENT = (0, 0, 0, 0)
@@ -262,9 +306,18 @@ def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Render pixel art (static PNG or animated GIF) from a JSON spec.")
     ap.add_argument("--spec", help="path to a JSON spec file (default: stdin)")
-    ap.add_argument("--out", required=True, help="output .png (grid) or .gif (frames)")
+    ap.add_argument("--out", help="output .png (grid) or .gif (frames)")
     ap.add_argument("--poster", help="also write a static PNG poster of the final frame")
+    ap.add_argument("--provision", action="store_true",
+                    help="ensure runtime dependencies are installed, then exit (used at install time)")
     args = ap.parse_args(argv)
+
+    if args.provision:
+        print("pixelart: ready")   # Pillow was ensured on import
+        return 0
+    if not args.out:
+        print("pixelart: --out is required", file=sys.stderr)
+        return 2
 
     try:
         raw = open(args.spec, encoding="utf-8").read() if args.spec else sys.stdin.read()

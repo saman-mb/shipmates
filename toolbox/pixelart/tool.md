@@ -1,6 +1,7 @@
 ---
 name: pixelart
 description: Render pixel art — a static PNG or an animated GIF — from a small JSON spec of a character grid and a limited palette, upscaled by a whole-number factor with nearest-neighbour and no smoothing. This is the technique behind the shipmates logo, made reusable. Reach for it whenever a task calls for a small hard-edged asset in that style — an icon, sprite, favicon, badge, or twinkling animation — rather than a photographic image or a vector. Never a slash command; the crew reach for it implicitly when the intent calls for one.
+requires: pillow
 ---
 
 # pixelart
@@ -20,8 +21,9 @@ purpose, never a gradient.
 
 ## Run it
 
-The renderer `pixelart.py` sits next to this file. It needs Pillow
-(`pip install Pillow`) and nothing else.
+The renderer `pixelart.py` sits next to this file. It needs Pillow, which it
+installs for itself the first time it runs (into a private cache) if it is not
+already present — you never have to install anything.
 
 ```
 # static PNG — the spec has a "grid"

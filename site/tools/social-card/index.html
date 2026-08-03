@@ -86,7 +86,7 @@
           <h2 class="section__title" id="what-title">What it does</h2>
         </div>
         <div class="order-prose">
-          <p><code>social-card</code> turns a small JSON spec — an eyebrow kicker, a title, a subtitle, an accent colour, and a footer wordmark — into a polished 1280×640 PNG, the standard Open Graph aspect that Slack, Discord, Twitter, LinkedIn, and iMessage crop from a shared link. It is a self-contained Python renderer whose only dependency is Pillow, so a run produces the card deterministically on a deep, tasteful dark canvas rather than asking anyone to open a design app.</p>
+          <p><code>social-card</code> turns a small JSON spec — an eyebrow kicker, a title, a subtitle, an accent colour, and a footer wordmark — into a polished 1280×640 PNG, the standard Open Graph aspect that Slack, Discord, Twitter, LinkedIn, and iMessage crop from a shared link. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the card deterministically on a deep, tasteful dark canvas — nothing to install, no design app to open.</p>
           <p>It is a <em>tool</em>, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is <em>a share image</em> — a repo or product launch, a release, a docs or guide page — instead of a described one. Long titles wrap and the type auto-fits, so copy of any length stays inside the frame.</p>
         </div>
       </div>
@@ -97,7 +97,7 @@
         <div class="section__head">
           <h2 class="section__title" id="examples-title">Examples</h2>
         </div>
-        <p>Each of these is <code>social-card</code> driving different input — nothing to do with shipmates.</p>
+        <p>A few things <code>social-card</code> can produce, each from a small spec of its own.</p>
         <div class="tool-gallery">
           <figure class="tool-example">
             <img class="tool-example__img" src="examples/launch.png" width="1280" height="640" alt="A dark launch card: an indigo &#x27;Now open source&#x27; pill above a large white title &#x27;Aurora — a typed HTTP client that reads like prose&#x27;, a muted subtitle, and a footer repo URL." loading="lazy" decoding="async">

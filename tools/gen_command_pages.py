@@ -1222,7 +1222,7 @@ TOOL_COPY = {
         what=(
             "`termgif` turns a small JSON spec — a typed prompt, staged progress with "
             "check-offs, and a closing line — into a polished animated terminal GIF. It is a "
-            "self-contained Python renderer whose only dependency is Pillow, so a run produces "
+            "self-contained Python renderer that provisions its one dependency (Pillow) itself, so a run produces "
             "the recording deterministically rather than asking anyone to capture their screen.",
             "It is a *tool*, not a command: you never type it. The crew reach for it on their "
             "own when the natural artifact of a task is a terminal recording — a README hero, a "
@@ -1259,7 +1259,7 @@ TOOL_COPY = {
     "social-card": ToolCopy(
         tagline="Renders a shippable 1280×640 social / Open Graph preview card from a small JSON spec.",
         what=(
-            "`social-card` turns a small JSON spec — an eyebrow kicker, a title, a subtitle, an accent colour, and a footer wordmark — into a polished 1280×640 PNG, the standard Open Graph aspect that Slack, Discord, Twitter, LinkedIn, and iMessage crop from a shared link. It is a self-contained Python renderer whose only dependency is Pillow, so a run produces the card deterministically on a deep, tasteful dark canvas rather than asking anyone to open a design app.",
+            "`social-card` turns a small JSON spec — an eyebrow kicker, a title, a subtitle, an accent colour, and a footer wordmark — into a polished 1280×640 PNG, the standard Open Graph aspect that Slack, Discord, Twitter, LinkedIn, and iMessage crop from a shared link. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the card deterministically on a deep, tasteful dark canvas — nothing to install, no design app to open.",
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is *a share image* — a repo or product launch, a release, a docs or guide page — instead of a described one. Long titles wrap and the type auto-fits, so copy of any length stays inside the frame.",
         ),
         usage=(
@@ -1287,7 +1287,7 @@ TOOL_COPY = {
     "pixelart": ToolCopy(
         tagline="Pixel art the way the shipmates logo is made — a limited palette upscaled by a whole-number factor with nearest-neighbour, never smoothed.",
         what=(
-            "`pixelart` turns a small JSON spec — a limited palette plus a grid of single-character rows — into a crisp pixel-art asset: a static PNG, or an animated GIF when the spec carries `frames`. It is a self-contained Python renderer whose only dependency is Pillow, so a run produces the image deterministically rather than leaning on a model to imagine one.",
+            "`pixelart` turns a small JSON spec — a limited palette plus a grid of single-character rows — into a crisp pixel-art asset: a static PNG, or an animated GIF when the spec carries `frames`. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the image deterministically — nothing to install — rather than leaning on a model to imagine one.",
             "It reproduces the technique behind the shipmates logo, which is a 48×48 grid on ~39 colours scaled up ×14 with nearest-neighbour and no smoothing. Every upscale here is `Image.NEAREST`, so each logical pixel becomes a solid block — hard-edged and aliased on purpose, never a gradient. It is a tool, not a command: the crew reach for it on their own when the natural artifact is an icon, sprite, favicon, or badge in that style.",
         ),
         usage=(
@@ -3582,8 +3582,7 @@ def render_tool_examples(tool: Tool) -> str:
     """A gallery of example outputs. An animated GIF is wrapped in a `<picture>`
     whose reduced-motion source swaps the animation for its static final frame
     (WCAG 2.2.2, the a11y pattern the homepage hero uses); a static PNG or SVG is
-    a plain `<img>`. Examples are always the tool driving different inputs —
-    nothing to do with shipmates."""
+    a plain `<img>`. Each example is a different run of the tool."""
     if not tool.examples:
         return ""
     animated = any(ex.poster for ex in tool.examples)
@@ -3615,8 +3614,8 @@ def render_tool_examples(tool: Tool) -> str:
         if animated else ""
     )
     intro = (
-        f"        <p>Each of these is <code>{esc(tool.name)}</code> driving different input — "
-        f"nothing to do with shipmates.{reduced}</p>\n"
+        f"        <p>A few things <code>{esc(tool.name)}</code> can produce, each from a small "
+        f"spec of its own.{reduced}</p>\n"
     )
     inner = intro + f'        <div class="tool-gallery">\n{gallery}\n        </div>'
     return _agent_section("examples", "Examples", inner)

@@ -74,6 +74,39 @@ fn prompt_for_tools(available: &[CanonicalTool]) -> Vec<CanonicalTool> {
     Vec::new()
 }
 
+/// Pre-warm the runtime dependencies of the installed tool scripts, at install
+/// time, so an installed tool runs without the user pip-installing anything.
+///
+/// Each script's `--provision` ensures its own deps (e.g. the image tools install
+/// Pillow into a private cache). Best-effort by design: no pip, no network, or no
+/// Python here never fails the install — the tool self-provisions on first run
+/// instead. If Python is missing entirely, that is the user's to fix, and we say so.
+fn provision_tool_deps(scripts: &[PathBuf]) {
+    let python = ["python3", "python"].into_iter().find(|p| {
+        std::process::Command::new(p)
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    });
+    let Some(python) = python else {
+        println!("Note: the installed tool(s) need Python 3 to run; install it and they self-provision the rest on first use.");
+        return;
+    };
+    for script in scripts {
+        let name = script.file_name().and_then(|s| s.to_str()).unwrap_or("tool");
+        print!("Preparing {} …", name);
+        let _ = std::io::stdout().flush();
+        let ok = std::process::Command::new(python)
+            .arg(script)
+            .arg("--provision")
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        println!("{}", if ok { " ready" } else { " will provision on first run" });
+    }
+}
+
 fn select(target: &str) -> Result<Box<dyn Adapter>> {
     let adapter: Box<dyn Adapter> = match target {
         "opencode" => Box::new(adapters::opencode::OpencodeAdapter),
@@ -162,6 +195,17 @@ fn main() -> Result<()> {
                 vec![harness]
             };
 
+            // Scripts of selected tools that declare runtime deps (`requires:`),
+            // by bundled filename — their installed copies get pre-warmed below so
+            // the tool works without the user installing anything.
+            let provision_filenames: std::collections::HashSet<String> = selected_tools
+                .iter()
+                .filter(|t| !t.requires.is_empty())
+                .flat_map(|t| t.assets.iter().map(|(rel, _)| rel.rsplit('/').next().unwrap_or(rel).to_string()))
+                .filter(|f| f.ends_with(".py"))
+                .collect();
+            let mut provision_scripts: Vec<PathBuf> = Vec::new();
+
             for harness in &harnesses {
                 let adapter = select(harness)?;
                 let files = adapter.build(&roles, &cmds)?;
@@ -185,6 +229,15 @@ fn main() -> Result<()> {
                     let full_path = target_dir.join(rel);
                     installer::atomic_write(&full_path, &content)?;
                     written += 1;
+                    // Remember one installed copy of each dependency-bearing script
+                    // (deduped by filename) to pre-warm after all harnesses land.
+                    if let Some(fname) = rel.rsplit('/').next() {
+                        if provision_filenames.contains(fname)
+                            && !provision_scripts.iter().any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
+                        {
+                            provision_scripts.push(full_path.clone());
+                        }
+                    }
                 }
 
                 if selected_tools.is_empty() {
@@ -196,6 +249,12 @@ fn main() -> Result<()> {
                         harness, written, names.join(", ")
                     );
                 }
+            }
+
+            // Pre-warm the runtime deps of any dependency-bearing tool so it works
+            // out of the box — no separate pip install by the user.
+            if !provision_scripts.is_empty() {
+                provision_tool_deps(&provision_scripts);
             }
         },
         Command::Build { target, root, out, check, update } => {
@@ -325,6 +384,7 @@ mod tests {
             description: "desc".to_string(),
             body: String::new(),
             assets: vec![],
+            requires: vec![],
             source: PathBuf::from(""),
         }
     }

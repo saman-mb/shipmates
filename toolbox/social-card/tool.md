@@ -1,6 +1,7 @@
 ---
 name: social-card
 description: Render a polished 1280x640 social / Open Graph preview card — an eyebrow kicker, a large wrapping title, a muted subtitle, an accent rule, and a footer wordmark — from a small JSON spec. Reach for this whenever a task produces something worth sharing (a repo or product launch, a release, a docs or guide page) and the natural artifact is a share image rather than a described one. Never a slash command; the crew reach for it implicitly when the intent of a prompt calls for one.
+requires: pillow
 ---
 
 # social-card
@@ -12,9 +13,10 @@ of hand-composing an image or asking the user to open a design app.
 
 ## Run it
 
-The renderer `social_card.py` sits next to this file. It needs Pillow
-(`pip install Pillow`); it uses DejaVu Sans / DejaVu Sans Bold when available and
-falls back to Pillow's built-in font otherwise.
+The renderer `social_card.py` sits next to this file. It needs Pillow, which it
+installs for itself the first time it runs (into a private cache) if it is not
+already present — you never have to install anything. It uses DejaVu Sans /
+DejaVu Sans Bold when available and falls back to Pillow's built-in font otherwise.
 
 ```
 python3 social_card.py --spec spec.json --out card.png

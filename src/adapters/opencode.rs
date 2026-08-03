@@ -167,6 +167,7 @@ mod tests {
             description: "render a gif".to_string(),
             body: "x".to_string(),
             assets: vec![("termgif.py".to_string(), "print('hi')".to_string())],
+            requires: vec![],
             source: std::path::PathBuf::from(""),
         };
         let files = OpencodeAdapter.build_tools(&[tool]);
