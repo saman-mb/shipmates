@@ -53,8 +53,27 @@ assert "antigravity: install exits 0" install_to antigravity "$D"
 assert "antigravity: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
 assert "antigravity: agent under .agents/agents" test -f "$D/.agents/agents/sdet.md"
 
+# --- crew-bearing targets whose agent format is not Claude's ---
+# Codex agents are TOML, not Markdown; Copilot needs the .agent.md double
+# extension or the file is not discovered. Both are easy to regress into a
+# plain <name>.md that installs cleanly and is silently never loaded.
+D="$WORK/codex"
+assert "codex: install exits 0" install_to codex "$D"
+assert "codex: skill under .codex/skills" test -f "$D/.codex/skills/ship-issue/SKILL.md"
+assert "codex: agent is TOML under .codex/agents" test -f "$D/.codex/agents/sdet.toml"
+assert "codex: agent is not markdown" test ! -f "$D/.codex/agents/sdet.md"
+
+D="$WORK/github-copilot"
+assert "github-copilot: install exits 0" install_to github-copilot "$D"
+assert "github-copilot: skill under .github/skills" test -f "$D/.github/skills/ship-issue/SKILL.md"
+assert "github-copilot: agent uses .agent.md" test -f "$D/.github/agents/sdet.agent.md"
+assert "github-copilot: bare .md is not emitted" test ! -f "$D/.github/agents/sdet.md"
+
 # --- skill-only targets: skills only, no agent files ---
-for pair in "codex:.codex" "cursor:.cursor" "github-copilot:.github" "windsurf:.windsurf" "zed:.zed"; do
+# cursor: agents directory reported but frontmatter schema unverified.
+# windsurf: target identity under review since the Devin Desktop rename.
+# zed: genuinely has no agents directory — ACP, not files.
+for pair in "cursor:.cursor" "windsurf:.windsurf" "zed:.zed"; do
   harness="${pair%%:*}"
   dirname="${pair##*:}"
   D="$WORK/$harness"

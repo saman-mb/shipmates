@@ -3,29 +3,37 @@
   "harnesses": {
     "claude-code": {
       "agents": true,
-      "notes": "Canonical source format. The payload is a byte-for-byte mirror of skills/ and agents/."
+      "notes": "Canonical source format. The payload is a byte-for-byte mirror of skills/ and agents/.",
+      "agents_notes": "Subagents at `.claude/agents/<name>.md` (Markdown + YAML frontmatter, `tools` allowlist). Verified 2026-08-03: https://code.claude.com/docs/en/skills"
     },
     "github-copilot": {
-      "agents": false
+      "agents": true,
+      "agents_notes": "Custom agents at `.github/agents/<name>.agent.md` \u2014 note the double extension. Markdown + YAML frontmatter; `tools` accepts canonical names (read, search, edit, execute, web, agent); combined frontmatter+body capped at 30,000 chars. Verified 2026-08-03: https://docs.github.com/en/copilot/reference/custom-agents-configuration"
     },
     "codex": {
-      "agents": false
+      "agents": true,
+      "agents_notes": "Subagents GA March 2026. Global `~/.codex/agents/`, project-scoped `.codex/agents/` checked into the repo. Standalone TOML (name, description, developer_instructions, optional model/model_reasoning_effort/sandbox_mode/mcp_servers/skills.config). No documented per-agent tool allowlist, so least privilege is NOT enforced on this target. Verified 2026-08-03: https://learn.chatgpt.com/docs/agent-configuration/subagents"
     },
     "cursor": {
-      "agents": false
+      "agents": false,
+      "agents_notes": "UNCONFIRMED, not proven absent. `.cursor/agents/*.md` is widely reported and Cursor's docs describe delegating to named subagents, but no first-party page documents the agent frontmatter schema, and a Jan 2026 bug report says the Task tool does not surface agents from that directory. Emitting an invented schema risks unknown keys being forwarded or rejected. Re-check before flipping: https://cursor.com/docs/skills.md"
     },
     "antigravity": {
       "agents": true,
-      "notes": "Adapter emits both agents and skills under .agents/."
+      "notes": "Adapter emits both agents and skills under .agents/.",
+      "agents_notes": "Workspace agents at `.agents/agents/<name>.md` (`subagent: true`, `mainAgent: false`). Successor to the retired Gemini CLI."
     },
     "windsurf": {
-      "agents": false
+      "agents": false,
+      "agents_notes": "TARGET IDENTITY IN DOUBT. Windsurf became Devin Desktop on 2026-06-02; Cascade was deprecated 2026-07-01 and replaced by Devin Local, which does spawn subagents. `.windsurf/` may address a product that no longer uses that name. Needs its own investigation \u2014 rename, retarget, or remove."
     },
     "zed": {
-      "agents": false
+      "agents": false,
+      "agents_notes": "Correctly false. Zed uses the Agent Panel plus ACP rather than an agents directory; external agents (Claude Code, Codex, Gemini) connect over ACP. There is no directory for us to emit crew into. Verified 2026-08-03."
     },
     "opencode": {
-      "agents": true
+      "agents": true,
+      "agents_notes": "Subagents at `.opencode/agents/<name>.md` with `mode: subagent` and a deny-first `permission` map. Verified against opencode's parsing source."
     }
   },
   "features": {
@@ -304,7 +312,7 @@
         "antigravity": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "windsurf": {
           "supported": false,
@@ -357,7 +365,7 @@
         },
         "opencode": {
           "supported": true,
-          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow — a prompt is not a permission boundary."
+          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow \u2014 a prompt is not a permission boundary."
         }
       }
     },

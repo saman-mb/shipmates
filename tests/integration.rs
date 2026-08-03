@@ -103,7 +103,7 @@ fn test_cli_targets() {
 }
 
 #[test]
-fn test_skill_only_targets_build_via_cli() {
+fn test_non_claude_targets_build_via_cli() {
     let temp_dir = tempfile::tempdir().unwrap();
     for target in ["codex", "cursor", "github-copilot", "windsurf", "zed"] {
         let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
@@ -176,4 +176,65 @@ fn test_antigravity_adapter_integration() {
     assert!(content.contains("name: architect"));
     assert!(content.contains("subagent: true"));
     assert!(content.contains("system prompt body"));
+}
+
+/// Every harness's `agents` flag must match what its adapter actually emits.
+///
+/// This is the gate the change that added it was fixing the absence of: five
+/// entries sat at `agents: false` for months, three of them wrong, because
+/// nothing compared the claim to the payload. Prose in `agents_notes` makes the
+/// next audit easier but cannot prevent the drift — only this can.
+///
+/// It also separates the two states that got conflated: "this target has no
+/// crew mechanism" and "this adapter forgot to emit crew" look identical from
+/// the outside, and one of them is a bug.
+#[test]
+fn test_matrix_agents_flag_matches_adapter_output() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let matrix: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap()).unwrap();
+    let harnesses = matrix["harnesses"].as_object().expect("harness_matrix.json has no harnesses map");
+
+    let declared: std::collections::BTreeSet<&str> = harnesses.keys().map(|k| k.as_str()).collect();
+    let shipped: std::collections::BTreeSet<&str> = shipmates::adapters::targets().into_iter().collect();
+    assert_eq!(declared, shipped, "harness_matrix.json and adapters::targets() disagree");
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    for (name, entry) in harnesses {
+        let claims_agents = entry["agents"].as_bool().unwrap_or_else(|| panic!("{name}: no `agents` boolean"));
+        assert!(
+            entry["agents_notes"].as_str().is_some_and(|s| !s.trim().is_empty()),
+            "{name}: `agents` must carry `agents_notes` recording the evidence — a bare flag is how              three harnesses stayed wrong",
+        );
+
+        let out = temp_dir.path().join(name);
+        let status = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+            .args(["build", "--target", name, "--out", out.to_str().unwrap()])
+            .status()
+            .expect("failed to execute shipmates build");
+        assert!(status.success(), "{name}: build failed");
+
+        let emits_agents = walk(&out).iter().any(|p| {
+            p.components().any(|c| c.as_os_str() == "agents") && p.file_name().is_some_and(|f| f != "AGENTS.md")
+        });
+        assert_eq!(
+            claims_agents, emits_agents,
+            "{name}: harness_matrix.json says agents={claims_agents} but the adapter emits agents={emits_agents}",
+        );
+    }
+}
+
+fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                out.extend(walk(&path));
+            } else {
+                out.push(path);
+            }
+        }
+    }
+    out
 }
