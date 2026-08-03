@@ -135,15 +135,29 @@ jobs:
           test -f "$RUNNER_TEMP/install-tool/.claude/skills/termgif/SKILL.md"
           test -f "$RUNNER_TEMP/install-tool/.claude/skills/termgif/termgif.py"
           grep -q "user-invocable: false" "$RUNNER_TEMP/install-tool/.claude/skills/termgif/SKILL.md"
-          # opencode gets its native code tool, not a skill
+          # a named tool that is not termgif also installs correctly (agent-only skill + its script)
+          cargo run -- install --harness claude-code --with-tools pixelart --dir "$RUNNER_TEMP/install-tool-px"
+          test -f "$RUNNER_TEMP/install-tool-px/.claude/skills/pixelart/SKILL.md"
+          test -f "$RUNNER_TEMP/install-tool-px/.claude/skills/pixelart/pixelart.py"
+          test ! -e "$RUNNER_TEMP/install-tool-px/.claude/skills/termgif"   # only the requested tool
+          # comma-separated selection installs exactly those tools
+          cargo run -- install --harness claude-code --with-tools scrub,badge --dir "$RUNNER_TEMP/install-tool-multi"
+          test -d "$RUNNER_TEMP/install-tool-multi/.claude/skills/scrub"
+          test -d "$RUNNER_TEMP/install-tool-multi/.claude/skills/badge"
+          test ! -e "$RUNNER_TEMP/install-tool-multi/.claude/skills/pixelart"
+          # opencode gets a native code tool per selected tool, not a skill
           cargo run -- install --harness opencode --with-tools all --dir "$RUNNER_TEMP/install-tool-oc"
-          test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/termgif.ts"
-          test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/termgif.py"
-          test ! -d "$RUNNER_TEMP/install-tool-oc/.opencode/skills/termgif"
-          # shared-tree harness (codex): the tool lands in .agents/skills too, not .codex
-          cargo run -- install --harness codex --with-tools termgif --dir "$RUNNER_TEMP/install-tool-cx"
-          test -f "$RUNNER_TEMP/install-tool-cx/.agents/skills/termgif/SKILL.md"
-          test -f "$RUNNER_TEMP/install-tool-cx/.agents/skills/termgif/termgif.py"
+          for t in termgif social-card pixelart svgflow badge sparkline scrub fixtures; do
+            script="$(echo "$t" | tr - _)"
+            test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/$t.ts"
+            test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/$script.py"
+          done
+          test ! -d "$RUNNER_TEMP/install-tool-oc/.opencode/skills"
+          # shared-tree harness (codex): --with-tools all lands every tool in .agents/skills, not .codex
+          cargo run -- install --harness codex --with-tools all --dir "$RUNNER_TEMP/install-tool-cx"
+          for t in termgif social-card pixelart svgflow badge sparkline scrub fixtures; do
+            test -f "$RUNNER_TEMP/install-tool-cx/.agents/skills/$t/SKILL.md"
+          done
           test ! -d "$RUNNER_TEMP/install-tool-cx/.codex/skills"
       - name: Install the opencode harness end to end
         run: |

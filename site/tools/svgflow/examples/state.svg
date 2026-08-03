@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="354" height="508" viewBox="0 0 354 508" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="354" height="508" fill="#0d1117"/>
+<rect x="0.5" y="0.5" width="353" height="507" rx="16" fill="#0b1a2b" stroke="#1d3a57" stroke-width="1"/>
+<text x="177" y="21.08" text-anchor="middle" font-size="14" fill="#7f9bb3">Order state machine</text>
+<g transform="translate(130,62)">
+<line x1="0" y1="46" x2="0" y2="124" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,124 -5.5,113 5.5,113" fill="#2fd4b6"/>
+<line x1="0" y1="170" x2="0" y2="248" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,248 -5.5,237 5.5,237" fill="#2fd4b6"/>
+<line x1="0" y1="294" x2="0" y2="372" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,372 -5.5,361 5.5,361" fill="#2fd4b6"/>
+<path d="M 51.5 271 C 105.5 271 105.5 23 51.5 23" fill="none" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="51.5,23 62.5,17.5 62.5,28.5" fill="#2fd4b6"/>
+<path d="M 60.5 385 C 106.4 373 106.4 417 60.5 405" fill="none" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="60.5,405 72.53,402.46 69.75,413.1" fill="#2fd4b6"/>
+<rect x="-51.5" y="0" width="103" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" fill="#dee8f0">Pending</text>
+<rect x="-48" y="124" width="96" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" fill="#dee8f0">Paid</text>
+<rect x="-51.5" y="248" width="103" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" fill="#dee8f0">Shipped</text>
+<rect x="-60.5" y="372" width="121" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" fill="#dee8f0">Delivered</text>
+<rect x="-94.8" y="74" width="82.8" height="22" rx="6" fill="#0b1a2b"/>
+<text x="-53.4" y="89.2" text-anchor="middle" font-size="12" fill="#8fe3d4">charge ok</text>
+<rect x="-87.6" y="198" width="75.6" height="22" rx="6" fill="#0b1a2b"/>
+<text x="-49.8" y="213.2" text-anchor="middle" font-size="12" fill="#8fe3d4">dispatch</text>
+<rect x="-102" y="322" width="90" height="22" rx="6" fill="#0b1a2b"/>
+<text x="-57" y="337.2" text-anchor="middle" font-size="12" fill="#8fe3d4">signed for</text>
+<rect x="50.6" y="136" width="82.8" height="22" rx="6" fill="#0b1a2b"/>
+<text x="92" y="151.2" text-anchor="middle" font-size="12" fill="#8fe3d4">cancelled</text>
+<rect x="112.4" y="384" width="82.8" height="22" rx="6" fill="#0b1a2b"/>
+<text x="153.8" y="399.2" text-anchor="middle" font-size="12" fill="#8fe3d4">re-notify</text>
+</g>
+</svg>

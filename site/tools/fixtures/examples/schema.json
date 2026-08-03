@@ -1,0 +1,11 @@
+{
+  "id":         "uuid",
+  "first_name": "first_name",
+  "last_name":  "last_name",
+  "email":      "email",
+  "active":     "bool",
+  "age":        {"type": "int",    "min": 18, "max": 65},
+  "role":       {"type": "choice", "options": ["admin", "member", "guest"]},
+  "joined":     {"type": "date",   "start": "2020-01-01", "end": "2024-12-31"},
+  "bio":        {"type": "lorem",  "words": 6}
+}

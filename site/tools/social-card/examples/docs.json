@@ -1,0 +1,9 @@
+{
+  "eyebrow": "Guide",
+  "title": "Deploying to production, end to end",
+  "subtitle": "From a clean checkout to a green health check in twelve minutes — build, migrate, roll out, and verify.",
+  "accent": "#f0883e",
+  "wordmark": "docs.aurora-http.dev/deploy",
+  "bg": "#0d1117",
+  "fg": "#e6edf3"
+}

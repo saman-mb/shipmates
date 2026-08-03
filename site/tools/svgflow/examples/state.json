@@ -1,0 +1,17 @@
+{
+  "direction": "down",
+  "title": "Order state machine",
+  "nodes": [
+    {"id": "pending",   "label": "Pending"},
+    {"id": "paid",      "label": "Paid"},
+    {"id": "shipped",   "label": "Shipped"},
+    {"id": "delivered", "label": "Delivered"}
+  ],
+  "edges": [
+    {"from": "pending",   "to": "paid",      "label": "charge ok"},
+    {"from": "paid",      "to": "shipped",   "label": "dispatch"},
+    {"from": "shipped",   "to": "delivered", "label": "signed for"},
+    {"from": "shipped",   "to": "pending",   "label": "cancelled"},
+    {"from": "delivered", "to": "delivered", "label": "re-notify"}
+  ]
+}

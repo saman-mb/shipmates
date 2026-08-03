@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="830" height="203" viewBox="0 0 830 203" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="830" height="203" fill="#0d1117"/>
+<rect x="0.5" y="0.5" width="829" height="202" rx="16" fill="#0b1a2b" stroke="#1d3a57" stroke-width="1"/>
+<text x="415" y="21.08" text-anchor="middle" font-size="14" fill="#7f9bb3">Request flow</text>
+<g transform="translate(28,98)">
+<line x1="96" y1="0" x2="204" y2="0" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="204,0 193,5.5 193,-5.5" fill="#2fd4b6"/>
+<line x1="343" y1="0" x2="451" y2="0" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="451,0 440,5.5 440,-5.5" fill="#2fd4b6"/>
+<line x1="554" y1="0" x2="662" y2="0" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="662,0 651,5.5 651,-5.5" fill="#2fd4b6"/>
+<path d="M 502.5 23 C 502.5 77 48 77 48 23" fill="none" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="48,23 53.5,34 42.5,34" fill="#2fd4b6"/>
+<rect x="0" y="-23" width="96" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="48" y="5.25" text-anchor="middle" font-size="15" fill="#dee8f0">Client</text>
+<rect x="204" y="-23" width="139" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="273.5" y="5.25" text-anchor="middle" font-size="15" fill="#dee8f0">API gateway</text>
+<rect x="451" y="-23" width="103" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="502.5" y="5.25" text-anchor="middle" font-size="15" fill="#dee8f0">Service</text>
+<rect x="662" y="-23" width="112" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="718" y="5.25" text-anchor="middle" font-size="15" fill="#dee8f0">Database</text>
+<rect x="123" y="-36" width="54" height="22" rx="6" fill="#0b1a2b"/>
+<text x="150" y="-20.8" text-anchor="middle" font-size="12" fill="#8fe3d4">HTTPS</text>
+<rect x="370" y="-36" width="54" height="22" rx="6" fill="#0b1a2b"/>
+<text x="397" y="-20.8" text-anchor="middle" font-size="12" fill="#8fe3d4">authz</text>
+<rect x="581" y="-36" width="54" height="22" rx="6" fill="#0b1a2b"/>
+<text x="608" y="-20.8" text-anchor="middle" font-size="12" fill="#8fe3d4">query</text>
+<rect x="237.45" y="52.5" width="75.6" height="22" rx="6" fill="#0b1a2b"/>
+<text x="275.25" y="67.7" text-anchor="middle" font-size="12" fill="#8fe3d4">200 JSON</text>
+</g>
+</svg>

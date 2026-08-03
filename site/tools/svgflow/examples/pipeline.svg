@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="274" height="384" viewBox="0 0 274 384" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="274" height="384" fill="#0d1117"/>
+<rect x="0.5" y="0.5" width="273" height="383" rx="16" fill="#0b1a2b" stroke="#1d3a57" stroke-width="1"/>
+<text x="137" y="21.08" text-anchor="middle" font-size="14" fill="#7f9bb3">CI pipeline</text>
+<g transform="translate(108.4,62)">
+<line x1="0" y1="46" x2="0" y2="124" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,124 -5.5,113 5.5,113" fill="#2fd4b6"/>
+<line x1="0" y1="170" x2="0" y2="248" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,248 -5.5,237 5.5,237" fill="#2fd4b6"/>
+<path d="M 48 147 C 102 147 102 23 48 23" fill="none" stroke="#2fd4b6" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="48,23 59,17.5 59,28.5" fill="#2fd4b6"/>
+<rect x="-48" y="0" width="96" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" fill="#dee8f0">Build</text>
+<rect x="-48" y="124" width="96" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" fill="#dee8f0">Test</text>
+<rect x="-48" y="248" width="96" height="46" rx="10" fill="#15314c" stroke="#34638c" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" fill="#dee8f0">Deploy</text>
+<rect x="-80.4" y="74" width="68.4" height="22" rx="6" fill="#0b1a2b"/>
+<text x="-46.2" y="89.2" text-anchor="middle" font-size="12" fill="#8fe3d4">on push</text>
+<rect x="-66" y="198" width="54" height="22" rx="6" fill="#0b1a2b"/>
+<text x="-39" y="213.2" text-anchor="middle" font-size="12" fill="#8fe3d4">green</text>
+<rect x="39.9" y="74" width="97.2" height="22" rx="6" fill="#0b1a2b"/>
+<text x="88.5" y="89.2" text-anchor="middle" font-size="12" fill="#8fe3d4">red → retry</text>
+</g>
+</svg>

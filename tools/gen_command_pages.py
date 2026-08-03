@@ -284,14 +284,15 @@ class Agent:
 
 @dataclass(frozen=True, slots=True)
 class ToolExample:
-    """One demo GIF example on a tool page: an animated `gif` with a static
-    `poster` (final frame) shown under prefers-reduced-motion, plus alt/caption."""
-    gif: str  # filename, relative to the tool page (e.g. "examples/deploy.gif")
-    poster: str  # static poster filename for reduced-motion
+    """One example on a tool page: a `src` asset (png/gif/svg) with alt/caption.
+    `poster` is a static final-frame shown under prefers-reduced-motion — set it
+    only for animated GIFs; leave it empty for a static PNG or SVG."""
+    src: str  # filename, relative to the tool page (e.g. "examples/deploy.gif")
     width: int
     height: int
     alt: str
     caption: str
+    poster: str = ""  # static reduced-motion poster for an animated GIF; "" if static
 
 
 @dataclass(frozen=True, slots=True)
@@ -302,6 +303,7 @@ class ToolCopy:
     what: tuple  # tuple[str, ...] — 1-2 paragraphs
     usage: tuple  # tuple[str, ...] — 1-2 paragraphs on how the crew reach for it
     examples: tuple = ()  # tuple[ToolExample, ...] — optional demo gallery
+    sample: str = ""  # optional plain-text input->output block for non-visual tools
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,6 +317,7 @@ class Tool:
     usage: tuple  # tuple[str, ...]
     bundled: tuple  # tuple[str, ...] — bundled asset filenames besides tool.md
     examples: tuple = ()  # tuple[ToolExample, ...]
+    sample: str = ""  # optional plain-text input->output block for non-visual tools
 
 
 # ---------------------------------------------------------------------------
@@ -1211,7 +1214,7 @@ AGENT_COPY = {
 TOOL_COPY_SRC = "tools/gen_command_pages.py"
 
 # Canonical tool order — matches the homepage `#tools` grid.
-TOOLS = ("termgif",)
+TOOLS = ("termgif", "social-card", "pixelart", "svgflow", "badge", "sparkline", "scrub", "fixtures")
 
 TOOL_COPY = {
     "termgif": ToolCopy(
@@ -1237,21 +1240,181 @@ TOOL_COPY = {
         # with shipmates. Each spec lives beside its GIF under examples/.
         examples=(
             ToolExample(
-                gif="examples/deploy.gif", poster="examples/deploy.png", width=820, height=370,
+                src="examples/deploy.gif", poster="examples/deploy.png", width=820, height=370,
                 alt="Terminal recording of a production deploy: BUILD, TEST and RELEASE stages check off, then a green 'Shipped v2.4.0 to production' line.",
                 caption="A production deploy — build, test, then a zero-downtime rollout to three regions.",
             ),
             ToolExample(
-                gif="examples/train.gif", poster="examples/train.png", width=820, height=370,
+                src="examples/train.gif", poster="examples/train.png", width=820, height=370,
                 alt="Terminal recording of a model training run: DATASET, TRAIN and EVAL stages, a top-1 98.7% metric line, then a green checkpoint-saved line.",
                 caption="A model-training run — dataset to eval, with the headline metrics and a saved checkpoint.",
             ),
             ToolExample(
-                gif="examples/launch.gif", poster="examples/launch.png", width=820, height=370,
+                src="examples/launch.gif", poster="examples/launch.png", width=820, height=370,
                 alt="Terminal recording of a rocket launch sequence: FUEL, GUIDANCE and IGNITION stages, a T-minus countdown, then a green liftoff line.",
                 caption="A launch countdown — fuel, guidance, ignition, and liftoff, in warm mission-control colours.",
             ),
         ),
+    ),
+    "social-card": ToolCopy(
+        tagline="Renders a shippable 1280×640 social / Open Graph preview card from a small JSON spec.",
+        what=(
+            "`social-card` turns a small JSON spec — an eyebrow kicker, a title, a subtitle, an accent colour, and a footer wordmark — into a polished 1280×640 PNG, the standard Open Graph aspect that Slack, Discord, Twitter, LinkedIn, and iMessage crop from a shared link. It is a self-contained Python renderer whose only dependency is Pillow, so a run produces the card deterministically on a deep, tasteful dark canvas rather than asking anyone to open a design app.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is *a share image* — a repo or product launch, a release, a docs or guide page — instead of a described one. Long titles wrap and the type auto-fits, so copy of any length stays inside the frame.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools social-card`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `social_card.py` script and the spec format it needs to drive it — `python3 social_card.py --spec spec.json --out card.png`.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/launch.png", width=1280, height=640,
+                alt="A dark launch card: an indigo 'Now open source' pill above a large white title 'Aurora — a typed HTTP client that reads like prose', a muted subtitle, and a footer repo URL.",
+                caption="A product launch — an eyebrow pill, a wrapping headline, and the repo in the footer.",
+            ),
+            ToolExample(
+                src="examples/release.png", width=1280, height=640,
+                alt="A dark release card: a green 'Release · v2.4.0' pill above the title 'Streaming responses, 40% smaller binary', a subtitle of highlights, and a green footer dot with a changelog line.",
+                caption="A release note — the version in the kicker and the headline changes below it.",
+            ),
+            ToolExample(
+                src="examples/docs.png", width=1280, height=640,
+                alt="A dark docs card: an orange 'Guide' pill above the title 'Deploying to production, end to end', a muted one-line summary, and a footer docs URL with an orange accent dot.",
+                caption="A docs guide — a short kicker, the guide's title, and the page it links to.",
+            ),
+        ),
+    ),
+    "pixelart": ToolCopy(
+        tagline="Pixel art the way the shipmates logo is made — a limited palette upscaled by a whole-number factor with nearest-neighbour, never smoothed.",
+        what=(
+            "`pixelart` turns a small JSON spec — a limited palette plus a grid of single-character rows — into a crisp pixel-art asset: a static PNG, or an animated GIF when the spec carries `frames`. It is a self-contained Python renderer whose only dependency is Pillow, so a run produces the image deterministically rather than leaning on a model to imagine one.",
+            "It reproduces the technique behind the shipmates logo, which is a 48×48 grid on ~39 colours scaled up ×14 with nearest-neighbour and no smoothing. Every upscale here is `Image.NEAREST`, so each logical pixel becomes a solid block — hard-edged and aliased on purpose, never a gradient. It is a tool, not a command: the crew reach for it on their own when the natural artifact is an icon, sprite, favicon, or badge in that style.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools pixelart`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions travel together, so wherever the tool lands the agent has both the `pixelart.py` script and the spec format it needs to drive it — a `grid` and `palette` for a still, or `frames` and `durations` for an animation, with `--poster` to drop a reduced-motion still beside a GIF.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/gem.png", width=256, height=256,
+                alt="A pixel-art faceted gem: a diamond-cut blue-and-teal jewel with a bright table facet, a girdle band, and a shaded lower point, hard-edged on a transparent background.",
+                caption="A faceted gem on a six-colour sea palette — one 16×16 grid scaled ×16 with nearest-neighbour.",
+            ),
+            ToolExample(
+                src="examples/sparkle.gif", width=256, height=256,
+                alt="A pixel-art four-point star twinkling: a golden sparkle with a cream-white core that pulses from small to full size, with four diagonal glints, on a transparent background.",
+                caption="A twinkling four-point star — four frames grown small-to-full, looped as a transparent GIF with a still poster for reduced motion.",
+                poster="examples/sparkle_poster.png",
+            ),
+        ),
+    ),
+    "svgflow": ToolCopy(
+        tagline="Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec.",
+        what=(
+            "`svgflow` turns a small JSON spec — a list of `nodes` and the `edges` between them — into a clean box-and-arrow diagram, emitted as a self-contained SVG. There is no browser, no mermaid runtime, and no headless renderer: the SVG is assembled as text and is byte-for-byte deterministic, so the same spec always produces the same file and it is safe to commit next to the docs it illustrates.",
+            "It does one thing well. Nodes lay out in a single column (`\"direction\": \"down\"`) or row (`\"direction\": \"right\"`) in declaration order, each box sized to its label; adjacent nodes join with a straight spine arrow while skips, back-edges, and self-loops bow out to the side so they stay legible. It is a *tool*, not a command: the crew reach for it on their own when the natural artifact of a task is a diagram of how the pieces connect — a CI pipeline, a request path, a state machine — instead of a paragraph of prose or a mermaid block something else has to render.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools svgflow`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer depends only on the Python standard library, so wherever the tool lands the agent can run `python3 svgflow.py --spec spec.json --out flow.svg` with nothing to install. The `svgflow.py` script and the spec format it needs are bundled together in `tool.md`.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/pipeline.svg", width=274, height=384,
+                alt="A vertical flow diagram titled 'CI pipeline': Build, Test and Deploy boxes joined by downward teal arrows labelled 'on push' and 'green', with a back-edge from Test to Build labelled 'red → retry'.",
+                caption="A CI pipeline as a column — build to deploy, with a labelled retry edge looping back on failure.",
+            ),
+            ToolExample(
+                src="examples/request.svg", width=830, height=203,
+                alt="A left-to-right flow diagram titled 'Request flow': Client, API gateway, Service and Database boxes joined by teal arrows labelled 'HTTPS', 'authz' and 'query', with a return edge from Service to Client labelled '200 JSON'.",
+                caption="A request path as a row — client through gateway and service to the database, and the response back.",
+            ),
+            ToolExample(
+                src="examples/state.svg", width=354, height=508,
+                alt="A vertical state diagram titled 'Order state machine': Pending, Paid, Shipped and Delivered states joined by teal arrows, a back-edge from Shipped to Pending labelled 'cancelled', and a self-loop on Delivered labelled 're-notify'.",
+                caption="An order state machine — the forward path plus a cancelled transition and a self-loop, all auto-routed.",
+            ),
+        ),
+    ),
+    "badge": ToolCopy(
+        tagline="Turns a label, a message, and a colour into a shields-style flat badge you commit as offline SVG.",
+        what=(
+            "`badge` renders the classic two-segment flat status badge — a grey left segment carrying a `label`, a coloured right segment carrying a `message` — straight to an SVG file. It is pure standard library: no dependencies and no network, so there is no round-trip to `shields.io` and the badge renders forever, offline, and diffs cleanly in git. Output is deterministic, so the same arguments always produce byte-for-byte the same file.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is a small status badge — build `passing`, a `version` tag, a `coverage` number, a licence — for a README, a docs page, or a release note, and that badge should live in the repo rather than hot-linking an external service. Colours are a named palette (`green`, `blue`, `red`, `brightgreen`, `orange`, `yellow`, ...) or any `#rrggbb` hex value, and segment widths are sized from a baked DejaVu Sans width table and locked with SVG `textLength` so text is never clipped.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools badge`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `badge.py` script and the CLI it needs to drive it: `python3 badge.py --label build --message passing --color green --out badge.svg` (or omit `--out` to write the SVG to stdout).",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/build.svg", width=89, height=20,
+                alt="A flat status badge: a grey 'build' segment on the left and a green 'passing' segment on the right.",
+                caption="A build-status badge — grey label, green message, the classic shields flat style.",
+            ),
+            ToolExample(
+                src="examples/version.svg", width=95, height=20,
+                alt="A flat status badge: a grey 'version' segment on the left and a blue 'v0.1.3' segment on the right.",
+                caption="A version badge — a release tag tinted blue, sized to fit its text exactly.",
+            ),
+            ToolExample(
+                src="examples/coverage.svg", width=96, height=20,
+                alt="A flat status badge: a grey 'coverage' segment on the left and a bright-green '98%' segment on the right.",
+                caption="A coverage badge — a bright-green percentage, rendered offline and committed to the repo.",
+            ),
+        ),
+    ),
+    "sparkline": ToolCopy(
+        tagline="Turns a short run of numbers into a tiny inline SVG that shows the trend at a glance.",
+        what=(
+            "`sparkline` takes a short series of numbers — `--data \"12,18,9,22,15,27\"` — and draws its trend as one tiny inline chart: a smooth polyline over a faint gradient fill, scaled to its own min/max, with the last point marked by a dot. The output is a self-contained SVG (scalable, self-sizing, verified as valid XML), a light teal stroke on a subtle dark panel that reads on the tool pages; `--color`, `--label`, `--width`, `--height`, `--no-baseline` and `--bare` tune it.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own when a task hands over a run of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — and the honest artifact is the shape of the curve rather than a wall of digits. It has no dependencies beyond `python3` and the standard library, so a run is deterministic and offline.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools sparkline`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `sparkline.py` script and the CLI it needs to drive it: `python3 sparkline.py --data \"…\" --out spark.svg`.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/latency.svg", width=240, height=60,
+                alt="A declining sparkline in coral: p95 latency falling from 182ms to 88ms across a release, the last point marked with a dot.",
+                caption="A latency history that improves across a release — p95 falling from 182ms to 88ms.",
+            ),
+            ToolExample(
+                src="examples/throughput.svg", width=240, height=60,
+                alt="A rising sparkline in teal: throughput climbing from 420 to 845 requests per second, the last point marked with a dot.",
+                caption="Throughput climbing as autoscaling kicks in — 420 to 845 req/s.",
+            ),
+            ToolExample(
+                src="examples/error-rate.svg", width=240, height=60,
+                alt="A sparkline in gold with a single sharp spike: error rate jumping to 2.1% during an incident, then recovering to 0.2%.",
+                caption="An error-rate spike during an incident, then recovery — a lone peak at 2.1%.",
+            ),
+        ),
+    ),
+    "scrub": ToolCopy(
+        tagline="Strips credentials and personal data out of text before it leaves the repo.",
+        what=(
+            "`scrub` redacts secrets and PII from a log, paste, or bug report before it's shared. It swaps each match for a typed placeholder — emails become `[REDACTED_EMAIL]`, AWS access keys `[REDACTED_AWS_KEY]`, `api_key=`/`token=`/`secret=` assignments and Bearer tokens `[REDACTED_TOKEN]`, JWTs `[REDACTED_JWT]`, IPv4 addresses `[REDACTED_IP]`, and PEM private-key blocks `[REDACTED_PRIVATE_KEY]` — so the shape of the redaction stays visible. It is pure standard library: no dependencies, no network, and the same input always produces the same cleaned output.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own whenever text is about to leave the repo — pasted into an issue, a bug report, a chat message, or a PR body — and might carry a credential or someone's personal data. The detectors are deliberately conservative, leaving ordinary prose and code identifiers like `token = response.data.token` alone, which makes it a strong first pass rather than a guarantee — read the cleaned text before sharing.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools scrub`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Run it on a file with `python3 scrub.py --in log.txt --out clean.txt`, or pipe text through it stdin-to-stdout with `cat log.txt | python3 scrub.py`. The cleaned text goes to `--out` or stdout; a per-category redaction summary goes to stderr so it never pollutes the output. Exit code is `0` on success and `2` on a usage error.",
+        ),
+        sample="$ python3 scrub.py --in app.log\n\nBEFORE\n  env AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n  operator jane.doe@example.com from 203.0.113.42\n  Authorization: Bearer abcDEF0123456789xyzABCDEF\n\nAFTER  (summary on stderr)\n  env AWS_ACCESS_KEY_ID=[REDACTED_AWS_KEY]\n  operator [REDACTED_EMAIL] from [REDACTED_IP]\n  Authorization: Bearer [REDACTED_TOKEN]",
+    ),
+    "fixtures": ToolCopy(
+        tagline="Turns a tiny field-to-type schema into a reproducible JSON array of believable fake records.",
+        what=(
+            "`fixtures` reads a small JSON schema — a map of field name to type, like `uuid`, `email`, `bool`, `int` or `choice` — and emits a JSON array of that many fake records. It is a self-contained Python script with no dependencies beyond the standard library, and it is deterministic: the same `--seed` always produces byte-identical output, so a generated fixture can be committed to the repo and diff cleanly like any other source file.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own when a task needs seed rows or example records — unit-test data, a demo database, an API sample payload — instead of hand-typing objects or pulling in a heavyweight faker dependency. The data is fake and drawn independently per field, meant to exercise code paths rather than model any real-world distribution.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools fixtures`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The script and its instructions are bundled together, so wherever the tool lands the agent has both the `fixtures.py` generator and the schema format it needs to drive it. Run it as `python3 fixtures.py --schema schema.json --count 5 --seed 7 --out data.json`, or omit `--out` to write the array to stdout.",
+        ),
+        sample="schema.json\n{\n  \"id\":    \"uuid\",\n  \"email\": \"email\",\n  \"age\":   {\"type\": \"int\", \"min\": 18, \"max\": 65},\n  \"role\":  {\"type\": \"choice\", \"options\": [\"admin\", \"member\"]}\n}\n\n$ python3 fixtures.py --schema schema.json --count 2 --seed 7\n[\n  {\n    \"id\": \"6513270e-269e-4d37-b2a7-4de452e6b438\",\n    \"email\": \"priya.patel@test.dev\",\n    \"age\": 52,\n    \"role\": \"admin\"\n  },\n  {\n    \"id\": \"e8e25d94-0ed9-4475-9531-985d5d9dc9f8\",\n    \"email\": \"ivan.haddad@example.com\",\n    \"age\": 23,\n    \"role\": \"member\"\n  }\n]",
     ),
 }
 
@@ -1611,6 +1774,7 @@ def load_tools(toolbox_dir: Path) -> tuple:
             usage=copy.usage,
             bundled=bundled,
             examples=copy.examples,
+            sample=copy.sample,
         ))
     return tuple(tools)
 
@@ -3377,29 +3541,59 @@ def render_tool_usage(tool: Tool) -> str:
 
 
 def render_tool_examples(tool: Tool) -> str:
-    """A gallery of demo GIFs. Each is a `<picture>` whose reduced-motion source
-    swaps the animation for its static final frame (WCAG 2.2.2), the same a11y
-    pattern the homepage hero demo uses."""
+    """A gallery of example outputs. An animated GIF is wrapped in a `<picture>`
+    whose reduced-motion source swaps the animation for its static final frame
+    (WCAG 2.2.2, the a11y pattern the homepage hero uses); a static PNG or SVG is
+    a plain `<img>`. Examples are always the tool driving different inputs —
+    nothing to do with shipmates."""
     if not tool.examples:
         return ""
+    animated = any(ex.poster for ex in tool.examples)
     figures = []
     for ex in tool.examples:
-        figures.append(f"""          <figure class="tool-example">
-            <picture>
+        if ex.poster:
+            media = (
+                f"""            <picture>
               <source media="(prefers-reduced-motion: reduce)" srcset="{link(ex.poster)}">
-              <img class="tool-example__img" src="{link(ex.gif)}" width="{ex.width}" height="{ex.height}" alt="{esc(ex.alt)}" loading="lazy" decoding="async">
-            </picture>
-            <figcaption class="tool-example__caption">{esc(ex.caption)}</figcaption>
-          </figure>""")
+              <img class="tool-example__img" src="{link(ex.src)}" width="{ex.width}" height="{ex.height}" alt="{esc(ex.alt)}" loading="lazy" decoding="async">
+            </picture>"""
+            )
+        else:
+            media = (
+                f'            <img class="tool-example__img" src="{link(ex.src)}" '
+                f'width="{ex.width}" height="{ex.height}" alt="{esc(ex.alt)}" '
+                'loading="lazy" decoding="async">'
+            )
+        figures.append(
+            '          <figure class="tool-example">\n'
+            f"{media}\n"
+            f'            <figcaption class="tool-example__caption">{esc(ex.caption)}</figcaption>\n'
+            "          </figure>"
+        )
     gallery = "\n".join(figures)
+    reduced = (
+        " If you&#x27;ve set <code>prefers-reduced-motion</code>, any animation shows its final "
+        "frame instead."
+        if animated else ""
+    )
     intro = (
-        "        <p>Three quick recordings, each just <code>termgif</code> driving a different "
-        "JSON spec — nothing to do with shipmates. If you&#x27;ve set "
-        "<code>prefers-reduced-motion</code>, you&#x27;ll see the final frame instead of the "
-        "animation.</p>\n"
+        f"        <p>Each of these is <code>{esc(tool.name)}</code> driving different input — "
+        f"nothing to do with shipmates.{reduced}</p>\n"
     )
     inner = intro + f'        <div class="tool-gallery">\n{gallery}\n        </div>'
     return _agent_section("examples", "Examples", inner)
+
+
+def render_tool_sample(tool: Tool) -> str:
+    """A plain-text input→output sample for a non-visual tool (scrub, fixtures),
+    shown as a code block. Skipped when the tool has none."""
+    if not tool.sample:
+        return ""
+    inner = (
+        '        <p>What it does to a real input:</p>\n'
+        f'        <pre class="order-code" tabindex="0"><code>{esc(tool.sample)}</code></pre>'
+    )
+    return _agent_section("sample", "In practice", inner)
 
 
 def render_tool_reference(tool: Tool) -> str:
@@ -3470,6 +3664,7 @@ def render_tool_page(tool: Tool, all_tools: tuple, ctx: PageContext) -> str:
         render_tool_hero(tool),
         render_tool_what(tool),
         render_tool_examples(tool),
+        render_tool_sample(tool),
         render_tool_usage(tool),
         render_tool_reference(tool),
         render_tool_source(tool, ctx),

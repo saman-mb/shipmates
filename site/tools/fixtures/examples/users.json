@@ -1,0 +1,68 @@
+[
+  {
+    "id": "bdd640fb-0667-4ad1-9c80-317fa3b1799d",
+    "first_name": "Mason",
+    "last_name": "Rossi",
+    "email": "isla.okafor@test.dev",
+    "active": false,
+    "age": 52,
+    "role": "admin",
+    "joined": "2023-04-24",
+    "bio": "Labore ipsum lorem dolor adipiscing elit"
+  },
+  {
+    "id": "8fadc1a6-06cb-4fb3-9a1d-e644815ef6d1",
+    "first_name": "Lucas",
+    "last_name": "Dubois",
+    "email": "priya.dubois@acme.example",
+    "active": true,
+    "age": 55,
+    "role": "member",
+    "joined": "2024-07-15",
+    "bio": "Consequat lorem laboris aliquip consectetur exercitation"
+  },
+  {
+    "id": "27cd8130-4722-4389-971a-a8766c307511",
+    "first_name": "Lucas",
+    "last_name": "Santos",
+    "email": "leo.garcia@test.dev",
+    "active": true,
+    "age": 40,
+    "role": "member",
+    "joined": "2023-05-21",
+    "bio": "Sed aliquip ipsum ullamco dolore enim"
+  },
+  {
+    "id": "60e7a113-ec1b-4ca1-b91e-1d4c1ff49b78",
+    "first_name": "Noah",
+    "last_name": "Moreau",
+    "email": "emma.petrov@inbox.test",
+    "active": false,
+    "age": 63,
+    "role": "admin",
+    "joined": "2020-04-03",
+    "bio": "Nostrud elit laboris do dolor consequat"
+  },
+  {
+    "id": "614ff3d7-19db-4ad0-9dd1-dfb23b982ef8",
+    "first_name": "Mason",
+    "last_name": "Ali",
+    "email": "priya.petrov@inbox.test",
+    "active": true,
+    "age": 40,
+    "role": "admin",
+    "joined": "2023-10-04",
+    "bio": "Sed exercitation nostrud quis dolor veniam"
+  },
+  {
+    "id": "baa80dd4-88bd-4407-abcf-be01a28defe3",
+    "first_name": "Isla",
+    "last_name": "Silva",
+    "email": "omar.fischer@sample.org",
+    "active": false,
+    "age": 58,
+    "role": "guest",
+    "joined": "2023-02-14",
+    "bio": "Elit nostrud eiusmod commodo laboris laboris"
+  }
+]

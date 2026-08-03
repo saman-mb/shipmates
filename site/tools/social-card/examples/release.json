@@ -1,0 +1,9 @@
+{
+  "eyebrow": "Release · v2.4.0",
+  "title": "Streaming responses, 40% smaller binary",
+  "subtitle": "New async transport, a stabilised plugin API, and 61 fixes. Upgrade is drop-in from any 2.x.",
+  "accent": "#3fb950",
+  "wordmark": "aurora 2.4.0 — changelog inside",
+  "bg": "#0d1117",
+  "fg": "#e6edf3"
+}

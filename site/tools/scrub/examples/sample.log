@@ -1,0 +1,17 @@
+[2026-08-03 14:02:11] INFO  starting worker; build version 1.2.3, 42 modules loaded
+[2026-08-03 14:02:11] INFO  operator jane.doe@example.com opened session #8817
+[2026-08-03 14:02:12] DEBUG env AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE region=eu-west-1
+[2026-08-03 14:02:12] DEBUG env api_key=xY7fake0example0notreal0abcdef0123
+[2026-08-03 14:02:12] DEBUG env client_secret="s3cr3t-value-not-real-000000"
+[2026-08-03 14:02:13] DEBUG env token=fake0token0example0notreal01234567
+[2026-08-03 14:02:13] DEBUG GET /v1/status Authorization: Bearer abcDEF0123456789xyzABCDEFghij0011
+[2026-08-03 14:02:14] DEBUG decoded id_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N67Zdsabc
+[2026-08-03 14:02:15] INFO  inbound request from 203.0.113.42 accepted
+[2026-08-03 14:02:15] TRACE const token = response.data.token;  // read the value from the payload
+[2026-08-03 14:02:15] INFO  see the README for the api_key rotation policy before next release
+[2026-08-03 14:02:16] WARN  signing key loaded from disk:
+-----BEGIN RSA PRIVATE KEY-----
+MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu
+KUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQ2EbAgMBAAECgYEA0000FAKEFAKEFAKE00
+-----END RSA PRIVATE KEY-----
+[2026-08-03 14:02:17] INFO  handled 3 retries; on-call in #ops, docs at https://example.com/guide
