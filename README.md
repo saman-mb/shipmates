@@ -136,9 +136,12 @@ windsurf         .windsurf/        skills only
 zed              .zed/             skills only
 ```
 
-Every harness compiles the same canonical crew and commands. Three have a native subagent
-directory and receive the twelve specialists as agents; the other five have no subagent mechanic,
-so the crew ships as twelve skills only. Installing never touches your working tree — anything that
+Every harness compiles the same canonical crew and commands. Five have a native subagent directory
+and receive the twelve specialists as agents; the other three ship the crew as twelve skills only.
+One caveat worth knowing before you pick Codex: it documents no per-agent tool allowlist, so its
+crew inherit whatever the session can do rather than the least-privilege set every other target
+enforces. Each harness records its evidence, and the date it was checked, in
+`tools/harness_matrix.json`. Installing never touches your working tree — anything that
 changes a repo does so on a branch — and `shipmates uninstall` is not (yet) implemented; delete the
 tree the harness installed instead.
 

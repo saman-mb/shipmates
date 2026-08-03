@@ -88,8 +88,8 @@
               <tr><td><code>claude-code</code></td><td><span class="chip">Runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>opencode</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a></td></tr>
               <tr><td><code>antigravity</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
-              <tr><td><code>github-copilot</code></td><td><span class="chip">Builds</span></td><td>—</td></tr>
-              <tr><td><code>codex</code></td><td><span class="chip">Builds</span></td><td>—</td></tr>
+              <tr><td><code>github-copilot</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>codex</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>cursor</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
               <tr><td><code>windsurf</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
               <tr><td><code>zed</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
@@ -127,6 +127,7 @@
           <p><strong>Least privilege survived, by inversion.</strong> Claude Code&#x27;s permission model is an allowlist, so naming the tools a role needs is enough. opencode&#x27;s defaults are permissive — effectively <code>&#x22;*&#x22;: &#x22;allow&#x22;</code> — so an allow list alone would restrict nothing. Every generated opencode agent instead writes a <code>&#x22;*&#x22;: deny</code> catch-all first and its specific allows after; opencode resolves permissions last-match-wins, so that ordering is what makes it hold. The result is marginally stronger than the Claude posture: a tool a wildcard denies is hidden from the model entirely rather than refused when it is called.</p>
           <p>Role-level refinements survive the translation too. <code>art-director</code> declares <code>web-scopes: search</code> once in the canonical sources, and gets <code>WebSearch</code> without <code>WebFetch</code> on Claude Code, and <code>websearch: allow</code> without <code>webfetch</code> on opencode.</p>
           <p>opencode receives subagents at <code>.opencode/agents/&lt;name&gt;.md</code>, each with <code>mode: subagent</code>. Four other harnesses also take the full crew: <code>antigravity</code> (<code>.agents/agents/&lt;name&gt;.md</code>), <code>codex</code> (<code>.codex/agents/&lt;name&gt;.toml</code> — the one target whose agent format is TOML rather than Markdown), <code>github-copilot</code> (<code>.github/agents/&lt;name&gt;.agent.md</code>, note the double extension), and Claude Code itself.</p>
+          <p><strong>One caveat on Codex, worth knowing before you install it.</strong> Every other crew-bearing harness restricts each specialist to the tools its role declares — the <code>architect</code> reviews and cannot edit, the <code>art-director</code> can search the web but not fetch. Codex documents no per-agent tool allowlist, so there is nothing for the adapter to write: its twelve subagents inherit whatever the session itself can do. That is a real gap, not an oversight — emitting an invented <code>tools</code> key would be ignored at best and rejected at worst, and claiming a boundary we do not enforce would be worse than saying plainly that we cannot. If per-agent least privilege matters to you, prefer a harness that supports it.</p>
         </div>
       </div>
     </section>

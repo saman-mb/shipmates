@@ -28,7 +28,7 @@ const MAX_AGENT_CHARS: usize = 30_000;
 /// names are *silently skipped* rather than rejected, so a typo here would
 /// quietly narrow an agent with no error — hence an explicit match rather than
 /// a pass-through of whatever the catalog happens to hold.
-fn tools_for(capabilities: &[String]) -> Vec<&'static str> {
+fn tools_for(capabilities: &[String]) -> anyhow::Result<Vec<&'static str>> {
     let mut tools: Vec<&'static str> = Vec::new();
     for cap in capabilities {
         match cap.as_str() {
@@ -42,11 +42,28 @@ fn tools_for(capabilities: &[String]) -> Vec<&'static str> {
             "bash" => tools.push("execute"),
             "web" => tools.push("web"),
             "agent" => tools.push("agent"),
-            _ => {}
+            // Dropping an unknown capability would silently narrow the agent,
+            // and — if it were the only one — omitting `tools` entirely would
+            // silently *widen* it to everything. Neither is acceptable for a
+            // privilege boundary, so an unmapped name fails the build.
+            other => anyhow::bail!("unmapped capability {other:?} for github-copilot"),
         }
     }
+    // Sort before dedup: dedup only removes *adjacent* duplicates, so
+    // ["read", "web", "read"] would otherwise keep both copies of read/search.
+    tools.sort_unstable();
     tools.dedup();
-    tools
+    Ok(tools)
+}
+
+/// Quote a scalar for YAML frontmatter.
+///
+/// Descriptions are prose written by contributors and routinely contain `:`,
+/// `#`, quotes and leading symbols. An unquoted `description: foo: bar` is not
+/// a parse warning — it is a frontmatter block Copilot cannot read, so the
+/// agent installs cleanly and is never loaded. Always quote; never hope.
+fn yaml_scalar(value: &str) -> String {
+    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
 impl Adapter for GithubCopilotAdapter {
@@ -59,19 +76,22 @@ impl Adapter for GithubCopilotAdapter {
         for role in roles {
             let mut content = String::new();
             content.push_str("---\n");
-            content.push_str(&format!("name: {}\n", role.name));
-            content.push_str(&format!("description: {}\n", role.description));
-            let tools = tools_for(&role.capabilities);
-            if !tools.is_empty() {
-                // Omitting `tools` enables *every* tool, so this stays
-                // conditional on a non-empty list rather than emitting an empty
-                // array — and a role that maps to nothing is a catalog bug, not
-                // something to paper over with an unrestricted agent.
-                content.push_str(&format!(
-                    "tools: [{}]\n",
-                    tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
-                ));
+            content.push_str(&format!("name: {}\n", yaml_scalar(&role.name)));
+            content.push_str(&format!("description: {}\n", yaml_scalar(&role.description)));
+            let tools = tools_for(&role.capabilities)?;
+            // Omitting `tools` enables *every* tool, so an empty mapping must
+            // fail rather than ship an unrestricted agent. This is the fail-open
+            // direction and the only one that matters here.
+            if tools.is_empty() {
+                anyhow::bail!(
+                    "github-copilot agent {} maps to no tools; omitting the key would grant every tool",
+                    role.name
+                );
             }
+            content.push_str(&format!(
+                "tools: [{}]\n",
+                tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
+            ));
             content.push_str("---\n");
             content.push_str(&render_body(&role.body, &GITHUB_COPILOT));
 
@@ -108,6 +128,12 @@ mod tests {
             source: std::path::PathBuf::from(""),
             body: body.to_string(),
         }
+    }
+
+    fn role_with_desc(name: &str, capabilities: &[&str], description: &str) -> CanonicalRole {
+        let mut r = role(name, capabilities, "body");
+        r.description = description.to_string();
+        r
     }
 
     fn command(name: &str) -> CanonicalCommand {
@@ -150,7 +176,7 @@ mod tests {
             .build(&[role("architect", &["read", "bash"], "body")], &[])
             .unwrap();
         let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
-        assert!(agent.contains("tools: [\"read\", \"search\", \"execute\"]\n"));
+        assert!(agent.contains("tools: [\"execute\", \"read\", \"search\"]\n"));
         assert!(!agent.contains("\"edit\""));
     }
 
@@ -180,6 +206,49 @@ mod tests {
         assert!(agent.contains(".github/agents/*.md"));
         assert!(agent.contains("Copilot-Session"));
         assert!(!agent.contains("agent-files/"));
+    }
+
+    #[test]
+    fn test_description_is_yaml_quoted() {
+        // A description containing ": " is prose a contributor will write, and
+        // unquoted it produces frontmatter Copilot cannot parse — the agent
+        // installs cleanly and is never loaded.
+        let files = GithubCopilotAdapter
+            .build(&[role_with_desc("architect", &["read"], "reviews: structure, not style")], &[])
+            .unwrap();
+        let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
+        assert!(agent.contains("description: \"reviews: structure, not style\"\n"), "{agent}");
+    }
+
+    #[test]
+    fn test_quotes_in_description_are_escaped() {
+        let files = GithubCopilotAdapter
+            .build(&[role_with_desc("architect", &["read"], "the \"right\" shape")], &[])
+            .unwrap();
+        let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
+        assert!(agent.contains(r#"description: "the \"right\" shape""#), "{agent}");
+    }
+
+    #[test]
+    fn test_unmapped_capability_fails_rather_than_narrowing() {
+        let result = GithubCopilotAdapter.build(&[role("architect", &["read", "telepathy"], "body")], &[]);
+        assert!(result.is_err(), "an unmapped capability must fail the build");
+    }
+
+    #[test]
+    fn test_role_with_no_mappable_tools_fails_rather_than_granting_everything() {
+        // Omitting `tools` enables every tool — the fail-open direction.
+        let result = GithubCopilotAdapter.build(&[role("architect", &[], "body")], &[]);
+        assert!(result.is_err(), "an empty tool mapping must fail, not ship an unrestricted agent");
+    }
+
+    #[test]
+    fn test_duplicate_capabilities_do_not_repeat_tools() {
+        let files = GithubCopilotAdapter
+            .build(&[role("architect", &["read", "bash", "read"], "body")], &[])
+            .unwrap();
+        let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
+        assert!(agent.contains("tools: [\"execute\", \"read\", \"search\"]\n"), "{agent}");
     }
 
     #[test]
