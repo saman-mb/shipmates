@@ -282,6 +282,27 @@ class Agent:
     called_by: tuple  # tuple[str, ...] — command slugs, derived from the skill sources
 
 
+@dataclass(frozen=True, slots=True)
+class ToolCopy:
+    """The authored editorial half of a tool page; the other half is the
+    parsed `toolbox/<slug>/tool.md` frontmatter (name + description)."""
+    tagline: str
+    what: tuple  # tuple[str, ...] — 1-2 paragraphs
+    usage: tuple  # tuple[str, ...] — 1-2 paragraphs on how the crew reach for it
+
+
+@dataclass(frozen=True, slots=True)
+class Tool:
+    slug: str
+    source_path: str  # repo-relative posix path to tool.md
+    name: str
+    description: str
+    tagline: str
+    what: tuple  # tuple[str, ...]
+    usage: tuple  # tuple[str, ...]
+    bundled: tuple  # tuple[str, ...] — bundled asset filenames besides tool.md
+
+
 # ---------------------------------------------------------------------------
 # Layer 2 — COPY  (AGENT_COPY)
 # The agent pages' authored editorial text: model-layer data — no markup, no
@@ -1167,6 +1188,42 @@ AGENT_COPY = {
 
 
 # ---------------------------------------------------------------------------
+# TOOL COPY — the authored editorial half of each tool page. Its factual half
+# (name, description) is parsed from toolbox/<slug>/tool.md. TOOLS is the
+# canonical order (homepage grid, sibling nav, sitemap); every toolbox/<slug>/
+# on disk must appear here and vice versa (drift raises in load_tools).
+# ---------------------------------------------------------------------------
+
+TOOL_COPY_SRC = "tools/gen_command_pages.py"
+
+# Canonical tool order — matches the homepage `#tools` grid.
+TOOLS = ("termgif",)
+
+TOOL_COPY = {
+    "termgif": ToolCopy(
+        tagline="Renders an animated terminal demo GIF of a workflow run from a small JSON spec.",
+        what=(
+            "`termgif` turns a small JSON spec — a typed prompt, staged progress with "
+            "check-offs, and a closing line — into a polished animated terminal GIF. It is a "
+            "self-contained Python renderer whose only dependency is Pillow, so a run produces "
+            "the recording deterministically rather than asking anyone to capture their screen.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their "
+            "own when the natural artifact of a task is a terminal recording — a README hero, a "
+            "docs page, a release note, or a social preview — instead of static text.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> "
+            "--with-tools termgif`, or omit the flag and pick it from the interactive list. Once "
+            "installed it sits alongside the crew as a capability they invoke implicitly; there "
+            "is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands "
+            "the agent has both the `termgif.py` script and the spec format it needs to drive it.",
+        ),
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
 # Layer 3 — PARSE  (skills/*/SKILL.md + agents/*.md -> model)
 # No markup literals, no escaping, no writing.
 # ---------------------------------------------------------------------------
@@ -1449,6 +1506,79 @@ def load_agents(agents_dir: Path, skills_dir: Path) -> tuple:
             )
         )
     return tuple(agents)
+
+
+def parse_tool_frontmatter(path: Path) -> tuple:
+    """Read `name` + `description` from a toolbox `tool.md` frontmatter block."""
+    rel = f"toolbox/{path.parent.name}/tool.md"
+    lines = path.read_text(encoding="utf-8").split("\n")
+    if not lines or lines[0].strip() != "---":
+        raise SourceError(rel, 1, "tool.md has no frontmatter", lines[0] if lines else "",
+                          "start the file with a `---` frontmatter block carrying `name` and `description`")
+    fm, closed = {}, False
+    for raw in lines[1:]:
+        if raw.strip() == "---":
+            closed = True
+            break
+        if ":" in raw:
+            key, val = raw.split(":", 1)
+            fm[key.strip()] = val.strip()
+    if not closed:
+        raise SourceError(rel, 1, "tool.md frontmatter is not closed", "", "close the frontmatter with a `---` line")
+    for key in ("name", "description"):
+        if not fm.get(key):
+            raise SourceError(rel, 1, f"tool.md frontmatter missing `{key}`", "", f"add a `{key}:` line to the frontmatter")
+    return fm["name"], fm["description"]
+
+
+def load_tools(toolbox_dir: Path) -> tuple:
+    """Every toolbox/<slug>/tool.md joined with its TOOL_COPY entry, in TOOLS
+    order. Raises on drift between disk, TOOL_COPY, and TOOLS — every direction,
+    the same contract load_agents holds for the crew."""
+    on_disk = (
+        {p.name: p for p in sorted(toolbox_dir.iterdir()) if p.is_dir() and (p / "tool.md").is_file()}
+        if toolbox_dir.is_dir() else {}
+    )
+    for slug in sorted(on_disk):
+        if slug not in TOOL_COPY:
+            raise SourceError(
+                f"toolbox/{slug}/tool.md", 1, "tool has no TOOL_COPY entry", "",
+                f"toolbox/{slug}/ exists but TOOL_COPY in tools/gen_command_pages.py has no "
+                f"'{slug}' entry — add the editorial copy (tagline, what, usage), then rerun and commit site/",
+            )
+    for slug in sorted(TOOL_COPY):
+        if slug not in on_disk:
+            raise SourceError(
+                "tools/gen_command_pages.py", 1, "TOOL_COPY entry has no tool", "",
+                f"TOOL_COPY lists '{slug}' but toolbox/{slug}/tool.md does not exist — add the tool "
+                "or remove the copy entry, then rerun and commit site/",
+            )
+    for slug in TOOLS:
+        if slug not in on_disk:
+            raise SourceError(
+                "tools/gen_command_pages.py", 1, "TOOLS entry has no tool", "",
+                f"TOOLS lists {slug} but toolbox/{slug}/tool.md does not exist — remove it from TOOLS, "
+                "delete site/tools/" + slug + "/, then rerun and commit site/",
+            )
+    tools = []
+    for slug in TOOLS:
+        directory = on_disk[slug]
+        name, description = parse_tool_frontmatter(directory / "tool.md")
+        bundled = tuple(sorted(
+            p.name for p in directory.iterdir() if p.is_file() and p.name != "tool.md"
+        ))
+        copy = TOOL_COPY[slug]
+        tools.append(Tool(
+            slug=slug,
+            source_path=f"toolbox/{slug}/tool.md",
+            name=name,
+            description=description,
+            tagline=copy.tagline,
+            what=copy.what,
+            usage=copy.usage,
+            bundled=bundled,
+        ))
+    return tuple(tools)
 
 
 def load_skills(skills_dir: Path, agents: tuple) -> tuple:
@@ -2261,6 +2391,7 @@ NAV_LINKS = (
     ("install", "Install"),
     ("crew", "Crew"),
     ("commands", "Commands"),
+    ("tools", "Tools"),
     ("how", "How"),
     ("next", "What's next"),
     ("faq", "FAQ"),
@@ -3145,7 +3276,166 @@ def render_agent_page(agent: Agent, all_agents: tuple, ctx: PageContext) -> str:
 """
 
 
-def render_sitemap(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = ()) -> str:
+# ---------------------------------------------------------------------------
+# TOOL PAGES — the same shape as agent pages (hero + authored sections +
+# reference + source + siblings), mirroring the crew/commands treatment.
+# ---------------------------------------------------------------------------
+
+def canonical_tool_url(tool: Tool, ctx: PageContext) -> str:
+    return f"{ctx.site_url}tools/{tool.slug}/"
+
+
+def tool_page_title(tool: Tool) -> str:
+    return f"{tool.name} — {tool.tagline}"
+
+
+def _tool_copy_prose(texts: tuple, prefix: str) -> str:
+    return render_prose(tuple(Para(lineno=0, text=text) for text in texts), TOOL_COPY_SRC, prefix)
+
+
+def render_tool_jsonld(tool: Tool, ctx: PageContext) -> str:
+    payload = {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "name": tool.name,
+        "description": tool.description,
+        "url": canonical_tool_url(tool, ctx),
+        "isPartOf": {"@type": "CollectionPage", "url": ctx.site_url + "#tools"},
+    }
+    return _jsonld_script(payload)
+
+
+def render_tool_head(tool: Tool, ctx: PageContext) -> str:
+    return _head(
+        full_title=tool_page_title(tool) + " · Shipmates",
+        social_title=tool_page_title(tool),
+        description=truncate_words(tool.description, MAX_META_DESCRIPTION),
+        url=canonical_tool_url(tool, ctx),
+        jsonld=render_tool_jsonld(tool, ctx),
+        ctx=ctx,
+    )
+
+
+def render_tool_back_link() -> str:
+    return _back_link("../../#tools", "All tools")
+
+
+def render_tool_hero(tool: Tool) -> str:
+    return f"""    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        {render_tool_back_link()}
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">\U0001f9f0</span> Tool</p>
+          <h1 class="order-detail__title" id="order-title"><code>{esc(tool.name)}</code></h1>
+          <p class="order-detail__tagline">{esc(tool.tagline)}</p>
+          <p class="order-detail__desc">{esc(tool.description)}</p>
+        </div>
+      </div>
+    </section>"""
+
+
+def render_tool_what(tool: Tool) -> str:
+    return _agent_section("what", "What it does", _tool_copy_prose(tool.what, "        "))
+
+
+def render_tool_usage(tool: Tool) -> str:
+    return _agent_section("usage", "How the crew reach for it", _tool_copy_prose(tool.usage, "        "))
+
+
+def render_tool_reference(tool: Tool) -> str:
+    bundled = ", ".join(f"<code>{esc(name)}</code>" for name in tool.bundled) or "—"
+    inner = f"""        <dl class="agent-ref">
+          <dt>Name</dt>
+          <dd><code>{esc(tool.name)}</code></dd>
+          <dt>Description</dt>
+          <dd>{esc(tool.description)}</dd>
+          <dt>Bundled files</dt>
+          <dd>{bundled}</dd>
+          <dt>Install</dt>
+          <dd><code>shipmates install --harness &lt;name&gt; --with-tools {esc(tool.slug)}</code></dd>
+        </dl>"""
+    return _agent_section("reference", "Reference", inner)
+
+
+def render_tool_source(tool: Tool, ctx: PageContext) -> str:
+    blob = ctx.repo_blob_base + tool.source_path
+    return f"""    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>{esc(tool.source_path)}</code>. Opt in at install with <code>--with-tools {esc(tool.slug)}</code> and the installer copies the tool — instructions and bundled files — into the harness's skills tree.</p>
+        <a class="btn btn--secondary" href="{link(blob)}">
+          {GITHUB_ICON}
+          <span>View {esc(tool.source_path)} on GitHub</span>
+        </a>
+      </div>
+    </section>"""
+
+
+def render_tool_siblings(tool: Tool, all_tools: tuple) -> str:
+    items = []
+    for other in all_tools:
+        name = f"<code>{esc(other.name)}</code>"
+        if other.slug == tool.slug:
+            inner = (
+                '<span class="order-siblings__link order-siblings__link--current" '
+                f'aria-current="page">{name}'
+                '<span class="visually-hidden"> (current page)</span></span>'
+            )
+        else:
+            inner = (
+                f'<a class="order-siblings__link" href="{link("../" + other.slug + "/")}">'
+                f"{name}</a>"
+            )
+        items.append(f'            <li class="order-siblings__item">{inner}</li>')
+    listing = "\n".join(items)
+    return f"""    <section class="section" id="other-tools" aria-labelledby="other-tools-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-tools-title">Other tools</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other tools">
+          <ul class="order-siblings__list" role="list">
+{listing}
+          </ul>
+        </nav>
+        {render_tool_back_link()}
+      </div>
+    </section>"""
+
+
+def render_tool_page(tool: Tool, all_tools: tuple, ctx: PageContext) -> str:
+    sections = [
+        render_tool_hero(tool),
+        render_tool_what(tool),
+        render_tool_usage(tool),
+        render_tool_reference(tool),
+        render_tool_source(tool, ctx),
+        render_tool_siblings(tool, all_tools),
+    ]
+    body = "\n\n".join(sections)
+    return f"""<!doctype html>
+<html lang="en">
+{render_tool_head(tool, ctx)}
+<body class="page--doc">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+{render_header()}
+
+  <main class="main" id="main" tabindex="-1">
+
+{body}
+
+  </main>
+
+{render_footer()}
+</body>
+</html>
+"""
+
+
+def render_sitemap(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), tools: tuple = ()) -> str:
     entries = [
         "  <url>\n"
         f"    <loc>{esc(ctx.site_url)}</loc>\n"
@@ -3176,6 +3466,15 @@ def render_sitemap(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (
         entries.append(
             "  <url>\n"
             f"    <loc>{esc(ctx.site_url)}docs/{slug}/</loc>\n"
+            f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
+            "    <changefreq>monthly</changefreq>\n"
+            "    <priority>0.7</priority>\n"
+            "  </url>"
+        )
+    for tool in tools:
+        entries.append(
+            "  <url>\n"
+            f"    <loc>{esc(canonical_tool_url(tool, ctx))}</loc>\n"
             f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
             "    <changefreq>monthly</changefreq>\n"
             "    <priority>0.7</priority>\n"
@@ -3220,27 +3519,35 @@ def agent_page_path(slug: str) -> str:
     return f"{SITE_DIR}/agents/{slug}/index.html"
 
 
+def tool_page_path(slug: str) -> str:
+    return f"{SITE_DIR}/tools/{slug}/index.html"
+
+
 SITEMAP_PATH = f"{SITE_DIR}/sitemap.xml"
 
 
-def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = ()) -> dict:
+def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), tools: tuple = ()) -> dict:
     """Repo-relative posix path -> full file text. PURE: no I/O, no clock, no cwd.
 
     Every output is materialised in memory before anything is written, so a parse
-    failure in any command or agent leaves the tree completely untouched.
+    failure in any command, agent, or tool leaves the tree completely untouched.
     """
     files = {page_path(cmd.slug): render_page(cmd, cmds, ctx) for cmd in cmds}
     files.update(
         {agent_page_path(agent.slug): render_agent_page(agent, agents, ctx) for agent in agents}
     )
-    files[SITEMAP_PATH] = render_sitemap(cmds, agents, ctx, docs)
+    files.update(
+        {tool_page_path(tool.slug): render_tool_page(tool, tools, ctx) for tool in tools}
+    )
+    files[SITEMAP_PATH] = render_sitemap(cmds, agents, ctx, docs, tools)
     return files
 
 
-def expected_paths(cmds: tuple, agents: tuple) -> frozenset:
+def expected_paths(cmds: tuple, agents: tuple, tools: tuple = ()) -> frozenset:
     return frozenset(
         [page_path(cmd.slug) for cmd in cmds]
         + [agent_page_path(agent.slug) for agent in agents]
+        + [tool_page_path(tool.slug) for tool in tools]
     )
 
 
@@ -3265,7 +3572,7 @@ def find_orphans(root: Path, expected: frozenset) -> list:
     site = root / SITE_DIR
     return sorted(
         str(path.relative_to(root).as_posix())
-        for subtree in ("commands", "agents")
+        for subtree in ("commands", "agents", "tools")
         for path in sorted(site.glob(f"{subtree}/*/index.html"))
         if path.relative_to(root).as_posix() not in expected
     )
@@ -3371,12 +3678,15 @@ def main(argv=None) -> int:
         rendered = Path(payload) / "harnesses" / SITE_TARGET / ".claude"
         agents = load_agents(rendered / "agents", rendered / "skills")
         cmds = load_skills(rendered / "skills", tuple(agent.name for agent in agents))
+        # Tools come from the repo `toolbox/` source, not the rendered payload —
+        # a plain `build` excludes opt-in tools, so they aren't in `rendered`.
+        tools = load_tools(root / "toolbox")
         # Discover hand-authored docs pages for the sitemap.
         docs = tuple(
             slug for slug in DOCS_SLUGS
             if (root / SITE_DIR / "docs" / slug / "index.html").is_file()
         )
-        files = build_site(cmds, agents, ctx, docs)
+        files = build_site(cmds, agents, ctx, docs, tools)
     except SourceError as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
@@ -3384,8 +3694,8 @@ def main(argv=None) -> int:
     if args.check:
         report = check_all(files, root) + [
             f"unexpected generated file: {path} "
-            "(renamed or removed a command or agent? delete it and rerun)"
-            for path in find_orphans(root, expected_paths(cmds, agents))
+            "(renamed or removed a command, agent, or tool? delete it and rerun)"
+            for path in find_orphans(root, expected_paths(cmds, agents, tools))
         ]
         if report:
             for line in report:
@@ -3394,19 +3704,19 @@ def main(argv=None) -> int:
             return 1
         print(
             f"up to date: {len(files)} generated files, "
-            f"{len(cmds)} skills, {len(agents)} agents"
+            f"{len(cmds)} skills, {len(agents)} agents, {len(tools)} tools"
         )
         return 0
 
     written = write_all(files, root)
-    for path in find_orphans(root, expected_paths(cmds, agents)):
-        print(f"warning: unexpected generated file: {path} (renamed or removed a command or agent?)")
+    for path in find_orphans(root, expected_paths(cmds, agents, tools)):
+        print(f"warning: unexpected generated file: {path} (renamed or removed a command, agent, or tool?)")
     if written:
         for path in written:
             print(f"wrote {path}")
     print(
         f"{len(written)} of {len(files)} files updated "
-        f"({len(cmds)} skills, {len(agents)} agents)"
+        f"({len(cmds)} skills, {len(agents)} agents, {len(tools)} tools)"
     )
     return 0
 
