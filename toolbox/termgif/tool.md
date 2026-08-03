@@ -1,6 +1,7 @@
 ---
 name: termgif
 description: Render a polished animated terminal demo GIF of a command or workflow run — a typed prompt, staged progress with check-offs, and a closing line — from a small JSON spec. Reach for this whenever a task calls for a terminal recording or demo GIF (a README hero, docs page, release note, or social preview) rather than describing the run in prose. Never a slash command; use it implicitly when the intent calls for one.
+requires: pillow
 ---
 
 # termgif
@@ -12,9 +13,10 @@ text or asking the user to record their screen.
 
 ## Run it
 
-The renderer `termgif.py` sits next to this file. It needs Pillow
-(`pip install Pillow`); it uses DejaVu Sans Mono when available and falls back to
-Pillow's built-in font otherwise.
+The renderer `termgif.py` sits next to this file. It needs Pillow, which it
+installs for itself the first time it runs (into a private cache) if it is not
+already present — you never have to install anything. It uses DejaVu Sans Mono
+when available and falls back to Pillow's built-in font otherwise.
 
 ```
 python3 termgif.py --spec spec.json --out demo.gif

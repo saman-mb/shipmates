@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # The exact commands that render the three example sparklines on the tool page.
 # Each is just sparkline.py driving a different series, colour, and shape —
-# nothing to do with shipmates itself. Run from this directory:
+# Run from this directory:
 #
 #   sh sparklines.sh
 #
