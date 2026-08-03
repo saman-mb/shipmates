@@ -31,10 +31,11 @@ fn select(target: &str) -> Result<Box<dyn Adapter>> {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Install { harness, dir } => {
+        Command::Install { harness, dir, with_tools } => {
             let root = Path::new(".");
             let roles_path = root.join("crew");
             let commands_path = root.join("commands");
+            let tools_path = root.join("toolbox");
 
             // A `brew`/`cargo`-installed binary has no checkout, so the
             // canonical sources are compiled in by `build.rs`. Fall back to
@@ -51,6 +52,30 @@ fn main() -> Result<()> {
                 catalog::load_commands_embedded().context("Failed to load embedded commands")?
             };
 
+            // Tools are opt-in: nothing is loaded or installed unless
+            // `--with-tools` names them (or `all`). This keeps a plain install
+            // to crew + commands, as it has always been.
+            let selected_tools = if with_tools.is_empty() {
+                Vec::new()
+            } else {
+                let all = if tools_path.is_dir() {
+                    catalog::load_tools(&tools_path).context("Failed to load tools")?
+                } else {
+                    catalog::load_tools_embedded().context("Failed to load embedded tools")?
+                };
+                if with_tools.iter().any(|t| t == "all") {
+                    all
+                } else {
+                    for want in &with_tools {
+                        if !all.iter().any(|t| &t.name == want) {
+                            let available: Vec<&str> = all.iter().map(|t| t.name.as_str()).collect();
+                            bail!("unknown tool: {} (available: {})", want, available.join(", "));
+                        }
+                    }
+                    all.into_iter().filter(|t| with_tools.contains(&t.name)).collect()
+                }
+            };
+
             let target_dir = dir.map(PathBuf::from).unwrap_or_else(|| root.to_path_buf());
 
             // `--harness all` fans out to every supported target; a single name
@@ -64,6 +89,7 @@ fn main() -> Result<()> {
             for harness in &harnesses {
                 let adapter = select(harness)?;
                 let files = adapter.build(&roles, &cmds)?;
+                let tool_files = adapter.build_tools(&selected_tools);
                 // `harnesses/<target>/` — derived from the adapter's base dir so
                 // the harness's own container (`harnesses/antigravity/.agents`)
                 // is stripped, leaving `.agents/` at the target root.
@@ -73,19 +99,29 @@ fn main() -> Result<()> {
 
                 // The real count of files this harness writes — 24 for the
                 // crew-bearing targets (12 crew + 12 commands), 12 for the
-                // skill-only ones. Never the fixed roles+commands total, which
-                // over-counted every skill-only install.
-                let written = files.len();
-                for (path_str, content) in files {
+                // skill-only ones, plus any opt-in tool files. Never the fixed
+                // roles+commands total, which over-counted every skill-only
+                // install.
+                let mut written = 0usize;
+                for (path_str, content) in files.into_iter().chain(tool_files) {
                     // Drop the `harnesses/<target>/` container so the harness's
                     // own tree (`.claude/`, `.opencode/`, …) lands at the target
                     // root, where the harness actually reads it.
                     let rel = path_str.strip_prefix(&strip).unwrap_or(&path_str);
                     let full_path = target_dir.join(rel);
                     installer::atomic_write(&full_path, &content)?;
+                    written += 1;
                 }
 
-                println!("Installed harness: {} ({} files written)", harness, written);
+                if selected_tools.is_empty() {
+                    println!("Installed harness: {} ({} files written)", harness, written);
+                } else {
+                    let names: Vec<&str> = selected_tools.iter().map(|t| t.name.as_str()).collect();
+                    println!(
+                        "Installed harness: {} ({} files written, tools: {})",
+                        harness, written, names.join(", ")
+                    );
+                }
             }
         },
         Command::Build { target, root, out, check, update } => {

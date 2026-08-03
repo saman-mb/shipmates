@@ -1,9 +1,40 @@
-use crate::catalog::{CanonicalCommand, CanonicalRole};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 use super::render::{render_body, OPENCODE};
 use super::Adapter;
 
 pub struct OpencodeAdapter;
+
+/// opencode is the one harness with a genuine native tool: a `.ts`/`.js` file in
+/// `.opencode/tools/` whose default export the model can call directly. We emit
+/// a thin definition that shells out to the tool's bundled script (opencode
+/// treats only `.ts`/`.js` here as tools, so the script rides alongside and is
+/// otherwise ignored). Format-checked against opencode's docs, not runtime-run.
+fn opencode_tool_ts(tool: &CanonicalTool) -> String {
+    let desc = serde_json::to_string(&tool.description).unwrap_or_else(|_| "\"\"".to_string());
+    let name = &tool.name;
+    format!(
+        r#"import {{ tool }} from "@opencode-ai/plugin"
+import {{ spawnSync }} from "node:child_process"
+import * as path from "node:path"
+
+// {name}: an agent-invoked tool. See {name}.py alongside this file.
+export default tool({{
+  description: {desc},
+  args: {{
+    spec: tool.schema.string().describe("JSON spec passed to the tool on stdin"),
+    out: tool.schema.string().describe("output file path"),
+  }},
+  async execute(args) {{
+    const script = path.join(import.meta.dirname, "{name}.py")
+    const res = spawnSync("python3", [script, "--out", args.out], {{ input: args.spec, encoding: "utf8" }})
+    if (res.status !== 0) throw new Error(res.stderr || "{name} failed")
+    return res.stdout.trim()
+  }},
+}})
+"#
+    )
+}
 
 impl Adapter for OpencodeAdapter {
     fn base_dir(&self) -> &'static str {
@@ -36,6 +67,21 @@ impl Adapter for OpencodeAdapter {
             files.insert(format!("{}/commands/{}.md", self.base_dir(), command.name), content);
         }
         Ok(files)
+    }
+
+    fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
+        let mut files = HashMap::new();
+        for tool in tools {
+            files.insert(
+                format!("{}/tools/{}.ts", self.base_dir(), tool.name),
+                opencode_tool_ts(tool),
+            );
+            // Bundle the tool's scripts next to the `.ts` definition.
+            for (rel, asset) in &tool.assets {
+                files.insert(format!("{}/tools/{}", self.base_dir(), rel), asset.clone());
+            }
+        }
+        files
     }
 }
 
@@ -98,5 +144,27 @@ mod tests {
         assert!(!content.contains("agent-files/"));
         assert!(!content.contains("general-purpose"));
         assert!(!content.contains("{{issue}}"));
+    }
+
+    #[test]
+    fn test_tool_emits_native_ts_plus_bundled_script() {
+        let tool = CanonicalTool {
+            name: "termgif".to_string(),
+            description: "render a gif".to_string(),
+            body: "x".to_string(),
+            assets: vec![("termgif.py".to_string(), "print('hi')".to_string())],
+            source: std::path::PathBuf::from(""),
+        };
+        let files = OpencodeAdapter.build_tools(&[tool]);
+        // opencode's native tool is code, not a skill.
+        let ts = files.get("harnesses/opencode/.opencode/tools/termgif.ts").unwrap();
+        assert!(ts.contains("export default tool("));
+        assert!(ts.contains("termgif.py"));
+        assert_eq!(
+            files.get("harnesses/opencode/.opencode/tools/termgif.py").unwrap(),
+            "print('hi')"
+        );
+        // No skill or command form for a tool on opencode.
+        assert!(!files.keys().any(|k| k.contains("/skills/")));
     }
 }

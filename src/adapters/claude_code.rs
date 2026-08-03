@@ -1,6 +1,6 @@
-use crate::catalog::{CanonicalCommand, CanonicalRole};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{render_body, CLAUDE_CODE};
+use super::render::{emit_tool_files, render_body, CLAUDE_CODE};
 use super::Adapter;
 
 const TOOL_MAP: [(&str, &[&str]); 5] = [
@@ -62,6 +62,12 @@ impl Adapter for ClaudeCodeAdapter {
         }
         Ok(files)
     }
+
+    fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
+        // Claude Code can pin a tool agent-only with `user-invocable: false`:
+        // model-invoked, hidden from the `/` menu — exactly "never a command".
+        emit_tool_files(self.base_dir(), tools, &CLAUDE_CODE, true)
+    }
 }
 
 #[cfg(test)]
@@ -114,5 +120,24 @@ mod tests {
         assert!(content.contains("$ARGUMENTS"));
         assert!(!content.contains("agent-files/"));
         assert!(!content.contains("{{arg}}"));
+    }
+
+    #[test]
+    fn test_tool_is_agent_only_skill_with_bundled_assets() {
+        let tool = CanonicalTool {
+            name: "termgif".to_string(),
+            description: "render a gif".to_string(),
+            body: "instructions".to_string(),
+            assets: vec![("termgif.py".to_string(), "print('hi')".to_string())],
+            source: std::path::PathBuf::from(""),
+        };
+        let files = ClaudeCodeAdapter.build_tools(&[tool]);
+        let skill = files.get("harnesses/claude-code/.claude/skills/termgif/SKILL.md").unwrap();
+        assert!(skill.contains("name: termgif\n"));
+        // A tool is agent-invoked only — never a slash command.
+        assert!(skill.contains("user-invocable: false\n"));
+        assert!(!skill.contains("disable-model-invocation"));
+        let asset = files.get("harnesses/claude-code/.claude/skills/termgif/termgif.py").unwrap();
+        assert_eq!(asset, "print('hi')");
     }
 }
