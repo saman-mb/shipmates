@@ -44,6 +44,13 @@ jobs:
           for target in claude-code opencode antigravity codex cursor github-copilot windsurf zed; do
             cargo run -- check --target "$target"
           done
+      # Config-only (no network): each harness_watch entry's declared tree must
+      # agree with its adapter skill path. The live docs-drift check
+      # (python3 tools/harness_watch.py) is a manual dev command — see
+      # .claude/commands/harness-watch.md — not a CI gate, to avoid red builds
+      # when an upstream docs site is momentarily down.
+      - name: Check harness-watch config is self-consistent (offline)
+        run: python3 tools/harness_watch.py --offline
       - name: Run the skill-lint regression suite
         run: bash tests/test_validate_skills.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
