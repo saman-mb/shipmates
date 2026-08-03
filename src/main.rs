@@ -136,9 +136,9 @@ fn main() -> Result<()> {
             let files = adapter.build(&roles, &cmds)?;
 
             if check {
-                check_digests(&target, adapter.base_dir(), &files, root_path)?;
+                check_digests(&target, adapter.digest_root(), &files, root_path)?;
             } else if update {
-                write_digests(&target, adapter.base_dir(), &files, root_path)?;
+                write_digests(&target, adapter.digest_root(), &files, root_path)?;
             } else {
                 let out_dir = out.map(PathBuf::from).unwrap_or_else(|| root_path.join("harnesses").join(&target));
                 for (path_str, content) in files {
@@ -158,7 +158,7 @@ fn main() -> Result<()> {
 
             let adapter = select(&target)?;
             let files = adapter.build(&roles, &cmds)?;
-            check_digests(&target, adapter.base_dir(), &files, root_path)?;
+            check_digests(&target, adapter.digest_root(), &files, root_path)?;
         },
         Command::Update { target, root } => {
             let root_path = Path::new(&root);
@@ -170,7 +170,7 @@ fn main() -> Result<()> {
 
             let adapter = select(&target)?;
             let files = adapter.build(&roles, &cmds)?;
-            write_digests(&target, adapter.base_dir(), &files, root_path)?;
+            write_digests(&target, adapter.digest_root(), &files, root_path)?;
         },
         Command::Targets => {
             for name in adapters::targets() {
@@ -182,7 +182,12 @@ fn main() -> Result<()> {
 }
 
 /// Verify every entry in a payload digest matches the freshly built payload.
-fn check_digests(target: &str, base_dir: &str, files: &std::collections::HashMap<String, String>, root_path: &Path) -> Result<()> {
+///
+/// `digest_root` is the harness's install container (`harnesses/<target>`), so
+/// a target that writes into more than one dotdir — Codex, with crew at
+/// `.codex/` and skills at `.agents/` — is covered whole rather than only under
+/// its `base_dir`.
+fn check_digests(target: &str, digest_root: &str, files: &std::collections::HashMap<String, String>, root_path: &Path) -> Result<()> {
     let digest_file = root_path.join("tests").join("payload-digests").join(format!("{}.sha256", target));
     if !digest_file.exists() {
         bail!("Digest file missing: {:?}", digest_file);
@@ -193,7 +198,7 @@ fn check_digests(target: &str, base_dir: &str, files: &std::collections::HashMap
         if parts.len() == 2 {
             let rel_path = parts[0];
             let expected_hash = parts[1];
-            let key = format!("{}/{}", base_dir, rel_path);
+            let key = format!("{}/{}", digest_root, rel_path);
             if let Some(content) = files.get(&key) {
                 let actual_hash = digest::hash(content);
                 if actual_hash != expected_hash {
@@ -209,8 +214,11 @@ fn check_digests(target: &str, base_dir: &str, files: &std::collections::HashMap
 }
 
 /// Write a fresh payload digest for a target.
-fn write_digests(target: &str, base_dir: &str, files: &std::collections::HashMap<String, String>, root_path: &Path) -> Result<()> {
-    let prefix = format!("{}/", base_dir);
+///
+/// Keyed on the install container (`harnesses/<target>`) so every dotdir a
+/// harness writes is recorded — see `check_digests`.
+fn write_digests(target: &str, digest_root: &str, files: &std::collections::HashMap<String, String>, root_path: &Path) -> Result<()> {
+    let prefix = format!("{}/", digest_root);
     let mut entries: Vec<(String, String)> = files
         .iter()
         .filter_map(|(path, content)| {

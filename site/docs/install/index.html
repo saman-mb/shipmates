@@ -108,7 +108,7 @@
           <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code
 shipmates install --harness opencode
 shipmates install --harness all</code></pre>
-          <p>Installs into the current directory by default. The crew ships as twelve subagent personas in the harness&#x27;s own format and the twelve commands as <code>skills/&lt;name&gt;/SKILL.md</code> directories (or flat <code>commands/&lt;name&gt;.md</code> on opencode), in the harness&#x27;s own native tree — <code>.claude/</code>, <code>.opencode/</code>, <code>.codex/</code>, and so on — so the harness picks them up natively. The CLI compiles the payload from its built-in canonical sources; nothing is downloaded at install time.</p>
+          <p>Installs into the current directory by default. The crew ships as twelve subagent personas in the harness&#x27;s own format and the twelve commands as <code>skills/&lt;name&gt;/SKILL.md</code> directories (or flat <code>commands/&lt;name&gt;.md</code> on opencode), in the tree each harness actually reads — a native root like <code>.claude/</code> or <code>.opencode/</code>, or the open <code>.agents/skills/</code> standard on the harnesses that adopted it (<code>codex</code>, <code>zed</code>, <code>antigravity</code>) — so the harness picks them up natively. The CLI compiles the payload from its built-in canonical sources; nothing is downloaded at install time.</p>
           <p>Five harnesses take the full crew: claude-code, opencode and antigravity as <code>agents/&lt;name&gt;.md</code>, codex as <code>agents/&lt;name&gt;.toml</code>, and github-copilot as <code>agents/&lt;name&gt;.agent.md</code>. On the three skill-only harnesses (<code>cursor</code>, <code>windsurf</code>, <code>zed</code>) the crew is dropped — they have no native subagent directory — and only the twelve skills land.</p>
         </div>
       </div>
@@ -150,7 +150,7 @@ shipmates install --harness opencode --with-tools all</code></pre>
         <div class="order-prose">
           <ul>
             <li>Compiles the payload from its built-in canonical sources (<code>commands/</code> + <code>crew/</code>), rendering each command and persona into the harness&#x27;s own dialect — where its agents live, what its session metadata is called, which project-instructions file it reads.</li>
-            <li>Writes the harness&#x27;s own tree in the target directory — <code>.claude/</code>, <code>.opencode/</code>, <code>.agents/</code>, <code>.codex/</code>, <code>.cursor/</code>, <code>.github/</code>, <code>.windsurf/</code>, or <code>.zed/</code>.</li>
+            <li>Writes into the tree each harness reads — a native root (<code>.claude/</code>, <code>.opencode/</code>, <code>.codex/</code>, <code>.cursor/</code>, <code>.github/</code>, <code>.windsurf/</code>) and, for the harnesses on the open Agent Skills standard, the shared <code>.agents/skills/</code> tree (<code>antigravity</code>, <code>codex</code> and <code>zed</code> read their skills there; <code>codex</code> keeps its crew at <code>.codex/agents/</code>).</li>
             <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on the five crew-bearing harnesses, the twelve crew personas: <code>agents/*.md</code> on claude-code, opencode and antigravity, <code>agents/*.toml</code> on codex, and <code>agents/*.agent.md</code> on github-copilot. The three skill-only harnesses (cursor, windsurf, zed) get the skills and nothing else.</li>
             <li>Re-running is idempotent: files already in place are skipped.</li>
           </ul>
@@ -180,7 +180,7 @@ shipmates install --harness opencode --with-tools all</code></pre>
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="harness-paths-title">Per-harness paths</h2>
-          <p class="section__lead">Each root verified against first-party docs. All eight read skills from <code>&lt;root&gt;/skills/&lt;name&gt;/SKILL.md</code>.</p>        </div>
+          <p class="section__lead">Each root verified against first-party docs. Most read skills from <code>&lt;root&gt;/skills/&lt;name&gt;/SKILL.md</code>; <code>codex</code>, <code>zed</code> and <code>antigravity</code> follow the <a href="https://agentskills.io">open Agent Skills standard</a> at <code>.agents/skills/&lt;name&gt;/SKILL.md</code>.</p>        </div>
         <div class="order-table" tabindex="0">
           <table>
             <thead><tr><th scope="col">Harness</th><th scope="col">Tree installed</th><th scope="col">Commands land at</th><th scope="col">Subagents</th><th scope="col">First-party doc</th></tr></thead>
@@ -188,17 +188,17 @@ shipmates install --harness opencode --with-tools all</code></pre>
               <tr><td><code>claude-code</code></td><td><code>.claude/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://code.claude.com/docs/en/skills">code.claude.com/docs/en/skills</a></td></tr>
               <tr><td><code>opencode</code></td><td><code>.opencode/</code></td><td><code>commands/&lt;name&gt;.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://opencode.ai/docs/commands/">opencode.ai/docs/commands</a></td></tr>
               <tr><td><code>github-copilot</code></td><td><code>.github/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.agent.md</code></td><td><a href="https://docs.github.com/en/copilot/concepts/agents/about-agent-skills">docs.github.com/en/copilot/concepts/agents/about-agent-skills</a></td></tr>
-              <tr><td><code>codex</code></td><td><code>.codex/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.toml</code></td><td><a href="https://developers.openai.com/codex/build-skills">developers.openai.com/codex/build-skills</a></td></tr>
+              <tr><td><code>codex</code></td><td><code>.codex/</code> + <code>.agents/</code></td><td><code>.agents/skills/&lt;name&gt;/SKILL.md</code></td><td><code>.codex/agents/&lt;name&gt;.toml</code></td><td><a href="https://developers.openai.com/codex/build-skills">developers.openai.com/codex/build-skills</a></td></tr>
               <tr><td><code>cursor</code></td><td><code>.cursor/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://cursor.com/docs/skills">cursor.com/docs/skills</a></td></tr>
               <tr><td><code>antigravity</code></td><td><code>.agents/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://antigravity.google/docs/cli/plugins">antigravity.google/docs/cli/plugins</a></td></tr>
               <tr><td><code>windsurf</code></td><td><code>.windsurf/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://docs.windsurf.com/windsurf/cascade/skills">docs.windsurf.com/windsurf/cascade/skills</a></td></tr>
-              <tr><td><code>zed</code></td><td><code>.zed/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://zed.dev/docs/ai/skills">zed.dev/docs/ai/skills</a></td></tr>
+              <tr><td><code>zed</code></td><td><code>.agents/</code></td><td><code>.agents/skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://zed.dev/docs/ai/skills">zed.dev/docs/ai/skills</a></td></tr>
             </tbody>
           </table>
         </div>
         <div class="order-prose">
           <p><code>opencode</code> takes the twelve as flat <code>commands/&lt;name&gt;.md</code> files rather than skill directories. That is a safety decision, not a formatting one — opencode&#x27;s skills are model-invoked and its <code>SKILL.md</code> has no <code>disable-model-invocation</code> equivalent, so <code>commands/</code> is what keeps the twelve user-invoked only. The reasoning is on the <a href="../harnesses/#opencode">harness matrix</a>.</p>
-          <p><code>codex</code> and <code>zed</code> each install into their own root — <code>.codex/</code> and <code>.zed/</code> respectively. <code>antigravity</code> is the Antigravity CLI (<code>agy</code>), the successor to the retired Gemini CLI; its workspace tree is <code>.agents/</code> with subagents at <code>agents/&lt;name&gt;.md</code> and skills at <code>skills/&lt;name&gt;/SKILL.md</code>.</p>
+          <p><code>codex</code> and <code>zed</code> both read skills from the open Agent Skills tree <code>.agents/skills/</code>, not a harness-private one, so a <code>.codex/skills/</code> or <code>.zed/skills/</code> install would never be discovered. <code>codex</code> therefore spans two roots: its crew stay Codex-native at <code>.codex/agents/&lt;name&gt;.toml</code> while its skills sit alongside antigravity&#x27;s and zed&#x27;s under <code>.agents/skills/</code>. <code>zed</code>, which has no crew, writes only <code>.agents/skills/</code>. <code>antigravity</code> is the Antigravity CLI (<code>agy</code>), the successor to the retired Gemini CLI; its workspace tree is <code>.agents/</code> throughout, with subagents at <code>agents/&lt;name&gt;.md</code> and skills at <code>skills/&lt;name&gt;/SKILL.md</code>.</p>
         </div>
       </div>
     </section>

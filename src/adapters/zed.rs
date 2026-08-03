@@ -3,14 +3,18 @@ use std::collections::HashMap;
 use super::render::{emit_skill_files, emit_tool_files, ZED};
 use super::Adapter;
 
-/// Zed discovers skills under `.zed/skills/<name>/SKILL.md` and has no
-/// subagent mechanic, so the crew becomes twelve skills and `roles` is not
-/// emitted.
+/// Zed discovers skills under `.agents/skills/<name>/SKILL.md` — the open
+/// <https://agentskills.io> location it adopted in v1.4.2, not a `.zed/` tree —
+/// and has no subagent mechanic, so only the twelve commands ship (as skills)
+/// and `roles` is not emitted. Being skills-only, the whole payload lives under
+/// the one `.agents/` dotdir, so `base_dir` moves there wholesale (like
+/// Antigravity) and digests need no override.
+/// See <https://zed.dev/docs/ai/skills>.
 pub struct ZedAdapter;
 
 impl Adapter for ZedAdapter {
     fn base_dir(&self) -> &'static str {
-        "harnesses/zed/.zed"
+        "harnesses/zed/.agents"
     }
 
     fn build(&self, _roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
@@ -46,7 +50,10 @@ mod tests {
             source: std::path::PathBuf::from(""),
         };
         let files = ZedAdapter.build(&[], &[command]).unwrap();
-        assert!(files.contains_key("harnesses/zed/.zed/skills/onboard/SKILL.md"));
-        assert!(!files.keys().any(|k| k.contains("agents/")));
+        assert!(files.contains_key("harnesses/zed/.agents/skills/onboard/SKILL.md"));
+        // The open standard tree, never a `.zed/` one.
+        assert!(!files.keys().any(|k| k.contains(".zed/")));
+        // No crew: skills live at `.agents/skills`, never a `.agents/agents` dir.
+        assert!(!files.keys().any(|k| k.contains("/agents/")));
     }
 }

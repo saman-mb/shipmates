@@ -156,11 +156,11 @@ Which harnesses can you install? `shipmates targets` lists them — today all of
 claude-code      .claude/          agents + skills
 opencode         .opencode/        agents + commands
 antigravity      .agents/          agents + skills   (agy — the successor to the retired Gemini CLI)
-codex            .codex/           crew (TOML) + skills
+codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
 cursor           .cursor/          skills only
 github-copilot   .github/          crew + skills
 windsurf         .windsurf/        skills only
-zed              .zed/             skills only
+zed              .agents/          skills only (open Agent Skills standard)
 ```
 
 Every harness compiles the same canonical crew and commands. Five have a native subagent directory
