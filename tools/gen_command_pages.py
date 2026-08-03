@@ -1402,6 +1402,14 @@ TOOL_COPY = {
             "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools scrub`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "Run it on a file with `python3 scrub.py --in log.txt --out clean.txt`, or pipe text through it stdin-to-stdout with `cat log.txt | python3 scrub.py`. The cleaned text goes to `--out` or stdout; a per-category redaction summary goes to stderr so it never pollutes the output. Exit code is `0` on success and `2` on a usage error.",
         ),
+        examples=(
+            ToolExample(
+                src="examples/scrub.gif", width=860, height=340,
+                alt="Terminal recording of scrub redacting a log: an email, AWS key, bearer token, JWT and IP each replaced with a typed [REDACTED_*] placeholder, ending 'redacted 9 items across 7 categories'.",
+                caption="scrub cleaning a log — each secret class swapped for a typed placeholder, counted at the end.",
+                poster="examples/scrub_poster.png",
+            ),
+        ),
         sample="$ python3 scrub.py --in app.log\n\nBEFORE\n  env AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n  operator jane.doe@example.com from 203.0.113.42\n  Authorization: Bearer abcDEF0123456789xyzABCDEF\n\nAFTER  (summary on stderr)\n  env AWS_ACCESS_KEY_ID=[REDACTED_AWS_KEY]\n  operator [REDACTED_EMAIL] from [REDACTED_IP]\n  Authorization: Bearer [REDACTED_TOKEN]",
     ),
     "fixtures": ToolCopy(
@@ -1413,6 +1421,14 @@ TOOL_COPY = {
         usage=(
             "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools fixtures`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The script and its instructions are bundled together, so wherever the tool lands the agent has both the `fixtures.py` generator and the schema format it needs to drive it. Run it as `python3 fixtures.py --schema schema.json --count 5 --seed 7 --out data.json`, or omit `--out` to write the array to stdout.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/fixtures.gif", width=900, height=370,
+                alt="Terminal recording of fixtures generating three JSON user records from a schema with --seed 7, ending 'same seed produces the same bytes'.",
+                caption="fixtures generating three records from a schema — deterministic, so the same seed yields the same bytes.",
+                poster="examples/fixtures_poster.png",
+            ),
         ),
         sample="schema.json\n{\n  \"id\":    \"uuid\",\n  \"email\": \"email\",\n  \"age\":   {\"type\": \"int\", \"min\": 18, \"max\": 65},\n  \"role\":  {\"type\": \"choice\", \"options\": [\"admin\", \"member\"]}\n}\n\n$ python3 fixtures.py --schema schema.json --count 2 --seed 7\n[\n  {\n    \"id\": \"6513270e-269e-4d37-b2a7-4de452e6b438\",\n    \"email\": \"priya.patel@test.dev\",\n    \"age\": 52,\n    \"role\": \"admin\"\n  },\n  {\n    \"id\": \"e8e25d94-0ed9-4475-9531-985d5d9dc9f8\",\n    \"email\": \"ivan.haddad@example.com\",\n    \"age\": 23,\n    \"role\": \"member\"\n  }\n]",
     ),

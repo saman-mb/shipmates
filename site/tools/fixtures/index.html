@@ -92,6 +92,24 @@
       </div>
     </section>
 
+    <section class="section" id="examples" aria-labelledby="examples-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="examples-title">Examples</h2>
+        </div>
+        <p>Each of these is <code>fixtures</code> driving different input — nothing to do with shipmates. If you&#x27;ve set <code>prefers-reduced-motion</code>, any animation shows its final frame instead.</p>
+        <div class="tool-gallery">
+          <figure class="tool-example">
+            <picture>
+              <source media="(prefers-reduced-motion: reduce)" srcset="examples/fixtures_poster.png">
+              <img class="tool-example__img" src="examples/fixtures.gif" width="900" height="370" alt="Terminal recording of fixtures generating three JSON user records from a schema with --seed 7, ending &#x27;same seed produces the same bytes&#x27;." loading="lazy" decoding="async">
+            </picture>
+            <figcaption class="tool-example__caption">fixtures generating three records from a schema — deterministic, so the same seed yields the same bytes.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="sample" aria-labelledby="sample-title">
       <div class="container container--prose">
         <div class="section__head">
