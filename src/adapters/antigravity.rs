@@ -1,6 +1,6 @@
-use crate::catalog::{CanonicalCommand, CanonicalRole};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, ANTIGRAVITY};
+use super::render::{emit_skill_files, emit_tool_files, ANTIGRAVITY};
 use super::Adapter;
 
 /// The Antigravity CLI (`agy`) — Google's successor to the retired Gemini CLI.
@@ -76,6 +76,13 @@ impl Adapter for AntigravityAdapter {
             files.insert(path, content);
         }
         Ok(files)
+    }
+
+    fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
+        // agy skills are model-invoked ("it decides based on context"); they
+        // also surface as slash commands, so agent-invoked but typeable
+        // (recorded, not faked).
+        emit_tool_files(self.base_dir(), tools, &ANTIGRAVITY, false)
     }
 }
 

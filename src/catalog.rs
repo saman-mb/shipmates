@@ -34,6 +34,22 @@ pub struct CanonicalCommand {
     pub source: PathBuf,
 }
 
+/// A tool: an agent-invoked capability the crew reaches for implicitly, never a
+/// slash command. Defined once, harness-neutrally, as `toolbox/<name>/tool.md`
+/// plus any bundled runnable assets (a script, templates). Each adapter maps it
+/// to that harness's native tool surface — opencode's `.opencode/tools/*.ts`,
+/// or a model-invoked Agent Skill elsewhere.
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct CanonicalTool {
+    pub name: String,
+    pub description: String,
+    pub body: String,
+    /// (relative filename, contents) for every bundled file except `tool.md`.
+    pub assets: Vec<(String, String)>,
+    pub source: PathBuf,
+}
+
 pub fn reject_positional(label: &str, text: &str) -> Result<(), String> {
     for (i, line) in text.lines().enumerate() {
         let mut prev_char = ' ';
@@ -199,6 +215,99 @@ pub fn load_commands_embedded() -> anyhow::Result<Vec<CanonicalCommand>> {
     Ok(commands)
 }
 
+
+/// Tools loaded from an on-disk `toolbox/` tree (the repo dev loop).
+pub fn load_tools(path: &Path) -> anyhow::Result<Vec<CanonicalTool>> {
+    let mut tools = Vec::new();
+    if !path.exists() {
+        return Ok(tools);
+    }
+    let mut dirs: Vec<PathBuf> = fs::read_dir(path)?
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    dirs.sort();
+    for dir in dirs {
+        let tool_md = dir.join("tool.md");
+        if !tool_md.is_file() {
+            continue;
+        }
+        let (fm, body) = parse_frontmatter(&tool_md).map_err(|e| anyhow::anyhow!(e))?;
+        let name = fm
+            .get("name")
+            .cloned()
+            .unwrap_or_else(|| dir.file_name().unwrap().to_string_lossy().to_string());
+        let mut assets: Vec<(String, String)> = Vec::new();
+        for entry in walkdir::WalkDir::new(&dir)
+            .sort_by_file_name()
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let p = entry.path();
+            if p.is_file() && p != tool_md {
+                let rel = p.strip_prefix(&dir).unwrap().to_string_lossy().replace('\\', "/");
+                let content = fs::read_to_string(p).map_err(|e| anyhow::anyhow!(e))?;
+                assets.push((rel, content));
+            }
+        }
+        tools.push(CanonicalTool {
+            name,
+            description: fm.get("description").cloned().unwrap_or_default(),
+            body,
+            assets,
+            source: tool_md,
+        });
+    }
+    Ok(tools)
+}
+
+/// Tools compiled into the binary at build time by `build.rs` (the brew/cargo
+/// install path, which has no checkout to read `toolbox/` from).
+pub fn load_tools_embedded() -> anyhow::Result<Vec<CanonicalTool>> {
+    use std::collections::BTreeMap;
+    // Group embedded `toolbox/<dir>/<file>` entries by their tool directory.
+    let mut groups: BTreeMap<String, Vec<(String, &str)>> = BTreeMap::new();
+    for (rel, content) in crate::embedded::embedded_sources() {
+        if let Some(rest) = rel.strip_prefix("toolbox/")
+            && let Some((dir, file_rel)) = rest.split_once('/')
+        {
+            groups.entry(dir.to_string()).or_default().push((file_rel.to_string(), content));
+        }
+    }
+    let mut tools = Vec::new();
+    for (dir, mut files) in groups {
+        files.sort();
+        let mut name = dir.clone();
+        let mut description = String::new();
+        let mut body = String::new();
+        let mut assets: Vec<(String, String)> = Vec::new();
+        let mut found = false;
+        for (file_rel, content) in files {
+            if file_rel == "tool.md" {
+                let (fm, b) = parse_frontmatter_from(content, &format!("toolbox/{}/tool.md", dir))
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                name = fm.get("name").cloned().unwrap_or(dir.clone());
+                description = fm.get("description").cloned().unwrap_or_default();
+                body = b;
+                found = true;
+            } else {
+                assets.push((file_rel, content.to_string()));
+            }
+        }
+        if !found {
+            continue;
+        }
+        tools.push(CanonicalTool {
+            name,
+            description,
+            body,
+            assets,
+            source: PathBuf::from(format!("toolbox/{}/tool.md", dir)),
+        });
+    }
+    Ok(tools)
+}
 
 #[cfg(test)]
 mod tests {

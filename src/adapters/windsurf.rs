@@ -1,6 +1,6 @@
-use crate::catalog::{CanonicalCommand, CanonicalRole};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, WINDSURF};
+use super::render::{emit_skill_files, emit_tool_files, WINDSURF};
 use super::Adapter;
 
 /// Windsurf (Cascade) discovers skills under `.windsurf/skills/<name>/SKILL.md`
@@ -15,6 +15,12 @@ impl Adapter for WindsurfAdapter {
 
     fn build(&self, _roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
         Ok(emit_skill_files(self.base_dir(), commands, &WINDSURF))
+    }
+
+    fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
+        // Cascade skills are model-invoked by description; no documented flag to
+        // hide one from `@mention`, so agent-invoked-but-typeable (recorded).
+        emit_tool_files(self.base_dir(), tools, &WINDSURF, false)
     }
 }
 

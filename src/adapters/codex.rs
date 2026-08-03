@@ -1,6 +1,6 @@
-use crate::catalog::{CanonicalCommand, CanonicalRole};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, render_body, CODEX};
+use super::render::{emit_skill_files, emit_tool_files, render_body, CODEX};
 use super::Adapter;
 
 /// Codex CLI — twelve skills under `.codex/skills/<name>/SKILL.md` plus the
@@ -71,6 +71,13 @@ impl Adapter for CodexAdapter {
             files.insert(path, content);
         }
         Ok(files)
+    }
+
+    fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
+        // Codex has no tool primitive outside MCP; a model-invoked skill is the
+        // closest native fit. `$skill` can still name it, so agent-invoked but
+        // typeable (recorded, not faked).
+        emit_tool_files(self.base_dir(), tools, &CODEX, false)
     }
 }
 

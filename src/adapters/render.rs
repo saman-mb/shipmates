@@ -1,4 +1,4 @@
-use crate::catalog::CanonicalCommand;
+use crate::catalog::{CanonicalCommand, CanonicalTool};
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -188,6 +188,41 @@ pub fn emit_skill_files(
         content.push_str("---\n");
         content.push_str(&render_body(&command.narrative, dialect));
         files.insert(format!("{}/skills/{}/SKILL.md", base_dir, command.name), content);
+    }
+    files
+}
+
+/// Emit an agent-invoked tool as a model-invoked Agent Skill (+ bundled assets).
+///
+/// A shipmates *tool* is the model-invoked sibling of a command: the crew reach
+/// for it implicitly, never by typing a slash command. On Claude Code that is a
+/// `SKILL.md` carrying the `user-invocable: false` vendor key — model-invoked,
+/// hidden from the `/` menu — so pass `agent_only = true`. The other skill
+/// harnesses have no documented way to hide a skill from manual mention, so they
+/// get the strict two-key Agent Skills pair; the tool is model-invoked but still
+/// technically typeable, which is recorded rather than faked (`agent_only =
+/// false`). Bundled assets (a runnable script) ride alongside the `SKILL.md`.
+pub fn emit_tool_files(
+    base_dir: &str,
+    tools: &[CanonicalTool],
+    dialect: &Dialect,
+    agent_only: bool,
+) -> HashMap<String, String> {
+    let mut files = HashMap::new();
+    for tool in tools {
+        let mut content = String::new();
+        content.push_str("---\n");
+        content.push_str(&format!("name: {}\n", tool.name));
+        content.push_str(&format!("description: {}\n", tool.description));
+        if agent_only {
+            content.push_str("user-invocable: false\n");
+        }
+        content.push_str("---\n");
+        content.push_str(&render_body(&tool.body, dialect));
+        files.insert(format!("{}/skills/{}/SKILL.md", base_dir, tool.name), content);
+        for (rel, asset) in &tool.assets {
+            files.insert(format!("{}/skills/{}/{}", base_dir, tool.name, rel), asset.clone());
+        }
     }
     files
 }

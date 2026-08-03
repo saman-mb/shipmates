@@ -15,6 +15,11 @@ pub enum Command {
 
         #[arg(long)]
         dir: Option<String>,
+
+        /// Also install these agent-invoked tools (comma-separated names, or
+        /// `all`). Off by default — a plain install ships only crew + commands.
+        #[arg(long = "with-tools", value_delimiter = ',')]
+        with_tools: Vec<String>,
     },
     Build {
         #[arg(long, default_value = "claude-code")]

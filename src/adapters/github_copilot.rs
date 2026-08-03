@@ -1,6 +1,6 @@
-use crate::catalog::{CanonicalCommand, CanonicalRole};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, render_body, GITHUB_COPILOT};
+use super::render::{emit_skill_files, emit_tool_files, render_body, GITHUB_COPILOT};
 use super::Adapter;
 
 /// GitHub Copilot — twelve skills under `.github/skills/<name>/SKILL.md` plus
@@ -109,6 +109,13 @@ impl Adapter for GithubCopilotAdapter {
             files.insert(path, content);
         }
         Ok(files)
+    }
+
+    fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
+        // Copilot Agent Skills are model-invoked by description; the `/name`
+        // override still exists and skills don't document a hide flag, so
+        // agent-invoked but typeable (recorded, not faked).
+        emit_tool_files(self.base_dir(), tools, &GITHUB_COPILOT, false)
     }
 }
 

@@ -109,6 +109,21 @@ jobs:
           test -f "$RUNNER_TEMP/install-all/.claude/agents/sdet.md"
           test -f "$RUNNER_TEMP/install-all/.zed/skills/ship-issue/SKILL.md"
           test ! -d "$RUNNER_TEMP/install-all/.zed/agents"
+      # Tools are opt-in (--with-tools) and map per harness: an agent-only skill
+      # on Claude Code (user-invocable: false), a native code tool on opencode.
+      - name: Install an opt-in tool end to end (--with-tools)
+        run: |
+          # a plain install ships NO tool
+          test ! -e "$RUNNER_TEMP/install/.claude/skills/termgif"
+          cargo run -- install --harness claude-code --with-tools termgif --dir "$RUNNER_TEMP/install-tool"
+          test -f "$RUNNER_TEMP/install-tool/.claude/skills/termgif/SKILL.md"
+          test -f "$RUNNER_TEMP/install-tool/.claude/skills/termgif/termgif.py"
+          grep -q "user-invocable: false" "$RUNNER_TEMP/install-tool/.claude/skills/termgif/SKILL.md"
+          # opencode gets its native code tool, not a skill
+          cargo run -- install --harness opencode --with-tools all --dir "$RUNNER_TEMP/install-tool-oc"
+          test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/termgif.ts"
+          test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/termgif.py"
+          test ! -d "$RUNNER_TEMP/install-tool-oc/.opencode/skills/termgif"
       - name: Install the opencode harness end to end
         run: |
           cargo run -- install --harness opencode --dir "$RUNNER_TEMP/install-opencode"
