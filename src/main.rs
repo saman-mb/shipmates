@@ -12,6 +12,67 @@ use cli::{Cli, Command};
 use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use std::fs;
+use std::io::{IsTerminal, Write};
+
+use catalog::CanonicalTool;
+
+/// Parse one line of the tool picker against the available tools.
+///
+/// `Some(tools)` for a valid line — empty / `none` → no tools; `all` → every
+/// tool; a comma/space-separated list of 1-based numbers → those tools, kept in
+/// input order and de-duplicated. `None` means a token was not a number in
+/// range, so the caller should re-prompt.
+fn select_tools_from_line(line: &str, available: &[CanonicalTool]) -> Option<Vec<CanonicalTool>> {
+    let trimmed = line.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if trimmed.is_empty() || lower == "none" || lower == "n" {
+        return Some(Vec::new());
+    }
+    if lower == "all" || lower == "a" {
+        return Some(available.to_vec());
+    }
+    let mut picked: Vec<CanonicalTool> = Vec::new();
+    for token in trimmed.split(|c: char| c == ',' || c.is_whitespace()).filter(|s| !s.is_empty()) {
+        match token.parse::<usize>() {
+            Ok(n) if n >= 1 && n <= available.len() => {
+                let tool = &available[n - 1];
+                if !picked.iter().any(|p| p.name == tool.name) {
+                    picked.push(tool.clone());
+                }
+            }
+            _ => return None,
+        }
+    }
+    Some(picked)
+}
+
+/// Interactively pick which optional tools to install (terminal only).
+///
+/// Reached only when `--with-tools` was omitted and stdin is a TTY. Re-prompts a
+/// few times on an out-of-range entry, then defaults to none rather than looping
+/// forever; a closed stdin (EOF) reads as an empty line, i.e. no tools.
+fn prompt_for_tools(available: &[CanonicalTool]) -> Vec<CanonicalTool> {
+    println!("\nOptional tools — the crew reach for these implicitly when a task needs one.");
+    println!("They're off by default; pick any you'd like installed:\n");
+    for (i, tool) in available.iter().enumerate() {
+        let blurb: String = tool.description.split(['.', '\n']).next().unwrap_or("").trim().chars().take(72).collect();
+        println!("  {}) {} — {}", i + 1, tool.name, blurb);
+    }
+    for _ in 0..3 {
+        print!("\nSelect tools [e.g. 1,2 · all · Enter for none]: ");
+        let _ = std::io::stdout().flush();
+        let mut line = String::new();
+        if std::io::stdin().read_line(&mut line).is_err() {
+            return Vec::new();
+        }
+        match select_tools_from_line(&line, available) {
+            Some(tools) => return tools,
+            None => println!("  Pick numbers from 1 to {} (or 'all', or Enter for none).", available.len()),
+        }
+    }
+    println!("  No valid selection — installing no tools.");
+    Vec::new()
+}
 
 fn select(target: &str) -> Result<Box<dyn Adapter>> {
     let adapter: Box<dyn Adapter> = match target {
@@ -52,27 +113,42 @@ fn main() -> Result<()> {
                 catalog::load_commands_embedded().context("Failed to load embedded commands")?
             };
 
-            // Tools are opt-in: nothing is loaded or installed unless
-            // `--with-tools` names them (or `all`). This keeps a plain install
-            // to crew + commands, as it has always been.
-            let selected_tools = if with_tools.is_empty() {
+            // Tools are opt-in. When `--with-tools` is omitted, an interactive
+            // terminal gets to pick from the available tools; a non-interactive
+            // run (CI, a pipe, a script) installs none, keeping a plain install
+            // to crew + commands as it has always been. When the flag IS given,
+            // it names the tools (or `all` / `none`) with no prompt.
+            let non_interactive_default =
+                with_tools.is_none() && !std::io::stdin().is_terminal();
+            let selected_tools = if non_interactive_default {
                 Vec::new()
             } else {
-                let all = if tools_path.is_dir() {
+                let available = if tools_path.is_dir() {
                     catalog::load_tools(&tools_path).context("Failed to load tools")?
                 } else {
                     catalog::load_tools_embedded().context("Failed to load embedded tools")?
                 };
-                if with_tools.iter().any(|t| t == "all") {
-                    all
-                } else {
-                    for want in &with_tools {
-                        if !all.iter().any(|t| &t.name == want) {
-                            let available: Vec<&str> = all.iter().map(|t| t.name.as_str()).collect();
-                            bail!("unknown tool: {} (available: {})", want, available.join(", "));
+                match with_tools {
+                    // Flag given: resolve names / `all` / `none`, error on unknown.
+                    Some(want) => {
+                        let want: Vec<String> = want.into_iter().filter(|w| !w.is_empty()).collect();
+                        if want.iter().any(|t| t == "none") {
+                            Vec::new()
+                        } else if want.iter().any(|t| t == "all") {
+                            available
+                        } else {
+                            for w in &want {
+                                if !available.iter().any(|t| &t.name == w) {
+                                    let names: Vec<&str> = available.iter().map(|t| t.name.as_str()).collect();
+                                    bail!("unknown tool: {} (available: {})", w, names.join(", "));
+                                }
+                            }
+                            available.into_iter().filter(|t| want.contains(&t.name)).collect()
                         }
                     }
-                    all.into_iter().filter(|t| with_tools.contains(&t.name)).collect()
+                    // Flag omitted on a terminal: let the user pick.
+                    None if available.is_empty() => Vec::new(),
+                    None => prompt_for_tools(&available),
                 }
             };
 
@@ -237,4 +313,58 @@ fn write_digests(target: &str, digest_root: &str, files: &std::collections::Hash
     installer::atomic_write(&digest_file, &out)?;
     println!("Wrote digests for target: {}", target);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tool(name: &str) -> CanonicalTool {
+        CanonicalTool {
+            name: name.to_string(),
+            description: "desc".to_string(),
+            body: String::new(),
+            assets: vec![],
+            source: PathBuf::from(""),
+        }
+    }
+
+    fn names(v: Option<Vec<CanonicalTool>>) -> Option<Vec<String>> {
+        v.map(|ts| ts.into_iter().map(|t| t.name).collect())
+    }
+
+    #[test]
+    fn test_tool_line_empty_and_none_select_nothing() {
+        let avail = [tool("termgif"), tool("second")];
+        assert_eq!(names(select_tools_from_line("", &avail)), Some(vec![]));
+        assert_eq!(names(select_tools_from_line("   ", &avail)), Some(vec![]));
+        assert_eq!(names(select_tools_from_line("none", &avail)), Some(vec![]));
+        assert_eq!(names(select_tools_from_line("N", &avail)), Some(vec![]));
+    }
+
+    #[test]
+    fn test_tool_line_all_selects_everything() {
+        let avail = [tool("termgif"), tool("second")];
+        assert_eq!(names(select_tools_from_line("all", &avail)), Some(vec!["termgif".into(), "second".into()]));
+        assert_eq!(names(select_tools_from_line("A", &avail)), Some(vec!["termgif".into(), "second".into()]));
+    }
+
+    #[test]
+    fn test_tool_line_numbers_pick_in_order_and_dedup() {
+        let avail = [tool("termgif"), tool("second"), tool("third")];
+        assert_eq!(names(select_tools_from_line("1", &avail)), Some(vec!["termgif".into()]));
+        assert_eq!(names(select_tools_from_line("3, 1", &avail)), Some(vec!["third".into(), "termgif".into()]));
+        // whitespace-separated and duplicates collapse
+        assert_eq!(names(select_tools_from_line("2 2 2", &avail)), Some(vec!["second".into()]));
+    }
+
+    #[test]
+    fn test_tool_line_out_of_range_or_garbage_is_reprompt() {
+        let avail = [tool("termgif")];
+        assert_eq!(select_tools_from_line("2", &avail).map(|_| ()), None);
+        assert_eq!(select_tools_from_line("0", &avail).map(|_| ()), None);
+        assert_eq!(select_tools_from_line("nope", &avail).map(|_| ()), None);
+        // one bad token invalidates the whole line
+        assert_eq!(select_tools_from_line("1, 9", &avail).map(|_| ()), None);
+    }
 }
