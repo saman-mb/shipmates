@@ -108,8 +108,8 @@
           <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code
 shipmates install --harness opencode
 shipmates install --harness all</code></pre>
-          <p>Installs into the current directory by default. The crew ships as twelve <code>agents/*.md</code> personas and the twelve commands as <code>skills/&lt;name&gt;/SKILL.md</code> directories (or flat <code>commands/&lt;name&gt;.md</code> on opencode), in the harness&#x27;s own native tree — <code>.claude/</code>, <code>.opencode/</code>, <code>.codex/</code>, and so on — so the harness picks them up natively. The CLI compiles the payload from its built-in canonical sources; nothing is downloaded at install time.</p>
-          <p>On skill-only harnesses (<code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>, <code>zed</code>) the crew is dropped entirely — there is no native subagent directory for them — and only the twelve skills land.</p>
+          <p>Installs into the current directory by default. The crew ships as twelve subagent personas in the harness&#x27;s own format and the twelve commands as <code>skills/&lt;name&gt;/SKILL.md</code> directories (or flat <code>commands/&lt;name&gt;.md</code> on opencode), in the harness&#x27;s own native tree — <code>.claude/</code>, <code>.opencode/</code>, <code>.codex/</code>, and so on — so the harness picks them up natively. The CLI compiles the payload from its built-in canonical sources; nothing is downloaded at install time.</p>
+          <p>Five harnesses take the full crew: claude-code, opencode and antigravity as <code>agents/&lt;name&gt;.md</code>, codex as <code>agents/&lt;name&gt;.toml</code>, and github-copilot as <code>agents/&lt;name&gt;.agent.md</code>. On the three skill-only harnesses (<code>cursor</code>, <code>windsurf</code>, <code>zed</code>) the crew is dropped — they have no native subagent directory — and only the twelve skills land.</p>
         </div>
       </div>
     </section>
@@ -136,7 +136,7 @@ shipmates install --harness all</code></pre>
           <ul>
             <li>Compiles the payload from its built-in canonical sources (<code>commands/</code> + <code>crew/</code>), rendering each command and persona into the harness&#x27;s own dialect — where its agents live, what its session metadata is called, which project-instructions file it reads.</li>
             <li>Writes the harness&#x27;s own tree in the target directory — <code>.claude/</code>, <code>.opencode/</code>, <code>.agents/</code>, <code>.codex/</code>, <code>.cursor/</code>, <code>.github/</code>, <code>.windsurf/</code>, or <code>.zed/</code>.</li>
-            <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on claude-code, opencode and antigravity, the twelve <code>agents/*.md</code> personas. Skill-only harnesses get the skills and nothing else.</li>
+            <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on the five crew-bearing harnesses, the twelve crew personas: <code>agents/*.md</code> on claude-code, opencode and antigravity, <code>agents/*.toml</code> on codex, and <code>agents/*.agent.md</code> on github-copilot. The three skill-only harnesses (cursor, windsurf, zed) get the skills and nothing else.</li>
             <li>Re-running is idempotent: files already in place are skipped.</li>
           </ul>
         </div>
@@ -171,8 +171,8 @@ shipmates install --harness all</code></pre>
             <tbody>
               <tr><td><code>claude-code</code></td><td><code>.claude/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://code.claude.com/docs/en/skills">code.claude.com/docs/en/skills</a></td></tr>
               <tr><td><code>opencode</code></td><td><code>.opencode/</code></td><td><code>commands/&lt;name&gt;.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://opencode.ai/docs/commands/">opencode.ai/docs/commands</a></td></tr>
-              <tr><td><code>github-copilot</code></td><td><code>.github/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://docs.github.com/en/copilot/concepts/agents/about-agent-skills">docs.github.com/en/copilot/concepts/agents/about-agent-skills</a></td></tr>
-              <tr><td><code>codex</code></td><td><code>.codex/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://developers.openai.com/codex/build-skills">developers.openai.com/codex/build-skills</a></td></tr>
+              <tr><td><code>github-copilot</code></td><td><code>.github/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.agent.md</code></td><td><a href="https://docs.github.com/en/copilot/concepts/agents/about-agent-skills">docs.github.com/en/copilot/concepts/agents/about-agent-skills</a></td></tr>
+              <tr><td><code>codex</code></td><td><code>.codex/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.toml</code></td><td><a href="https://developers.openai.com/codex/build-skills">developers.openai.com/codex/build-skills</a></td></tr>
               <tr><td><code>cursor</code></td><td><code>.cursor/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://cursor.com/docs/skills">cursor.com/docs/skills</a></td></tr>
               <tr><td><code>antigravity</code></td><td><code>.agents/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://antigravity.google/docs/cli/plugins">antigravity.google/docs/cli/plugins</a></td></tr>
               <tr><td><code>windsurf</code></td><td><code>.windsurf/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://docs.windsurf.com/windsurf/cascade/skills">docs.windsurf.com/windsurf/cascade/skills</a></td></tr>
