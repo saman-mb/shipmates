@@ -107,11 +107,28 @@ jobs:
           test -f "$RUNNER_TEMP/install-antigravity/.agents/skills/ship-issue/SKILL.md"
           test -f "$RUNNER_TEMP/install-antigravity/.agents/agents/sdet.md"
           test ! -d "$RUNNER_TEMP/install-antigravity/.gemini"
-      - name: Install a skill-only harness end to end
+      # Codex agents are TOML and Copilot needs the .agent.md double extension.
+      # Both are easy to regress into a plain <name>.md that installs cleanly
+      # and is silently never loaded, so assert the format, not just presence.
+      - name: Install the crew-bearing non-Claude harnesses end to end
         run: |
           cargo run -- install --harness codex --dir "$RUNNER_TEMP/install-codex"
           test -f "$RUNNER_TEMP/install-codex/.codex/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-codex/.codex/agents"
+          test -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.toml"
+          test ! -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.md"
+          cargo run -- install --harness github-copilot --dir "$RUNNER_TEMP/install-copilot"
+          test -f "$RUNNER_TEMP/install-copilot/.github/skills/ship-issue/SKILL.md"
+          test -f "$RUNNER_TEMP/install-copilot/.github/agents/sdet.agent.md"
+          test ! -f "$RUNNER_TEMP/install-copilot/.github/agents/sdet.md"
+
+      # cursor: agents directory reported but frontmatter schema unverified.
+      # windsurf: target identity under review since the Devin Desktop rename.
+      # zed: genuinely has no agents directory — ACP, not files.
+      - name: Install a skill-only harness end to end
+        run: |
+          cargo run -- install --harness zed --dir "$RUNNER_TEMP/install-zed"
+          test -f "$RUNNER_TEMP/install-zed/.zed/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-zed/.zed/agents"
 
   deploy:
     name: Deploy to GitHub Pages
