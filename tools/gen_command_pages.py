@@ -2637,6 +2637,65 @@ def render_hero(cmd: Command, src: str) -> str:
     </section>"""
 
 
+def _png_size(path: Path) -> tuple:
+    """(width, height) from a PNG's IHDR — no Pillow dependency, because this
+    generator's --check runs in CI before the demo step installs Pillow."""
+    with open(path, "rb") as fh:
+        head = fh.read(24)
+    if head[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SourceError("assets", 0, str(path), "", "not a PNG (bad signature)")
+    return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+
+
+def _demo_assets(slug: str) -> tuple:
+    """(gif, poster) filenames for a command's demo. `/ship-issue` reuses the
+    flagship demo.gif rather than shipping a second near-identical asset."""
+    if slug == FLAGSHIP_SLUG:
+        return "demo.gif", "demo-poster.png"
+    return f"command-{slug}.gif", f"command-{slug}-poster.png"
+
+
+def render_demo(cmd: Command) -> str:
+    """A playable terminal figure at the top of the page: poster by default, a
+    button swaps in the animated GIF (WCAG 2.2.2 — motion is user-initiated)."""
+    _gif, poster = _demo_assets(cmd.slug)
+    w, h = _png_size(ROOT / "site" / "assets" / poster)
+    return f"""    <section class="section" id="demo" aria-labelledby="demo-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="demo-title">See it run</h2>
+        </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="{link('../../assets/' + poster)}" width="{w}" height="{h}" alt="Illustrative terminal recording of the stages /{esc(cmd.slug)} runs, in order." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/{esc(cmd.slug)}</code> runs, in order.</figcaption>
+        </figure>
+      </div>
+    </section>"""
+
+
+def render_demo_script(cmd: Command) -> str:
+    """Inline, self-contained toggle: no external src, so the page stays
+    self-contained per the site's own gate."""
+    gif, _poster = _demo_assets(cmd.slug)
+    return f"""  <script>
+  (function () {{
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/{gif}';
+    var playing = false;
+    toggle.addEventListener('click', function () {{
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the run' : 'Play the run';
+    }});
+  }})();
+  </script>"""
+
+
 def render_invoke(cmd: Command) -> str:
     invocation = f"/{cmd.slug} {cmd.frontmatter.argument_hint}".strip()
     return f"""    <section class="section order-invoke" id="invoke" aria-labelledby="invoke-title">
@@ -2847,6 +2906,7 @@ def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
     src = cmd.source_path
     sections = [
         render_hero(cmd, src),
+        render_demo(cmd),
         render_invoke(cmd),
         render_stages(cmd, src),
         render_section(cmd.config, "config", src),
@@ -2870,6 +2930,7 @@ def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
   </main>
 
 {render_footer()}
+{render_demo_script(cmd)}
 </body>
 </html>
 """

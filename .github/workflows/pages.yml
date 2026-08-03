@@ -58,6 +58,12 @@ jobs:
           pip install "Pillow==12.3.0"
       - name: Check demo GIF/poster artifacts are up to date
         run: python3 tools/gen_demo_gif.py --check
+      - name: Check install (CLI) demo GIF/poster artifacts are up to date
+        run: python3 tools/gen_cli_demo_gif.py --check
+      # Verifies each reel's stage count against its SKILL.md too (needs cargo,
+      # which this job already has), so an upstream stage change red-builds here.
+      - name: Check per-command demo GIF/poster artifacts are up to date
+        run: python3 tools/gen_command_demos.py --check
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
@@ -96,6 +102,13 @@ jobs:
           cargo run -- install --harness claude-code --dir "$RUNNER_TEMP/install"
           test -f "$RUNNER_TEMP/install/.claude/skills/ship-issue/SKILL.md"
           test -f "$RUNNER_TEMP/install/.claude/agents/sdet.md"
+      - name: Install every harness at once (--harness all)
+        run: |
+          cargo run -- install --harness all --dir "$RUNNER_TEMP/install-all"
+          # crew-bearing target and a skill-only target both land under one root
+          test -f "$RUNNER_TEMP/install-all/.claude/agents/sdet.md"
+          test -f "$RUNNER_TEMP/install-all/.zed/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-all/.zed/agents"
       - name: Install the opencode harness end to end
         run: |
           cargo run -- install --harness opencode --dir "$RUNNER_TEMP/install-opencode"

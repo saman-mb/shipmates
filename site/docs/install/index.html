@@ -73,6 +73,11 @@
           <p class="order-detail__tagline">Install the CLI, then drop the crew into your harness of choice.</p>
           <p class="order-detail__desc">The installer is the <code>shipmates</code> CLI. Install it via Homebrew, Cargo, or the binary installer script.</p>
         </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="../../assets/cli-demo-poster.png" width="900" height="512" alt="Illustrative terminal recording: cargo install shipmates, then shipmates install --harness claude-code, then ls .claude." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the install</button>
+          <figcaption class="demo__caption">Illustrative — installing the CLI and bringing the crew aboard.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -252,5 +257,21 @@ ls .opencode/commands</code></pre>
       <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
     </div>
   </footer>
+  <script>
+  (function () {
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/cli-demo.gif';
+    var playing = false;
+    toggle.addEventListener('click', function () {
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the install' : 'Play the install';
+    });
+  })();
+  </script>
 </body>
 </html>

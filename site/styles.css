@@ -495,6 +495,28 @@ html.js .codeblock__copy{ display:inline-flex; }
   color:var(--text-muted);
 }
 
+/* --- Demo figure: a playable terminal in a prose column (install + command pages) --- */
+.demo{
+  margin:0 0 var(--space-6);
+}
+.demo__media{
+  display:block;
+  width:100%;
+  max-width:var(--maxw-prose);
+  height:auto;
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-2);
+}
+.demo__toggle{
+  margin-top:var(--space-3);
+}
+.demo__caption{
+  margin-top:var(--space-3);
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
 /* --- 5.3 Install (§3): prose width, vertical stack of codeblocks --- */
 .install__blocks{
   display:flex;

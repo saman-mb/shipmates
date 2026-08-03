@@ -100,6 +100,7 @@ C3_CLASSES = (
     "order-stage__crew-item", "order-stage__body",
     "order-prose", "order-code", "order-table",
     "order-source",
+    "demo", "demo__media", "demo__toggle", "demo__caption",
     "order-siblings", "order-siblings__list", "order-siblings__item",
     "order-siblings__link", "order-siblings__link--current",
     "order-card__link", "order-card__more",

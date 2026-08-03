@@ -51,26 +51,42 @@ fn main() -> Result<()> {
                 catalog::load_commands_embedded().context("Failed to load embedded commands")?
             };
 
-            let adapter = select(&harness)?;
-            let files = adapter.build(&roles, &cmds)?;
             let target_dir = dir.map(PathBuf::from).unwrap_or_else(|| root.to_path_buf());
-            // `harnesses/<target>/` — derived from the adapter's base dir so
-            // the harness's own container (`harnesses/antigravity/.agents`) is
-            // stripped, leaving `.agents/` at the target root.
-            let base = adapter.base_dir();
-            let container = base.rsplit_once('/').map(|(c, _)| c).unwrap_or(base);
-            let strip = format!("{}/", container);
 
-            for (path_str, content) in files {
-                // Drop the `harnesses/<target>/` container so the harness's own
-                // tree (`.claude/`, `.opencode/`, `.codex/`, …) lands at the
-                // target root, where the harness actually reads it.
-                let rel = path_str.strip_prefix(&strip).unwrap_or(&path_str);
-                let full_path = target_dir.join(rel);
-                installer::atomic_write(&full_path, &content)?;
+            // `--harness all` fans out to every supported target; a single name
+            // installs just that one.
+            let harnesses: Vec<String> = if harness == "all" {
+                adapters::targets().iter().map(|s| s.to_string()).collect()
+            } else {
+                vec![harness]
+            };
+
+            for harness in &harnesses {
+                let adapter = select(harness)?;
+                let files = adapter.build(&roles, &cmds)?;
+                // `harnesses/<target>/` — derived from the adapter's base dir so
+                // the harness's own container (`harnesses/antigravity/.agents`)
+                // is stripped, leaving `.agents/` at the target root.
+                let base = adapter.base_dir();
+                let container = base.rsplit_once('/').map(|(c, _)| c).unwrap_or(base);
+                let strip = format!("{}/", container);
+
+                // The real count of files this harness writes — 24 for the
+                // crew-bearing targets (12 crew + 12 commands), 12 for the
+                // skill-only ones. Never the fixed roles+commands total, which
+                // over-counted every skill-only install.
+                let written = files.len();
+                for (path_str, content) in files {
+                    // Drop the `harnesses/<target>/` container so the harness's
+                    // own tree (`.claude/`, `.opencode/`, …) lands at the target
+                    // root, where the harness actually reads it.
+                    let rel = path_str.strip_prefix(&strip).unwrap_or(&path_str);
+                    let full_path = target_dir.join(rel);
+                    installer::atomic_write(&full_path, &content)?;
+                }
+
+                println!("Installed harness: {} ({} files written)", harness, written);
             }
-
-            println!("Installed harness: {} ({} files written)", harness, roles.len() + cmds.len());
         },
         Command::Build { target, root, out, check, update } => {
             let root_path = Path::new(&root);
