@@ -143,9 +143,11 @@ shipmates install --harness opencode        # format-verified, not runtime-verif
 shipmates install --harness codex
 ```
 
-Tools are off by default — add one (or `all`) with `--with-tools`:
+Tools are off by default. Run `install` in a terminal and it asks which you'd like; name them
+up front with `--with-tools` to skip the prompt (or `none` to opt out non-interactively):
 
 ```bash
+shipmates install --harness claude-code              # prompts: pick tools, or Enter for none
 shipmates install --harness claude-code --with-tools termgif
 shipmates install --harness opencode --with-tools all
 ```

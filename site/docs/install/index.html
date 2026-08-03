@@ -118,13 +118,15 @@ shipmates install --harness all</code></pre>
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="install-tools-title">3. Add a tool (optional)</h2>
-          <p class="section__lead">Tools are off by default. Opt in with <code>--with-tools</code>.</p>
+          <p class="section__lead">Tools are off by default. Run <code>install</code> in a terminal and it asks which you&#x27;d like; name them up front with <code>--with-tools</code> to skip the prompt.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code --with-tools termgif
-shipmates install --harness opencode --with-tools all</code></pre>
-          <p>A <strong>tool</strong> is the third kind of shipmates resource, alongside the crew and the commands. Unlike a command, a tool is never invoked with a slash — the crew reach for it on their own when the intent of your prompt calls for it. <code>termgif</code>, the first tool, renders a polished animated terminal demo GIF of a workflow run from a small JSON spec.</p>
-          <p>Each tool maps to the harness&#x27;s own native tool surface: a native code tool on opencode (<code>.opencode/tools/&lt;name&gt;.ts</code>), and an agent-invoked Agent Skill everywhere else — on Claude Code pinned agent-only with <code>user-invocable: false</code>, so it never shows up as a slash command. Pass one or more tool names, comma-separated, or <code>all</code>.</p>
+          <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code              # prompts: pick tools, or Enter for none
+shipmates install --harness claude-code --with-tools termgif
+shipmates install --harness opencode --with-tools all
+shipmates install --harness codex --with-tools none  # explicit opt-out, no prompt</code></pre>
+          <p>A <strong>tool</strong> is the third kind of shipmates resource, alongside the crew and the commands. Unlike a command, a tool is never invoked with a slash — the crew reach for it on their own when the intent of your prompt calls for it. <code>termgif</code>, the first tool, renders a polished animated terminal demo GIF of a workflow run from a small JSON spec — see its <a href="../../tools/termgif/">tool page</a>.</p>
+          <p>When you run <code>install</code> interactively without <code>--with-tools</code>, it lists the available tools and lets you pick; a non-interactive run (CI, a pipe, a script) installs none. Pass the flag to be explicit: one or more tool names comma-separated, <code>all</code>, or <code>none</code>. Each tool maps to the harness&#x27;s own native tool surface: a native code tool on opencode (<code>.opencode/tools/&lt;name&gt;.ts</code>), and an agent-invoked Agent Skill in the shared <code>.agents/skills/</code> tree everywhere else — on Claude Code pinned agent-only with <code>user-invocable: false</code>, so it never shows up as a slash command.</p>
         </div>
       </div>
     </section>
@@ -169,7 +171,7 @@ shipmates install --harness opencode --with-tools all</code></pre>
             <tbody>
               <tr><td><code>--harness NAME</code></td><td><code>claude-code</code></td><td>Which harness tree to install into. Pass <code>all</code> to install into every harness.</td></tr>
               <tr><td><code>--dir PATH</code></td><td>current dir</td><td>Install into an explicit target directory instead of the current one.</td></tr>
-              <tr><td><code>--with-tools NAMES</code></td><td>none</td><td>Also install these agent-invoked tools (comma-separated, or <code>all</code>). Off by default.</td></tr>
+              <tr><td><code>--with-tools NAMES</code></td><td>prompt / none</td><td>Which agent-invoked tools to install: names (comma-separated), <code>all</code>, or <code>none</code>. Omit it and a terminal prompts you to pick; omit it non-interactively and none are installed.</td></tr>
             </tbody>
           </table>
         </div>
