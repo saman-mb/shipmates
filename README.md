@@ -95,6 +95,26 @@ unresolved role name silently falls back to a generic agent rather than erroring
 
 ---
 
+## 🧰 The tools
+
+Beyond the crew and the commands there's a third kind of resource: **tools**. A command is
+something *you* invoke with a slash. A tool is something the *crew* reach for on their own,
+implicitly, when the intent of your prompt calls for it — never typed, never a slash command.
+
+| Tool | What it does |
+| --- | --- |
+| `termgif` | Renders a polished animated terminal demo GIF of a workflow run from a small JSON spec |
+
+Tools are **opt-in** — a plain install ships only the crew and the commands. Add one with
+`--with-tools` (below). Each tool maps to its harness's own native tool surface: a genuine code
+tool on opencode (`.opencode/tools/<name>.ts`), and an agent-invoked Agent Skill everywhere else —
+on Claude Code pinned agent-only with `user-invocable: false`, so it never appears as a slash
+command. Defined once in `toolbox/<name>/`, exactly like the crew and commands.
+
+*More tools are on the way.* ⛵
+
+---
+
 ## ⚓ Come aboard (install)
 
 `shipmates` is a single Rust binary. Grab it any way you like:
@@ -121,6 +141,13 @@ to target a specific project:
 shipmates install --harness claude-code     # the proven target
 shipmates install --harness opencode        # format-verified, not runtime-verified
 shipmates install --harness codex
+```
+
+Tools are off by default — add one (or `all`) with `--with-tools`:
+
+```bash
+shipmates install --harness claude-code --with-tools termgif
+shipmates install --harness opencode --with-tools all
 ```
 
 Which harnesses can you install? `shipmates targets` lists them — today all of:
