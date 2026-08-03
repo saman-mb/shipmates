@@ -107,8 +107,10 @@ jobs:
           cargo run -- install --harness all --dir "$RUNNER_TEMP/install-all"
           # crew-bearing target and a skill-only target both land under one root
           test -f "$RUNNER_TEMP/install-all/.claude/agents/sdet.md"
-          test -f "$RUNNER_TEMP/install-all/.zed/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-all/.zed/agents"
+          test -f "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
+          # codex and zed read skills from the open .agents/ tree, not their own
+          test ! -d "$RUNNER_TEMP/install-all/.zed"
+          test ! -d "$RUNNER_TEMP/install-all/.codex/skills"
       # Tools are opt-in (--with-tools) and map per harness: an agent-only skill
       # on Claude Code (user-invocable: false), a native code tool on opencode.
       - name: Install an opt-in tool end to end (--with-tools)
@@ -141,7 +143,9 @@ jobs:
       - name: Install the crew-bearing non-Claude harnesses end to end
         run: |
           cargo run -- install --harness codex --dir "$RUNNER_TEMP/install-codex"
-          test -f "$RUNNER_TEMP/install-codex/.codex/skills/ship-issue/SKILL.md"
+          # skills follow the open Agent Skills standard (.agents/skills), crew stay Codex-native (.codex/agents)
+          test -f "$RUNNER_TEMP/install-codex/.agents/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-codex/.codex/skills"
           test -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.toml"
           test ! -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.md"
           cargo run -- install --harness github-copilot --dir "$RUNNER_TEMP/install-copilot"
@@ -155,8 +159,10 @@ jobs:
       - name: Install a skill-only harness end to end
         run: |
           cargo run -- install --harness zed --dir "$RUNNER_TEMP/install-zed"
-          test -f "$RUNNER_TEMP/install-zed/.zed/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-zed/.zed/agents"
+          # Zed adopted the open Agent Skills tree (.agents/skills) in v1.4.2; it never reads .zed/
+          test -f "$RUNNER_TEMP/install-zed/.agents/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-zed/.zed"
+          test ! -d "$RUNNER_TEMP/install-zed/.agents/agents"
 
   deploy:
     name: Deploy to GitHub Pages

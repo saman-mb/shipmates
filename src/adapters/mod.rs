@@ -31,6 +31,25 @@ pub trait Adapter {
     /// resolve payload paths against it — a target's digest can no longer
     /// silently pass because the checker looked in the wrong tree.
     fn base_dir(&self) -> &'static str;
+
+    /// Payload directory (before the `/skills/` segment) a harness discovers
+    /// model-invoked skills under. Defaults to `base_dir()`. Codex overrides it:
+    /// it reads skills from the open Agent Skills location `.agents/skills/`
+    /// while its crew live at `.codex/agents/`, so on that one target the skills
+    /// and the crew sit in two different dotdirs.
+    fn skills_base(&self) -> &'static str {
+        self.base_dir()
+    }
+
+    /// The path prefix stripped when recording and checking payload digests —
+    /// the harness's install container (`harnesses/<target>`). Defaults to
+    /// `base_dir()`, which is correct while a harness writes into a single
+    /// dotdir. Codex overrides it to the container: it writes into two dotdirs
+    /// (`.codex/` for crew, `.agents/` for skills), and a `base_dir`-relative
+    /// digest would silently drop everything outside `.codex/`.
+    fn digest_root(&self) -> &'static str {
+        self.base_dir()
+    }
 }
 
 #[allow(dead_code)]

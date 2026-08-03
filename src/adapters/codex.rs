@@ -3,8 +3,17 @@ use std::collections::HashMap;
 use super::render::{emit_skill_files, emit_tool_files, render_body, CODEX};
 use super::Adapter;
 
-/// Codex CLI — twelve skills under `.codex/skills/<name>/SKILL.md` plus the
+/// Codex CLI — twelve skills under `.agents/skills/<name>/SKILL.md` plus the
 /// crew as project-scoped subagents under `.codex/agents/<name>.toml`.
+///
+/// Skills and crew land in **two different dotdirs**. Codex discovers skills at
+/// the open Agent Skills location — `$CWD/.agents/skills` up to the repo root,
+/// `~/.agents/skills` for the user — not `.codex/skills`; it builds on the
+/// <https://agentskills.io> standard and a `.codex/skills` tree is never read.
+/// Its *crew*, by contrast, are Codex-native and live at `.codex/agents/`.
+/// See <https://learn.chatgpt.com/docs/build-skills>. `skills_base()` and
+/// `digest_root()` are overridden below so this split is emitted, installed and
+/// digest-checked correctly.
 ///
 /// Subagents reached GA in March 2026. Codex reads custom agents from
 /// `~/.codex/agents/` (global) and `.codex/agents/` (project-scoped, checked
@@ -57,6 +66,17 @@ impl Adapter for CodexAdapter {
         "harnesses/codex/.codex"
     }
 
+    // Codex reads skills from the open `.agents/skills/` standard, not `.codex/`.
+    fn skills_base(&self) -> &'static str {
+        "harnesses/codex/.agents"
+    }
+
+    // Crew (`.codex/`) and skills (`.agents/`) span two dotdirs, so digests key
+    // off the install container to cover both rather than only `.codex/`.
+    fn digest_root(&self) -> &'static str {
+        "harnesses/codex"
+    }
+
     fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
         let mut files = HashMap::new();
         for role in roles {
@@ -67,7 +87,7 @@ impl Adapter for CodexAdapter {
             content.push_str(&format!("developer_instructions = {}\n", toml_literal(&body)?));
             files.insert(format!("{}/agents/{}.toml", self.base_dir(), role.name), content);
         }
-        for (path, content) in emit_skill_files(self.base_dir(), commands, &CODEX) {
+        for (path, content) in emit_skill_files(self.skills_base(), commands, &CODEX) {
             files.insert(path, content);
         }
         Ok(files)
@@ -75,9 +95,10 @@ impl Adapter for CodexAdapter {
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
         // Codex has no tool primitive outside MCP; a model-invoked skill is the
-        // closest native fit. `$skill` can still name it, so agent-invoked but
+        // closest native fit, and it lands in the same `.agents/skills/` tree as
+        // the commands. `$skill` can still name it, so agent-invoked but
         // typeable (recorded, not faked).
-        emit_tool_files(self.base_dir(), tools, &CODEX, false)
+        emit_tool_files(self.skills_base(), tools, &CODEX, false)
     }
 }
 
@@ -121,9 +142,11 @@ mod tests {
         let files = CodexAdapter
             .build(&[role("architect", "body")], &[command("migrate", "use {{arg}} via `agent-files/*.md`")])
             .unwrap();
-        assert!(files.contains_key("harnesses/codex/.codex/skills/migrate/SKILL.md"));
+        assert!(files.contains_key("harnesses/codex/.agents/skills/migrate/SKILL.md"));
         assert!(files.contains_key("harnesses/codex/.codex/agents/architect.toml"));
-        let skill = files.get("harnesses/codex/.codex/skills/migrate/SKILL.md").unwrap();
+        // Skills go to the open standard tree, never `.codex/skills`.
+        assert!(!files.keys().any(|k| k.contains(".codex/skills/")));
+        let skill = files.get("harnesses/codex/.agents/skills/migrate/SKILL.md").unwrap();
         assert!(skill.contains("name: migrate\n"));
         assert!(skill.contains(".codex/agents/*.md"));
         assert!(skill.contains("$ARGUMENTS"));

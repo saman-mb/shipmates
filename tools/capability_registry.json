@@ -112,9 +112,9 @@
       }
     },
     "codex": {
-      "notes": "Subagents GA March 2026. Project-scoped agents at `.codex/agents/<name>.toml` \u2014 standalone TOML, NOT Markdown with frontmatter, and the only target so far that is not. Fields: name, description, developer_instructions. Codex documents no per-agent tool allowlist, so `permission_model` is `none`: least privilege genuinely cannot be expressed on this target and the crew inherit the session's tools. Recorded rather than faked \u2014 an invented `tools` key would be ignored at best, rejected at worst. Skills at `.codex/skills/<name>/SKILL.md`. Verified 2026-08-03.",
+      "notes": "Subagents GA March 2026. Project-scoped agents at `.codex/agents/<name>.toml` \u2014 standalone TOML, NOT Markdown with frontmatter, and the only target so far that is not. Fields: name, description, developer_instructions. Codex documents no per-agent tool allowlist, so `permission_model` is `none`: least privilege genuinely cannot be expressed on this target and the crew inherit the session's tools. Recorded rather than faked \u2014 an invented `tools` key would be ignored at best, rejected at worst. Skills follow the open Agent Skills standard at `.agents/skills/<name>/SKILL.md` (Codex reads `.agents/skills`, NOT `.codex/skills`); only the crew are Codex-native under `.codex/`. Verified 2026-08-03.",
       "agent_path": ".codex/agents/{name}.toml",
-      "skill_path": ".codex/skills/{name}/SKILL.md",
+      "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
       "permission_model": "none",
       "scopes": {
@@ -249,9 +249,9 @@
       }
     },
     "zed": {
-      "notes": "Zed discovers skills under `.zed/skills/`. It ships no subagents, so the adapter emits the crew as twelve skills and ignores `roles`.",
+      "notes": "Zed discovers skills under `.agents/skills/` — the open Agent Skills standard it adopted in v1.4.2, not a `.zed/` tree. It ships no subagents, so the adapter emits the twelve commands as skills and ignores `roles`. Verified 2026-08-03.",
       "agent_path": ".zed/agents/{name}.md",
-      "skill_path": ".zed/skills/{name}/SKILL.md",
+      "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
       "permission_model": "allowlist",
       "scopes": {

@@ -112,7 +112,7 @@ fn test_non_claude_targets_build_via_cli() {
             .expect("failed to execute shipmates build");
         assert!(output.status.success(), "{target} build failed: {}", String::from_utf8_lossy(&output.stderr));
     }
-    let codex_skill = temp_dir.path().join("harnesses/codex/.codex/skills/ship-issue/SKILL.md");
+    let codex_skill = temp_dir.path().join("harnesses/codex/.agents/skills/ship-issue/SKILL.md");
     assert!(codex_skill.is_file(), "codex ship-issue skill not emitted");
     let copilot_skill = temp_dir.path().join("harnesses/github-copilot/.github/skills/ship-issue/SKILL.md");
     assert!(copilot_skill.is_file(), "copilot ship-issue skill not emitted");
@@ -136,7 +136,7 @@ fn test_codex_adapter_renders_dialect() {
         source: PathBuf::from("cmd.md"),
     };
     let files = CodexAdapter.build(&[], &[command]).unwrap();
-    let content = files.get("harnesses/codex/.codex/skills/onboard/SKILL.md").unwrap();
+    let content = files.get("harnesses/codex/.agents/skills/onboard/SKILL.md").unwrap();
     assert!(content.contains("`AGENTS.md` if one exists, else `CLAUDE.md`"));
     assert!(content.contains(".codex/agents/*.md"));
     assert!(content.contains("$ARGUMENTS"));
