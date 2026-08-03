@@ -59,7 +59,10 @@ assert "antigravity: agent under .agents/agents" test -f "$D/.agents/agents/sdet
 # plain <name>.md that installs cleanly and is silently never loaded.
 D="$WORK/codex"
 assert "codex: install exits 0" install_to codex "$D"
-assert "codex: skill under .codex/skills" test -f "$D/.codex/skills/ship-issue/SKILL.md"
+# Codex reads skills from the open Agent Skills standard (.agents/skills), NOT
+# .codex/skills; only its crew are Codex-native (.codex/agents).
+assert "codex: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
+assert "codex: no skills under .codex" test ! -d "$D/.codex/skills"
 assert "codex: agent is TOML under .codex/agents" test -f "$D/.codex/agents/sdet.toml"
 assert "codex: agent is not markdown" test ! -f "$D/.codex/agents/sdet.md"
 
@@ -72,8 +75,9 @@ assert "github-copilot: bare .md is not emitted" test ! -f "$D/.github/agents/sd
 # --- skill-only targets: skills only, no agent files ---
 # cursor: agents directory reported but frontmatter schema unverified.
 # windsurf: target identity under review since the Devin Desktop rename.
-# zed: genuinely has no agents directory — ACP, not files.
-for pair in "cursor:.cursor" "windsurf:.windsurf" "zed:.zed"; do
+# zed: genuinely has no agents directory — ACP, not files — and reads skills
+# from the open Agent Skills tree (.agents/skills), not a .zed/ one.
+for pair in "cursor:.cursor" "windsurf:.windsurf" "zed:.agents"; do
   harness="${pair%%:*}"
   dirname="${pair##*:}"
   D="$WORK/$harness"
@@ -81,6 +85,8 @@ for pair in "cursor:.cursor" "windsurf:.windsurf" "zed:.zed"; do
   assert "$harness: skill under $dirname/skills" test -f "$D/$dirname/skills/ship-issue/SKILL.md"
   assert "$harness: no agent files emitted" test ! -d "$D/$dirname/agents"
 done
+# Zed adopted the open standard in v1.4.2; it must never write a .zed/ tree.
+assert "zed: no .zed tree" test ! -d "$WORK/zed/.zed"
 
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"
