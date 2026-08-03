@@ -103,13 +103,21 @@ implicitly, when the intent of your prompt calls for it — never typed, never a
 
 | Tool | What it does |
 | --- | --- |
-| `termgif` | Renders a polished animated terminal demo GIF of a workflow run from a small JSON spec |
+| [`termgif`](https://saman-mb.github.io/shipmates/tools/termgif/) | Renders a polished animated terminal demo GIF of a workflow run from a small JSON spec |
+| [`social-card`](https://saman-mb.github.io/shipmates/tools/social-card/) | Renders a 1280×640 social / Open Graph share card from a small JSON spec |
+| [`pixelart`](https://saman-mb.github.io/shipmates/tools/pixelart/) | Renders pixel-art icons — static PNG or animated GIF — the way the shipmates logo is made |
+| [`svgflow`](https://saman-mb.github.io/shipmates/tools/svgflow/) | Renders a box-and-arrow flow, pipeline, or state diagram as a committed SVG |
+| [`badge`](https://saman-mb.github.io/shipmates/tools/badge/) | Renders a shields-style status badge as an offline, committed SVG |
+| [`sparkline`](https://saman-mb.github.io/shipmates/tools/sparkline/) | Renders a short number series as a tiny inline SVG trend chart |
+| [`scrub`](https://saman-mb.github.io/shipmates/tools/scrub/) | Redacts secrets and PII from a log or paste before it's shared |
+| [`fixtures`](https://saman-mb.github.io/shipmates/tools/fixtures/) | Generates deterministic fake test data from a small JSON schema |
 
-Tools are **opt-in** — a plain install ships only the crew and the commands. Add one with
-`--with-tools` (below). Each tool maps to its harness's own native tool surface: a genuine code
-tool on opencode (`.opencode/tools/<name>.ts`), and an agent-invoked Agent Skill everywhere else —
-on Claude Code pinned agent-only with `user-invocable: false`, so it never appears as a slash
-command. Defined once in `toolbox/<name>/`, exactly like the crew and commands.
+Tools are **opt-in** — a plain install ships only the crew and the commands. Add them with
+`--with-tools` (below), or run `install` in a terminal and pick from the list. Each tool maps to its
+harness's own native tool surface: a genuine code tool on opencode (`.opencode/tools/<name>.ts`), and
+an agent-invoked Agent Skill everywhere else — on Claude Code pinned agent-only with
+`user-invocable: false`, so it never appears as a slash command. Defined once in `toolbox/<name>/`,
+exactly like the crew and commands.
 
 *More tools are on the way.* ⛵
 
