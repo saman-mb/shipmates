@@ -108,9 +108,16 @@ jobs:
           # crew-bearing target and a skill-only target both land under one root
           test -f "$RUNNER_TEMP/install-all/.claude/agents/sdet.md"
           test -f "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
-          # codex and zed read skills from the open .agents/ tree, not their own
+          # The five harnesses on the open tree share ONE .agents/skills rendering,
+          # so a multi-harness install must NOT collide: the merged skill carries
+          # the neutral crew glob, never a per-harness one (the pre-dedup bug).
+          grep -q '\.agents/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
+          ! grep -qE '\.(codex|zed|cursor|github)/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
+          # None of the shared harnesses write their own private skills tree
           test ! -d "$RUNNER_TEMP/install-all/.zed"
+          test ! -d "$RUNNER_TEMP/install-all/.cursor"
           test ! -d "$RUNNER_TEMP/install-all/.codex/skills"
+          test ! -d "$RUNNER_TEMP/install-all/.github/skills"
       # Tools are opt-in (--with-tools) and map per harness: an agent-only skill
       # on Claude Code (user-invocable: false), a native code tool on opencode.
       - name: Install an opt-in tool end to end (--with-tools)
@@ -126,6 +133,11 @@ jobs:
           test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/termgif.ts"
           test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/termgif.py"
           test ! -d "$RUNNER_TEMP/install-tool-oc/.opencode/skills/termgif"
+          # shared-tree harness (codex): the tool lands in .agents/skills too, not .codex
+          cargo run -- install --harness codex --with-tools termgif --dir "$RUNNER_TEMP/install-tool-cx"
+          test -f "$RUNNER_TEMP/install-tool-cx/.agents/skills/termgif/SKILL.md"
+          test -f "$RUNNER_TEMP/install-tool-cx/.agents/skills/termgif/termgif.py"
+          test ! -d "$RUNNER_TEMP/install-tool-cx/.codex/skills"
       - name: Install the opencode harness end to end
         run: |
           cargo run -- install --harness opencode --dir "$RUNNER_TEMP/install-opencode"
@@ -149,7 +161,9 @@ jobs:
           test -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.toml"
           test ! -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.md"
           cargo run -- install --harness github-copilot --dir "$RUNNER_TEMP/install-copilot"
-          test -f "$RUNNER_TEMP/install-copilot/.github/skills/ship-issue/SKILL.md"
+          # Copilot skills follow the open standard (.agents/skills); crew stay .github-native
+          test -f "$RUNNER_TEMP/install-copilot/.agents/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-copilot/.github/skills"
           test -f "$RUNNER_TEMP/install-copilot/.github/agents/sdet.agent.md"
           test ! -f "$RUNNER_TEMP/install-copilot/.github/agents/sdet.md"
 

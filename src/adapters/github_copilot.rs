@@ -1,10 +1,18 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, emit_tool_files, render_body, GITHUB_COPILOT};
+use super::render::{emit_shared_skills, emit_shared_tool_skills, render_body, GITHUB_COPILOT};
 use super::Adapter;
 
-/// GitHub Copilot — twelve skills under `.github/skills/<name>/SKILL.md` plus
+/// GitHub Copilot — twelve skills in the shared open `.agents/skills/` tree plus
 /// the crew as custom agents under `.github/agents/<name>.agent.md`.
+///
+/// Copilot reads Agent Skills from `.github/skills`, `.claude/skills` AND the
+/// open `.agents/skills` (all first-party, since 2025-12-18), so its skills come
+/// from the shared `.agents/skills/` emitter — byte-identical with the other
+/// harnesses on that tree. Its crew, by contrast, are Copilot-native custom
+/// agents under `.github/agents/`, so it spans two dotdirs and overrides
+/// `digest_root()` to the container. See
+/// <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>.
 ///
 /// Custom agents are Markdown with YAML frontmatter. Documented fields:
 /// `name`, `description`, `target`, `tools`, `model`,
@@ -71,6 +79,12 @@ impl Adapter for GithubCopilotAdapter {
         "harnesses/github-copilot/.github"
     }
 
+    // Crew (`.github/`) and skills (`.agents/`) span two dotdirs, so digests key
+    // off the install container to cover both.
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
     fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
         let mut files = HashMap::new();
         for role in roles {
@@ -105,17 +119,16 @@ impl Adapter for GithubCopilotAdapter {
             }
             files.insert(format!("{}/agents/{}.agent.md", self.base_dir(), role.name), content);
         }
-        for (path, content) in emit_skill_files(self.base_dir(), commands, &GITHUB_COPILOT) {
-            files.insert(path, content);
-        }
+        // Commands ship to the shared `.agents/skills/` tree (neutral dialect).
+        files.extend(emit_shared_skills(self.container(), commands));
         Ok(files)
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
         // Copilot Agent Skills are model-invoked by description; the `/name`
         // override still exists and skills don't document a hide flag, so
-        // agent-invoked but typeable (recorded, not faked).
-        emit_tool_files(self.base_dir(), tools, &GITHUB_COPILOT, false)
+        // agent-invoked but typeable (recorded, not faked). Shared `.agents/skills/`.
+        emit_shared_tool_skills(self.container(), tools)
     }
 }
 
@@ -165,7 +178,9 @@ mod tests {
         let files = GithubCopilotAdapter
             .build(&[role("architect", &["read", "bash"], "body")], &[command("pr-review")])
             .unwrap();
-        assert!(files.contains_key("harnesses/github-copilot/.github/skills/pr-review/SKILL.md"));
+        // Skills go to the shared open tree; only the crew are `.github/`-native.
+        assert!(files.contains_key("harnesses/github-copilot/.agents/skills/pr-review/SKILL.md"));
+        assert!(!files.keys().any(|k| k.contains(".github/skills/")));
         assert!(files.contains_key("harnesses/github-copilot/.github/agents/architect.agent.md"));
     }
 

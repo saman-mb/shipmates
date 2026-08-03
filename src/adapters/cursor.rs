@@ -1,26 +1,30 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, emit_tool_files, CURSOR};
+use super::render::{emit_shared_skills, emit_shared_tool_skills};
 use super::Adapter;
 
-/// Cursor ships no subagents, so the crew becomes twelve skills under
-/// `.cursor/skills/<name>/SKILL.md` and `roles` is not emitted.
+/// Cursor ships no subagents, so only the twelve commands ship (as skills) and
+/// `roles` is not emitted. Cursor reads the open Agent Skills tree
+/// `.agents/skills/<name>/SKILL.md` natively (a first-party peer of
+/// `.cursor/skills/`, since Cursor 2.4), so its skills come from the shared
+/// `.agents/skills/` emitter — byte-identical with codex/zed/antigravity/copilot,
+/// no per-harness duplicate. `base_dir` therefore sits at `.agents`.
+/// See <https://cursor.com/docs/skills>.
 pub struct CursorAdapter;
 
 impl Adapter for CursorAdapter {
     fn base_dir(&self) -> &'static str {
-        "harnesses/cursor/.cursor"
+        "harnesses/cursor/.agents"
     }
 
     fn build(&self, _roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
-        Ok(emit_skill_files(self.base_dir(), commands, &CURSOR))
+        Ok(emit_shared_skills(self.container(), commands))
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
-        // Cursor skills are model-invoked by default; no documented way to hide
-        // one from manual `/`-mention, so the tool is agent-invoked but still
-        // technically typeable (recorded, not faked).
-        emit_tool_files(self.base_dir(), tools, &CURSOR, false)
+        // Model-invoked skill in the shared `.agents/skills/` tree — agent-invoked
+        // but still technically typeable (recorded, not faked).
+        emit_shared_tool_skills(self.container(), tools)
     }
 }
 
@@ -45,7 +49,9 @@ mod tests {
             source: std::path::PathBuf::from(""),
         };
         let files = CursorAdapter.build(&[], &[command]).unwrap();
-        assert!(files.contains_key("harnesses/cursor/.cursor/skills/fix-bug/SKILL.md"));
-        assert!(!files.keys().any(|k| k.contains("agents/")));
+        assert!(files.contains_key("harnesses/cursor/.agents/skills/fix-bug/SKILL.md"));
+        // Shared open tree, never a `.cursor/` one; no crew dir either.
+        assert!(!files.keys().any(|k| k.contains(".cursor/")));
+        assert!(!files.keys().any(|k| k.contains("/agents/")));
     }
 }

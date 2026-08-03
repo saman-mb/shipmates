@@ -66,18 +66,21 @@ assert "codex: no skills under .codex" test ! -d "$D/.codex/skills"
 assert "codex: agent is TOML under .codex/agents" test -f "$D/.codex/agents/sdet.toml"
 assert "codex: agent is not markdown" test ! -f "$D/.codex/agents/sdet.md"
 
+# Copilot reads Agent Skills from the open .agents/skills tree; only its crew
+# are .github-native (.github/agents/*.agent.md).
 D="$WORK/github-copilot"
 assert "github-copilot: install exits 0" install_to github-copilot "$D"
-assert "github-copilot: skill under .github/skills" test -f "$D/.github/skills/ship-issue/SKILL.md"
+assert "github-copilot: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
+assert "github-copilot: no skills under .github" test ! -d "$D/.github/skills"
 assert "github-copilot: agent uses .agent.md" test -f "$D/.github/agents/sdet.agent.md"
 assert "github-copilot: bare .md is not emitted" test ! -f "$D/.github/agents/sdet.md"
 
-# --- skill-only targets: skills only, no agent files ---
-# cursor: agents directory reported but frontmatter schema unverified.
-# windsurf: target identity under review since the Devin Desktop rename.
-# zed: genuinely has no agents directory — ACP, not files — and reads skills
-# from the open Agent Skills tree (.agents/skills), not a .zed/ one.
-for pair in "cursor:.cursor" "windsurf:.windsurf" "zed:.agents"; do
+# --- skill-only targets on the open Agent Skills tree: skills only, no crew ---
+# cursor: reads .agents/skills natively (first-party peer of .cursor/skills).
+# windsurf: keeps its canonical .windsurf/skills (.agents/skills is only a
+#   secondary compat scan there — do not move it off its documented path).
+# zed: genuinely has no agents directory — ACP, not files.
+for pair in "cursor:.agents" "windsurf:.windsurf" "zed:.agents"; do
   harness="${pair%%:*}"
   dirname="${pair##*:}"
   D="$WORK/$harness"
@@ -85,7 +88,8 @@ for pair in "cursor:.cursor" "windsurf:.windsurf" "zed:.agents"; do
   assert "$harness: skill under $dirname/skills" test -f "$D/$dirname/skills/ship-issue/SKILL.md"
   assert "$harness: no agent files emitted" test ! -d "$D/$dirname/agents"
 done
-# Zed adopted the open standard in v1.4.2; it must never write a .zed/ tree.
+# Cursor and Zed read the open tree; neither writes its own harness dotdir.
+assert "cursor: no .cursor tree" test ! -d "$WORK/cursor/.cursor"
 assert "zed: no .zed tree" test ! -d "$WORK/zed/.zed"
 
 # --- unknown target is refused, not silently ignored ---
