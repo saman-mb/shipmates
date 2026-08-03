@@ -1,0 +1,19 @@
+{
+  "title": "nebula — train",
+  "width": 820,
+  "beats": [
+    {"type": "command", "text": "train --model aurora-vision"},
+    {"type": "blank"},
+    {"type": "stage", "label": "DATASET", "detail": "1.2M images streamed", "color": "blue"},
+    {"type": "stage", "label": "TRAIN", "detail": "40 epochs on 8 GPUs", "color": "purple"},
+    {"type": "stage", "label": "EVAL", "detail": "holdout, 50k samples", "color": "cyan"},
+    {"type": "blank"},
+    {"type": "line", "segments": [
+      {"text": "  top-1 ", "color": "grey"},
+      {"text": "98.7%", "color": "purple", "bold": true},
+      {"text": "     loss ", "color": "grey"},
+      {"text": "0.041", "color": "blue", "bold": true}
+    ]},
+    {"type": "done", "text": "Saved aurora-vision.ckpt (best epoch)"}
+  ]
+}

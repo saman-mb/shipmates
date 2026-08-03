@@ -283,12 +283,25 @@ class Agent:
 
 
 @dataclass(frozen=True, slots=True)
+class ToolExample:
+    """One demo GIF example on a tool page: an animated `gif` with a static
+    `poster` (final frame) shown under prefers-reduced-motion, plus alt/caption."""
+    gif: str  # filename, relative to the tool page (e.g. "examples/deploy.gif")
+    poster: str  # static poster filename for reduced-motion
+    width: int
+    height: int
+    alt: str
+    caption: str
+
+
+@dataclass(frozen=True, slots=True)
 class ToolCopy:
     """The authored editorial half of a tool page; the other half is the
     parsed `toolbox/<slug>/tool.md` frontmatter (name + description)."""
     tagline: str
     what: tuple  # tuple[str, ...] — 1-2 paragraphs
     usage: tuple  # tuple[str, ...] — 1-2 paragraphs on how the crew reach for it
+    examples: tuple = ()  # tuple[ToolExample, ...] — optional demo gallery
 
 
 @dataclass(frozen=True, slots=True)
@@ -301,6 +314,7 @@ class Tool:
     what: tuple  # tuple[str, ...]
     usage: tuple  # tuple[str, ...]
     bundled: tuple  # tuple[str, ...] — bundled asset filenames besides tool.md
+    examples: tuple = ()  # tuple[ToolExample, ...]
 
 
 # ---------------------------------------------------------------------------
@@ -1219,6 +1233,25 @@ TOOL_COPY = {
             "The renderer and its instructions are bundled together, so wherever the tool lands "
             "the agent has both the `termgif.py` script and the spec format it needs to drive it.",
         ),
+        # These three are just termgif driving different JSON specs — nothing to do
+        # with shipmates. Each spec lives beside its GIF under examples/.
+        examples=(
+            ToolExample(
+                gif="examples/deploy.gif", poster="examples/deploy.png", width=820, height=370,
+                alt="Terminal recording of a production deploy: BUILD, TEST and RELEASE stages check off, then a green 'Shipped v2.4.0 to production' line.",
+                caption="A production deploy — build, test, then a zero-downtime rollout to three regions.",
+            ),
+            ToolExample(
+                gif="examples/train.gif", poster="examples/train.png", width=820, height=370,
+                alt="Terminal recording of a model training run: DATASET, TRAIN and EVAL stages, a top-1 98.7% metric line, then a green checkpoint-saved line.",
+                caption="A model-training run — dataset to eval, with the headline metrics and a saved checkpoint.",
+            ),
+            ToolExample(
+                gif="examples/launch.gif", poster="examples/launch.png", width=820, height=370,
+                alt="Terminal recording of a rocket launch sequence: FUEL, GUIDANCE and IGNITION stages, a T-minus countdown, then a green liftoff line.",
+                caption="A launch countdown — fuel, guidance, ignition, and liftoff, in warm mission-control colours.",
+            ),
+        ),
     ),
 }
 
@@ -1577,6 +1610,7 @@ def load_tools(toolbox_dir: Path) -> tuple:
             what=copy.what,
             usage=copy.usage,
             bundled=bundled,
+            examples=copy.examples,
         ))
     return tuple(tools)
 
@@ -3342,6 +3376,32 @@ def render_tool_usage(tool: Tool) -> str:
     return _agent_section("usage", "How the crew reach for it", _tool_copy_prose(tool.usage, "        "))
 
 
+def render_tool_examples(tool: Tool) -> str:
+    """A gallery of demo GIFs. Each is a `<picture>` whose reduced-motion source
+    swaps the animation for its static final frame (WCAG 2.2.2), the same a11y
+    pattern the homepage hero demo uses."""
+    if not tool.examples:
+        return ""
+    figures = []
+    for ex in tool.examples:
+        figures.append(f"""          <figure class="tool-example">
+            <picture>
+              <source media="(prefers-reduced-motion: reduce)" srcset="{link(ex.poster)}">
+              <img class="tool-example__img" src="{link(ex.gif)}" width="{ex.width}" height="{ex.height}" alt="{esc(ex.alt)}" loading="lazy" decoding="async">
+            </picture>
+            <figcaption class="tool-example__caption">{esc(ex.caption)}</figcaption>
+          </figure>""")
+    gallery = "\n".join(figures)
+    intro = (
+        "        <p>Three quick recordings, each just <code>termgif</code> driving a different "
+        "JSON spec — nothing to do with shipmates. If you&#x27;ve set "
+        "<code>prefers-reduced-motion</code>, you&#x27;ll see the final frame instead of the "
+        "animation.</p>\n"
+    )
+    inner = intro + f'        <div class="tool-gallery">\n{gallery}\n        </div>'
+    return _agent_section("examples", "Examples", inner)
+
+
 def render_tool_reference(tool: Tool) -> str:
     bundled = ", ".join(f"<code>{esc(name)}</code>" for name in tool.bundled) or "—"
     inner = f"""        <dl class="agent-ref">
@@ -3409,11 +3469,13 @@ def render_tool_page(tool: Tool, all_tools: tuple, ctx: PageContext) -> str:
     sections = [
         render_tool_hero(tool),
         render_tool_what(tool),
+        render_tool_examples(tool),
         render_tool_usage(tool),
         render_tool_reference(tool),
         render_tool_source(tool, ctx),
         render_tool_siblings(tool, all_tools),
     ]
+    sections = [s for s in sections if s]
     body = "\n\n".join(sections)
     return f"""<!doctype html>
 <html lang="en">

@@ -1,0 +1,19 @@
+{
+  "title": "aurora — deploy",
+  "width": 820,
+  "beats": [
+    {"type": "command", "text": "deploy --env production"},
+    {"type": "blank"},
+    {"type": "stage", "label": "BUILD", "detail": "compiling 1,204 modules", "color": "cyan"},
+    {"type": "stage", "label": "TEST", "detail": "3,918 tests, 0 failures", "color": "blue"},
+    {"type": "stage", "label": "RELEASE", "detail": "rolling out to 3 regions", "color": "green"},
+    {"type": "blank"},
+    {"type": "line", "segments": [
+      {"text": "  ", "color": "grey"},
+      {"text": "0 downtime", "color": "sage", "bold": true},
+      {"text": "   ·   ", "color": "faint"},
+      {"text": "canary healthy", "color": "grey"}
+    ]},
+    {"type": "done", "text": "Shipped v2.4.0 to production in 47s"}
+  ]
+}
