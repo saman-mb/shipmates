@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, emit_tool_files, render_body, CODEX};
+use super::render::{emit_shared_skills, emit_shared_tool_skills, render_body, CODEX};
 use super::Adapter;
 
 /// Codex CLI — twelve skills under `.agents/skills/<name>/SKILL.md` plus the
@@ -11,9 +11,11 @@ use super::Adapter;
 /// `~/.agents/skills` for the user — not `.codex/skills`; it builds on the
 /// <https://agentskills.io> standard and a `.codex/skills` tree is never read.
 /// Its *crew*, by contrast, are Codex-native and live at `.codex/agents/`.
-/// See <https://learn.chatgpt.com/docs/build-skills>. `skills_base()` and
-/// `digest_root()` are overridden below so this split is emitted, installed and
-/// digest-checked correctly.
+/// See <https://learn.chatgpt.com/docs/build-skills>. The skills come from the
+/// shared `emit_shared_skills` emitter (byte-identical across every harness that
+/// reads `.agents/skills/`, so a multi-harness install doesn't collide); only
+/// the crew are rendered in the Codex dialect. `digest_root()` is overridden to
+/// the container so both dotdirs are covered.
 ///
 /// Subagents reached GA in March 2026. Codex reads custom agents from
 /// `~/.codex/agents/` (global) and `.codex/agents/` (project-scoped, checked
@@ -66,15 +68,10 @@ impl Adapter for CodexAdapter {
         "harnesses/codex/.codex"
     }
 
-    // Codex reads skills from the open `.agents/skills/` standard, not `.codex/`.
-    fn skills_base(&self) -> &'static str {
-        "harnesses/codex/.agents"
-    }
-
     // Crew (`.codex/`) and skills (`.agents/`) span two dotdirs, so digests key
     // off the install container to cover both rather than only `.codex/`.
     fn digest_root(&self) -> &'static str {
-        "harnesses/codex"
+        self.container()
     }
 
     fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
@@ -87,18 +84,16 @@ impl Adapter for CodexAdapter {
             content.push_str(&format!("developer_instructions = {}\n", toml_literal(&body)?));
             files.insert(format!("{}/agents/{}.toml", self.base_dir(), role.name), content);
         }
-        for (path, content) in emit_skill_files(self.skills_base(), commands, &CODEX) {
-            files.insert(path, content);
-        }
+        // Commands ship to the shared `.agents/skills/` tree (neutral dialect).
+        files.extend(emit_shared_skills(self.container(), commands));
         Ok(files)
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
-        // Codex has no tool primitive outside MCP; a model-invoked skill is the
-        // closest native fit, and it lands in the same `.agents/skills/` tree as
-        // the commands. `$skill` can still name it, so agent-invoked but
-        // typeable (recorded, not faked).
-        emit_tool_files(self.skills_base(), tools, &CODEX, false)
+        // Codex has no tool primitive outside MCP; a model-invoked skill in the
+        // shared `.agents/skills/` tree is the closest native fit. `$skill` can
+        // still name it, so agent-invoked but typeable (recorded, not faked).
+        emit_shared_tool_skills(self.container(), tools)
     }
 }
 
@@ -148,7 +143,11 @@ mod tests {
         assert!(!files.keys().any(|k| k.contains(".codex/skills/")));
         let skill = files.get("harnesses/codex/.agents/skills/migrate/SKILL.md").unwrap();
         assert!(skill.contains("name: migrate\n"));
-        assert!(skill.contains(".codex/agents/*.md"));
+        // Shared neutral dialect: the crew glob is the open `.agents/agents`, not
+        // the Codex-native `.codex/agents` (crew still install there; the skill's
+        // glob is a descriptive pointer, orchestration goes through subagent_type).
+        assert!(skill.contains(".agents/agents/*.md"));
+        assert!(!skill.contains(".codex/agents/*.md"));
         assert!(skill.contains("$ARGUMENTS"));
         assert!(!skill.contains("{{arg}}"));
     }

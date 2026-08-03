@@ -90,12 +90,10 @@ fn main() -> Result<()> {
                 let adapter = select(harness)?;
                 let files = adapter.build(&roles, &cmds)?;
                 let tool_files = adapter.build_tools(&selected_tools);
-                // `harnesses/<target>/` — derived from the adapter's base dir so
-                // the harness's own container (`harnesses/antigravity/.agents`)
-                // is stripped, leaving `.agents/` at the target root.
-                let base = adapter.base_dir();
-                let container = base.rsplit_once('/').map(|(c, _)| c).unwrap_or(base);
-                let strip = format!("{}/", container);
+                // `harnesses/<target>/` — the harness's staging container, so its
+                // own dotdirs (`.claude/`, `.codex/`, the shared `.agents/`, …)
+                // land at the target root when this prefix is stripped.
+                let strip = format!("{}/", adapter.container());
 
                 // The real count of files this harness writes — 24 for the
                 // crew-bearing targets (12 crew + 12 commands), 12 for the

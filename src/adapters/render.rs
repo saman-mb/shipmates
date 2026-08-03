@@ -93,21 +93,40 @@ pub const OPENCODE: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
-/// Antigravity CLI's (`agy`) dialect.
+/// The neutral dialect for the shared open Agent Skills tree (`.agents/skills/`).
 ///
-/// The Gemini CLI is retired (shut down June 18, 2026); `agy` replaced it and
-/// reads workspace customizations from `.agents/` instead of `.gemini/`.
-/// Project instructions come from `AGENTS.md` (with `GEMINI.md` as the legacy
-/// fallback), and the built-in general-purpose subagent is `self`.
-pub const ANTIGRAVITY: Dialect = Dialect {
+/// Codex, Zed, Antigravity, Cursor and Copilot all read skills from this one
+/// open-standard location. A *per-harness* rendering would make each write
+/// different bytes to the same install path — whichever ran last would win, and
+/// the rest would silently get the wrong crew references (see the collision the
+/// `--harness all` install exhibited before this existed). So the shared tree is
+/// rendered ONCE, neutrally, and every one of those harnesses emits byte-identical
+/// files: one source of truth, no duplication, no collision.
+///
+/// The values are the common denominator that resolves on all five:
+/// - `agents_glob` = `.agents/agents` — the open-standard sibling of
+///   `.agents/skills`, and Antigravity's real crew location. For Codex/Copilot,
+///   whose crew live in their own trees, this is a descriptive pointer only;
+///   orchestration goes through `subagent_type`, which each harness resolves
+///   against its own registered crew regardless of the glob text.
+/// - `planner` = `architect` — a real shipped crew member, so it resolves
+///   wherever crew are installed. The old per-harness `planner` named a
+///   subagent that ships nowhere; `architect` is what Antigravity already used
+///   and what makes the Planner stage resolvable everywhere.
+/// - `session_key` = `Agent-Session` — a neutral commit-trailer name.
+pub const AGENT_SKILLS: Dialect = Dialect {
     agents_glob: ".agents/agents",
-    session_key: "Antigravity-Session",
+    session_key: "Agent-Session",
     instructions_primary: "AGENTS.md",
-    instructions_fallback: "GEMINI.md",
-    general_purpose: "self",
+    instructions_fallback: "CLAUDE.md",
+    general_purpose: "general-purpose",
     planner: "architect",
     args_token: "$ARGUMENTS",
 };
+
+// Antigravity (`agy`, the retired Gemini CLI's successor) renders its crew from
+// raw persona bodies and reads skills from the shared `.agents/skills/` tree, so
+// it needs no dialect of its own — the neutral AGENT_SKILLS covers its skills.
 
 /// Codex CLI's dialect.
 pub const CODEX: Dialect = Dialect {
@@ -120,16 +139,9 @@ pub const CODEX: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
-/// Cursor's dialect.
-pub const CURSOR: Dialect = Dialect {
-    agents_glob: ".cursor/agents",
-    session_key: "Cursor-Session",
-    instructions_primary: "AGENTS.md",
-    instructions_fallback: "CLAUDE.md",
-    general_purpose: "general-purpose",
-    planner: "planner",
-    args_token: "$ARGUMENTS",
-};
+// Cursor has no crew mechanic here, so it renders no personas of its own; its
+// commands ship to the shared `.agents/skills/` tree via AGENT_SKILLS. (Cursor
+// reads `.agents/skills/` natively, first-party — see cursor.rs.)
 
 /// GitHub Copilot CLI's dialect.
 pub const GITHUB_COPILOT: Dialect = Dialect {
@@ -153,16 +165,8 @@ pub const WINDSURF: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
-/// Zed's dialect.
-pub const ZED: Dialect = Dialect {
-    agents_glob: ".zed/agents",
-    session_key: "Zed-Session",
-    instructions_primary: "AGENTS.md",
-    instructions_fallback: "CLAUDE.md",
-    general_purpose: "general-purpose",
-    planner: "planner",
-    args_token: "$ARGUMENTS",
-};
+// Zed has no crew mechanic (ACP, not files), so it renders no personas of its
+// own; its commands ship to the shared `.agents/skills/` tree via AGENT_SKILLS.
 
 /// Emit a command's rendered skill for a skill-only harness.
 ///
@@ -225,6 +229,27 @@ pub fn emit_tool_files(
         }
     }
     files
+}
+
+/// Emit a harness's commands into the SHARED open `.agents/skills/` tree.
+///
+/// `container` is the harness's payload staging root (`harnesses/<name>`); the
+/// files land at `<container>/.agents/skills/<name>/SKILL.md` and, once the
+/// installer strips `harnesses/<name>/`, at `.agents/skills/` in the target.
+/// Rendered with the neutral [`AGENT_SKILLS`] dialect so every harness that
+/// reads this location writes identical bytes — the single source of truth for
+/// the shared tree. See [`AGENT_SKILLS`] for why that matters.
+pub fn emit_shared_skills(container: &str, commands: &[CanonicalCommand]) -> HashMap<String, String> {
+    emit_skill_files(&format!("{container}/.agents"), commands, &AGENT_SKILLS)
+}
+
+/// Emit a harness's opt-in tools into the shared `.agents/skills/` tree.
+///
+/// The neutral-tree harnesses can't hide a skill from manual mention (only
+/// Claude Code's `user-invocable: false` does that), so `agent_only = false` —
+/// the tool is model-invoked but still technically typeable, recorded not faked.
+pub fn emit_shared_tool_skills(container: &str, tools: &[CanonicalTool]) -> HashMap<String, String> {
+    emit_tool_files(&format!("{container}/.agents"), tools, &AGENT_SKILLS, false)
 }
 
 #[cfg(test)]

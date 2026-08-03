@@ -32,21 +32,22 @@ pub trait Adapter {
     /// silently pass because the checker looked in the wrong tree.
     fn base_dir(&self) -> &'static str;
 
-    /// Payload directory (before the `/skills/` segment) a harness discovers
-    /// model-invoked skills under. Defaults to `base_dir()`. Codex overrides it:
-    /// it reads skills from the open Agent Skills location `.agents/skills/`
-    /// while its crew live at `.codex/agents/`, so on that one target the skills
-    /// and the crew sit in two different dotdirs.
-    fn skills_base(&self) -> &'static str {
-        self.base_dir()
+    /// The harness's payload staging container — `harnesses/<target>`, the
+    /// parent of `base_dir()`. This is the prefix the installer strips so the
+    /// harness's dotdirs land at the target root, and the base the shared
+    /// `.agents/skills/` emitters build their paths from. Derived from
+    /// `base_dir()`, so an adapter never has to restate it.
+    fn container(&self) -> &'static str {
+        self.base_dir().rsplit_once('/').map(|(c, _)| c).unwrap_or_else(|| self.base_dir())
     }
 
-    /// The path prefix stripped when recording and checking payload digests —
-    /// the harness's install container (`harnesses/<target>`). Defaults to
-    /// `base_dir()`, which is correct while a harness writes into a single
-    /// dotdir. Codex overrides it to the container: it writes into two dotdirs
-    /// (`.codex/` for crew, `.agents/` for skills), and a `base_dir`-relative
-    /// digest would silently drop everything outside `.codex/`.
+    /// The path prefix stripped when recording and checking payload digests.
+    /// Defaults to `base_dir()`, which is correct while a harness writes into a
+    /// single dotdir. Harnesses that write into two dotdirs — Codex and Copilot,
+    /// whose crew are harness-native (`.codex/`, `.github/`) while their skills
+    /// go to the shared `.agents/` tree — override it to `container()`, so a
+    /// `base_dir`-relative digest can't silently drop everything outside the
+    /// crew dotdir.
     fn digest_root(&self) -> &'static str {
         self.base_dir()
     }

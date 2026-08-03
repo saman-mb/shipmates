@@ -112,10 +112,16 @@ fn test_non_claude_targets_build_via_cli() {
             .expect("failed to execute shipmates build");
         assert!(output.status.success(), "{target} build failed: {}", String::from_utf8_lossy(&output.stderr));
     }
+    // Every harness that reads the open Agent Skills tree ships its skills to the
+    // shared `.agents/skills/` location, not a harness-private one.
     let codex_skill = temp_dir.path().join("harnesses/codex/.agents/skills/ship-issue/SKILL.md");
     assert!(codex_skill.is_file(), "codex ship-issue skill not emitted");
-    let copilot_skill = temp_dir.path().join("harnesses/github-copilot/.github/skills/ship-issue/SKILL.md");
+    let copilot_skill = temp_dir.path().join("harnesses/github-copilot/.agents/skills/ship-issue/SKILL.md");
     assert!(copilot_skill.is_file(), "copilot ship-issue skill not emitted");
+    // ...and the shared rendering is byte-identical across those harnesses.
+    let codex_bytes = std::fs::read(&codex_skill).unwrap();
+    let copilot_bytes = std::fs::read(&copilot_skill).unwrap();
+    assert_eq!(codex_bytes, copilot_bytes, "shared skill must be identical across harnesses");
 }
 
 #[test]
@@ -138,7 +144,9 @@ fn test_codex_adapter_renders_dialect() {
     let files = CodexAdapter.build(&[], &[command]).unwrap();
     let content = files.get("harnesses/codex/.agents/skills/onboard/SKILL.md").unwrap();
     assert!(content.contains("`AGENTS.md` if one exists, else `CLAUDE.md`"));
-    assert!(content.contains(".codex/agents/*.md"));
+    // Shared neutral dialect: crew glob is the open `.agents/agents`, not `.codex/`.
+    assert!(content.contains(".agents/agents/*.md"));
+    assert!(!content.contains(".codex/agents/*.md"));
     assert!(content.contains("$ARGUMENTS"));
     assert!(!content.contains("TARGET.md"));
     assert!(!content.contains("agent-files/"));

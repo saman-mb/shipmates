@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, emit_tool_files, ANTIGRAVITY};
+use super::render::{emit_shared_skills, emit_shared_tool_skills};
 use super::Adapter;
 
 /// The Antigravity CLI (`agy`) — Google's successor to the retired Gemini CLI.
@@ -72,17 +72,18 @@ impl Adapter for AntigravityAdapter {
             content.push_str(&role.body);
             files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
         }
-        for (path, content) in emit_skill_files(self.base_dir(), commands, &ANTIGRAVITY) {
-            files.insert(path, content);
-        }
+        // `.agents/skills/` is the open Agent Skills tree agy reads; the skills
+        // come from the shared emitter (byte-identical with codex/zed/cursor/
+        // copilot). Only the crew above are agy-specific.
+        files.extend(emit_shared_skills(self.container(), commands));
         Ok(files)
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
         // agy skills are model-invoked ("it decides based on context"); they
         // also surface as slash commands, so agent-invoked but typeable
-        // (recorded, not faked).
-        emit_tool_files(self.base_dir(), tools, &ANTIGRAVITY, false)
+        // (recorded, not faked). They land in the shared `.agents/skills/` tree.
+        emit_shared_tool_skills(self.container(), tools)
     }
 }
 
@@ -134,8 +135,10 @@ mod tests {
         let files = AntigravityAdapter.build(&[], &[command]).unwrap();
         let content = files.get("harnesses/antigravity/.agents/skills/ship-issue/SKILL.md").unwrap();
         assert!(content.starts_with("---\nname: ship-issue\ndescription: desc\n---\n"));
+        // Shared neutral dialect: `.agents/agents` glob (matches agy's real crew
+        // dir) and the neutral `Agent-Session` trailer.
         assert!(content.contains(".agents/agents/*.md"));
-        assert!(content.contains("Antigravity-Session"));
+        assert!(content.contains("Agent-Session"));
         assert!(!content.contains("disable-model-invocation"));
     }
 }

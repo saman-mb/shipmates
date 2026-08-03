@@ -157,14 +157,20 @@ claude-code      .claude/          agents + skills
 opencode         .opencode/        agents + commands
 antigravity      .agents/          agents + skills   (agy — the successor to the retired Gemini CLI)
 codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
-cursor           .cursor/          skills only
-github-copilot   .github/          crew + skills
-windsurf         .windsurf/        skills only
-zed              .agents/          skills only (open Agent Skills standard)
+cursor           .agents/          skills only (shared open Agent Skills tree)
+github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
+windsurf         .windsurf/        skills only (canonical .windsurf/skills)
+zed              .agents/          skills only (shared open Agent Skills tree)
 ```
 
 Every harness compiles the same canonical crew and commands. Five have a native subagent directory
-and receive the twelve specialists as agents; the other three ship the crew as twelve skills only.
+and receive the twelve specialists as agents; the other three ship the twelve commands as skills only.
+Five harnesses (codex, zed, antigravity, cursor, github-copilot) read the open [Agent Skills](https://agentskills.io)
+location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
+one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of five colliding
+ones. Their crew still land in each harness's own native format. `windsurf` keeps its canonical
+`.windsurf/skills/` (its docs make `.agents/skills/` only a secondary scan) and `claude-code` its own
+`.claude/skills/`.
 One caveat worth knowing before you pick Codex: it documents no per-agent tool allowlist, so its
 crew inherit whatever the session can do rather than the least-privilege set every other target
 enforces. Each harness records its evidence, and the date it was checked, in

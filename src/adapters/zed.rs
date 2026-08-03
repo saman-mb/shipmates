@@ -1,14 +1,15 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, emit_tool_files, ZED};
+use super::render::{emit_shared_skills, emit_shared_tool_skills};
 use super::Adapter;
 
 /// Zed discovers skills under `.agents/skills/<name>/SKILL.md` — the open
 /// <https://agentskills.io> location it adopted in v1.4.2, not a `.zed/` tree —
 /// and has no subagent mechanic, so only the twelve commands ship (as skills)
 /// and `roles` is not emitted. Being skills-only, the whole payload lives under
-/// the one `.agents/` dotdir, so `base_dir` moves there wholesale (like
-/// Antigravity) and digests need no override.
+/// the one `.agents/` dotdir, so `base_dir` sits there (like Antigravity) and
+/// digests need no override. The skills come from the shared `.agents/skills/`
+/// emitter, byte-identical with every other harness that reads that tree.
 /// See <https://zed.dev/docs/ai/skills>.
 pub struct ZedAdapter;
 
@@ -18,14 +19,13 @@ impl Adapter for ZedAdapter {
     }
 
     fn build(&self, _roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
-        Ok(emit_skill_files(self.base_dir(), commands, &ZED))
+        Ok(emit_shared_skills(self.container(), commands))
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
-        // Zed skills are model-invoked from the agent's catalog; `disable-model-
-        // invocation` would hide it from the agent (the opposite of a tool), so
-        // it stays a plain model-invoked skill — agent-invoked but typeable.
-        emit_tool_files(self.base_dir(), tools, &ZED, false)
+        // Zed skills are model-invoked from the agent's catalog; they land in the
+        // shared `.agents/skills/` tree — agent-invoked but typeable.
+        emit_shared_tool_skills(self.container(), tools)
     }
 }
 
