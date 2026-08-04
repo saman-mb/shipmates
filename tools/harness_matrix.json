@@ -16,7 +16,7 @@
     },
     "cursor": {
       "agents": false,
-      "agents_notes": "UNCONFIRMED, not proven absent. `.cursor/agents/*.md` is widely reported and Cursor's docs describe delegating to named subagents, but no first-party page documents the agent frontmatter schema, and a Jan 2026 bug report says the Task tool does not surface agents from that directory. Emitting an invented schema risks unknown keys being forwarded or rejected. Re-check before flipping: https://cursor.com/docs/skills.md"
+      "agents_notes": "Correctly false: the cursor adapter emits skill-only (0 crew), so the flag matches adapter output. The earlier blocker is now STALE \u2014 Cursor 2.4 first-party-documents named subagents at `.cursor/agents/*.md` (cursor.com/docs/skills, changelog 2-4, 2026-01-22), so the frontmatter schema is no longer undocumented. Cursor is therefore a viable crew-bearing target: adopt the documented `.cursor/agents/` format and flip this to true when the adapter actually emits crew (tracked in #34). Verified 2026-08-03."
     },
     "antigravity": {
       "agents": true,
