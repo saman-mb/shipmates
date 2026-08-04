@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  state-lib:
+    name: Enforcement state lib (bash)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: jq is available
+        run: jq --version
+      - name: Syntax-check the lib
+        run: bash -n enforcement/lib/state.sh
+      - name: Run state-lib unit tests
+        run: bash enforcement/tests/test_state.sh
