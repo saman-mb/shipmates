@@ -208,7 +208,8 @@
             <li><strong>Hard judgment</strong> (the Planner, <code>architect</code>, <code>security-engineer</code>, and the <code>product-manager</code> acceptance call) → the top model available, higher effort.</li>
             <li><strong>Unsure</strong> → inherit the session model; never guess a model name.</li>
           </ul>
-          <p>Use the harness&#x27;s own per-spawn mechanism where it exists (e.g. a <code>model</code> argument on the spawn) to pick the tier-appropriate model; where the harness offers no per-spawn override, <strong>inherit</strong> — never emit a hardcoded model. Reasoning effort follows the same tiering on harnesses that expose it, and inherits where they don&#x27;t. Spend the top model where it changes the outcome, not on mechanical turns.</p>
+          <p>The role sets the <strong>baseline</strong> tier above; then <strong>scale it by the work unit&#x27;s complexity</strong> (the Planner&#x27;s signal): a <code>complex</code> unit bumps the model to the top tier and the effort up; a <code>trivial</code> unit drops toward the cheapest model and lowest effort; <code>standard</code> holds the baseline — so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.</p>
+          <p>Use the harness&#x27;s own per-spawn mechanism where it exists (e.g. a <code>model</code> argument on the spawn) to pick the tier-appropriate model; where the harness offers no per-spawn override, <strong>inherit</strong> — never emit a hardcoded model. <strong>Effort</strong> can only be adjusted per spawn on the harnesses that expose it (Codex, Cursor); on the others the role&#x27;s static effort (from its crew file, #204) stands. Spend the top model where it changes the outcome, not on mechanical turns.</p>
         </div>
         <h3 id="shell-safety-untrusted-github-data">Shell safety — untrusted GitHub data</h3>
         <div class="order-prose">
@@ -257,6 +258,7 @@
                       <li><strong>explicit, checkable acceptance criteria</strong> (functional + the quality bar above), including the project&#x27;s <strong>Definition of Done</strong> where it states one (tests, docs/changelog, non-functional bars),</li>
                       <li>a <strong>test/validation plan</strong> (the commands the SDET should run: unit tests, lint, type-check, build/compile/import — whatever this repo uses),</li>
                       <li>a list of files expected to change,</li>
+                      <li>a <strong>complexity signal per work unit</strong> — <code>trivial</code>, <code>standard</code>, or <code>complex</code> — from its size, unfamiliarity, algorithmic depth and blast radius; the orchestrator scales model/effort by it at spawn (see <strong>Model selection</strong>),</li>
                       <li><strong>domain classification flags</strong> that decide which specialists the board pulls (set each independently — a story can trip more than one):
                         <ul>
                           <li><code>IS_UI_STORY = yes/no</code> — does it create/modify on-screen UI (screens, HUD, panels, overlays, menus, components, styling)? Gates <code>ux-ui-designer</code>.</li>
