@@ -85,7 +85,7 @@
         "@type": "HowToStep",
         "position": 8,
         "name": "Stage 5 — Acceptance board",
-        "text": "Spawn these in parallel against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set:",
+        "text": "Spawn these in parallel against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist only when the change can plausibly trip its concern surface; a role gated out is named in the…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-5"
       },
       {
@@ -246,7 +246,8 @@
                           <li><code>IS_VISUAL_STORY = yes/no</code> — gate the <code>art-director</code> on the PROJECT&#x27;S DOMAIN, not merely on whether a story touches pixels. Set it only when the project&#x27;s actual deliverable is rendered visual <em>art</em> — a game&#x27;s world/sprites/shaders, illustration/brand/motion assets, generative imagery — and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only visual surface is its interface is a <strong>UI</strong> story (<code>ux-ui-designer</code>), NOT an art story: the art-director reviews pictures judged <em>as art</em>, not application chrome. Most projects never set this — when in doubt, prefer <code>IS_UI_STORY</code> and leave the art-director out.</li>
                           <li><code>IS_ARCH_SIGNIFICANT = yes/no</code> — does it add a new subsystem, change a persisted data/schema format, or cross-cut many modules in a way a narrow code review would miss? Gates <code>architect</code>.</li>
                           <li><code>IS_SECURITY_SENSITIVE = yes/no</code> — does it touch authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies? Does <strong>not</strong> gate a reviewer seat — security review lives in <code>/harden</code>, which this command doesn&#x27;t run. It gates two things instead: the final report must carry the <code>/harden</code> recommendation (mechanical, not a judgment call made while writing the summary), and it forces <code>MERGE_MODE=manual</code> for this run (see Config).</li>
-                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>. This flag vocabulary is shared with <code>/pr-review</code>, which classifies a PR diff the same way — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: here it gates the <code>/harden</code> recommendation and <code>MERGE_MODE</code> above, never a reviewer seat, because this command owns the branch and can just run <code>/harden</code> itself. <code>/pr-review</code> keeps the same flag wired to a <code>security-engineer</code> seat, because it reviews a PR the crew didn&#x27;t author, where <code>/harden</code> isn&#x27;t available — you don&#x27;t own that branch.</li>
+                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>.</li>
+                          <li><code>IS_DOCS_AFFECTING = yes/no</code> — does the change touch documented behaviour, flags, commands, config, or public API/CLI surface that user- or agent-facing docs describe? Gates <code>technical-writer</code>. This flag vocabulary is shared with <code>/pr-review</code>, which classifies a PR diff the same way — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: here it gates the <code>/harden</code> recommendation and <code>MERGE_MODE</code> above, never a reviewer seat, because this command owns the branch and can just run <code>/harden</code> itself. <code>/pr-review</code> keeps the same flag wired to a <code>security-engineer</code> seat, because it reviews a PR the crew didn&#x27;t author, where <code>/harden</code> isn&#x27;t available — you don&#x27;t own that branch.</li>
                         </ul>
                       </li>
                     </ul>
@@ -361,10 +362,10 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
           <li class="order-stage" id="stage-5">
             <span class="order-stage__num" aria-hidden="true">5</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Acceptance board</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> (specialist agents, reviewing the PUSHED PR head)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> (specialist agents, reviewing the PUSHED PR head)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Spawn these <strong>in parallel</strong> against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set:</p>
+                <p>Spawn these <strong>in parallel</strong> against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist only when the change can plausibly trip its concern surface; a role gated out is named in the run report together with the flag that gated it — never silently skipped.</p>
                 <ul>
                   <li><strong><code>product-manager</code></strong> (always): checks every acceptance criterion AND the quality bar (from the repo&#x27;s README/CLAUDE.md). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
                   <li><strong><code>sdet</code></strong> (always): re-runs the validation plan against the PR branch; returns <code>PASS</code> / <code>FAIL</code> with a severity-tagged defect list.</li>
@@ -372,6 +373,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                   <li><strong><code>art-director</code></strong> (only if <code>IS_VISUAL_STORY</code>): renders the actual change via the project&#x27;s render/preview harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the visual bar — the render, not the source. If it cannot render, it says so and flags <strong>&quot;needs a human visual pass&quot;</strong>.</li>
                   <li><strong><code>architect</code></strong> (only if <code>IS_ARCH_SIGNIFICANT</code>): reviews structural fit, coupling/blast radius, and schema/migration safety.</li>
                   <li><strong><code>devops-engineer</code></strong> (only if <code>IS_DELIVERY_SENSITIVE</code>): reviews the delivery definitions for reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety to <code>site-reliability-engineer</code>.</li>
+                  <li><strong><code>technical-writer</code></strong> (only if <code>IS_DOCS_AFFECTING</code>): reviews the shipped change against the docs that describe it — stale flags/commands/behaviour, missing changelog/README/site updates. Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code>.</li>
                 </ul>
                 <p>Decision (each specialist participates only when its flag is set):</p>
                 <ul>
@@ -421,7 +423,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         </ol>
         <h3 id="final-report-to-the-user">Final report to the user</h3>
         <div class="order-prose">
-          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now.</p>
+          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now.</p>
         </div>
       </div>
     </section>
@@ -456,6 +458,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                 <tr><td><code>ux-ui-designer</code></td><td>On-screen UI design + review — gated by <code>IS_UI_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>art-director</code></td><td>Visual-art direction + review — <strong>art-producing domains only</strong>, gated by <code>IS_VISUAL_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>devops-engineer</code></td><td>Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by <code>IS_DELIVERY_SENSITIVE</code> (Stage 5)</td></tr>
+                <tr><td><code>technical-writer</code></td><td>Docs-staleness review — gated by <code>IS_DOCS_AFFECTING</code> (Stage 5)</td></tr>
               </tbody>
             </table>
           </div>
