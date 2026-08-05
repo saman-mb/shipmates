@@ -1491,7 +1491,7 @@ INDENTED_RE = re.compile(r"^[ \t]")
 # in that order; `tools` optional. No other keys — a typo fails here rather than
 # reaching a page in silence, same rule as the skill parser.
 AGENT_REQUIRED_FRONTMATTER_KEYS = ("name", "description")
-AGENT_FRONTMATTER_KEYS = AGENT_REQUIRED_FRONTMATTER_KEYS + ("tools", "capabilities", "writes", "web-scopes", "read-scopes", "tool-order")
+AGENT_FRONTMATTER_KEYS = AGENT_REQUIRED_FRONTMATTER_KEYS + ("tools", "capabilities", "writes", "web-scopes", "read-scopes", "tool-order", "effort")
 AGENT_FRONTMATTER_KEY_LIST = ", ".join(AGENT_FRONTMATTER_KEYS)
 
 # Agent Skills limits on the two standard keys.

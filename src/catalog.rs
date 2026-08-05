@@ -13,6 +13,11 @@ pub struct CanonicalRole {
     pub web_scopes: Vec<String>,
     pub read_scopes: Vec<String>,
     pub tool_order: Vec<String>,
+    /// Static per-role reasoning effort (`low|medium|high`), stamped into the
+    /// frontmatter of the harnesses whose agent format carries the key. `None`
+    /// emits nothing. A model is never emitted — that is a runtime decision
+    /// (#205); effort is the one static per-role knob (#204).
+    pub effort: Option<String>,
     pub source: PathBuf,
     pub body: String,
 }
@@ -76,6 +81,26 @@ pub fn reject_positional(label: &str, text: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Parse and validate the `effort:` frontmatter key. Empty/absent ⇒ `None`.
+/// Any value other than `low|medium|high` is rejected so a typo fails the build
+/// rather than emitting an effort the target silently ignores.
+fn parse_effort(fm: &HashMap<String, String>, label: &str) -> anyhow::Result<Option<String>> {
+    let effort = fm
+        .get("effort")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    // The accepted set is deliberately the cross-harness intersection
+    // `low|medium|high`: Claude Code alone supports more (up to `max`), but one
+    // canonical value ships to every harness, so widening it would emit an
+    // effort codex/opencode reject.
+    if let Some(v) = &effort
+        && !matches!(v.as_str(), "low" | "medium" | "high")
+    {
+        anyhow::bail!("{}: invalid effort {:?}; expected one of low|medium|high", label, v);
+    }
+    Ok(effort)
 }
 
 /// Comma-separated `requires:` frontmatter → the tool's runtime package list.
@@ -145,6 +170,7 @@ pub fn load_roles(path: &Path) -> anyhow::Result<Vec<CanonicalRole>> {
                 web_scopes: Vec::new(),
                 read_scopes: Vec::new(),
                 tool_order: Vec::new(),
+                effort: parse_effort(&fm, &entry.path().to_string_lossy())?,
                 source: entry.path().to_path_buf(),
                 body,
             });
@@ -197,6 +223,7 @@ pub fn load_roles_embedded() -> anyhow::Result<Vec<CanonicalRole>> {
                 web_scopes: Vec::new(),
                 read_scopes: Vec::new(),
                 tool_order: Vec::new(),
+                effort: parse_effort(&fm, rel)?,
                 source: std::path::PathBuf::from(rel),
                 body,
             });
@@ -364,5 +391,28 @@ mod tests {
         writeln!(file, "no frontmatter here").unwrap();
 
         assert!(parse_frontmatter(file.path()).is_err());
+    }
+
+    #[test]
+    fn test_effort_valid_is_parsed_and_absent_is_none() {
+        let mut fm = HashMap::new();
+        assert_eq!(parse_effort(&fm, "x").unwrap(), None);
+        fm.insert("effort".to_string(), "  high  ".to_string());
+        assert_eq!(parse_effort(&fm, "x").unwrap().as_deref(), Some("high"));
+        fm.insert("effort".to_string(), "".to_string());
+        assert_eq!(parse_effort(&fm, "x").unwrap(), None);
+    }
+
+    #[test]
+    fn test_loader_rejects_invalid_effort() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad.md");
+        fs::write(
+            &path,
+            "---\nname: bad\ndescription: d\neffort: extreme\n---\nbody",
+        )
+        .unwrap();
+        let err = load_roles(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("invalid effort"), "{err}");
     }
 }

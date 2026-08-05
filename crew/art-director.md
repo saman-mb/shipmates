@@ -3,6 +3,7 @@ name: art-director
 description: Art director / visual-design reviewer for any project with visual output — UI skins, game art, marketing/brand assets, data visualisations, generated imagery. Use to spec a concrete visual direction before work begins, and to review the produced visuals before they ship.
 capabilities: read,bash,web
 writes: false
+effort: medium
 web-scopes: search
 read-scopes: read
 ---
