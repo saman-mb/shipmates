@@ -496,6 +496,7 @@ mod tests {
             web_scopes: vec![],
             read_scopes: vec![],
             tool_order: vec![],
+            effort: None,
             source: PathBuf::from(""),
             body: "b".into(),
         }

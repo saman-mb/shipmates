@@ -18,6 +18,12 @@ impl Adapter for CursorAdapter {
     }
 
     fn build(&self, _roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
+        // Reasoning effort is DEFERRED on Cursor. Cursor folds effort into the
+        // model string rather than a standalone key, and Cursor is skills-only
+        // today — no crew/role emission and no per-role model string (a model is
+        // never stamped, #205). So there is nowhere to carry effort until Cursor
+        // grows a subagent emitter; blocked on that (relates #15/#205). Emit
+        // nothing rather than fake a key.
         Ok(emit_shared_skills(self.container(), commands))
     }
 

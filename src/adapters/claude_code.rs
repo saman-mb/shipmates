@@ -38,6 +38,10 @@ impl Adapter for ClaudeCodeAdapter {
             if !role.capabilities.is_empty() {
                 content.push_str(&format!("tools: {}\n", map_tools(&role.capabilities)));
             }
+            // Claude Code carries reasoning effort as a per-agent `effort` key.
+            if let Some(e) = &role.effort {
+                content.push_str(&format!("effort: {}\n", e));
+            }
             content.push_str("---\n");
             content.push_str(&role.body);
             files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
@@ -83,6 +87,7 @@ mod tests {
             web_scopes: vec![],
             read_scopes: vec![],
             tool_order: vec![],
+            effort: None,
             source: std::path::PathBuf::from(""),
             body: "body".to_string(),
         }
@@ -94,6 +99,26 @@ mod tests {
         let content = files.get("harnesses/claude-code/.claude/agents/architect.md").unwrap();
         assert!(content.contains("tools: Read, Grep, Glob, Bash\n"));
         assert!(!content.contains("read,"));
+    }
+
+    #[test]
+    fn test_effort_is_emitted_as_the_effort_key() {
+        let mut r = role("architect", &["read"]);
+        r.effort = Some("high".to_string());
+        let files = ClaudeCodeAdapter.build(&[r], &[]).unwrap();
+        let content = files.get("harnesses/claude-code/.claude/agents/architect.md").unwrap();
+        assert!(content.contains("effort: high\n"), "{content}");
+    }
+
+    #[test]
+    fn test_no_model_line_is_emitted() {
+        // A model is never stamped — it is a runtime decision (#205). Prefix
+        // check so `effort:` (which is present) cannot false-positive.
+        let mut r = role("architect", &["read"]);
+        r.effort = Some("high".to_string());
+        let files = ClaudeCodeAdapter.build(&[r], &[]).unwrap();
+        let content = files.get("harnesses/claude-code/.claude/agents/architect.md").unwrap();
+        assert!(!content.lines().any(|l| l.trim_start().starts_with("model:")), "{content}");
     }
 
     #[test]

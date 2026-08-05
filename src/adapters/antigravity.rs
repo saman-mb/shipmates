@@ -65,6 +65,10 @@ impl Adapter for AntigravityAdapter {
                     content.push_str(&format!("  - {}\n", tool));
                 }
             }
+            // agy has no documented per-agent reasoning-effort field, so
+            // `role.effort` is intentionally not emitted here — recorded as a gap
+            // (like codex's missing tool allowlist) rather than faked with an
+            // invented key (#204).
             content.push_str("subagent: true\n");
             content.push_str("mainAgent: false\n");
             content.push_str("commandExecutionPolicy: sandbox\n");
@@ -101,6 +105,7 @@ mod tests {
             web_scopes: vec![],
             read_scopes: vec![],
             tool_order: vec![],
+            effort: None,
             source: std::path::PathBuf::from(""),
             body: "test body".to_string(),
         };

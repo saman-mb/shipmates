@@ -62,6 +62,15 @@ impl Adapter for OpencodeAdapter {
             content.push_str("---\n");
             content.push_str(&format!("description: {}\n", role.description));
             content.push_str("mode: subagent\n");
+            // opencode carries reasoning effort as a top-level `reasoningEffort`
+            // provider-passthrough key — a sibling of `model`/`temperature` in the
+            // markdown agent frontmatter, not nested under an options/provider
+            // block. Verified against opencode's own agents docs (2026-08-05):
+            // <https://opencode.ai/docs/agents/> shows `reasoningEffort` as a
+            // top-level agent property.
+            if let Some(e) = &role.effort {
+                content.push_str(&format!("reasoningEffort: {}\n", e));
+            }
             content.push_str("permission:\n");
             // Opencode's "*": deny first permission logic
             content.push_str("  \"*\": deny\n");
@@ -113,6 +122,7 @@ mod tests {
             web_scopes: vec![],
             read_scopes: vec![],
             tool_order: vec![],
+            effort: None,
             source: std::path::PathBuf::from(""),
             body: "test body".to_string(),
         };
@@ -130,6 +140,36 @@ mod tests {
         assert!(content.contains("  bash: allow\n"));
         assert!(content.contains("---\n"));
         assert!(content.ends_with("test body"));
+    }
+
+    fn role_with_effort(effort: Option<&str>) -> CanonicalRole {
+        CanonicalRole {
+            name: "architect".to_string(),
+            description: "A test role".to_string(),
+            capabilities: vec!["read".to_string()],
+            writes: false,
+            web_scopes: vec![],
+            read_scopes: vec![],
+            tool_order: vec![],
+            effort: effort.map(|s| s.to_string()),
+            source: std::path::PathBuf::from(""),
+            body: "body".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_effort_is_emitted_as_reasoning_effort() {
+        let files = OpencodeAdapter.build(&[role_with_effort(Some("high"))], &[]).unwrap();
+        let content = files.get("harnesses/opencode/.opencode/agents/architect.md").unwrap();
+        assert!(content.contains("reasoningEffort: high\n"), "{content}");
+    }
+
+    #[test]
+    fn test_no_model_line_is_emitted() {
+        // A model is never stamped (#205). Prefix check so nothing false-positives.
+        let files = OpencodeAdapter.build(&[role_with_effort(Some("high"))], &[]).unwrap();
+        let content = files.get("harnesses/opencode/.opencode/agents/architect.md").unwrap();
+        assert!(!content.lines().any(|l| l.trim_start().starts_with("model:")), "{content}");
     }
 
     #[test]
