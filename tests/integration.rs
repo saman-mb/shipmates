@@ -2,6 +2,7 @@ use shipmates::adapters::Adapter;
 use shipmates::adapters::antigravity::AntigravityAdapter;
 use shipmates::adapters::claude_code::ClaudeCodeAdapter;
 use shipmates::adapters::codex::CodexAdapter;
+use shipmates::adapters::github_copilot::GithubCopilotAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
 use shipmates::catalog::{reject_positional, CanonicalCommand, CanonicalRole};
 use shipmates::digest;
@@ -17,6 +18,7 @@ fn test_claude_code_payload_digest() {
         web_scopes: vec![],
         read_scopes: vec![],
         tool_order: vec![],
+        effort: None,
         source: PathBuf::from("test.md"),
         body: "body content".into(),
     };
@@ -58,6 +60,7 @@ fn test_opencode_permissions_deny_first() {
         web_scopes: vec![],
         read_scopes: vec![],
         tool_order: vec![],
+        effort: None,
         source: PathBuf::from("test.md"),
         body: "body content".into(),
     };
@@ -166,6 +169,55 @@ fn test_cli_build_and_install() {
     assert!(stdout.contains("Installed harness: claude-code"));
 }
 
+/// No adapter may stamp a model into a crew agent file — a model is a runtime
+/// decision the orchestrator makes at spawn (#205), so an install-time value
+/// would be wrong across harnesses and user access tiers. Effort (#204) IS
+/// emitted, so the guard uses line-PREFIX checks per dialect: YAML/MD targets
+/// must have no line starting `model:` (so `reasoningEffort:`/`effort:` don't
+/// trip it), and the codex TOML no line starting `model =` (so
+/// `model_reasoning_effort =` doesn't trip it).
+#[test]
+fn test_no_adapter_emits_a_model_line() {
+    let role = || CanonicalRole {
+        name: "architect".into(),
+        description: "A test role".into(),
+        capabilities: vec!["read".into(), "bash".into()],
+        writes: false,
+        web_scopes: vec![],
+        read_scopes: vec![],
+        tool_order: vec![],
+        effort: Some("high".into()),
+        source: PathBuf::from("architect.md"),
+        body: "system prompt body".into(),
+    };
+
+    // YAML/Markdown-frontmatter targets: no line may begin `model:`.
+    for (label, files) in [
+        ("claude-code", ClaudeCodeAdapter.build(&[role()], &[]).unwrap()),
+        ("opencode", OpencodeAdapter.build(&[role()], &[]).unwrap()),
+        ("antigravity", AntigravityAdapter.build(&[role()], &[]).unwrap()),
+        ("github-copilot", GithubCopilotAdapter.build(&[role()], &[]).unwrap()),
+    ] {
+        for (path, content) in &files {
+            if !path.contains("/agents/") {
+                continue;
+            }
+            assert!(
+                !content.lines().any(|l| l.trim_start().starts_with("model:")),
+                "{label} agent file {path} emitted a model line:\n{content}"
+            );
+        }
+    }
+
+    // Codex TOML: no line may begin `model =` (but `model_reasoning_effort =` may).
+    let codex = CodexAdapter.build(&[role()], &[]).unwrap();
+    let toml = codex.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
+    assert!(
+        !toml.lines().any(|l| l.trim_start().starts_with("model =")),
+        "codex agent emitted a model line:\n{toml}"
+    );
+}
+
 #[test]
 fn test_antigravity_adapter_integration() {
     let role = CanonicalRole {
@@ -176,6 +228,7 @@ fn test_antigravity_adapter_integration() {
         web_scopes: vec![],
         read_scopes: vec![],
         tool_order: vec![],
+        effort: None,
         source: PathBuf::from("architect.md"),
         body: "system prompt body".into(),
     };

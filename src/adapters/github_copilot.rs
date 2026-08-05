@@ -106,6 +106,9 @@ impl Adapter for GithubCopilotAdapter {
                 "tools: [{}]\n",
                 tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
             ));
+            // Copilot custom agents have no documented per-agent reasoning-effort
+            // field, so `role.effort` is intentionally not emitted — recorded as a
+            // gap rather than faked with an invented key (#204).
             content.push_str("---\n");
             content.push_str(&render_body(&role.body, &GITHUB_COPILOT));
 
@@ -145,6 +148,7 @@ mod tests {
             web_scopes: vec![],
             read_scopes: vec![],
             tool_order: vec![],
+            effort: None,
             source: std::path::PathBuf::from(""),
             body: body.to_string(),
         }

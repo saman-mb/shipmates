@@ -81,6 +81,10 @@ impl Adapter for CodexAdapter {
             let mut content = String::new();
             content.push_str(&format!("name = {}\n", toml_basic(&role.name)));
             content.push_str(&format!("description = {}\n", toml_basic(&role.description)));
+            // Codex carries reasoning effort as the documented `model_reasoning_effort`.
+            if let Some(e) = &role.effort {
+                content.push_str(&format!("model_reasoning_effort = {}\n", toml_basic(e)));
+            }
             content.push_str(&format!("developer_instructions = {}\n", toml_literal(&body)?));
             files.insert(format!("{}/agents/{}.toml", self.base_dir(), role.name), content);
         }
@@ -127,6 +131,7 @@ mod tests {
             web_scopes: vec![],
             read_scopes: vec![],
             tool_order: vec![],
+            effort: None,
             source: std::path::PathBuf::from(""),
             body: body.to_string(),
         }
@@ -161,6 +166,26 @@ mod tests {
         assert!(agent.contains("developer_instructions = '''\nline one\nline two\n'''"));
         // Markdown frontmatter would be a parse error in a TOML file.
         assert!(!agent.contains("---"));
+    }
+
+    #[test]
+    fn test_effort_is_emitted_as_model_reasoning_effort() {
+        let mut r = role("architect", "body");
+        r.effort = Some("high".to_string());
+        let files = CodexAdapter.build(&[r], &[]).unwrap();
+        let agent = files.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
+        assert!(agent.contains("model_reasoning_effort = \"high\"\n"), "{agent}");
+    }
+
+    #[test]
+    fn test_no_bare_model_line_is_emitted() {
+        // A model is never stamped (#205). Prefix check on `model =` so the
+        // present `model_reasoning_effort =` does NOT false-positive.
+        let mut r = role("architect", "body");
+        r.effort = Some("high".to_string());
+        let files = CodexAdapter.build(&[r], &[]).unwrap();
+        let agent = files.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
+        assert!(!agent.lines().any(|l| l.trim_start().starts_with("model =")), "{agent}");
     }
 
     #[test]
