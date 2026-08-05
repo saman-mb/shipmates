@@ -77,4 +77,50 @@ pub enum Command {
         no_migrate: bool,
     },
     Targets,
+    /// Drive a command run's finite-state machine (the FSM **engine** the
+    /// planned enforcement hook will call — it does not enforce anything on its
+    /// own yet; see #114). Exit code is the transition verdict: 0 legal, 1
+    /// illegal, 2 error.
+    State {
+        #[command(subcommand)]
+        action: StateAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum StateAction {
+    /// Write the run file at the command's first stage. Refuses to overwrite an
+    /// existing run file (fail-closed).
+    Init {
+        /// Numeric issue id — a `u64`, so a run id is never a path-traversal
+        /// string.
+        #[arg(long)]
+        run: u64,
+
+        #[arg(long)]
+        command: String,
+    },
+    /// Report whether current→`--to` is a legal transition, without mutating the
+    /// run file. Exit 0 legal, 1 illegal, 2 error.
+    Assert {
+        #[arg(long)]
+        run: u64,
+
+        #[arg(long)]
+        to: String,
+    },
+    /// Assert, then atomically commit the new phase (charging a loop round on a
+    /// loopback). Exit 0 on success, 1 illegal, 2 error.
+    Advance {
+        #[arg(long)]
+        run: u64,
+
+        #[arg(long)]
+        to: String,
+    },
+    /// Print the run file's JSON. Exit 2 if it is missing or malformed.
+    Status {
+        #[arg(long)]
+        run: u64,
+    },
 }
