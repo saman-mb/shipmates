@@ -1,7 +1,7 @@
 ---
 name: ship-issue
 description: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
-argument-hint: <issue-number>... [optional extra guidance]
+argument-hint: <issue-number>... | next [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: issue, guidance
@@ -24,6 +24,10 @@ is issue 104 with the guidance `focus on retries`. Never extend the run past the
 token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with
 a number, separate it explicitly with `--`, which ends the issue list wherever it appears:
 `104 -- 2 fix rounds max`.
+
+**Or `next`:** if the first token is `next` (in place of any issue number), this is a **selection** run —
+Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, *Selection mode*). `next` is
+mutually exclusive with explicit issue numbers; tokens after it are guidance.
 
 ## Bundling — the token-efficient default
 
@@ -67,11 +71,12 @@ where they don't. Spend the top model where it changes the outcome, not on mecha
   recommendation.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
 - `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
-  leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues and **proposes** a bundle
-  before building, letting the user choose. `auto`: bundle cohesive siblings without asking — for
-  unattended / non-interactive runs only. `off`: ship exactly the issues passed, never suggest more. A
-  multi-issue invocation is already an explicit bundle, so it skips the recommendation (but still gets
-  the cohesion warning).
+  leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, **proposes** a bundle, and
+  **always asks before widening the run** — a recommended bundle never proceeds without the user's
+  explicit ok. `off`: ship exactly the issues passed, never suggest more. There is **no silent
+  auto-bundle**: bundling from a recommendation (a single ticket, or a `next` pick) always requires
+  consent. An explicitly-passed multi-issue invocation (`/ship-issue 1 2 3`) is already that consent — it
+  proceeds as a bundle (with the cohesion warning if it is a poor fit).
 - `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<first-issue>` (single issue)
   or `../<repo>--bundle-<first-issue>-<short-slug>` (multiple issues)
 - `BRANCH` = `feat/issue-<first-issue>-<short-slug>` (single) or `feat/bundle-<first-issue>-<short-slug>` (multiple)
@@ -128,6 +133,18 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
+**Selection mode — `next`.** If the leading token is `next` (in place of issue numbers), first pick the
+work from the backlog, then continue with the numbered steps below on the chosen `<issues>`:
+- Read open issues (`gh issue list --state open --json number,title,labels`), map dependencies (epic
+  checklists, `Part of #N`, `blocked by`) and **never pick a ticket with an unmet dependency**; rank by
+  priority / value / blast-radius / staleness.
+- Take the top ticket, then run the **cohesion test** (step 2.5) against its open siblings to judge
+  whether a cohesive bundle is the better unit.
+- **Single ticket** → set `<issues>` to it and proceed — just ship it.
+- **Bundle** → present the candidates and the token rationale and **ask the user to confirm before
+  proceeding**; set `<issues>` to only what they ok (they may take just the lead). A `next` bundle never
+  proceeds without explicit consent — if declined or the run is non-interactive, ship the single lead.
+
 1. Validate, then resolve: each issue token must match `^[0-9]+$` or be a full GitHub issue URL —
    anything else, **stop and ask the user** (see **Shell safety** above). For each validated `<N>`,
    run `gh issue view <N> --json number,title,body,labels,url`. Resolve story-number mappings if
@@ -148,14 +165,13 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
      ~4 issues / a diff a human would still review in one sitting).
 
    Then act by `BUNDLE`:
-   - **multi-issue input** — already an explicit bundle: run the cohesion test and, if it fails,
-     **warn** (don't block), naming what makes them a poor bundle, then proceed as asked.
-   - **single issue, `BUNDLE=recommend`** (default) — if the issue is small/low-risk, run ONE cheap
-     `gh issue list --state open --label <its-labels> --json number,title,labels` for cohesive
-     candidates. If any pass the test, **recommend a bundle to the user** — list the candidates and the
-     token rationale — and let them choose which (if any) to fold in. In a non-interactive run, proceed
-     solo. Never widen the run without the user's ok on this path.
-   - **`BUNDLE=auto`** — fold in the passing candidates without asking (unattended runs only).
+   - **multi-issue input** — already an explicit bundle (the user named the issues): run the cohesion
+     test and, if it fails, **warn** (don't block), naming what makes them a poor bundle, then proceed.
+   - **single issue or `next`, `BUNDLE=recommend`** (default) — if the lead issue is small/low-risk, run
+     ONE cheap `gh issue list --state open --label <its-labels> --json number,title,labels` for cohesive
+     candidates. If any pass the test, **recommend the bundle and ask** — list the candidates and the
+     token rationale — folding in only what the user oks. **A recommended bundle never proceeds without
+     consent**; if the user declines (or the run is non-interactive), ship the single lead ticket.
    - **`BUNDLE=off`** — ship exactly the issues passed.
 
    Add any accepted issues to `<issues>` (re-sort so `<first-issue>` is unchanged). Whatever the
