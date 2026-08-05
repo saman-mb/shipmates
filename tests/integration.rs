@@ -330,6 +330,71 @@ fn test_matrix_effort_flag_matches_adapter_output() {
     }
 }
 
+/// Drive the REAL `commands/ship-issue.md` stages through `shipmates state` via
+/// the compiled binary, proving the 0/1/2 exit-code ABI end to end. This is the
+/// contract the (planned) enforcement hook depends on; the FSM comes from the
+/// embedded catalog, so this also proves `stages:` parses at runtime.
+#[test]
+fn test_state_cli_drives_real_ship_issue_fsm_and_exit_abi() {
+    let bin = env!("CARGO_BIN_EXE_shipmates");
+    let temp_dir = tempfile::tempdir().unwrap();
+    let base = temp_dir.path();
+
+    let run = |args: &[&str]| {
+        std::process::Command::new(bin)
+            .current_dir(base)
+            .args(args)
+            .output()
+            .expect("failed to execute shipmates state")
+    };
+    let code = |out: &std::process::Output| out.status.code().unwrap();
+
+    // init at the first stage (`plan`) succeeds — exit 0.
+    let out = run(&["state", "init", "--run", "212", "--command", "ship-issue"]);
+    assert_eq!(code(&out), 0, "init: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(base.join(".shipmates/run-212.json").is_file());
+    assert!(String::from_utf8_lossy(&out.stdout).contains("\"phase\": \"plan\""));
+
+    // init again refuses to overwrite an existing run file — error, exit 2.
+    let out = run(&["state", "init", "--run", "212", "--command", "ship-issue"]);
+    assert_eq!(code(&out), 2, "init overwrite must fail-closed");
+    assert!(String::from_utf8_lossy(&out.stderr).contains("refusing to overwrite"));
+
+    // assert plan -> isolate is legal — exit 0.
+    let out = run(&["state", "assert", "--run", "212", "--to", "isolate"]);
+    assert_eq!(code(&out), 0);
+    assert!(String::from_utf8_lossy(&out.stdout).contains("\"legal\":true"));
+
+    // assert plan -> build skips a stage — illegal, exit 1, greppable reason.
+    let out = run(&["state", "assert", "--run", "212", "--to", "build"]);
+    assert_eq!(code(&out), 1);
+    assert!(String::from_utf8_lossy(&out.stdout).contains("\"legal\":false"));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("illegal transition"));
+
+    // assert against a missing run file — error, exit 2.
+    let out = run(&["state", "assert", "--run", "999", "--to", "isolate"]);
+    assert_eq!(code(&out), 2);
+    assert!(String::from_utf8_lossy(&out.stderr).contains("error:"));
+
+    // a non-numeric --run is rejected by argument parsing — exit 2 (clap usage).
+    let out = run(&["state", "status", "--run", "../etc/passwd"]);
+    assert_eq!(code(&out), 2, "non-numeric run id must not parse");
+
+    // advance plan -> isolate commits the phase — exit 0, file updated.
+    let out = run(&["state", "advance", "--run", "212", "--to", "isolate"]);
+    assert_eq!(code(&out), 0);
+    let status = run(&["state", "status", "--run", "212"]);
+    assert!(String::from_utf8_lossy(&status.stdout).contains("\"phase\": \"isolate\""));
+
+    // advance forward to build, then a loopback build -> isolate charges a round.
+    assert_eq!(code(&run(&["state", "advance", "--run", "212", "--to", "build"])), 0);
+    assert_eq!(code(&run(&["state", "advance", "--run", "212", "--to", "isolate"])), 0);
+    let status = run(&["state", "status", "--run", "212"]);
+    let body = String::from_utf8_lossy(&status.stdout);
+    assert!(body.contains("\"phase\": \"isolate\""));
+    assert!(body.contains("\"fix_rounds\": 1"), "loopback must charge a fix round: {body}");
+}
+
 fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     if let Ok(entries) = std::fs::read_dir(dir) {

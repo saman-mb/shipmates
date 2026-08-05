@@ -103,6 +103,38 @@ fn parse_effort(fm: &HashMap<String, String>, label: &str) -> anyhow::Result<Opt
     Ok(effort)
 }
 
+/// Parse and validate the `stages:` frontmatter key — a JSON array string that
+/// declares the command's linear stage list (`{order, stage, roles, gate,
+/// max_loops}` objects). Absent/empty ⇒ an empty stage list. A value that is
+/// not a JSON array (a typo, a truncated array) is rejected so a malformed
+/// `stages:` fails the load rather than silently loading a command with no FSM,
+/// consistent with the repo's "a typo fails the gate" philosophy. The field is
+/// internal (the FSM engine reads it; it is never rendered into a payload), so
+/// this validation cannot change any emitted digest.
+fn parse_stages(fm: &HashMap<String, String>, label: &str) -> anyhow::Result<Vec<serde_json::Value>> {
+    let raw = fm.get("stages").map(|s| s.trim()).filter(|s| !s.is_empty());
+    let Some(raw) = raw else {
+        return Ok(Vec::new());
+    };
+    let value: serde_json::Value = serde_json::from_str(raw)
+        .map_err(|e| anyhow::anyhow!("{}: invalid stages JSON: {}", label, e))?;
+    match value {
+        serde_json::Value::Array(items) => Ok(items),
+        other => anyhow::bail!(
+            "{}: stages must be a JSON array, got {}",
+            label,
+            match other {
+                serde_json::Value::Object(_) => "object",
+                serde_json::Value::String(_) => "string",
+                serde_json::Value::Number(_) => "number",
+                serde_json::Value::Bool(_) => "bool",
+                serde_json::Value::Null => "null",
+                serde_json::Value::Array(_) => unreachable!(),
+            }
+        ),
+    }
+}
+
 /// Comma-separated `requires:` frontmatter → the tool's runtime package list.
 fn parse_requires(fm: &HashMap<String, String>) -> Vec<String> {
     fm.get("requires")
@@ -188,6 +220,7 @@ pub fn load_commands(path: &Path) -> anyhow::Result<Vec<CanonicalCommand>> {
         if entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "md") {
             let (fm, body) = parse_frontmatter(entry.path()).map_err(|e| anyhow::anyhow!(e))?;
             reject_positional(&entry.path().to_string_lossy(), &body).map_err(|e| anyhow::anyhow!(e))?;
+            let label = entry.path().to_string_lossy().to_string();
             commands.push(CanonicalCommand {
                 name: fm.get("name").cloned().unwrap_or_default(),
                 description: fm.get("description").cloned().unwrap_or_default(),
@@ -196,7 +229,7 @@ pub fn load_commands(path: &Path) -> anyhow::Result<Vec<CanonicalCommand>> {
                 disable_model_invocation: fm.get("disable-model-invocation").map(|s| s == "true").unwrap_or(false),
                 arguments: Vec::new(),
                 loop_max: 0,
-                stages: Vec::new(),
+                stages: parse_stages(&fm, &label)?,
                 narrative: body,
                 invocation: String::new(),
                 board: String::new(),
@@ -247,7 +280,7 @@ pub fn load_commands_embedded() -> anyhow::Result<Vec<CanonicalCommand>> {
                 disable_model_invocation: fm.get("disable-model-invocation").map(|s| s == "true").unwrap_or(false),
                 arguments: Vec::new(),
                 loop_max: 0,
-                stages: Vec::new(),
+                stages: parse_stages(&fm, rel)?,
                 narrative: body,
                 invocation: String::new(),
                 board: String::new(),
@@ -401,6 +434,68 @@ mod tests {
         assert_eq!(parse_effort(&fm, "x").unwrap().as_deref(), Some("high"));
         fm.insert("effort".to_string(), "".to_string());
         assert_eq!(parse_effort(&fm, "x").unwrap(), None);
+    }
+
+    #[test]
+    fn test_stages_absent_is_empty_and_valid_array_parses() {
+        let mut fm = HashMap::new();
+        assert!(parse_stages(&fm, "x").unwrap().is_empty());
+        fm.insert("stages".to_string(), "  ".to_string());
+        assert!(parse_stages(&fm, "x").unwrap().is_empty());
+        fm.insert(
+            "stages".to_string(),
+            r#"[{"order":1,"stage":"plan","gate":"plan-ready","max_loops":1}]"#.to_string(),
+        );
+        let stages = parse_stages(&fm, "x").unwrap();
+        assert_eq!(stages.len(), 1);
+        assert_eq!(stages[0]["stage"], "plan");
+        assert_eq!(stages[0]["max_loops"], 1);
+    }
+
+    #[test]
+    fn test_stages_malformed_json_is_rejected() {
+        let mut fm = HashMap::new();
+        // truncated array — a typo must fail the load, not silently drop the FSM.
+        fm.insert("stages".to_string(), r#"[{"order":1,"stage":"plan""#.to_string());
+        let err = parse_stages(&fm, "x").unwrap_err();
+        assert!(err.to_string().contains("invalid stages JSON"), "{err}");
+    }
+
+    #[test]
+    fn test_stages_non_array_is_rejected() {
+        let mut fm = HashMap::new();
+        // valid JSON, but an object — the field is declared as an array of stages.
+        fm.insert("stages".to_string(), r#"{"order":1}"#.to_string());
+        let err = parse_stages(&fm, "x").unwrap_err();
+        assert!(err.to_string().contains("must be a JSON array"), "{err}");
+    }
+
+    #[test]
+    fn test_loader_parses_real_command_stages() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ship.md");
+        fs::write(
+            &path,
+            "---\nname: ship\ndescription: d\nstages: [{\"order\":1,\"stage\":\"plan\",\"gate\":\"plan-ready\",\"max_loops\":1},{\"order\":2,\"stage\":\"build\",\"gate\":\"done\",\"max_loops\":3}]\n---\nbody",
+        )
+        .unwrap();
+        let cmds = load_commands(dir.path()).unwrap();
+        assert_eq!(cmds.len(), 1);
+        assert_eq!(cmds[0].stages.len(), 2);
+        assert_eq!(cmds[0].stages[1]["stage"], "build");
+    }
+
+    #[test]
+    fn test_loader_rejects_malformed_stages() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad.md");
+        fs::write(
+            &path,
+            "---\nname: bad\ndescription: d\nstages: [not valid json\n---\nbody",
+        )
+        .unwrap();
+        let err = load_commands(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("invalid stages JSON"), "{err}");
     }
 
     #[test]
