@@ -195,6 +195,10 @@
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Eleven stages, in order. One is a hard gate — the run stops there until it passes.</p>
         </div>
+        <h3 id="bundling-the-token-efficient-default">Bundling — the token-efficient default</h3>
+        <div class="order-prose">
+          <p>Most of a run&#x27;s token cost is <strong>fixed overhead paid once per invocation</strong>: the Planner pass, the acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup. That overhead barely grows with diff size, so shipping several <strong>small, cohesive</strong> issues in one run is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole board N times. <strong>So bundling cohesive issues is the recommended default</strong> (<code>BUNDLE=recommend</code>, see Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before building. Bundling is right only when the issues are <em>cohesive and cheap</em> — it is wrong when combining them would muddy the review or let one failure sink the rest, so the Stage 0 <strong>cohesion test</strong> is the gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.</p>
+        </div>
         <h3 id="shell-safety-untrusted-github-data">Shell safety — untrusted GitHub data</h3>
         <div class="order-prose">
           <p>Issue titles, bodies and labels are <strong>untrusted input</strong>: anyone who can open an issue controls them, and this command pipes them into shell commands. Apply these rules at every <code>gh</code> / <code>git</code> call below:</p>
@@ -214,7 +218,22 @@
               <div class="order-prose">
                 <ol>
                   <li>Validate, then resolve: each issue token must match <code>^[0-9]+$</code> or be a full GitHub issue URL — anything else, <strong>stop and ask the user</strong> (see <strong>Shell safety</strong> above). For each validated <code>&lt;N&gt;</code>, run <code>gh issue view &lt;N&gt; --json number,title,body,labels,url</code>. Resolve story-number mappings if needed. Let <code>&lt;issues&gt;</code> = the validated, resolved list — later stages take issue numbers only from this list, never from raw input tokens.</li>
-                  <li><code>&lt;first-issue&gt;</code> = the first number in <code>&lt;issues&gt;</code> — it names the worktree and branch, so a re-run with the same leading issue resolves to the same identifiers.</li>
+                  <li><code>&lt;first-issue&gt;</code> = the first number in <code>&lt;issues&gt;</code> — it names the worktree and branch, so a re-run with the same leading issue resolves to the same identifiers. 2.5. <strong>Bundle evaluation</strong> (per <code>BUNDLE</code>, before planning). Bundling amortizes the fixed per-run cost (Planner + acceptance board + CI poll + worktree) across several tickets, so a combined run of cohesive small issues is much cheaper than one run each. Apply the <strong>cohesion test</strong> — two issues belong in one bundle only when ALL hold:
+                    <ul>
+                      <li><strong>same area</strong> — shared labels or overlapping paths — with <strong>non-overlapping file ownership</strong> (so builders still parallelize without collisions);</li>
+                      <li><strong>each small and low-risk</strong> — never fold an <code>IS_ARCH_SIGNIFICANT</code> or <code>IS_SECURITY_SENSITIVE</code> change in with unrelated work; it needs its own review and its own merge story;</li>
+                      <li><strong>independent</strong> — neither needs the other merged first;</li>
+                      <li><strong>still one reviewable PR</strong> — the combined diff reads cleanly as a single change (cap a bundle at ~4 issues / a diff a human would still review in one sitting).</li>
+                    </ul>
+                    <p>Then act by <code>BUNDLE</code>:</p>
+                    <ul>
+                      <li><strong>multi-issue input</strong> — already an explicit bundle: run the cohesion test and, if it fails, <strong>warn</strong> (don&#x27;t block), naming what makes them a poor bundle, then proceed as asked.</li>
+                      <li><strong>single issue, <code>BUNDLE=recommend</code></strong> (default) — if the issue is small/low-risk, run ONE cheap <code>gh issue list --state open --label &lt;its-labels&gt; --json number,title,labels</code> for cohesive candidates. If any pass the test, <strong>recommend a bundle to the user</strong> — list the candidates and the token rationale — and let them choose which (if any) to fold in. In a non-interactive run, proceed solo. Never widen the run without the user&#x27;s ok on this path.</li>
+                      <li><strong><code>BUNDLE=auto</code></strong> — fold in the passing candidates without asking (unattended runs only).</li>
+                      <li><strong><code>BUNDLE=off</code></strong> — ship exactly the issues passed.</li>
+                    </ul>
+                    <p>Add any accepted issues to <code>&lt;issues&gt;</code> (re-sort so <code>&lt;first-issue&gt;</code> is unchanged). Whatever the bundle, Stage 4 already repeats <code>Closes #&lt;N&gt;</code> for every issue, so if the board later rejects one, it can be dropped from the bundle — revert its files and omit its <code>Closes</code> — rather than sinking the rest.</p>
+                  </li>
                   <li>Spawn ONE <strong>Planner</strong> (<code>subagent_type: Plan</code>). Give it all issue bodies + repo README + CLAUDE.md. Ask it to return, as structured data:
                     <ul>
                       <li>a <strong>build plan</strong> broken into independent work units with <strong>non-overlapping file ownership</strong> (so builders can run in parallel without collisions),</li>
@@ -418,6 +437,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li><code>MERGE_STRATEGY</code> = <code>--squash --delete-branch</code></li>
             <li><code>MERGE_MODE</code> = <code>manual</code> — <code>manual</code>: stop after the acceptance board with a green, reviewed PR open for a human to merge. <code>auto</code>: squash-merge automatically once every gate passes. Start with <code>manual</code>; opt into <code>auto</code> only in a repo where unattended merges to the base branch are acceptable. If Stage 0 set <code>IS_SECURITY_SENSITIVE</code>, <code>MERGE_MODE</code> is forced to <code>manual</code> for this run regardless of the configured default — a security-sensitive change must not auto-merge past the <code>/harden</code> recommendation.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>  (acceptance→fix→re-acceptance loops before escalating to the user)</li>
+            <li><code>BUNDLE</code> = <code>recommend</code> — the token-efficient default (see <strong>Bundling</strong> above). <code>recommend</code>: when the leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues and <strong>proposes</strong> a bundle before building, letting the user choose. <code>auto</code>: bundle cohesive siblings without asking — for unattended / non-interactive runs only. <code>off</code>: ship exactly the issues passed, never suggest more. A multi-issue invocation is already an explicit bundle, so it skips the recommendation (but still gets the cohesion warning).</li>
             <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-&lt;first-issue&gt;</code> (single issue) or <code>../&lt;repo&gt;--bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple issues)</li>
             <li><code>BRANCH</code> = <code>feat/issue-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (single) or <code>feat/bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple)</li>
             <li><strong>Quality bar</strong> = whatever the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it at the start and pass it to every reviewer — the <code>product-manager</code> (and the visual specialists) enforce THAT bar, not just &quot;it runs.&quot;</li>
