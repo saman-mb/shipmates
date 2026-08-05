@@ -6,7 +6,7 @@
       "notes": "Canonical source format. The payload is a byte-for-byte mirror of skills/ and agents/.",
       "agents_notes": "Subagents at `.claude/agents/<name>.md` (Markdown + YAML frontmatter, `tools` allowlist). Verified 2026-08-03: https://code.claude.com/docs/en/skills",
       "effort": true,
-      "effort_notes": "Per-agent `effort:` frontmatter key (low..max). Static only — the adapter stamps it; there is no per-spawn override. Verified 2026-08-05."
+      "effort_notes": "Per-agent `effort:` frontmatter key. Shipmates emits the cross-harness `low|medium|high` set; Claude Code's own key accepts up to `max`. Static only — the adapter stamps it; there is no per-spawn override. Verified 2026-08-05."
     },
     "github-copilot": {
       "agents": true,

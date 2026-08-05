@@ -91,6 +91,10 @@ fn parse_effort(fm: &HashMap<String, String>, label: &str) -> anyhow::Result<Opt
         .get("effort")
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
+    // The accepted set is deliberately the cross-harness intersection
+    // `low|medium|high`: Claude Code alone supports more (up to `max`), but one
+    // canonical value ships to every harness, so widening it would emit an
+    // effort codex/opencode reject.
     if let Some(v) = &effort
         && !matches!(v.as_str(), "low" | "medium" | "high")
     {

@@ -2,7 +2,6 @@ use shipmates::adapters::Adapter;
 use shipmates::adapters::antigravity::AntigravityAdapter;
 use shipmates::adapters::claude_code::ClaudeCodeAdapter;
 use shipmates::adapters::codex::CodexAdapter;
-use shipmates::adapters::github_copilot::GithubCopilotAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
 use shipmates::catalog::{reject_positional, CanonicalCommand, CanonicalRole};
 use shipmates::digest;
@@ -191,31 +190,27 @@ fn test_no_adapter_emits_a_model_line() {
         body: "system prompt body".into(),
     };
 
-    // YAML/Markdown-frontmatter targets: no line may begin `model:`.
-    for (label, files) in [
-        ("claude-code", ClaudeCodeAdapter.build(&[role()], &[]).unwrap()),
-        ("opencode", OpencodeAdapter.build(&[role()], &[]).unwrap()),
-        ("antigravity", AntigravityAdapter.build(&[role()], &[]).unwrap()),
-        ("github-copilot", GithubCopilotAdapter.build(&[role()], &[]).unwrap()),
-    ] {
+    // Iterate every shipped target rather than a hardcoded list, so a future
+    // crew-bearing adapter (cursor, #34) is auto-covered. Skills-only targets
+    // emit no agent files and are skipped. The two prefix checks span both
+    // dialects: `model:` (YAML/MD frontmatter) and `model = ` (codex TOML) —
+    // neither trips on `reasoningEffort:`/`effort:` or `model_reasoning_effort =`.
+    for target in shipmates::adapters::targets() {
+        let files = shipmates::adapters::select(target).unwrap().build(&[role()], &[]).unwrap();
         for (path, content) in &files {
             if !path.contains("/agents/") {
                 continue;
             }
             assert!(
                 !content.lines().any(|l| l.trim_start().starts_with("model:")),
-                "{label} agent file {path} emitted a model line:\n{content}"
+                "{target} agent file {path} emitted a model line:\n{content}"
+            );
+            assert!(
+                !content.lines().any(|l| l.trim_start().starts_with("model = ")),
+                "{target} agent file {path} emitted a model line:\n{content}"
             );
         }
     }
-
-    // Codex TOML: no line may begin `model =` (but `model_reasoning_effort =` may).
-    let codex = CodexAdapter.build(&[role()], &[]).unwrap();
-    let toml = codex.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
-    assert!(
-        !toml.lines().any(|l| l.trim_start().starts_with("model =")),
-        "codex agent emitted a model line:\n{toml}"
-    );
 }
 
 #[test]
@@ -281,6 +276,56 @@ fn test_matrix_agents_flag_matches_adapter_output() {
         assert_eq!(
             claims_agents, emits_agents,
             "{name}: harness_matrix.json says agents={claims_agents} but the adapter emits agents={emits_agents}",
+        );
+    }
+}
+
+/// Every harness's `effort` flag must match what its adapter actually emits —
+/// the same drift guard the `agents` flag gets, so the new #204 feature-support
+/// claim can't rot into pure documentation. A `true` flag ⇒ at least one crew
+/// agent carries a reasoning-effort key; `false` ⇒ none do. This is also the
+/// negative test for antigravity/github-copilot/cursor/windsurf/zed: their
+/// `false` is now enforced against emission, not just asserted in prose.
+#[test]
+fn test_matrix_effort_flag_matches_adapter_output() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let matrix: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap()).unwrap();
+    let harnesses = matrix["harnesses"].as_object().expect("harness_matrix.json has no harnesses map");
+
+    // Detect a reasoning-effort key across every dialect: claude-code's
+    // `effort:` line, codex's `model_reasoning_effort` TOML key, opencode's
+    // top-level `reasoningEffort`.
+    fn carries_effort(content: &str) -> bool {
+        content.lines().any(|l| l.trim_start().starts_with("effort:"))
+            || content.contains("model_reasoning_effort")
+            || content.contains("reasoningEffort")
+    }
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    for name in shipmates::adapters::targets() {
+        let entry = &harnesses[name];
+        let claims_effort = entry["effort"].as_bool().unwrap_or_else(|| panic!("{name}: no `effort` boolean"));
+        assert!(
+            entry["effort_notes"].as_str().is_some_and(|s| !s.trim().is_empty()),
+            "{name}: `effort` must carry `effort_notes` recording the evidence — a bare flag is how three harnesses' `agents` claims stayed wrong",
+        );
+
+        let out = temp_dir.path().join(name);
+        let status = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+            .args(["build", "--target", name, "--out", out.to_str().unwrap()])
+            .status()
+            .expect("failed to execute shipmates build");
+        assert!(status.success(), "{name}: build failed");
+
+        let emits_effort = walk(&out).iter().any(|p| {
+            let is_agent = p.components().any(|c| c.as_os_str() == "agents")
+                && p.file_name().is_some_and(|f| f != "AGENTS.md");
+            is_agent && std::fs::read_to_string(p).is_ok_and(|c| carries_effort(&c))
+        });
+        assert_eq!(
+            claims_effort, emits_effort,
+            "{name}: harness_matrix.json says effort={claims_effort} but the adapter emits effort={emits_effort}",
         );
     }
 }
