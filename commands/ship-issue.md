@@ -52,10 +52,15 @@ not written into any crew file:
   acceptance call) → the top model available, higher effort.
 - **Unsure** → inherit the session model; never guess a model name.
 
+The role sets the **baseline** tier above; then **scale it by the work unit's complexity** (the
+Planner's signal): a `complex` unit bumps the model to the top tier and the effort
+up; a `trivial` unit drops toward the cheapest model and lowest effort; `standard` holds the baseline —
+so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.
+
 Use the harness's own per-spawn mechanism where it exists (e.g. a `model` argument on the spawn) to pick
 the tier-appropriate model; where the harness offers no per-spawn override, **inherit** — never emit a
-hardcoded model. Reasoning effort follows the same tiering on harnesses that expose it, and inherits
-where they don't. Spend the top model where it changes the outcome, not on mechanical turns.
+hardcoded model. **Effort** can only be adjusted per spawn on the harnesses that expose it (Codex,
+Cursor); on the others the role's static effort (from its crew file, #204) stands. Spend the top model where it changes the outcome, not on mechanical turns.
 
 ---
 
@@ -186,6 +191,9 @@ work from the backlog, then continue with the numbered steps below on the chosen
    - a **test/validation plan** (the commands the SDET should run: unit tests, lint, type-check,
      build/compile/import — whatever this repo uses),
    - a list of files expected to change,
+   - a **complexity signal per work unit** — `trivial`, `standard`, or `complex` — from its size,
+     unfamiliarity, algorithmic depth and blast radius; the orchestrator scales model/effort by it at
+     spawn (see **Model selection**),
    - **domain classification flags** that decide which specialists the board pulls (set each
      independently — a story can trip more than one):
      - `IS_UI_STORY = yes/no` — does it create/modify on-screen UI (screens, HUD, panels, overlays,
