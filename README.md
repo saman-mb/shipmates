@@ -188,6 +188,15 @@ enforces. Each harness records its evidence, and the date it was checked, in
 changes a repo does so on a branch — and `shipmates uninstall` is not (yet) implemented; delete the
 tree the harness installed instead.
 
+**Check an install with `shipmates doctor`.** Run `shipmates doctor` (add `--dir` to point at a
+specific project) for a read-only health report: is the harness tree present, did every crew agent
+and skill land, has any installed file drifted from the running binary, and is an old
+`commands/<name>.md` layout shadowing a skill? `shipmates doctor --fix` repairs what it can —
+migrating a superseded command layout to the skill that supersedes it and rewriting missing or
+drifted files — and backs up everything it touches under `.shipmates-backup/` first. A plain
+`install` also migrates a superseded command layout for you as it writes; pass `--no-migrate` to
+leave your old files in place.
+
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
 `disable-model-invocation` is not a frontmatter key a `SKILL.md` recognises there, so declaring it

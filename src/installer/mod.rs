@@ -1,4 +1,5 @@
 pub mod manifest_db;
+pub mod migrate;
 
 use std::fs;
 use std::path::Path;
@@ -23,9 +24,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test_file.txt");
         let content = "hello world";
-        
+
         atomic_write(&file_path, content).unwrap();
-        
+
         assert_eq!(fs::read_to_string(&file_path).unwrap(), content);
         // temp file shouldn't exist
         assert!(!dir.path().join("test_file.tmp").exists());
