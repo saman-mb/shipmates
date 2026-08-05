@@ -13,7 +13,7 @@ board: native
 # /pr-review — classify → convene the board → consolidate
 
 Point the crew at a pull request **somebody else wrote** — a teammate's, an outside contributor's, a
-dependency bump, or one you opened by hand before you thought to use Shipmates. Every other order
+dependency bump, or one you opened by hand before you thought to use Shipmates. Every other command
 assumes the crew authored the change; this one doesn't, and that single fact sets its shape: **no
 worktree, no build, no fix loop.** You don't own the branch, so the deliverable is findings, not
 commits.
