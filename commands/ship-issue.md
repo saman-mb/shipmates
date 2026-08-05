@@ -25,6 +25,18 @@ token — a digit later in the guidance is guidance, not an issue. When the guid
 a number, separate it explicitly with `--`, which ends the issue list wherever it appears:
 `104 -- 2 fix rounds max`.
 
+## Bundling — the token-efficient default
+
+Most of a run's token cost is **fixed overhead paid once per invocation**: the Planner pass, the
+acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup.
+That overhead barely grows with diff size, so shipping several **small, cohesive** issues in one run
+is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole
+board N times. **So bundling cohesive issues is the recommended default** (`BUNDLE=recommend`, see
+Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before
+building. Bundling is right only when the issues are *cohesive and cheap* — it is wrong when combining
+them would muddy the review or let one failure sink the rest, so the Stage 0 **cohesion test** is the
+gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.
+
 ---
 
 ## Config (defaults — override only if the repo clearly needs it)
@@ -38,6 +50,12 @@ a number, separate it explicitly with `--`, which ends the issue list wherever i
   of the configured default — a security-sensitive change must not auto-merge past the `/harden`
   recommendation.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
+- `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
+  leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues and **proposes** a bundle
+  before building, letting the user choose. `auto`: bundle cohesive siblings without asking — for
+  unattended / non-interactive runs only. `off`: ship exactly the issues passed, never suggest more. A
+  multi-issue invocation is already an explicit bundle, so it skips the recommendation (but still gets
+  the cohesion warning).
 - `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<first-issue>` (single issue)
   or `../<repo>--bundle-<first-issue>-<short-slug>` (multiple issues)
 - `BRANCH` = `feat/issue-<first-issue>-<short-slug>` (single) or `feat/bundle-<first-issue>-<short-slug>` (multiple)
@@ -100,6 +118,32 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
    this list, never from raw input tokens.
 2. `<first-issue>` = the first number in `<issues>` — it names the worktree and branch, so a re-run
    with the same leading issue resolves to the same identifiers.
+2.5. **Bundle evaluation** (per `BUNDLE`, before planning). Bundling amortizes the fixed per-run cost
+   (Planner + acceptance board + CI poll + worktree) across several tickets, so a combined run of
+   cohesive small issues is much cheaper than one run each. Apply the **cohesion test** — two issues
+   belong in one bundle only when ALL hold:
+   - **same area** — shared labels or overlapping paths — with **non-overlapping file ownership** (so
+     builders still parallelize without collisions);
+   - **each small and low-risk** — never fold an `IS_ARCH_SIGNIFICANT` or `IS_SECURITY_SENSITIVE`
+     change in with unrelated work; it needs its own review and its own merge story;
+   - **independent** — neither needs the other merged first;
+   - **still one reviewable PR** — the combined diff reads cleanly as a single change (cap a bundle at
+     ~4 issues / a diff a human would still review in one sitting).
+
+   Then act by `BUNDLE`:
+   - **multi-issue input** — already an explicit bundle: run the cohesion test and, if it fails,
+     **warn** (don't block), naming what makes them a poor bundle, then proceed as asked.
+   - **single issue, `BUNDLE=recommend`** (default) — if the issue is small/low-risk, run ONE cheap
+     `gh issue list --state open --label <its-labels> --json number,title,labels` for cohesive
+     candidates. If any pass the test, **recommend a bundle to the user** — list the candidates and the
+     token rationale — and let them choose which (if any) to fold in. In a non-interactive run, proceed
+     solo. Never widen the run without the user's ok on this path.
+   - **`BUNDLE=auto`** — fold in the passing candidates without asking (unattended runs only).
+   - **`BUNDLE=off`** — ship exactly the issues passed.
+
+   Add any accepted issues to `<issues>` (re-sort so `<first-issue>` is unchanged). Whatever the
+   bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
+   can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
 3. Spawn ONE **Planner** (`@role(planner)`). Give it all issue bodies + repo README +
    AGENTS.md. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
