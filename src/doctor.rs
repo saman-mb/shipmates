@@ -11,7 +11,7 @@ use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
 use crate::installer::{atomic_write, migrate};
 use anyhow::Result;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,20 +44,35 @@ impl Report {
     }
 }
 
+/// Strip the `<container>/` prefix from a built payload map, yielding the on-disk
+/// paths relative to the target directory — exactly as the installer writes them.
+///
+/// This is the sole transform from a single `adapter.build()` to the "expected
+/// files" both `diagnose` and `fix` compare against, so the payload is built once
+/// and this cheap map-strip feeds every check (avoids ~4 `build()` calls per
+/// `--fix`).
+fn strip_container(built: &HashMap<String, String>, container: &str) -> BTreeMap<String, String> {
+    let prefix = format!("{}/", container);
+    built
+        .iter()
+        .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|rel| (rel.to_string(), v.clone())))
+        .collect()
+}
+
 /// The files a healthy install must contain, keyed by their on-disk path relative
 /// to the target directory (the `<container>/` prefix stripped, exactly as the
-/// installer writes them).
+/// installer writes them). Only the test harness materialises a healthy tree from
+/// this now; production paths build once and pass the map via `strip_container`.
+#[cfg(test)]
 fn expected_files(
     adapter: &dyn Adapter,
     roles: &[CanonicalRole],
     cmds: &[CanonicalCommand],
 ) -> Result<BTreeMap<String, String>> {
-    let prefix = format!("{}/", adapter.container());
-    Ok(adapter
-        .build(roles, cmds)?
-        .into_iter()
-        .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|rel| (rel.to_string(), v)))
-        .collect())
+    Ok(strip_container(
+        &adapter.build(roles, cmds)?,
+        adapter.container(),
+    ))
 }
 
 fn agent_name(rel: &str) -> String {
@@ -77,8 +92,22 @@ pub fn diagnose(
     tools: &[CanonicalTool],
 ) -> Result<Report> {
     let adapter = adapters::select(harness)?;
-    let expected = expected_files(adapter.as_ref(), roles, cmds)?;
-    let built = adapter.build(roles, cmds)?; // container-prefixed, for migrate::plan
+    let built = adapter.build(roles, cmds)?;
+    diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
+}
+
+/// The body of `diagnose`, taking an already-built payload so `fix` can reuse the
+/// single `build()` it made rather than paying for two more. `built` is the
+/// container-prefixed map (as `adapter.build` returns, for `migrate::plan`);
+/// `expected` is derived from it once here.
+fn diagnose_built(
+    target_dir: &Path,
+    harness: &str,
+    adapter: &dyn Adapter,
+    built: &HashMap<String, String>,
+    tools: &[CanonicalTool],
+) -> Result<Report> {
+    let expected = strip_container(built, adapter.container());
     let version = env!("CARGO_PKG_VERSION");
     let mut checks = Vec::new();
 
@@ -126,7 +155,7 @@ pub fn diagnose(
     // skill. Only Shipmates-owned files are a fixable Problem (`--fix` migrates
     // them); a user's own file sharing a skill name is theirs to keep, so it is
     // an informational note rather than a Problem `--fix` could never clear.
-    let migration_items = migrate::plan(target_dir, &built, adapter.container());
+    let migration_items = migrate::plan(target_dir, built, adapter.container());
     let (owned, unmanaged): (Vec<&migrate::MigrationItem>, Vec<&migrate::MigrationItem>) =
         migration_items.iter().partition(|i| {
             let name = i
@@ -320,28 +349,36 @@ pub fn diagnose(
 /// Repair an install: migrate superseded commands, then restore any missing or
 /// drifted crew/skill files, backing up everything it touches. Re-diagnoses and
 /// returns the fresh report.
+///
+/// With `no_migrate`, the legacy-command sweep is skipped — parity with
+/// `install --no-migrate`: missing/drifted files are still restored, but a
+/// superseded `commands/<name>.md` is left in place.
 pub fn fix(
     target_dir: &Path,
     harness: &str,
     roles: &[CanonicalRole],
     cmds: &[CanonicalCommand],
     tools: &[CanonicalTool],
+    no_migrate: bool,
 ) -> Result<Report> {
     let adapter = adapters::select(harness)?;
-    let expected = expected_files(adapter.as_ref(), roles, cmds)?;
     let built = adapter.build(roles, cmds)?;
+    let expected = strip_container(&built, adapter.container());
     let backup_root = migrate::new_backup_root(target_dir);
 
-    // 1. Migrate any superseded command files (backed up before removal).
-    let items = migrate::plan(target_dir, &built, adapter.container());
-    if !items.is_empty() {
-        let report = migrate::apply(target_dir, &items, &backup_root)?;
-        if !report.migrated.is_empty() {
-            println!(
-                "Migrated {} superseded command(s) → skills (backup: {})",
-                report.migrated.len(),
-                backup_root.display()
-            );
+    // 1. Migrate any superseded command files (backed up before removal), unless
+    // the caller opted out with `--no-migrate`.
+    if !no_migrate {
+        let items = migrate::plan(target_dir, &built, adapter.container());
+        if !items.is_empty() {
+            let report = migrate::apply(target_dir, &items, &backup_root)?;
+            if !report.migrated.is_empty() {
+                println!(
+                    "Migrated {} superseded command(s) → skills (backup: {})",
+                    report.migrated.len(),
+                    backup_root.display()
+                );
+            }
         }
     }
 
@@ -367,7 +404,21 @@ pub fn fix(
                 }
                 backed_up += 1;
             }
-            Err(_) => {} // missing — nothing to back up, just write it
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                // Genuinely missing — nothing to back up, just write it below.
+            }
+            Err(_) => {
+                // Present but unreadable (chmod 000, non-UTF-8, …). `read_to_string`
+                // conflates this with "missing", but the two are not the same: we
+                // cannot hash the file to tell a drifted copy from a
+                // correct-but-unreadable one, and our text-based backup path cannot
+                // faithfully preserve arbitrary bytes. Overwriting here would
+                // destroy an existing file with no recoverable copy, so — the same
+                // "never destroy without a verified backup" rule `migrate::apply`
+                // follows — we leave it exactly as-is and report it skipped.
+                skipped.push(rel.clone());
+                continue;
+            }
         }
         atomic_write(&path, want)?;
         restored += 1;
@@ -392,14 +443,16 @@ pub fn fix(
     }
     if !skipped.is_empty() {
         println!(
-            "Skipped {} drifted file(s) — could not write a backup, so left them untouched: {}",
+            "Skipped {} file(s) shipmates could not safely repair (no verified backup, \
+             or present but unreadable) — left them untouched: {}",
             skipped.len(),
             skipped.join(", ")
         );
     }
 
-    // 3. Re-diagnose and hand back the fresh report.
-    diagnose(target_dir, harness, roles, cmds, tools)
+    // 3. Re-diagnose and hand back the fresh report — reusing the single built
+    // payload rather than rebuilding it.
+    diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
 }
 
 /// Print a report in a plain, positive voice — OKs included, so a healthy
@@ -571,7 +624,7 @@ mod tests {
         let before = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
         assert!(before.has_problems());
 
-        let after = fix(target, "claude-code", &roles, &cmds, &[]).unwrap();
+        let after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
         assert!(
             !after.has_problems(),
             "fix should leave a healthy install: {:?}",
@@ -579,5 +632,53 @@ mod tests {
         );
         assert!(target.join(".claude/agents/devops-engineer.md").exists());
         assert!(!target.join(".claude/commands/ship-issue.md").exists());
+    }
+
+    #[test]
+    fn test_fix_leaves_unreadable_file_untouched_and_skips_it() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(target, &roles, &cmds);
+
+        // Corrupt a managed file with invalid UTF-8 so `read_to_string` fails —
+        // present-but-unreadable, the case that used to be conflated with
+        // "missing" and overwritten with no backup.
+        let victim = target.join(".claude/agents/architect.md");
+        let bad_bytes = [0xffu8, 0xfe, 0x00, 0x9c];
+        std::fs::write(&victim, bad_bytes).unwrap();
+
+        let _ = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+
+        // Byte-for-byte untouched — never overwritten via atomic_write.
+        assert_eq!(std::fs::read(&victim).unwrap(), bad_bytes);
+        // Still unreadable as text, proving it was skipped rather than restored.
+        assert!(std::fs::read_to_string(&victim).is_err());
+    }
+
+    #[test]
+    fn test_fix_no_migrate_keeps_legacy_but_restores_missing() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect"), role("devops-engineer")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(target, &roles, &cmds);
+        // Break it: remove an agent, plant a superseded (owned) legacy command.
+        std::fs::remove_file(target.join(".claude/agents/devops-engineer.md")).unwrap();
+        atomic_write(
+            &target.join(".claude/commands/ship-issue.md"),
+            "---\nname: ship-issue\n---\nold\n",
+        )
+        .unwrap();
+
+        let after = fix(target, "claude-code", &roles, &cmds, &[], true).unwrap();
+
+        // Missing agent still restored...
+        assert!(target.join(".claude/agents/devops-engineer.md").exists());
+        // ...but the owned legacy command is left in place — no migration sweep.
+        assert!(target.join(".claude/commands/ship-issue.md").exists());
+        // And the report still flags the un-migrated legacy layout as a Problem.
+        assert_eq!(sev(&after, "Layout"), Severity::Problem);
     }
 }

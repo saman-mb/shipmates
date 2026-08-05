@@ -69,6 +69,12 @@ pub enum Command {
 
         #[arg(long, default_value_t = false)]
         fix: bool,
+
+        /// Skip the legacy-command migration sweep during `--fix`, matching
+        /// `install --no-migrate`: missing/drifted files are still restored, but a
+        /// superseded `commands/<name>.md` is left in place.
+        #[arg(long)]
+        no_migrate: bool,
     },
     Targets,
 }
