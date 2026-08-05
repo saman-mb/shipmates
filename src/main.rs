@@ -7,7 +7,6 @@ mod embedded;
 mod installer;
 mod manifest;
 
-use adapters::Adapter;
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use cli::{Cli, Command};
@@ -134,10 +133,6 @@ fn provision_tool_deps(scripts: &[PathBuf]) {
     }
 }
 
-fn select(target: &str) -> Result<Box<dyn Adapter>> {
-    adapters::select(target)
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -236,7 +231,7 @@ fn main() -> Result<()> {
             let mut provision_scripts: Vec<PathBuf> = Vec::new();
 
             for harness in &harnesses {
-                let adapter = select(harness)?;
+                let adapter = adapters::select(harness)?;
                 let files = adapter.build(&roles, &cmds)?;
                 let tool_files = adapter.build_tools(&selected_tools);
                 // `harnesses/<target>/` — the harness's staging container, so its
@@ -309,6 +304,11 @@ fn main() -> Result<()> {
                             report.migrated.len(),
                             backup_root.display()
                         );
+                        // List each removed legacy file and where its backup
+                        // landed, so this default-on cleanup is never silent.
+                        for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
+                            println!("  moved {} → {}", legacy.display(), backup.display());
+                        }
                     }
                 }
             }
@@ -333,7 +333,7 @@ fn main() -> Result<()> {
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
 
-            let adapter = select(&target)?;
+            let adapter = adapters::select(&target)?;
             let files = adapter.build(&roles, &cmds)?;
 
             if check {
@@ -359,7 +359,7 @@ fn main() -> Result<()> {
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
 
-            let adapter = select(&target)?;
+            let adapter = adapters::select(&target)?;
             let files = adapter.build(&roles, &cmds)?;
             check_digests(&target, adapter.digest_root(), &files, root_path)?;
         }
@@ -371,7 +371,7 @@ fn main() -> Result<()> {
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
 
-            let adapter = select(&target)?;
+            let adapter = adapters::select(&target)?;
             let files = adapter.build(&roles, &cmds)?;
             write_digests(&target, adapter.digest_root(), &files, root_path)?;
         }

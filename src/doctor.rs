@@ -347,28 +347,54 @@ pub fn fix(
 
     // 2. Write any missing or drifted crew/skill files, backing up what we overwrite.
     let mut restored = 0usize;
+    let mut backed_up = 0usize;
+    let mut skipped: Vec<String> = Vec::new();
     for (rel, want) in &expected {
         let path = target_dir.join(rel);
-        let needs = match std::fs::read_to_string(&path) {
-            Ok(on_disk) => digest::hash(&on_disk) != digest::hash(want),
-            Err(_) => true, // missing
-        };
-        if !needs {
-            continue;
-        }
-        // Back up an existing (drifted) file before overwriting it.
-        if let Ok(on_disk) = std::fs::read_to_string(&path) {
-            let _ = atomic_write(&backup_root.join(rel), &on_disk);
+        match std::fs::read_to_string(&path) {
+            Ok(on_disk) => {
+                if digest::hash(&on_disk) == digest::hash(want) {
+                    continue; // already current — nothing to restore
+                }
+                // Drifted: back up the user's file and VERIFY the copy exists
+                // before overwriting, mirroring `migrate::apply`. If the backup
+                // can't be written we skip this file rather than destroy the
+                // customization with no recoverable copy.
+                let backup_path = backup_root.join(rel);
+                if atomic_write(&backup_path, &on_disk).is_err() || !backup_path.exists() {
+                    skipped.push(rel.clone());
+                    continue;
+                }
+                backed_up += 1;
+            }
+            Err(_) => {} // missing — nothing to back up, just write it
         }
         atomic_write(&path, want)?;
         restored += 1;
     }
     if restored > 0 {
+        // A backup dir is only created for drifted overwrites; restoring only
+        // missing files writes no backup, so don't advertise one that isn't there.
+        if backed_up > 0 {
+            println!(
+                "Restored {} crew/skill file(s) to shipmates v{} (backup: {})",
+                restored,
+                env!("CARGO_PKG_VERSION"),
+                backup_root.display()
+            );
+        } else {
+            println!(
+                "Restored {} crew/skill file(s) to shipmates v{}",
+                restored,
+                env!("CARGO_PKG_VERSION")
+            );
+        }
+    }
+    if !skipped.is_empty() {
         println!(
-            "Restored {} crew/skill file(s) to shipmates v{} (backup: {})",
-            restored,
-            env!("CARGO_PKG_VERSION"),
-            backup_root.display()
+            "Skipped {} drifted file(s) — could not write a backup, so left them untouched: {}",
+            skipped.len(),
+            skipped.join(", ")
         );
     }
 

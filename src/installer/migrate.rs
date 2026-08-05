@@ -51,6 +51,11 @@ pub struct MigrationReport {
 /// harness that never had a `commands/` layout beside its skills (opencode ships
 /// live commands but no skills; the `.agents/*` trees ship skills but no
 /// commands) yields an empty plan and no live file is ever touched.
+///
+/// The invariant is structural: a skill supersedes a legacy command only when
+/// the current payload no longer ships that command. If the built payload itself
+/// still ships `…/commands/<name>.md`, that command is live — it is kept, never
+/// scheduled for removal — even when a same-named skill is written beside it.
 pub fn plan(
     target_dir: &Path,
     built: &HashMap<String, String>,
@@ -82,6 +87,12 @@ pub fn plan(
         }
         legacy_path.push("commands");
         legacy_path.push(format!("{}.md", name));
+        // Structural self-limiting: if the CURRENT payload still ships this
+        // command, the skill does not supersede it — never schedule a live file
+        // for deletion, even when a same-named skill is written beside it.
+        if built.contains_key(&format!("{}/{}", container, legacy_path.display())) {
+            continue;
+        }
         if !target_dir.join(&legacy_path).exists() {
             continue;
         }
@@ -274,6 +285,28 @@ mod tests {
         let report = apply(target, &items, &new_backup_root(target)).unwrap();
         assert!(report.migrated.is_empty());
         assert_eq!(report.skipped_unmanaged.len(), 1);
+    }
+
+    #[test]
+    fn test_payload_shipping_both_skill_and_command_keeps_the_command() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        // A legacy command sits on disk...
+        let legacy = target.join(".claude/commands/x.md");
+        atomic_write(&legacy, &owned_command("x")).unwrap();
+        // ...but the CURRENT payload ships BOTH the skill AND the command for x.
+        let mut built = built_with_skill("x");
+        built.insert(
+            format!("{}/.claude/commands/x.md", CONTAINER),
+            "current command".to_string(),
+        );
+        // The command is live, so it must never be scheduled for removal.
+        let items = plan(target, &built, CONTAINER);
+        assert!(
+            items.is_empty(),
+            "a command the current payload still ships must not be scheduled for deletion"
+        );
+        assert!(legacy.exists());
     }
 
     #[test]
