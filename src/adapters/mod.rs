@@ -12,7 +12,11 @@ pub mod windsurf;
 pub mod zed;
 
 pub trait Adapter {
-    fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>>;
+    fn build(
+        &self,
+        roles: &[CanonicalRole],
+        commands: &[CanonicalCommand],
+    ) -> anyhow::Result<HashMap<String, String>>;
 
     /// Map the harness-agnostic tools to this harness's native tool surface.
     ///
@@ -38,7 +42,10 @@ pub trait Adapter {
     /// `.agents/skills/` emitters build their paths from. Derived from
     /// `base_dir()`, so an adapter never has to restate it.
     fn container(&self) -> &'static str {
-        self.base_dir().rsplit_once('/').map(|(c, _)| c).unwrap_or_else(|| self.base_dir())
+        self.base_dir()
+            .rsplit_once('/')
+            .map(|(c, _)| c)
+            .unwrap_or_else(|| self.base_dir())
     }
 
     /// The path prefix stripped when recording and checking payload digests.
@@ -55,6 +62,23 @@ pub trait Adapter {
 
 #[allow(dead_code)]
 pub fn conformance_report() {}
+
+/// Resolve a target name to its adapter. Shared by `install`, `build`, `check`,
+/// `update` and `doctor`, so a new harness is wired into selection in one place.
+pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
+    let adapter: Box<dyn Adapter> = match target {
+        "opencode" => Box::new(opencode::OpencodeAdapter),
+        "claude-code" => Box::new(claude_code::ClaudeCodeAdapter),
+        "antigravity" => Box::new(antigravity::AntigravityAdapter),
+        "codex" => Box::new(codex::CodexAdapter),
+        "cursor" => Box::new(cursor::CursorAdapter),
+        "github-copilot" => Box::new(github_copilot::GithubCopilotAdapter),
+        "windsurf" => Box::new(windsurf::WindsurfAdapter),
+        "zed" => Box::new(zed::ZedAdapter),
+        other => anyhow::bail!("Unsupported target: {}", other),
+    };
+    Ok(adapter)
+}
 
 /// The harnesses a user can `shipmates install --harness <name>` for.
 pub fn targets() -> [&'static str; 8] {

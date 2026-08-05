@@ -189,6 +189,15 @@
         <div class="faq__list">
           <details class="faq__item">
             <summary class="faq__q">
+              <span class="faq__q-text">Is my install healthy, or stale after an upgrade?</span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p><strong>Check it:</strong> run <code>shipmates doctor</code> (add <code>--dir /path/to/project</code> to point at a specific tree). It reports, in a plain pass/attention list, whether the harness&#x27;s directory is present, whether every crew agent and skill landed, whether any installed file has drifted from the running binary, and whether an old <code>commands/&lt;name&gt;.md</code> layout is shadowing a skill. Doctor is read-only — it never changes anything until you ask. <strong>Fix it:</strong> run <code>shipmates doctor --fix</code> and it repairs what it can — it migrates a superseded command layout to the skill that replaces it, and rewrites any missing or drifted crew and skill files back to the running version. Everything it touches is backed up first, under <code>.shipmates-backup/</code> in the target directory, so a change is always recoverable. Doctor exits non-zero when a problem remains, so it slots cleanly into a script or CI check.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
               <span class="faq__q-text"><code>cargo run -- check --target &lt;name&gt;</code> fails: digest mismatch</span>
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
@@ -211,7 +220,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> <code>--harness</code> selects the tree, and the default is <code>claude-code</code> — a forgotten flag installs there. <strong>Fix:</strong> remove the wrong tree (<code>rm -rf .claude</code> — Shipmates installs whole trees, so removal is by hand) and reinstall with the correct <code>--harness</code>. Run <code>shipmates targets</code> to list the names.</p>
+              <p><strong>Cause:</strong> <code>--harness</code> selects the tree, and the default is <code>claude-code</code> — a forgotten flag installs there. <strong>Fix:</strong> remove the wrong tree (<code>rm -rf .claude</code> — Shipmates installs whole trees, so removal is by hand) and reinstall with the correct <code>--harness</code>. Run <code>shipmates targets</code> to list the names. If the tree is the <em>right</em> harness but looks stale or partly missing — say after an upgrade — reach for <code>shipmates doctor --fix</code> first: it restores the missing and drifted files (backing up whatever it changes) instead of removing anything.</p>
             </div>
           </details>
           <details class="faq__item">
