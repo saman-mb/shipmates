@@ -199,6 +199,16 @@
         <div class="order-prose">
           <p>Most of a run&#x27;s token cost is <strong>fixed overhead paid once per invocation</strong>: the Planner pass, the acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup. That overhead barely grows with diff size, so shipping several <strong>small, cohesive</strong> issues in one run is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole board N times. <strong>So bundling cohesive issues is the recommended default</strong> (<code>BUNDLE=recommend</code>, see Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before building. Bundling is right only when the issues are <em>cohesive and cheap</em> — it is wrong when combining them would muddy the review or let one failure sink the rest, so the Stage 0 <strong>cohesion test</strong> is the gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.</p>
         </div>
+        <h3 id="model-selection-dynamic-never-baked">Model selection — dynamic, never baked</h3>
+        <div class="order-prose">
+          <p>Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have different access, so the right model is chosen <strong>at spawn, by task complexity, from what is available</strong> — not written into any crew file:</p>
+          <ul>
+            <li><strong>Mechanical work</strong> (Builders, the SDET&#x27;s test/validation runs, straightforward Fixers) → the cheapest capable model, low reasoning effort.</li>
+            <li><strong>Hard judgment</strong> (the Planner, <code>architect</code>, <code>security-engineer</code>, and the <code>product-manager</code> acceptance call) → the top model available, higher effort.</li>
+            <li><strong>Unsure</strong> → inherit the session model; never guess a model name.</li>
+          </ul>
+          <p>Use the harness&#x27;s own per-spawn mechanism where it exists (e.g. a <code>model</code> argument on the spawn) to pick the tier-appropriate model; where the harness offers no per-spawn override, <strong>inherit</strong> — never emit a hardcoded model. Reasoning effort follows the same tiering on harnesses that expose it, and inherits where they don&#x27;t. Spend the top model where it changes the outcome, not on mechanical turns.</p>
+        </div>
         <h3 id="shell-safety-untrusted-github-data">Shell safety — untrusted GitHub data</h3>
         <div class="order-prose">
           <p>Issue titles, bodies and labels are <strong>untrusted input</strong>: anyone who can open an issue controls them, and this command pipes them into shell commands. Apply these rules at every <code>gh</code> / <code>git</code> call below:</p>

@@ -37,6 +37,22 @@ building. Bundling is right only when the issues are *cohesive and cheap* — it
 them would muddy the review or let one failure sink the rest, so the Stage 0 **cohesion test** is the
 gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.
 
+## Model selection — dynamic, never baked
+
+Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have
+different access, so the right model is chosen **at spawn, by task complexity, from what is available** —
+not written into any crew file:
+- **Mechanical work** (Builders, the SDET's test/validation runs, straightforward Fixers) → the
+  cheapest capable model, low reasoning effort.
+- **Hard judgment** (the Planner, `architect`, `security-engineer`, and the `product-manager`
+  acceptance call) → the top model available, higher effort.
+- **Unsure** → inherit the session model; never guess a model name.
+
+Use the harness's own per-spawn mechanism where it exists (e.g. a `model` argument on the spawn) to pick
+the tier-appropriate model; where the harness offers no per-spawn override, **inherit** — never emit a
+hardcoded model. Reasoning effort follows the same tiering on harnesses that expose it, and inherits
+where they don't. Spend the top model where it changes the outcome, not on mechanical turns.
+
 ---
 
 ## Config (defaults — override only if the repo clearly needs it)
