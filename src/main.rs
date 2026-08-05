@@ -6,6 +6,7 @@ mod doctor;
 mod embedded;
 mod installer;
 mod manifest;
+mod state;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -425,6 +426,11 @@ fn main() -> Result<()> {
             for name in adapters::targets() {
                 println!("{}", name);
             }
+        }
+        Command::State { action } => {
+            // The FSM engine owns the 0/1/2 exit ABI, so exit with its code
+            // directly rather than through `bail!` (which would force exit 1).
+            std::process::exit(state::dispatch(&action));
         }
     }
     Ok(())
