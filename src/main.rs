@@ -1,18 +1,18 @@
-mod cli;
-mod manifest;
-mod catalog;
-mod digest;
-mod embedded;
 mod adapters;
+mod catalog;
+mod cli;
+mod digest;
+mod doctor;
+mod embedded;
 mod installer;
+mod manifest;
 
-use adapters::Adapter;
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use cli::{Cli, Command};
-use std::path::{Path, PathBuf};
-use anyhow::{bail, Context, Result};
 use std::fs;
 use std::io::{IsTerminal, Write};
+use std::path::{Path, PathBuf};
 
 use catalog::CanonicalTool;
 
@@ -32,7 +32,10 @@ fn select_tools_from_line(line: &str, available: &[CanonicalTool]) -> Option<Vec
         return Some(available.to_vec());
     }
     let mut picked: Vec<CanonicalTool> = Vec::new();
-    for token in trimmed.split(|c: char| c == ',' || c.is_whitespace()).filter(|s| !s.is_empty()) {
+    for token in trimmed
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|s| !s.is_empty())
+    {
         match token.parse::<usize>() {
             Ok(n) if n >= 1 && n <= available.len() => {
                 let tool = &available[n - 1];
@@ -55,7 +58,15 @@ fn prompt_for_tools(available: &[CanonicalTool]) -> Vec<CanonicalTool> {
     println!("\nOptional tools — the crew reach for these implicitly when a task needs one.");
     println!("They're off by default; pick any you'd like installed:\n");
     for (i, tool) in available.iter().enumerate() {
-        let blurb: String = tool.description.split(['.', '\n']).next().unwrap_or("").trim().chars().take(72).collect();
+        let blurb: String = tool
+            .description
+            .split(['.', '\n'])
+            .next()
+            .unwrap_or("")
+            .trim()
+            .chars()
+            .take(72)
+            .collect();
         println!("  {}) {} — {}", i + 1, tool.name, blurb);
     }
     for _ in 0..3 {
@@ -67,7 +78,10 @@ fn prompt_for_tools(available: &[CanonicalTool]) -> Vec<CanonicalTool> {
         }
         match select_tools_from_line(&line, available) {
             Some(tools) => return tools,
-            None => println!("  Pick numbers from 1 to {} (or 'all', or Enter for none).", available.len()),
+            None => println!(
+                "  Pick numbers from 1 to {} (or 'all', or Enter for none).",
+                available.len()
+            ),
         }
     }
     println!("  No valid selection — installing no tools.");
@@ -90,11 +104,16 @@ fn provision_tool_deps(scripts: &[PathBuf]) {
             .unwrap_or(false)
     });
     let Some(python) = python else {
-        println!("Note: the installed tool(s) need Python 3 to run; install it and they self-provision the rest on first use.");
+        println!(
+            "Note: the installed tool(s) need Python 3 to run; install it and they self-provision the rest on first use."
+        );
         return;
     };
     for script in scripts {
-        let name = script.file_name().and_then(|s| s.to_str()).unwrap_or("tool");
+        let name = script
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("tool");
         print!("Preparing {} …", name);
         let _ = std::io::stdout().flush();
         let ok = std::process::Command::new(python)
@@ -103,29 +122,26 @@ fn provision_tool_deps(scripts: &[PathBuf]) {
             .status()
             .map(|s| s.success())
             .unwrap_or(false);
-        println!("{}", if ok { " ready" } else { " will provision on first run" });
+        println!(
+            "{}",
+            if ok {
+                " ready"
+            } else {
+                " will provision on first run"
+            }
+        );
     }
-}
-
-fn select(target: &str) -> Result<Box<dyn Adapter>> {
-    let adapter: Box<dyn Adapter> = match target {
-        "opencode" => Box::new(adapters::opencode::OpencodeAdapter),
-        "claude-code" => Box::new(adapters::claude_code::ClaudeCodeAdapter),
-        "antigravity" => Box::new(adapters::antigravity::AntigravityAdapter),
-        "codex" => Box::new(adapters::codex::CodexAdapter),
-        "cursor" => Box::new(adapters::cursor::CursorAdapter),
-        "github-copilot" => Box::new(adapters::github_copilot::GithubCopilotAdapter),
-        "windsurf" => Box::new(adapters::windsurf::WindsurfAdapter),
-        "zed" => Box::new(adapters::zed::ZedAdapter),
-        other => bail!("Unsupported target: {}", other),
-    };
-    Ok(adapter)
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Install { harness, dir, with_tools } => {
+        Command::Install {
+            harness,
+            dir,
+            with_tools,
+            no_migrate,
+        } => {
             let root = Path::new(".");
             let roles_path = root.join("crew");
             let commands_path = root.join("commands");
@@ -151,8 +167,7 @@ fn main() -> Result<()> {
             // run (CI, a pipe, a script) installs none, keeping a plain install
             // to crew + commands as it has always been. When the flag IS given,
             // it names the tools (or `all` / `none`) with no prompt.
-            let non_interactive_default =
-                with_tools.is_none() && !std::io::stdin().is_terminal();
+            let non_interactive_default = with_tools.is_none() && !std::io::stdin().is_terminal();
             let selected_tools = if non_interactive_default {
                 Vec::new()
             } else {
@@ -164,7 +179,8 @@ fn main() -> Result<()> {
                 match with_tools {
                     // Flag given: resolve names / `all` / `none`, error on unknown.
                     Some(want) => {
-                        let want: Vec<String> = want.into_iter().filter(|w| !w.is_empty()).collect();
+                        let want: Vec<String> =
+                            want.into_iter().filter(|w| !w.is_empty()).collect();
                         if want.iter().any(|t| t == "none") {
                             Vec::new()
                         } else if want.iter().any(|t| t == "all") {
@@ -172,11 +188,15 @@ fn main() -> Result<()> {
                         } else {
                             for w in &want {
                                 if !available.iter().any(|t| &t.name == w) {
-                                    let names: Vec<&str> = available.iter().map(|t| t.name.as_str()).collect();
+                                    let names: Vec<&str> =
+                                        available.iter().map(|t| t.name.as_str()).collect();
                                     bail!("unknown tool: {} (available: {})", w, names.join(", "));
                                 }
                             }
-                            available.into_iter().filter(|t| want.contains(&t.name)).collect()
+                            available
+                                .into_iter()
+                                .filter(|t| want.contains(&t.name))
+                                .collect()
                         }
                     }
                     // Flag omitted on a terminal: let the user pick.
@@ -201,19 +221,35 @@ fn main() -> Result<()> {
             let provision_filenames: std::collections::HashSet<String> = selected_tools
                 .iter()
                 .filter(|t| !t.requires.is_empty())
-                .flat_map(|t| t.assets.iter().map(|(rel, _)| rel.rsplit('/').next().unwrap_or(rel).to_string()))
+                .flat_map(|t| {
+                    t.assets
+                        .iter()
+                        .map(|(rel, _)| rel.rsplit('/').next().unwrap_or(rel).to_string())
+                })
                 .filter(|f| f.ends_with(".py"))
                 .collect();
             let mut provision_scripts: Vec<PathBuf> = Vec::new();
 
             for harness in &harnesses {
-                let adapter = select(harness)?;
+                let adapter = adapters::select(harness)?;
                 let files = adapter.build(&roles, &cmds)?;
                 let tool_files = adapter.build_tools(&selected_tools);
                 // `harnesses/<target>/` — the harness's staging container, so its
                 // own dotdirs (`.claude/`, `.codex/`, the shared `.agents/`, …)
                 // land at the target root when this prefix is stripped.
                 let strip = format!("{}/", adapter.container());
+
+                // Plan the legacy-command → skill migration from the built payload
+                // (container-prefixed keys) BEFORE the write loop consumes `files`.
+                // Self-limiting: only harnesses that ship a skill beside a live
+                // legacy `commands/<name>.md` on disk yield a non-empty plan, so
+                // opencode (commands, no skills) and the `.agents/*` skill trees
+                // never touch a current command file.
+                let migration_items = if no_migrate {
+                    Vec::new()
+                } else {
+                    installer::migrate::plan(&target_dir, &files, adapter.container())
+                };
 
                 // The real count of files this harness writes — 24 for the
                 // crew-bearing targets (12 crew + 12 commands), 12 for the
@@ -233,7 +269,9 @@ fn main() -> Result<()> {
                     // (deduped by filename) to pre-warm after all harnesses land.
                     if let Some(fname) = rel.rsplit('/').next() {
                         if provision_filenames.contains(fname)
-                            && !provision_scripts.iter().any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
+                            && !provision_scripts
+                                .iter()
+                                .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
                         {
                             provision_scripts.push(full_path.clone());
                         }
@@ -246,8 +284,32 @@ fn main() -> Result<()> {
                     let names: Vec<&str> = selected_tools.iter().map(|t| t.name.as_str()).collect();
                     println!(
                         "Installed harness: {} ({} files written, tools: {})",
-                        harness, written, names.join(", ")
+                        harness,
+                        written,
+                        names.join(", ")
                     );
+                }
+
+                // Apply the migration AFTER the payload is written: back up each
+                // superseded, Shipmates-owned legacy command, then remove it. A
+                // backup is always written and verified before any delete, and a
+                // non-owned file that merely shares a name is never touched.
+                if !migration_items.is_empty() {
+                    let backup_root = installer::migrate::new_backup_root(&target_dir);
+                    let report =
+                        installer::migrate::apply(&target_dir, &migration_items, &backup_root)?;
+                    if !report.migrated.is_empty() {
+                        println!(
+                            "Migrated {} superseded command(s) → skills (backup: {})",
+                            report.migrated.len(),
+                            backup_root.display()
+                        );
+                        // List each removed legacy file and where its backup
+                        // landed, so this default-on cleanup is never silent.
+                        for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
+                            println!("  moved {} → {}", legacy.display(), backup.display());
+                        }
+                    }
                 }
             }
 
@@ -256,8 +318,14 @@ fn main() -> Result<()> {
             if !provision_scripts.is_empty() {
                 provision_tool_deps(&provision_scripts);
             }
-        },
-        Command::Build { target, root, out, check, update } => {
+        }
+        Command::Build {
+            target,
+            root,
+            out,
+            check,
+            update,
+        } => {
             let root_path = Path::new(&root);
             let roles_path = root_path.join("crew");
             let commands_path = root_path.join("commands");
@@ -265,7 +333,7 @@ fn main() -> Result<()> {
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
 
-            let adapter = select(&target)?;
+            let adapter = adapters::select(&target)?;
             let files = adapter.build(&roles, &cmds)?;
 
             if check {
@@ -273,14 +341,16 @@ fn main() -> Result<()> {
             } else if update {
                 write_digests(&target, adapter.digest_root(), &files, root_path)?;
             } else {
-                let out_dir = out.map(PathBuf::from).unwrap_or_else(|| root_path.join("harnesses").join(&target));
+                let out_dir = out
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| root_path.join("harnesses").join(&target));
                 for (path_str, content) in files {
                     let full_path = out_dir.join(&path_str);
                     installer::atomic_write(&full_path, &content)?;
                 }
                 println!("Built payload for target: {}", target);
             }
-        },
+        }
         Command::Check { target, root } => {
             let root_path = Path::new(&root);
             let roles_path = root_path.join("crew");
@@ -289,10 +359,10 @@ fn main() -> Result<()> {
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
 
-            let adapter = select(&target)?;
+            let adapter = adapters::select(&target)?;
             let files = adapter.build(&roles, &cmds)?;
             check_digests(&target, adapter.digest_root(), &files, root_path)?;
-        },
+        }
         Command::Update { target, root } => {
             let root_path = Path::new(&root);
             let roles_path = root_path.join("crew");
@@ -301,10 +371,51 @@ fn main() -> Result<()> {
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
 
-            let adapter = select(&target)?;
+            let adapter = adapters::select(&target)?;
             let files = adapter.build(&roles, &cmds)?;
             write_digests(&target, adapter.digest_root(), &files, root_path)?;
-        },
+        }
+        Command::Doctor { harness, dir, fix } => {
+            let root = Path::new(".");
+            let roles_path = root.join("crew");
+            let commands_path = root.join("commands");
+            let tools_path = root.join("toolbox");
+
+            // Same on-disk-or-embedded fallback as `install`: the repo dev loop
+            // reads `crew/` + `commands/` + `toolbox/`, a brew/cargo binary reads
+            // the payload compiled in by `build.rs`.
+            let roles = if roles_path.is_dir() {
+                catalog::load_roles(&roles_path).context("Failed to load roles")?
+            } else {
+                catalog::load_roles_embedded().context("Failed to load embedded roles")?
+            };
+            let cmds = if commands_path.is_dir() {
+                catalog::load_commands(&commands_path).context("Failed to load commands")?
+            } else {
+                catalog::load_commands_embedded().context("Failed to load embedded commands")?
+            };
+            let tools = if tools_path.is_dir() {
+                catalog::load_tools(&tools_path).context("Failed to load tools")?
+            } else {
+                catalog::load_tools_embedded().context("Failed to load embedded tools")?
+            };
+
+            // Honour `--dir` (default `.`) — operate on the resolved target, not
+            // the current directory.
+            let target_dir = dir.map(PathBuf::from).unwrap_or_else(|| root.to_path_buf());
+
+            let report = if fix {
+                doctor::fix(&target_dir, &harness, &roles, &cmds, &tools)?
+            } else {
+                doctor::diagnose(&target_dir, &harness, &roles, &cmds, &tools)?
+            };
+            doctor::print_report(&report);
+            // Exit 2 on problems via `std::process::exit` — not `bail!`, which
+            // would print an error and exit 1 rather than the health-check code.
+            if report.has_problems() {
+                std::process::exit(2);
+            }
+        }
         Command::Targets => {
             for name in adapters::targets() {
                 println!("{}", name);
@@ -320,8 +431,16 @@ fn main() -> Result<()> {
 /// a target that writes into more than one dotdir — Codex, with crew at
 /// `.codex/` and skills at `.agents/` — is covered whole rather than only under
 /// its `base_dir`.
-fn check_digests(target: &str, digest_root: &str, files: &std::collections::HashMap<String, String>, root_path: &Path) -> Result<()> {
-    let digest_file = root_path.join("tests").join("payload-digests").join(format!("{}.sha256", target));
+fn check_digests(
+    target: &str,
+    digest_root: &str,
+    files: &std::collections::HashMap<String, String>,
+    root_path: &Path,
+) -> Result<()> {
+    let digest_file = root_path
+        .join("tests")
+        .join("payload-digests")
+        .join(format!("{}.sha256", target));
     if !digest_file.exists() {
         bail!("Digest file missing: {:?}", digest_file);
     }
@@ -335,7 +454,12 @@ fn check_digests(target: &str, digest_root: &str, files: &std::collections::Hash
             if let Some(content) = files.get(&key) {
                 let actual_hash = digest::hash(content);
                 if actual_hash != expected_hash {
-                    bail!("Digest mismatch for {}: expected {}, got {}", rel_path, expected_hash, actual_hash);
+                    bail!(
+                        "Digest mismatch for {}: expected {}, got {}",
+                        rel_path,
+                        expected_hash,
+                        actual_hash
+                    );
                 }
             } else {
                 bail!("Payload is missing a digest entry: {}", rel_path);
@@ -350,12 +474,18 @@ fn check_digests(target: &str, digest_root: &str, files: &std::collections::Hash
 ///
 /// Keyed on the install container (`harnesses/<target>`) so every dotdir a
 /// harness writes is recorded — see `check_digests`.
-fn write_digests(target: &str, digest_root: &str, files: &std::collections::HashMap<String, String>, root_path: &Path) -> Result<()> {
+fn write_digests(
+    target: &str,
+    digest_root: &str,
+    files: &std::collections::HashMap<String, String>,
+    root_path: &Path,
+) -> Result<()> {
     let prefix = format!("{}/", digest_root);
     let mut entries: Vec<(String, String)> = files
         .iter()
         .filter_map(|(path, content)| {
-            path.strip_prefix(&prefix).map(|rel| (rel.to_string(), digest::hash(content)))
+            path.strip_prefix(&prefix)
+                .map(|rel| (rel.to_string(), digest::hash(content)))
         })
         .collect();
     entries.sort();
@@ -367,7 +497,10 @@ fn write_digests(target: &str, digest_root: &str, files: &std::collections::Hash
         out.push_str(&format!("{} {}\n", rel, hash));
     }
 
-    let digest_file = root_path.join("tests").join("payload-digests").join(format!("{}.sha256", target));
+    let digest_file = root_path
+        .join("tests")
+        .join("payload-digests")
+        .join(format!("{}.sha256", target));
     fs::create_dir_all(digest_file.parent().unwrap())?;
     installer::atomic_write(&digest_file, &out)?;
     println!("Wrote digests for target: {}", target);
@@ -405,17 +538,32 @@ mod tests {
     #[test]
     fn test_tool_line_all_selects_everything() {
         let avail = [tool("termgif"), tool("second")];
-        assert_eq!(names(select_tools_from_line("all", &avail)), Some(vec!["termgif".into(), "second".into()]));
-        assert_eq!(names(select_tools_from_line("A", &avail)), Some(vec!["termgif".into(), "second".into()]));
+        assert_eq!(
+            names(select_tools_from_line("all", &avail)),
+            Some(vec!["termgif".into(), "second".into()])
+        );
+        assert_eq!(
+            names(select_tools_from_line("A", &avail)),
+            Some(vec!["termgif".into(), "second".into()])
+        );
     }
 
     #[test]
     fn test_tool_line_numbers_pick_in_order_and_dedup() {
         let avail = [tool("termgif"), tool("second"), tool("third")];
-        assert_eq!(names(select_tools_from_line("1", &avail)), Some(vec!["termgif".into()]));
-        assert_eq!(names(select_tools_from_line("3, 1", &avail)), Some(vec!["third".into(), "termgif".into()]));
+        assert_eq!(
+            names(select_tools_from_line("1", &avail)),
+            Some(vec!["termgif".into()])
+        );
+        assert_eq!(
+            names(select_tools_from_line("3, 1", &avail)),
+            Some(vec!["third".into(), "termgif".into()])
+        );
         // whitespace-separated and duplicates collapse
-        assert_eq!(names(select_tools_from_line("2 2 2", &avail)), Some(vec!["second".into()]));
+        assert_eq!(
+            names(select_tools_from_line("2 2 2", &avail)),
+            Some(vec!["second".into()])
+        );
     }
 
     #[test]
