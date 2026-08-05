@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/onboard — recon → draft → prove it answers · Shipmates</title>
-  <meta name="description" content="Read an unfamiliar repo and write the agent-facing context file every other order depends on — conventions, commands, boundaries and the quality bar, proven…">
+  <meta name="description" content="Read an unfamiliar repo and write the agent-facing context file every other command depends on — conventions, commands, boundaries and the quality bar,…">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/onboard/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/onboard — recon → draft → prove it answers">
-  <meta property="og:description" content="Read an unfamiliar repo and write the agent-facing context file every other order depends on — conventions, commands, boundaries and the quality bar, proven…">
+  <meta property="og:description" content="Read an unfamiliar repo and write the agent-facing context file every other command depends on — conventions, commands, boundaries and the quality bar,…">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/onboard/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/onboard — recon → draft → prove it answers">
-  <meta name="twitter:description" content="Read an unfamiliar repo and write the agent-facing context file every other order depends on — conventions, commands, boundaries and the quality bar, proven…">
+  <meta name="twitter:description" content="Read an unfamiliar repo and write the agent-facing context file every other command depends on — conventions, commands, boundaries and the quality bar,…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/onboard",
-    "description": "Read an unfamiliar repo and write the agent-facing context file every other order depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew's real questions from the file alone.",
+    "description": "Read an unfamiliar repo and write the agent-facing context file every other command depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew's real questions from the file alone.",
     "url": "https://saman-mb.github.io/shipmates/commands/onboard/",
     "step": [
       {
@@ -115,11 +115,11 @@
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <h1 class="order-detail__title" id="order-title"><code>/onboard</code></h1>
           <p class="order-detail__tagline">recon → draft → prove it answers</p>
-          <p class="order-detail__desc">Read an unfamiliar repo and write the agent-facing context file every other order depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew&#x27;s real questions from the file alone.</p>
+          <p class="order-detail__desc">Read an unfamiliar repo and write the agent-facing context file every other command depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew&#x27;s real questions from the file alone.</p>
           <div class="order-prose">
-            <p>Every role in this crew is told to hold the work to the standard in <em>your</em> repo&#x27;s <code>README</code> / <code>CLAUDE.md</code>. Nothing produces that file. On a repo without a good one the whole crew quietly degrades to generic advice — and the failure is silent, because a vague context file still yields confident output. This order writes it, and <strong>gates on a fresh agent being able to answer the crew&#x27;s actual questions from the file alone</strong>.</p>
+            <p>Every role in this crew is told to hold the work to the standard in <em>your</em> repo&#x27;s <code>README</code> / <code>CLAUDE.md</code>. Nothing produces that file. On a repo without a good one the whole crew quietly degrades to generic advice — and the failure is silent, because a vague context file still yields confident output. This command writes it, and <strong>gates on a fresh agent being able to answer the crew&#x27;s actual questions from the file alone</strong>.</p>
             <p>Input (<strong>$ARGUMENTS</strong>): a path to a repo. Empty means the current one.</p>
-            <p><strong>This is not <code>/document</code>.</strong> The difference is the <em>audience</em>, not the topic. <code>/document</code> writes for <strong>humans</strong> and gates on a fresh reader completing a task. <code>/onboard</code> writes the <strong>agent-facing contract</strong> that every other order loads at run time, and gates on a fresh agent answering the crew&#x27;s questions correctly. Same philosophy, different question — so neither forks the other. If what you want is a README or a tutorial, stop and run <code>/document</code>.</p>
+            <p><strong>This is not <code>/document</code>.</strong> The difference is the <em>audience</em>, not the topic. <code>/document</code> writes for <strong>humans</strong> and gates on a fresh reader completing a task. <code>/onboard</code> writes the <strong>agent-facing contract</strong> that every other command loads at run time, and gates on a fresh agent answering the crew&#x27;s questions correctly. Same philosophy, different question — so neither forks the other. If what you want is a README or a tutorial, stop and run <code>/document</code>.</p>
           </div>
         </div>
       </div>
@@ -170,7 +170,7 @@
                 <ul>
                   <li><strong>Neither file exists</strong> → <code>SURVEY=create</code>.</li>
                   <li><strong>One exists</strong> → <code>SURVEY=refresh</code>. <strong>Never blind-overwrite.</strong> Under <code>MODE=edit-in-place</code>, back it up first, reusing the installer&#x27;s own convention: <code>&lt;file&gt;.bak-&lt;timestamp&gt;</code>. Under <code>MODE=pr</code> the branch <em>is</em> the undo path, so don&#x27;t drop a backup into a tree you were asked not to touch. Read the existing file either way, and treat every hand-written rule in it as authoritative unless the repo contradicts it — a human wrote that for a reason you can&#x27;t see from the code.</li>
-                  <li><strong>Both exist</strong> → they are two sources of truth for one contract, which is the exact failure this order exists to prevent. Keep the richer one, and reduce the other to a one-line pointer at it.</li>
+                  <li><strong>Both exist</strong> → they are two sources of truth for one contract, which is the exact failure this command exists to prevent. Keep the richer one, and reduce the other to a one-line pointer at it.</li>
                 </ul>
                 <p>Also read the repo&#x27;s <code>README</code>, contributing docs, CI config and any existing rules files, so the context file agrees with them instead of competing.</p>
               </div>

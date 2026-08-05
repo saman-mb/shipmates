@@ -79,8 +79,12 @@ DOCS_HUB_BACK_HREF = "../"
 DOCS_LEAF_BACK_HREF = "../"
 
 # The hand-maintained docs section: one leaf page per slug, hard error if any
-# is missing (the hub is checked separately in check_docs_coverage).
-DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture")
+# is missing (the hub is checked separately in check_docs_coverage). Discovered
+# from the docs subdirectories on disk — the single source of truth shared with
+# tools/gen_command_pages.py — rather than a second hardcoded copy that could
+# drift from it. A subdir present on disk but without a published index.html
+# still trips check_docs_coverage, so the cross-check is preserved.
+DOCS_SLUGS = tuple(sorted(p.name for p in (SITE / "docs").glob("*") if p.is_dir()))
 
 # One published detail page per agents/*.md — the filename is the role handle.
 AGENT_SLUGS = tuple(p.stem for p in sorted(CREW.glob("*.md")))
