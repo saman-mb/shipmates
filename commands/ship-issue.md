@@ -81,6 +81,7 @@ agent with a persona pasted inline. The pool:
 | `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
 | `art-director`     | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
 | `devops-engineer`  | Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by `IS_DELIVERY_SENSITIVE` (Stage 5) |
+| `technical-writer` | Docs-staleness review — gated by `IS_DOCS_AFFECTING` (Stage 5) |
 
 These agents are **generic** (domain-neutral); the project-specific standard they enforce comes
 from your repo's README / AGENTS.md, passed at spawn — not baked into the role. Which specialists a
@@ -174,6 +175,9 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
      - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
        or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
        infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
+     - `IS_DOCS_AFFECTING = yes/no` — does the change touch documented behaviour, flags, commands,
+       config, or public API/CLI surface that user- or agent-facing docs describe? Gates
+       `technical-writer`.
    This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
    must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
    `/harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
@@ -284,7 +288,9 @@ reduced assurance.)
 ## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
 
 Spawn these **in parallel** against the PR head commit (they review exactly what will merge). The two
-core reviewers always run; each specialist runs only when its flag is set:
+core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist
+only when the change can plausibly trip its concern surface; a role gated out is named in the run report
+together with the flag that gated it — never silently skipped.
 
 - **`product-manager`** (always): checks every acceptance criterion AND the quality bar (from the
   repo's README/AGENTS.md). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
@@ -304,6 +310,9 @@ core reviewers always run; each specialist runs only when its flag is set:
   reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and
   secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety
   to `site-reliability-engineer`.
+- **`technical-writer`** (only if `IS_DOCS_AFFECTING`): reviews the shipped change against the docs that
+  describe it — stale flags/commands/behaviour, missing changelog/README/site updates. Returns
+  `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT`.
 
 Decision (each specialist participates only when its flag is set):
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → go to Stage 7.
@@ -341,7 +350,7 @@ Decision (each specialist participates only when its flag is set):
 ## Final report to the user
 
 One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their
-verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
+verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now.
 
