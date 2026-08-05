@@ -375,7 +375,12 @@ fn main() -> Result<()> {
             let files = adapter.build(&roles, &cmds)?;
             write_digests(&target, adapter.digest_root(), &files, root_path)?;
         }
-        Command::Doctor { harness, dir, fix } => {
+        Command::Doctor {
+            harness,
+            dir,
+            fix,
+            no_migrate,
+        } => {
             let root = Path::new(".");
             let roles_path = root.join("crew");
             let commands_path = root.join("commands");
@@ -405,7 +410,7 @@ fn main() -> Result<()> {
             let target_dir = dir.map(PathBuf::from).unwrap_or_else(|| root.to_path_buf());
 
             let report = if fix {
-                doctor::fix(&target_dir, &harness, &roles, &cmds, &tools)?
+                doctor::fix(&target_dir, &harness, &roles, &cmds, &tools, no_migrate)?
             } else {
                 doctor::diagnose(&target_dir, &harness, &roles, &cmds, &tools)?
             };
