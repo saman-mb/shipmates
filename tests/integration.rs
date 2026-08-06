@@ -331,6 +331,125 @@ fn test_matrix_effort_flag_matches_adapter_output() {
     }
 }
 
+/// The `lifecycle_events` matrix must stay internally consistent and honest —
+/// the same drift/evidence discipline the `agents`/`effort` flags get, applied
+/// to the per-event × per-harness hook capability grid (#239). This is the
+/// foundation a feature-aware adapter (epic #113) will consult to emit a hook
+/// only where the target actually supports it.
+///
+/// It asserts the schema the JSON's `_schema` note documents: every event over
+/// every shipped target, `supported:true` cells carry a channel + blocking
+/// boolean + notes, `supported:false` cells carry a policy + notes, and EVERY
+/// cell carries `verified` (a date string or literal `false`) so "mark
+/// unverified, don't guess" is operationalized rather than trusted.
+///
+/// Only the `PreToolUse` row is cross-checked against a real adapter emission:
+/// `emit_hook_shim` is the sole event with a shipped hook today, so its channel
+/// per harness is pinned here. The other ten events have no emission yet
+/// (epic #113), so there is nothing to cross-check them against — the matrix
+/// records their capability, not shipped behaviour.
+#[test]
+fn test_matrix_lifecycle_events_matrix_is_consistent() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let matrix: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap()).unwrap();
+
+    let events = matrix["lifecycle_events"]
+        .as_object()
+        .expect("harness_matrix.json has no lifecycle_events map");
+
+    let shipped: std::collections::BTreeSet<&str> = shipmates::adapters::targets().into_iter().collect();
+
+    // Every lifecycle event we claim to have researched must be present.
+    let expected_events = [
+        "PreToolUse",
+        "SessionStart",
+        "SessionEnd",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "Stop",
+        "SubagentStart",
+        "SubagentStop",
+        "PreCompact",
+        "Notification",
+        "UserPromptSubmit",
+    ];
+    for event in expected_events {
+        assert!(events.contains_key(event), "lifecycle_events missing event `{event}`");
+
+        let harnesses = events[event]["harnesses"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{event}: no `harnesses` map"));
+        let declared: std::collections::BTreeSet<&str> = harnesses.keys().map(|k| k.as_str()).collect();
+        assert_eq!(
+            declared, shipped,
+            "{event}: lifecycle_events harness set disagrees with adapters::targets()",
+        );
+
+        for (harness, cell) in harnesses {
+            let supported = cell["supported"]
+                .as_bool()
+                .unwrap_or_else(|| panic!("{event}/{harness}: no `supported` boolean"));
+
+            // Every cell — supported or not — records whether it is first-party
+            // verified: a "YYYY-MM-DD" string, or literal `false` for unverified.
+            // This is how "mark unverified, don't guess" is enforced.
+            let verified = &cell["verified"];
+            assert!(
+                verified.as_str().is_some_and(|s| !s.trim().is_empty()) || verified.as_bool() == Some(false),
+                "{event}/{harness}: `verified` must be a date string or literal false, got {verified}",
+            );
+
+            let notes_ok = cell["notes"].as_str().is_some_and(|s| !s.trim().is_empty());
+
+            if supported {
+                assert!(
+                    cell["channel"].as_str().is_some_and(|s| !s.trim().is_empty()),
+                    "{event}/{harness}: a supported cell needs a non-empty `channel`",
+                );
+                assert!(
+                    cell["blocking"].is_boolean(),
+                    "{event}/{harness}: a supported cell needs a boolean `blocking`",
+                );
+                assert!(notes_ok, "{event}/{harness}: a supported cell needs non-empty `notes`");
+            } else {
+                assert!(
+                    cell["policy"].as_str().is_some_and(|s| !s.trim().is_empty()),
+                    "{event}/{harness}: an unsupported cell needs a `policy` (the `features` convention)",
+                );
+                assert!(notes_ok, "{event}/{harness}: an unsupported cell needs non-empty `notes`");
+            }
+        }
+    }
+
+    // PreToolUse anchor cross-check: the matrix's channel per harness must agree
+    // with the harness-native event `emit_hook_shim` (src/adapters/render.rs)
+    // actually binds the FSM gate to. These are the only channels with a real
+    // emission today; the other events are capability-only until epic #113.
+    let pre = events["PreToolUse"]["harnesses"].as_object().unwrap();
+    let native_channel = [
+        ("claude-code", "PreToolUse"),
+        ("opencode", "tool.execute.before"),
+        ("cursor", "beforeShellExecution"),
+        ("windsurf", "pre_run_command"),
+        ("codex", "PreToolUse"),
+        ("antigravity", "PreToolUse"),
+        ("github-copilot", "preToolUse"),
+    ];
+    for (harness, channel) in native_channel {
+        assert_eq!(
+            pre[harness]["channel"].as_str().unwrap(),
+            channel,
+            "PreToolUse/{harness}: matrix channel must match the emit_hook_shim native channel",
+        );
+        assert_eq!(
+            pre[harness]["blocking"].as_bool(),
+            Some(true),
+            "PreToolUse/{harness}: the gate channel must be blocking",
+        );
+    }
+}
+
 /// Drive the REAL `commands/ship-issue.md` stages through `shipmates state` via
 /// the compiled binary, proving the 0/1/2 exit-code ABI end to end. This is the
 /// contract the (planned) enforcement hook depends on; the FSM comes from the
