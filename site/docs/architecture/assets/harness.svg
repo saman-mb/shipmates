@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Harness support: of eight supported harnesses, the seven with a blocking pre-tool hook can enforce the gates while Zed, which has no such hook, falls back to the advisory state machine." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="357" height="474" viewBox="0 0 357 474">
+<style>svg{--accent:#D97757;--accent-strong:#AD4526;--border:#E3DED8;--border-strong:#C9C1B8;--font-sans:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";--radius-md:10px;--space-4:1rem;--space-5:1.5rem;--surface:#FBFAF9;--surface-2:#F4F1EE;--text:#1A1714;--text-muted:#5C544E;}@media(prefers-color-scheme:dark){svg{--accent:#D97757;--accent-strong:#E8916F;--border:#332C26;--border-strong:#4A4139;--font-sans:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";--radius-md:10px;--space-4:1rem;--space-5:1.5rem;--surface:#14110F;--surface-2:#1D1916;--text:#F2EDE8;--text-muted:#B3A99F;}}.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}.bypass{fill:none;stroke:var(--text-muted);stroke-dasharray:6 4}.bypass-arrow{fill:var(--text-muted);stroke:none}text{font-family:var(--font-sans)}</style>
+<rect x="0.5" y="0.5" width="356" height="473" rx="16" class="panel" stroke-width="1"/>
+<g transform="translate(151.5,28)">
+<line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
+<line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
+<path d="M 123.5 147 C 177.5 147 177.5 395 83 395" stroke-width="2.0" stroke-linecap="round" class="bypass"/>
+<polygon points="83,395 94,389.5 94,400.5" class="bypass-arrow"/>
+<rect x="-114.5" y="0" width="229" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">8 supported harnesses</text>
+<rect x="-123.5" y="124" width="247" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">blocking pre-tool hook?</text>
+<rect x="-87.5" y="248" width="175" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">7 → can enforce</text>
+<rect x="-83" y="372" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">Zed → advisory</text>
+<rect x="-51.6" y="198" width="39.6" height="22" rx="6" class="mask"/>
+<text x="-31.8" y="213.2" text-anchor="middle" font-size="12" class="chip">yes</text>
+<rect x="142.74" y="260" width="32.4" height="22" rx="6" class="mask"/>
+<text x="158.94" y="275.2" text-anchor="middle" font-size="12" class="chip">no</text>
+</g>
+</svg>
