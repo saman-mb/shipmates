@@ -915,9 +915,9 @@ AGENT_COPY = {
     "ux-ui-designer": AgentCopy(
         tagline="Specs & reviews on-screen UI — tokens, layout, focus, a11y.",
         what=(
-            "The ux-ui designer works to the project's stated design system — matching it, "
-            "never inventing a competing style. Before anything is built, it produces a design "
-            "spec: text wireframes of every screen and state, a tokens plan, responsive layout, "
+            "The ux-ui designer produces a design spec before anything is built — matching the "
+            "project's stated design system rather than inventing a competing style. The spec "
+            "covers text wireframes of every screen and state, a tokens plan, responsive layout, "
             "focus order, feedback, and WCAG 2.2 AA accessibility.",
             "After the build, it reviews the real interface against that spec, Nielsen's "
             "heuristics, and WCAG — stating its coverage up front and naming anything unseen as "
