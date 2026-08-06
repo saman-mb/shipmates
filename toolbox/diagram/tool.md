@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Render a curated diagram — a box-and-arrow flow, pipeline, or state machine, or a sequence/interaction with actors and message arrows — from a small JSON spec, as a committed SVG, a deterministic PNG, or an animated GIF. No browser, no mermaid runtime, no headless renderer; the SVG is assembled as text and the PNG/GIF are repainted from the same primitives. Reach for this whenever a task calls for a diagram to explain a design, pipeline, request path, state machine, or interaction in a README or docs page rather than describing it in prose or leaving a mermaid block for something else to render. Never a slash command; the crew reach for it implicitly when the intent calls for one.
+description: Render a curated diagram — a box-and-arrow flow, pipeline, or state machine, or a sequence/interaction with actors and message arrows — from a small JSON spec. Outputs a committed SVG for docs, a deterministic PNG (with `--scale N` for crisp hi-res exports for slides, social, or LinkedIn), or an animated GIF (a subtle accent `pulse`, or a step-by-step `reveal` that builds the diagram up to explain it). Pick the diagram type with `kind` (flow or sequence) or let it route from a `prompt`; no browser, no mermaid runtime, no headless renderer — the SVG is text and the PNG/GIF are repainted from the same primitives, byte-for-byte deterministic. Reach for this whenever a task calls for a diagram to explain a design, pipeline, request path, state machine, or interaction — in a README or docs page (SVG), a slide or social post (hi-res PNG/GIF), or a step-by-step explainer (reveal GIF) — rather than describing it in prose or leaving a mermaid block for something else to render. Never a slash command; the crew reach for it implicitly when the intent calls for one.
 requires: pillow
 ---
 
@@ -24,14 +24,33 @@ The renderer `diagram.py` sits next to this file.
 ```
 python3 diagram.py --spec spec.json --out flow.svg           # SVG (standard library only)
 python3 diagram.py --spec spec.json --out flow.png           # deterministic PNG
+python3 diagram.py --spec spec.json --out flow.png --scale 3  # hi-res PNG (3×) for slides / social
 python3 diagram.py --spec spec.json --out flow.gif           # animated GIF (accent pulse)
 python3 diagram.py --spec spec.json --out flow.gif --animate reveal  # build-up reveal GIF
+python3 diagram.py --spec spec.json --out flow.gif --animate reveal --scale 3  # hi-res reveal for a post
 # or pipe the spec on stdin, and pass --format when the extension is ambiguous:
 echo '{"nodes":[…],"edges":[…]}' | python3 diagram.py --out flow.svg
 ```
 
 The output format is inferred from the `--out` extension (`.svg` / `.png` /
 `.gif`), or set it explicitly with `--format`. `--animate` is shorthand for a GIF.
+
+**Choosing an output.** Reach for **SVG** when the diagram is committed next to a
+doc (crisp at any size, tiny, pure text). Reach for a **PNG** — with `--scale N`
+(2–3×) — when it needs to look sharp in a slide, a social/LinkedIn post, or
+anywhere a raster is expected. Reach for a **GIF** to show motion: `pulse` for a
+subtle living-diagram loop, or `reveal` to walk a reader through the steps. The
+raster outputs (`--scale`) are the way to export a presentation- or
+social-quality image straight from the same spec.
+
+### Hi-res export — `--scale`
+
+`--scale N` (an integer ≥ 1, default 1) multiplies the raster (PNG/GIF)
+resolution: the tool paints at N× and downsamples, so a `--scale 3` PNG or GIF is
+a crisp, presentation-grade asset (e.g. a 274×384 flow becomes 822×1152) with no
+change to the layout — the same spec, just sharper. It has no effect on SVG (which
+is already resolution-independent). Use `--scale 2` or `--scale 3` for anything
+that will be viewed large; leave it at 1 for an inline thumbnail.
 
 ### Animation modes
 
