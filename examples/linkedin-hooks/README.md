@@ -1,26 +1,29 @@
-# Sample — "Codex blocks an out-of-phase merge" (LinkedIn asset)
+# Sample — "One gate, every tool call" (LinkedIn asset)
 
 A worked example of the Shipmates **`diagram`** tool generating a shippable,
-on-brand **animated GIF** for a social post — dogfooding the tool that ADR 0001
-introduced (#221/#222).
+on-brand **animated GIF** for a social post — dogfooding the tool ADR 0001
+introduced (#221/#222/#235).
 
 ## What it shows
-The Shipmates hooks/enforcement system, with **Codex** as the worked example: a
-per-harness `PreToolUse` hook calls `shipmates state gate` before every tool
-call, and an out-of-phase tool (here `gh pr merge` before the run reaches the
-`deliver` phase) is **hard-denied** — the workflow is enforced, not merely
-suggested.
+The `/ship-issue` enforcement FSM, grounded in the command's real `stages`
+(plan→isolate→build→verify→review→deliver) and `tool_gates` (`git push`→build,
+`gh pr merge`→deliver), with **Codex** as the worked example. A per-harness
+`PreToolUse` hook calls `shipmates state gate` before every tool call:
+`git push` is allowed in build, an early `gh pr merge` is denied (it needs
+`deliver`), and the same `gh pr merge` is allowed once the run reaches `deliver`.
+The gate enforces order, not a blanket block.
 
-## How it was generated (the whole point — one command, no design app)
+## How it was generated (one command, no design app)
 ```
-python3 toolbox/diagram/diagram.py \
+python3 diagram.py \
   --spec examples/linkedin-hooks/hooks-codex.json \
   --out  examples/linkedin-hooks/hooks-codex.gif \
-  --animate --scale 3
+  --animate reveal --scale 3
 ```
-- `hooks-codex.json` — the sequence spec (actors + messages).
-- `hooks-codex.gif` — the animated, hi-res (1764×1224, `--scale 3`) LinkedIn asset.
-- `hooks-codex.png` — a static preview / fallback.
+- `hooks-codex.json` — the sequence spec (`"animation": "reveal"`).
+- `hooks-codex.gif` — the **reveal-animated**, hi-res (1764×2316, `--scale 3`)
+  LinkedIn asset: the exchange builds up message-by-message, then holds.
+- `hooks-codex.png` — a static final-frame preview.
 
 Deterministic and self-contained: the same spec always renders the same bytes,
-with the theme baked in — safe to regenerate and commit.
+theme baked in — safe to regenerate and commit.
