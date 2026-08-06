@@ -36,6 +36,10 @@ unknown run.
 
 ## Scope
 
-This is the Claude Code reference implementation. Emitting a per-harness shim for
-the other supported harnesses (and wiring it into each adapter's install output)
-is a follow-up (#217); nothing installs this script yet.
+This is the Claude Code reference implementation, and the pattern every other
+harness's shim mirrors (`enforcement/hooks/<harness>/`). As of #216 the script
+IS emitted into every harness's payload — each adapter's `build()` writes its
+shim via `emit_hook_shim` (Claude Code lands it at `.claude/hooks/fsm-gate.sh`).
+What remains for #217 is the install-time **config wiring** that registers the
+shim with each harness (Claude Code's `settings.json`, the other harnesses'
+`hooks.json`/plugin directories, and Codex's `[features].codex_hooks` flag).

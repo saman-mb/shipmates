@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_tool_files, render_body, CLAUDE_CODE};
+use super::render::{emit_hook_shim, emit_tool_files, render_body, CLAUDE_CODE};
 use super::Adapter;
 
 const TOOL_MAP: [(&str, &[&str]); 5] = [
@@ -64,6 +64,8 @@ impl Adapter for ClaudeCodeAdapter {
             content.push_str(&render_body(&command.narrative, &CLAUDE_CODE));
             files.insert(format!("{}/skills/{}/SKILL.md", self.base_dir(), command.name), content);
         }
+        // The FSM tool-gate PreToolUse shim (`.claude/hooks/fsm-gate.sh`).
+        files.extend(emit_hook_shim(self.container(), "claude-code"));
         Ok(files)
     }
 
@@ -119,6 +121,12 @@ mod tests {
         let files = ClaudeCodeAdapter.build(&[r], &[]).unwrap();
         let content = files.get("harnesses/claude-code/.claude/agents/architect.md").unwrap();
         assert!(!content.lines().any(|l| l.trim_start().starts_with("model:")), "{content}");
+    }
+
+    #[test]
+    fn test_fsm_gate_shim_is_emitted() {
+        let files = ClaudeCodeAdapter.build(&[], &[]).unwrap();
+        assert!(files.contains_key("harnesses/claude-code/.claude/hooks/fsm-gate.sh"));
     }
 
     #[test]
