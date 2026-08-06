@@ -115,6 +115,7 @@ mod tests {
             arguments: vec![],
             loop_max: 0,
             stages: vec![],
+            tool_gates: vec![],
             narrative: narrative.to_string(),
             invocation: String::new(),
             board: String::new(),

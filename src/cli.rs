@@ -123,4 +123,18 @@ pub enum StateAction {
         #[arg(long)]
         run: u64,
     },
+    /// Decide whether a tool invocation is allowed at the run's current phase,
+    /// per the command's `tool_gates` bindings. The first gate whose `match` is a
+    /// substring of `--tool` applies; the run must be AT-OR-PAST that gate's
+    /// `require` stage. Exit 0 allow (ungated or satisfied), 1 deny (gated but
+    /// too early), 2 error (bad/missing run file, or a `require` naming no stage).
+    Gate {
+        #[arg(long)]
+        run: u64,
+
+        /// The shell command string the tool would run, matched against each
+        /// gate's `match` substring.
+        #[arg(long)]
+        tool: String,
+    },
 }

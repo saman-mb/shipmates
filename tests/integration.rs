@@ -38,6 +38,7 @@ fn test_opencode_payload_digest() {
         arguments: vec![],
         loop_max: 1,
         stages: vec![],
+        tool_gates: vec![],
         narrative: "narrative".into(),
         invocation: "invoke".into(),
         board: "board".into(),
@@ -137,6 +138,7 @@ fn test_codex_adapter_renders_dialect() {
         arguments: vec![],
         loop_max: 1,
         stages: vec![],
+        tool_gates: vec![],
         narrative: "Write `TARGET.md` if one exists, else `AGENTS.md`; resolve via `agent-files/*.md`; use {{repo}}."
             .into(),
         invocation: "invoke".into(),

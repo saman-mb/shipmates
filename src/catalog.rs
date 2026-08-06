@@ -33,6 +33,12 @@ pub struct CanonicalCommand {
     pub arguments: Vec<String>,
     pub loop_max: usize,
     pub stages: Vec<serde_json::Value>,
+    /// Tool→phase gate bindings: `{match, require}` objects binding a tool
+    /// (matched by a substring of its shell command) to the stage a run must be
+    /// AT-OR-PAST before that tool is allowed. Like `stages`, this is INTERNAL —
+    /// the FSM gate engine (`state::gate`) reads it; it is never rendered into any
+    /// harness payload, so it cannot change an emitted digest.
+    pub tool_gates: Vec<serde_json::Value>,
     pub narrative: String,
     pub invocation: String,
     pub board: String,
@@ -112,17 +118,42 @@ fn parse_effort(fm: &HashMap<String, String>, label: &str) -> anyhow::Result<Opt
 /// internal (the FSM engine reads it; it is never rendered into a payload), so
 /// this validation cannot change any emitted digest.
 fn parse_stages(fm: &HashMap<String, String>, label: &str) -> anyhow::Result<Vec<serde_json::Value>> {
-    let raw = fm.get("stages").map(|s| s.trim()).filter(|s| !s.is_empty());
+    parse_json_array_field(fm, "stages", label)
+}
+
+/// Parse and validate the `tool_gates:` frontmatter key — a JSON array string
+/// binding a tool (matched by a substring of its shell command) to the stage a
+/// run must be AT-OR-PAST before that tool is allowed: `{"match", "require"}`
+/// objects. Absent/empty ⇒ an empty list (an ungated command). Like `stages:`
+/// it is INTERNAL — the FSM gate engine reads it; it is never rendered into any
+/// harness payload, so this cannot change an emitted digest — and a value that
+/// is not a JSON array (a typo, a truncated array) is rejected so a malformed
+/// binding fails the load rather than silently loading an ungated command.
+fn parse_tool_gates(fm: &HashMap<String, String>, label: &str) -> anyhow::Result<Vec<serde_json::Value>> {
+    parse_json_array_field(fm, "tool_gates", label)
+}
+
+/// Shared parser for the internal JSON-array frontmatter keys (`stages`,
+/// `tool_gates`): trim, treat absent/empty as an empty list, and reject anything
+/// that is not a JSON array so a typo fails the load. Both keys are internal and
+/// never rendered, so this cannot change an emitted digest.
+fn parse_json_array_field(
+    fm: &HashMap<String, String>,
+    key: &str,
+    label: &str,
+) -> anyhow::Result<Vec<serde_json::Value>> {
+    let raw = fm.get(key).map(|s| s.trim()).filter(|s| !s.is_empty());
     let Some(raw) = raw else {
         return Ok(Vec::new());
     };
     let value: serde_json::Value = serde_json::from_str(raw)
-        .map_err(|e| anyhow::anyhow!("{}: invalid stages JSON: {}", label, e))?;
+        .map_err(|e| anyhow::anyhow!("{}: invalid {} JSON: {}", label, key, e))?;
     match value {
         serde_json::Value::Array(items) => Ok(items),
         other => anyhow::bail!(
-            "{}: stages must be a JSON array, got {}",
+            "{}: {} must be a JSON array, got {}",
             label,
+            key,
             match other {
                 serde_json::Value::Object(_) => "object",
                 serde_json::Value::String(_) => "string",
@@ -230,6 +261,7 @@ pub fn load_commands(path: &Path) -> anyhow::Result<Vec<CanonicalCommand>> {
                 arguments: Vec::new(),
                 loop_max: 0,
                 stages: parse_stages(&fm, &label)?,
+                tool_gates: parse_tool_gates(&fm, &label)?,
                 narrative: body,
                 invocation: String::new(),
                 board: String::new(),
@@ -281,6 +313,7 @@ pub fn load_commands_embedded() -> anyhow::Result<Vec<CanonicalCommand>> {
                 arguments: Vec::new(),
                 loop_max: 0,
                 stages: parse_stages(&fm, rel)?,
+                tool_gates: parse_tool_gates(&fm, rel)?,
                 narrative: body,
                 invocation: String::new(),
                 board: String::new(),
@@ -468,6 +501,40 @@ mod tests {
         fm.insert("stages".to_string(), r#"{"order":1}"#.to_string());
         let err = parse_stages(&fm, "x").unwrap_err();
         assert!(err.to_string().contains("must be a JSON array"), "{err}");
+    }
+
+    #[test]
+    fn test_tool_gates_absent_is_empty_and_valid_array_parses() {
+        let mut fm = HashMap::new();
+        assert!(parse_tool_gates(&fm, "x").unwrap().is_empty());
+        fm.insert("tool_gates".to_string(), "  ".to_string());
+        assert!(parse_tool_gates(&fm, "x").unwrap().is_empty());
+        fm.insert(
+            "tool_gates".to_string(),
+            r#"[{"match":"gh pr merge","require":"deliver"},{"match":"git push","require":"build"}]"#.to_string(),
+        );
+        let gates = parse_tool_gates(&fm, "x").unwrap();
+        assert_eq!(gates.len(), 2);
+        assert_eq!(gates[0]["match"], "gh pr merge");
+        assert_eq!(gates[0]["require"], "deliver");
+        assert_eq!(gates[1]["require"], "build");
+    }
+
+    #[test]
+    fn test_tool_gates_malformed_json_is_rejected() {
+        let mut fm = HashMap::new();
+        // truncated array — a typo must fail the load, not silently drop the gates.
+        fm.insert("tool_gates".to_string(), r#"[{"match":"gh pr merge""#.to_string());
+        let err = parse_tool_gates(&fm, "x").unwrap_err();
+        assert!(err.to_string().contains("invalid tool_gates JSON"), "{err}");
+    }
+
+    #[test]
+    fn test_tool_gates_non_array_is_rejected() {
+        let mut fm = HashMap::new();
+        fm.insert("tool_gates".to_string(), r#"{"match":"x"}"#.to_string());
+        let err = parse_tool_gates(&fm, "x").unwrap_err();
+        assert!(err.to_string().contains("tool_gates must be a JSON array"), "{err}");
     }
 
     #[test]

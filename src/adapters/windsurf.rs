@@ -39,6 +39,7 @@ mod tests {
             arguments: vec![],
             loop_max: 0,
             stages: vec![],
+            tool_gates: vec![],
             narrative: "characterization tests first".to_string(),
             invocation: String::new(),
             board: String::new(),
