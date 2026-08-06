@@ -22,8 +22,9 @@
 //!   must be a **strictly earlier** stage; a stage with no earlier target — the
 //!   pre-build stages and `build` itself — has **no loopback edge** (there is
 //!   nothing built yet to send a fix back to);
-//! * an **escalate** edge `s(i) → escalated` (the terminal failure phase), legal
-//!   once that stage's loop budget is exhausted.
+//! * an **escalate** edge `s(i) → escalated` (the terminal failure phase),
+//!   **always legal** from any non-terminal stage — a run may bail out at any
+//!   point. `max_loops` bounds the loopback only; escalation never depends on it.
 //!
 //! Each stage carries its **own** loop budget, counted independently: the run
 //! file's `fix_rounds` is a per-stage map, so `verify` exhausting its three fixes
@@ -58,7 +59,8 @@ const SCHEMA_VERSION: u32 = 2;
 
 /// Terminal success phase — reached out of the last stage on a gate pass.
 pub const PHASE_COMPLETE: &str = "complete";
-/// Terminal failure phase — reached when a stage's loop budget is exhausted.
+/// Terminal failure phase — reachable (unconditionally) from any non-terminal
+/// stage; the loop budget bounds only the loopback, never escalation.
 pub const PHASE_ESCALATED: &str = "escalated";
 
 /// The on-disk run record: `.shipmates/run-<issue>.json`.
@@ -196,6 +198,19 @@ impl Fsm {
             });
         }
 
+        // Stage names must be unique: `phase_kind`/`index_of` use first-match
+        // `position` and `fix_rounds` is name-keyed, so a duplicate would
+        // silently alias counters and loopback resolution — a misconfig fails
+        // the gate.
+        for (i, r) in raws.iter().enumerate() {
+            if raws[..i].iter().any(|other| other.name == r.name) {
+                return Err(StateError::Error(format!(
+                    "command {command:?} declares stage {:?} more than once; stage names must be unique",
+                    r.name
+                )));
+            }
+        }
+
         // The default loopback target's name: the stage literally named `build`,
         // else the first declared stage.
         let default_target = if raws.iter().any(|r| r.name == "build") {
@@ -317,15 +332,12 @@ impl Fsm {
             )));
         }
 
-        // Escalate: only once this stage's loop budget is spent.
+        // Escalate: always legal from any non-terminal stage (terminal phases
+        // are already frozen above). A run may bail out at any point, so this
+        // never depends on the loop budget — `max_loops` bounds the loopback
+        // only. Charges nothing.
         if to == PHASE_ESCALATED {
-            if spent >= cur.max_loops {
-                return Ok(Transition::Escalate);
-            }
-            return Err(StateError::Illegal(format!(
-                "cannot escalate from {:?} before the loop budget is exhausted ({}/{})",
-                cur.name, spent, cur.max_loops
-            )));
+            return Ok(Transition::Escalate);
         }
 
         Err(StateError::Illegal(format!(
@@ -615,8 +627,8 @@ mod tests {
         // at the budget the loopback is refused — only escalation is legal
         assert!(matches!(f.classify("verify", "build", &rounds(&[("verify", 3)])), Err(StateError::Illegal(_))));
         assert!(matches!(f.classify("verify", PHASE_ESCALATED, &rounds(&[("verify", 3)])), Ok(Transition::Escalate)));
-        // escalating early (budget not spent) is illegal
-        assert!(matches!(f.classify("verify", PHASE_ESCALATED, &no_rounds()), Err(StateError::Illegal(_))));
+        // escalation is always available — even before the loop budget is spent
+        assert!(matches!(f.classify("verify", PHASE_ESCALATED, &no_rounds()), Ok(Transition::Escalate)));
     }
 
     #[test]
@@ -639,7 +651,31 @@ mod tests {
         assert!(matches!(f.classify("verify", PHASE_ESCALATED, &spent), Ok(Transition::Escalate)));
         // ...yet review still holds its own full budget and loops back to build.
         assert!(matches!(f.classify("review", "build", &spent), Ok(Transition::Loopback)));
-        assert!(matches!(f.classify("review", PHASE_ESCALATED, &spent), Err(StateError::Illegal(_))));
+        // (escalation stays available to review too — it never depends on the budget.)
+        assert!(matches!(f.classify("review", PHASE_ESCALATED, &spent), Ok(Transition::Escalate)));
+    }
+
+    #[test]
+    fn escalated_is_reachable_from_every_non_terminal_stage() {
+        let f = fsm(&ship_issue_stages());
+        // Every stage can bail out to `escalated`, regardless of its loop budget
+        // or how much of it is spent — no soft-lock, no dependence on max_loops.
+        for s in ["plan", "isolate", "build", "verify", "review", "deliver"] {
+            assert!(
+                matches!(f.classify(s, PHASE_ESCALATED, &no_rounds()), Ok(Transition::Escalate)),
+                "escalate must be legal from {s:?}"
+            );
+        }
+        // ...but a terminal phase is still frozen and rejects escalate.
+        assert!(matches!(f.classify(PHASE_COMPLETE, PHASE_ESCALATED, &no_rounds()), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify(PHASE_ESCALATED, PHASE_ESCALATED, &no_rounds()), Err(StateError::Illegal(_))));
+    }
+
+    #[test]
+    fn duplicate_stage_names_are_rejected_at_load() {
+        let stages = vec![stage("build", 3), stage("verify", 3), stage("build", 1)];
+        let err = Fsm::from_stages("test", &stages).unwrap_err();
+        assert!(matches!(err, StateError::Error(_)));
     }
 
     #[test]
