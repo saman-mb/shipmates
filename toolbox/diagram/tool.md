@@ -22,15 +22,37 @@ a second diagram type.
 The renderer `diagram.py` sits next to this file.
 
 ```
-python3 diagram.py --spec spec.json --out flow.svg   # SVG (standard library only)
-python3 diagram.py --spec spec.json --out flow.png   # deterministic PNG
-python3 diagram.py --spec spec.json --out flow.gif   # animated GIF (accent pulse)
+python3 diagram.py --spec spec.json --out flow.svg           # SVG (standard library only)
+python3 diagram.py --spec spec.json --out flow.png           # deterministic PNG
+python3 diagram.py --spec spec.json --out flow.gif           # animated GIF (accent pulse)
+python3 diagram.py --spec spec.json --out flow.gif --animate reveal  # build-up reveal GIF
 # or pipe the spec on stdin, and pass --format when the extension is ambiguous:
 echo '{"nodes":[…],"edges":[…]}' | python3 diagram.py --out flow.svg
 ```
 
 The output format is inferred from the `--out` extension (`.svg` / `.png` /
 `.gif`), or set it explicitly with `--format`. `--animate` is shorthand for a GIF.
+
+### Animation modes
+
+A GIF animates in one of two modes:
+
+- **`pulse`** (default) — a gentle accent pulse loops along the arrows. This is
+  what a bare `.gif` / `--format gif` / `--animate` produces, unchanged.
+- **`reveal`** — the diagram *builds up* element by element over the frames, then
+  the complete picture holds a longer beat before the loop. The canvas stays a
+  constant, full-diagram size across every frame, so nothing jumps — each frame
+  draws only the revealed subset on the full-size canvas. This is **sequence-first**:
+  a sequence reveals its always-on scaffold (title, actor cards, lifelines) plus
+  its messages one at a time, in order; a flow reveals its nodes in declaration
+  order, each edge appearing once both its endpoints are on screen.
+
+Pick the mode with `--animate reveal` / `--animate pulse` (a bare `--animate` is
+`pulse`), or set it in the spec with a top-level `"animation": "reveal"` /
+`"pulse"` field; either implies a GIF, and the CLI value overrides the spec.
+Reveal frames are ordered with fixed hold times — no clock, no randomness — so the
+same spec+mode renders byte-identically run to run, exactly like the pulse GIF and
+the PNG. `reveal` is a GIF-only concern; the SVG output is unaffected.
 
 - **SVG** needs nothing installed — it is pure Python standard library, assembled
   as text, and drops straight into the repo next to the doc it illustrates.

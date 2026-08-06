@@ -219,6 +219,8 @@ MSG_BOTTOM = 30                 # lifeline extension below the last message
 SS = 2                          # supersample factor: paint at 2x, downscale
 GIF_FRAMES = 14                 # accent-pulse frames
 GIF_DURATION = 70               # ms per frame
+REVEAL_HOLD = 560               # ms each revealed step holds (reveal mode)
+REVEAL_FINAL_HOLD = 1800        # ms the complete picture holds before the loop
 
 
 def _n(v):
@@ -504,13 +506,20 @@ def build_flow(spec):
     boxes = layout_flow(direction, nodes)
     b = Bounds()
 
+    # Reveal steps: node i appears at step i+1 (declaration order); an edge
+    # appears once BOTH its endpoints are on screen — step max(from, to)+1. The
+    # page/panel/title chrome carries no step (default 0), so it is always-on.
     edge_prims, label_prims, node_prims = [], [], []
     for edge in edges:
         strokes, labels = _flow_edge(direction, boxes, edge, b)
+        step = max(edge["fi"], edge["ti"]) + 1
+        for p in strokes + labels:
+            p["step"] = step
         edge_prims.extend(strokes)
         label_prims.extend(labels)
-    for box, nd in zip(boxes, nodes):
+    for i, (box, nd) in enumerate(zip(boxes, nodes)):
         rect, txt = _flow_node(box, nd["label"], b)
+        rect["step"] = txt["step"] = i + 1
         node_prims.append(rect)
         node_prims.append(txt)
 
@@ -583,21 +592,28 @@ def build_sequence(spec):
         body_head.append(_rect(cx - w / 2, 0, w, ACTOR_H, 10, NODE_FILL, NODE_STROKE, 1.5))
         body_head.append(_text_p(cx, ACTOR_H / 2, a, FONT_PX, NODE_TEXT))
 
+    # Reveal steps: the scaffold above (actor cards + lifelines) is always-on
+    # (step 0, the default); message k is revealed at step k+1. The raster
+    # painter can then draw the cumulative subset up to a given `max_step`.
     for k, m in enumerate(messages):
         y = ACTOR_H + MSG_TOP + (k + 1) * MSG_STEP
         sx, ex = centres[m["fi"]], centres[m["ti"]]
+        msg_prims = []
         if m["fi"] == m["ti"]:  # self-message → a small right-bowing loop
             lx = sx + BOW
-            body_msg.append(_curve((sx, y - 8), (lx, y - 8), (lx, y + 8), (sx, y + 8), b))
-            body_msg.append(_arrowhead(sx, y + 8, sx - lx, 0, b))
+            msg_prims.append(_curve((sx, y - 8), (lx, y - 8), (lx, y + 8), (sx, y + 8), b))
+            msg_prims.append(_arrowhead(sx, y + 8, sx - lx, 0, b))
             pill, txt = _label(m["label"], sx + BOW / 2 + _label_w(m["label"]) / 2, y - 16, b)
         else:
             dash = m["ret"]
-            body_msg.append(_line(sx, y, ex, y, b, dash=dash))
-            body_msg.append(_arrowhead(ex, y, ex - sx, 0, b))
+            msg_prims.append(_line(sx, y, ex, y, b, dash=dash))
+            msg_prims.append(_arrowhead(ex, y, ex - sx, 0, b))
             pill, txt = _label(m["label"], (sx + ex) / 2, y - LABEL_H / 2 - 4, b)
         if pill:
-            body_msg.extend((pill, txt))
+            msg_prims.extend((pill, txt))
+        for p in msg_prims:
+            p["step"] = k + 1
+        body_msg.extend(msg_prims)
 
     return compose(title, body_head + body_msg, b)
 
@@ -743,13 +759,16 @@ def _dashed(draw, x1, y1, x2, y2, fill, width, dash=4.0, gap=4.0):
         d += dash + gap
 
 
-def paint_raster(scene, accent_rgb=None, scale=1):
+def paint_raster(scene, accent_rgb=None, scale=1, max_step=None):
     """Repaint a Scene to a Pillow RGB image. `accent_rgb` overrides the palette
     accent (used to animate an accent pulse). `scale` (>=1) multiplies the output
     resolution — a scale-2 or scale-3 run yields a crisp hi-res asset for slides
     or social with NO change to the layout maths. The picture is always painted at
     SS*scale and downscaled to scale×, so the anti-aliasing stays clean and the
-    result is deterministic."""
+    result is deterministic. `max_step` (reveal mode) draws only primitives whose
+    reveal `step` is <= max_step, on the full-size canvas — untagged primitives
+    (step 0, the always-on scaffold/chrome) are always drawn; None draws every
+    primitive (the default: PNG and the pulse GIF)."""
     from PIL import Image, ImageDraw, ImageFont
     ss = SS * scale
     W, H = scene.W * ss, scene.H * ss
@@ -770,6 +789,8 @@ def paint_raster(scene, accent_rgb=None, scale=1):
         return _rgb(c)
 
     for p in scene.prims:
+        if max_step is not None and p.get("step", 0) > max_step:
+            continue
         op = p["op"]
         if op == "rect":
             xy = [p["x"] * ss, p["y"] * ss, (p["x"] + p["w"]) * ss, (p["y"] + p["h"]) * ss]
@@ -825,9 +846,34 @@ def _pulse_accent(i):
     return tuple(int(round(base[k] + (bright[k] - base[k]) * e)) for k in range(3))
 
 
-def write_gif(scene, out, scale=1):
-    """Write a deterministic animated GIF: one tasteful accent-pulse loop. No
-    time metadata (like termgif) so the same spec is byte-identical run to run."""
+def _reveal_steps(scene):
+    """Highest reveal step tagged on any primitive (0 → nothing to reveal)."""
+    return max((p.get("step", 0) for p in scene.prims), default=0)
+
+
+def write_gif_reveal(scene, out, scale=1):
+    """Write a deterministic reveal GIF: the always-on scaffold plus the revealed
+    subset built up step by step on a CONSTANT full-size canvas, the complete
+    final frame holding a longer beat before the loop. Ordered frames, no time or
+    random input, so the same spec is byte-identical run to run."""
+    steps = _reveal_steps(scene)
+    frames, durations = [], []
+    for k in range(1, steps + 1):
+        frames.append(paint_raster(scene, scale=scale, max_step=k))
+        durations.append(REVEAL_FINAL_HOLD if k == steps else REVEAL_HOLD)
+    frames[0].save(out, format="GIF", save_all=True, append_images=frames[1:],
+                   duration=durations, loop=0, optimize=True, disposal=2)
+
+
+def write_gif(scene, out, scale=1, mode="pulse"):
+    """Write a deterministic animated GIF. `mode="pulse"` (default) paints one
+    tasteful accent-pulse loop; `mode="reveal"` builds the diagram up step by
+    step (sequence-first — see write_gif_reveal). No time metadata (like termgif)
+    so the same spec+mode is byte-identical run to run."""
+    if mode == "reveal" and _reveal_steps(scene) > 0:
+        write_gif_reveal(scene, out, scale=scale)
+        return
+    # pulse (also the fallback when there is nothing to reveal)
     frames = [paint_raster(scene, accent_rgb=_pulse_accent(i), scale=scale)
               for i in range(GIF_FRAMES)]
     frames[0].save(out, format="GIF", save_all=True, append_images=frames[1:],
@@ -854,8 +900,12 @@ def main(argv=None):
     ap.add_argument("--out", help="output path; format inferred from .svg/.png/.gif")
     ap.add_argument("--format", choices=("svg", "png", "gif"),
                     help="output format (overrides the --out extension)")
-    ap.add_argument("--animate", action="store_true",
-                    help="produce an animated GIF (implies --format gif)")
+    ap.add_argument("--animate", nargs="?", const="pulse", default=None,
+                    choices=("pulse", "reveal"), metavar="MODE",
+                    help="produce an animated GIF (implies --format gif); optional "
+                         "MODE 'pulse' (default, an accent pulse) or 'reveal' "
+                         "(build the diagram up step by step; sequence-first). "
+                         "Overrides the spec's \"animation\" field.")
     ap.add_argument("--scale", type=int, default=1, metavar="N",
                     help="raster (PNG/GIF) resolution multiplier, N>=1 (default 1); "
                          "e.g. --scale 3 for a crisp hi-res slide/social asset")
@@ -877,21 +927,36 @@ def main(argv=None):
         print("diagram: --scale must be >= 1", file=sys.stderr)
         return 2
 
-    fmt = args.format
-    if args.animate:
-        fmt = "gif"
-    fmt = _format_for(args.out, fmt)
-    if fmt is None:
-        print("diagram: could not infer output format from {!r}; use a .svg/.png/.gif "
-              "extension or pass --format".format(args.out), file=sys.stderr)
-        return 2
-
     try:
         raw = open(args.spec, encoding="utf-8").read() if args.spec else sys.stdin.read()
         spec = json.loads(raw)
     except (OSError, json.JSONDecodeError) as e:
         print(f"diagram: could not read spec: {e}", file=sys.stderr)
         return 2
+
+    # Animation mode: an explicit --animate wins, else the spec's "animation"
+    # field; either one implies a GIF. A plain .gif / --format gif with no mode
+    # stays pulse (unchanged behaviour).
+    anim_mode = args.animate
+    if anim_mode is None and isinstance(spec, dict):
+        spec_anim = spec.get("animation")
+        if spec_anim is not None:
+            if spec_anim not in ("pulse", "reveal"):
+                print("diagram: bad spec: animation must be 'pulse' or 'reveal'",
+                      file=sys.stderr)
+                return 2
+            anim_mode = spec_anim
+
+    fmt = args.format
+    if anim_mode is not None:
+        fmt = "gif"
+    fmt = _format_for(args.out, fmt)
+    if fmt is None:
+        print("diagram: could not infer output format from {!r}; use a .svg/.png/.gif "
+              "extension or pass --format".format(args.out), file=sys.stderr)
+        return 2
+    if fmt == "gif" and anim_mode is None:
+        anim_mode = "pulse"
 
     try:
         kind = route(spec)
@@ -909,7 +974,7 @@ def main(argv=None):
             write_png(scene, args.out, scale=args.scale)
         else:  # gif
             _ensure_pillow()
-            write_gif(scene, args.out, scale=args.scale)
+            write_gif(scene, args.out, scale=args.scale, mode=anim_mode)
     except OSError as e:
         print(f"diagram: could not write output: {e}", file=sys.stderr)
         return 2
