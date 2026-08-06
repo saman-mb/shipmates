@@ -24,3 +24,4 @@ target=github-copilot
 .github/agents/site-reliability-engineer.agent.md 9e4d1f56c3a1ad7cbfd8d5e9f924a75710515c3ad70b04fdaccd362062fbc80c
 .github/agents/technical-writer.agent.md a1f21887f91177f69873ef47125fda7542181539fd10578a9f7f8430cd66b0d6
 .github/agents/ux-ui-designer.agent.md 6b43830eaefba03d3eaa21a2154db5cb95f90c5bfbb8e2d8adf437e38ebf5a72
+.github/hooks/fsm-gate.sh 3383520e331c92d4e36127e67d8f7b8b52d7778a4c2ca3616448cb1208c3e2af

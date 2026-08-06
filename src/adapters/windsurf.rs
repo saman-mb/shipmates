@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, emit_tool_files, WINDSURF};
+use super::render::{emit_hook_shim, emit_skill_files, emit_tool_files, WINDSURF};
 use super::Adapter;
 
 /// Windsurf (Cascade) discovers skills under `.windsurf/skills/<name>/SKILL.md`
@@ -14,7 +14,10 @@ impl Adapter for WindsurfAdapter {
     }
 
     fn build(&self, _roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
-        Ok(emit_skill_files(self.base_dir(), commands, &WINDSURF))
+        let mut files = emit_skill_files(self.base_dir(), commands, &WINDSURF);
+        // The FSM tool-gate pre_run_command shim (`.windsurf/hooks/fsm-gate.sh`).
+        files.extend(emit_hook_shim(self.container(), "windsurf"));
+        Ok(files)
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
@@ -48,5 +51,11 @@ mod tests {
         let files = WindsurfAdapter.build(&[], &[command]).unwrap();
         assert!(files.contains_key("harnesses/windsurf/.windsurf/skills/refactor/SKILL.md"));
         assert!(!files.keys().any(|k| k.contains("agents/")));
+    }
+
+    #[test]
+    fn test_fsm_gate_shim_is_emitted() {
+        let files = WindsurfAdapter.build(&[], &[]).unwrap();
+        assert!(files.contains_key("harnesses/windsurf/.windsurf/hooks/fsm-gate.sh"));
     }
 }
