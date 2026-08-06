@@ -1,5 +1,6 @@
 payload_digest_version=1
 target=windsurf
+hooks/fsm-gate.sh 42bd1bfe39082bfc01ba4e49dc9159184e1f25824bbe2d95dce12cb3e1f80738
 skills/document/SKILL.md 7356398f28a2fb2ba0bc9d8f059d6d8185d0436b699d889136c0b3a7567aa873
 skills/fix-bug/SKILL.md ecdeb3ace1203643d99d64da5800239fe4b2e3d041a8bcde0979088618edf155
 skills/harden/SKILL.md 4ed6205154583f9727c43fa0d85c07e9a6f9cb599fc97bfe9ba23b7d8b1982a4

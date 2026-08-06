@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_shared_skills, emit_shared_tool_skills};
+use super::render::{emit_hook_shim, emit_shared_skills, emit_shared_tool_skills};
 use super::Adapter;
 
 /// The Antigravity CLI (`agy`) — Google's successor to the retired Gemini CLI.
@@ -80,6 +80,8 @@ impl Adapter for AntigravityAdapter {
         // come from the shared emitter (byte-identical with codex/cursor/
         // copilot). Only the crew above are agy-specific.
         files.extend(emit_shared_skills(self.container(), commands));
+        // The FSM tool-gate PreToolUse shim (`.agents/hooks/fsm-gate.sh`).
+        files.extend(emit_hook_shim(self.container(), "antigravity"));
         Ok(files)
     }
 
@@ -119,6 +121,12 @@ mod tests {
         assert!(content.contains("mainAgent: false"));
         assert!(content.contains("commandExecutionPolicy: sandbox"));
         assert!(content.ends_with("test body"));
+    }
+
+    #[test]
+    fn test_fsm_gate_shim_is_emitted() {
+        let files = AntigravityAdapter.build(&[], &[]).unwrap();
+        assert!(files.contains_key("harnesses/antigravity/.agents/hooks/fsm-gate.sh"));
     }
 
     #[test]

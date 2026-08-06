@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{render_body, OPENCODE};
+use super::render::{emit_hook_shim, render_body, OPENCODE};
 use super::Adapter;
 
 pub struct OpencodeAdapter;
@@ -89,6 +89,8 @@ impl Adapter for OpencodeAdapter {
             content.push_str(&render_body(&command.narrative, &OPENCODE));
             files.insert(format!("{}/commands/{}.md", self.base_dir(), command.name), content);
         }
+        // The FSM tool-gate plugin (`.opencode/plugin/fsm-gate.ts`).
+        files.extend(emit_hook_shim(self.container(), "opencode"));
         Ok(files)
     }
 
@@ -140,6 +142,12 @@ mod tests {
         assert!(content.contains("  bash: allow\n"));
         assert!(content.contains("---\n"));
         assert!(content.ends_with("test body"));
+    }
+
+    #[test]
+    fn test_fsm_gate_plugin_is_emitted() {
+        let files = OpencodeAdapter.build(&[], &[]).unwrap();
+        assert!(files.contains_key("harnesses/opencode/.opencode/plugin/fsm-gate.ts"));
     }
 
     fn role_with_effort(effort: Option<&str>) -> CanonicalRole {

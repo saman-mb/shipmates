@@ -87,8 +87,10 @@ for pair in "cursor:.agents" "windsurf:.windsurf"; do
   assert "$harness: skill under $dirname/skills" test -f "$D/$dirname/skills/ship-issue/SKILL.md"
   assert "$harness: no agent files emitted" test ! -d "$D/$dirname/agents"
 done
-# Cursor reads the open tree; it does not write its own harness dotdir.
-assert "cursor: no .cursor tree" test ! -d "$WORK/cursor/.cursor"
+# Cursor reads the open tree for skills; its only .cursor/ file is the FSM
+# tool-gate shim (#216), never a private skills tree.
+assert "cursor: FSM gate shim under .cursor/hooks" test -f "$WORK/cursor/.cursor/hooks/fsm-gate.sh"
+assert "cursor: no .cursor skills tree" test ! -d "$WORK/cursor/.cursor/skills"
 
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"

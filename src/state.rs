@@ -18,6 +18,24 @@
 //! misconfigured binding or corrupt run file ⇒ error (exit 2). An unmatched tool
 //! is ungated (allow). See [`gate`] for the terminal-phase ranking rules.
 //!
+//! ### Scope of the binding (what `gate` can and cannot enforce)
+//!
+//! The binding is a **Bash-command-substring gate only**: `match` is tested as a
+//! substring of the tool's shell command, and that is the whole matcher. Two
+//! items from #216's wishlist are therefore NOT enforceable with the current
+//! engine and are deliberately deferred rather than faked:
+//!
+//! * *`Task`-spawn ⇒ require CI_GREEN* — gating a subagent spawn needs a
+//!   tool-NAME matcher (there is none; `gate` only sees a command string) and a
+//!   `CI_GREEN` phase (no command's FSM declares one).
+//! * *builder-spawn past `max_loops` ⇒ deny* — needs a spawn matcher plus a
+//!   loop-count predicate the single-string gate has no way to express.
+//!
+//! Both wait on an engine matcher that can key off the tool name and the run's
+//! loop/CI state, not just a command substring. Until then no inert bindings are
+//! added to `commands/ship-issue.md` — a binding that can never match would be
+//! dead configuration pretending to be enforcement.
+//!
 //! ## FSM model
 //!
 //! The machine is derived from a command's parsed `stages:` frontmatter — a list
