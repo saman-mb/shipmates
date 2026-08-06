@@ -365,7 +365,8 @@ fn test_state_cli_drives_real_ship_issue_fsm_and_exit_abi() {
     assert_eq!(code(&out), 0);
     assert!(String::from_utf8_lossy(&out.stdout).contains("\"legal\":true"));
 
-    // assert plan -> build skips a stage — illegal, exit 1, greppable reason.
+    // assert plan -> build skips isolate — build is later than plan, so it is a
+    // forward jump, not a loopback: illegal, exit 1, greppable reason.
     let out = run(&["state", "assert", "--run", "212", "--to", "build"]);
     assert_eq!(code(&out), 1);
     assert!(String::from_utf8_lossy(&out.stdout).contains("\"legal\":false"));
@@ -386,13 +387,19 @@ fn test_state_cli_drives_real_ship_issue_fsm_and_exit_abi() {
     let status = run(&["state", "status", "--run", "212"]);
     assert!(String::from_utf8_lossy(&status.stdout).contains("\"phase\": \"isolate\""));
 
-    // advance forward to build, then a loopback build -> isolate charges a round.
+    // advance forward through build and verify, then a loopback verify -> build
+    // (verify declares on_fail: build) charges verify's own per-stage counter.
     assert_eq!(code(&run(&["state", "advance", "--run", "212", "--to", "build"])), 0);
-    assert_eq!(code(&run(&["state", "advance", "--run", "212", "--to", "isolate"])), 0);
+    assert_eq!(code(&run(&["state", "advance", "--run", "212", "--to", "verify"])), 0);
+    assert_eq!(code(&run(&["state", "advance", "--run", "212", "--to", "build"])), 0);
     let status = run(&["state", "status", "--run", "212"]);
     let body = String::from_utf8_lossy(&status.stdout);
-    assert!(body.contains("\"phase\": \"isolate\""));
-    assert!(body.contains("\"fix_rounds\": 1"), "loopback must charge a fix round: {body}");
+    assert!(body.contains("\"phase\": \"build\""));
+    // fix_rounds is now a per-stage map; the loopback charged `verify`, not build.
+    assert!(
+        body.contains("\"verify\": 1"),
+        "loopback must charge the departing stage's own fix round: {body}"
+    );
 }
 
 fn walk(dir: &std::path::Path) -> Vec<PathBuf> {

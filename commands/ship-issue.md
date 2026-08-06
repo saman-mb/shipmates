@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: issue, guidance
 loop_max: 3
-stages: [{"order":1,"stage":"plan","roles":["product-manager"],"gate":"plan-ready","max_loops":1},{"order":2,"stage":"isolate","roles":["senior-engineer"],"gate":"isolated-worktree","max_loops":1},{"order":3,"stage":"build","roles":["senior-engineer"],"gate":"implementation-complete","max_loops":3},{"order":4,"stage":"verify","roles":["sdet"],"gate":"tests-green","max_loops":3},{"order":5,"stage":"review","roles":["product-manager"],"gate":"board-accepted","max_loops":3},{"order":6,"stage":"deliver","roles":["senior-engineer"],"gate":"pr-ready","max_loops":1}]
+stages: [{"order":1,"stage":"plan","roles":["product-manager"],"gate":"plan-ready","max_loops":1},{"order":2,"stage":"isolate","roles":["senior-engineer"],"gate":"isolated-worktree","max_loops":1},{"order":3,"stage":"build","roles":["senior-engineer"],"gate":"implementation-complete","max_loops":3},{"order":4,"stage":"verify","roles":["sdet"],"gate":"tests-green","max_loops":3,"on_fail":"build"},{"order":5,"stage":"review","roles":["product-manager"],"gate":"board-accepted","max_loops":3,"on_fail":"build"},{"order":6,"stage":"deliver","roles":["senior-engineer"],"gate":"pr-ready","max_loops":1}]
 invocation: @{{role}}({{issue}})
 board: native
 ---
