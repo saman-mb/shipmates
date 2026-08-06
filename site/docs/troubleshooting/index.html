@@ -110,7 +110,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> the harness name isn&#x27;t one the CLI knows. <strong>Fix:</strong> run <code>shipmates targets</code> for the canonical list: <code>claude-code</code>, <code>opencode</code>, <code>antigravity</code>, <code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>, <code>zed</code>.</p>
+              <p><strong>Cause:</strong> the harness name isn&#x27;t one the CLI knows. <strong>Fix:</strong> run <code>shipmates targets</code> for the canonical list: <code>claude-code</code>, <code>opencode</code>, <code>antigravity</code>, <code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>.</p>
             </div>
           </details>
           <details class="faq__item">
@@ -161,11 +161,11 @@
           </details>
           <details class="faq__item">
             <summary class="faq__q">
-              <span class="faq__q-text">Subagents missing on codex / cursor / copilot / windsurf / zed</span>
+              <span class="faq__q-text">Subagents missing on codex / cursor / copilot / windsurf</span>
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> by design. Those five harnesses have no documented native subagent directory, so only the twelve skills land — the crew is dropped entirely. <strong>Fix:</strong> not a bug; the workflows themselves are still available via <code>/&lt;command&gt;</code>.</p>
+              <p><strong>Cause:</strong> by design. Those four harnesses have no documented native subagent directory, so only the twelve skills land — the crew is dropped entirely. <strong>Fix:</strong> not a bug; the workflows themselves are still available via <code>/&lt;command&gt;</code>.</p>
             </div>
           </details>
           <details class="faq__item">
@@ -211,7 +211,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> on a skill-only harness (<code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>, <code>zed</code>) the payload emits only the Agent Skills standard&#x27;s <code>name</code>/<code>description</code> pair — vendor keys like <code>allowed-tools</code> or <code>disable-model-invocation</code> are dropped because a strict parser would reject them. That is deliberate, not a bug. <strong>Fix:</strong> if the workflow depends on a vendor key, the harness can&#x27;t express it; that&#x27;s a reason to prefer a harness that can.</p>
+              <p><strong>Cause:</strong> on a skill-only harness (<code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>) the payload emits only the Agent Skills standard&#x27;s <code>name</code>/<code>description</code> pair — vendor keys like <code>allowed-tools</code> or <code>disable-model-invocation</code> are dropped because a strict parser would reject them. That is deliberate, not a bug. <strong>Fix:</strong> if the workflow depends on a vendor key, the harness can&#x27;t express it; that&#x27;s a reason to prefer a harness that can.</p>
             </div>
           </details>
           <details class="faq__item">

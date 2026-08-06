@@ -70,15 +70,6 @@
       "expect_absent": [],
       "verified_on": "2026-08-03",
       "note": "Canonical location is .windsurf/skills; .agents/skills is only a SECONDARY compat scan, so we deliberately keep windsurf OFF the shared tree. Now Devin Desktop — docs.windsurf.com 307-redirects to docs.devin.ai. If the canonical path moves to .agents/skills, windsurf could join the shared tree."
-    },
-    "zed": {
-      "docs_url": "https://zed.dev/docs/ai/skills",
-      "tree": "shared",
-      "adapter_skill_path": ".agents/skills/<name>/SKILL.md",
-      "expect_contains": [".agents/skills"],
-      "expect_absent": [],
-      "verified_on": "2026-08-03",
-      "note": "Reads the open .agents/skills tree (since Zed v1.4.2); no subagent mechanic (ACP, not files)."
     }
   }
 }

@@ -71,7 +71,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">🌊</span> Harnesses</p>
           <h1 class="order-detail__title" id="harnesses-title">Harness matrix</h1>
           <p class="order-detail__tagline">Which harnesses the crew runs on, and what's coming next.</p>
-          <p class="order-detail__desc">The installer builds payloads for eight harnesses. Only one has been run for real — the rest are format-verified against each harness&#x27;s own parsing source and first-party docs, but not exercised against a running harness.</p>
+          <p class="order-detail__desc">The installer builds payloads for seven harnesses. Only one has been run for real — the rest are format-verified against each harness&#x27;s own parsing source and first-party docs, but not exercised against a running harness.</p>
         </div>
       </div>
     </section>
@@ -92,14 +92,13 @@
               <tr><td><code>codex</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>cursor</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
               <tr><td><code>windsurf</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
-              <tr><td><code>zed</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
             </tbody>
           </table>
         </div>
         <div class="order-prose">
           <p><strong>Runtime-verified</strong> means the payload is compiled from neutral canonical sources, byte-compared against its committed reference digest, and the harness is one Shipmates has actually been run on. Only <code>claude-code</code> meets all of that.</p>
           <p><strong>Builds, not runtime-verified</strong> is every other harness. <code>shipmates install --harness &lt;name&gt;</code> produces the payload, and each format was verified against the harness's own parsing source and first-party docs. None has been exercised against a running harness — whether agents resolve, whether argument passing behaves, and whether <code>/ship-issue</code> completes end to end are open questions, tracked for opencode in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>. Nothing on this site should be read as &#x201C;tested on <em>&lt;harness&gt;</em>&#x201D; until those close.</p>
-          <p><strong>Builds (skills only)</strong> marks harnesses where the crew has nowhere to go and only the twelve skills land. That is now <code>cursor</code>, <code>windsurf</code> and <code>zed</code>, and for three different reasons. <code>zed</code> genuinely has no agents directory — it uses the Agent Panel and ACP, so external agents connect rather than being defined as files. <code>cursor</code> is unconfirmed rather than absent: <code>.cursor/agents/*.md</code> is widely reported and Cursor describes delegating to named subagents, but no first-party page documents the frontmatter schema, so emitting one would be guesswork. <code>windsurf</code> is under review — Windsurf became Devin Desktop in June 2026 and that target may no longer address a live product. Each harness now carries its evidence and the date it was checked in <code>tools/harness_matrix.json</code>.</p>
+          <p><strong>Builds (skills only)</strong> marks harnesses where the crew has nowhere to go and only the twelve skills land. That is now <code>cursor</code> and <code>windsurf</code>, and for two different reasons. <code>cursor</code> is unconfirmed rather than absent: <code>.cursor/agents/*.md</code> is widely reported and Cursor describes delegating to named subagents, but no first-party page documents the frontmatter schema, so emitting one would be guesswork. <code>windsurf</code> is under review — Windsurf became Devin Desktop in June 2026 and that target may no longer address a live product. Each harness now carries its evidence and the date it was checked in <code>tools/harness_matrix.json</code>.</p>
         </div>
       </div>
     </section>
@@ -110,7 +109,7 @@
           <h2 class="section__title" id="not-verified-title">Why only one runtime-verified?</h2>
         </div>
         <div class="order-prose">
-          <p>Building a payload is the easy half — the format is documented and the CLI validates each target's output against a committed reference digest on every build. Verifying it <em>works</em> means installing into a running harness and exercising <code>/ship-issue</code> end to end: subagents resolve, argument passing behaves, worktrees, CI gates, the review board. That is real work per harness, and it hasn't been done yet for any of the seven.</p>
+          <p>Building a payload is the easy half — the format is documented and the CLI validates each target's output against a committed reference digest on every build. Verifying it <em>works</em> means installing into a running harness and exercising <code>/ship-issue</code> end to end: subagents resolve, argument passing behaves, worktrees, CI gates, the review board. That is real work per harness, and it hasn't been done yet for any of the six.</p>
           <p>Until it has, treat every non-Claude payload as format-correct-but-unproven. The tracking for the harnesses we plan to exercise first lives in the issue list; opencode's is <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</p>
         </div>
       </div>
@@ -139,7 +138,7 @@
         </div>
         <div class="order-prose">
           <p>A <strong>tool</strong> is the model-invoked sibling of a command: the crew reach for it implicitly, never by typing a slash. Where a command targets each harness&#x27;s user-invoked surface, a tool targets its agent-invoked one — grounded, like everything else here, in each harness&#x27;s own first-party docs.</p>
-          <p><strong>opencode is the one harness with a genuine tool primitive</strong> — a code tool at <code>.opencode/tools/&lt;name&gt;.ts</code> the model calls directly, never a slash command. Everywhere else the closest native fit is a model-invoked Agent Skill. Claude Code can pin one agent-only with <code>user-invocable: false</code> — model-invoked, hidden from the <code>/</code> menu — which is exactly &#x201C;never a command.&#x201D; The other six auto-select a skill by its description as intended, but their docs offer no way to hide it from a manual <code>@</code>/<code>/</code> mention, so on those a tool is agent-invoked yet still technically typeable. That is recorded here rather than papered over.</p>
+          <p><strong>opencode is the one harness with a genuine tool primitive</strong> — a code tool at <code>.opencode/tools/&lt;name&gt;.ts</code> the model calls directly, never a slash command. Everywhere else the closest native fit is a model-invoked Agent Skill. Claude Code can pin one agent-only with <code>user-invocable: false</code> — model-invoked, hidden from the <code>/</code> menu — which is exactly &#x201C;never a command.&#x201D; The other five auto-select a skill by its description as intended, but their docs offer no way to hide it from a manual <code>@</code>/<code>/</code> mention, so on those a tool is agent-invoked yet still technically typeable. That is recorded here rather than papered over.</p>
           <p>Tools are opt-in — a plain install ships only the crew and the commands. See <a href="../install/#install-tools">Add a tool</a> on the install reference.</p>
         </div>
       </div>

@@ -17,7 +17,7 @@ Usage:
     python3 tools/harness_watch.py --offline  # skip network; config self-consistency only
     python3 tools/harness_watch.py --strict   # unreachable docs also fail
     python3 tools/harness_watch.py --json      # machine-readable report
-    python3 tools/harness_watch.py --only codex,zed
+    python3 tools/harness_watch.py --only codex,cursor
 """
 from __future__ import annotations
 

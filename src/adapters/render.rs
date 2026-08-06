@@ -95,7 +95,7 @@ pub const OPENCODE: Dialect = Dialect {
 
 /// The neutral dialect for the shared open Agent Skills tree (`.agents/skills/`).
 ///
-/// Codex, Zed, Antigravity, Cursor and Copilot all read skills from this one
+/// Codex, Antigravity, Cursor and Copilot all read skills from this one
 /// open-standard location. A *per-harness* rendering would make each write
 /// different bytes to the same install path — whichever ran last would win, and
 /// the rest would silently get the wrong crew references (see the collision the
@@ -103,7 +103,7 @@ pub const OPENCODE: Dialect = Dialect {
 /// rendered ONCE, neutrally, and every one of those harnesses emits byte-identical
 /// files: one source of truth, no duplication, no collision.
 ///
-/// The values are the common denominator that resolves on all five:
+/// The values are the common denominator that resolves on all four:
 /// - `agents_glob` = `.agents/agents` — the open-standard sibling of
 ///   `.agents/skills`, and Antigravity's real crew location. For Codex/Copilot,
 ///   whose crew live in their own trees, this is a descriptive pointer only;
@@ -164,9 +164,6 @@ pub const WINDSURF: Dialect = Dialect {
     planner: "planner",
     args_token: "$ARGUMENTS",
 };
-
-// Zed has no crew mechanic (ACP, not files), so it renders no personas of its
-// own; its commands ship to the shared `.agents/skills/` tree via AGENT_SKILLS.
 
 /// Emit a command's rendered skill for a skill-only harness.
 ///

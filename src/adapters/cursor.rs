@@ -7,7 +7,7 @@ use super::Adapter;
 /// `roles` is not emitted. Cursor reads the open Agent Skills tree
 /// `.agents/skills/<name>/SKILL.md` natively (a first-party peer of
 /// `.cursor/skills/`, since Cursor 2.4), so its skills come from the shared
-/// `.agents/skills/` emitter — byte-identical with codex/zed/antigravity/copilot,
+/// `.agents/skills/` emitter — byte-identical with codex/antigravity/copilot,
 /// no per-harness duplicate. `base_dir` therefore sits at `.agents`.
 /// See <https://cursor.com/docs/skills>.
 pub struct CursorAdapter;

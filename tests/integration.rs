@@ -99,7 +99,6 @@ fn test_cli_targets() {
         "cursor",
         "github-copilot",
         "windsurf",
-        "zed",
     ] {
         assert!(stdout.contains(target), "targets output missing {target}");
     }
@@ -108,7 +107,7 @@ fn test_cli_targets() {
 #[test]
 fn test_non_claude_targets_build_via_cli() {
     let temp_dir = tempfile::tempdir().unwrap();
-    for target in ["codex", "cursor", "github-copilot", "windsurf", "zed"] {
+    for target in ["codex", "cursor", "github-copilot", "windsurf"] {
         let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
             .args(["build", "--target", target, "--out", temp_dir.path().to_str().unwrap()])
             .output()
@@ -286,7 +285,7 @@ fn test_matrix_agents_flag_matches_adapter_output() {
 /// the same drift guard the `agents` flag gets, so the new #204 feature-support
 /// claim can't rot into pure documentation. A `true` flag ⇒ at least one crew
 /// agent carries a reasoning-effort key; `false` ⇒ none do. This is also the
-/// negative test for antigravity/github-copilot/cursor/windsurf/zed: their
+/// negative test for antigravity/github-copilot/cursor/windsurf: their
 /// `false` is now enforced against emission, not just asserted in prose.
 #[test]
 fn test_matrix_effort_flag_matches_adapter_output() {

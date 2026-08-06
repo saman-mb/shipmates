@@ -41,7 +41,7 @@ jobs:
       # Gates every target payload against its reference digest
       - name: Check target payload digests
         run: |
-          for target in claude-code opencode antigravity codex cursor github-copilot windsurf zed; do
+          for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
             cargo run -- check --target "$target"
           done
       # Config-only (no network): each harness_watch entry's declared tree must
@@ -100,7 +100,7 @@ jobs:
           python-version: "3.9"
       - name: Build and check every target payload
         run: |
-          for target in claude-code opencode antigravity codex cursor github-copilot windsurf zed; do
+          for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
             cargo run -- check --target "$target"
             cargo run -- build --target "$target" --out "$RUNNER_TEMP/floor"
           done
@@ -115,13 +115,12 @@ jobs:
           # crew-bearing target and a skill-only target both land under one root
           test -f "$RUNNER_TEMP/install-all/.claude/agents/sdet.md"
           test -f "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
-          # The five harnesses on the open tree share ONE .agents/skills rendering,
+          # The four harnesses on the open tree share ONE .agents/skills rendering,
           # so a multi-harness install must NOT collide: the merged skill carries
           # the neutral crew glob, never a per-harness one (the pre-dedup bug).
           grep -q '\.agents/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
-          ! grep -qE '\.(codex|zed|cursor|github)/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
+          ! grep -qE '\.(codex|cursor|github)/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
           # None of the shared harnesses write their own private skills tree
-          test ! -d "$RUNNER_TEMP/install-all/.zed"
           test ! -d "$RUNNER_TEMP/install-all/.cursor"
           test ! -d "$RUNNER_TEMP/install-all/.codex/skills"
           test ! -d "$RUNNER_TEMP/install-all/.github/skills"
@@ -190,14 +189,13 @@ jobs:
 
       # cursor: agents directory reported but frontmatter schema unverified.
       # windsurf: target identity under review since the Devin Desktop rename.
-      # zed: genuinely has no agents directory — ACP, not files.
       - name: Install a skill-only harness end to end
         run: |
-          cargo run -- install --harness zed --dir "$RUNNER_TEMP/install-zed"
-          # Zed adopted the open Agent Skills tree (.agents/skills) in v1.4.2; it never reads .zed/
-          test -f "$RUNNER_TEMP/install-zed/.agents/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-zed/.zed"
-          test ! -d "$RUNNER_TEMP/install-zed/.agents/agents"
+          cargo run -- install --harness cursor --dir "$RUNNER_TEMP/install-cursor"
+          # Cursor reads the open Agent Skills tree (.agents/skills); it never writes .cursor/
+          test -f "$RUNNER_TEMP/install-cursor/.agents/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-cursor/.cursor"
+          test ! -d "$RUNNER_TEMP/install-cursor/.agents/agents"
 
   deploy:
     name: Deploy to GitHub Pages

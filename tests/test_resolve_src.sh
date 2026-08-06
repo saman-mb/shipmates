@@ -79,8 +79,7 @@ assert "github-copilot: bare .md is not emitted" test ! -f "$D/.github/agents/sd
 # cursor: reads .agents/skills natively (first-party peer of .cursor/skills).
 # windsurf: keeps its canonical .windsurf/skills (.agents/skills is only a
 #   secondary compat scan there — do not move it off its documented path).
-# zed: genuinely has no agents directory — ACP, not files.
-for pair in "cursor:.agents" "windsurf:.windsurf" "zed:.agents"; do
+for pair in "cursor:.agents" "windsurf:.windsurf"; do
   harness="${pair%%:*}"
   dirname="${pair##*:}"
   D="$WORK/$harness"
@@ -88,9 +87,8 @@ for pair in "cursor:.agents" "windsurf:.windsurf" "zed:.agents"; do
   assert "$harness: skill under $dirname/skills" test -f "$D/$dirname/skills/ship-issue/SKILL.md"
   assert "$harness: no agent files emitted" test ! -d "$D/$dirname/agents"
 done
-# Cursor and Zed read the open tree; neither writes its own harness dotdir.
+# Cursor reads the open tree; it does not write its own harness dotdir.
 assert "cursor: no .cursor tree" test ! -d "$WORK/cursor/.cursor"
-assert "zed: no .zed tree" test ! -d "$WORK/zed/.zed"
 
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"

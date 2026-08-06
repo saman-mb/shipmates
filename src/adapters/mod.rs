@@ -9,7 +9,6 @@ pub mod github_copilot;
 pub mod opencode;
 pub mod render;
 pub mod windsurf;
-pub mod zed;
 
 pub trait Adapter {
     fn build(
@@ -74,14 +73,13 @@ pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
         "cursor" => Box::new(cursor::CursorAdapter),
         "github-copilot" => Box::new(github_copilot::GithubCopilotAdapter),
         "windsurf" => Box::new(windsurf::WindsurfAdapter),
-        "zed" => Box::new(zed::ZedAdapter),
         other => anyhow::bail!("Unsupported target: {}", other),
     };
     Ok(adapter)
 }
 
 /// The harnesses a user can `shipmates install --harness <name>` for.
-pub fn targets() -> [&'static str; 8] {
+pub fn targets() -> [&'static str; 7] {
     [
         "claude-code",
         "opencode",
@@ -90,6 +88,5 @@ pub fn targets() -> [&'static str; 8] {
         "cursor",
         "github-copilot",
         "windsurf",
-        "zed",
     ]
 }

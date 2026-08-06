@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Render pipeline: the neutral crew, commands and tools are authored once, compiled by the shipmates CLI through eight per-harness adapters into native payloads that carry only the features each harness supports." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="376" height="474" viewBox="0 0 376 474">
-<style>svg{--accent:#D97757;--accent-strong:#AD4526;--border:#E3DED8;--border-strong:#C9C1B8;--font-sans:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";--radius-md:10px;--space-4:1rem;--space-5:1.5rem;--surface:#FBFAF9;--surface-2:#F4F1EE;--text:#1A1714;--text-muted:#5C544E;}@media(prefers-color-scheme:dark){svg{--accent:#D97757;--accent-strong:#E8916F;--border:#332C26;--border-strong:#4A4139;--font-sans:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";--radius-md:10px;--space-4:1rem;--space-5:1.5rem;--surface:#14110F;--surface-2:#1D1916;--text:#F2EDE8;--text-muted:#B3A99F;}}.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}.bypass{fill:none;stroke:var(--text-muted);stroke-dasharray:6 4}.bypass-arrow{fill:var(--text-muted);stroke:none}text{font-family:var(--font-sans)}</style>
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Render pipeline: the neutral crew, commands and tools are authored once, compiled by the shipmates CLI through seven per-harness adapters into native payloads that carry only the features each harness supports." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="376" height="474" viewBox="0 0 376 474">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
 <rect x="0.5" y="0.5" width="375" height="473" rx="16" class="panel" stroke-width="1"/>
 <g transform="translate(223.6,28)">
 <line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
@@ -20,7 +19,7 @@
 <rect x="-123.6" y="74" width="111.6" height="22" rx="6" class="mask"/>
 <text x="-67.8" y="89.2" text-anchor="middle" font-size="12" class="chip">authored once</text>
 <rect x="-116.4" y="198" width="104.4" height="22" rx="6" class="mask"/>
-<text x="-64.2" y="213.2" text-anchor="middle" font-size="12" class="chip">× 8 adapters</text>
+<text x="-64.2" y="213.2" text-anchor="middle" font-size="12" class="chip">× 7 adapters</text>
 <rect x="-195.6" y="322" width="183.6" height="22" rx="6" class="mask"/>
 <text x="-103.8" y="337.2" text-anchor="middle" font-size="12" class="chip">supported features only</text>
 </g>

@@ -20,8 +20,7 @@
     "codex",
     "cursor",
     "github-copilot",
-    "windsurf",
-    "zed"
+    "windsurf"
   ],
   "target_status": {
     "claude-code": "implemented",
@@ -30,7 +29,6 @@
     "codex": "implemented",
     "cursor": "implemented",
     "github-copilot": "implemented",
-    "windsurf": "implemented",
-    "zed": "implemented"
+    "windsurf": "implemented"
   }
 }
