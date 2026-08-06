@@ -1,29 +1,34 @@
-# Sample — "One gate, every tool call" (LinkedIn asset)
+# Sample — "Every tool call clears the gate" (LinkedIn motion asset)
 
-A worked example of the Shipmates **`diagram`** tool generating a shippable,
-on-brand **animated GIF** for a social post — dogfooding the tool ADR 0001
-introduced (#221/#222/#235).
+A premium, on-brand **motion-graphics** explainer of the Shipmates
+hooks/enforcement system, for a LinkedIn post — reproducible from one script.
 
-## What it shows
-The `/ship-issue` enforcement FSM, grounded in the command's real `stages`
-(plan→isolate→build→verify→review→deliver) and `tool_gates` (`git push`→build,
-`gh pr merge`→deliver), with **Codex** as the worked example. A per-harness
-`PreToolUse` hook calls `shipmates state gate` before every tool call:
-`git push` is allowed in build, an early `gh pr merge` is denied (it needs
-`deliver`), and the same `gh pr merge` is allowed once the run reaches `deliver`.
-The gate enforces order, not a blanket block.
+## What it shows (grounded in the real `/ship-issue` command)
+`/ship-issue` compiles into a state machine (phases plan→isolate→build→verify→
+review→deliver) with tool-gates `git push`→`build` and `gh pr merge`→`deliver`.
+A per-harness `PreToolUse` hook calls `shipmates state gate` before **every**
+tool call. The animation stages three beats, with **Codex** as the worked
+example:
 
-## How it was generated (one command, no design app)
+1. `git push` during **build** → the gate opens **green** (allowed).
+2. `gh pr merge` during **build** → the gate slams **red** and the call is
+   **repelled** (merge is gated to `deliver`).
+3. the phase rail advances to **deliver**; the same `gh pr merge` is retried →
+   the gate opens **green**. Same call, opposite answers — the gate enforces
+   *order*, not a blanket block.
+
+## Files
+- `render_hooks_animation.py` — the self-contained generator (Pillow frames →
+  ffmpeg). Deterministic: grain is seeded per frame, so a re-render matches.
+  Flags: `--fast` (quick low-res iteration), `--frame N` (dump one frame PNG).
+- `hooks-gate.mp4` — **the asset to post** (1080×1350, 4:5, 30fps, ~12s). Post
+  the MP4: LinkedIn autoplays native video and it's sharper than the GIF.
+- `hooks-gate.gif` — fallback (720×900) for surfaces that won't play video.
+- `caption.md` — the LinkedIn post copy.
+
+## Regenerate
 ```
-python3 diagram.py \
-  --spec examples/linkedin-hooks/hooks-codex.json \
-  --out  examples/linkedin-hooks/hooks-codex.gif \
-  --animate reveal --scale 3
+python3 examples/linkedin-hooks/render_hooks_animation.py
 ```
-- `hooks-codex.json` — the sequence spec (`"animation": "reveal"`).
-- `hooks-codex.gif` — the **reveal-animated**, hi-res (1764×2316, `--scale 3`)
-  LinkedIn asset: the exchange builds up message-by-message, then holds.
-- `hooks-codex.png` — a static final-frame preview.
-
-Deterministic and self-contained: the same spec always renders the same bytes,
-theme baked in — safe to regenerate and commit.
+Renders the full MP4 (H.264, CRF 18) + GIF. (The committed MP4 is transcoded to
+a web-friendly CRF 22 / ~10 MB; LinkedIn re-encodes on upload regardless.)
