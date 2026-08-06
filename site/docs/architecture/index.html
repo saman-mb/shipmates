@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Architecture · Shipmates docs</title>
-  <meta name="description" content="Shipmates in three layers: author the crew and commands once, compile them per harness, and enforce the workflow through each harness's own tool hook.">
+  <meta name="description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/architecture/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="Architecture — Shipmates docs">
-  <meta property="og:description" content="Shipmates in three layers: author the crew and commands once, compile them per harness, and enforce the workflow through each harness's own tool hook.">
+  <meta property="og:description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/architecture/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Architecture — Shipmates docs">
-  <meta name="twitter:description" content="Shipmates in three layers: author the crew and commands once, compile them per harness, and enforce the workflow through each harness's own tool hook.">
+  <meta name="twitter:description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "name": "Architecture",
-    "description": "Shipmates in three layers: author the crew and commands once, compile them per harness, and enforce the workflow through each harness's own tool hook.",
+    "description": "Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.",
     "url": "https://saman-mb.github.io/shipmates/docs/architecture/",
     "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
   }
@@ -70,8 +70,8 @@
         <div class="order-detail">
           <p class="order-detail__eyebrow"><span aria-hidden="true">&#129517;</span> Architecture</p>
           <h1 class="order-detail__title" id="architecture-title">Architecture</h1>
-          <p class="order-detail__tagline">Author once. Compile per harness. Enforce the workflow at the tool boundary.</p>
-          <p class="order-detail__desc">One mental model to keep: you write the crew and commands once, in a neutral form; the <code>shipmates</code> CLI compiles them for each harness with only the features that harness supports; and a small state machine enforces the workflow through each harness&#x27;s own tool hook &mdash; every supported harness has one, so an out-of-order tool call is hard-blocked.</p>
+          <p class="order-detail__tagline">One crew, compiled for your harness. The workflow enforced at the tool boundary.</p>
+          <p class="order-detail__desc">One mental model to keep: Shipmates ships a single canonical crew and command set, and the <code>shipmates</code> CLI compiles it into whatever your harness understands &mdash; so you install once and get the same crew on Claude Code, Cursor, or Codex, each getting only the features it supports. A small state machine then enforces the workflow through the harness&#x27;s own tool hook, so an out-of-order tool call is hard-blocked. The rest of this page is those three layers in detail; the internals are here if you want them, but you don&#x27;t need them to use the crew.</p>
         </div>
       </div>
     </section>
@@ -96,7 +96,7 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="big-picture-title">The big picture</h2>
-          <p class="section__lead">Three layers, one direction of travel: neutral sources in, a native payload out, and a workflow that can be enforced at the far end.</p>
+          <p class="section__lead">Three layers, one direction of travel: one canonical crew in, a native payload for your harness out, and a workflow that can be enforced at the far end.</p>
         </div>
         <div class="order-prose">
           <figure class="tool-example">
@@ -128,7 +128,7 @@
 </svg>
             <figcaption class="tool-example__caption">The render pipeline: crew, commands and tools are authored once, then compiled by the <code>shipmates</code> CLI through seven per-harness adapters into native payloads &mdash; each carrying only the features its harness supports.</figcaption>
           </figure>
-          <p>Everything below is just those three boxes in more detail. Nothing harness-specific lives in the sources; nothing neutral survives into a payload unchanged.</p>
+          <p>Everything below is just those three boxes in more detail. What matters for you: the crew is written once, so nothing is harness-specific until the CLI compiles it &mdash; and what lands in your project is always native to the harness you chose.</p>
         </div>
       </div>
     </section>
@@ -137,11 +137,11 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="source-title">One source of truth</h2>
-          <p class="section__lead">The 12 crew, 12 commands and the tools are written once, in a harness-neutral dialect.</p>
+          <p class="section__lead">Shipmates defines the 12 crew, 12 commands and the tools once, in a harness-neutral form &mdash; so every harness gets the same crew.</p>
         </div>
         <div class="order-prose">
-          <p><code>crew/*.md</code> are the twelve specialist subagents; <code>commands/*.md</code> are the twelve workflows; <code>toolbox/*</code> are the model-invoked tools. They are domain-neutral by rule &mdash; no stack, framework or product is named, and <code>$ARGUMENTS</code> is the only placeholder a command may carry.</p>
-          <p>These are the only files you edit for crew or command content. Every harness&#x27;s payload is rendered from them, so a change made once reaches all seven.</p>
+          <p>The crew are twelve specialist subagents; the commands are twelve workflows like <code>/ship-issue</code>; the tools are model-invoked helpers. All are domain-neutral by rule &mdash; no stack, framework or product is named &mdash; so the same crew works on a game engine, a web app, or a CLI without configuration.</p>
+          <p>Because there is a single definition behind every harness, a fix or a new command reaches all seven at once; you never re-learn the crew when you switch harness. (These canonical sources live in the repo as <code>crew/*.md</code>, <code>commands/*.md</code> and <code>toolbox/*</code> &mdash; the starting point if you ever want to fork and customize, though that&#x27;s an advanced path, not something using the crew requires.)</p>
         </div>
       </div>
     </section>
@@ -150,11 +150,11 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="adapters-title">Feature-aware adapters</h2>
-          <p class="section__lead">One Rust adapter per harness gives each target exactly what it can use &mdash; and nothing it can&#x27;t.</p>
+          <p class="section__lead">Each harness gets exactly what it can use &mdash; and nothing it can&#x27;t &mdash; so the install is always native, never a lowest-common-denominator port.</p>
         </div>
         <div class="order-prose">
-          <p>The <code>shipmates</code> CLI is a single binary that embeds the canonical sources and compiles them through an adapter per harness (<code>src/adapters/&lt;harness&gt;.rs</code>). Each adapter knows its harness&#x27;s native file shape and frontmatter dialect, its real install paths (<code>.claude/</code>, <code>.opencode/</code>, <code>.agents/skills/</code>, <code>.codex/</code>, <code>.github/</code>, <code>.windsurf/</code>, <code>.cursor/</code>), and its least-privilege tool scopes.</p>
-          <p>Crucially, an adapter emits <strong>only the features that harness actually supports</strong> &mdash; per-agent model and reasoning effort, subagents versus skills-only &mdash; recorded in <code>tools/harness_matrix.json</code> and checked in CI. Where a harness lacks a feature, the adapter <strong>records the gap instead of inventing a key</strong>. The deeper per-harness reasoning lives on the <a href="../harnesses/">harness matrix</a>.</p>
+          <p>The <code>shipmates</code> CLI is a single binary that carries the canonical crew and compiles it through one adapter per harness. Each adapter knows its harness&#x27;s native file shape and frontmatter dialect, the exact paths it reads (<code>.claude/</code>, <code>.opencode/</code>, <code>.agents/skills/</code>, and the rest), and its least-privilege tool scopes &mdash; so you don&#x27;t configure any of that.</p>
+          <p>Crucially, an adapter emits <strong>only the features that harness actually supports</strong> &mdash; per-agent model and reasoning effort, subagents versus skills-only. Where a harness lacks a feature, the adapter <strong>records the gap instead of inventing a key</strong>, so nothing silently breaks. The per-harness feature map is tracked in the repo and checked in CI; the reader-facing version is the <a href="../harnesses/">harness matrix</a>.</p>
         </div>
       </div>
     </section>
