@@ -161,7 +161,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/install-tool-multi/.claude/skills/pixelart"
           # opencode gets a native code tool per selected tool, not a skill
           cargo run -- install --harness opencode --with-tools all --dir "$RUNNER_TEMP/install-tool-oc"
-          for t in termgif social-card pixelart svgflow badge sparkline scrub fixtures; do
+          for t in termgif social-card pixelart diagram svgflow badge sparkline scrub fixtures; do
             script="$(echo "$t" | tr - _)"
             test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/$t.ts"
             test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/$script.py"
@@ -169,7 +169,7 @@ jobs:
           test ! -d "$RUNNER_TEMP/install-tool-oc/.opencode/skills"
           # shared-tree harness (codex): --with-tools all lands every tool in .agents/skills, not .codex
           cargo run -- install --harness codex --with-tools all --dir "$RUNNER_TEMP/install-tool-cx"
-          for t in termgif social-card pixelart svgflow badge sparkline scrub fixtures; do
+          for t in termgif social-card pixelart diagram svgflow badge sparkline scrub fixtures; do
             test -f "$RUNNER_TEMP/install-tool-cx/.agents/skills/$t/SKILL.md"
           done
           test ! -d "$RUNNER_TEMP/install-tool-cx/.codex/skills"

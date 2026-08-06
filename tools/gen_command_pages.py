@@ -1214,7 +1214,7 @@ AGENT_COPY = {
 TOOL_COPY_SRC = "tools/gen_command_pages.py"
 
 # Canonical tool order — matches the homepage `#tools` grid.
-TOOLS = ("termgif", "social-card", "pixelart", "svgflow", "badge", "sparkline", "scrub", "fixtures")
+TOOLS = ("termgif", "social-card", "pixelart", "diagram", "svgflow", "badge", "sparkline", "scrub", "fixtures")
 
 TOOL_COPY = {
     "termgif": ToolCopy(
@@ -1330,30 +1330,63 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "svgflow": ToolCopy(
-        tagline="Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec.",
+    "diagram": ToolCopy(
+        tagline="Draws a curated diagram — a flow/pipeline/state machine, or a sequence of actors and messages — as a committed SVG, a deterministic PNG, or an animated GIF, from a tiny JSON spec.",
         what=(
-            "`svgflow` turns a small JSON spec — a list of `nodes` and the `edges` between them — into a clean box-and-arrow diagram, emitted as a self-contained SVG. There is no browser, no mermaid runtime, and no headless renderer: the SVG is assembled as text and is byte-for-byte deterministic, so the same spec always produces the same file and it is safe to commit next to the docs it illustrates.",
-            "It does one thing well. Nodes lay out in a single column (`\"direction\": \"down\"`) or row (`\"direction\": \"right\"`) in declaration order, each box sized to its label; adjacent nodes join with a straight spine arrow while skips, back-edges, and self-loops bow out to the side so they stay legible. It is a *tool*, not a command: the crew reach for it on their own when the natural artifact of a task is a diagram of how the pieces connect — a CI pipeline, a request path, a state machine — instead of a paragraph of prose or a mermaid block something else has to render.",
+            "`diagram` turns a small JSON spec into a clean, theme-exact diagram in whichever form the doc needs: a self-contained **SVG** assembled as text (no browser, no mermaid runtime, no headless renderer), a deterministic **PNG** repainted from the same primitives, or a tasteful animated **GIF**. The SVG path is pure standard library; PNG and GIF provision Pillow for themselves the first time they run, and raster text uses an embedded font so it is identical on every host. Every form is byte-for-byte deterministic — the same spec always produces the same file — so the output is safe to commit next to the docs it illustrates.",
+            "It is the evolution of the older `svgflow` tool (now a deprecated alias that forwards here). A `flow` diagram — the default — lays nodes out in a column (`\"direction\": \"down\"`) or row (`\"direction\": \"right\"`), each box sized to its label, with straight spine arrows and side-bowed skips, back-edges, and self-loops. A `sequence` diagram draws actors across the top with dashed lifelines and directional message arrows. The builder is chosen by an explicit `kind`, or routed from a `prompt`/`intent` string through a plain keyword map — no model call. It is a *tool*, not a command: the crew reach for it on their own when the natural artifact of a task is a diagram of how the pieces connect or talk — a CI pipeline, a request path, a state machine, a service interaction — instead of a paragraph of prose or a mermaid block something else has to render. It draws a curated set of hand-laid types — there is no automatic graph layout — and the PNG is a faithful re-render of the same spec, not a pixel copy of the SVG.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools svgflow`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
-            "The renderer depends only on the Python standard library, so wherever the tool lands the agent can run `python3 svgflow.py --spec spec.json --out flow.svg` with nothing to install. The `svgflow.py` script and the spec format it needs are bundled together in `tool.md`.",
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools diagram`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `diagram.py` script and the spec format it needs to drive it — `python3 diagram.py --spec spec.json --out flow.svg` for SVG, or `--out flow.png` / `--out flow.gif` for a deterministic raster. The format is inferred from the extension, or set with `--format`; `--provision` places the raster dependency ahead of time.",
         ),
         examples=(
             ToolExample(
                 src="examples/pipeline.svg", width=274, height=384,
-                alt="A vertical flow diagram titled 'CI pipeline': Build, Test and Deploy boxes joined by downward teal arrows labelled 'on push' and 'green', with a back-edge from Test to Build labelled 'red → retry'.",
-                caption="A CI pipeline as a column — build to deploy, with a labelled retry edge looping back on failure.",
+                alt="A vertical flow diagram titled 'CI pipeline': Build, Test and Deploy boxes joined by downward terracotta arrows labelled 'on push' and 'green', with a back-edge from Test to Build labelled 'red → retry'.",
+                caption="A CI pipeline as a column of boxes — build to deploy, with a labelled retry edge looping back on failure. The default `flow` kind, as SVG.",
+            ),
+            ToolExample(
+                src="examples/sequence.svg", width=666, height=460,
+                alt="A sequence diagram titled 'Checkout — request path': Client, API, Payments and DB actors across the top, dashed lifelines dropping from each, and terracotta message arrows between them — POST /checkout, charge, a dashed 'ok' reply, save order, and a dashed '201 Created' reply.",
+                caption="A checkout request path as a sequence — actors, dashed lifelines, and directional message arrows with dashed replies. The `sequence` kind, as SVG.",
+            ),
+            ToolExample(
+                src="examples/pipeline.gif", poster="examples/pipeline.png", width=274, height=384,
+                alt="The 'CI pipeline' flow diagram animated: the terracotta arrows and arrowheads pulse brighter and back in a smooth loop.",
+                caption="The same pipeline as an animated GIF — a gentle accent pulse along the arrows, rendered deterministically from Pillow.",
+            ),
+            ToolExample(
+                src="examples/sequence.png", width=666, height=460,
+                alt="A PNG re-render of the 'Checkout — request path' sequence diagram: the same actors, dashed lifelines, and message arrows as the SVG, rasterized with the embedded font.",
+                caption="The sequence diagram as a PNG — a faithful, deterministic re-render of the same spec through the Pillow painter.",
+            ),
+        ),
+    ),
+    "svgflow": ToolCopy(
+        tagline="Deprecated alias for `diagram` — svgflow's flow diagram is now a kind of the more general diagram tool.",
+        what=(
+            "`svgflow` has become `diagram` (ADR 0001): the box-and-arrow flow diagram it drew is now the default `kind` of a more general tool that keeps svgflow's theme-exact, byte-for-byte deterministic SVG and adds PNG and animated-GIF output, a `sequence` kind, and intent routing. Reach for `diagram` instead.",
+            "For one release `svgflow.py` is kept as a thin deprecation shim: it prints a one-line deprecation notice and forwards every argument, unchanged, to `diagram.py`, so nothing that already reaches for `svgflow` breaks. The default kind is `flow`, so an existing svgflow spec renders exactly the same through the alias.",
+        ),
+        usage=(
+            "Nothing to add — installing the `diagram` tool is what you want. This alias exists only so an existing `python3 svgflow.py --spec spec.json --out flow.svg` call keeps working while callers migrate; it forwards to `diagram.py` and emits a deprecation notice on stderr.",
+            "Switch to `diagram`: `shipmates install --harness <name> --with-tools diagram`, then `python3 diagram.py --spec spec.json --out flow.svg` (or `.png` / `.gif`).",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/pipeline.svg", width=274, height=384,
+                alt="A vertical flow diagram titled 'CI pipeline': Build, Test and Deploy boxes joined by downward terracotta arrows labelled 'on push' and 'green', with a back-edge from Test to Build labelled 'red → retry'.",
+                caption="A CI pipeline as a column — the same flow diagram, now the default kind of `diagram`.",
             ),
             ToolExample(
                 src="examples/request.svg", width=830, height=203,
-                alt="A left-to-right flow diagram titled 'Request flow': Client, API gateway, Service and Database boxes joined by teal arrows labelled 'HTTPS', 'authz' and 'query', with a return edge from Service to Client labelled '200 JSON'.",
+                alt="A left-to-right flow diagram titled 'Request flow': Client, API gateway, Service and Database boxes joined by terracotta arrows labelled 'HTTPS', 'authz' and 'query', with a return edge from Service to Client labelled '200 JSON'.",
                 caption="A request path as a row — client through gateway and service to the database, and the response back.",
             ),
             ToolExample(
                 src="examples/state.svg", width=354, height=508,
-                alt="A vertical state diagram titled 'Order state machine': Pending, Paid, Shipped and Delivered states joined by teal arrows, a back-edge from Shipped to Pending labelled 'cancelled', and a self-loop on Delivered labelled 're-notify'.",
+                alt="A vertical state diagram titled 'Order state machine': Pending, Paid, Shipped and Delivered states joined by terracotta arrows, a back-edge from Shipped to Pending labelled 'cancelled', and a self-loop on Delivered labelled 're-notify'.",
                 caption="An order state machine — the forward path plus a cancelled transition and a self-loop, all auto-routed.",
             ),
         ),
