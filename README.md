@@ -432,9 +432,9 @@ question is whether it's been *run*.
   Shipmates has actually been run on.
 - **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot
   and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
-  verified against that harness's parsing source and first-party docs. opencode and Antigravity get the full
-  crew + all 12 commands; the other four have no native subagent directory, so they ship the 12 skills
-  only. A live run has not been done on any of them; opencode's open questions are tracked in
+  verified against that harness's parsing source and first-party docs. opencode, Antigravity, Codex CLI and
+  GitHub Copilot get the full crew + all 12 commands; the other two — Cursor and Windsurf — have no native
+  subagent directory, so they ship the 12 skills only. A live run has not been done on any of them; opencode's open questions are tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
   CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates builds for.
