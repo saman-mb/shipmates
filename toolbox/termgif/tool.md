@@ -14,9 +14,17 @@ text or asking the user to record their screen.
 ## Run it
 
 The renderer `termgif.py` sits next to this file. It needs Pillow, which it
-installs for itself the first time it runs (into a private cache) if it is not
-already present — you never have to install anything. It uses DejaVu Sans Mono
-when available and falls back to Pillow's built-in font otherwise.
+installs for itself the first time it runs — you never have to install anything.
+It pins one Pillow version and caches it per-version under
+`~/.cache/shipmates/pylib/Pillow-<version>/`, placed first on the import path so
+that pinned build is authoritative (a differently-versioned system Pillow can't
+shadow it) — this is what keeps the same spec byte-reproducible run to run.
+Because that cache dir sits first on the import path it is created user-private
+(`0700`) and must stay trusted — anything planted there would be loaded. If
+the pinned version can't be provisioned (no pip, or offline) it falls back to a
+system Pillow and warns on stderr that output may not be byte-reproducible. It
+uses DejaVu Sans Mono when available and falls back to Pillow's built-in font
+otherwise.
 
 ```
 python3 termgif.py --spec spec.json --out demo.gif

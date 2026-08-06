@@ -37,47 +37,96 @@ import json
 import sys
 
 
+# The Pillow version this tool pins itself to. Pinning is what makes output
+# byte-reproducible: a floating version renders differently host to host. Pillow
+# 12.3.0 is a current stable release that supports every API this tool calls
+# (ImageDraw.rounded_rectangle, ImageFont.truetype/load_default, font.getlength,
+# and animated-GIF save with per-frame duration + disposal) and does NOT rely on
+# anything Pillow 10 removed (ANTIALIAS / textsize / getsize — this code already
+# uses getlength). Bump deliberately and only after re-verifying those calls.
+_PILLOW_VERSION = "12.3.0"
+
+
 def _ensure_pillow():
-    """Make Pillow importable with no separate install by the user. If it is
-    already available, use it; otherwise install it once into a private library
-    dir under the cache and add that to `sys.path` — no virtualenv, no re-exec.
-    A plain `python3 termgif.py` then works out of the box on any Python that can
-    reach pip. Needs the network the first time only; later runs reuse the cache."""
-    try:
-        import PIL  # noqa: F401
-        return
-    except ImportError:
-        pass
-    import os, subprocess, importlib
+    """Make the *pinned* Pillow importable with no separate install by the user.
+
+    The pinned version lives in a version-namespaced cache dir,
+    `~/.cache/shipmates/pylib/Pillow-<version>/`, which is placed at the FRONT of
+    `sys.path` so it is authoritative — a differently-versioned system Pillow can
+    no longer shadow it (that shadowing is what falsified byte-identical claims,
+    and the per-version dir means two tools needing different Pillows never
+    clobber one flat `PIL/`). If the pinned cache is absent it is provisioned once
+    with pip; later runs reuse it. Needs the network the first time only.
+
+    If the pinned version cannot be provisioned (no pip, or offline) but a system
+    Pillow is importable, it falls back to that and warns on stderr that output
+    may not be byte-reproducible. It hard-fails only when no Pillow exists at all.
+    """
+    import os
     root = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
-    libdir = os.path.join(root, "shipmates", "pylib")
-    if libdir not in sys.path:
+    libdir = os.path.join(root, "shipmates", "pylib", "Pillow-" + _PILLOW_VERSION)
+
+    def _import_from_pinned():
+        """Put the versioned cache first, drop any stale PIL, import; return the
+        module iff it actually resolves from the pinned dir, else None."""
+        import importlib
+        while libdir in sys.path:
+            sys.path.remove(libdir)
         sys.path.insert(0, libdir)
-    try:
-        import PIL  # provisioned on an earlier run
+        for name in [m for m in sys.modules if m == "PIL" or m.startswith("PIL.")]:
+            del sys.modules[name]
+        importlib.invalidate_caches()
+        try:
+            import PIL
+        except ImportError:
+            return None
+        if os.path.abspath(getattr(PIL, "__file__", "")).startswith(os.path.abspath(libdir) + os.sep):
+            return PIL
+        return None
+
+    if _import_from_pinned() is not None:
         return
-    except ImportError:
-        pass
-    os.makedirs(libdir, exist_ok=True)
+    import subprocess
+    os.makedirs(libdir, 0o700, exist_ok=True)  # user-private: the cache is front of sys.path
+    pinned = "Pillow==" + _PILLOW_VERSION
     installed = False
     for pip_cmd in ([sys.executable, "-m", "pip"], ["pip3"], ["pip"]):
         try:
+            # --only-binary=:all: forbids sdists, so no install-time setup.py runs.
             r = subprocess.run(pip_cmd + ["install", "--target", libdir, "--quiet",
-                                          "--disable-pip-version-check", "Pillow"])
+                                          "--only-binary=:all:",
+                                          "--disable-pip-version-check", pinned],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except (FileNotFoundError, OSError):
             continue
         if r.returncode == 0:
             installed = True
             break
-    if not installed:
-        sys.exit("termgif: needs Pillow and could not install it automatically "
-                 "(no pip found, or offline). Run: python3 -m pip install Pillow")
+    if installed and _import_from_pinned() is not None:
+        return
+
+    # Honest fallback: the pinned cache could not be provisioned. Prefer a system
+    # Pillow so the tool still works out of the box, but say so on stderr.
+    import importlib
+    while libdir in sys.path:
+        sys.path.remove(libdir)
+    for name in [m for m in sys.modules if m == "PIL" or m.startswith("PIL.")]:
+        del sys.modules[name]
     importlib.invalidate_caches()
     try:
-        import PIL  # noqa: F401
+        import PIL
     except ImportError:
-        sys.exit("termgif: installed Pillow into {} but could not import it. "
-                 "Run: python3 -m pip install Pillow".format(libdir))
+        PIL = None
+    if PIL is not None:
+        sys.stderr.write(
+            "termgif: warning: could not provision the pinned Pillow {} "
+            "(no pip, or offline); using system Pillow {} instead — output may "
+            "not be byte-reproducible without the pinned version.\n".format(
+                _PILLOW_VERSION, getattr(PIL, "__version__", "?")))
+        return
+    sys.exit("termgif: needs Pillow and could not install it automatically "
+             "(no pip found, or offline) and no system Pillow is importable. "
+             "Run: python3 -m pip install 'Pillow=={}'".format(_PILLOW_VERSION))
 
 
 _ensure_pillow()
@@ -244,7 +293,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.provision:
-        print("termgif: ready")   # Pillow was ensured on import
+        # _ensure_pillow() ran on import and placed the pinned Pillow bytes into
+        # the version-namespaced cache (or fell back with a stderr warning).
+        from PIL import __version__ as _pil_version
+        print("termgif: ready (Pillow {}, pinned {})".format(_pil_version, _PILLOW_VERSION))
         return 0
     if not args.out:
         print("termgif: --out is required", file=sys.stderr)
@@ -263,6 +315,8 @@ def main(argv=None):
         print(f"termgif: bad spec: {e}", file=sys.stderr)
         return 2
 
+    # No comment/time metadata is passed, and the pinned Pillow writes none of
+    # its own, so the same spec always produces a byte-identical GIF.
     frames[0].save(args.out, format="GIF", save_all=True, append_images=frames[1:],
                    duration=durations, loop=0, optimize=True, disposal=2)
     print(f"termgif: wrote {args.out} ({len(frames)} frames)")

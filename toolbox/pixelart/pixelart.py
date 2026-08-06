@@ -45,51 +45,111 @@ import json
 import sys
 
 
+# The Pillow version this tool pins itself to. Pinning is what makes output
+# byte-reproducible: a floating version renders differently host to host. Pillow
+# 12.3.0 is a current stable release that supports every API this tool calls
+# (Image.new/frombytes/putpalette/resize with Image.NEAREST, and PNG + animated
+# transparent GIF save) and does NOT rely on anything Pillow 10 removed
+# (ANTIALIAS / textsize / getsize). Bump deliberately and only after re-verifying
+# those calls.
+_PILLOW_VERSION = "12.3.0"
+
+
 def _ensure_pillow():
-    """Make Pillow importable with no separate install by the user. If it is
-    already available, use it; otherwise install it once into a private library
-    dir under the cache and add that to `sys.path` — no virtualenv, no re-exec.
-    A plain `python3 pixelart.py` then works out of the box on any Python that can
-    reach pip. Needs the network the first time only; later runs reuse it."""
-    try:
-        import PIL  # noqa: F401
-        return
-    except ImportError:
-        pass
-    import os, subprocess, importlib
+    """Make the *pinned* Pillow importable with no separate install by the user.
+
+    The pinned version lives in a version-namespaced cache dir,
+    `~/.cache/shipmates/pylib/Pillow-<version>/`, which is placed at the FRONT of
+    `sys.path` so it is authoritative — a differently-versioned system Pillow can
+    no longer shadow it (that shadowing is what falsified byte-identical claims,
+    and the per-version dir means two tools needing different Pillows never
+    clobber one flat `PIL/`). If the pinned cache is absent it is provisioned once
+    with pip; later runs reuse it. Needs the network the first time only.
+
+    If the pinned version cannot be provisioned (no pip, or offline) but a system
+    Pillow is importable, it falls back to that and warns on stderr that output
+    may not be byte-reproducible. It hard-fails only when no Pillow exists at all.
+    """
+    import os
     root = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
-    libdir = os.path.join(root, "shipmates", "pylib")
-    if libdir not in sys.path:
+    libdir = os.path.join(root, "shipmates", "pylib", "Pillow-" + _PILLOW_VERSION)
+
+    def _import_from_pinned():
+        """Put the versioned cache first, drop any stale PIL, import; return the
+        module iff it actually resolves from the pinned dir, else None."""
+        import importlib
+        while libdir in sys.path:
+            sys.path.remove(libdir)
         sys.path.insert(0, libdir)
-    try:
-        import PIL  # provisioned on an earlier run
+        for name in [m for m in sys.modules if m == "PIL" or m.startswith("PIL.")]:
+            del sys.modules[name]
+        importlib.invalidate_caches()
+        try:
+            import PIL
+        except ImportError:
+            return None
+        if os.path.abspath(getattr(PIL, "__file__", "")).startswith(os.path.abspath(libdir) + os.sep):
+            return PIL
+        return None
+
+    if _import_from_pinned() is not None:
         return
-    except ImportError:
-        pass
-    os.makedirs(libdir, exist_ok=True)
+    import subprocess
+    os.makedirs(libdir, 0o700, exist_ok=True)  # user-private: the cache is front of sys.path
+    pinned = "Pillow==" + _PILLOW_VERSION
     installed = False
     for pip_cmd in ([sys.executable, "-m", "pip"], ["pip3"], ["pip"]):
         try:
+            # --only-binary=:all: forbids sdists, so no install-time setup.py runs.
             r = subprocess.run(pip_cmd + ["install", "--target", libdir, "--quiet",
-                                          "--disable-pip-version-check", "Pillow"])
+                                          "--only-binary=:all:",
+                                          "--disable-pip-version-check", pinned],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except (FileNotFoundError, OSError):
             continue
         if r.returncode == 0:
             installed = True
             break
-    if not installed:
-        sys.exit("pixelart: needs Pillow and could not install it automatically "
-                 "(no pip found, or offline). Run: python3 -m pip install Pillow")
+    if installed and _import_from_pinned() is not None:
+        return
+
+    # Honest fallback: the pinned cache could not be provisioned. Prefer a system
+    # Pillow so the tool still works out of the box, but say so on stderr.
+    import importlib
+    while libdir in sys.path:
+        sys.path.remove(libdir)
+    for name in [m for m in sys.modules if m == "PIL" or m.startswith("PIL.")]:
+        del sys.modules[name]
     importlib.invalidate_caches()
     try:
-        import PIL  # noqa: F401
+        import PIL
     except ImportError:
-        sys.exit("pixelart: installed Pillow into {} but could not import it. "
-                 "Run: python3 -m pip install Pillow".format(libdir))
+        PIL = None
+    if PIL is not None:
+        sys.stderr.write(
+            "pixelart: warning: could not provision the pinned Pillow {} "
+            "(no pip, or offline); using system Pillow {} instead — output may "
+            "not be byte-reproducible without the pinned version.\n".format(
+                _PILLOW_VERSION, getattr(PIL, "__version__", "?")))
+        return
+    sys.exit("pixelart: needs Pillow and could not install it automatically "
+             "(no pip found, or offline) and no system Pillow is importable. "
+             "Run: python3 -m pip install 'Pillow=={}'".format(_PILLOW_VERSION))
 
 
 _ensure_pillow()
-from PIL import Image
+from PIL import Image, PngImagePlugin
+
+
+def _save_png(img, path):
+    """Write a PNG with no ancillary metadata so repeated runs are byte-identical.
+
+    An explicit empty PngInfo blocks any inherited text chunks, and Pillow writes
+    no tIME (verified: the pinned build emits only IHDR/IDAT/IEND), so the same
+    grid always hashes the same. Pairs with the pinned Pillow version above.
+    """
+    img.save(path, format="PNG", pnginfo=PngImagePlugin.PngInfo())
+
 
 MAX_SCALE = 512          # a sane upper bound on the whole-number upscale factor
 TRANSPARENT = (0, 0, 0, 0)
@@ -269,10 +329,10 @@ def render(spec, out, poster=None):
     if has_grid:
         validate_grid(spec["grid"], palette, "grid")
         img = render_rgba(spec["grid"], palette, scale)
-        img.save(out, format="PNG")
+        _save_png(img, out)
         note = f"pixelart: wrote {out} ({img.width}x{img.height})"
         if poster:                    # a static poster is just the same image
-            img.save(poster, format="PNG")
+            _save_png(img, poster)
             note += f" + poster {poster}"
         return note
 
@@ -291,13 +351,15 @@ def render(spec, out, poster=None):
     durations = read_durations(spec, len(frames))
     char_to_index, flat = _gif_index_tables(palette)
     gif_frames = [render_gif_frame(g, char_to_index, flat, scale) for g in frames]
+    # No comment/time metadata is passed, and the pinned Pillow writes none of
+    # its own, so the same frames always produce a byte-identical GIF.
     gif_frames[0].save(
         out, format="GIF", save_all=True, append_images=gif_frames[1:],
         duration=durations, loop=0, transparency=0, disposal=2, optimize=False)
     w, h = dims[0] * scale, dims[1] * scale
     note = f"pixelart: wrote {out} ({len(gif_frames)} frames, {w}x{h})"
     if poster:                        # final-frame poster for prefers-reduced-motion
-        render_rgba(frames[-1], palette, scale).save(poster, format="PNG")
+        _save_png(render_rgba(frames[-1], palette, scale), poster)
         note += f" + poster {poster}"
     return note
 
@@ -313,7 +375,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.provision:
-        print("pixelart: ready")   # Pillow was ensured on import
+        # _ensure_pillow() ran on import and placed the pinned Pillow bytes into
+        # the version-namespaced cache (or fell back with a stderr warning).
+        from PIL import __version__ as _pil_version
+        print("pixelart: ready (Pillow {}, pinned {})".format(_pil_version, _PILLOW_VERSION))
         return 0
     if not args.out:
         print("pixelart: --out is required", file=sys.stderr)
