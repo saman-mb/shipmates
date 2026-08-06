@@ -5,7 +5,7 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Windsurf, and Zed.</b><br/>
+  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, and Windsurf.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
@@ -170,14 +170,13 @@ codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .ag
 cursor           .agents/          skills only (shared open Agent Skills tree)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
 windsurf         .windsurf/        skills only (canonical .windsurf/skills)
-zed              .agents/          skills only (shared open Agent Skills tree)
 ```
 
 Every harness compiles the same canonical crew and commands. Five have a native subagent directory
-and receive the twelve specialists as agents; the other three ship the twelve commands as skills only.
-Five harnesses (codex, zed, antigravity, cursor, github-copilot) read the open [Agent Skills](https://agentskills.io)
+and receive the twelve specialists as agents; the other two ship the twelve commands as skills only.
+Four harnesses (codex, antigravity, cursor, github-copilot) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
-one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of five colliding
+one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of four colliding
 ones. Their crew still land in each harness's own native format. `windsurf` keeps its canonical
 `.windsurf/skills/` (its docs make `.agents/skills/` only a secondary scan) and `claude-code` its own
 `.claude/skills/`.
@@ -431,10 +430,10 @@ question is whether it's been *run*.
 
 - **Runtime-verified** — Claude Code: the full crew and all 12 commands, and the only harness
   Shipmates has actually been run on.
-- **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot,
-  Windsurf and Zed all build from `shipmates install --harness <name>`, and each payload's format was
+- **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot
+  and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
   verified against that harness's parsing source and first-party docs. opencode and Antigravity get the full
-  crew + all 12 commands; the other five have no native subagent directory, so they ship the 12 skills
+  crew + all 12 commands; the other four have no native subagent directory, so they ship the 12 skills
   only. A live run has not been done on any of them; opencode's open questions are tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
@@ -456,7 +455,7 @@ commands keep shipping. Want a role or a workflow aboard? Open an issue — idea
 A ready-made crew of **subagents** and **command workflows**. Instead of you playing
 planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
 `/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It ships for
-eight harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Windsurf, and Zed;
+seven harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, and Windsurf;
 see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**

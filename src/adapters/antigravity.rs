@@ -77,7 +77,7 @@ impl Adapter for AntigravityAdapter {
             files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
         }
         // `.agents/skills/` is the open Agent Skills tree agy reads; the skills
-        // come from the shared emitter (byte-identical with codex/zed/cursor/
+        // come from the shared emitter (byte-identical with codex/cursor/
         // copilot). Only the crew above are agy-specific.
         files.extend(emit_shared_skills(self.container(), commands));
         Ok(files)

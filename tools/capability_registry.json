@@ -147,7 +147,7 @@
       }
     },
     "cursor": {
-      "notes": "Cursor ships no subagents, so the adapter emits only the twelve commands as skills and ignores `roles`. Cursor reads the open Agent Skills tree `.agents/skills/` natively (a first-party peer of `.cursor/skills/`, since Cursor 2.4), so skills ship to the shared `.agents/skills/` location — byte-identical with codex/zed/antigravity/copilot. Verified 2026-08-03.",
+      "notes": "Cursor ships no subagents, so the adapter emits only the twelve commands as skills and ignores `roles`. Cursor reads the open Agent Skills tree `.agents/skills/` natively (a first-party peer of `.cursor/skills/`, since Cursor 2.4), so skills ship to the shared `.agents/skills/` location — byte-identical with codex/antigravity/copilot. Verified 2026-08-03.",
       "agent_path": ".cursor/agents/{name}.md",
       "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
@@ -181,7 +181,7 @@
       }
     },
     "github-copilot": {
-      "notes": "Custom agents at `.github/agents/<name>.agent.md` \u2014 the double extension is required; a plain `<name>.md` in that directory is never discovered. Markdown + YAML frontmatter; `tools` takes the canonical names (read, search, edit, execute, web, agent) and OMITTING the key enables every tool, so an empty mapping must never silently become an unrestricted agent. Frontmatter + body capped at 30,000 characters. Copilot accepts skills at `.github/skills`, `.claude/skills` AND the open `.agents/skills` (all first-party, since 2025-12-18), so skills ship to the shared `.agents/skills/` tree — byte-identical with codex/zed/antigravity/cursor; only the crew are `.github`-native. Verified 2026-08-03.",
+      "notes": "Custom agents at `.github/agents/<name>.agent.md` \u2014 the double extension is required; a plain `<name>.md` in that directory is never discovered. Markdown + YAML frontmatter; `tools` takes the canonical names (read, search, edit, execute, web, agent) and OMITTING the key enables every tool, so an empty mapping must never silently become an unrestricted agent. Frontmatter + body capped at 30,000 characters. Copilot accepts skills at `.github/skills`, `.claude/skills` AND the open `.agents/skills` (all first-party, since 2025-12-18), so skills ship to the shared `.agents/skills/` tree — byte-identical with codex/antigravity/cursor; only the crew are `.github`-native. Verified 2026-08-03.",
       "agent_path": ".github/agents/{name}.agent.md",
       "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
@@ -241,40 +241,6 @@
           "edit"
         ],
         "bash": "bash",
-        "web": {
-          "search": "web_search",
-          "fetch": "web_fetch"
-        },
-        "agent": "agent"
-      }
-    },
-    "zed": {
-      "notes": "Zed discovers skills under `.agents/skills/` — the open Agent Skills standard it adopted in v1.4.2, not a `.zed/` tree. It ships no subagents, so the adapter emits the twelve commands as skills and ignores `roles`. Verified 2026-08-03.",
-      "agent_path": ".zed/agents/{name}.md",
-      "skill_path": ".agents/skills/{name}/SKILL.md",
-      "project_instructions": "AGENTS.md",
-      "permission_model": "allowlist",
-      "scopes": {
-        "read": "read",
-        "search": "search",
-        "glob": "glob",
-        "write": "edit",
-        "edit": "edit",
-        "bash": "terminal",
-        "web-search": "web_search",
-        "web-fetch": "web_fetch",
-        "agent": "agent"
-      },
-      "tools": {
-        "read": [
-          "read",
-          "search",
-          "glob"
-        ],
-        "edit": [
-          "edit"
-        ],
-        "bash": "terminal",
         "web": {
           "search": "web_search",
           "fetch": "web_fetch"

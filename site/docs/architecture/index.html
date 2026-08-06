@@ -71,7 +71,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">&#129517;</span> Architecture</p>
           <h1 class="order-detail__title" id="architecture-title">Architecture</h1>
           <p class="order-detail__tagline">Author once. Compile per harness. Enforce the workflow at the tool boundary.</p>
-          <p class="order-detail__desc">One mental model to keep: you write the crew and commands once, in a neutral form; the <code>shipmates</code> CLI compiles them for each harness with only the features that harness supports; and a small state machine enforces the workflow through the harness&#x27;s own tool hook &mdash; falling back to advice where there is no hook.</p>
+          <p class="order-detail__desc">One mental model to keep: you write the crew and commands once, in a neutral form; the <code>shipmates</code> CLI compiles them for each harness with only the features that harness supports; and a small state machine enforces the workflow through each harness&#x27;s own tool hook &mdash; every supported harness has one, so an out-of-order tool call is hard-blocked.</p>
         </div>
       </div>
     </section>
@@ -85,7 +85,7 @@
             <li><a href="#source">One source of truth</a></li>
             <li><a href="#adapters">Feature-aware adapters</a></li>
             <li><a href="#enforcement">State machine &amp; hooks</a></li>
-            <li><a href="#fallback">The fallback</a></li>
+            <li><a href="#principle">Enforced everywhere</a></li>
             <li><a href="#honest">How it stays honest</a></li>
           </ul>
         </nav>
@@ -100,8 +100,8 @@
         </div>
         <div class="order-prose">
           <figure class="tool-example">
-            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Render pipeline: the neutral crew, commands and tools are authored once, compiled by the shipmates CLI through eight per-harness adapters into native payloads that carry only the features each harness supports." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="376" height="474" viewBox="0 0 376 474">
-<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}.bypass{fill:none;stroke:var(--text-muted);stroke-dasharray:6 4}.bypass-arrow{fill:var(--text-muted);stroke:none}text{font-family:var(--font-sans)}</style>
+            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Render pipeline: the neutral crew, commands and tools are authored once, compiled by the shipmates CLI through seven per-harness adapters into native payloads that carry only the features each harness supports." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="376" height="474" viewBox="0 0 376 474">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
 <rect x="0.5" y="0.5" width="375" height="473" rx="16" class="panel" stroke-width="1"/>
 <g transform="translate(223.6,28)">
 <line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
@@ -121,12 +121,12 @@
 <rect x="-123.6" y="74" width="111.6" height="22" rx="6" class="mask"/>
 <text x="-67.8" y="89.2" text-anchor="middle" font-size="12" class="chip">authored once</text>
 <rect x="-116.4" y="198" width="104.4" height="22" rx="6" class="mask"/>
-<text x="-64.2" y="213.2" text-anchor="middle" font-size="12" class="chip">× 8 adapters</text>
+<text x="-64.2" y="213.2" text-anchor="middle" font-size="12" class="chip">× 7 adapters</text>
 <rect x="-195.6" y="322" width="183.6" height="22" rx="6" class="mask"/>
 <text x="-103.8" y="337.2" text-anchor="middle" font-size="12" class="chip">supported features only</text>
 </g>
 </svg>
-            <figcaption class="tool-example__caption">The render pipeline: crew, commands and tools are authored once, then compiled by the <code>shipmates</code> CLI through eight per-harness adapters into native payloads &mdash; each carrying only the features its harness supports.</figcaption>
+            <figcaption class="tool-example__caption">The render pipeline: crew, commands and tools are authored once, then compiled by the <code>shipmates</code> CLI through seven per-harness adapters into native payloads &mdash; each carrying only the features its harness supports.</figcaption>
           </figure>
           <p>Everything below is just those three boxes in more detail. Nothing harness-specific lives in the sources; nothing neutral survives into a payload unchanged.</p>
         </div>
@@ -141,7 +141,7 @@
         </div>
         <div class="order-prose">
           <p><code>crew/*.md</code> are the twelve specialist subagents; <code>commands/*.md</code> are the twelve workflows; <code>toolbox/*</code> are the model-invoked tools. They are domain-neutral by rule &mdash; no stack, framework or product is named, and <code>$ARGUMENTS</code> is the only placeholder a command may carry.</p>
-          <p>These are the only files you edit for crew or command content. Every harness&#x27;s payload is rendered from them, so a change made once reaches all eight.</p>
+          <p>These are the only files you edit for crew or command content. Every harness&#x27;s payload is rendered from them, so a change made once reaches all seven.</p>
         </div>
       </div>
     </section>
@@ -168,10 +168,10 @@
         <div class="order-prose">
           <p>A command&#x27;s <code>stages:</code> frontmatter defines a finite-state machine; <code>shipmates state</code> checks each transition against a per-run <code>.shipmates/run-&lt;N&gt;.json</code> file and answers <em>legal</em> (exit&nbsp;0), <em>illegal</em> (exit&nbsp;1) or <em>error</em> (exit&nbsp;2). One extra binding, <code>tool_gates</code>, ties a specific tool call to the phase it&#x27;s allowed in.</p>
           <figure class="tool-example">
-            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Enforcement flow: an agent calls gh pr merge; on a hook-capable harness a PreToolUse hook discovers the run from the feat/issue-N branch, calls shipmates state gate, and allows the merge only once the run has reached the deliver phase, otherwise denies it; on a hook-less harness such as Zed the tool runs ungated under the advisory state machine." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="438" height="970" viewBox="0 0 438 970">
-<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}.bypass{fill:none;stroke:var(--text-muted);stroke-dasharray:6 4}.bypass-arrow{fill:var(--text-muted);stroke:none}text{font-family:var(--font-sans)}</style>
-<rect x="0.5" y="0.5" width="437" height="969" rx="16" class="panel" stroke-width="1"/>
-<g transform="translate(169.5,28)">
+            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Enforcement flow: an agent calls gh pr merge; the PreToolUse hook discovers the run from the feat/issue-N branch, calls shipmates state gate, checks whether the run has reached the deliver phase, and allows the merge if it has or denies it if the run is too early." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="366" height="846" viewBox="0 0 366 846">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
+<rect x="0.5" y="0.5" width="365" height="845" rx="16" class="panel" stroke-width="1"/>
+<g transform="translate(165,28)">
 <line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
 <polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
 <line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
@@ -184,8 +184,6 @@
 <polygon points="0,620 -5.5,609 5.5,609" class="arrow"/>
 <path d="M 92 519 C 146 519 146 767 83 767" class="flow" stroke-width="2.0" stroke-linecap="round"/>
 <polygon points="83,767 94,761.5 94,772.5" class="arrow"/>
-<path d="M 101 23 C 195.5 23 195.5 891 141.5 891" stroke-width="2.0" stroke-linecap="round" class="bypass"/>
-<polygon points="141.5,891 152.5,885.5 152.5,896.5" class="bypass-arrow"/>
 <rect x="-101" y="0" width="202" height="46" rx="10" class="node" stroke-width="1.5"/>
 <text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">agent: gh pr merge</text>
 <rect x="-87.5" y="124" width="175" height="46" rx="10" class="node" stroke-width="1.5"/>
@@ -200,16 +198,10 @@
 <text x="0" y="648.25" text-anchor="middle" font-size="15" class="label">ALLOW — merge runs</text>
 <rect x="-83" y="744" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
 <text x="0" y="772.25" text-anchor="middle" font-size="15" class="label">DENY — blocked</text>
-<rect x="-141.5" y="868" width="283" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="896.25" text-anchor="middle" font-size="15" class="label">no hook → advisory, ungated</text>
-<rect x="-116.4" y="74" width="104.4" height="22" rx="6" class="mask"/>
-<text x="-64.2" y="89.2" text-anchor="middle" font-size="12" class="chip">hook-capable</text>
 <rect x="-94.8" y="570" width="82.8" height="22" rx="6" class="mask"/>
 <text x="-53.4" y="585.2" text-anchor="middle" font-size="12" class="chip">at / past</text>
 <rect x="89.97" y="632" width="82.8" height="22" rx="6" class="mask"/>
 <text x="131.38" y="647.2" text-anchor="middle" font-size="12" class="chip">too early</text>
-<rect x="113.94" y="446" width="126" height="22" rx="6" class="mask"/>
-<text x="176.94" y="461.2" text-anchor="middle" font-size="12" class="chip">hook-less (Zed)</text>
 </g>
 </svg>
             <figcaption class="tool-example__caption">On a harness with a blocking pre-tool hook, a thin shim calls <code>shipmates state gate</code> <em>before</em> a tool runs. A tool the workflow hasn&#x27;t earned yet is denied &mdash; <code>gh pr merge</code> before the run reaches <code>deliver</code>, <code>git push</code> before it is built.</figcaption>
@@ -219,42 +211,38 @@
       </div>
     </section>
 
-    <section class="section" id="fallback" aria-labelledby="fallback-title">
+    <section class="section" id="principle" aria-labelledby="principle-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="fallback-title">The fallback: advisory where there&#x27;s no hook</h2>
-          <p class="section__lead">Hard enforcement needs a scriptable, blocking pre-tool hook. Seven of the eight supported harnesses have one. Zed does not.</p>
+          <h2 class="section__title" id="principle-title">Enforced on every supported harness</h2>
+          <p class="section__lead">Shipmates only supports harnesses with a blocking pre-tool hook &mdash; so every supported harness enforces the workflow at the tool boundary.</p>
         </div>
         <div class="order-prose">
           <div style="background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--radius-md);padding:var(--space-4) var(--space-5);">
-            <p><strong>When a harness has no blocking hook, Shipmates falls back to the advisory state machine.</strong> The crew and commands install and work exactly the same, and <code>stages:</code> still document the intended flow &mdash; but nothing hard-blocks an out-of-order tool call. The FSM is prompt-level guidance, not an enforced gate, just as it was everywhere before a hook was wired.</p>
+            <p><strong>Every one of the seven supported harnesses exposes a scriptable, blocking pre-tool hook</strong> that the installer wires to <code>shipmates state gate</code>. There is no hook-less supported harness, and so no advisory-only fallback: the same gate runs before every tool call, everywhere.</p>
           </div>
           <figure class="tool-example">
-            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Harness support: of eight supported harnesses, the seven with a blocking pre-tool hook can enforce the gates while Zed, which has no such hook, falls back to the advisory state machine." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="357" height="474" viewBox="0 0 357 474">
-<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}.bypass{fill:none;stroke:var(--text-muted);stroke-dasharray:6 4}.bypass-arrow{fill:var(--text-muted);stroke:none}text{font-family:var(--font-sans)}</style>
-<rect x="0.5" y="0.5" width="356" height="473" rx="16" class="panel" stroke-width="1"/>
-<g transform="translate(151.5,28)">
+            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Harness support: all seven supported harnesses expose a blocking pre-tool hook, so the gate runs before each tool call and an out-of-phase call is denied on every one of them." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="330" height="474" viewBox="0 0 330 474">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
+<rect x="0.5" y="0.5" width="329" height="473" rx="16" class="panel" stroke-width="1"/>
+<g transform="translate(165,28)">
 <line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
 <polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
 <line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
 <polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
-<path d="M 123.5 147 C 177.5 147 177.5 395 83 395" stroke-width="2.0" stroke-linecap="round" class="bypass"/>
-<polygon points="83,395 94,389.5 94,400.5" class="bypass-arrow"/>
+<line x1="0" y1="294" x2="0" y2="372" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,372 -5.5,361 5.5,361" class="arrow"/>
 <rect x="-114.5" y="0" width="229" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">8 supported harnesses</text>
-<rect x="-123.5" y="124" width="247" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">blocking pre-tool hook?</text>
-<rect x="-87.5" y="248" width="175" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">7 → can enforce</text>
-<rect x="-83" y="372" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">Zed → advisory</text>
-<rect x="-51.6" y="198" width="39.6" height="22" rx="6" class="mask"/>
-<text x="-31.8" y="213.2" text-anchor="middle" font-size="12" class="chip">yes</text>
-<rect x="142.74" y="260" width="32.4" height="22" rx="6" class="mask"/>
-<text x="158.94" y="275.2" text-anchor="middle" font-size="12" class="chip">no</text>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">7 supported harnesses</text>
+<rect x="-128" y="124" width="256" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">each has a blocking hook</text>
+<rect x="-137" y="248" width="274" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">gate runs before each tool</text>
+<rect x="-128" y="372" width="256" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">out-of-phase call denied</text>
 </g>
 </svg>
-            <figcaption class="tool-example__caption">Of the eight supported harnesses, the seven that expose a blocking pre-tool hook <em>can</em> hard-enforce the gates; Zed, whose built-in agent offers only static tool-permission rules, stays advisory. (Today only Claude Code ships the wired hook &mdash; see <a href="#honest">How it stays honest</a>.)</figcaption>
+            <figcaption class="tool-example__caption">All seven supported harnesses expose a blocking pre-tool hook, so the same gate runs before every tool call on each of them. (Enforcement goes live per harness once its shim is installed &mdash; today only Claude Code&#x27;s ships; see <a href="#honest">How it stays honest</a>.)</figcaption>
           </figure>
           <div class="order-table" tabindex="0">
             <table>
@@ -267,12 +255,11 @@
                 <tr><td><code>github-copilot</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
                 <tr><td><code>windsurf</code></td><td><code>pre_run_command</code>&#160;*</td><td>Enforceable</td></tr>
                 <tr><td><code>opencode</code></td><td><code>tool.execute.before</code></td><td>Enforceable</td></tr>
-                <tr><td><code>zed</code></td><td>&mdash; none</td><td>Advisory only</td></tr>
               </tbody>
             </table>
           </div>
           <p><small>* <code>windsurf</code>&#x27;s product identity is in doubt &mdash; it became Devin Desktop in 2026, so this target may be renamed or retargeted; its <code>pre_run_command</code> hook is documented but unverified here. See the <a href="../harnesses/">harness matrix</a>.</small></p>
-          <p>The honest scope, plainly: <strong>tool-boundary transitions are hard-enforced on hook-capable harnesses; judgment gates (stage checks with no tool to intercept, like <code>board-accepted</code>) and hook-less harnesses stay advisory.</strong> For a hook-less harness the neutral alternative is an external orchestrator that drives <code>shipmates state</code> itself &mdash; a separate runner &mdash; but the in-harness default is simply this: enforced where a hook exists, advisory where it doesn&#x27;t.</p>
+          <p>Two honest limits, plainly. <strong>Only tool-boundary transitions hard-block</strong> &mdash; a judgment gate with no tool to intercept, like <code>board-accepted</code>, stays advisory guidance because there is nothing to deny. And <strong>enforcement is live only once the hook is installed</strong>: the mechanism is per-harness, and today only the Claude Code shim ships (the other six are in progress &mdash; see <a href="#honest">How it stays honest</a>).</p>
         </div>
       </div>
     </section>
