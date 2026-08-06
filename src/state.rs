@@ -1,11 +1,22 @@
 //! `shipmates state` — the finite-state-machine **engine** for a command run.
 //!
-//! This is the foundation the (planned, #114-gated) enforcement hook will call.
-//! It does **not** enforce anything by itself: nothing here is wired into a
-//! PreToolUse hook, and no tool invocation is bound to a phase yet. On its own,
-//! `shipmates state` only reads and writes a run file and answers "is this
-//! transition legal for this command's declared FSM?" — the hook that would make
-//! that answer *block* a tool is out of scope (see AGENTS.md, "Scope & honesty").
+//! This is the foundation the enforcement hook calls. The engine still does
+//! **not** block anything by itself — it reads and writes a run file and answers
+//! two questions over a command's declared FSM: "is this phase transition legal?"
+//! (`assert`/`advance`) and "is this tool allowed at the current phase?"
+//! (`gate`). A harness PreToolUse hook shim (`enforcement/hooks/<harness>/`) is
+//! what turns a `gate` *deny* into a *blocked* tool call; the engine only
+//! supplies the verdict and its 0/1/2 exit ABI.
+//!
+//! ## Tool→phase gate (`gate`)
+//!
+//! A command may declare `tool_gates:` — `{match, require}` bindings that name a
+//! stage a run must be AT-OR-PAST before a tool (matched by a substring of its
+//! shell command) is allowed. `gate` finds the first matching binding and ranks
+//! the run's current phase against `require` by the same declared stage order
+//! the FSM enforces: at-or-past ⇒ allow (exit 0), too early ⇒ deny (exit 1), a
+//! misconfigured binding or corrupt run file ⇒ error (exit 2). An unmatched tool
+//! is ungated (allow). See [`gate`] for the terminal-phase ranking rules.
 //!
 //! ## FSM model
 //!
@@ -80,29 +91,36 @@ pub struct RunFile {
     pub fix_rounds: BTreeMap<String, u32>,
 }
 
-/// Two distinct failure modes, kept apart so the exit-code ABI can route them:
-/// an **illegal transition** is exit 1 (a well-formed question with the answer
-/// "no"), an **operational error** is exit 2 (a missing/malformed file, an
-/// unknown command, a corrupt phase). They must never collapse into one code.
+/// Failure modes, kept apart so the exit-code ABI can route them: an **illegal
+/// transition** is exit 1 (a well-formed `assert`/`advance` question with the
+/// answer "no"), a **gate deny** is also exit 1 but a distinct outcome — a tool
+/// refused at the current phase, not a transition — so it prints its own bare
+/// reason rather than an "illegal transition" line; an **operational error** is
+/// exit 2 (a missing/malformed file, an unknown command, a corrupt phase). The
+/// exit-1 and exit-2 codes must never collapse into one.
 #[derive(Debug)]
 pub enum StateError {
-    /// A legal-but-refused FSM transition → exit 1.
+    /// A legal-but-refused FSM transition → exit 1, `state: illegal transition:`.
     Illegal(String),
-    /// Could not evaluate the request at all → exit 2.
+    /// A tool refused by a `tool_gates` binding at the current phase → exit 1,
+    /// but printed as the bare `gate: …` reason (no "illegal transition" prefix)
+    /// so the hook shim can surface it verbatim as the permission-decision reason.
+    Denied(String),
+    /// Could not evaluate the request at all → exit 2, `state: error:`.
     Error(String),
 }
 
 impl StateError {
     fn exit_code(&self) -> i32 {
         match self {
-            StateError::Illegal(_) => 1,
+            StateError::Illegal(_) | StateError::Denied(_) => 1,
             StateError::Error(_) => 2,
         }
     }
 
     fn reason(&self) -> &str {
         match self {
-            StateError::Illegal(m) | StateError::Error(m) => m,
+            StateError::Illegal(m) | StateError::Denied(m) | StateError::Error(m) => m,
         }
     }
 }
@@ -408,6 +426,19 @@ fn command_stages(command: &str) -> Result<Vec<serde_json::Value>, StateError> {
         .ok_or_else(|| StateError::Error(format!("unknown command {command:?}")))
 }
 
+/// Look up a command's `tool_gates` bindings from the embedded catalog. An
+/// unknown command is an error (the same failure `command_stages` reports); a
+/// command with no bindings yields an empty list — every tool is then ungated.
+fn command_tool_gates(command: &str) -> Result<Vec<serde_json::Value>, StateError> {
+    let commands = crate::catalog::load_commands_embedded()
+        .map_err(|e| StateError::Error(format!("cannot load commands: {e}")))?;
+    commands
+        .into_iter()
+        .find(|c| c.name == command)
+        .map(|c| c.tool_gates)
+        .ok_or_else(|| StateError::Error(format!("unknown command {command:?}")))
+}
+
 /// The JSON result printed by `assert` / `advance` / `status`.
 #[derive(Debug, Serialize)]
 struct AssertResult<'a> {
@@ -420,29 +451,43 @@ struct AssertResult<'a> {
     fix_rounds: &'a BTreeMap<String, u32>,
 }
 
-/// Dispatch a `state` action against the current working directory. Returns the
-/// process exit code (0 legal / 1 illegal / 2 error) — the caller exits with it.
+/// Dispatch a `state` action against the base directory the action carries
+/// (`--dir`, defaulting to `.`). Returns the process exit code (0 legal / 1
+/// illegal / 2 error) — the caller exits with it. Threading the base through the
+/// CLI lets a hook shim resolve a run file in another worktree without a `cd`.
 pub fn dispatch(action: &StateAction) -> i32 {
-    dispatch_at(Path::new("."), action)
+    let dir = match action {
+        StateAction::Init { dir, .. }
+        | StateAction::Assert { dir, .. }
+        | StateAction::Advance { dir, .. }
+        | StateAction::Status { dir, .. }
+        | StateAction::Gate { dir, .. } => dir,
+    };
+    dispatch_at(Path::new(dir), action)
 }
 
 /// Dispatch a `state` action against an explicit base directory. Threading the
 /// base makes every path resolution testable without touching the real cwd.
 pub fn dispatch_at(base: &Path, action: &StateAction) -> i32 {
+    // `dir` is already resolved into `base` by `dispatch`, so it is ignored here.
     let result = match action {
-        StateAction::Init { run, command } => cmd_init(base, *run, command),
-        StateAction::Assert { run, to } => cmd_assert(base, *run, to),
-        StateAction::Advance { run, to } => cmd_advance(base, *run, to),
-        StateAction::Status { run } => cmd_status(base, *run),
+        StateAction::Init { run, command, .. } => cmd_init(base, *run, command),
+        StateAction::Assert { run, to, .. } => cmd_assert(base, *run, to),
+        StateAction::Advance { run, to, .. } => cmd_advance(base, *run, to),
+        StateAction::Status { run, .. } => cmd_status(base, *run),
+        StateAction::Gate { run, tool, .. } => cmd_gate(base, *run, tool),
     };
     match result {
         Ok(()) => 0,
         Err(e) => {
-            let label = match e {
-                StateError::Illegal(_) => "illegal transition",
-                StateError::Error(_) => "error",
-            };
-            eprintln!("state: {label}: {}", e.reason());
+            // A gate deny prints its bare `gate: …` reason (no "illegal
+            // transition" prefix) so the hook shim surfaces it verbatim; the
+            // other failures keep their labelled diagnostic line.
+            match &e {
+                StateError::Denied(m) => eprintln!("{m}"),
+                StateError::Illegal(m) => eprintln!("state: illegal transition: {m}"),
+                StateError::Error(m) => eprintln!("state: error: {m}"),
+            }
             e.exit_code()
         }
     }
@@ -525,6 +570,126 @@ fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
     Ok(())
 }
 
+/// The verdict of the pure [`gate`] function: allow a tool, deny it (with a
+/// greppable reason), or an error (a misconfigured gate, or a run-file phase the
+/// FSM does not know). These map onto the process exit ABI 0 / 1 / 2 exactly as
+/// [`StateError`] does — allow → 0, deny → 1, error → 2.
+#[derive(Debug, PartialEq)]
+enum GateDecision {
+    /// The tool is ungated, or the run has reached the required stage — exit 0.
+    Allow,
+    /// The tool is gated and the run is too early — exit 1, with the reason.
+    Deny(String),
+    /// The gate could not be evaluated (a `require` naming no stage, or a phase
+    /// the FSM does not know) — exit 2.
+    Error(String),
+}
+
+/// Pure tool→phase gate decision — the whole policy, isolated from I/O so it is
+/// unit-testable without a run file.
+///
+/// The FIRST `tool_gates` entry whose `match` is a substring of `tool_command`
+/// applies (declaration order is precedence). With no match the tool is
+/// **ungated** → [`GateDecision::Allow`]. When a gate applies, the run must be
+/// **AT-OR-PAST** that gate's `require` stage, ranked by the command's declared
+/// stage order (the same order the FSM enforces):
+///
+/// * `require` must name a declared stage — else [`GateDecision::Error`] (a
+///   misconfigured binding, exit 2), mirroring how a bad `on_fail` fails the FSM
+///   load.
+/// * the current phase is ranked by its stage index; the terminal success phase
+///   `complete` ranks past every stage (allow), while the terminal failure phase
+///   `escalated` is a bailed-out run that never satisfies a forward gate (deny).
+/// * a current phase the FSM does not know at all is an internally-inconsistent
+///   run file → [`GateDecision::Error`] (exit 2), matching `classify`.
+///
+/// A `require >= ` current-phase rank denies; rank `>=` require allows.
+fn gate(
+    command_stages: &[serde_json::Value],
+    current_phase: &str,
+    tool_gates: &[serde_json::Value],
+    tool_command: &str,
+) -> GateDecision {
+    // Find the first gate whose `match` substring is present in the command.
+    // A gate with no string `match` can never apply, so it is skipped; a gate
+    // that DOES apply but carries no string `require` is a misconfiguration.
+    for g in tool_gates {
+        let Some(needle) = g.get("match").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        if !tool_command.contains(needle) {
+            continue;
+        }
+        let Some(require) = g.get("require").and_then(|v| v.as_str()) else {
+            return GateDecision::Error(format!(
+                "tool_gate matching {needle:?} has no string `require` stage"
+            ));
+        };
+
+        let fsm = match Fsm::from_stages("<gate>", command_stages) {
+            Ok(f) => f,
+            Err(e) => return GateDecision::Error(e.reason().to_string()),
+        };
+
+        // `require` must name a declared stage — a terminal or unknown name is a
+        // misconfigured gate.
+        let require_idx = match fsm.phase_kind(require) {
+            PhaseKind::Stage(i) => i,
+            _ => {
+                return GateDecision::Error(format!(
+                    "tool_gate `require` {require:?} is not a stage of this command"
+                ));
+            }
+        };
+
+        // Rank the current phase against the declared stage order. `complete`
+        // sits past the last stage (allow-all); `escalated` is a bailed-out run
+        // that never reaches a forward gate (deny-all); an unknown phase is a
+        // corrupt run file.
+        let phase_rank: i64 = match fsm.phase_kind(current_phase) {
+            PhaseKind::Stage(i) => i as i64,
+            PhaseKind::Terminal if current_phase == PHASE_COMPLETE => fsm.stages.len() as i64,
+            PhaseKind::Terminal => -1, // escalated
+            PhaseKind::Unknown => {
+                return GateDecision::Error(format!(
+                    "run file phase {current_phase:?} is not a phase of this command's FSM"
+                ));
+            }
+        };
+
+        return if phase_rank >= require_idx as i64 {
+            GateDecision::Allow
+        } else {
+            GateDecision::Deny(format!(
+                "gate: {needle} requires phase>={require}, run is at {current_phase}"
+            ))
+        };
+    }
+
+    // No gate matched — the tool is ungated.
+    GateDecision::Allow
+}
+
+/// `state gate --run N --tool "<command>"` — the thin CLI wrapper over [`gate`].
+/// Reads the run file (fail-closed), loads its command's declared stages and
+/// `tool_gates`, and routes the decision onto the 0 / 1 / 2 exit ABI.
+fn cmd_gate(base: &Path, run: u64, tool: &str) -> Result<(), StateError> {
+    let record = read_run(base, run)?;
+    let stages = command_stages(&record.command)?;
+    let gates = command_tool_gates(&record.command)?;
+    match gate(&stages, &record.phase, &gates, tool) {
+        GateDecision::Allow => {
+            print_gate(&record, tool, true, None);
+            Ok(())
+        }
+        GateDecision::Deny(reason) => {
+            print_gate(&record, tool, false, Some(&reason));
+            Err(StateError::Denied(reason))
+        }
+        GateDecision::Error(msg) => Err(StateError::Error(msg)),
+    }
+}
+
 /// `state status --run N` — print the run JSON. Fail-closed on read.
 fn cmd_status(base: &Path, run: u64) -> Result<(), StateError> {
     let record = read_run(base, run)?;
@@ -536,6 +701,34 @@ fn print_run(record: &RunFile) {
     match serde_json::to_string_pretty(record) {
         Ok(s) => println!("{s}"),
         Err(e) => eprintln!("state: error: cannot render run file: {e}"),
+    }
+}
+
+/// The JSON verdict printed to stdout by `gate` (both allow and deny). The
+/// greppable deny reason also goes to stderr via the dispatcher, which is what
+/// the PreToolUse hook shim reads.
+#[derive(Debug, Serialize)]
+struct GateResult<'a> {
+    command: &'a str,
+    issue: u64,
+    phase: &'a str,
+    tool: &'a str,
+    allow: bool,
+    reason: Option<&'a str>,
+}
+
+fn print_gate(record: &RunFile, tool: &str, allow: bool, reason: Option<&str>) {
+    let result = GateResult {
+        command: &record.command,
+        issue: record.issue,
+        phase: &record.phase,
+        tool,
+        allow,
+        reason,
+    };
+    match serde_json::to_string(&result) {
+        Ok(s) => println!("{s}"),
+        Err(e) => eprintln!("state: error: cannot render gate result: {e}"),
     }
 }
 
@@ -849,5 +1042,133 @@ mod tests {
         let err = cmd_advance(base, 9, "build").unwrap_err();
         assert_eq!(err.exit_code(), 1);
         assert_eq!(read_run(base, 9).unwrap().phase, "plan");
+    }
+
+    // --- tool→phase gate -------------------------------------------------
+
+    /// The ship-issue tool_gates: `gh pr merge` needs `deliver`, `git push`
+    /// needs `build` (the same bindings the real command declares).
+    fn ship_issue_tool_gates() -> Vec<serde_json::Value> {
+        serde_json::from_str(
+            r#"[{"match":"gh pr merge","require":"deliver"},{"match":"git push","require":"build"}]"#,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn gate_denies_a_gated_tool_before_its_required_stage() {
+        let stages = ship_issue_stages();
+        let gates = ship_issue_tool_gates();
+        // At `build`, `gh pr merge` (require deliver) is too early → deny with a
+        // greppable reason naming the match, the require, and the current phase.
+        match gate(&stages, "build", &gates, "gh pr merge --squash --delete-branch") {
+            GateDecision::Deny(reason) => {
+                assert!(reason.contains("gate:"), "{reason}");
+                assert!(reason.contains("gh pr merge"), "{reason}");
+                assert!(reason.contains("phase>=deliver"), "{reason}");
+                assert!(reason.contains("run is at build"), "{reason}");
+            }
+            other => panic!("expected deny, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn gate_allows_a_gated_tool_at_or_past_its_required_stage() {
+        let stages = ship_issue_stages();
+        let gates = ship_issue_tool_gates();
+        // Exactly at `deliver`, and past it (`complete`), both satisfy the gate.
+        assert_eq!(gate(&stages, "deliver", &gates, "gh pr merge"), GateDecision::Allow);
+        assert_eq!(gate(&stages, PHASE_COMPLETE, &gates, "gh pr merge"), GateDecision::Allow);
+    }
+
+    #[test]
+    fn gate_allows_an_ungated_tool() {
+        let stages = ship_issue_stages();
+        let gates = ship_issue_tool_gates();
+        // No binding matches `cargo test`, so it is ungated at any phase.
+        assert_eq!(gate(&stages, "plan", &gates, "cargo test"), GateDecision::Allow);
+    }
+
+    #[test]
+    fn gate_gates_git_push_from_build_onward() {
+        let stages = ship_issue_stages();
+        let gates = ship_issue_tool_gates();
+        // `git push` requires `build`: denied at plan, allowed once built.
+        assert!(matches!(
+            gate(&stages, "plan", &gates, "git push -u origin HEAD"),
+            GateDecision::Deny(_)
+        ));
+        assert_eq!(gate(&stages, "build", &gates, "git push -u origin HEAD"), GateDecision::Allow);
+    }
+
+    #[test]
+    fn gate_uses_declaration_order_for_precedence() {
+        // A command string that contains BOTH needles takes the FIRST declared
+        // binding — here `gh pr merge` (require deliver), so at `build` it denies
+        // even though the `git push` binding (require build) would allow.
+        let stages = ship_issue_stages();
+        let gates = ship_issue_tool_gates();
+        let both = "gh pr merge && git push";
+        assert!(matches!(gate(&stages, "build", &gates, both), GateDecision::Deny(_)));
+    }
+
+    #[test]
+    fn gate_escalated_run_never_satisfies_a_forward_gate() {
+        // An escalated (bailed-out) run is a terminal failure; it never reaches a
+        // forward gate, so a gated tool is denied.
+        let stages = ship_issue_stages();
+        let gates = ship_issue_tool_gates();
+        assert!(matches!(
+            gate(&stages, PHASE_ESCALATED, &gates, "gh pr merge"),
+            GateDecision::Deny(_)
+        ));
+    }
+
+    #[test]
+    fn gate_require_naming_no_stage_is_an_error() {
+        let stages = ship_issue_stages();
+        let gates: Vec<serde_json::Value> =
+            serde_json::from_str(r#"[{"match":"gh pr merge","require":"ship"}]"#).unwrap();
+        assert!(matches!(
+            gate(&stages, "build", &gates, "gh pr merge"),
+            GateDecision::Error(_)
+        ));
+    }
+
+    #[test]
+    fn gate_matching_binding_without_require_is_an_error() {
+        let stages = ship_issue_stages();
+        // The binding matches the command but carries no `require` — a misconfig.
+        let gates: Vec<serde_json::Value> =
+            serde_json::from_str(r#"[{"match":"gh pr merge"}]"#).unwrap();
+        assert!(matches!(
+            gate(&stages, "build", &gates, "gh pr merge"),
+            GateDecision::Error(_)
+        ));
+    }
+
+    #[test]
+    fn cmd_gate_denies_deny_and_errors_on_a_missing_run() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        // A missing run file is fail-closed → exit 2 (error), never a silent allow.
+        let err = cmd_gate(base, 1, "gh pr merge").unwrap_err();
+        assert_eq!(err.exit_code(), 2);
+
+        // Seed a real ship-issue run at `build`; `gh pr merge` is denied → exit 1.
+        let seed = RunFile {
+            schema_version: SCHEMA_VERSION,
+            command: "ship-issue".into(),
+            issue: 1,
+            phase: "build".into(),
+            fix_rounds: no_rounds(),
+        };
+        write_run(base, &seed).unwrap();
+        let err = cmd_gate(base, 1, "gh pr merge --squash").unwrap_err();
+        assert_eq!(err.exit_code(), 1);
+        assert!(err.reason().contains("gate:"), "{}", err.reason());
+
+        // ...and `git push` is allowed at `build` → Ok (exit 0).
+        assert!(cmd_gate(base, 1, "git push origin HEAD").is_ok());
     }
 }

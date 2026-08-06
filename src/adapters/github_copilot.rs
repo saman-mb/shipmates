@@ -170,6 +170,7 @@ mod tests {
             arguments: vec![],
             loop_max: 0,
             stages: vec![],
+            tool_gates: vec![],
             narrative: "one consolidated verdict".to_string(),
             invocation: String::new(),
             board: String::new(),

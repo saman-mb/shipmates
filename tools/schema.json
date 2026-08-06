@@ -10,6 +10,9 @@
     "required_frontmatter": ["name", "description", "argument-hint", "allowed-tools", "disable-model-invocation", "arguments", "loop_max", "stages", "invocation", "board"],
     "stage_columns": ["order", "stage", "roles", "gate", "max_loops", "on_fail"],
     "stages": "JSON array of stage objects",
+    "optional_frontmatter": ["tool_gates"],
+    "tool_gate_columns": ["match", "require"],
+    "tool_gates": "Optional JSON array of tool→phase gate objects binding a tool (matched by a substring of its shell command) to the stage a run must be at-or-past before it is allowed. Internal — read by the `shipmates state gate` engine, never rendered into a harness payload.",
     "invocation": "@{{role}}({{named-argument}})",
     "board": ["native", "explicit"],
     "narrative": "authoritative workflow body"

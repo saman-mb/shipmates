@@ -132,6 +132,7 @@ mod tests {
             arguments: vec![],
             loop_max: 0,
             stages: vec![],
+            tool_gates: vec![],
             narrative: "Use `agent-files/*.md` and `Harness-Session`.".to_string(),
             invocation: "".to_string(),
             board: "".to_string(),

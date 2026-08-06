@@ -1469,7 +1469,7 @@ REQUIRED_FRONTMATTER_KEYS = ("name", "description")
 # page, the rest are parsed so a standard-legal SKILL.md renders instead of
 # raising. Keep in step with tools/validate_skills.py.
 STANDARD_OPTIONAL_FRONTMATTER_KEYS = ("license", "compatibility", "metadata")
-EXTENSION_FRONTMATTER_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation", "arguments", "loop_max", "stages", "invocation", "board")
+EXTENSION_FRONTMATTER_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation", "arguments", "loop_max", "stages", "tool_gates", "invocation", "board")
 ALLOWED_FRONTMATTER_KEYS = (
     REQUIRED_FRONTMATTER_KEYS
     + STANDARD_OPTIONAL_FRONTMATTER_KEYS

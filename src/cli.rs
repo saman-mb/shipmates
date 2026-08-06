@@ -92,6 +92,12 @@ pub enum StateAction {
     /// Write the run file at the command's first stage. Refuses to overwrite an
     /// existing run file (fail-closed).
     Init {
+        /// Base directory the `.shipmates/run-<N>.json` file is resolved
+        /// against. Defaults to the current directory — pass a worktree path so a
+        /// hook can gate a run in another checkout without a `cd`.
+        #[arg(long, default_value = ".")]
+        dir: String,
+
         /// Numeric issue id — a `u64`, so a run id is never a path-traversal
         /// string.
         #[arg(long)]
@@ -103,6 +109,10 @@ pub enum StateAction {
     /// Report whether current→`--to` is a legal transition, without mutating the
     /// run file. Exit 0 legal, 1 illegal, 2 error.
     Assert {
+        /// Base directory the run file is resolved against (default `.`).
+        #[arg(long, default_value = ".")]
+        dir: String,
+
         #[arg(long)]
         run: u64,
 
@@ -112,6 +122,10 @@ pub enum StateAction {
     /// Assert, then atomically commit the new phase (charging a loop round on a
     /// loopback). Exit 0 on success, 1 illegal, 2 error.
     Advance {
+        /// Base directory the run file is resolved against (default `.`).
+        #[arg(long, default_value = ".")]
+        dir: String,
+
         #[arg(long)]
         run: u64,
 
@@ -120,7 +134,30 @@ pub enum StateAction {
     },
     /// Print the run file's JSON. Exit 2 if it is missing or malformed.
     Status {
+        /// Base directory the run file is resolved against (default `.`).
+        #[arg(long, default_value = ".")]
+        dir: String,
+
         #[arg(long)]
         run: u64,
+    },
+    /// Decide whether a tool invocation is allowed at the run's current phase,
+    /// per the command's `tool_gates` bindings. The first gate whose `match` is a
+    /// substring of `--tool` applies; the run must be AT-OR-PAST that gate's
+    /// `require` stage. Exit 0 allow (ungated or satisfied), 1 deny (gated but
+    /// too early), 2 error (bad/missing run file, or a `require` naming no stage).
+    Gate {
+        /// Base directory the run file is resolved against (default `.`). A hook
+        /// shim passes the worktree path here instead of `cd`-ing into it.
+        #[arg(long, default_value = ".")]
+        dir: String,
+
+        #[arg(long)]
+        run: u64,
+
+        /// The shell command string the tool would run, matched against each
+        /// gate's `match` substring.
+        #[arg(long)]
+        tool: String,
     },
 }
