@@ -1,0 +1,11 @@
+{
+  "kind": "sequence",
+  "title": "Codex blocks an out-of-phase merge",
+  "actors": ["Agent", "Codex hook", "shipmates gate"],
+  "messages": [
+    {"from": "Agent",       "to": "Codex hook",    "label": "gh pr merge"},
+    {"from": "Codex hook",  "to": "shipmates gate", "label": "state gate --run N --tool"},
+    {"from": "shipmates gate", "to": "Codex hook",  "label": "exit 1 — not in 'deliver'", "return": true},
+    {"from": "Codex hook",  "to": "Agent",          "label": "deny: finish the workflow first", "return": true}
+  ]
+}
