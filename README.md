@@ -106,7 +106,8 @@ implicitly, when the intent of your prompt calls for it — never typed, never a
 | [`termgif`](https://saman-mb.github.io/shipmates/tools/termgif/) | Renders a polished animated terminal demo GIF of a workflow run from a small JSON spec |
 | [`social-card`](https://saman-mb.github.io/shipmates/tools/social-card/) | Renders a 1280×640 social / Open Graph share card from a small JSON spec |
 | [`pixelart`](https://saman-mb.github.io/shipmates/tools/pixelart/) | Renders pixel-art icons — static PNG or animated GIF — the way the shipmates logo is made |
-| [`svgflow`](https://saman-mb.github.io/shipmates/tools/svgflow/) | Renders a box-and-arrow flow, pipeline, or state diagram as a committed SVG |
+| [`diagram`](https://saman-mb.github.io/shipmates/tools/diagram/) | Renders a curated diagram — a flow/pipeline/state machine or a sequence of actors and messages — as a committed SVG, deterministic PNG, or animated GIF |
+| [`svgflow`](https://saman-mb.github.io/shipmates/tools/svgflow/) | Deprecated alias for `diagram` — svgflow's flow diagram is now a kind of it |
 | [`badge`](https://saman-mb.github.io/shipmates/tools/badge/) | Renders a shields-style status badge as an offline, committed SVG |
 | [`sparkline`](https://saman-mb.github.io/shipmates/tools/sparkline/) | Renders a short number series as a tiny inline SVG trend chart |
 | [`scrub`](https://saman-mb.github.io/shipmates/tools/scrub/) | Redacts secrets and PII from a log or paste before it's shared |

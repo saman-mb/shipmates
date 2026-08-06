@@ -1,0 +1,12 @@
+{
+  "kind": "sequence",
+  "title": "Checkout — request path",
+  "actors": ["Client", "API", "Payments", "DB"],
+  "messages": [
+    {"from": "Client",   "to": "API",      "label": "POST /checkout"},
+    {"from": "API",      "to": "Payments", "label": "charge"},
+    {"from": "Payments", "to": "API",      "label": "ok", "return": true},
+    {"from": "API",      "to": "DB",       "label": "save order"},
+    {"from": "API",      "to": "Client",   "label": "201 Created", "return": true}
+  ]
+}

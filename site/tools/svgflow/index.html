@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>svgflow — Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec. · Shipmates</title>
-  <meta name="description" content="Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer.…">
+  <title>svgflow — Deprecated alias for `diagram` — svgflow&#x27;s flow diagram is now a kind of the more general diagram tool. · Shipmates</title>
+  <meta name="description" content="Deprecated alias for the `diagram` tool. svgflow&#x27;s flow diagram is now the default `kind` of `diagram`, which also renders PNG and animated GIF and adds a…">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/tools/svgflow/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
-  <meta property="og:title" content="svgflow — Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec.">
-  <meta property="og:description" content="Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer.…">
+  <meta property="og:title" content="svgflow — Deprecated alias for `diagram` — svgflow&#x27;s flow diagram is now a kind of the more general diagram tool.">
+  <meta property="og:description" content="Deprecated alias for the `diagram` tool. svgflow&#x27;s flow diagram is now the default `kind` of `diagram`, which also renders PNG and animated GIF and adds a…">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/tools/svgflow/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="svgflow — Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec.">
-  <meta name="twitter:description" content="Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer.…">
+  <meta name="twitter:title" content="svgflow — Deprecated alias for `diagram` — svgflow&#x27;s flow diagram is now a kind of the more general diagram tool.">
+  <meta name="twitter:description" content="Deprecated alias for the `diagram` tool. svgflow&#x27;s flow diagram is now the default `kind` of `diagram`, which also renders PNG and animated GIF and adds a…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "name": "svgflow",
-    "description": "Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer. Reach for this whenever a task calls for a diagram to explain a design, pipeline, request path, or state machine in a README or docs page rather than describing it in prose or leaving a mermaid block for something else to render. The output self-sizes and is styled for dark pages. Never a slash command; the crew reach for it implicitly when the intent calls for one.",
+    "description": "Deprecated alias for the `diagram` tool. svgflow's flow diagram is now the default `kind` of `diagram`, which also renders PNG and animated GIF and adds a sequence kind. This shim forwards to diagram.py so nothing that already reaches for svgflow breaks; reach for `diagram` instead. Never a slash command.",
     "url": "https://saman-mb.github.io/shipmates/tools/svgflow/",
     "isPartOf": {
       "@type": "CollectionPage",
@@ -74,8 +74,8 @@
         <div class="order-detail">
           <p class="section__eyebrow"><span aria-hidden="true">🧰</span> Tool</p>
           <h1 class="order-detail__title" id="order-title"><code>svgflow</code></h1>
-          <p class="order-detail__tagline">Draws a small flow, pipeline, or state diagram as a committed SVG from a tiny JSON spec.</p>
-          <p class="order-detail__desc">Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer. Reach for this whenever a task calls for a diagram to explain a design, pipeline, request path, or state machine in a README or docs page rather than describing it in prose or leaving a mermaid block for something else to render. The output self-sizes and is styled for dark pages. Never a slash command; the crew reach for it implicitly when the intent calls for one.</p>
+          <p class="order-detail__tagline">Deprecated alias for `diagram` — svgflow&#x27;s flow diagram is now a kind of the more general diagram tool.</p>
+          <p class="order-detail__desc">Deprecated alias for the `diagram` tool. svgflow&#x27;s flow diagram is now the default `kind` of `diagram`, which also renders PNG and animated GIF and adds a sequence kind. This shim forwards to diagram.py so nothing that already reaches for svgflow breaks; reach for `diagram` instead. Never a slash command.</p>
         </div>
       </div>
     </section>
@@ -86,8 +86,8 @@
           <h2 class="section__title" id="what-title">What it does</h2>
         </div>
         <div class="order-prose">
-          <p><code>svgflow</code> turns a small JSON spec — a list of <code>nodes</code> and the <code>edges</code> between them — into a clean box-and-arrow diagram, emitted as a self-contained SVG. There is no browser, no mermaid runtime, and no headless renderer: the SVG is assembled as text and is byte-for-byte deterministic, so the same spec always produces the same file and it is safe to commit next to the docs it illustrates.</p>
-          <p>It does one thing well. Nodes lay out in a single column (<code>&quot;direction&quot;: &quot;down&quot;</code>) or row (<code>&quot;direction&quot;: &quot;right&quot;</code>) in declaration order, each box sized to its label; adjacent nodes join with a straight spine arrow while skips, back-edges, and self-loops bow out to the side so they stay legible. It is a <em>tool</em>, not a command: the crew reach for it on their own when the natural artifact of a task is a diagram of how the pieces connect — a CI pipeline, a request path, a state machine — instead of a paragraph of prose or a mermaid block something else has to render.</p>
+          <p><code>svgflow</code> has become <code>diagram</code> (ADR 0001): the box-and-arrow flow diagram it drew is now the default <code>kind</code> of a more general tool that keeps svgflow&#x27;s theme-exact, byte-for-byte deterministic SVG and adds PNG and animated-GIF output, a <code>sequence</code> kind, and intent routing. Reach for <code>diagram</code> instead.</p>
+          <p>For one release <code>svgflow.py</code> is kept as a thin deprecation shim: it prints a one-line deprecation notice and forwards every argument, unchanged, to <code>diagram.py</code>, so nothing that already reaches for <code>svgflow</code> breaks. The default kind is <code>flow</code>, so an existing svgflow spec renders exactly the same through the alias.</p>
         </div>
       </div>
     </section>
@@ -100,15 +100,15 @@
         <p>A few things <code>svgflow</code> can produce, each from a small spec of its own.</p>
         <div class="tool-gallery">
           <figure class="tool-example">
-            <img class="tool-example__img" src="examples/pipeline.svg" width="274" height="384" alt="A vertical flow diagram titled &#x27;CI pipeline&#x27;: Build, Test and Deploy boxes joined by downward teal arrows labelled &#x27;on push&#x27; and &#x27;green&#x27;, with a back-edge from Test to Build labelled &#x27;red → retry&#x27;." loading="lazy" decoding="async">
-            <figcaption class="tool-example__caption">A CI pipeline as a column — build to deploy, with a labelled retry edge looping back on failure.</figcaption>
+            <img class="tool-example__img" src="examples/pipeline.svg" width="274" height="384" alt="A vertical flow diagram titled &#x27;CI pipeline&#x27;: Build, Test and Deploy boxes joined by downward terracotta arrows labelled &#x27;on push&#x27; and &#x27;green&#x27;, with a back-edge from Test to Build labelled &#x27;red → retry&#x27;." loading="lazy" decoding="async">
+            <figcaption class="tool-example__caption">A CI pipeline as a column — the same flow diagram, now the default kind of `diagram`.</figcaption>
           </figure>
           <figure class="tool-example">
-            <img class="tool-example__img" src="examples/request.svg" width="830" height="203" alt="A left-to-right flow diagram titled &#x27;Request flow&#x27;: Client, API gateway, Service and Database boxes joined by teal arrows labelled &#x27;HTTPS&#x27;, &#x27;authz&#x27; and &#x27;query&#x27;, with a return edge from Service to Client labelled &#x27;200 JSON&#x27;." loading="lazy" decoding="async">
+            <img class="tool-example__img" src="examples/request.svg" width="830" height="203" alt="A left-to-right flow diagram titled &#x27;Request flow&#x27;: Client, API gateway, Service and Database boxes joined by terracotta arrows labelled &#x27;HTTPS&#x27;, &#x27;authz&#x27; and &#x27;query&#x27;, with a return edge from Service to Client labelled &#x27;200 JSON&#x27;." loading="lazy" decoding="async">
             <figcaption class="tool-example__caption">A request path as a row — client through gateway and service to the database, and the response back.</figcaption>
           </figure>
           <figure class="tool-example">
-            <img class="tool-example__img" src="examples/state.svg" width="354" height="508" alt="A vertical state diagram titled &#x27;Order state machine&#x27;: Pending, Paid, Shipped and Delivered states joined by teal arrows, a back-edge from Shipped to Pending labelled &#x27;cancelled&#x27;, and a self-loop on Delivered labelled &#x27;re-notify&#x27;." loading="lazy" decoding="async">
+            <img class="tool-example__img" src="examples/state.svg" width="354" height="508" alt="A vertical state diagram titled &#x27;Order state machine&#x27;: Pending, Paid, Shipped and Delivered states joined by terracotta arrows, a back-edge from Shipped to Pending labelled &#x27;cancelled&#x27;, and a self-loop on Delivered labelled &#x27;re-notify&#x27;." loading="lazy" decoding="async">
             <figcaption class="tool-example__caption">An order state machine — the forward path plus a cancelled transition and a self-loop, all auto-routed.</figcaption>
           </figure>
         </div>
@@ -121,8 +121,8 @@
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools svgflow</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
-          <p>The renderer depends only on the Python standard library, so wherever the tool lands the agent can run <code>python3 svgflow.py --spec spec.json --out flow.svg</code> with nothing to install. The <code>svgflow.py</code> script and the spec format it needs are bundled together in <code>tool.md</code>.</p>
+          <p>Nothing to add — installing the <code>diagram</code> tool is what you want. This alias exists only so an existing <code>python3 svgflow.py --spec spec.json --out flow.svg</code> call keeps working while callers migrate; it forwards to <code>diagram.py</code> and emits a deprecation notice on stderr.</p>
+          <p>Switch to <code>diagram</code>: <code>shipmates install --harness &lt;name&gt; --with-tools diagram</code>, then <code>python3 diagram.py --spec spec.json --out flow.svg</code> (or <code>.png</code> / <code>.gif</code>).</p>
         </div>
       </div>
     </section>
@@ -136,7 +136,7 @@
           <dt>Name</dt>
           <dd><code>svgflow</code></dd>
           <dt>Description</dt>
-          <dd>Render a box-and-arrow flow, pipeline, or state diagram as a committed SVG from a small JSON spec — no browser, no mermaid runtime, no headless renderer. Reach for this whenever a task calls for a diagram to explain a design, pipeline, request path, or state machine in a README or docs page rather than describing it in prose or leaving a mermaid block for something else to render. The output self-sizes and is styled for dark pages. Never a slash command; the crew reach for it implicitly when the intent calls for one.</dd>
+          <dd>Deprecated alias for the `diagram` tool. svgflow&#x27;s flow diagram is now the default `kind` of `diagram`, which also renders PNG and animated GIF and adds a sequence kind. This shim forwards to diagram.py so nothing that already reaches for svgflow breaks; reach for `diagram` instead. Never a slash command.</dd>
           <dt>Bundled files</dt>
           <dd><code>svgflow.py</code></dd>
           <dt>Install</dt>
@@ -168,6 +168,7 @@
             <li class="order-siblings__item"><a class="order-siblings__link" href="../termgif/"><code>termgif</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../social-card/"><code>social-card</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../pixelart/"><code>pixelart</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../diagram/"><code>diagram</code></a></li>
             <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>svgflow</code><span class="visually-hidden"> (current page)</span></span></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../badge/"><code>badge</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../sparkline/"><code>sparkline</code></a></li>

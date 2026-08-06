@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="666" height="460" viewBox="0 0 666 460" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="666" height="460" fill="#14110F"/>
+<rect x="0.5" y="0.5" width="665" height="459" rx="16" fill="#1D1916" stroke="#332C26" stroke-width="1"/>
+<text x="333" y="21.08" text-anchor="middle" font-size="14" fill="#B3A99F">Checkout — request path</text>
+<line x1="76" y1="108" x2="76" y2="432" stroke="#4A4139" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="4 4"/>
+<line x1="242" y1="108" x2="242" y2="432" stroke="#4A4139" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="4 4"/>
+<line x1="416" y1="108" x2="416" y2="432" stroke="#4A4139" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="4 4"/>
+<line x1="590" y1="108" x2="590" y2="432" stroke="#4A4139" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="4 4"/>
+<rect x="28" y="62" width="96" height="46" rx="10" fill="#211C18" stroke="#4A4139" stroke-width="1.5"/>
+<text x="76" y="90.25" text-anchor="middle" font-size="15" fill="#F2EDE8">Client</text>
+<rect x="194" y="62" width="96" height="46" rx="10" fill="#211C18" stroke="#4A4139" stroke-width="1.5"/>
+<text x="242" y="90.25" text-anchor="middle" font-size="15" fill="#F2EDE8">API</text>
+<rect x="360" y="62" width="112" height="46" rx="10" fill="#211C18" stroke="#4A4139" stroke-width="1.5"/>
+<text x="416" y="90.25" text-anchor="middle" font-size="15" fill="#F2EDE8">Payments</text>
+<rect x="542" y="62" width="96" height="46" rx="10" fill="#211C18" stroke="#4A4139" stroke-width="1.5"/>
+<text x="590" y="90.25" text-anchor="middle" font-size="15" fill="#F2EDE8">DB</text>
+<line x1="76" y1="194" x2="242" y2="194" stroke="#D97757" stroke-width="2" stroke-linecap="round"/>
+<polygon points="242,194 231,199.5 231,188.5" fill="#D97757"/>
+<rect x="99.6" y="168" width="118.8" height="22" rx="6" fill="#1D1916"/>
+<text x="159" y="183.2" text-anchor="middle" font-size="12" fill="#E8916F">POST /checkout</text>
+<line x1="242" y1="246" x2="416" y2="246" stroke="#D97757" stroke-width="2" stroke-linecap="round"/>
+<polygon points="416,246 405,251.5 405,240.5" fill="#D97757"/>
+<rect x="298.4" y="220" width="61.2" height="22" rx="6" fill="#1D1916"/>
+<text x="329" y="235.2" text-anchor="middle" font-size="12" fill="#E8916F">charge</text>
+<line x1="416" y1="298" x2="242" y2="298" stroke="#D97757" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4"/>
+<polygon points="242,298 253,292.5 253,303.5" fill="#D97757"/>
+<rect x="312.8" y="272" width="32.4" height="22" rx="6" fill="#1D1916"/>
+<text x="329" y="287.2" text-anchor="middle" font-size="12" fill="#E8916F">ok</text>
+<line x1="242" y1="350" x2="590" y2="350" stroke="#D97757" stroke-width="2" stroke-linecap="round"/>
+<polygon points="590,350 579,355.5 579,344.5" fill="#D97757"/>
+<rect x="371" y="324" width="90" height="22" rx="6" fill="#1D1916"/>
+<text x="416" y="339.2" text-anchor="middle" font-size="12" fill="#E8916F">save order</text>
+<line x1="242" y1="402" x2="76" y2="402" stroke="#D97757" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4"/>
+<polygon points="76,402 87,396.5 87,407.5" fill="#D97757"/>
+<rect x="110.4" y="376" width="97.2" height="22" rx="6" fill="#1D1916"/>
+<text x="159" y="391.2" text-anchor="middle" font-size="12" fill="#E8916F">201 Created</text>
+</svg>

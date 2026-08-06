@@ -1,0 +1,14 @@
+{
+  "direction": "down",
+  "title": "CI pipeline",
+  "nodes": [
+    {"id": "build",  "label": "Build"},
+    {"id": "test",   "label": "Test"},
+    {"id": "deploy", "label": "Deploy"}
+  ],
+  "edges": [
+    {"from": "build",  "to": "test",   "label": "on push"},
+    {"from": "test",   "to": "deploy", "label": "green"},
+    {"from": "test",   "to": "build",  "label": "red → retry"}
+  ]
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="274" height="384" viewBox="0 0 274 384" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="274" height="384" fill="#14110F"/>
+<rect x="0.5" y="0.5" width="273" height="383" rx="16" fill="#1D1916" stroke="#332C26" stroke-width="1"/>
+<text x="137" y="21.08" text-anchor="middle" font-size="14" fill="#B3A99F">CI pipeline</text>
+<line x1="108.4" y1="108" x2="108.4" y2="186" stroke="#D97757" stroke-width="2" stroke-linecap="round"/>
+<polygon points="108.4,186 102.9,175 113.9,175" fill="#D97757"/>
+<line x1="108.4" y1="232" x2="108.4" y2="310" stroke="#D97757" stroke-width="2" stroke-linecap="round"/>
+<polygon points="108.4,310 102.9,299 113.9,299" fill="#D97757"/>
+<path d="M 156.4 209 C 210.4 209 210.4 85 156.4 85" fill="none" stroke="#D97757" stroke-width="2" stroke-linecap="round"/>
+<polygon points="156.4,85 167.4,79.5 167.4,90.5" fill="#D97757"/>
+<rect x="60.4" y="62" width="96" height="46" rx="10" fill="#211C18" stroke="#4A4139" stroke-width="1.5"/>
+<text x="108.4" y="90.25" text-anchor="middle" font-size="15" fill="#F2EDE8">Build</text>
+<rect x="60.4" y="186" width="96" height="46" rx="10" fill="#211C18" stroke="#4A4139" stroke-width="1.5"/>
+<text x="108.4" y="214.25" text-anchor="middle" font-size="15" fill="#F2EDE8">Test</text>
+<rect x="60.4" y="310" width="96" height="46" rx="10" fill="#211C18" stroke="#4A4139" stroke-width="1.5"/>
+<text x="108.4" y="338.25" text-anchor="middle" font-size="15" fill="#F2EDE8">Deploy</text>
+<rect x="28" y="136" width="68.4" height="22" rx="6" fill="#1D1916"/>
+<text x="62.2" y="151.2" text-anchor="middle" font-size="12" fill="#E8916F">on push</text>
+<rect x="42.4" y="260" width="54" height="22" rx="6" fill="#1D1916"/>
+<text x="69.4" y="275.2" text-anchor="middle" font-size="12" fill="#E8916F">green</text>
+<rect x="148.3" y="136" width="97.2" height="22" rx="6" fill="#1D1916"/>
+<text x="196.9" y="151.2" text-anchor="middle" font-size="12" fill="#E8916F">red → retry</text>
+</svg>
