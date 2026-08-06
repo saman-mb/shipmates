@@ -10,31 +10,40 @@
 //! ## FSM model
 //!
 //! The machine is derived from a command's parsed `stages:` frontmatter — a list
-//! of `{order, stage, gate, max_loops}` objects. From the **declared** stage
-//! order `s0, s1, … s(n-1)` it builds:
+//! of `{order, stage, gate, max_loops, on_fail}` objects. From the **declared**
+//! stage order `s0, s1, … s(n-1)` it builds:
 //!
 //! * a **forward** edge `s(i) → s(i+1)` on a gate pass (and `s(n-1) → complete`,
 //!   the terminal success phase, out of the last stage);
-//! * a **loopback** edge `s(i) → s(i-1)` — a "fix" that walks one stage back —
-//!   legal only while the run's `fix_rounds` is under `s(i).max_loops`;
-//! * an **escalate** edge `s(i) → escalated` (the terminal failure phase), legal
-//!   once that loop budget is exhausted.
+//! * a **loopback** edge `s(i) → on_fail(s(i))` — a "fix" that returns to the
+//!   stage the failed gate declares it loops back to (its `on_fail`, defaulting
+//!   to the stage literally named `build`, else the first stage) — legal only
+//!   while **that stage's own** fix counter is under `s(i).max_loops`. The target
+//!   must be a **strictly earlier** stage; a stage with no earlier target — the
+//!   pre-build stages and `build` itself — has **no loopback edge** (there is
+//!   nothing built yet to send a fix back to);
+//! * an **escalate** edge `s(i) → escalated` (the terminal failure phase),
+//!   **always legal** from any non-terminal stage — a run may bail out at any
+//!   point. `max_loops` bounds the loopback only; escalation never depends on it.
+//!
+//! Each stage carries its **own** loop budget, counted independently: the run
+//! file's `fix_rounds` is a per-stage map, so `verify` exhausting its three fixes
+//! leaves `review`'s three untouched. A loopback charges the counter of the
+//! stage it departs from; forward and escalate charge nothing.
 //!
 //! The declared order is enforced **as written** — the engine does not reorder a
-//! command's stages to "fix" them.
+//! command's stages to "fix" them, and an `on_fail` that names no declared stage
+//! (or names a stage that is not strictly earlier) fails the load: a
+//! misconfigured loopback fails the gate.
 //!
 //! ## Known limits (deliberately not modeled here — the hook slice's concern)
 //!
-//! * `stages:` does not express a loopback **target**, so a fix is modeled as
-//!   "one stage back" (a proxy for "back to the build stage"); the real target a
-//!   given gate loops to is not encoded and is not resolved here.
 //! * The folded push / CI-poll / merge phases of a real run are not stages here.
-//! * `fix_rounds` is a single per-run counter, not a per-stage budget — it is
-//!   monotonic across the run and checked against the current stage's `max_loops`.
 //! * There are no conditional edges (e.g. selection mode, bundling).
 //!
 //! Those are all the enforcement hook's job, not this engine's.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -43,12 +52,15 @@ use crate::cli::StateAction;
 use crate::installer;
 
 /// The current on-disk run-file schema. A file whose `schema_version` is absent
-/// or not exactly this value is rejected (fail-closed) rather than migrated.
-const SCHEMA_VERSION: u32 = 1;
+/// or not exactly this value is rejected (fail-closed) rather than migrated — a
+/// v1 file (single monotonic `fix_rounds` counter) is abandoned cleanly, not
+/// upgraded.
+const SCHEMA_VERSION: u32 = 2;
 
 /// Terminal success phase — reached out of the last stage on a gate pass.
 pub const PHASE_COMPLETE: &str = "complete";
-/// Terminal failure phase — reached when a stage's loop budget is exhausted.
+/// Terminal failure phase — reachable (unconditionally) from any non-terminal
+/// stage; the loop budget bounds only the loopback, never escalation.
 pub const PHASE_ESCALATED: &str = "escalated";
 
 /// The on-disk run record: `.shipmates/run-<issue>.json`.
@@ -61,7 +73,11 @@ pub struct RunFile {
     pub command: String,
     pub issue: u64,
     pub phase: String,
-    pub fix_rounds: u32,
+    /// Per-stage fix-loop tally, keyed by stage name. A `BTreeMap` keeps the
+    /// on-disk order deterministic (so the atomic write is byte-stable) and lets
+    /// each stage's budget be spent independently. A stage absent from the map
+    /// has spent zero rounds.
+    pub fix_rounds: BTreeMap<String, u32>,
 }
 
 /// Two distinct failure modes, kept apart so the exit-code ABI can route them:
@@ -91,11 +107,16 @@ impl StateError {
     }
 }
 
-/// One declared stage: its name and its loop budget.
+/// One declared stage: its name, its loop budget, and the stage a fix loops back
+/// to (`on_fail`, already resolved to a concrete, strictly-earlier declared
+/// stage name). `None` means the stage has no loopback target — the pre-build
+/// stages, and `build` itself, can't return to an earlier stage, so any
+/// non-forward, non-escalate move out of them is an illegal skip.
 #[derive(Debug, Clone)]
 struct Stage {
     name: String,
     max_loops: u32,
+    on_fail: Option<String>,
 }
 
 /// A parsed, order-preserving finite-state machine for one command.
@@ -139,7 +160,15 @@ impl Fsm {
                 "command {command:?} declares no stages; it has no FSM to drive"
             )));
         }
-        let mut parsed = Vec::with_capacity(stages.len());
+        // First pass: read each stage's name, budget, and raw `on_fail`, and
+        // reject the reserved terminal names. `on_fail` is resolved in a second
+        // pass, once every declared stage name is known.
+        struct Raw {
+            name: String,
+            max_loops: u32,
+            on_fail: Option<String>,
+        }
+        let mut raws = Vec::with_capacity(stages.len());
         for (i, s) in stages.iter().enumerate() {
             let name = s
                 .get("stage")
@@ -158,7 +187,77 @@ impl Fsm {
                     "command {command:?} declares a stage named {name:?}, which is a reserved terminal phase"
                 )));
             }
-            parsed.push(Stage { name, max_loops });
+            let on_fail = s
+                .get("on_fail")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            raws.push(Raw {
+                name,
+                max_loops,
+                on_fail,
+            });
+        }
+
+        // Stage names must be unique: `phase_kind`/`index_of` use first-match
+        // `position` and `fix_rounds` is name-keyed, so a duplicate would
+        // silently alias counters and loopback resolution — a misconfig fails
+        // the gate.
+        for (i, r) in raws.iter().enumerate() {
+            if raws[..i].iter().any(|other| other.name == r.name) {
+                return Err(StateError::Error(format!(
+                    "command {command:?} declares stage {:?} more than once; stage names must be unique",
+                    r.name
+                )));
+            }
+        }
+
+        // The default loopback target's name: the stage literally named `build`,
+        // else the first declared stage.
+        let default_target = if raws.iter().any(|r| r.name == "build") {
+            "build".to_string()
+        } else {
+            raws[0].name.clone()
+        };
+        let index_of = |name: &str| raws.iter().position(|r| r.name == name);
+
+        // Second pass: resolve each `on_fail`. A loopback must return to a
+        // strictly **earlier** stage (a lower declared index) — a later stage is
+        // a forward skip, not a fix.
+        //
+        // * An **explicit** `on_fail` that names no declared stage, or names a
+        //   stage that is not strictly earlier, fails the load (a misconfigured
+        //   loopback fails the gate).
+        // * The **default** target is used only when it resolves to a strictly
+        //   earlier stage; for a stage at or before `build` (the pre-build
+        //   stages and `build` itself) it yields `None` — no loopback.
+        let mut parsed = Vec::with_capacity(raws.len());
+        for (i, r) in raws.iter().enumerate() {
+            let on_fail = match &r.on_fail {
+                Some(explicit) => {
+                    let j = index_of(explicit).ok_or_else(|| {
+                        StateError::Error(format!(
+                            "command {command:?} stage {:?} declares on_fail {explicit:?}, which is not a declared stage",
+                            r.name
+                        ))
+                    })?;
+                    if j >= i {
+                        return Err(StateError::Error(format!(
+                            "command {command:?} stage {:?} declares on_fail {explicit:?}, which is not a strictly earlier stage; a loopback must return to an earlier stage",
+                            r.name
+                        )));
+                    }
+                    Some(explicit.clone())
+                }
+                None => match index_of(&default_target) {
+                    Some(j) if j < i => Some(default_target.clone()),
+                    _ => None,
+                },
+            };
+            parsed.push(Stage {
+                name: r.name.clone(),
+                max_loops: r.max_loops,
+                on_fail,
+            });
         }
         Ok(Fsm { stages: parsed })
     }
@@ -183,7 +282,12 @@ impl Fsm {
     /// move (including any transition out of a terminal phase — the freeze);
     /// `Err(Error)` only when `from` itself is not a phase of this FSM, i.e. the
     /// run file is internally inconsistent.
-    fn classify(&self, from: &str, to: &str, fix_rounds: u32) -> Result<Transition, StateError> {
+    fn classify(
+        &self,
+        from: &str,
+        to: &str,
+        fix_rounds: &BTreeMap<String, u32>,
+    ) -> Result<Transition, StateError> {
         let i = match self.phase_kind(from) {
             PhaseKind::Unknown => {
                 return Err(StateError::Error(format!(
@@ -202,6 +306,8 @@ impl Fsm {
 
         let n = self.stages.len();
         let cur = &self.stages[i];
+        // This stage's own tally — an absent key is zero rounds spent.
+        let spent = fix_rounds.get(&cur.name).copied().unwrap_or(0);
 
         // Forward: to the next declared stage, or to `complete` out of the last.
         if i + 1 < n && to == self.stages[i + 1].name {
@@ -211,26 +317,27 @@ impl Fsm {
             return Ok(Transition::Forward);
         }
 
-        // Loopback: one declared stage back, while the budget holds.
-        if i > 0 && to == self.stages[i - 1].name {
-            if fix_rounds < cur.max_loops {
+        // Loopback: to this stage's declared (strictly earlier) `on_fail`
+        // target, while its own budget holds. A stage with no target (`None`)
+        // has no loopback edge at all.
+        if let Some(target) = &cur.on_fail
+            && to == target
+        {
+            if spent < cur.max_loops {
                 return Ok(Transition::Loopback);
             }
             return Err(StateError::Illegal(format!(
                 "loop budget exhausted at {:?} ({}/{}); only escalation to {:?} is legal",
-                cur.name, fix_rounds, cur.max_loops, PHASE_ESCALATED
+                cur.name, spent, cur.max_loops, PHASE_ESCALATED
             )));
         }
 
-        // Escalate: only once the loop budget is spent.
+        // Escalate: always legal from any non-terminal stage (terminal phases
+        // are already frozen above). A run may bail out at any point, so this
+        // never depends on the loop budget — `max_loops` bounds the loopback
+        // only. Charges nothing.
         if to == PHASE_ESCALATED {
-            if fix_rounds >= cur.max_loops {
-                return Ok(Transition::Escalate);
-            }
-            return Err(StateError::Illegal(format!(
-                "cannot escalate from {:?} before the loop budget is exhausted ({}/{})",
-                cur.name, fix_rounds, cur.max_loops
-            )));
+            return Ok(Transition::Escalate);
         }
 
         Err(StateError::Illegal(format!(
@@ -310,7 +417,7 @@ struct AssertResult<'a> {
     to: &'a str,
     legal: bool,
     kind: Option<&'static str>,
-    fix_rounds: u32,
+    fix_rounds: &'a BTreeMap<String, u32>,
 }
 
 /// Dispatch a `state` action against the current working directory. Returns the
@@ -361,7 +468,7 @@ fn cmd_init(base: &Path, run: u64, command: &str) -> Result<(), StateError> {
         command: command.to_string(),
         issue: run,
         phase: fsm.first_phase().to_string(),
-        fix_rounds: 0,
+        fix_rounds: BTreeMap::new(),
     };
     write_run(base, &record)?;
     print_run(&record);
@@ -378,7 +485,7 @@ fn cmd_assert(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
     let stages = command_stages(&record.command)?;
     let fsm = Fsm::from_stages(&record.command, &stages)?;
 
-    match fsm.classify(&record.phase, to, record.fix_rounds) {
+    match fsm.classify(&record.phase, to, &record.fix_rounds) {
         Ok(kind) => {
             print_result(&record, to, true, Some(kind.as_str()));
             Ok(())
@@ -392,14 +499,14 @@ fn cmd_assert(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
 }
 
 /// `state advance --run N --to PHASE` — assert, then atomically commit the new
-/// phase. A loopback charges one `fix_rounds`; a forward or escalate leaves the
-/// counter unchanged (it is a monotonic per-run budget, see the module docs).
+/// phase. A loopback charges one round to the **departing** stage's own counter;
+/// a forward or escalate leaves every counter unchanged (see the module docs).
 fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
     let record = read_run(base, run)?;
     let stages = command_stages(&record.command)?;
     let fsm = Fsm::from_stages(&record.command, &stages)?;
 
-    let kind = match fsm.classify(&record.phase, to, record.fix_rounds) {
+    let kind = match fsm.classify(&record.phase, to, &record.fix_rounds) {
         Ok(kind) => kind,
         Err(StateError::Illegal(msg)) => {
             print_result(&record, to, false, None);
@@ -409,10 +516,10 @@ fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
     };
 
     let mut next = record.clone();
-    next.phase = to.to_string();
     if matches!(kind, Transition::Loopback) {
-        next.fix_rounds += 1;
+        *next.fix_rounds.entry(record.phase.clone()).or_insert(0) += 1;
     }
+    next.phase = to.to_string();
     write_run(base, &next)?;
     print_result(&next, to, true, Some(kind.as_str()));
     Ok(())
@@ -440,7 +547,7 @@ fn print_result(record: &RunFile, to: &str, legal: bool, kind: Option<&'static s
         to,
         legal,
         kind,
-        fix_rounds: record.fix_rounds,
+        fix_rounds: &record.fix_rounds,
     };
     match serde_json::to_string(&result) {
         Ok(s) => println!("{s}"),
@@ -456,19 +563,36 @@ mod tests {
         serde_json::json!({"order": 1, "stage": name, "gate": "g", "max_loops": max_loops})
     }
 
+    fn stage_on_fail(name: &str, max_loops: u64, on_fail: &str) -> serde_json::Value {
+        serde_json::json!({"order": 1, "stage": name, "gate": "g", "max_loops": max_loops, "on_fail": on_fail})
+    }
+
+    /// The ship-issue stage list, with `verify` and `review` looping back to
+    /// `build` (as the real command declares) and the other stages taking the
+    /// default `on_fail`.
     fn ship_issue_stages() -> Vec<serde_json::Value> {
         vec![
             stage("plan", 1),
             stage("isolate", 1),
             stage("build", 3),
-            stage("verify", 3),
-            stage("review", 3),
+            stage_on_fail("verify", 3, "build"),
+            stage_on_fail("review", 3, "build"),
             stage("deliver", 1),
         ]
     }
 
     fn fsm(stages: &[serde_json::Value]) -> Fsm {
         Fsm::from_stages("test", stages).unwrap()
+    }
+
+    /// Build a per-stage `fix_rounds` map from `(stage, spent)` pairs.
+    fn rounds(pairs: &[(&str, u32)]) -> BTreeMap<String, u32> {
+        pairs.iter().map(|(k, v)| (k.to_string(), *v)).collect()
+    }
+
+    /// An empty per-stage tally — nothing spent anywhere.
+    fn no_rounds() -> BTreeMap<String, u32> {
+        BTreeMap::new()
     }
 
     #[test]
@@ -486,40 +610,125 @@ mod tests {
     #[test]
     fn forward_edge_is_legal_and_skip_is_illegal() {
         let f = fsm(&ship_issue_stages());
-        assert!(matches!(f.classify("plan", "isolate", 0), Ok(Transition::Forward)));
-        // skipping a stage is illegal (exit 1)
-        assert!(matches!(f.classify("plan", "build", 0), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify("plan", "isolate", &no_rounds()), Ok(Transition::Forward)));
+        // plan -> build skips isolate; build is *later* than plan so it is not a
+        // loopback but an illegal forward jump.
+        assert!(matches!(f.classify("plan", "build", &no_rounds()), Err(StateError::Illegal(_))));
         // last stage forwards to the terminal success phase
-        assert!(matches!(f.classify("deliver", "complete", 0), Ok(Transition::Forward)));
+        assert!(matches!(f.classify("deliver", "complete", &no_rounds()), Ok(Transition::Forward)));
     }
 
     #[test]
     fn loopback_is_legal_within_budget_and_illegal_when_exhausted() {
         let f = fsm(&ship_issue_stages());
-        // build (max_loops 3) may loop back to isolate while under budget
-        assert!(matches!(f.classify("build", "isolate", 0), Ok(Transition::Loopback)));
-        assert!(matches!(f.classify("build", "isolate", 2), Ok(Transition::Loopback)));
+        // verify (max_loops 3, on_fail build) may loop back to build under budget
+        assert!(matches!(f.classify("verify", "build", &no_rounds()), Ok(Transition::Loopback)));
+        assert!(matches!(f.classify("verify", "build", &rounds(&[("verify", 2)])), Ok(Transition::Loopback)));
         // at the budget the loopback is refused — only escalation is legal
-        assert!(matches!(f.classify("build", "isolate", 3), Err(StateError::Illegal(_))));
-        assert!(matches!(f.classify("build", PHASE_ESCALATED, 3), Ok(Transition::Escalate)));
-        // escalating early (budget not spent) is illegal
-        assert!(matches!(f.classify("build", PHASE_ESCALATED, 0), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify("verify", "build", &rounds(&[("verify", 3)])), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify("verify", PHASE_ESCALATED, &rounds(&[("verify", 3)])), Ok(Transition::Escalate)));
+        // escalation is always available — even before the loop budget is spent
+        assert!(matches!(f.classify("verify", PHASE_ESCALATED, &no_rounds()), Ok(Transition::Escalate)));
+    }
+
+    #[test]
+    fn loopback_lands_on_the_declared_on_fail_target_not_the_prior_stage() {
+        let f = fsm(&ship_issue_stages());
+        // review declares on_fail: build, so a rejected review loops to build...
+        assert!(matches!(f.classify("review", "build", &no_rounds()), Ok(Transition::Loopback)));
+        // ...not to the stage physically before it (verify), which is neither a
+        // forward edge nor review's loopback target.
+        assert!(matches!(f.classify("review", "verify", &no_rounds()), Err(StateError::Illegal(_))));
+    }
+
+    #[test]
+    fn per_stage_budgets_are_spent_independently() {
+        let f = fsm(&ship_issue_stages());
+        // verify has exhausted its own three fixes → it can no longer loop back
+        // to build, only escalate.
+        let spent = rounds(&[("verify", 3)]);
+        assert!(matches!(f.classify("verify", "build", &spent), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify("verify", PHASE_ESCALATED, &spent), Ok(Transition::Escalate)));
+        // ...yet review still holds its own full budget and loops back to build.
+        assert!(matches!(f.classify("review", "build", &spent), Ok(Transition::Loopback)));
+        // (escalation stays available to review too — it never depends on the budget.)
+        assert!(matches!(f.classify("review", PHASE_ESCALATED, &spent), Ok(Transition::Escalate)));
+    }
+
+    #[test]
+    fn escalated_is_reachable_from_every_non_terminal_stage() {
+        let f = fsm(&ship_issue_stages());
+        // Every stage can bail out to `escalated`, regardless of its loop budget
+        // or how much of it is spent — no soft-lock, no dependence on max_loops.
+        for s in ["plan", "isolate", "build", "verify", "review", "deliver"] {
+            assert!(
+                matches!(f.classify(s, PHASE_ESCALATED, &no_rounds()), Ok(Transition::Escalate)),
+                "escalate must be legal from {s:?}"
+            );
+        }
+        // ...but a terminal phase is still frozen and rejects escalate.
+        assert!(matches!(f.classify(PHASE_COMPLETE, PHASE_ESCALATED, &no_rounds()), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify(PHASE_ESCALATED, PHASE_ESCALATED, &no_rounds()), Err(StateError::Illegal(_))));
+    }
+
+    #[test]
+    fn duplicate_stage_names_are_rejected_at_load() {
+        let stages = vec![stage("build", 3), stage("verify", 3), stage("build", 1)];
+        let err = Fsm::from_stages("test", &stages).unwrap_err();
+        assert!(matches!(err, StateError::Error(_)));
+    }
+
+    #[test]
+    fn loopback_target_must_be_an_earlier_stage_else_it_is_an_illegal_skip() {
+        let f = fsm(&ship_issue_stages());
+        // plan's default on_fail (build) is *later* than plan, so plan has no
+        // loopback edge: plan -> build skips isolate and is an illegal forward
+        // jump, not a fix.
+        assert!(matches!(f.classify("plan", "build", &no_rounds()), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify("plan", "isolate", &no_rounds()), Ok(Transition::Forward)));
+
+        // An explicit on_fail naming a *later* stage is a misconfigured loopback
+        // and fails the gate at load.
+        let bad = vec![stage_on_fail("build", 3, "verify"), stage("verify", 3)];
+        let err = Fsm::from_stages("test", &bad).unwrap_err();
+        assert!(matches!(err, StateError::Error(_)));
+    }
+
+    #[test]
+    fn default_on_fail_is_build_when_present_else_the_first_stage() {
+        // A stage literally named `build` exists and is earlier → the default
+        // target is build.
+        let with_build = vec![stage("build", 1), stage("verify", 2)];
+        let f = fsm(&with_build);
+        assert!(matches!(f.classify("verify", "build", &no_rounds()), Ok(Transition::Loopback)));
+
+        // No stage named build → the default target is the first declared stage.
+        let no_build = vec![stage("alpha", 1), stage("beta", 2)];
+        let f = fsm(&no_build);
+        assert!(matches!(f.classify("beta", "alpha", &no_rounds()), Ok(Transition::Loopback)));
+    }
+
+    #[test]
+    fn on_fail_naming_no_declared_stage_is_rejected_at_load() {
+        let stages = vec![stage("build", 3), stage_on_fail("verify", 3, "biuld")];
+        let err = Fsm::from_stages("test", &stages).unwrap_err();
+        assert!(matches!(err, StateError::Error(_)));
     }
 
     #[test]
     fn terminal_phase_freezes_all_transitions_including_self() {
         let f = fsm(&ship_issue_stages());
-        assert!(matches!(f.classify(PHASE_COMPLETE, "plan", 0), Err(StateError::Illegal(_))));
-        assert!(matches!(f.classify(PHASE_ESCALATED, "plan", 0), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify(PHASE_COMPLETE, "plan", &no_rounds()), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify(PHASE_ESCALATED, "plan", &no_rounds()), Err(StateError::Illegal(_))));
         // self-transition on a terminal phase is also frozen
-        assert!(matches!(f.classify(PHASE_COMPLETE, PHASE_COMPLETE, 0), Err(StateError::Illegal(_))));
-        assert!(matches!(f.classify(PHASE_ESCALATED, PHASE_ESCALATED, 0), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify(PHASE_COMPLETE, PHASE_COMPLETE, &no_rounds()), Err(StateError::Illegal(_))));
+        assert!(matches!(f.classify(PHASE_ESCALATED, PHASE_ESCALATED, &no_rounds()), Err(StateError::Illegal(_))));
     }
 
     #[test]
     fn a_phase_unknown_to_the_fsm_is_an_error_not_illegal() {
         let f = fsm(&ship_issue_stages());
-        assert!(matches!(f.classify("bogus", "plan", 0), Err(StateError::Error(_))));
+        assert!(matches!(f.classify("bogus", "plan", &no_rounds()), Err(StateError::Error(_))));
     }
 
     #[test]
@@ -533,7 +742,7 @@ mod tests {
             command: "ship-issue".into(),
             issue: 42,
             phase: "plan".into(),
-            fix_rounds: 0,
+            fix_rounds: no_rounds(),
         };
         write_run(base, &record).unwrap();
         let back = read_run(base, 42).unwrap();
@@ -552,38 +761,75 @@ mod tests {
         // malformed JSON
         installer::atomic_write(&run_path(base, 7), "{not json").unwrap();
         assert!(matches!(read_run(base, 7), Err(StateError::Error(_))));
-        // wrong schema_version
+        // an unsupported (future) schema_version
         installer::atomic_write(
             &run_path(base, 8),
-            r#"{"schema_version":2,"command":"ship-issue","issue":8,"phase":"plan","fix_rounds":0}"#,
+            r#"{"schema_version":99,"command":"ship-issue","issue":8,"phase":"plan","fix_rounds":{}}"#,
         )
         .unwrap();
         assert!(matches!(read_run(base, 8), Err(StateError::Error(_))));
     }
 
     #[test]
+    fn a_v1_run_file_is_rejected_not_migrated() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        // A v1 record (single monotonic `fix_rounds` counter) is abandoned
+        // cleanly with exit 2 — never silently upgraded to the v2 per-stage map.
+        installer::atomic_write(
+            &run_path(base, 11),
+            r#"{"schema_version":1,"command":"ship-issue","issue":11,"phase":"build","fix_rounds":2}"#,
+        )
+        .unwrap();
+        let err = read_run(base, 11).unwrap_err();
+        assert_eq!(err.exit_code(), 2);
+    }
+
+    #[test]
     fn advance_charges_a_loop_round_only_on_a_loopback() {
         let dir = tempfile::tempdir().unwrap();
         let base = dir.path();
-        // Drive a synthetic FSM directly through the file layer: seed at `build`.
+        // Seed at `verify`, which declares on_fail: build in ship-issue.
         let seed = RunFile {
             schema_version: SCHEMA_VERSION,
             command: "ship-issue".into(),
             issue: 5,
-            phase: "build".into(),
-            fix_rounds: 0,
+            phase: "verify".into(),
+            fix_rounds: no_rounds(),
         };
         write_run(base, &seed).unwrap();
 
-        // A loopback build -> isolate charges one round.
-        assert_eq!(cmd_advance(base, 5, "isolate").err().map(|e| e.exit_code()), None);
-        assert_eq!(read_run(base, 5).unwrap().fix_rounds, 1);
-        assert_eq!(read_run(base, 5).unwrap().phase, "isolate");
-
-        // A forward isolate -> build does not charge a round.
-        assert!(cmd_advance(base, 5, "build").is_ok());
-        assert_eq!(read_run(base, 5).unwrap().fix_rounds, 1);
+        // A loopback verify -> build charges one round to verify's own counter.
+        assert_eq!(cmd_advance(base, 5, "build").err().map(|e| e.exit_code()), None);
+        assert_eq!(read_run(base, 5).unwrap().fix_rounds.get("verify").copied(), Some(1));
         assert_eq!(read_run(base, 5).unwrap().phase, "build");
+
+        // A forward build -> verify does not charge a round.
+        assert!(cmd_advance(base, 5, "verify").is_ok());
+        assert_eq!(read_run(base, 5).unwrap().fix_rounds.get("verify").copied(), Some(1));
+        assert_eq!(read_run(base, 5).unwrap().phase, "verify");
+    }
+
+    #[test]
+    fn advance_charges_each_stage_against_its_own_budget() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        // Seed with build already at its exhausted budget, verify at zero.
+        let seed = RunFile {
+            schema_version: SCHEMA_VERSION,
+            command: "ship-issue".into(),
+            issue: 6,
+            phase: "verify".into(),
+            fix_rounds: rounds(&[("build", 3)]),
+        };
+        write_run(base, &seed).unwrap();
+        // verify still has its own budget: verify -> build is a legal loopback,
+        // and it charges verify (not build).
+        assert!(cmd_advance(base, 6, "build").is_ok());
+        let back = read_run(base, 6).unwrap();
+        assert_eq!(back.fix_rounds.get("verify").copied(), Some(1));
+        assert_eq!(back.fix_rounds.get("build").copied(), Some(3));
+        assert_eq!(back.phase, "build");
     }
 
     #[test]
@@ -595,10 +841,11 @@ mod tests {
             command: "ship-issue".into(),
             issue: 9,
             phase: "plan".into(),
-            fix_rounds: 0,
+            fix_rounds: no_rounds(),
         };
         write_run(base, &seed).unwrap();
-        // plan -> build skips a stage: illegal (exit 1), and the file is untouched.
+        // plan -> build skips isolate and is a forward jump (build is later than
+        // plan, so it is not a loopback): illegal (exit 1), file untouched.
         let err = cmd_advance(base, 9, "build").unwrap_err();
         assert_eq!(err.exit_code(), 1);
         assert_eq!(read_run(base, 9).unwrap().phase, "plan");
