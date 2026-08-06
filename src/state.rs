@@ -91,29 +91,36 @@ pub struct RunFile {
     pub fix_rounds: BTreeMap<String, u32>,
 }
 
-/// Two distinct failure modes, kept apart so the exit-code ABI can route them:
-/// an **illegal transition** is exit 1 (a well-formed question with the answer
-/// "no"), an **operational error** is exit 2 (a missing/malformed file, an
-/// unknown command, a corrupt phase). They must never collapse into one code.
+/// Failure modes, kept apart so the exit-code ABI can route them: an **illegal
+/// transition** is exit 1 (a well-formed `assert`/`advance` question with the
+/// answer "no"), a **gate deny** is also exit 1 but a distinct outcome — a tool
+/// refused at the current phase, not a transition — so it prints its own bare
+/// reason rather than an "illegal transition" line; an **operational error** is
+/// exit 2 (a missing/malformed file, an unknown command, a corrupt phase). The
+/// exit-1 and exit-2 codes must never collapse into one.
 #[derive(Debug)]
 pub enum StateError {
-    /// A legal-but-refused FSM transition → exit 1.
+    /// A legal-but-refused FSM transition → exit 1, `state: illegal transition:`.
     Illegal(String),
-    /// Could not evaluate the request at all → exit 2.
+    /// A tool refused by a `tool_gates` binding at the current phase → exit 1,
+    /// but printed as the bare `gate: …` reason (no "illegal transition" prefix)
+    /// so the hook shim can surface it verbatim as the permission-decision reason.
+    Denied(String),
+    /// Could not evaluate the request at all → exit 2, `state: error:`.
     Error(String),
 }
 
 impl StateError {
     fn exit_code(&self) -> i32 {
         match self {
-            StateError::Illegal(_) => 1,
+            StateError::Illegal(_) | StateError::Denied(_) => 1,
             StateError::Error(_) => 2,
         }
     }
 
     fn reason(&self) -> &str {
         match self {
-            StateError::Illegal(m) | StateError::Error(m) => m,
+            StateError::Illegal(m) | StateError::Denied(m) | StateError::Error(m) => m,
         }
     }
 }
@@ -444,30 +451,43 @@ struct AssertResult<'a> {
     fix_rounds: &'a BTreeMap<String, u32>,
 }
 
-/// Dispatch a `state` action against the current working directory. Returns the
-/// process exit code (0 legal / 1 illegal / 2 error) — the caller exits with it.
+/// Dispatch a `state` action against the base directory the action carries
+/// (`--dir`, defaulting to `.`). Returns the process exit code (0 legal / 1
+/// illegal / 2 error) — the caller exits with it. Threading the base through the
+/// CLI lets a hook shim resolve a run file in another worktree without a `cd`.
 pub fn dispatch(action: &StateAction) -> i32 {
-    dispatch_at(Path::new("."), action)
+    let dir = match action {
+        StateAction::Init { dir, .. }
+        | StateAction::Assert { dir, .. }
+        | StateAction::Advance { dir, .. }
+        | StateAction::Status { dir, .. }
+        | StateAction::Gate { dir, .. } => dir,
+    };
+    dispatch_at(Path::new(dir), action)
 }
 
 /// Dispatch a `state` action against an explicit base directory. Threading the
 /// base makes every path resolution testable without touching the real cwd.
 pub fn dispatch_at(base: &Path, action: &StateAction) -> i32 {
+    // `dir` is already resolved into `base` by `dispatch`, so it is ignored here.
     let result = match action {
-        StateAction::Init { run, command } => cmd_init(base, *run, command),
-        StateAction::Assert { run, to } => cmd_assert(base, *run, to),
-        StateAction::Advance { run, to } => cmd_advance(base, *run, to),
-        StateAction::Status { run } => cmd_status(base, *run),
-        StateAction::Gate { run, tool } => cmd_gate(base, *run, tool),
+        StateAction::Init { run, command, .. } => cmd_init(base, *run, command),
+        StateAction::Assert { run, to, .. } => cmd_assert(base, *run, to),
+        StateAction::Advance { run, to, .. } => cmd_advance(base, *run, to),
+        StateAction::Status { run, .. } => cmd_status(base, *run),
+        StateAction::Gate { run, tool, .. } => cmd_gate(base, *run, tool),
     };
     match result {
         Ok(()) => 0,
         Err(e) => {
-            let label = match e {
-                StateError::Illegal(_) => "illegal transition",
-                StateError::Error(_) => "error",
-            };
-            eprintln!("state: {label}: {}", e.reason());
+            // A gate deny prints its bare `gate: …` reason (no "illegal
+            // transition" prefix) so the hook shim surfaces it verbatim; the
+            // other failures keep their labelled diagnostic line.
+            match &e {
+                StateError::Denied(m) => eprintln!("{m}"),
+                StateError::Illegal(m) => eprintln!("state: illegal transition: {m}"),
+                StateError::Error(m) => eprintln!("state: error: {m}"),
+            }
             e.exit_code()
         }
     }
@@ -664,7 +684,7 @@ fn cmd_gate(base: &Path, run: u64, tool: &str) -> Result<(), StateError> {
         }
         GateDecision::Deny(reason) => {
             print_gate(&record, tool, false, Some(&reason));
-            Err(StateError::Illegal(reason))
+            Err(StateError::Denied(reason))
         }
         GateDecision::Error(msg) => Err(StateError::Error(msg)),
     }

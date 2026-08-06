@@ -52,13 +52,10 @@ git -C "$GIT" config user.email t@t.t
 git -C "$GIT" config user.name t
 git -C "$GIT" commit -q --allow-empty -m init
 git -C "$GIT" branch -m feat/issue-1
-"$BIN" state init --run 1 --command ship-issue >/dev/null 2>&1
-# `state init` wrote .shipmates/run-1.json in the CWD, not the repo — move it.
-mkdir -p "$GIT/.shipmates"
-mv ".shipmates/run-1.json" "$GIT/.shipmates/run-1.json"
-# Advance the run to `build` inside the repo.
-( cd "$GIT" && "$BIN" state advance --run 1 --to isolate >/dev/null 2>&1 \
-             && "$BIN" state advance --run 1 --to build   >/dev/null 2>&1 )
+# Seed the run directly in the repo via `--dir`, then advance it to `build`.
+"$BIN" state init    --dir "$GIT" --run 1 --command ship-issue >/dev/null 2>&1
+"$BIN" state advance --dir "$GIT" --run 1 --to isolate         >/dev/null 2>&1
+"$BIN" state advance --dir "$GIT" --run 1 --to build           >/dev/null 2>&1
 
 # Build a PreToolUse payload for a Bash command in $GIT.
 bash_payload() { # command

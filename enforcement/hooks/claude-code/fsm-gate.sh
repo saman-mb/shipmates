@@ -62,10 +62,10 @@ esac
 # The run file must exist for this issue, or there is nothing to gate → allow.
 [ -f "$cwd/.shipmates/run-$n.json" ] || exit 0
 
-# Ask the engine. `state` reads `.shipmates/` relative to its cwd, so run it in
-# the worktree. Capture stderr (the greppable reason) and discard the stdout
+# Ask the engine. `--dir "$cwd"` points it at the worktree's `.shipmates/` (no
+# `cd` needed). Capture stderr (the greppable reason) and discard the stdout
 # verdict JSON.
-reason="$(cd "$cwd" && shipmates state gate --run "$n" --tool "$command" 2>&1 >/dev/null)"
+reason="$(shipmates state gate --dir "$cwd" --run "$n" --tool "$command" 2>&1 >/dev/null)"
 code=$?
 
 case "$code" in
