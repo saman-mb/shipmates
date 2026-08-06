@@ -727,5 +727,615 @@
         }
       }
     }
+  },
+  "lifecycle_events": {
+    "_schema": {
+      "note": "Each event maps to a `harnesses` object keyed over every target in shipmates::adapters::targets(). Per-cell keys: `supported` (bool); `channel` (the harness-native event id string when supported, else null); `blocking` (bool when supported — true = can deny/gate, false = observe-only — else null); `notes` (non-empty evidence string, naming the source); `verified` (\"YYYY-MM-DD\" for cells confirmed against the harness's first-party docs, or literal false when unverified); and for `supported:false` also `policy` (\"warn\" — record the gap). The `notes`+`verified` evidence pair is a machine-readable evidence style this matrix introduces (the sibling `features` block uses `reason` + prose dates instead) — it is the precedent epic #113 builds on, not an existing convention. There is deliberately no JSON-Schema file: the shape is enforced by tests/integration.rs::test_matrix_lifecycle_events_matrix_is_consistent plus this note. Only the PreToolUse row is cross-checked — its `channel` per harness is pinned (via a literal table in the test) to the native pre-tool channel each harness's shim uses; `emit_hook_shim` (src/adapters/render.rs) owns the install path, the shim source owns the channel name. The other events have no adapter emission yet (epic #113) and record capability, not shipped behaviour."
+    },
+    "PreToolUse": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "PreToolUse",
+          "blocking": true,
+          "notes": "claude-code `settings.json` `hooks.PreToolUse`; blocking deny channel the FSM gate shim (enforcement/hooks/claude-code/fsm-gate.sh) targets. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "preToolUse",
+          "blocking": true,
+          "notes": "Copilot `.github/hooks/*.json` or `~/.copilot/hooks/`; blocking pre-tool hook (enforcement/hooks/github-copilot/fsm-gate.sh). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "PreToolUse",
+          "blocking": true,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]` at `~/.codex/` or repo `.codex/` (framework immature — async hooks 'not yet supported'). Blocking (enforcement/hooks/codex/fsm-gate.sh). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "beforeShellExecution",
+          "blocking": true,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); shell-only blocking hook (enforcement/hooks/cursor/fsm-gate.sh). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": true,
+          "channel": "PreToolUse",
+          "blocking": true,
+          "notes": "Antigravity `hooks.json` in `.agents/` / `~/.gemini/config/` (only 5 hooks total); blocking (enforcement/hooks/antigravity/fsm-gate.sh). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": true,
+          "channel": "pre_run_command",
+          "blocking": true,
+          "notes": "Windsurf/Devin `hooks.json` merged system/user (`~/.codeium/windsurf/`) / workspace (`.windsurf/`); shell-only exit-2 block (enforcement/hooks/windsurf/fsm-gate.sh); docs now Devin-hosted. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": true,
+          "channel": "tool.execute.before",
+          "blocking": true,
+          "notes": "opencode plugin module export; the FSM gate denies by throwing from a `tool.execute.before` plugin (enforcement/hooks/opencode/fsm-gate.ts). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        }
+      }
+    },
+    "SessionStart": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "SessionStart",
+          "blocking": false,
+          "notes": "claude-code `settings.json` `hooks.SessionStart`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "sessionStart",
+          "blocking": false,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "SessionStart",
+          "blocking": false,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]` at `~/.codex/` or `.codex/`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "sessionStart",
+          "blocking": false,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No SessionStart hook — antigravity exposes only 5 hooks (`hooks.json` in `.agents/` / `~/.gemini/config/`). Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No session-lifecycle hook in windsurf's merged `hooks.json` set. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": true,
+          "channel": "session.created",
+          "blocking": false,
+          "notes": "opencode event bus `session.created`; observe-only (bus events cannot gate). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        }
+      }
+    },
+    "SessionEnd": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "SessionEnd",
+          "blocking": false,
+          "notes": "claude-code `settings.json` `hooks.SessionEnd`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "sessionEnd",
+          "blocking": false,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "SessionEnd",
+          "blocking": false,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]` at `~/.codex/` or `.codex/`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "sessionEnd",
+          "blocking": false,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No SessionEnd hook — antigravity exposes only 5 hooks. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No session-lifecycle hook in windsurf's merged `hooks.json` set. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": true,
+          "channel": "session.deleted",
+          "blocking": false,
+          "notes": "opencode event bus `session.deleted`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        }
+      }
+    },
+    "PostToolUse": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "PostToolUse",
+          "blocking": false,
+          "notes": "claude-code `settings.json` `hooks.PostToolUse`; can rewrite output / inject context but cannot retroactively deny the call — observe-only for gating. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "postToolUse",
+          "blocking": true,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; documented as able to block/gate post-tool. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "PostToolUse",
+          "blocking": false,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "postToolUse",
+          "blocking": false,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": true,
+          "channel": "PostToolUse",
+          "blocking": false,
+          "notes": "Antigravity `hooks.json` (one of the 5 hooks); carries the tool `error` field; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": true,
+          "channel": "post_run_command",
+          "blocking": false,
+          "notes": "Windsurf/Devin per-tool post hooks: `post_run_command` (used here) plus `post_mcp_tool_use` / `post_write_code` / `post_read_code`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": true,
+          "channel": "tool.execute.after",
+          "blocking": false,
+          "notes": "opencode plugin `tool.execute.after`; observe-only (fires after the call). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        }
+      }
+    },
+    "PostToolUseFailure": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "PostToolUseFailure",
+          "blocking": false,
+          "notes": "claude-code `settings.json` `hooks.PostToolUseFailure`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "postToolUseFailure",
+          "blocking": false,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No dedicated failure hook — tool failures fold into `PostToolUse`. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "postToolUseFailure",
+          "blocking": false,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No dedicated failure hook — failures fold into `PostToolUse` via its `error` field. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "Unverified — no first-party evidence of a windsurf tool-failure hook against a direct docs fetch.",
+          "verified": false
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "Unverified — no first-party evidence of an opencode tool-failure event against a direct docs fetch.",
+          "verified": false
+        }
+      }
+    },
+    "Stop": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "Stop",
+          "blocking": true,
+          "notes": "claude-code `settings.json` `hooks.Stop`; can block the stop (force continuation). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "agentStop",
+          "blocking": true,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "Stop",
+          "blocking": true,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]`; blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "stop",
+          "blocking": false,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); optional auto-continue rather than a hard gate — treated observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": true,
+          "channel": "Stop",
+          "blocking": true,
+          "notes": "Antigravity `hooks.json` (one of the 5 hooks); blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": true,
+          "channel": "post_cascade_response",
+          "blocking": false,
+          "notes": "Windsurf/Devin `post_cascade_response` (turn-end); observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": true,
+          "channel": "session.idle",
+          "blocking": false,
+          "notes": "opencode event bus `session.idle`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        }
+      }
+    },
+    "SubagentStart": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "SubagentStart",
+          "blocking": false,
+          "notes": "claude-code `settings.json` `hooks.SubagentStart`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "subagentStart",
+          "blocking": false,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "SubagentStart",
+          "blocking": false,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]`; parsed but documented 'not yet supported'; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "subagentStart",
+          "blocking": true,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No subagent-lifecycle hook — antigravity exposes only 5 hooks. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No subagent-lifecycle hook in windsurf's merged `hooks.json` set. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "Unverified — no first-party evidence of an opencode subagent-start event against a direct docs fetch.",
+          "verified": false
+        }
+      }
+    },
+    "SubagentStop": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "SubagentStop",
+          "blocking": true,
+          "notes": "claude-code `settings.json` `hooks.SubagentStop`; blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "subagentStop",
+          "blocking": true,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "SubagentStop",
+          "blocking": true,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]`; blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "subagentStop",
+          "blocking": false,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); optional auto-continue rather than a hard gate — treated observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No subagent-lifecycle hook — antigravity exposes only 5 hooks. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No subagent-lifecycle hook in windsurf's merged `hooks.json` set. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "Unverified — no first-party evidence of an opencode subagent-stop event against a direct docs fetch.",
+          "verified": false
+        }
+      }
+    },
+    "PreCompact": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "PreCompact",
+          "blocking": true,
+          "notes": "claude-code `settings.json` `hooks.PreCompact`; blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "preCompact",
+          "blocking": false,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "PreCompact",
+          "blocking": true,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]`; blocking (plus a `PostCompact` sibling). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "preCompact",
+          "blocking": false,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+); observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No compaction hook — antigravity exposes only 5 hooks. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No compaction hook in windsurf's merged `hooks.json` set. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": true,
+          "channel": "experimental.session.compacting",
+          "blocking": true,
+          "notes": "opencode `experimental.session.compacting` (experimental API, may change); blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        }
+      }
+    },
+    "Notification": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "Notification",
+          "blocking": false,
+          "notes": "claude-code `settings.json` `hooks.Notification`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "notification",
+          "blocking": false,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; CLI only; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No general Notification hook — only a `notify` agent-turn-complete side-channel, not a lifecycle hook. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No notification hook in `.cursor/hooks.json`. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No notification hook — antigravity exposes only 5 hooks. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "windsurf": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "No notification hook in windsurf's merged `hooks.json` set. Confirmed absent 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "Unverified — no first-party evidence of an opencode notification event against a direct docs fetch.",
+          "verified": false
+        }
+      }
+    },
+    "UserPromptSubmit": {
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "channel": "UserPromptSubmit",
+          "blocking": true,
+          "notes": "claude-code `settings.json` `hooks.UserPromptSubmit`; blocking (can reject the prompt). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "github-copilot": {
+          "supported": true,
+          "channel": "userPromptSubmitted",
+          "blocking": false,
+          "notes": "Copilot `.github/hooks/*.json` / `~/.copilot/hooks/`; observe-only. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "codex": {
+          "supported": true,
+          "channel": "UserPromptSubmit",
+          "blocking": true,
+          "notes": "Codex `hooks.json` / `config.toml [hooks]`; blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "cursor": {
+          "supported": true,
+          "channel": "beforeSubmitPrompt",
+          "blocking": true,
+          "notes": "Cursor `.cursor/hooks.json` (1.7+) `beforeSubmitPrompt`; blocking. Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "antigravity": {
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "Unverified — nearest is a `PreInvocation` hook, not a literal user-prompt-submit event; not confirmed against a direct docs fetch.",
+          "verified": false
+        },
+        "windsurf": {
+          "supported": true,
+          "channel": "pre_user_prompt",
+          "blocking": true,
+          "notes": "Windsurf/Devin `pre_user_prompt` (blocks via exit 2). Verified 2026-08-06.",
+          "verified": "2026-08-06"
+        },
+        "opencode": {
+          "supported": true,
+          "channel": "chat.message",
+          "blocking": true,
+          "notes": "opencode `chat.message` on the event bus, blocking via a thrown exception — first-party-likely but unconfirmed against a direct docs fetch, so left unverified.",
+          "verified": false
+        }
+      }
+    }
   }
 }
