@@ -38,6 +38,7 @@ fn test_opencode_payload_digest() {
         arguments: vec![],
         loop_max: 1,
         stages: vec![],
+        tool_gates: vec![],
         narrative: "narrative".into(),
         invocation: "invoke".into(),
         board: "board".into(),
@@ -137,6 +138,7 @@ fn test_codex_adapter_renders_dialect() {
         arguments: vec![],
         loop_max: 1,
         stages: vec![],
+        tool_gates: vec![],
         narrative: "Write `TARGET.md` if one exists, else `AGENTS.md`; resolve via `agent-files/*.md`; use {{repo}}."
             .into(),
         invocation: "invoke".into(),
@@ -400,6 +402,48 @@ fn test_state_cli_drives_real_ship_issue_fsm_and_exit_abi() {
         body.contains("\"verify\": 1"),
         "loopback must charge the departing stage's own fix round: {body}"
     );
+}
+
+/// `shipmates state --dir <path>` resolves `.shipmates/run-<N>.json` under the
+/// given path, not the process cwd — the plumbing a hook shim uses to gate a run
+/// in another worktree without a `cd`. Also proves the gate deny reason on stderr
+/// is the bare `gate: …` line (no "illegal transition:" prefix).
+#[test]
+fn test_state_dir_resolves_run_file_at_given_path() {
+    let bin = env!("CARGO_BIN_EXE_shipmates");
+    let base = tempfile::tempdir().unwrap(); // where the run file must land
+    let cwd = tempfile::tempdir().unwrap(); // an UNRELATED working directory
+
+    let run = |args: &[&str]| {
+        std::process::Command::new(bin)
+            .current_dir(cwd.path()) // never the base dir
+            .args(args)
+            .output()
+            .expect("failed to execute shipmates state")
+    };
+    let code = |out: &std::process::Output| out.status.code().unwrap();
+    let dir = base.path().to_str().unwrap();
+
+    // init --dir writes under `base`, not the cwd.
+    let out = run(&["state", "init", "--dir", dir, "--run", "300", "--command", "ship-issue"]);
+    assert_eq!(code(&out), 0, "init: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(base.path().join(".shipmates/run-300.json").is_file(), "run file must land under --dir");
+    assert!(!cwd.path().join(".shipmates/run-300.json").exists(), "run file must NOT land in the cwd");
+
+    // gate --dir reads that same file: `git push` at `plan` is denied (exit 1),
+    // and the stderr reason is the bare `gate: …` line with no label prefix.
+    let out = run(&["state", "gate", "--dir", dir, "--run", "300", "--tool", "git push -u origin HEAD"]);
+    assert_eq!(code(&out), 1);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stderr = stderr.trim();
+    assert!(stderr.starts_with("gate:"), "deny reason must start with `gate:`, got: {stderr:?}");
+    assert!(!stderr.contains("illegal transition"), "deny reason must not be labelled a transition: {stderr:?}");
+    assert!(stderr.contains("requires phase>=build, run is at plan"), "{stderr:?}");
+
+    // ...and once advanced to `build`, the same gate allows (exit 0).
+    assert_eq!(code(&run(&["state", "advance", "--dir", dir, "--run", "300", "--to", "isolate"])), 0);
+    assert_eq!(code(&run(&["state", "advance", "--dir", dir, "--run", "300", "--to", "build"])), 0);
+    assert_eq!(code(&run(&["state", "gate", "--dir", dir, "--run", "300", "--tool", "git push -u origin HEAD"])), 0);
 }
 
 fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
