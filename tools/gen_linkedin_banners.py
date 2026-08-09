@@ -190,7 +190,7 @@ def render(out_png, w, h, big, logo_b64, show_stats):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--no-stats", action="store_true",
-                    help="omit the crew/orders counters from the profile banner")
+                    help="omit the crew/commands counters from the profile banner")
     args = ap.parse_args()
 
     logo = ASSETS / "logo.png"

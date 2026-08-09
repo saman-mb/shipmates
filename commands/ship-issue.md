@@ -1,12 +1,13 @@
 ---
 name: ship-issue
 description: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
-argument-hint: <issue-number>... [optional extra guidance]
+argument-hint: <issue-number>... | next [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: issue, guidance
 loop_max: 3
-stages: [{"order":1,"stage":"plan","roles":["product-manager"],"gate":"plan-ready","max_loops":1},{"order":2,"stage":"isolate","roles":["senior-engineer"],"gate":"isolated-worktree","max_loops":1},{"order":3,"stage":"build","roles":["senior-engineer"],"gate":"implementation-complete","max_loops":3},{"order":4,"stage":"verify","roles":["sdet"],"gate":"tests-green","max_loops":3},{"order":5,"stage":"review","roles":["product-manager"],"gate":"board-accepted","max_loops":3},{"order":6,"stage":"deliver","roles":["senior-engineer"],"gate":"pr-ready","max_loops":1}]
+stages: [{"order":1,"stage":"plan","roles":["product-manager"],"gate":"plan-ready","max_loops":1},{"order":2,"stage":"isolate","roles":["senior-engineer"],"gate":"isolated-worktree","max_loops":1},{"order":3,"stage":"build","roles":["senior-engineer"],"gate":"implementation-complete","max_loops":3},{"order":4,"stage":"verify","roles":["sdet"],"gate":"tests-green","max_loops":3,"on_fail":"build"},{"order":5,"stage":"review","roles":["product-manager"],"gate":"board-accepted","max_loops":3,"on_fail":"build"},{"order":6,"stage":"deliver","roles":["senior-engineer"],"gate":"pr-ready","max_loops":1}]
+tool_gates: [{"match":"gh pr merge","require":"deliver"},{"match":"git push","require":"build"}]
 invocation: @{{role}}({{issue}})
 board: native
 ---
@@ -25,6 +26,43 @@ token — a digit later in the guidance is guidance, not an issue. When the guid
 a number, separate it explicitly with `--`, which ends the issue list wherever it appears:
 `104 -- 2 fix rounds max`.
 
+**Or `next`:** if the first token is `next` (in place of any issue number), this is a **selection** run —
+Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, *Selection mode*). `next` is
+mutually exclusive with explicit issue numbers; tokens after it are guidance.
+
+## Bundling — the token-efficient default
+
+Most of a run's token cost is **fixed overhead paid once per invocation**: the Planner pass, the
+acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup.
+That overhead barely grows with diff size, so shipping several **small, cohesive** issues in one run
+is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole
+board N times. **So bundling cohesive issues is the recommended default** (`BUNDLE=recommend`, see
+Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before
+building. Bundling is right only when the issues are *cohesive and cheap* — it is wrong when combining
+them would muddy the review or let one failure sink the rest, so the Stage 0 **cohesion test** is the
+gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.
+
+## Model selection — dynamic, never baked
+
+Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have
+different access, so the right model is chosen **at spawn, by task complexity, from what is available** —
+not written into any crew file:
+- **Mechanical work** (Builders, the SDET's test/validation runs, straightforward Fixers) → the
+  cheapest capable model, low reasoning effort.
+- **Hard judgment** (the Planner, `architect`, `security-engineer`, and the `product-manager`
+  acceptance call) → the top model available, higher effort.
+- **Unsure** → inherit the session model; never guess a model name.
+
+The role sets the **baseline** tier above; then **scale it by the work unit's complexity** (the
+Planner's signal): a `complex` unit bumps the model to the top tier and the effort
+up; a `trivial` unit drops toward the cheapest model and lowest effort; `standard` holds the baseline —
+so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.
+
+Use the harness's own per-spawn mechanism where it exists (e.g. a `model` argument on the spawn) to pick
+the tier-appropriate model; where the harness offers no per-spawn override, **inherit** — never emit a
+hardcoded model. **Effort** can only be adjusted per spawn on the harnesses that expose it (Codex,
+Cursor); on the others the role's static effort (from its crew file, #204) stands. Spend the top model where it changes the outcome, not on mechanical turns.
+
 ---
 
 ## Config (defaults — override only if the repo clearly needs it)
@@ -38,6 +76,13 @@ a number, separate it explicitly with `--`, which ends the issue list wherever i
   of the configured default — a security-sensitive change must not auto-merge past the `/harden`
   recommendation.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
+- `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
+  leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, **proposes** a bundle, and
+  **always asks before widening the run** — a recommended bundle never proceeds without the user's
+  explicit ok. `off`: ship exactly the issues passed, never suggest more. There is **no silent
+  auto-bundle**: bundling from a recommendation (a single ticket, or a `next` pick) always requires
+  consent. An explicitly-passed multi-issue invocation (`/ship-issue 1 2 3`) is already that consent — it
+  proceeds as a bundle (with the cohesion warning if it is a poor fit).
 - `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<first-issue>` (single issue)
   or `../<repo>--bundle-<first-issue>-<short-slug>` (multiple issues)
 - `BRANCH` = `feat/issue-<first-issue>-<short-slug>` (single) or `feat/bundle-<first-issue>-<short-slug>` (multiple)
@@ -63,6 +108,7 @@ agent with a persona pasted inline. The pool:
 | `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
 | `art-director`     | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
 | `devops-engineer`  | Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by `IS_DELIVERY_SENSITIVE` (Stage 5) |
+| `technical-writer` | Docs-staleness review — gated by `IS_DOCS_AFFECTING` (Stage 5) |
 
 These agents are **generic** (domain-neutral); the project-specific standard they enforce comes
 from your repo's README / AGENTS.md, passed at spawn — not baked into the role. Which specialists a
@@ -93,6 +139,18 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
+**Selection mode — `next`.** If the leading token is `next` (in place of issue numbers), first pick the
+work from the backlog, then continue with the numbered steps below on the chosen `<issues>`:
+- Read open issues (`gh issue list --state open --json number,title,labels`), map dependencies (epic
+  checklists, `Part of #N`, `blocked by`) and **never pick a ticket with an unmet dependency**; rank by
+  priority / value / blast-radius / staleness.
+- Take the top ticket, then run the **cohesion test** (step 2.5) against its open siblings to judge
+  whether a cohesive bundle is the better unit.
+- **Single ticket** → set `<issues>` to it and proceed — just ship it.
+- **Bundle** → present the candidates and the token rationale and **ask the user to confirm before
+  proceeding**; set `<issues>` to only what they ok (they may take just the lead). A `next` bundle never
+  proceeds without explicit consent — if declined or the run is non-interactive, ship the single lead.
+
 1. Validate, then resolve: each issue token must match `^[0-9]+$` or be a full GitHub issue URL —
    anything else, **stop and ask the user** (see **Shell safety** above). For each validated `<N>`,
    run `gh issue view <N> --json number,title,body,labels,url`. Resolve story-number mappings if
@@ -100,6 +158,31 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
    this list, never from raw input tokens.
 2. `<first-issue>` = the first number in `<issues>` — it names the worktree and branch, so a re-run
    with the same leading issue resolves to the same identifiers.
+2.5. **Bundle evaluation** (per `BUNDLE`, before planning). Bundling amortizes the fixed per-run cost
+   (Planner + acceptance board + CI poll + worktree) across several tickets, so a combined run of
+   cohesive small issues is much cheaper than one run each. Apply the **cohesion test** — two issues
+   belong in one bundle only when ALL hold:
+   - **same area** — shared labels or overlapping paths — with **non-overlapping file ownership** (so
+     builders still parallelize without collisions);
+   - **each small and low-risk** — never fold an `IS_ARCH_SIGNIFICANT` or `IS_SECURITY_SENSITIVE`
+     change in with unrelated work; it needs its own review and its own merge story;
+   - **independent** — neither needs the other merged first;
+   - **still one reviewable PR** — the combined diff reads cleanly as a single change (cap a bundle at
+     ~4 issues / a diff a human would still review in one sitting).
+
+   Then act by `BUNDLE`:
+   - **multi-issue input** — already an explicit bundle (the user named the issues): run the cohesion
+     test and, if it fails, **warn** (don't block), naming what makes them a poor bundle, then proceed.
+   - **single issue or `next`, `BUNDLE=recommend`** (default) — if the lead issue is small/low-risk, run
+     ONE cheap `gh issue list --state open --label <its-labels> --json number,title,labels` for cohesive
+     candidates. If any pass the test, **recommend the bundle and ask** — list the candidates and the
+     token rationale — folding in only what the user oks. **A recommended bundle never proceeds without
+     consent**; if the user declines (or the run is non-interactive), ship the single lead ticket.
+   - **`BUNDLE=off`** — ship exactly the issues passed.
+
+   Add any accepted issues to `<issues>` (re-sort so `<first-issue>` is unchanged). Whatever the
+   bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
+   can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
 3. Spawn ONE **Planner** (`@role(planner)`). Give it all issue bodies + repo README +
    AGENTS.md. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
@@ -109,6 +192,9 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
    - a **test/validation plan** (the commands the SDET should run: unit tests, lint, type-check,
      build/compile/import — whatever this repo uses),
    - a list of files expected to change,
+   - a **complexity signal per work unit** — `trivial`, `standard`, or `complex` — from its size,
+     unfamiliarity, algorithmic depth and blast radius; the orchestrator scales model/effort by it at
+     spawn (see **Model selection**),
    - **domain classification flags** that decide which specialists the board pulls (set each
      independently — a story can trip more than one):
      - `IS_UI_STORY = yes/no` — does it create/modify on-screen UI (screens, HUD, panels, overlays,
@@ -130,6 +216,9 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
      - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
        or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
        infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
+     - `IS_DOCS_AFFECTING = yes/no` — does the change touch documented behaviour, flags, commands,
+       config, or public API/CLI surface that user- or agent-facing docs describe? Gates
+       `technical-writer`.
    This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
    must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
    `/harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
@@ -240,7 +329,9 @@ reduced assurance.)
 ## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
 
 Spawn these **in parallel** against the PR head commit (they review exactly what will merge). The two
-core reviewers always run; each specialist runs only when its flag is set:
+core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist
+only when the change can plausibly trip its concern surface; a role gated out is named in the run report
+together with the flag that gated it — never silently skipped.
 
 - **`product-manager`** (always): checks every acceptance criterion AND the quality bar (from the
   repo's README/AGENTS.md). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
@@ -260,6 +351,9 @@ core reviewers always run; each specialist runs only when its flag is set:
   reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and
   secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety
   to `site-reliability-engineer`.
+- **`technical-writer`** (only if `IS_DOCS_AFFECTING`): reviews the shipped change against the docs that
+  describe it — stale flags/commands/behaviour, missing changelog/README/site updates. Returns
+  `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT`.
 
 Decision (each specialist participates only when its flag is set):
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → go to Stage 7.
@@ -297,7 +391,7 @@ Decision (each specialist participates only when its flag is set):
 ## Final report to the user
 
 One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their
-verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
+verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now.
 

@@ -1,4 +1,4 @@
-use crate::catalog::CanonicalCommand;
+use crate::catalog::{CanonicalCommand, CanonicalTool};
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -93,21 +93,40 @@ pub const OPENCODE: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
-/// Antigravity CLI's (`agy`) dialect.
+/// The neutral dialect for the shared open Agent Skills tree (`.agents/skills/`).
 ///
-/// The Gemini CLI is retired (shut down June 18, 2026); `agy` replaced it and
-/// reads workspace customizations from `.agents/` instead of `.gemini/`.
-/// Project instructions come from `AGENTS.md` (with `GEMINI.md` as the legacy
-/// fallback), and the built-in general-purpose subagent is `self`.
-pub const ANTIGRAVITY: Dialect = Dialect {
+/// Codex, Antigravity, Cursor and Copilot all read skills from this one
+/// open-standard location. A *per-harness* rendering would make each write
+/// different bytes to the same install path — whichever ran last would win, and
+/// the rest would silently get the wrong crew references (see the collision the
+/// `--harness all` install exhibited before this existed). So the shared tree is
+/// rendered ONCE, neutrally, and every one of those harnesses emits byte-identical
+/// files: one source of truth, no duplication, no collision.
+///
+/// The values are the common denominator that resolves on all four:
+/// - `agents_glob` = `.agents/agents` — the open-standard sibling of
+///   `.agents/skills`, and Antigravity's real crew location. For Codex/Copilot,
+///   whose crew live in their own trees, this is a descriptive pointer only;
+///   orchestration goes through `subagent_type`, which each harness resolves
+///   against its own registered crew regardless of the glob text.
+/// - `planner` = `architect` — a real shipped crew member, so it resolves
+///   wherever crew are installed. The old per-harness `planner` named a
+///   subagent that ships nowhere; `architect` is what Antigravity already used
+///   and what makes the Planner stage resolvable everywhere.
+/// - `session_key` = `Agent-Session` — a neutral commit-trailer name.
+pub const AGENT_SKILLS: Dialect = Dialect {
     agents_glob: ".agents/agents",
-    session_key: "Antigravity-Session",
+    session_key: "Agent-Session",
     instructions_primary: "AGENTS.md",
-    instructions_fallback: "GEMINI.md",
-    general_purpose: "self",
+    instructions_fallback: "CLAUDE.md",
+    general_purpose: "general-purpose",
     planner: "architect",
     args_token: "$ARGUMENTS",
 };
+
+// Antigravity (`agy`, the retired Gemini CLI's successor) renders its crew from
+// raw persona bodies and reads skills from the shared `.agents/skills/` tree, so
+// it needs no dialect of its own — the neutral AGENT_SKILLS covers its skills.
 
 /// Codex CLI's dialect.
 pub const CODEX: Dialect = Dialect {
@@ -120,16 +139,9 @@ pub const CODEX: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
-/// Cursor's dialect.
-pub const CURSOR: Dialect = Dialect {
-    agents_glob: ".cursor/agents",
-    session_key: "Cursor-Session",
-    instructions_primary: "AGENTS.md",
-    instructions_fallback: "CLAUDE.md",
-    general_purpose: "general-purpose",
-    planner: "planner",
-    args_token: "$ARGUMENTS",
-};
+// Cursor has no crew mechanic here, so it renders no personas of its own; its
+// commands ship to the shared `.agents/skills/` tree via AGENT_SKILLS. (Cursor
+// reads `.agents/skills/` natively, first-party — see cursor.rs.)
 
 /// GitHub Copilot CLI's dialect.
 pub const GITHUB_COPILOT: Dialect = Dialect {
@@ -146,17 +158,6 @@ pub const GITHUB_COPILOT: Dialect = Dialect {
 pub const WINDSURF: Dialect = Dialect {
     agents_glob: ".windsurf/agents",
     session_key: "Windsurf-Session",
-    instructions_primary: "AGENTS.md",
-    instructions_fallback: "CLAUDE.md",
-    general_purpose: "general-purpose",
-    planner: "planner",
-    args_token: "$ARGUMENTS",
-};
-
-/// Zed's dialect.
-pub const ZED: Dialect = Dialect {
-    agents_glob: ".zed/agents",
-    session_key: "Zed-Session",
     instructions_primary: "AGENTS.md",
     instructions_fallback: "CLAUDE.md",
     general_purpose: "general-purpose",
@@ -192,9 +193,137 @@ pub fn emit_skill_files(
     files
 }
 
+/// Emit an agent-invoked tool as a model-invoked Agent Skill (+ bundled assets).
+///
+/// A shipmates *tool* is the model-invoked sibling of a command: the crew reach
+/// for it implicitly, never by typing a slash command. On Claude Code that is a
+/// `SKILL.md` carrying the `user-invocable: false` vendor key — model-invoked,
+/// hidden from the `/` menu — so pass `agent_only = true`. The other skill
+/// harnesses have no documented way to hide a skill from manual mention, so they
+/// get the strict two-key Agent Skills pair; the tool is model-invoked but still
+/// technically typeable, which is recorded rather than faked (`agent_only =
+/// false`). Bundled assets (a runnable script) ride alongside the `SKILL.md`.
+pub fn emit_tool_files(
+    base_dir: &str,
+    tools: &[CanonicalTool],
+    dialect: &Dialect,
+    agent_only: bool,
+) -> HashMap<String, String> {
+    let mut files = HashMap::new();
+    for tool in tools {
+        let mut content = String::new();
+        content.push_str("---\n");
+        content.push_str(&format!("name: {}\n", tool.name));
+        content.push_str(&format!("description: {}\n", tool.description));
+        if agent_only {
+            content.push_str("user-invocable: false\n");
+        }
+        content.push_str("---\n");
+        content.push_str(&render_body(&tool.body, dialect));
+        files.insert(format!("{}/skills/{}/SKILL.md", base_dir, tool.name), content);
+        for (rel, asset) in &tool.assets {
+            files.insert(format!("{}/skills/{}/{}", base_dir, tool.name, rel), asset.clone());
+        }
+    }
+    files
+}
+
+/// Emit a harness's commands into the SHARED open `.agents/skills/` tree.
+///
+/// `container` is the harness's payload staging root (`harnesses/<name>`); the
+/// files land at `<container>/.agents/skills/<name>/SKILL.md` and, once the
+/// installer strips `harnesses/<name>/`, at `.agents/skills/` in the target.
+/// Rendered with the neutral [`AGENT_SKILLS`] dialect so every harness that
+/// reads this location writes identical bytes — the single source of truth for
+/// the shared tree. See [`AGENT_SKILLS`] for why that matters.
+pub fn emit_shared_skills(container: &str, commands: &[CanonicalCommand]) -> HashMap<String, String> {
+    emit_skill_files(&format!("{container}/.agents"), commands, &AGENT_SKILLS)
+}
+
+/// Emit a harness's opt-in tools into the shared `.agents/skills/` tree.
+///
+/// The neutral-tree harnesses can't hide a skill from manual mention (only
+/// Claude Code's `user-invocable: false` does that), so `agent_only = false` —
+/// the tool is model-invoked but still technically typeable, recorded not faked.
+pub fn emit_shared_tool_skills(container: &str, tools: &[CanonicalTool]) -> HashMap<String, String> {
+    emit_tool_files(&format!("{container}/.agents"), tools, &AGENT_SKILLS, false)
+}
+
+/// Emit a harness's FSM tool-gate hook shim into its payload.
+///
+/// Every supported harness gets a shim that turns a `shipmates state gate`
+/// verdict into that harness's deny channel (the reference is Claude Code's
+/// `enforcement/hooks/claude-code/fsm-gate.sh`). The shim *bytes* are one source
+/// of truth checked into `enforcement/hooks/<target>/` and embedded into the
+/// binary by `build.rs`, so a brew/cargo install (which has no repo tree) can
+/// still write them. This function owns the single map from a target to where its
+/// shim lands in the payload, reads the embedded content, and returns the one
+/// `{container}/<dest>` → content entry.
+///
+/// `container` is the harness's payload staging root (`harnesses/<target>`); the
+/// destination is payload-relative, so the shim installs at the target root once
+/// the installer strips `harnesses/<target>/`.
+pub fn emit_hook_shim(container: &str, target: &str) -> HashMap<String, String> {
+    // target → (embedded source filename, payload-relative destination). The
+    // shim is a bash script for every harness except opencode, whose deny
+    // channel is a throwing `tool.execute.before` plugin (a `.ts` file).
+    let (src_file, dest) = match target {
+        "claude-code" => ("fsm-gate.sh", ".claude/hooks/fsm-gate.sh"),
+        "opencode" => ("fsm-gate.ts", ".opencode/plugin/fsm-gate.ts"),
+        "windsurf" => ("fsm-gate.sh", ".windsurf/hooks/fsm-gate.sh"),
+        "antigravity" => ("fsm-gate.sh", ".agents/hooks/fsm-gate.sh"),
+        "codex" => ("fsm-gate.sh", ".codex/hooks/fsm-gate.sh"),
+        "github-copilot" => ("fsm-gate.sh", ".github/hooks/fsm-gate.sh"),
+        "cursor" => ("fsm-gate.sh", ".cursor/hooks/fsm-gate.sh"),
+        other => panic!("emit_hook_shim: no shim mapping for target {other:?}"),
+    };
+
+    let src_rel = format!("enforcement/hooks/{target}/{src_file}");
+    // A missing embed is a build-time wiring bug (the file exists in the repo but
+    // build.rs did not embed it), not a runtime input error, so fail loudly.
+    let content = crate::embedded::embedded_sources()
+        .iter()
+        .find(|(rel, _)| *rel == src_rel)
+        .map(|(_, c)| c.to_string())
+        .unwrap_or_else(|| panic!("emit_hook_shim: embedded shim {src_rel:?} not found"));
+
+    let mut files = HashMap::new();
+    files.insert(format!("{container}/{dest}"), content);
+    files
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_emit_hook_shim_maps_target_to_dest_and_reads_embedded() {
+        // claude-code: the reference shim lands under `.claude/hooks/`.
+        let files = emit_hook_shim("harnesses/claude-code", "claude-code");
+        let shim = files
+            .get("harnesses/claude-code/.claude/hooks/fsm-gate.sh")
+            .expect("claude-code shim key present");
+        assert!(shim.contains("shipmates state gate"), "shim shells out to the engine");
+        assert!(shim.contains("permissionDecision"), "claude deny form present");
+    }
+
+    #[test]
+    fn test_emit_hook_shim_opencode_is_the_ts_plugin() {
+        // opencode's deny channel is a throwing `.ts` plugin, not a bash shim.
+        let files = emit_hook_shim("harnesses/opencode", "opencode");
+        let plugin = files
+            .get("harnesses/opencode/.opencode/plugin/fsm-gate.ts")
+            .expect("opencode plugin key present");
+        assert!(plugin.contains("tool.execute.before"), "opencode hook name present");
+        assert!(plugin.contains("throw new Error"), "opencode denies by throwing");
+    }
+
+    #[test]
+    fn test_emit_hook_shim_cursor_lands_in_cursor_dotdir() {
+        // Cursor's shim goes to `.cursor/`, distinct from its `.agents/` skills.
+        let files = emit_hook_shim("harnesses/cursor", "cursor");
+        assert!(files.contains_key("harnesses/cursor/.cursor/hooks/fsm-gate.sh"));
+    }
 
     #[test]
     fn test_render_instructions_claude() {

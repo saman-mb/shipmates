@@ -1,0 +1,17 @@
+{
+  "title": "artemis — launch",
+  "width": 820,
+  "beats": [
+    {"type": "command", "text": "launch --mission artemis-3"},
+    {"type": "blank"},
+    {"type": "stage", "label": "FUEL", "detail": "LOX + LH2 at 100%", "color": "gold"},
+    {"type": "stage", "label": "GUIDANCE", "detail": "trajectory locked", "color": "orange"},
+    {"type": "stage", "label": "IGNITION", "detail": "9 engines nominal", "color": "coral"},
+    {"type": "blank"},
+    {"type": "line", "segments": [
+      {"text": "  T-minus  ", "color": "grey"},
+      {"text": "3   2   1", "color": "orange", "bold": true}
+    ]},
+    {"type": "done", "text": "Liftoff — orbit insertion in 8m 12s"}
+  ]
+}

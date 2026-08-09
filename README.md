@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="assets/logo.png" width="200" alt="Shipmates — a pixel-art sailboat sailing into the sunset" />
+  <img src="https://raw.githubusercontent.com/saman-mb/shipmates/main/site/assets/logo.png" width="200" alt="Shipmates — a pixel-art sailboat sailing into the sunset" />
 </p>
 
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Windsurf, and Zed.</b><br/>
+  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, and Windsurf.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
@@ -19,7 +19,7 @@
 [![Issues](https://img.shields.io/github/issues/saman-mb/shipmates)](https://github.com/saman-mb/shipmates/issues)
 
 <p align="center">
-  <img src="assets/demo.gif" width="760" alt="A /ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request." />
+  <img src="https://raw.githubusercontent.com/saman-mb/shipmates/main/site/assets/demo.gif" width="760" alt="A /ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request." />
 </p>
 <p align="center"><sub><i>Illustrative — the actual stages <code>/ship-issue</code> runs, in order.</i></sub></p>
 
@@ -95,6 +95,35 @@ unresolved role name silently falls back to a generic agent rather than erroring
 
 ---
 
+## 🧰 The tools
+
+Beyond the crew and the commands there's a third kind of resource: **tools**. A command is
+something *you* invoke with a slash. A tool is something the *crew* reach for on their own,
+implicitly, when the intent of your prompt calls for it — never typed, never a slash command.
+
+| Tool | What it does |
+| --- | --- |
+| [`termgif`](https://saman-mb.github.io/shipmates/tools/termgif/) | Renders a polished animated terminal demo GIF of a workflow run from a small JSON spec |
+| [`social-card`](https://saman-mb.github.io/shipmates/tools/social-card/) | Renders a 1280×640 social / Open Graph share card from a small JSON spec |
+| [`pixelart`](https://saman-mb.github.io/shipmates/tools/pixelart/) | Renders pixel-art icons — static PNG or animated GIF — the way the shipmates logo is made |
+| [`diagram`](https://saman-mb.github.io/shipmates/tools/diagram/) | Renders a curated diagram — a flow/pipeline/state machine or a sequence of actors and messages — as a committed SVG, deterministic PNG, or animated GIF |
+| [`svgflow`](https://saman-mb.github.io/shipmates/tools/svgflow/) | Deprecated alias for `diagram` — svgflow's flow diagram is now a kind of it |
+| [`badge`](https://saman-mb.github.io/shipmates/tools/badge/) | Renders a shields-style status badge as an offline, committed SVG |
+| [`sparkline`](https://saman-mb.github.io/shipmates/tools/sparkline/) | Renders a short number series as a tiny inline SVG trend chart |
+| [`scrub`](https://saman-mb.github.io/shipmates/tools/scrub/) | Redacts secrets and PII from a log or paste before it's shared |
+| [`fixtures`](https://saman-mb.github.io/shipmates/tools/fixtures/) | Generates deterministic fake test data from a small JSON schema |
+
+Tools are **opt-in** — a plain install ships only the crew and the commands. Add them with
+`--with-tools` (below), or run `install` in a terminal and pick from the list. Each tool maps to its
+harness's own native tool surface: a genuine code tool on opencode (`.opencode/tools/<name>.ts`), and
+an agent-invoked Agent Skill everywhere else — on Claude Code pinned agent-only with
+`user-invocable: false`, so it never appears as a slash command. Defined once in `toolbox/<name>/`,
+exactly like the crew and commands.
+
+*More tools are on the way.* ⛵
+
+---
+
 ## ⚓ Come aboard (install)
 
 `shipmates` is a single Rust binary. Grab it any way you like:
@@ -123,24 +152,50 @@ shipmates install --harness opencode        # format-verified, not runtime-verif
 shipmates install --harness codex
 ```
 
+Tools are off by default. Run `install` in a terminal and it asks which you'd like; name them
+up front with `--with-tools` to skip the prompt (or `none` to opt out non-interactively):
+
+```bash
+shipmates install --harness claude-code              # prompts: pick tools, or Enter for none
+shipmates install --harness claude-code --with-tools termgif
+shipmates install --harness opencode --with-tools all
+```
+
 Which harnesses can you install? `shipmates targets` lists them — today all of:
 
 ```
 claude-code      .claude/          agents + skills
 opencode         .opencode/        agents + commands
 antigravity      .agents/          agents + skills   (agy — the successor to the retired Gemini CLI)
-codex            .codex/           skills only
-cursor           .cursor/          skills only
-github-copilot   .github/          skills only
-windsurf         .windsurf/        skills only
-zed              .zed/             skills only
+codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
+cursor           .agents/          skills only (shared open Agent Skills tree)
+github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
+windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
-Every harness compiles the same canonical crew and commands. Three have a native subagent
-directory and receive the twelve specialists as agents; the other five have no subagent mechanic,
-so the crew ships as twelve skills only. Installing never touches your working tree — anything that
+Every harness compiles the same canonical crew and commands. Five have a native subagent directory
+and receive the twelve specialists as agents; the other two ship the twelve commands as skills only.
+Four harnesses (codex, antigravity, cursor, github-copilot) read the open [Agent Skills](https://agentskills.io)
+location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
+one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of four colliding
+ones. Their crew still land in each harness's own native format. `windsurf` keeps its canonical
+`.windsurf/skills/` (its docs make `.agents/skills/` only a secondary scan) and `claude-code` its own
+`.claude/skills/`.
+One caveat worth knowing before you pick Codex: it documents no per-agent tool allowlist, so its
+crew inherit whatever the session can do rather than the least-privilege set every other target
+enforces. Each harness records its evidence, and the date it was checked, in
+`tools/harness_matrix.json`. Installing never touches your working tree — anything that
 changes a repo does so on a branch — and `shipmates uninstall` is not (yet) implemented; delete the
 tree the harness installed instead.
+
+**Check an install with `shipmates doctor`.** Run `shipmates doctor` (add `--dir` to point at a
+specific project) for a read-only health report: is the harness tree present, did every crew agent
+and skill land, has any installed file drifted from the running binary, and is an old
+`commands/<name>.md` layout shadowing a skill? `shipmates doctor --fix` repairs what it can —
+migrating a superseded command layout to the skill that supersedes it and rewriting missing or
+drifted files — and backs up everything it touches under `.shipmates-backup/` first. A plain
+`install` also migrates a superseded command layout for you as it writes; pass `--no-migrate` to
+leave your old files in place.
 
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
@@ -376,11 +431,11 @@ question is whether it's been *run*.
 
 - **Runtime-verified** — Claude Code: the full crew and all 12 commands, and the only harness
   Shipmates has actually been run on.
-- **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot,
-  Windsurf and Zed all build from `shipmates install --harness <name>`, and each payload's format was
-  verified against that harness's parsing source and first-party docs. opencode and Antigravity get the full
-  crew + all 12 commands; the other five have no native subagent directory, so they ship the 12 skills
-  only. A live run has not been done on any of them; opencode's open questions are tracked in
+- **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot
+  and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
+  verified against that harness's parsing source and first-party docs. opencode, Antigravity, Codex CLI and
+  GitHub Copilot get the full crew + all 12 commands; the other two — Cursor and Windsurf — have no native
+  subagent directory, so they ship the 12 skills only. A live run has not been done on any of them; opencode's open questions are tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
   CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates builds for.
@@ -401,7 +456,7 @@ commands keep shipping. Want a role or a workflow aboard? Open an issue — idea
 A ready-made crew of **subagents** and **command workflows**. Instead of you playing
 planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
 `/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It ships for
-eight harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Windsurf, and Zed;
+seven harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, and Windsurf;
 see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Render pipeline: the neutral crew, commands and tools are authored once, compiled by the shipmates CLI through seven per-harness adapters into native payloads that carry only the features each harness supports." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="376" height="474" viewBox="0 0 376 474">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
+<rect x="0.5" y="0.5" width="375" height="473" rx="16" class="panel" stroke-width="1"/>
+<g transform="translate(223.6,28)">
+<line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
+<line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
+<line x1="0" y1="294" x2="0" y2="372" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,372 -5.5,361 5.5,361" class="arrow"/>
+<rect x="-123.5" y="0" width="247" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">crew · commands · tools</text>
+<rect x="-78.5" y="124" width="157" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">shipmates CLI</text>
+<rect x="-105.5" y="248" width="211" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">adapter per harness</text>
+<rect x="-83" y="372" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">native payload</text>
+<rect x="-123.6" y="74" width="111.6" height="22" rx="6" class="mask"/>
+<text x="-67.8" y="89.2" text-anchor="middle" font-size="12" class="chip">authored once</text>
+<rect x="-116.4" y="198" width="104.4" height="22" rx="6" class="mask"/>
+<text x="-64.2" y="213.2" text-anchor="middle" font-size="12" class="chip">× 7 adapters</text>
+<rect x="-195.6" y="322" width="183.6" height="22" rx="6" class="mask"/>
+<text x="-103.8" y="337.2" text-anchor="middle" font-size="12" class="chip">supported features only</text>
+</g>
+</svg>

@@ -1,0 +1,16 @@
+{
+  "direction": "right",
+  "title": "Request flow",
+  "nodes": [
+    {"id": "client",  "label": "Client"},
+    {"id": "gateway", "label": "API gateway"},
+    {"id": "service", "label": "Service"},
+    {"id": "db",      "label": "Database"}
+  ],
+  "edges": [
+    {"from": "client",  "to": "gateway", "label": "HTTPS"},
+    {"from": "gateway", "to": "service", "label": "authz"},
+    {"from": "service", "to": "db",      "label": "query"},
+    {"from": "service", "to": "client",  "label": "200 JSON"}
+  ]
+}

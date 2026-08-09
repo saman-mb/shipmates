@@ -99,6 +99,7 @@
           <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#tools">Tools</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
@@ -127,6 +128,19 @@
             <p>Input (<strong>$ARGUMENTS</strong>): the migration — <code>from → to</code>: an API/signature change, a dependency swap, a language/framework idiom, a config format, a renamed symbol. If empty, ask what&#x27;s migrating to what.</p>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="section" id="demo" aria-labelledby="demo-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="demo-title">See it run</h2>
+        </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="../../assets/command-migrate-poster.png" width="820" height="432" alt="Illustrative terminal recording of the stages /migrate runs, in order." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/migrate</code> runs, in order.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -333,5 +347,21 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
       <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
     </div>
   </footer>
+  <script>
+  (function () {
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/command-migrate.gif';
+    var playing = false;
+    toggle.addEventListener('click', function () {
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the run' : 'Play the run';
+    });
+  })();
+  </script>
 </body>
 </html>

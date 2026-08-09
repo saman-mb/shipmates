@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>sparkline — Turns a short run of numbers into a tiny inline SVG that shows the trend at a glance. · Shipmates</title>
+  <meta name="description" content="Turn a short series of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — into a tiny inline trend chart as a…">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/tools/sparkline/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="sparkline — Turns a short run of numbers into a tiny inline SVG that shows the trend at a glance.">
+  <meta property="og:description" content="Turn a short series of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — into a tiny inline trend chart as a…">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/tools/sparkline/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="sparkline — Turns a short run of numbers into a tiny inline SVG that shows the trend at a glance.">
+  <meta name="twitter:description" content="Turn a short series of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — into a tiny inline trend chart as a…">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "sparkline",
+    "description": "Turn a short series of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — into a tiny inline trend chart as a self-contained SVG. Reach for this whenever a task hands over a run of numbers and the honest artifact is a single small chart showing the shape of the trend rather than a wall of digits (a benchmark note, a metrics summary, a README stat, a status line). Never a slash command; use it implicitly when the intent calls for one.",
+    "url": "https://saman-mb.github.io/shipmates/tools/sparkline/",
+    "isPartOf": {
+      "@type": "CollectionPage",
+      "url": "https://saman-mb.github.io/shipmates/#tools"
+    }
+  }
+  </script>
+</head>
+<body class="page--doc">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#tools">Tools</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+        </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="../../#install">Install</a>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../../#tools"><span aria-hidden="true">←</span> All tools</a>
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">🧰</span> Tool</p>
+          <h1 class="order-detail__title" id="order-title"><code>sparkline</code></h1>
+          <p class="order-detail__tagline">Turns a short run of numbers into a tiny inline SVG that shows the trend at a glance.</p>
+          <p class="order-detail__desc">Turn a short series of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — into a tiny inline trend chart as a self-contained SVG. Reach for this whenever a task hands over a run of numbers and the honest artifact is a single small chart showing the shape of the trend rather than a wall of digits (a benchmark note, a metrics summary, a README stat, a status line). Never a slash command; use it implicitly when the intent calls for one.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="what" aria-labelledby="what-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="what-title">What it does</h2>
+        </div>
+        <div class="order-prose">
+          <p><code>sparkline</code> takes a short series of numbers — <code>--data &quot;12,18,9,22,15,27&quot;</code> — and draws its trend as one tiny inline chart: a smooth polyline over a faint gradient fill, scaled to its own min/max, with the last point marked by a dot. The output is a self-contained SVG (scalable, self-sizing, verified as valid XML), a light teal stroke on a subtle dark panel that reads on the tool pages; <code>--color</code>, <code>--label</code>, <code>--width</code>, <code>--height</code>, <code>--no-baseline</code> and <code>--bare</code> tune it.</p>
+          <p>It is a <em>tool</em>, not a command: you never type it. The crew reach for it on their own when a task hands over a run of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — and the honest artifact is the shape of the curve rather than a wall of digits. It has no dependencies beyond <code>python3</code> and the standard library, so a run is deterministic and offline.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="examples" aria-labelledby="examples-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="examples-title">Examples</h2>
+        </div>
+        <p>A few things <code>sparkline</code> can produce, each from a small spec of its own.</p>
+        <div class="tool-gallery">
+          <figure class="tool-example">
+            <img class="tool-example__img" src="examples/latency.svg" width="240" height="60" alt="A declining sparkline in coral: p95 latency falling from 182ms to 88ms across a release, the last point marked with a dot." loading="lazy" decoding="async">
+            <figcaption class="tool-example__caption">A latency history that improves across a release — p95 falling from 182ms to 88ms.</figcaption>
+          </figure>
+          <figure class="tool-example">
+            <img class="tool-example__img" src="examples/throughput.svg" width="240" height="60" alt="A rising sparkline in teal: throughput climbing from 420 to 845 requests per second, the last point marked with a dot." loading="lazy" decoding="async">
+            <figcaption class="tool-example__caption">Throughput climbing as autoscaling kicks in — 420 to 845 req/s.</figcaption>
+          </figure>
+          <figure class="tool-example">
+            <img class="tool-example__img" src="examples/error-rate.svg" width="240" height="60" alt="A sparkline in gold with a single sharp spike: error rate jumping to 2.1% during an incident, then recovering to 0.2%." loading="lazy" decoding="async">
+            <figcaption class="tool-example__caption">An error-rate spike during an incident, then recovery — a lone peak at 2.1%.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="usage" aria-labelledby="usage-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
+        </div>
+        <div class="order-prose">
+          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools sparkline</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
+          <p>The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the <code>sparkline.py</code> script and the CLI it needs to drive it: <code>python3 sparkline.py --data &quot;…&quot; --out spark.svg</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="reference" aria-labelledby="reference-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="reference-title">Reference</h2>
+        </div>
+        <dl class="agent-ref">
+          <dt>Name</dt>
+          <dd><code>sparkline</code></dd>
+          <dt>Description</dt>
+          <dd>Turn a short series of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — into a tiny inline trend chart as a self-contained SVG. Reach for this whenever a task hands over a run of numbers and the honest artifact is a single small chart showing the shape of the trend rather than a wall of digits (a benchmark note, a metrics summary, a README stat, a status line). Never a slash command; use it implicitly when the intent calls for one.</dd>
+          <dt>Bundled files</dt>
+          <dd><code>sparkline.py</code></dd>
+          <dt>Install</dt>
+          <dd><code>shipmates install --harness &lt;name&gt; --with-tools sparkline</code></dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>toolbox/sparkline/tool.md</code>. Opt in at install with <code>--with-tools sparkline</code> and the installer copies the tool — instructions and bundled files — into the harness's skills tree.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/toolbox/sparkline/tool.md">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>View toolbox/sparkline/tool.md on GitHub</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="other-tools" aria-labelledby="other-tools-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-tools-title">Other tools</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other tools">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../termgif/"><code>termgif</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../social-card/"><code>social-card</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../pixelart/"><code>pixelart</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../diagram/"><code>diagram</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../svgflow/"><code>svgflow</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../badge/"><code>badge</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>sparkline</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../scrub/"><code>scrub</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../fixtures/"><code>fixtures</code></a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../../#tools"><span aria-hidden="true">←</span> All tools</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for your AI coding harness.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>

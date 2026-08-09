@@ -42,6 +42,7 @@
           <li class="site-nav__item"><a class="site-nav__link" href="#install">Install</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#crew">Crew</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="#tools">Tools</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#how">How</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#next">What's next</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="#faq">FAQ</a></li>
@@ -278,6 +279,72 @@
       </div>
     </section>
 
+    <section class="section" id="tools" aria-labelledby="tools-title">
+      <div class="container">
+        <div class="section__head">
+          <p class="section__eyebrow"><span aria-hidden="true">🧰</span> The tools</p>
+          <h2 class="section__title" id="tools-title">Tools the crew reaches for</h2>
+          <p class="section__lead">A third kind of resource. A command is something you invoke with a slash; a tool is something the crew reach for on their own — implicitly, when the intent of your prompt calls for it. Never typed, never a slash command. Opt in at install with <code>--with-tools</code>.</p>
+        </div>
+        <ul class="tool__grid">
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">🎞️</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/termgif/"><code class="tool-card__handle">termgif</code></a></h3>
+            <p class="tool-card__duty">Renders an animated terminal demo GIF of a workflow run from a small JSON spec.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">🖼️</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/social-card/"><code class="tool-card__handle">social-card</code></a></h3>
+            <p class="tool-card__duty">Renders a 1280x640 social/OG share card from a small JSON spec.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">👾</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/pixelart/"><code class="tool-card__handle">pixelart</code></a></h3>
+            <p class="tool-card__duty">Renders pixel-art icons from a JSON spec as static PNG or animated GIF.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">🔀</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/diagram/"><code class="tool-card__handle">diagram</code></a></h3>
+            <p class="tool-card__duty">Renders a curated diagram — a flow/pipeline/state machine or a sequence of actors and messages — as a committed SVG, deterministic PNG, or animated GIF.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">🔀</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/svgflow/"><code class="tool-card__handle">svgflow</code></a></h3>
+            <p class="tool-card__duty">Deprecated alias for <code>diagram</code> — svgflow's flow diagram is now a kind of it.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">🏷️</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/badge/"><code class="tool-card__handle">badge</code></a></h3>
+            <p class="tool-card__duty">Render a shields-style status badge as an offline, committed SVG.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">📈</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/sparkline/"><code class="tool-card__handle">sparkline</code></a></h3>
+            <p class="tool-card__duty">Renders a short number series as a tiny inline SVG trend chart.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">🧽</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/scrub/"><code class="tool-card__handle">scrub</code></a></h3>
+            <p class="tool-card__duty">Redacts secrets and PII from a log or paste before it&#x27;s shared.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+          <li class="tool-card">
+            <span class="tool-card__icon" aria-hidden="true">🎲</span>
+            <h3 class="tool-card__name"><a class="tool-card__link" href="tools/fixtures/"><code class="tool-card__handle">fixtures</code></a></h3>
+            <p class="tool-card__duty">Generates deterministic fake test data from a small JSON schema.</p>
+            <span class="tool-card__more" aria-hidden="true">Open the tool →</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
     <section class="section how" id="how" aria-labelledby="how-title">
       <div class="container">
         <div class="section__head">
@@ -344,7 +411,7 @@
           <div class="section__head">
             <p class="section__eyebrow"><span aria-hidden="true">🌊</span> What's next</p>
             <h2 class="section__title" id="next-title">Which harnesses the crew runs on</h2>
-            <p class="section__lead">Claude Code runtime-verified, seven more buildable today, none of the seven verified against a running harness yet. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> rather than a promise.</p>
+            <p class="section__lead">Claude Code runtime-verified, six more buildable today, none of the six verified against a running harness yet. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> rather than a promise.</p>
           </div>
           <div class="order-prose">
             <ul>
@@ -357,12 +424,13 @@
                 <ul>
                   <li>opencode — full crew + all 12 commands as <code>.opencode/</code>; live verification tracked in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
                   <li>antigravity (the Antigravity CLI, <code>agy</code> — successor to the retired Gemini CLI) — full crew + all 12 commands as <code>.agents/</code>.</li>
-                  <li>codex, cursor, github-copilot, windsurf, zed — the 12 skills only; these five have no native subagent directory, so the crew drops out by design.</li>
+                  <li>codex, github-copilot — the full crew and all 12 commands. Codex is the one target whose agents are TOML rather than Markdown, and it documents no per-agent tool allowlist, so its crew inherit the session's tools rather than a restricted set.</li>
+                  <li>cursor, windsurf — the 12 skills only. Cursor's is reported but its schema is undocumented, so we do not guess at it; Windsurf is under review since the Devin Desktop rename.</li>
                 </ul>
               </li>
               <li><strong>Next</strong>
                 <ul>
-                  <li>Runtime verification for the other seven harnesses, starting with opencode — see <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
+                  <li>Runtime verification for the other six harnesses, starting with opencode — see <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
                 </ul>
               </li>
             </ul>

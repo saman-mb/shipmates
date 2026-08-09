@@ -99,6 +99,7 @@
           <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#tools">Tools</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
@@ -127,6 +128,19 @@
             <p>Input (<strong>$ARGUMENTS</strong>): an explicit version (<code>v1.4.0</code>) or a bump keyword (<code>patch</code>/<code>minor</code>/<code>major</code>) to derive it from the last tag via semver. If empty, infer the bump from the change set (breaking → major, features → minor, fixes only → patch) and propose it.</p>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="section" id="demo" aria-labelledby="demo-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="demo-title">See it run</h2>
+        </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="../../assets/command-release-poster.png" width="820" height="432" alt="Illustrative terminal recording of the stages /release runs, in order." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/release</code> runs, in order.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -321,5 +335,21 @@
       <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
     </div>
   </footer>
+  <script>
+  (function () {
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/command-release.gif';
+    var playing = false;
+    toggle.addEventListener('click', function () {
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the run' : 'Play the run';
+    });
+  })();
+  </script>
 </body>
 </html>

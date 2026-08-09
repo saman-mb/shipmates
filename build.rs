@@ -8,6 +8,8 @@ fn main() {
 
     println!("cargo:rerun-if-changed=crew");
     println!("cargo:rerun-if-changed=commands");
+    println!("cargo:rerun-if-changed=toolbox");
+    println!("cargo:rerun-if-changed=enforcement");
 
     let mut entries: Vec<(String, String)> = Vec::new();
     for dir in ["crew", "commands"] {
@@ -28,6 +30,43 @@ fn main() {
         }
     }
 
+    // Tools are folders (`toolbox/<name>/tool.md` + bundled assets), not flat
+    // files, so they embed recursively and across every extension (`.md`,
+    // `.py`, `.ts`, …) — the whole runnable payload rides in the binary.
+    let toolbox = root.join("toolbox");
+    if toolbox.is_dir() {
+        let mut tool_files: Vec<std::path::PathBuf> = Vec::new();
+        collect_files(&toolbox, &mut tool_files);
+        tool_files.sort();
+        for path in tool_files {
+            let rel = path
+                .strip_prefix(root)
+                .expect("toolbox path under root")
+                .to_string_lossy()
+                .replace('\\', "/");
+            entries.push((rel, path.to_string_lossy().into_owned()));
+        }
+    }
+
+    // The per-harness FSM hook shims (`enforcement/hooks/<harness>/fsm-gate.*`)
+    // embed the same way: `render.rs` reads their bytes at runtime to emit each
+    // harness's shim into its payload, and a brew/cargo binary has no repo tree
+    // to read them from. Recursive + all-extension, like `toolbox`.
+    let enforcement = root.join("enforcement");
+    if enforcement.is_dir() {
+        let mut shim_files: Vec<std::path::PathBuf> = Vec::new();
+        collect_files(&enforcement, &mut shim_files);
+        shim_files.sort();
+        for path in shim_files {
+            let rel = path
+                .strip_prefix(root)
+                .expect("enforcement path under root")
+                .to_string_lossy()
+                .replace('\\', "/");
+            entries.push((rel, path.to_string_lossy().into_owned()));
+        }
+    }
+
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR unset");
     let mut out = String::new();
     out.push_str("pub fn embedded_sources() -> &'static [(&'static str, &'static str)] {\n");
@@ -39,4 +78,16 @@ fn main() {
     out.push_str("}\n");
 
     fs::write(Path::new(&out_dir).join("embedded_sources.rs"), out).expect("write embedded sources");
+}
+
+/// Recursively collect every file under `dir` (build-time only; no walkdir dep).
+fn collect_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+    for entry in fs::read_dir(dir).expect("read embed dir").filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_files(&path, out);
+        } else {
+            out.push(path);
+        }
+    }
 }

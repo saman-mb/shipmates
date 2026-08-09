@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Architecture · Shipmates docs</title>
-  <meta name="description" content="How the skills and agents trees, the capability matrix, the payload generator, and the installer fit together — and the CI gates that keep them honest.">
+  <meta name="description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/architecture/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="Architecture — Shipmates docs">
-  <meta property="og:description" content="How the skills and agents trees, the capability matrix, the payload generator, and the installer fit together — and the CI gates that keep them honest.">
+  <meta property="og:description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/architecture/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Architecture — Shipmates docs">
-  <meta name="twitter:description" content="How the skills and agents trees, the capability matrix, the payload generator, and the installer fit together — and the CI gates that keep them honest.">
+  <meta name="twitter:description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "name": "Architecture",
-    "description": "How the skills and agents trees, the capability matrix, the payload generator, and the installer fit together — and the CI gates that keep them honest.",
+    "description": "Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.",
     "url": "https://saman-mb.github.io/shipmates/docs/architecture/",
     "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
   }
@@ -66,12 +66,12 @@
 
     <section class="section" aria-labelledby="architecture-title">
       <div class="container container--prose">
-        <a class="order-back" href="../"><span aria-hidden="true">←</span> All docs</a>
+        <a class="order-back" href="../"><span aria-hidden="true">&#8592;</span> All docs</a>
         <div class="order-detail">
-          <p class="order-detail__eyebrow"><span aria-hidden="true">🧭</span> Architecture</p>
+          <p class="order-detail__eyebrow"><span aria-hidden="true">&#129517;</span> Architecture</p>
           <h1 class="order-detail__title" id="architecture-title">Architecture</h1>
-          <p class="order-detail__tagline">How the canonical sources, adapters, and installer fit together.</p>
-          <p class="order-detail__desc">Neutral canonical sources, one Rust CLI, per-harness adapters. The rule that keeps them honest: every target's output is byte-compared against a committed digest, and CI fails on drift.</p>
+          <p class="order-detail__tagline">One crew, compiled for your harness. The workflow enforced at the tool boundary.</p>
+          <p class="order-detail__desc">One mental model to keep: Shipmates ships a single canonical crew and command set, and the <code>shipmates</code> CLI compiles it into whatever your harness understands &mdash; so you install once and get the same crew on Claude Code, Cursor, or Codex, each getting only the features it supports. A small state machine then enforces the workflow through the harness&#x27;s own tool hook, so an out-of-order tool call is hard-blocked. The rest of this page is those three layers in detail; the internals are here if you want them, but you don&#x27;t need them to use the crew.</p>
         </div>
       </div>
     </section>
@@ -81,56 +81,67 @@
         <nav class="docs-toc" aria-labelledby="toc-title">
           <h2 id="toc-title">On this page</h2>
           <ul>
-            <li><a href="#canonical">The canonical sources</a></li>
-            <li><a href="#frontmatter">Frontmatter contract</a></li>
-            <li><a href="#adapters">Adapters &amp; dialects</a></li>
-            <li><a href="#registries">The registries</a></li>
-            <li><a href="#payloads">Payload generation</a></li>
-            <li><a href="#install-flow">Install flow</a></li>
-            <li><a href="#ci-gates">CI gates</a></li>
+            <li><a href="#big-picture">The big picture</a></li>
+            <li><a href="#source">One source of truth</a></li>
+            <li><a href="#adapters">Feature-aware adapters</a></li>
+            <li><a href="#enforcement">State machine &amp; hooks</a></li>
+            <li><a href="#principle">Enforced everywhere</a></li>
+            <li><a href="#honest">How it stays honest</a></li>
           </ul>
         </nav>
       </div>
     </section>
 
-    <section class="section" id="canonical" aria-labelledby="canonical-title">
+    <section class="section" id="big-picture" aria-labelledby="big-picture-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="canonical-title">The canonical sources</h2>
-          <p class="section__lead">Neutral, harness-agnostic, and the only files you edit for crew or command content.</p>
+          <h2 class="section__title" id="big-picture-title">The big picture</h2>
+          <p class="section__lead">Three layers, one direction of travel: one canonical crew in, a native payload for your harness out, and a workflow that can be enforced at the far end.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>commands/                  crew/
-  ship-issue.md               architect.md
-  fix-bug.md                  senior-engineer.md
-  plan-epics.md               sdet.md
-  … (12 commands)             … (12 personas)</code></pre>
-          <p><code>commands/*.md</code> are the twelve workflows, in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape. <code>crew/*.md</code> are the twelve subagent personas. Both are written in a neutral dialect — <code>$ARGUMENTS</code> is the only argument placeholder a command may contain, and no file may name-drop a stack, framework, or product. Every harness's payload is rendered from these two trees; nothing domain-specific belongs here.</p>
-          <p>The published site mirrors the split: <code>site/commands/&lt;name&gt;/index.html</code> pages are <strong>generated</strong> from the rendered Claude Code payload, while these docs pages are hand-authored.</p>
+          <figure class="tool-example">
+            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Render pipeline: the neutral crew, commands and tools are authored once, compiled by the shipmates CLI through seven per-harness adapters into native payloads that carry only the features each harness supports." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="376" height="474" viewBox="0 0 376 474">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
+<rect x="0.5" y="0.5" width="375" height="473" rx="16" class="panel" stroke-width="1"/>
+<g transform="translate(223.6,28)">
+<line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
+<line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
+<line x1="0" y1="294" x2="0" y2="372" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,372 -5.5,361 5.5,361" class="arrow"/>
+<rect x="-123.5" y="0" width="247" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">crew · commands · tools</text>
+<rect x="-78.5" y="124" width="157" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">shipmates CLI</text>
+<rect x="-105.5" y="248" width="211" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">adapter per harness</text>
+<rect x="-83" y="372" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">native payload</text>
+<rect x="-123.6" y="74" width="111.6" height="22" rx="6" class="mask"/>
+<text x="-67.8" y="89.2" text-anchor="middle" font-size="12" class="chip">authored once</text>
+<rect x="-116.4" y="198" width="104.4" height="22" rx="6" class="mask"/>
+<text x="-64.2" y="213.2" text-anchor="middle" font-size="12" class="chip">× 7 adapters</text>
+<rect x="-195.6" y="322" width="183.6" height="22" rx="6" class="mask"/>
+<text x="-103.8" y="337.2" text-anchor="middle" font-size="12" class="chip">supported features only</text>
+</g>
+</svg>
+            <figcaption class="tool-example__caption">The render pipeline: crew, commands and tools are authored once, then compiled by the <code>shipmates</code> CLI through seven per-harness adapters into native payloads &mdash; each carrying only the features its harness supports.</figcaption>
+          </figure>
+          <p>Everything below is just those three boxes in more detail. What matters for you: the crew is written once, so nothing is harness-specific until the CLI compiles it &mdash; and what lands in your project is always native to the harness you chose.</p>
         </div>
       </div>
     </section>
 
-    <section class="section" id="frontmatter" aria-labelledby="frontmatter-title">
+    <section class="section" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="frontmatter-title">Frontmatter contract</h2>
-          <p class="section__lead">What a <code>SKILL.md</code> may declare, and in what order.</p>
-        </div>
-        <div class="order-table" tabindex="0">
-          <table>
-            <thead><tr><th scope="col">Key</th><th scope="col">Status</th><th scope="col">Notes</th></tr></thead>
-            <tbody>
-              <tr><td><code>name</code></td><td>required, first</td><td>Must equal the parent directory name — the standard&#x27;s rule, and the skill will not resolve without it.</td></tr>
-              <tr><td><code>description</code></td><td>required, second</td><td>What the workflow does; the only other required key.</td></tr>
-              <tr><td><code>argument-hint</code></td><td>vendor extension</td><td>Claude Code extension, not part of the Agent Skills standard — the usage hint shown when you type the command.</td></tr>
-              <tr><td><code>allowed-tools</code></td><td>vendor extension</td><td>Comma-separated in the canonical sources because that is what Claude Code parses; the standard&#x27;s experimental form is space-separated.</td></tr>
-              <tr><td><code>disable-model-invocation</code></td><td>vendor extension</td><td><code>true</code> on all twelve — every command is user-invoked only; the model never loads one on its own.</td></tr>
-            </tbody>
-          </table>
+          <h2 class="section__title" id="source-title">One source of truth</h2>
+          <p class="section__lead">Shipmates defines the 12 crew, 12 commands and the tools once, in a harness-neutral form &mdash; so every harness gets the same crew.</p>
         </div>
         <div class="order-prose">
-          <p>The standard&#x27;s optional <code>license</code>, <code>compatibility</code>, and <code>metadata</code> keys may appear after the two required ones, in any order. <strong>Unknown keys are rejected</strong>, so a typo fails the gate rather than being silently ignored. In the body, <code>$ARGUMENTS</code> is the only argument placeholder a command may contain — positional substitution is not in the standard, and <code>tools/validate_skills.py</code> enforces it over the whole file, fenced code blocks included.</p>
+          <p>The crew are twelve specialist subagents; the commands are twelve workflows like <code>/ship-issue</code>; the tools are model-invoked helpers. All are domain-neutral by rule &mdash; no stack, framework or product is named &mdash; so the same crew works on a game engine, a web app, or a CLI without configuration.</p>
+          <p>Because there is a single definition behind every harness, a fix or a new command reaches all seven at once; you never re-learn the crew when you switch harness. (These canonical sources live in the repo as <code>crew/*.md</code>, <code>commands/*.md</code> and <code>toolbox/*</code> &mdash; the starting point if you ever want to fork and customize, though that&#x27;s an advanced path, not something using the crew requires.)</p>
         </div>
       </div>
     </section>
@@ -138,77 +149,130 @@
     <section class="section" id="adapters" aria-labelledby="adapters-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="adapters-title">Adapters &amp; dialects</h2>
-          <p class="section__lead">One adapter per harness in <code>src/adapters/</code>, sharing one render layer.</p>
+          <h2 class="section__title" id="adapters-title">Feature-aware adapters</h2>
+          <p class="section__lead">Each harness gets exactly what it can use &mdash; and nothing it can&#x27;t &mdash; so the install is always native, never a lowest-common-denominator port.</p>
         </div>
         <div class="order-prose">
-          <p>Each harness is a Rust adapter (<code>src/adapters/&lt;harness&gt;.rs</code>) that declares a <code>Dialect</code>: where its agents live (<code>.claude/agents/</code>, <code>.opencode/agents/</code>, <code>.agents/agents/</code>, …), what its session metadata is called, which project-instructions file it reads (<code>CLAUDE.md</code>, <code>AGENTS.md</code>), and how a role is spawned. The shared render layer (<code>src/adapters/render.rs</code>) rewrites the neutral prose into the harness&#x27;s real dialect.</p>
-          <p>Tools are resolved from semantic capabilities, never hardcoded per harness: <code>read</code> → <code>Read</code>/<code>Grep</code>/<code>Glob</code>, <code>edit</code> → <code>Write</code>/<code>Edit</code>, <code>bash</code> → <code>Bash</code>, <code>web</code> → <code>WebSearch</code>/<code>WebFetch</code>, <code>agent</code> → <code>Agent</code>. A role&#x27;s <code>*-scopes</code> refinements are preserved in each harness&#x27;s own permission model.</p>
-          <p><strong>Least privilege is the adapter&#x27;s job, not the target&#x27;s default.</strong> Claude Code&#x27;s permission model is an allowlist, so naming the tools a role needs is sufficient. opencode&#x27;s shipped defaults are effectively <code>&#x22;*&#x22;: &#x22;allow&#x22;</code>, so an allow-list alone grants nothing — every generated opencode agent emits a <code>&#x22;*&#x22;: deny</code> catch-all first and its specific allows after, and opencode resolves permissions last-match-wins, so the ordering is the mechanism.</p>
-          <p>A harness with no subagent mechanic ships the crew as skills only (<code>emit_skill_files</code>): the twelve commands as <code>skills/&lt;name&gt;/SKILL.md</code>, with the Agent Skills standard&#x27;s <code>name</code>/<code>description</code> pair and nothing else — vendor keys like <code>allowed-tools</code> or <code>disable-model-invocation</code> would be rejected by a strict parser. That covers <code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>, and <code>zed</code>; the crew drops out entirely.</p>
+          <p>The <code>shipmates</code> CLI is a single binary that carries the canonical crew and compiles it through one adapter per harness. Each adapter knows its harness&#x27;s native file shape and frontmatter dialect, the exact paths it reads (<code>.claude/</code>, <code>.opencode/</code>, <code>.agents/skills/</code>, and the rest), and its least-privilege tool scopes &mdash; so you don&#x27;t configure any of that.</p>
+          <p>Crucially, an adapter emits <strong>only the features that harness actually supports</strong> &mdash; per-agent model and reasoning effort, subagents versus skills-only. Where a harness lacks a feature, the adapter <strong>records the gap instead of inventing a key</strong>, so nothing silently breaks. The per-harness feature map is tracked in the repo and checked in CI; the reader-facing version is the <a href="../harnesses/">harness matrix</a>.</p>
         </div>
       </div>
     </section>
 
-    <section class="section" id="registries" aria-labelledby="registries-title">
+    <section class="section" id="enforcement" aria-labelledby="enforcement-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="registries-title">The registries</h2>
-          <p class="section__lead"><code>tools/manifest.json</code> and <code>tools/capability_registry.json</code> — what the CLI knows about its targets.</p>
+          <h2 class="section__title" id="enforcement-title">State machine &amp; hooks</h2>
+          <p class="section__lead">Each command declares its stages; <code>shipmates state</code> turns them into a state machine, and a tool hook makes the gates real.</p>
         </div>
         <div class="order-prose">
-          <p><code>tools/manifest.json</code> declares the canonical source roots (<code>commands/</code>, <code>crew/</code>), the project-instructions mapping, and every target with its build status — eight names today (<code>claude-code</code>, <code>opencode</code>, <code>antigravity</code>, <code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>, <code>zed</code>), all marked <code>implemented</code>. <code>tools/capability_registry.json</code> maps the semantic capabilities and role <code>*-scopes</code> to each harness&#x27;s tool names — the thing adapters consult, and the only place a harness&#x27;s tool names live (never in canonical content).</p>
-          <p>The contract cuts both ways: adding a frontmatter key to a canonical command means registering it in the capability registry and regenerating every target&#x27;s reference digest, or the build fails.</p>
+          <p>A command&#x27;s <code>stages:</code> frontmatter defines a finite-state machine; <code>shipmates state</code> checks each transition against a per-run <code>.shipmates/run-&lt;N&gt;.json</code> file and answers <em>legal</em> (exit&nbsp;0), <em>illegal</em> (exit&nbsp;1) or <em>error</em> (exit&nbsp;2). One extra binding, <code>tool_gates</code>, ties a specific tool call to the phase it&#x27;s allowed in.</p>
+          <figure class="tool-example">
+            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Enforcement flow: an agent calls gh pr merge; the PreToolUse hook discovers the run from the feat/issue-N branch, calls shipmates state gate, checks whether the run has reached the deliver phase, and allows the merge if it has or denies it if the run is too early." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="366" height="846" viewBox="0 0 366 846">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
+<rect x="0.5" y="0.5" width="365" height="845" rx="16" class="panel" stroke-width="1"/>
+<g transform="translate(165,28)">
+<line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
+<line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
+<line x1="0" y1="294" x2="0" y2="372" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,372 -5.5,361 5.5,361" class="arrow"/>
+<line x1="0" y1="418" x2="0" y2="496" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,496 -5.5,485 5.5,485" class="arrow"/>
+<line x1="0" y1="542" x2="0" y2="620" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,620 -5.5,609 5.5,609" class="arrow"/>
+<path d="M 92 519 C 146 519 146 767 83 767" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="83,767 94,761.5 94,772.5" class="arrow"/>
+<rect x="-101" y="0" width="202" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">agent: gh pr merge</text>
+<rect x="-87.5" y="124" width="175" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">PreToolUse hook</text>
+<rect x="-137" y="248" width="274" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">discover run: feat/issue-N</text>
+<rect x="-110" y="372" width="220" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">shipmates state gate</text>
+<rect x="-92" y="496" width="184" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="524.25" text-anchor="middle" font-size="15" class="label">phase ≥ deliver?</text>
+<rect x="-101" y="620" width="202" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="648.25" text-anchor="middle" font-size="15" class="label">ALLOW — merge runs</text>
+<rect x="-83" y="744" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="772.25" text-anchor="middle" font-size="15" class="label">DENY — blocked</text>
+<rect x="-94.8" y="570" width="82.8" height="22" rx="6" class="mask"/>
+<text x="-53.4" y="585.2" text-anchor="middle" font-size="12" class="chip">at / past</text>
+<rect x="89.97" y="632" width="82.8" height="22" rx="6" class="mask"/>
+<text x="131.38" y="647.2" text-anchor="middle" font-size="12" class="chip">too early</text>
+</g>
+</svg>
+            <figcaption class="tool-example__caption">On a harness with a blocking pre-tool hook, a thin shim calls <code>shipmates state gate</code> <em>before</em> a tool runs. A tool the workflow hasn&#x27;t earned yet is denied &mdash; <code>gh pr merge</code> before the run reaches <code>deliver</code>, <code>git push</code> before it is built.</figcaption>
+          </figure>
+          <p>That is the whole trick: the same <code>stages:</code> that read as prose guidance become hard, unskippable gates at the tool boundary. The hook only ever blocks a run it can positively identify; anything ambiguous is allowed through.</p>
         </div>
       </div>
     </section>
 
-    <section class="section" id="payloads" aria-labelledby="payloads-title">
+    <section class="section" id="principle" aria-labelledby="principle-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="payloads-title">Payload generation</h2>
-          <p class="section__lead"><code>shipmates build --target &lt;name&gt;</code> renders the canonical trees into <code>harnesses/&lt;target&gt;/</code>.</p>
+          <h2 class="section__title" id="principle-title">Enforced on every supported harness</h2>
+          <p class="section__lead">Shipmates only supports harnesses with a blocking pre-tool hook &mdash; so every supported harness enforces the workflow at the tool boundary.</p>
         </div>
         <div class="order-prose">
-          <p>For a chosen target the adapter renders every command and persona into that harness&#x27;s dialect, returning the complete file map. <code>shipmates build --target &lt;name&gt;</code> writes it under <code>harnesses/&lt;target&gt;/</code>; <code>--out</code> redirects. Output is deterministic and byte-compared against a committed reference: <code>shipmates check --target &lt;name&gt;</code> verifies the fresh build matches <code>tests/payload-digests/&lt;name&gt;.sha256</code>, and <code>shipmates update --target &lt;name&gt;</code> (or <code>build --update</code>) regenerates the digest. Never hand-edit a digest — they are regression fixtures; CI proves each freshly built payload matches.</p>
-          <p>Two dialect choices are load-bearing. The <code>name</code> of a skill must equal its parent directory name, and the twelve commands ship <code>disable-model-invocation: true</code> — every command is user-invoked only. On opencode, which has no such frontmatter key, the twelve land in <code>.opencode/commands/</code> where user-invocation holds structurally; the full reasoning is on the <a href="../harnesses/">harness matrix</a>.</p>
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--radius-md);padding:var(--space-4) var(--space-5);">
+            <p><strong>Every one of the seven supported harnesses exposes a scriptable, blocking pre-tool hook</strong> that the installer wires to <code>shipmates state gate</code>. There is no hook-less supported harness, and so no advisory-only fallback: the same gate runs before every tool call, everywhere.</p>
+          </div>
+          <figure class="tool-example">
+            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Harness support: all seven supported harnesses expose a blocking pre-tool hook, so the gate runs before each tool call and an out-of-phase call is denied on every one of them." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="330" height="474" viewBox="0 0 330 474">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
+<rect x="0.5" y="0.5" width="329" height="473" rx="16" class="panel" stroke-width="1"/>
+<g transform="translate(165,28)">
+<line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
+<line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
+<line x1="0" y1="294" x2="0" y2="372" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,372 -5.5,361 5.5,361" class="arrow"/>
+<rect x="-114.5" y="0" width="229" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">7 supported harnesses</text>
+<rect x="-128" y="124" width="256" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">each has a blocking hook</text>
+<rect x="-137" y="248" width="274" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">gate runs before each tool</text>
+<rect x="-128" y="372" width="256" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">out-of-phase call denied</text>
+</g>
+</svg>
+            <figcaption class="tool-example__caption">All seven supported harnesses expose a blocking pre-tool hook, so the same gate runs before every tool call on each of them. (Enforcement goes live per harness once its shim is installed &mdash; today only Claude Code&#x27;s ships; see <a href="#honest">How it stays honest</a>.)</figcaption>
+          </figure>
+          <div class="order-table" tabindex="0">
+            <table>
+              <thead><tr><th scope="col">Harness</th><th scope="col">Blocking pre-tool hook</th><th scope="col">State machine</th></tr></thead>
+              <tbody>
+                <tr><td><code>claude-code</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
+                <tr><td><code>cursor</code></td><td><code>beforeShellExecution</code></td><td>Enforceable</td></tr>
+                <tr><td><code>codex</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
+                <tr><td><code>antigravity</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
+                <tr><td><code>github-copilot</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
+                <tr><td><code>windsurf</code></td><td><code>pre_run_command</code>&#160;*</td><td>Enforceable</td></tr>
+                <tr><td><code>opencode</code></td><td><code>tool.execute.before</code></td><td>Enforceable</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><small>* <code>windsurf</code>&#x27;s product identity is in doubt &mdash; it became Devin Desktop in 2026, so this target may be renamed or retargeted; its <code>pre_run_command</code> hook is documented but unverified here. See the <a href="../harnesses/">harness matrix</a>.</small></p>
+          <p>Two honest limits, plainly. <strong>Only tool-boundary transitions hard-block</strong> &mdash; a judgment gate with no tool to intercept, like <code>board-accepted</code>, stays advisory guidance because there is nothing to deny. And <strong>enforcement is live only once the hook is installed</strong>: the mechanism is per-harness, and today only the Claude Code shim ships (the other six are in progress &mdash; see <a href="#honest">How it stays honest</a>).</p>
         </div>
       </div>
     </section>
 
-    <section class="section" id="install-flow" aria-labelledby="install-flow-title">
+    <section class="section" id="honest" aria-labelledby="honest-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="install-flow-title">Install flow</h2>
-          <p class="section__lead"><code>shipmates install --harness &lt;name&gt; [--dir &lt;path&gt;]</code> drops the harness&#x27;s own tree at the target root.</p>
+          <h2 class="section__title" id="honest-title">How it stays honest</h2>
+          <p class="section__lead">Every target&#x27;s output is byte-compared against a committed digest, and CI fails on drift.</p>
         </div>
         <div class="order-prose">
-          <p>The CLI reads the canonical sources from the current directory (or <code>--root</code> for the build/check/update commands), runs the selected adapter, and writes the payload — stripping the <code>harnesses/&lt;target&gt;/</code> container so the harness&#x27;s own tree (<code>.claude/</code>, <code>.opencode/</code>, <code>.codex/</code>, …) lands where the harness actually reads it. Default target directory is the current one; <code>--dir</code> pins an explicit root. <code>--harness all</code> expands to every harness, and <code>shipmates targets</code> lists them.</p>
-          <p>Subagents ship to <code>claude-code</code>, <code>opencode</code>, and <code>antigravity</code> — the harnesses with a documented native subagent directory. The five skill-only harnesses get the twelve skills and nothing else; there is nowhere for <code>agents/*.md</code> to go.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="ci-gates" aria-labelledby="ci-gates-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <h2 class="section__title" id="ci-gates-title">CI gates</h2>
-          <p class="section__lead">The <code>Validate site</code> job in <code>pages.yml</code> gates every PR; deploy runs only on pushes to <code>main</code>.</p>
-        </div>
-        <div class="order-prose">
-          <p>The <code>validate</code> job gates the sources (<code>commands/</code> + <code>crew/</code>) and the site built from them, in that order — a bad <code>SKILL.md</code> is reported against the file someone edited, not against a derived page:</p>
-          <ol>
-            <li><code>python3 tools/validate_skills.py</code> — the frontmatter contract and the <code>$ARGUMENTS</code> rule.</li>
-            <li><code>python3 tools/validate_skill_names.py --check</code> — skill names must not collide with harness built-ins.</li>
-            <li><code>python3 tools/gen_command_pages.py --check</code> — the generated command pages (and sitemap) are up to date.</li>
-            <li><code>cargo run -- check --target &lt;name&gt;</code> for every one of the eight targets — each fresh payload matches its committed <code>tests/payload-digests/&lt;name&gt;.sha256</code>.</li>
-            <li><code>bash tests/test_validate_skills.sh</code> — the skill-lint regression suite.</li>
-            <li><code>python3 tools/gen_demo_gif.py --check</code> — the demo GIF/poster artifacts are up to date (pinned Pillow + font, byte-compared as pixels).</li>
-            <li><code>python3 .github/scripts/validate_site.py</code> — the static site: one <code>&lt;h1&gt;</code> per page, heading outlines, self-containment, local refs, SEO metadata, JSON-LD, page and docs coverage, and the sitemap.</li>
-            <li><code>python3 .github/scripts/validate_design_drift.py</code> — design-system drift check.</li>
-            <li><code>python3 -m unittest discover -s tests</code> and <code>bash tests/test_resolve_src.sh</code> — the Python test suite and the install source-resolution regression.</li>
-          </ol>
-          <p>A second job, <code>exporter-floor</code>, builds and checks every target on a minimum environment, then runs three real installs end to end (claude-code, opencode, and a skill-only harness) asserting the right files land in the right trees. The <code>--check</code> steps are drift detectors: they regenerate in memory and fail on any difference, so a hand-edited generated file — a command page, a site asset, or a digest — cannot merge.</p>
+          <p>Each adapter&#x27;s payload is deterministic and checked against <code>tests/payload-digests/&lt;name&gt;.sha256</code>; the feature matrix is validated too, so adding a frontmatter key without registering it fails the build. The site you are reading is generated from the rendered Claude Code payload and gated the same way.</p>
+          <p>On enforcement specifically: <code>claude-code</code> ships the reference hook today (<code>enforcement/hooks/claude-code/</code>). Wiring an equivalent shim into the other six hook-capable adapters is in progress (<a href="https://github.com/saman-mb/shipmates/issues/217">#217</a>) &mdash; until it lands, treat those as advisory in practice. Nothing here is described as tested on a harness Shipmates has not been run on.</p>
         </div>
       </div>
     </section>
@@ -226,7 +290,7 @@
             <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page">Architecture<span class="visually-hidden"> (current page)</span></span></li>
           </ul>
         </nav>
-        <a class="order-back" href="../"><span aria-hidden="true">←</span> All docs</a>
+        <a class="order-back" href="../"><span aria-hidden="true">&#8592;</span> All docs</a>
       </div>
     </section>
 

@@ -1,0 +1,27 @@
+{
+  "title": "scrub — redact before sharing",
+  "width": 860,
+  "beats": [
+    {"type": "command", "text": "scrub --in app.log"},
+    {"type": "blank"},
+    {"type": "line", "segments": [
+      {"text": "operator ", "color": "grey"},
+      {"text": "[REDACTED_EMAIL]", "color": "coral", "bold": true},
+      {"text": " from ", "color": "grey"},
+      {"text": "[REDACTED_IP]", "color": "coral", "bold": true}
+    ]},
+    {"type": "line", "segments": [
+      {"text": "env AWS_ACCESS_KEY_ID=", "color": "grey"},
+      {"text": "[REDACTED_AWS_KEY]", "color": "coral", "bold": true}
+    ]},
+    {"type": "line", "segments": [
+      {"text": "Authorization: Bearer ", "color": "grey"},
+      {"text": "[REDACTED_TOKEN]", "color": "coral", "bold": true}
+    ]},
+    {"type": "line", "segments": [
+      {"text": "decoded id_token=", "color": "grey"},
+      {"text": "[REDACTED_JWT]", "color": "coral", "bold": true}
+    ]},
+    {"type": "done", "text": "redacted 9 items across 7 categories"}
+  ]
+}

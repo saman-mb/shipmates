@@ -1,6 +1,6 @@
-use crate::catalog::{CanonicalCommand, CanonicalRole};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{render_body, CLAUDE_CODE};
+use super::render::{emit_hook_shim, emit_tool_files, render_body, CLAUDE_CODE};
 use super::Adapter;
 
 const TOOL_MAP: [(&str, &[&str]); 5] = [
@@ -38,6 +38,10 @@ impl Adapter for ClaudeCodeAdapter {
             if !role.capabilities.is_empty() {
                 content.push_str(&format!("tools: {}\n", map_tools(&role.capabilities)));
             }
+            // Claude Code carries reasoning effort as a per-agent `effort` key.
+            if let Some(e) = &role.effort {
+                content.push_str(&format!("effort: {}\n", e));
+            }
             content.push_str("---\n");
             content.push_str(&role.body);
             files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
@@ -60,7 +64,15 @@ impl Adapter for ClaudeCodeAdapter {
             content.push_str(&render_body(&command.narrative, &CLAUDE_CODE));
             files.insert(format!("{}/skills/{}/SKILL.md", self.base_dir(), command.name), content);
         }
+        // The FSM tool-gate PreToolUse shim (`.claude/hooks/fsm-gate.sh`).
+        files.extend(emit_hook_shim(self.container(), "claude-code"));
         Ok(files)
+    }
+
+    fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
+        // Claude Code can pin a tool agent-only with `user-invocable: false`:
+        // model-invoked, hidden from the `/` menu — exactly "never a command".
+        emit_tool_files(self.base_dir(), tools, &CLAUDE_CODE, true)
     }
 }
 
@@ -77,6 +89,7 @@ mod tests {
             web_scopes: vec![],
             read_scopes: vec![],
             tool_order: vec![],
+            effort: None,
             source: std::path::PathBuf::from(""),
             body: "body".to_string(),
         }
@@ -91,6 +104,32 @@ mod tests {
     }
 
     #[test]
+    fn test_effort_is_emitted_as_the_effort_key() {
+        let mut r = role("architect", &["read"]);
+        r.effort = Some("high".to_string());
+        let files = ClaudeCodeAdapter.build(&[r], &[]).unwrap();
+        let content = files.get("harnesses/claude-code/.claude/agents/architect.md").unwrap();
+        assert!(content.contains("effort: high\n"), "{content}");
+    }
+
+    #[test]
+    fn test_no_model_line_is_emitted() {
+        // A model is never stamped — it is a runtime decision (#205). Prefix
+        // check so `effort:` (which is present) cannot false-positive.
+        let mut r = role("architect", &["read"]);
+        r.effort = Some("high".to_string());
+        let files = ClaudeCodeAdapter.build(&[r], &[]).unwrap();
+        let content = files.get("harnesses/claude-code/.claude/agents/architect.md").unwrap();
+        assert!(!content.lines().any(|l| l.trim_start().starts_with("model:")), "{content}");
+    }
+
+    #[test]
+    fn test_fsm_gate_shim_is_emitted() {
+        let files = ClaudeCodeAdapter.build(&[], &[]).unwrap();
+        assert!(files.contains_key("harnesses/claude-code/.claude/hooks/fsm-gate.sh"));
+    }
+
+    #[test]
     fn test_command_body_is_rendered() {
         let command = CanonicalCommand {
             name: "migrate".to_string(),
@@ -101,6 +140,7 @@ mod tests {
             arguments: vec![],
             loop_max: 0,
             stages: vec![],
+            tool_gates: vec![],
             narrative: "Resolve via `agent-files/*.md`; use {{arg}}.".to_string(),
             invocation: "".to_string(),
             board: "".to_string(),
@@ -114,5 +154,25 @@ mod tests {
         assert!(content.contains("$ARGUMENTS"));
         assert!(!content.contains("agent-files/"));
         assert!(!content.contains("{{arg}}"));
+    }
+
+    #[test]
+    fn test_tool_is_agent_only_skill_with_bundled_assets() {
+        let tool = CanonicalTool {
+            name: "termgif".to_string(),
+            description: "render a gif".to_string(),
+            body: "instructions".to_string(),
+            assets: vec![("termgif.py".to_string(), "print('hi')".to_string())],
+            requires: vec![],
+            source: std::path::PathBuf::from(""),
+        };
+        let files = ClaudeCodeAdapter.build_tools(&[tool]);
+        let skill = files.get("harnesses/claude-code/.claude/skills/termgif/SKILL.md").unwrap();
+        assert!(skill.contains("name: termgif\n"));
+        // A tool is agent-invoked only — never a slash command.
+        assert!(skill.contains("user-invocable: false\n"));
+        assert!(!skill.contains("disable-model-invocation"));
+        let asset = files.get("harnesses/claude-code/.claude/skills/termgif/termgif.py").unwrap();
+        assert_eq!(asset, "print('hi')");
     }
 }

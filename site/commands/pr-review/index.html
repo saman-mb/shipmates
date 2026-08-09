@@ -85,6 +85,7 @@
           <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#tools">Tools</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
@@ -109,10 +110,23 @@
           <p class="order-detail__tagline">classify → convene the board → consolidate</p>
           <p class="order-detail__desc">Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.</p>
           <div class="order-prose">
-            <p>Point the crew at a pull request <strong>somebody else wrote</strong> — a teammate&#x27;s, an outside contributor&#x27;s, a dependency bump, or one you opened by hand before you thought to use Shipmates. Every other order assumes the crew authored the change; this one doesn&#x27;t, and that single fact sets its shape: <strong>no worktree, no build, no fix loop.</strong> You don&#x27;t own the branch, so the deliverable is findings, not commits.</p>
+            <p>Point the crew at a pull request <strong>somebody else wrote</strong> — a teammate&#x27;s, an outside contributor&#x27;s, a dependency bump, or one you opened by hand before you thought to use Shipmates. Every other command assumes the crew authored the change; this one doesn&#x27;t, and that single fact sets its shape: <strong>no worktree, no build, no fix loop.</strong> You don&#x27;t own the branch, so the deliverable is findings, not commits.</p>
             <p>Input (<strong>$ARGUMENTS</strong>): a PR number or URL, plus an optional focus hint. If it&#x27;s empty, default to the PR for the current branch (<code>gh pr view --json number</code>); if there isn&#x27;t one, ask which PR to review.</p>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="section" id="demo" aria-labelledby="demo-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="demo-title">See it run</h2>
+        </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="../../assets/command-pr-review-poster.png" width="820" height="372" alt="Illustrative terminal recording of the stages /pr-review runs, in order." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/pr-review</code> runs, in order.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -163,6 +177,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
                   <li><code>IS_ARCH_SIGNIFICANT</code> — new subsystem, changed persisted schema, or a cross-cutting change a narrow read would miss? Gates <code>architect</code>.</li>
                   <li><code>IS_SECURITY_SENSITIVE</code> — authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies? Gates <code>security-engineer</code>.</li>
                   <li><code>IS_DELIVERY_SENSITIVE</code> — does the diff change how the project is built, packaged, configured or shipped (pipeline/build definitions, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>.</li>
+                  <li><code>IS_DOCS_AFFECTING</code> — does the change touch documented behaviour, flags, commands, config, or public API/CLI surface that user- or agent-facing docs describe? Gates <code>technical-writer</code>.</li>
                 </ul>
                 <p>This flag vocabulary is <strong>shared with <code>/ship-issue</code></strong> — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: it stays wired to the <code>security-engineer</code> seat here, because this command reviews a PR the crew didn&#x27;t author — you don&#x27;t own the branch, so <code>/harden</code> isn&#x27;t an available remedy. <code>/ship-issue</code> keeps the same flag (it still gates the <code>/harden</code> recommendation and forces a manual merge) but not the seat, since a crew-authored change can just run <code>/harden</code> itself.</p>
               </div>
@@ -181,7 +196,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
           <li class="order-stage" id="stage-2">
             <span class="order-stage__num" aria-hidden="true">2</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>The board</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>security-engineer</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>performance-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> <span class="chip order-stage__crew-item"><code>data-scientist</code></span> (specialist agents, in parallel, against <code>headRefOid</code>)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>security-engineer</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> <span class="chip order-stage__crew-item"><code>performance-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> <span class="chip order-stage__crew-item"><code>data-scientist</code></span> (specialist agents, in parallel, against <code>headRefOid</code>)</p>
             <div class="order-stage__body">
               <div class="order-prose">
                 <p>Spawn these in a single message so they run concurrently, each pinned to the <strong>head commit</strong> so they review exactly what would merge. Two always run; the rest only when their flag is set:</p>
@@ -196,6 +211,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
                       <tr><td><code>devops-engineer</code></td><td>only if <code>IS_DELIVERY_SENSITIVE</code></td></tr>
                       <tr><td><code>ux-ui-designer</code></td><td>only if <code>IS_UI_STORY</code></td></tr>
                       <tr><td><code>art-director</code></td><td>only if <code>IS_VISUAL_STORY</code></td></tr>
+                      <tr><td><code>technical-writer</code></td><td>only if <code>IS_DOCS_AFFECTING</code></td></tr>
                       <tr><td><code>performance-engineer</code></td><td>if the PR claims a performance win, or touches a known hot path</td></tr>
                       <tr><td><code>site-reliability-engineer</code></td><td>if it changes runtime behaviour, failure handling, or rollout</td></tr>
                       <tr><td><code>data-scientist</code></td><td>if the deliverable is an analysis or a model</td></tr>
@@ -213,6 +229,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
               <div class="order-prose">
                 <p><strong>You</strong> synthesise; don&#x27;t delegate it. Merge the reports, dedupe findings several reviewers raised, and rank them: <strong>blocking</strong> (correctness, security, data loss, a criterion the PR itself claims and misses) above <strong>nits</strong> (style, naming, taste). Attribute each finding to the role that raised it so the author can weigh it. One verdict for the PR: <code>APPROVE</code> / <code>APPROVE-WITH-NITS</code> / <code>REQUEST-CHANGES</code>.</p>
                 <p>If a visual specialist could not actually render the change, carry its <strong>&quot;needs a human visual pass&quot;</strong> flag into the output rather than implying the visuals were confirmed. The same rule holds for any reviewer whose inspection was partial — carry its stated gap forward; an ACCEPT/PASS never reads as covering ground the reviewer said it didn&#x27;t see.</p>
+                <p>The board convenes a specialist only when the change can plausibly trip its concern surface — so name every specialist that was <strong>gated out</strong> together with the flag that gated it. A role left out is recorded with its flag in the output, never silently skipped.</p>
               </div>
             </div>
           </li>
@@ -331,5 +348,21 @@ gh pr review &lt;PR#&gt; --comment --body-file &quot;$REVIEW_BODY_FILE&quot;</co
       <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
     </div>
   </footer>
+  <script>
+  (function () {
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/command-pr-review.gif';
+    var playing = false;
+    toggle.addEventListener('click', function () {
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the run' : 'Play the run';
+    });
+  })();
+  </script>
 </body>
 </html>

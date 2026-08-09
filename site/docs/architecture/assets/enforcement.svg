@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Enforcement flow: an agent calls gh pr merge; the PreToolUse hook discovers the run from the feat/issue-N branch, calls shipmates state gate, checks whether the run has reached the deliver phase, and allows the merge if it has or denies it if the run is too early." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="366" height="846" viewBox="0 0 366 846">
+<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
+<rect x="0.5" y="0.5" width="365" height="845" rx="16" class="panel" stroke-width="1"/>
+<g transform="translate(165,28)">
+<line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
+<line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
+<line x1="0" y1="294" x2="0" y2="372" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,372 -5.5,361 5.5,361" class="arrow"/>
+<line x1="0" y1="418" x2="0" y2="496" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,496 -5.5,485 5.5,485" class="arrow"/>
+<line x1="0" y1="542" x2="0" y2="620" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="0,620 -5.5,609 5.5,609" class="arrow"/>
+<path d="M 92 519 C 146 519 146 767 83 767" class="flow" stroke-width="2.0" stroke-linecap="round"/>
+<polygon points="83,767 94,761.5 94,772.5" class="arrow"/>
+<rect x="-101" y="0" width="202" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">agent: gh pr merge</text>
+<rect x="-87.5" y="124" width="175" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">PreToolUse hook</text>
+<rect x="-137" y="248" width="274" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">discover run: feat/issue-N</text>
+<rect x="-110" y="372" width="220" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">shipmates state gate</text>
+<rect x="-92" y="496" width="184" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="524.25" text-anchor="middle" font-size="15" class="label">phase ≥ deliver?</text>
+<rect x="-101" y="620" width="202" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="648.25" text-anchor="middle" font-size="15" class="label">ALLOW — merge runs</text>
+<rect x="-83" y="744" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
+<text x="0" y="772.25" text-anchor="middle" font-size="15" class="label">DENY — blocked</text>
+<rect x="-94.8" y="570" width="82.8" height="22" rx="6" class="mask"/>
+<text x="-53.4" y="585.2" text-anchor="middle" font-size="12" class="chip">at / past</text>
+<rect x="89.97" y="632" width="82.8" height="22" rx="6" class="mask"/>
+<text x="131.38" y="647.2" text-anchor="middle" font-size="12" class="chip">too early</text>
+</g>
+</svg>

@@ -282,6 +282,44 @@ class Agent:
     called_by: tuple  # tuple[str, ...] — command slugs, derived from the skill sources
 
 
+@dataclass(frozen=True, slots=True)
+class ToolExample:
+    """One example on a tool page: a `src` asset (png/gif/svg) with alt/caption.
+    `poster` is a static final-frame shown under prefers-reduced-motion — set it
+    only for animated GIFs; leave it empty for a static PNG or SVG."""
+    src: str  # filename, relative to the tool page (e.g. "examples/deploy.gif")
+    width: int
+    height: int
+    alt: str
+    caption: str
+    poster: str = ""  # static reduced-motion poster for an animated GIF; "" if static
+
+
+@dataclass(frozen=True, slots=True)
+class ToolCopy:
+    """The authored editorial half of a tool page; the other half is the
+    parsed `toolbox/<slug>/tool.md` frontmatter (name + description)."""
+    tagline: str
+    what: tuple  # tuple[str, ...] — 1-2 paragraphs
+    usage: tuple  # tuple[str, ...] — 1-2 paragraphs on how the crew reach for it
+    examples: tuple = ()  # tuple[ToolExample, ...] — optional demo gallery
+    sample: str = ""  # optional plain-text input->output block for non-visual tools
+
+
+@dataclass(frozen=True, slots=True)
+class Tool:
+    slug: str
+    source_path: str  # repo-relative posix path to tool.md
+    name: str
+    description: str
+    tagline: str
+    what: tuple  # tuple[str, ...]
+    usage: tuple  # tuple[str, ...]
+    bundled: tuple  # tuple[str, ...] — bundled asset filenames besides tool.md
+    examples: tuple = ()  # tuple[ToolExample, ...]
+    sample: str = ""  # optional plain-text input->output block for non-visual tools
+
+
 # ---------------------------------------------------------------------------
 # Layer 2 — COPY  (AGENT_COPY)
 # The agent pages' authored editorial text: model-layer data — no markup, no
@@ -877,9 +915,9 @@ AGENT_COPY = {
     "ux-ui-designer": AgentCopy(
         tagline="Specs & reviews on-screen UI — tokens, layout, focus, a11y.",
         what=(
-            "The ux-ui designer works to the project's stated design system — matching it, "
-            "never inventing a competing style. Before anything is built, it produces a design "
-            "spec: text wireframes of every screen and state, a tokens plan, responsive layout, "
+            "The ux-ui designer produces a design spec before anything is built — matching the "
+            "project's stated design system rather than inventing a competing style. The spec "
+            "covers text wireframes of every screen and state, a tokens plan, responsive layout, "
             "focus order, feedback, and WCAG 2.2 AA accessibility.",
             "After the build, it reviews the real interface against that spec, Nielsen's "
             "heuristics, and WCAG — stating its coverage up front and naming anything unseen as "
@@ -1167,6 +1205,292 @@ AGENT_COPY = {
 
 
 # ---------------------------------------------------------------------------
+# TOOL COPY — the authored editorial half of each tool page. Its factual half
+# (name, description) is parsed from toolbox/<slug>/tool.md. TOOLS is the
+# canonical order (homepage grid, sibling nav, sitemap); every toolbox/<slug>/
+# on disk must appear here and vice versa (drift raises in load_tools).
+# ---------------------------------------------------------------------------
+
+TOOL_COPY_SRC = "tools/gen_command_pages.py"
+
+# Canonical tool order — matches the homepage `#tools` grid.
+TOOLS = ("termgif", "social-card", "pixelart", "diagram", "svgflow", "badge", "sparkline", "scrub", "fixtures")
+
+TOOL_COPY = {
+    "termgif": ToolCopy(
+        tagline="Renders an animated terminal demo GIF of a workflow run from a small JSON spec.",
+        what=(
+            "`termgif` turns a small JSON spec — a typed prompt, staged progress with "
+            "check-offs, and a closing line — into a polished animated terminal GIF. It is a "
+            "self-contained Python renderer that provisions its one dependency (Pillow) itself, so a run produces "
+            "the recording deterministically rather than asking anyone to capture their screen.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their "
+            "own when the natural artifact of a task is a terminal recording — a README hero, a "
+            "docs page, a release note, or a social preview — instead of static text.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> "
+            "--with-tools termgif`, or omit the flag and pick it from the interactive list. Once "
+            "installed it sits alongside the crew as a capability they invoke implicitly; there "
+            "is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands "
+            "the agent has both the `termgif.py` script and the spec format it needs to drive it.",
+        ),
+        # These three are just termgif driving different JSON specs — nothing to do
+        # with shipmates. Each spec lives beside its GIF under examples/.
+        examples=(
+            ToolExample(
+                src="examples/deploy.gif", poster="examples/deploy.png", width=820, height=370,
+                alt="Terminal recording of a production deploy: BUILD, TEST and RELEASE stages check off, then a green 'Shipped v2.4.0 to production' line.",
+                caption="A production deploy — build, test, then a zero-downtime rollout to three regions.",
+            ),
+            ToolExample(
+                src="examples/train.gif", poster="examples/train.png", width=820, height=370,
+                alt="Terminal recording of a model training run: DATASET, TRAIN and EVAL stages, a top-1 98.7% metric line, then a green checkpoint-saved line.",
+                caption="A model-training run — dataset to eval, with the headline metrics and a saved checkpoint.",
+            ),
+            ToolExample(
+                src="examples/launch.gif", poster="examples/launch.png", width=820, height=370,
+                alt="Terminal recording of a rocket launch sequence: FUEL, GUIDANCE and IGNITION stages, a T-minus countdown, then a green liftoff line.",
+                caption="A launch countdown — fuel, guidance, ignition, and liftoff, in warm mission-control colours.",
+            ),
+        ),
+    ),
+    "social-card": ToolCopy(
+        tagline="Renders a shippable 1280×640 social / Open Graph preview card from a small JSON spec.",
+        what=(
+            "`social-card` turns a small JSON spec — an eyebrow kicker, a title, a subtitle, an accent colour, and a footer wordmark — into a polished 1280×640 PNG, the standard Open Graph aspect that Slack, Discord, Twitter, LinkedIn, and iMessage crop from a shared link. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the card deterministically on a deep, tasteful dark canvas — nothing to install, no design app to open.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is *a share image* — a repo or product launch, a release, a docs or guide page — instead of a described one. Long titles wrap and the type auto-fits, so copy of any length stays inside the frame.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools social-card`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `social_card.py` script and the spec format it needs to drive it — `python3 social_card.py --spec spec.json --out card.png`.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/launch.png", width=1280, height=640,
+                alt="A dark launch card: an indigo 'Now open source' pill above a large white title 'Aurora — a typed HTTP client that reads like prose', a muted subtitle, and a footer repo URL.",
+                caption="A product launch — an eyebrow pill, a wrapping headline, and the repo in the footer.",
+            ),
+            ToolExample(
+                src="examples/release.png", width=1280, height=640,
+                alt="A dark release card: a green 'Release · v2.4.0' pill above the title 'Streaming responses, 40% smaller binary', a subtitle of highlights, and a green footer dot with a changelog line.",
+                caption="A release note — the version in the kicker and the headline changes below it.",
+            ),
+            ToolExample(
+                src="examples/docs.png", width=1280, height=640,
+                alt="A dark docs card: an orange 'Guide' pill above the title 'Deploying to production, end to end', a muted one-line summary, and a footer docs URL with an orange accent dot.",
+                caption="A docs guide — a short kicker, the guide's title, and the page it links to.",
+            ),
+        ),
+    ),
+    "pixelart": ToolCopy(
+        tagline="Pixel art the way the shipmates logo is made — a limited palette upscaled by a whole-number factor with nearest-neighbour, never smoothed.",
+        what=(
+            "`pixelart` turns a small JSON spec — a limited palette plus a grid of single-character rows — into a crisp pixel-art asset: a static PNG, or an animated GIF when the spec carries `frames`. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the image deterministically — nothing to install — rather than leaning on a model to imagine one.",
+            "It reproduces the technique behind the shipmates logo, which is a 48×48 grid on ~39 colours scaled up ×14 with nearest-neighbour and no smoothing. Every upscale here is `Image.NEAREST`, so each logical pixel becomes a solid block — hard-edged and aliased on purpose, never a gradient. It is a tool, not a command: the crew reach for it on their own when the natural artifact is an icon, sprite, favicon, or badge in that style.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools pixelart`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions travel together, so wherever the tool lands the agent has both the `pixelart.py` script and the spec format it needs to drive it — a `grid` and `palette` for a still, or `frames` and `durations` for an animation, with `--poster` to drop a reduced-motion still beside a GIF.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/harbour.png", width=672, height=528,
+                alt="A pixel-art sunset seascape: a banded amber sky, a glowing low sun with its light glittering on a deep-blue sea, a small sailboat in silhouette on the horizon, and a few birds.",
+                caption="A sunset voyage — a banded sky, a glowing sun glittering on the sea, and a sailboat on the horizon, in ~40 colours.",
+            ),
+            ToolExample(
+                src="examples/planet.png", width=576, height=576,
+                alt="A pixel-art ringed gas giant: a banded amber planet shaded like a lit sphere with a dark limb, encircled by a thin tilted ring, over a dark starfield.",
+                caption="A ringed gas giant — a banded atmosphere shaded as a lit sphere, a tilted ring, and a starfield.",
+            ),
+            ToolExample(
+                src="examples/mountain.png", width=660, height=462,
+                alt="A pixel-art night scene: a glowing moon and stars over three depth-layered mountain silhouettes, a snow-capped central peak, and two pine trees.",
+                caption="A moonlit mountain night — depth-layered ridges, a clean snow cap, and pines under a glowing moon.",
+            ),
+            ToolExample(
+                src="examples/voyage.gif", width=682, height=440,
+                alt="An animated pixel-art sailboat bobbing on scrolling waves under a warm sky, the low sun glittering on the water.",
+                caption="A sailboat bobbing on scrolling waves — the animated cousin of the static seascape, an eight-frame loop.",
+                poster="examples/voyage_poster.png",
+            ),
+            ToolExample(
+                src="examples/lighthouse.gif", width=576, height=576,
+                alt="An animated pixel-art lighthouse at night, its lamp sweeping a bright warm beam back and forth across a starry sky above a shimmering sea.",
+                caption="A lighthouse sweeping its beam across the night — a bright additive light cone over a shimmering sea.",
+                poster="examples/lighthouse_poster.png",
+            ),
+            ToolExample(
+                src="examples/shootingstar.gif", width=720, height=432,
+                alt="An animated pixel-art night sky with a crescent moon and twinkling stars, a shooting star streaking across with a glowing tail.",
+                caption="A shooting star crossing a twinkling sky past a crescent moon — a glowing tail, looped over eight frames.",
+                poster="examples/shootingstar_poster.png",
+            ),
+        ),
+    ),
+    "diagram": ToolCopy(
+        tagline="Draws a curated diagram — a flow/pipeline/state machine, or a sequence of actors and messages — as a committed SVG, a deterministic PNG, or an animated GIF, from a tiny JSON spec.",
+        what=(
+            "`diagram` turns a small JSON spec into a clean, theme-exact diagram in whichever form the doc needs: a self-contained **SVG** assembled as text (no browser, no mermaid runtime, no headless renderer), a deterministic **PNG** repainted from the same primitives, or a tasteful animated **GIF**. The SVG path is pure standard library; PNG and GIF provision Pillow for themselves the first time they run, and raster text uses an embedded font so it is identical on every host. Every form is byte-for-byte deterministic — the same spec always produces the same file — so the output is safe to commit next to the docs it illustrates.",
+            "It is the evolution of the older `svgflow` tool (now a deprecated alias that forwards here). A `flow` diagram — the default — lays nodes out in a column (`\"direction\": \"down\"`) or row (`\"direction\": \"right\"`), each box sized to its label, with straight spine arrows and side-bowed skips, back-edges, and self-loops. A `sequence` diagram draws actors across the top with dashed lifelines and directional message arrows. The builder is chosen by an explicit `kind`, or routed from a `prompt`/`intent` string through a plain keyword map — no model call. It is a *tool*, not a command: the crew reach for it on their own when the natural artifact of a task is a diagram of how the pieces connect or talk — a CI pipeline, a request path, a state machine, a service interaction — instead of a paragraph of prose or a mermaid block something else has to render. It draws a curated set of hand-laid types — there is no automatic graph layout — and the PNG is a faithful re-render of the same spec, not a pixel copy of the SVG.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools diagram`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `diagram.py` script and the spec format it needs to drive it — `python3 diagram.py --spec spec.json --out flow.svg` for SVG, or `--out flow.png` / `--out flow.gif` for a deterministic raster. The format is inferred from the extension, or set with `--format`; `--provision` places the raster dependency ahead of time.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/pipeline.svg", width=274, height=384,
+                alt="A vertical flow diagram titled 'CI pipeline': Build, Test and Deploy boxes joined by downward terracotta arrows labelled 'on push' and 'green', with a back-edge from Test to Build labelled 'red → retry'.",
+                caption="A CI pipeline as a column of boxes — build to deploy, with a labelled retry edge looping back on failure. The default `flow` kind, as SVG.",
+            ),
+            ToolExample(
+                src="examples/sequence.svg", width=666, height=460,
+                alt="A sequence diagram titled 'Checkout — request path': Client, API, Payments and DB actors across the top, dashed lifelines dropping from each, and terracotta message arrows between them — POST /checkout, charge, a dashed 'ok' reply, save order, and a dashed '201 Created' reply.",
+                caption="A checkout request path as a sequence — actors, dashed lifelines, and directional message arrows with dashed replies. The `sequence` kind, as SVG.",
+            ),
+            ToolExample(
+                src="examples/pipeline.gif", poster="examples/pipeline.png", width=274, height=384,
+                alt="The 'CI pipeline' flow diagram animated: the terracotta arrows and arrowheads pulse brighter and back in a smooth loop.",
+                caption="The same pipeline as an animated GIF — a gentle accent pulse along the arrows, rendered deterministically from Pillow.",
+            ),
+            ToolExample(
+                src="examples/sequence.png", width=666, height=460,
+                alt="A PNG re-render of the 'Checkout — request path' sequence diagram: the same actors, dashed lifelines, and message arrows as the SVG, rasterized with the embedded font.",
+                caption="The sequence diagram as a PNG — a faithful, deterministic re-render of the same spec through the Pillow painter.",
+            ),
+        ),
+    ),
+    "svgflow": ToolCopy(
+        tagline="Deprecated alias for `diagram` — svgflow's flow diagram is now a kind of the more general diagram tool.",
+        what=(
+            "`svgflow` has become `diagram` (ADR 0001): the box-and-arrow flow diagram it drew is now the default `kind` of a more general tool that keeps svgflow's theme-exact, byte-for-byte deterministic SVG and adds PNG and animated-GIF output, a `sequence` kind, and intent routing. Reach for `diagram` instead.",
+            "For one release `svgflow.py` is kept as a thin deprecation shim: it prints a one-line deprecation notice and forwards every argument, unchanged, to `diagram.py`, so nothing that already reaches for `svgflow` breaks. The default kind is `flow`, so an existing svgflow spec renders exactly the same through the alias.",
+        ),
+        usage=(
+            "Nothing to add — installing the `diagram` tool is what you want. This alias exists only so an existing `python3 svgflow.py --spec spec.json --out flow.svg` call keeps working while callers migrate; it forwards to `diagram.py` and emits a deprecation notice on stderr.",
+            "Switch to `diagram`: `shipmates install --harness <name> --with-tools diagram`, then `python3 diagram.py --spec spec.json --out flow.svg` (or `.png` / `.gif`).",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/pipeline.svg", width=274, height=384,
+                alt="A vertical flow diagram titled 'CI pipeline': Build, Test and Deploy boxes joined by downward terracotta arrows labelled 'on push' and 'green', with a back-edge from Test to Build labelled 'red → retry'.",
+                caption="A CI pipeline as a column — the same flow diagram, now the default kind of `diagram`.",
+            ),
+            ToolExample(
+                src="examples/request.svg", width=830, height=203,
+                alt="A left-to-right flow diagram titled 'Request flow': Client, API gateway, Service and Database boxes joined by terracotta arrows labelled 'HTTPS', 'authz' and 'query', with a return edge from Service to Client labelled '200 JSON'.",
+                caption="A request path as a row — client through gateway and service to the database, and the response back.",
+            ),
+            ToolExample(
+                src="examples/state.svg", width=354, height=508,
+                alt="A vertical state diagram titled 'Order state machine': Pending, Paid, Shipped and Delivered states joined by terracotta arrows, a back-edge from Shipped to Pending labelled 'cancelled', and a self-loop on Delivered labelled 're-notify'.",
+                caption="An order state machine — the forward path plus a cancelled transition and a self-loop, all auto-routed.",
+            ),
+        ),
+    ),
+    "badge": ToolCopy(
+        tagline="Turns a label, a message, and a colour into a shields-style flat badge you commit as offline SVG.",
+        what=(
+            "`badge` renders the classic two-segment flat status badge — a grey left segment carrying a `label`, a coloured right segment carrying a `message` — straight to an SVG file. It is pure standard library: no dependencies and no network, so there is no round-trip to `shields.io` and the badge renders forever, offline, and diffs cleanly in git. Output is deterministic, so the same arguments always produce byte-for-byte the same file.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is a small status badge — build `passing`, a `version` tag, a `coverage` number, a licence — for a README, a docs page, or a release note, and that badge should live in the repo rather than hot-linking an external service. Colours are a named palette (`green`, `blue`, `red`, `brightgreen`, `orange`, `yellow`, ...) or any `#rrggbb` hex value, and segment widths are sized from a baked DejaVu Sans width table and locked with SVG `textLength` so text is never clipped.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools badge`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `badge.py` script and the CLI it needs to drive it: `python3 badge.py --label build --message passing --color green --out badge.svg` (or omit `--out` to write the SVG to stdout).",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/build.svg", width=89, height=20,
+                alt="A flat status badge: a grey 'build' segment on the left and a green 'passing' segment on the right.",
+                caption="A build-status badge — grey label, green message, the classic shields flat style.",
+            ),
+            ToolExample(
+                src="examples/version.svg", width=95, height=20,
+                alt="A flat status badge: a grey 'version' segment on the left and a blue 'v0.1.3' segment on the right.",
+                caption="A version badge — a release tag tinted blue, sized to fit its text exactly.",
+            ),
+            ToolExample(
+                src="examples/coverage.svg", width=96, height=20,
+                alt="A flat status badge: a grey 'coverage' segment on the left and a bright-green '98%' segment on the right.",
+                caption="A coverage badge — a bright-green percentage, rendered offline and committed to the repo.",
+            ),
+        ),
+    ),
+    "sparkline": ToolCopy(
+        tagline="Turns a short run of numbers into a tiny inline SVG that shows the trend at a glance.",
+        what=(
+            "`sparkline` takes a short series of numbers — `--data \"12,18,9,22,15,27\"` — and draws its trend as one tiny inline chart: a smooth polyline over a faint gradient fill, scaled to its own min/max, with the last point marked by a dot. The output is a self-contained SVG (scalable, self-sizing, verified as valid XML), a light teal stroke on a subtle dark panel that reads on the tool pages; `--color`, `--label`, `--width`, `--height`, `--no-baseline` and `--bare` tune it.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own when a task hands over a run of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — and the honest artifact is the shape of the curve rather than a wall of digits. It has no dependencies beyond `python3` and the standard library, so a run is deterministic and offline.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools sparkline`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `sparkline.py` script and the CLI it needs to drive it: `python3 sparkline.py --data \"…\" --out spark.svg`.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/latency.svg", width=240, height=60,
+                alt="A declining sparkline in coral: p95 latency falling from 182ms to 88ms across a release, the last point marked with a dot.",
+                caption="A latency history that improves across a release — p95 falling from 182ms to 88ms.",
+            ),
+            ToolExample(
+                src="examples/throughput.svg", width=240, height=60,
+                alt="A rising sparkline in teal: throughput climbing from 420 to 845 requests per second, the last point marked with a dot.",
+                caption="Throughput climbing as autoscaling kicks in — 420 to 845 req/s.",
+            ),
+            ToolExample(
+                src="examples/error-rate.svg", width=240, height=60,
+                alt="A sparkline in gold with a single sharp spike: error rate jumping to 2.1% during an incident, then recovering to 0.2%.",
+                caption="An error-rate spike during an incident, then recovery — a lone peak at 2.1%.",
+            ),
+        ),
+    ),
+    "scrub": ToolCopy(
+        tagline="Strips credentials and personal data out of text before it leaves the repo.",
+        what=(
+            "`scrub` redacts secrets and PII from a log, paste, or bug report before it's shared. It swaps each match for a typed placeholder — emails become `[REDACTED_EMAIL]`, AWS access keys `[REDACTED_AWS_KEY]`, `api_key=`/`token=`/`secret=` assignments and Bearer tokens `[REDACTED_TOKEN]`, JWTs `[REDACTED_JWT]`, IPv4 addresses `[REDACTED_IP]`, and PEM private-key blocks `[REDACTED_PRIVATE_KEY]` — so the shape of the redaction stays visible. It is pure standard library: no dependencies, no network, and the same input always produces the same cleaned output.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own whenever text is about to leave the repo — pasted into an issue, a bug report, a chat message, or a PR body — and might carry a credential or someone's personal data. The detectors are deliberately conservative, leaving ordinary prose and code identifiers like `token = response.data.token` alone, which makes it a strong first pass rather than a guarantee — read the cleaned text before sharing.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools scrub`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Run it on a file with `python3 scrub.py --in log.txt --out clean.txt`, or pipe text through it stdin-to-stdout with `cat log.txt | python3 scrub.py`. The cleaned text goes to `--out` or stdout; a per-category redaction summary goes to stderr so it never pollutes the output. Exit code is `0` on success and `2` on a usage error.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/scrub.gif", width=860, height=340,
+                alt="Terminal recording of scrub redacting a log: an email, AWS key, bearer token, JWT and IP each replaced with a typed [REDACTED_*] placeholder, ending 'redacted 9 items across 7 categories'.",
+                caption="scrub cleaning a log — each secret class swapped for a typed placeholder, counted at the end.",
+                poster="examples/scrub_poster.png",
+            ),
+        ),
+        sample="$ python3 scrub.py --in app.log\n\nBEFORE\n  env AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n  operator jane.doe@example.com from 203.0.113.42\n  Authorization: Bearer abcDEF0123456789xyzABCDEF\n\nAFTER  (summary on stderr)\n  env AWS_ACCESS_KEY_ID=[REDACTED_AWS_KEY]\n  operator [REDACTED_EMAIL] from [REDACTED_IP]\n  Authorization: Bearer [REDACTED_TOKEN]",
+    ),
+    "fixtures": ToolCopy(
+        tagline="Turns a tiny field-to-type schema into a reproducible JSON array of believable fake records.",
+        what=(
+            "`fixtures` reads a small JSON schema — a map of field name to type, like `uuid`, `email`, `bool`, `int` or `choice` — and emits a JSON array of that many fake records. It is a self-contained Python script with no dependencies beyond the standard library, and it is deterministic: the same `--seed` always produces byte-identical output, so a generated fixture can be committed to the repo and diff cleanly like any other source file.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it on their own when a task needs seed rows or example records — unit-test data, a demo database, an API sample payload — instead of hand-typing objects or pulling in a heavyweight faker dependency. The data is fake and drawn independently per field, meant to exercise code paths rather than model any real-world distribution.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools fixtures`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "The script and its instructions are bundled together, so wherever the tool lands the agent has both the `fixtures.py` generator and the schema format it needs to drive it. Run it as `python3 fixtures.py --schema schema.json --count 5 --seed 7 --out data.json`, or omit `--out` to write the array to stdout.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/fixtures.gif", width=900, height=370,
+                alt="Terminal recording of fixtures generating three JSON user records from a schema with --seed 7, ending 'same seed produces the same bytes'.",
+                caption="fixtures generating three records from a schema — deterministic, so the same seed yields the same bytes.",
+                poster="examples/fixtures_poster.png",
+            ),
+        ),
+        sample="schema.json\n{\n  \"id\":    \"uuid\",\n  \"email\": \"email\",\n  \"age\":   {\"type\": \"int\", \"min\": 18, \"max\": 65},\n  \"role\":  {\"type\": \"choice\", \"options\": [\"admin\", \"member\"]}\n}\n\n$ python3 fixtures.py --schema schema.json --count 2 --seed 7\n[\n  {\n    \"id\": \"6513270e-269e-4d37-b2a7-4de452e6b438\",\n    \"email\": \"priya.patel@test.dev\",\n    \"age\": 52,\n    \"role\": \"admin\"\n  },\n  {\n    \"id\": \"e8e25d94-0ed9-4475-9531-985d5d9dc9f8\",\n    \"email\": \"ivan.haddad@example.com\",\n    \"age\": 23,\n    \"role\": \"member\"\n  }\n]",
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
 # Layer 3 — PARSE  (skills/*/SKILL.md + agents/*.md -> model)
 # No markup literals, no escaping, no writing.
 # ---------------------------------------------------------------------------
@@ -1178,7 +1502,7 @@ REQUIRED_FRONTMATTER_KEYS = ("name", "description")
 # page, the rest are parsed so a standard-legal SKILL.md renders instead of
 # raising. Keep in step with tools/validate_skills.py.
 STANDARD_OPTIONAL_FRONTMATTER_KEYS = ("license", "compatibility", "metadata")
-EXTENSION_FRONTMATTER_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation", "arguments", "loop_max", "stages", "invocation", "board")
+EXTENSION_FRONTMATTER_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation", "arguments", "loop_max", "stages", "tool_gates", "invocation", "board")
 ALLOWED_FRONTMATTER_KEYS = (
     REQUIRED_FRONTMATTER_KEYS
     + STANDARD_OPTIONAL_FRONTMATTER_KEYS
@@ -1200,7 +1524,7 @@ INDENTED_RE = re.compile(r"^[ \t]")
 # in that order; `tools` optional. No other keys — a typo fails here rather than
 # reaching a page in silence, same rule as the skill parser.
 AGENT_REQUIRED_FRONTMATTER_KEYS = ("name", "description")
-AGENT_FRONTMATTER_KEYS = AGENT_REQUIRED_FRONTMATTER_KEYS + ("tools", "capabilities", "writes", "web-scopes", "read-scopes", "tool-order")
+AGENT_FRONTMATTER_KEYS = AGENT_REQUIRED_FRONTMATTER_KEYS + ("tools", "capabilities", "writes", "web-scopes", "read-scopes", "tool-order", "effort")
 AGENT_FRONTMATTER_KEY_LIST = ", ".join(AGENT_FRONTMATTER_KEYS)
 
 # Agent Skills limits on the two standard keys.
@@ -1449,6 +1773,81 @@ def load_agents(agents_dir: Path, skills_dir: Path) -> tuple:
             )
         )
     return tuple(agents)
+
+
+def parse_tool_frontmatter(path: Path) -> tuple:
+    """Read `name` + `description` from a toolbox `tool.md` frontmatter block."""
+    rel = f"toolbox/{path.parent.name}/tool.md"
+    lines = path.read_text(encoding="utf-8").split("\n")
+    if not lines or lines[0].strip() != "---":
+        raise SourceError(rel, 1, "tool.md has no frontmatter", lines[0] if lines else "",
+                          "start the file with a `---` frontmatter block carrying `name` and `description`")
+    fm, closed = {}, False
+    for raw in lines[1:]:
+        if raw.strip() == "---":
+            closed = True
+            break
+        if ":" in raw:
+            key, val = raw.split(":", 1)
+            fm[key.strip()] = val.strip()
+    if not closed:
+        raise SourceError(rel, 1, "tool.md frontmatter is not closed", "", "close the frontmatter with a `---` line")
+    for key in ("name", "description"):
+        if not fm.get(key):
+            raise SourceError(rel, 1, f"tool.md frontmatter missing `{key}`", "", f"add a `{key}:` line to the frontmatter")
+    return fm["name"], fm["description"]
+
+
+def load_tools(toolbox_dir: Path) -> tuple:
+    """Every toolbox/<slug>/tool.md joined with its TOOL_COPY entry, in TOOLS
+    order. Raises on drift between disk, TOOL_COPY, and TOOLS — every direction,
+    the same contract load_agents holds for the crew."""
+    on_disk = (
+        {p.name: p for p in sorted(toolbox_dir.iterdir()) if p.is_dir() and (p / "tool.md").is_file()}
+        if toolbox_dir.is_dir() else {}
+    )
+    for slug in sorted(on_disk):
+        if slug not in TOOL_COPY:
+            raise SourceError(
+                f"toolbox/{slug}/tool.md", 1, "tool has no TOOL_COPY entry", "",
+                f"toolbox/{slug}/ exists but TOOL_COPY in tools/gen_command_pages.py has no "
+                f"'{slug}' entry — add the editorial copy (tagline, what, usage), then rerun and commit site/",
+            )
+    for slug in sorted(TOOL_COPY):
+        if slug not in on_disk:
+            raise SourceError(
+                "tools/gen_command_pages.py", 1, "TOOL_COPY entry has no tool", "",
+                f"TOOL_COPY lists '{slug}' but toolbox/{slug}/tool.md does not exist — add the tool "
+                "or remove the copy entry, then rerun and commit site/",
+            )
+    for slug in TOOLS:
+        if slug not in on_disk:
+            raise SourceError(
+                "tools/gen_command_pages.py", 1, "TOOLS entry has no tool", "",
+                f"TOOLS lists {slug} but toolbox/{slug}/tool.md does not exist — remove it from TOOLS, "
+                "delete site/tools/" + slug + "/, then rerun and commit site/",
+            )
+    tools = []
+    for slug in TOOLS:
+        directory = on_disk[slug]
+        name, description = parse_tool_frontmatter(directory / "tool.md")
+        bundled = tuple(sorted(
+            p.name for p in directory.iterdir() if p.is_file() and p.name != "tool.md"
+        ))
+        copy = TOOL_COPY[slug]
+        tools.append(Tool(
+            slug=slug,
+            source_path=f"toolbox/{slug}/tool.md",
+            name=name,
+            description=description,
+            tagline=copy.tagline,
+            what=copy.what,
+            usage=copy.usage,
+            bundled=bundled,
+            examples=copy.examples,
+            sample=copy.sample,
+        ))
+    return tuple(tools)
 
 
 def load_skills(skills_dir: Path, agents: tuple) -> tuple:
@@ -2261,6 +2660,7 @@ NAV_LINKS = (
     ("install", "Install"),
     ("crew", "Crew"),
     ("commands", "Commands"),
+    ("tools", "Tools"),
     ("how", "How"),
     ("next", "What's next"),
     ("faq", "FAQ"),
@@ -2637,6 +3037,65 @@ def render_hero(cmd: Command, src: str) -> str:
     </section>"""
 
 
+def _png_size(path: Path) -> tuple:
+    """(width, height) from a PNG's IHDR — no Pillow dependency, because this
+    generator's --check runs in CI before the demo step installs Pillow."""
+    with open(path, "rb") as fh:
+        head = fh.read(24)
+    if head[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SourceError("assets", 0, str(path), "", "not a PNG (bad signature)")
+    return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+
+
+def _demo_assets(slug: str) -> tuple:
+    """(gif, poster) filenames for a command's demo. `/ship-issue` reuses the
+    flagship demo.gif rather than shipping a second near-identical asset."""
+    if slug == FLAGSHIP_SLUG:
+        return "demo.gif", "demo-poster.png"
+    return f"command-{slug}.gif", f"command-{slug}-poster.png"
+
+
+def render_demo(cmd: Command) -> str:
+    """A playable terminal figure at the top of the page: poster by default, a
+    button swaps in the animated GIF (WCAG 2.2.2 — motion is user-initiated)."""
+    _gif, poster = _demo_assets(cmd.slug)
+    w, h = _png_size(ROOT / "site" / "assets" / poster)
+    return f"""    <section class="section" id="demo" aria-labelledby="demo-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="demo-title">See it run</h2>
+        </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="{link('../../assets/' + poster)}" width="{w}" height="{h}" alt="Illustrative terminal recording of the stages /{esc(cmd.slug)} runs, in order." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/{esc(cmd.slug)}</code> runs, in order.</figcaption>
+        </figure>
+      </div>
+    </section>"""
+
+
+def render_demo_script(cmd: Command) -> str:
+    """Inline, self-contained toggle: no external src, so the page stays
+    self-contained per the site's own gate."""
+    gif, _poster = _demo_assets(cmd.slug)
+    return f"""  <script>
+  (function () {{
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/{gif}';
+    var playing = false;
+    toggle.addEventListener('click', function () {{
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the run' : 'Play the run';
+    }});
+  }})();
+  </script>"""
+
+
 def render_invoke(cmd: Command) -> str:
     invocation = f"/{cmd.slug} {cmd.frontmatter.argument_hint}".strip()
     return f"""    <section class="section order-invoke" id="invoke" aria-labelledby="invoke-title">
@@ -2847,6 +3306,7 @@ def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
     src = cmd.source_path
     sections = [
         render_hero(cmd, src),
+        render_demo(cmd),
         render_invoke(cmd),
         render_stages(cmd, src),
         render_section(cmd.config, "config", src),
@@ -2870,6 +3330,7 @@ def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
   </main>
 
 {render_footer()}
+{render_demo_script(cmd)}
 </body>
 </html>
 """
@@ -3084,7 +3545,224 @@ def render_agent_page(agent: Agent, all_agents: tuple, ctx: PageContext) -> str:
 """
 
 
-def render_sitemap(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = ()) -> str:
+# ---------------------------------------------------------------------------
+# TOOL PAGES — the same shape as agent pages (hero + authored sections +
+# reference + source + siblings), mirroring the crew/commands treatment.
+# ---------------------------------------------------------------------------
+
+def canonical_tool_url(tool: Tool, ctx: PageContext) -> str:
+    return f"{ctx.site_url}tools/{tool.slug}/"
+
+
+def tool_page_title(tool: Tool) -> str:
+    return f"{tool.name} — {tool.tagline}"
+
+
+def _tool_copy_prose(texts: tuple, prefix: str) -> str:
+    return render_prose(tuple(Para(lineno=0, text=text) for text in texts), TOOL_COPY_SRC, prefix)
+
+
+def render_tool_jsonld(tool: Tool, ctx: PageContext) -> str:
+    payload = {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "name": tool.name,
+        "description": tool.description,
+        "url": canonical_tool_url(tool, ctx),
+        "isPartOf": {"@type": "CollectionPage", "url": ctx.site_url + "#tools"},
+    }
+    return _jsonld_script(payload)
+
+
+def render_tool_head(tool: Tool, ctx: PageContext) -> str:
+    return _head(
+        full_title=tool_page_title(tool) + " · Shipmates",
+        social_title=tool_page_title(tool),
+        description=truncate_words(tool.description, MAX_META_DESCRIPTION),
+        url=canonical_tool_url(tool, ctx),
+        jsonld=render_tool_jsonld(tool, ctx),
+        ctx=ctx,
+    )
+
+
+def render_tool_back_link() -> str:
+    return _back_link("../../#tools", "All tools")
+
+
+def render_tool_hero(tool: Tool) -> str:
+    return f"""    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        {render_tool_back_link()}
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">\U0001f9f0</span> Tool</p>
+          <h1 class="order-detail__title" id="order-title"><code>{esc(tool.name)}</code></h1>
+          <p class="order-detail__tagline">{esc(tool.tagline)}</p>
+          <p class="order-detail__desc">{esc(tool.description)}</p>
+        </div>
+      </div>
+    </section>"""
+
+
+def render_tool_what(tool: Tool) -> str:
+    return _agent_section("what", "What it does", _tool_copy_prose(tool.what, "        "))
+
+
+def render_tool_usage(tool: Tool) -> str:
+    return _agent_section("usage", "How the crew reach for it", _tool_copy_prose(tool.usage, "        "))
+
+
+def render_tool_examples(tool: Tool) -> str:
+    """A gallery of example outputs. An animated GIF is wrapped in a `<picture>`
+    whose reduced-motion source swaps the animation for its static final frame
+    (WCAG 2.2.2, the a11y pattern the homepage hero uses); a static PNG or SVG is
+    a plain `<img>`. Each example is a different run of the tool."""
+    if not tool.examples:
+        return ""
+    animated = any(ex.poster for ex in tool.examples)
+    figures = []
+    for ex in tool.examples:
+        if ex.poster:
+            media = (
+                f"""            <picture>
+              <source media="(prefers-reduced-motion: reduce)" srcset="{link(ex.poster)}">
+              <img class="tool-example__img" src="{link(ex.src)}" width="{ex.width}" height="{ex.height}" alt="{esc(ex.alt)}" loading="lazy" decoding="async">
+            </picture>"""
+            )
+        else:
+            media = (
+                f'            <img class="tool-example__img" src="{link(ex.src)}" '
+                f'width="{ex.width}" height="{ex.height}" alt="{esc(ex.alt)}" '
+                'loading="lazy" decoding="async">'
+            )
+        figures.append(
+            '          <figure class="tool-example">\n'
+            f"{media}\n"
+            f'            <figcaption class="tool-example__caption">{esc(ex.caption)}</figcaption>\n'
+            "          </figure>"
+        )
+    gallery = "\n".join(figures)
+    reduced = (
+        " If you&#x27;ve set <code>prefers-reduced-motion</code>, any animation shows its final "
+        "frame instead."
+        if animated else ""
+    )
+    intro = (
+        f"        <p>A few things <code>{esc(tool.name)}</code> can produce, each from a small "
+        f"spec of its own.{reduced}</p>\n"
+    )
+    inner = intro + f'        <div class="tool-gallery">\n{gallery}\n        </div>'
+    return _agent_section("examples", "Examples", inner)
+
+
+def render_tool_sample(tool: Tool) -> str:
+    """A plain-text input→output sample for a non-visual tool (scrub, fixtures),
+    shown as a code block. Skipped when the tool has none."""
+    if not tool.sample:
+        return ""
+    inner = (
+        '        <p>What it does to a real input:</p>\n'
+        f'        <pre class="order-code" tabindex="0"><code>{esc(tool.sample)}</code></pre>'
+    )
+    return _agent_section("sample", "In practice", inner)
+
+
+def render_tool_reference(tool: Tool) -> str:
+    bundled = ", ".join(f"<code>{esc(name)}</code>" for name in tool.bundled) or "—"
+    inner = f"""        <dl class="agent-ref">
+          <dt>Name</dt>
+          <dd><code>{esc(tool.name)}</code></dd>
+          <dt>Description</dt>
+          <dd>{esc(tool.description)}</dd>
+          <dt>Bundled files</dt>
+          <dd>{bundled}</dd>
+          <dt>Install</dt>
+          <dd><code>shipmates install --harness &lt;name&gt; --with-tools {esc(tool.slug)}</code></dd>
+        </dl>"""
+    return _agent_section("reference", "Reference", inner)
+
+
+def render_tool_source(tool: Tool, ctx: PageContext) -> str:
+    blob = ctx.repo_blob_base + tool.source_path
+    return f"""    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>{esc(tool.source_path)}</code>. Opt in at install with <code>--with-tools {esc(tool.slug)}</code> and the installer copies the tool — instructions and bundled files — into the harness's skills tree.</p>
+        <a class="btn btn--secondary" href="{link(blob)}">
+          {GITHUB_ICON}
+          <span>View {esc(tool.source_path)} on GitHub</span>
+        </a>
+      </div>
+    </section>"""
+
+
+def render_tool_siblings(tool: Tool, all_tools: tuple) -> str:
+    items = []
+    for other in all_tools:
+        name = f"<code>{esc(other.name)}</code>"
+        if other.slug == tool.slug:
+            inner = (
+                '<span class="order-siblings__link order-siblings__link--current" '
+                f'aria-current="page">{name}'
+                '<span class="visually-hidden"> (current page)</span></span>'
+            )
+        else:
+            inner = (
+                f'<a class="order-siblings__link" href="{link("../" + other.slug + "/")}">'
+                f"{name}</a>"
+            )
+        items.append(f'            <li class="order-siblings__item">{inner}</li>')
+    listing = "\n".join(items)
+    return f"""    <section class="section" id="other-tools" aria-labelledby="other-tools-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-tools-title">Other tools</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other tools">
+          <ul class="order-siblings__list" role="list">
+{listing}
+          </ul>
+        </nav>
+        {render_tool_back_link()}
+      </div>
+    </section>"""
+
+
+def render_tool_page(tool: Tool, all_tools: tuple, ctx: PageContext) -> str:
+    sections = [
+        render_tool_hero(tool),
+        render_tool_what(tool),
+        render_tool_examples(tool),
+        render_tool_sample(tool),
+        render_tool_usage(tool),
+        render_tool_reference(tool),
+        render_tool_source(tool, ctx),
+        render_tool_siblings(tool, all_tools),
+    ]
+    sections = [s for s in sections if s]
+    body = "\n\n".join(sections)
+    return f"""<!doctype html>
+<html lang="en">
+{render_tool_head(tool, ctx)}
+<body class="page--doc">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+{render_header()}
+
+  <main class="main" id="main" tabindex="-1">
+
+{body}
+
+  </main>
+
+{render_footer()}
+</body>
+</html>
+"""
+
+
+def render_sitemap(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), tools: tuple = ()) -> str:
     entries = [
         "  <url>\n"
         f"    <loc>{esc(ctx.site_url)}</loc>\n"
@@ -3115,6 +3793,15 @@ def render_sitemap(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (
         entries.append(
             "  <url>\n"
             f"    <loc>{esc(ctx.site_url)}docs/{slug}/</loc>\n"
+            f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
+            "    <changefreq>monthly</changefreq>\n"
+            "    <priority>0.7</priority>\n"
+            "  </url>"
+        )
+    for tool in tools:
+        entries.append(
+            "  <url>\n"
+            f"    <loc>{esc(canonical_tool_url(tool, ctx))}</loc>\n"
             f"    <lastmod>{esc(ctx.lastmod)}</lastmod>\n"
             "    <changefreq>monthly</changefreq>\n"
             "    <priority>0.7</priority>\n"
@@ -3159,27 +3846,35 @@ def agent_page_path(slug: str) -> str:
     return f"{SITE_DIR}/agents/{slug}/index.html"
 
 
+def tool_page_path(slug: str) -> str:
+    return f"{SITE_DIR}/tools/{slug}/index.html"
+
+
 SITEMAP_PATH = f"{SITE_DIR}/sitemap.xml"
 
 
-def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = ()) -> dict:
+def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), tools: tuple = ()) -> dict:
     """Repo-relative posix path -> full file text. PURE: no I/O, no clock, no cwd.
 
     Every output is materialised in memory before anything is written, so a parse
-    failure in any command or agent leaves the tree completely untouched.
+    failure in any command, agent, or tool leaves the tree completely untouched.
     """
     files = {page_path(cmd.slug): render_page(cmd, cmds, ctx) for cmd in cmds}
     files.update(
         {agent_page_path(agent.slug): render_agent_page(agent, agents, ctx) for agent in agents}
     )
-    files[SITEMAP_PATH] = render_sitemap(cmds, agents, ctx, docs)
+    files.update(
+        {tool_page_path(tool.slug): render_tool_page(tool, tools, ctx) for tool in tools}
+    )
+    files[SITEMAP_PATH] = render_sitemap(cmds, agents, ctx, docs, tools)
     return files
 
 
-def expected_paths(cmds: tuple, agents: tuple) -> frozenset:
+def expected_paths(cmds: tuple, agents: tuple, tools: tuple = ()) -> frozenset:
     return frozenset(
         [page_path(cmd.slug) for cmd in cmds]
         + [agent_page_path(agent.slug) for agent in agents]
+        + [tool_page_path(tool.slug) for tool in tools]
     )
 
 
@@ -3204,7 +3899,7 @@ def find_orphans(root: Path, expected: frozenset) -> list:
     site = root / SITE_DIR
     return sorted(
         str(path.relative_to(root).as_posix())
-        for subtree in ("commands", "agents")
+        for subtree in ("commands", "agents", "tools")
         for path in sorted(site.glob(f"{subtree}/*/index.html"))
         if path.relative_to(root).as_posix() not in expected
     )
@@ -3310,12 +4005,15 @@ def main(argv=None) -> int:
         rendered = Path(payload) / "harnesses" / SITE_TARGET / ".claude"
         agents = load_agents(rendered / "agents", rendered / "skills")
         cmds = load_skills(rendered / "skills", tuple(agent.name for agent in agents))
+        # Tools come from the repo `toolbox/` source, not the rendered payload —
+        # a plain `build` excludes opt-in tools, so they aren't in `rendered`.
+        tools = load_tools(root / "toolbox")
         # Discover hand-authored docs pages for the sitemap.
         docs = tuple(
             slug for slug in DOCS_SLUGS
             if (root / SITE_DIR / "docs" / slug / "index.html").is_file()
         )
-        files = build_site(cmds, agents, ctx, docs)
+        files = build_site(cmds, agents, ctx, docs, tools)
     except SourceError as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
@@ -3323,8 +4021,8 @@ def main(argv=None) -> int:
     if args.check:
         report = check_all(files, root) + [
             f"unexpected generated file: {path} "
-            "(renamed or removed a command or agent? delete it and rerun)"
-            for path in find_orphans(root, expected_paths(cmds, agents))
+            "(renamed or removed a command, agent, or tool? delete it and rerun)"
+            for path in find_orphans(root, expected_paths(cmds, agents, tools))
         ]
         if report:
             for line in report:
@@ -3333,19 +4031,19 @@ def main(argv=None) -> int:
             return 1
         print(
             f"up to date: {len(files)} generated files, "
-            f"{len(cmds)} skills, {len(agents)} agents"
+            f"{len(cmds)} skills, {len(agents)} agents, {len(tools)} tools"
         )
         return 0
 
     written = write_all(files, root)
-    for path in find_orphans(root, expected_paths(cmds, agents)):
-        print(f"warning: unexpected generated file: {path} (renamed or removed a command or agent?)")
+    for path in find_orphans(root, expected_paths(cmds, agents, tools)):
+        print(f"warning: unexpected generated file: {path} (renamed or removed a command, agent, or tool?)")
     if written:
         for path in written:
             print(f"wrote {path}")
     print(
         f"{len(written)} of {len(files)} files updated "
-        f"({len(cmds)} skills, {len(agents)} agents)"
+        f"({len(cmds)} skills, {len(agents)} agents, {len(tools)} tools)"
     )
     return 0
 

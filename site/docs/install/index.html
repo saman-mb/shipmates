@@ -73,6 +73,11 @@
           <p class="order-detail__tagline">Install the CLI, then drop the crew into your harness of choice.</p>
           <p class="order-detail__desc">The installer is the <code>shipmates</code> CLI. Install it via Homebrew, Cargo, or the binary installer script.</p>
         </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="../../assets/cli-demo-poster.png" width="900" height="512" alt="Illustrative terminal recording: cargo install shipmates, then shipmates install --harness claude-code, then ls .claude." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the install</button>
+          <figcaption class="demo__caption">Illustrative — installing the CLI and bringing the crew aboard.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -103,8 +108,25 @@
           <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code
 shipmates install --harness opencode
 shipmates install --harness all</code></pre>
-          <p>Installs into the current directory by default. The crew ships as twelve <code>agents/*.md</code> personas and the twelve commands as <code>skills/&lt;name&gt;/SKILL.md</code> directories (or flat <code>commands/&lt;name&gt;.md</code> on opencode), in the harness&#x27;s own native tree — <code>.claude/</code>, <code>.opencode/</code>, <code>.codex/</code>, and so on — so the harness picks them up natively. The CLI compiles the payload from its built-in canonical sources; nothing is downloaded at install time.</p>
-          <p>On skill-only harnesses (<code>codex</code>, <code>cursor</code>, <code>github-copilot</code>, <code>windsurf</code>, <code>zed</code>) the crew is dropped entirely — there is no native subagent directory for them — and only the twelve skills land.</p>
+          <p>Installs into the current directory by default. The crew and the twelve commands land in the exact tree your harness reads, in its own native format — nothing is downloaded; the CLI compiles the payload from sources built into the binary. Full per-harness paths are in the <a href="#harness-paths">table below</a>.</p>
+          <p>One thing to know up front: five harnesses take the full crew (<code>claude-code</code>, <code>opencode</code>, <code>antigravity</code>, <code>codex</code>, <code>github-copilot</code>). The two skill-only harnesses (<code>cursor</code>, <code>windsurf</code>) have no native subagent directory, so only the twelve commands land — the workflows still run, just without the named specialists.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install-tools" aria-labelledby="install-tools-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="install-tools-title">3. Add a tool (optional)</h2>
+          <p class="section__lead">Tools are off by default. Run <code>install</code> in a terminal and it asks which you&#x27;d like; name them up front with <code>--with-tools</code> to skip the prompt.</p>
+        </div>
+        <div class="order-prose">
+          <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code              # prompts: pick tools, or Enter for none
+shipmates install --harness claude-code --with-tools termgif
+shipmates install --harness opencode --with-tools all
+shipmates install --harness codex --with-tools none  # explicit opt-out, no prompt</code></pre>
+          <p>A <strong>tool</strong> is the third kind of shipmates resource, alongside the crew and the commands. Unlike a command, a tool is never invoked with a slash — the crew reach for it on their own when the intent of your prompt calls for it. <code>termgif</code>, the first tool, renders a polished animated terminal demo GIF of a workflow run from a small JSON spec — see its <a href="../../tools/termgif/">tool page</a>.</p>
+          <p>When you run <code>install</code> interactively without <code>--with-tools</code>, it lists the available tools and lets you pick; a non-interactive run (CI, a pipe, a script) installs none. Pass the flag to be explicit: one or more tool names comma-separated, <code>all</code>, or <code>none</code>. Each tool maps to the harness&#x27;s own native tool surface: a native code tool on opencode (<code>.opencode/tools/&lt;name&gt;.ts</code>), and an agent-invoked Agent Skill in the shared <code>.agents/skills/</code> tree everywhere else — on Claude Code pinned agent-only with <code>user-invocable: false</code>, so it never shows up as a slash command.</p>
         </div>
       </div>
     </section>
@@ -130,8 +152,8 @@ shipmates install --harness all</code></pre>
         <div class="order-prose">
           <ul>
             <li>Compiles the payload from its built-in canonical sources (<code>commands/</code> + <code>crew/</code>), rendering each command and persona into the harness&#x27;s own dialect — where its agents live, what its session metadata is called, which project-instructions file it reads.</li>
-            <li>Writes the harness&#x27;s own tree in the target directory — <code>.claude/</code>, <code>.opencode/</code>, <code>.agents/</code>, <code>.codex/</code>, <code>.cursor/</code>, <code>.github/</code>, <code>.windsurf/</code>, or <code>.zed/</code>.</li>
-            <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on claude-code, opencode and antigravity, the twelve <code>agents/*.md</code> personas. Skill-only harnesses get the skills and nothing else.</li>
+            <li>Writes into the tree each harness reads. Four harnesses (<code>codex</code>, <code>antigravity</code>, <code>cursor</code>, <code>github-copilot</code>) share one <code>.agents/skills/</code> tree — rendered once, byte-identical, so a multi-harness install has a single copy, not four. Crew stay harness-native (<code>.codex/agents/</code>, <code>.github/agents/</code>, <code>.agents/agents/</code>). The rest keep their own root: <code>.claude/</code>, <code>.windsurf/</code>, and opencode&#x27;s <code>.opencode/commands/</code>.</li>
+            <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on the five crew-bearing harnesses, the twelve crew personas: <code>agents/*.md</code> on claude-code, opencode and antigravity, <code>agents/*.toml</code> on codex, and <code>agents/*.agent.md</code> on github-copilot. The two skill-only harnesses (cursor, windsurf) get the skills and nothing else.</li>
             <li>Re-running is idempotent: files already in place are skipped.</li>
           </ul>
         </div>
@@ -149,6 +171,7 @@ shipmates install --harness all</code></pre>
             <tbody>
               <tr><td><code>--harness NAME</code></td><td><code>claude-code</code></td><td>Which harness tree to install into. Pass <code>all</code> to install into every harness.</td></tr>
               <tr><td><code>--dir PATH</code></td><td>current dir</td><td>Install into an explicit target directory instead of the current one.</td></tr>
+              <tr><td><code>--with-tools NAMES</code></td><td>prompt / none</td><td>Which agent-invoked tools to install: names (comma-separated), <code>all</code>, or <code>none</code>. Omit it and a terminal prompts you to pick; omit it non-interactively and none are installed.</td></tr>
             </tbody>
           </table>
         </div>
@@ -159,25 +182,24 @@ shipmates install --harness all</code></pre>
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="harness-paths-title">Per-harness paths</h2>
-          <p class="section__lead">Each root verified against first-party docs. All eight read skills from <code>&lt;root&gt;/skills/&lt;name&gt;/SKILL.md</code>.</p>        </div>
+          <p class="section__lead">Each root verified against first-party docs. Four harnesses follow the <a href="https://agentskills.io">open Agent Skills standard</a> and share one <code>.agents/skills/&lt;name&gt;/SKILL.md</code> tree (<code>codex</code>, <code>antigravity</code>, <code>cursor</code>, <code>github-copilot</code>); <code>claude-code</code> and <code>windsurf</code> read their own <code>&lt;root&gt;/skills/</code>, and opencode uses <code>commands/</code>.</p>        </div>
         <div class="order-table" tabindex="0">
           <table>
             <thead><tr><th scope="col">Harness</th><th scope="col">Tree installed</th><th scope="col">Commands land at</th><th scope="col">Subagents</th><th scope="col">First-party doc</th></tr></thead>
             <tbody>
               <tr><td><code>claude-code</code></td><td><code>.claude/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://code.claude.com/docs/en/skills">code.claude.com/docs/en/skills</a></td></tr>
               <tr><td><code>opencode</code></td><td><code>.opencode/</code></td><td><code>commands/&lt;name&gt;.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://opencode.ai/docs/commands/">opencode.ai/docs/commands</a></td></tr>
-              <tr><td><code>github-copilot</code></td><td><code>.github/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://docs.github.com/en/copilot/concepts/agents/about-agent-skills">docs.github.com/en/copilot/concepts/agents/about-agent-skills</a></td></tr>
-              <tr><td><code>codex</code></td><td><code>.codex/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://developers.openai.com/codex/build-skills">developers.openai.com/codex/build-skills</a></td></tr>
-              <tr><td><code>cursor</code></td><td><code>.cursor/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://cursor.com/docs/skills">cursor.com/docs/skills</a></td></tr>
+              <tr><td><code>github-copilot</code></td><td><code>.github/</code> + <code>.agents/</code></td><td><code>.agents/skills/&lt;name&gt;/SKILL.md</code></td><td><code>.github/agents/&lt;name&gt;.agent.md</code></td><td><a href="https://docs.github.com/en/copilot/concepts/agents/about-agent-skills">docs.github.com/en/copilot/concepts/agents/about-agent-skills</a></td></tr>
+              <tr><td><code>codex</code></td><td><code>.codex/</code> + <code>.agents/</code></td><td><code>.agents/skills/&lt;name&gt;/SKILL.md</code></td><td><code>.codex/agents/&lt;name&gt;.toml</code></td><td><a href="https://developers.openai.com/codex/build-skills">developers.openai.com/codex/build-skills</a></td></tr>
+              <tr><td><code>cursor</code></td><td><code>.agents/</code></td><td><code>.agents/skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://cursor.com/docs/skills">cursor.com/docs/skills</a></td></tr>
               <tr><td><code>antigravity</code></td><td><code>.agents/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td><code>agents/&lt;name&gt;.md</code></td><td><a href="https://antigravity.google/docs/cli/plugins">antigravity.google/docs/cli/plugins</a></td></tr>
               <tr><td><code>windsurf</code></td><td><code>.windsurf/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://docs.windsurf.com/windsurf/cascade/skills">docs.windsurf.com/windsurf/cascade/skills</a></td></tr>
-              <tr><td><code>zed</code></td><td><code>.zed/</code></td><td><code>skills/&lt;name&gt;/SKILL.md</code></td><td>none</td><td><a href="https://zed.dev/docs/ai/skills">zed.dev/docs/ai/skills</a></td></tr>
             </tbody>
           </table>
         </div>
         <div class="order-prose">
           <p><code>opencode</code> takes the twelve as flat <code>commands/&lt;name&gt;.md</code> files rather than skill directories. That is a safety decision, not a formatting one — opencode&#x27;s skills are model-invoked and its <code>SKILL.md</code> has no <code>disable-model-invocation</code> equivalent, so <code>commands/</code> is what keeps the twelve user-invoked only. The reasoning is on the <a href="../harnesses/#opencode">harness matrix</a>.</p>
-          <p><code>codex</code> and <code>zed</code> each install into their own root — <code>.codex/</code> and <code>.zed/</code> respectively. <code>antigravity</code> is the Antigravity CLI (<code>agy</code>), the successor to the retired Gemini CLI; its workspace tree is <code>.agents/</code> with subagents at <code>agents/&lt;name&gt;.md</code> and skills at <code>skills/&lt;name&gt;/SKILL.md</code>.</p>
+          <p><strong>One shared skills tree.</strong> <code>codex</code>, <code>antigravity</code>, <code>cursor</code> and <code>github-copilot</code> all read Agent Skills from the open <code>.agents/skills/</code> location, so shipmates renders the twelve skills <em>once</em>, in a neutral dialect, and writes them there — one source of truth, byte-identical across all four. Install several into one repo and you get a single <code>.agents/skills/</code>, not four divergent copies (which is what a per-harness rendering would collide into). The crew, whose formats differ, stay harness-native: <code>.codex/agents/&lt;name&gt;.toml</code>, <code>.github/agents/&lt;name&gt;.agent.md</code>, and <code>.agents/agents/&lt;name&gt;.md</code> for <code>antigravity</code> (the <code>agy</code> CLI, successor to the retired Gemini CLI). <code>windsurf</code> is deliberately left out of the shared tree — its docs make <code>.windsurf/skills/</code> the canonical location and <code>.agents/skills/</code> only a secondary scan — and <code>claude-code</code> keeps its own <code>.claude/skills/</code>.</p>
         </div>
       </div>
     </section>
@@ -252,5 +274,21 @@ ls .opencode/commands</code></pre>
       <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
     </div>
   </footer>
+  <script>
+  (function () {
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/cli-demo.gif';
+    var playing = false;
+    toggle.addEventListener('click', function () {
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the install' : 'Play the install';
+    });
+  })();
+  </script>
 </body>
 </html>

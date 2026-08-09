@@ -1,6 +1,12 @@
 {
   "schema_version": 1,
-  "capabilities": ["read", "edit", "bash", "web", "agent"],
+  "capabilities": [
+    "read",
+    "edit",
+    "bash",
+    "web",
+    "agent"
+  ],
   "harnesses": {
     "claude-code": {
       "agent_path": ".claude/agents/{name}.md",
@@ -19,8 +25,15 @@
         "agent": "Agent"
       },
       "tools": {
-        "read": ["Read", "Grep", "Glob"],
-        "edit": ["Write", "Edit"],
+        "read": [
+          "Read",
+          "Grep",
+          "Glob"
+        ],
+        "edit": [
+          "Write",
+          "Edit"
+        ],
         "bash": "Bash",
         "web": {
           "search": "WebSearch",
@@ -47,8 +60,14 @@
         "agent": "task"
       },
       "tools": {
-        "read": ["read", "grep", "glob"],
-        "edit": ["edit"],
+        "read": [
+          "read",
+          "grep",
+          "glob"
+        ],
+        "edit": [
+          "edit"
+        ],
         "bash": "bash",
         "web": {
           "search": "websearch",
@@ -75,8 +94,15 @@
         "agent": "invoke_subagent"
       },
       "tools": {
-        "read": ["view_file", "grep_search", "list_dir"],
-        "edit": ["write_to_file", "replace_file_content"],
+        "read": [
+          "view_file",
+          "grep_search",
+          "list_dir"
+        ],
+        "edit": [
+          "write_to_file",
+          "replace_file_content"
+        ],
         "bash": "run_command",
         "web": {
           "search": "search_web",
@@ -86,11 +112,11 @@
       }
     },
     "codex": {
-      "notes": "Codex CLI ships no subagents, so the adapter emits the crew as twelve skills under `.codex/skills/` and ignores `roles`.",
-      "agent_path": ".codex/agents/{name}.md",
-      "skill_path": ".codex/skills/{name}/SKILL.md",
+      "notes": "Subagents GA March 2026. Project-scoped agents at `.codex/agents/<name>.toml` \u2014 standalone TOML, NOT Markdown with frontmatter, and the only target so far that is not. Fields: name, description, developer_instructions. Codex documents no per-agent tool allowlist, so `permission_model` is `none`: least privilege genuinely cannot be expressed on this target and the crew inherit the session's tools. Recorded rather than faked \u2014 an invented `tools` key would be ignored at best, rejected at worst. Skills follow the open Agent Skills standard at `.agents/skills/<name>/SKILL.md` (Codex reads `.agents/skills`, NOT `.codex/skills`); only the crew are Codex-native under `.codex/`. Verified 2026-08-03.",
+      "agent_path": ".codex/agents/{name}.toml",
+      "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
-      "permission_model": "allowlist",
+      "permission_model": "none",
       "scopes": {
         "read": "read_file",
         "search": "grep",
@@ -103,8 +129,15 @@
         "agent": "task"
       },
       "tools": {
-        "read": ["read_file", "grep", "glob"],
-        "edit": ["write_file", "apply_patch"],
+        "read": [
+          "read_file",
+          "grep",
+          "glob"
+        ],
+        "edit": [
+          "write_file",
+          "apply_patch"
+        ],
         "bash": "run_in_shell",
         "web": {
           "search": "web_search",
@@ -114,9 +147,9 @@
       }
     },
     "cursor": {
-      "notes": "Cursor ships no subagents, so the adapter emits the crew as twelve skills under `.cursor/skills/` and ignores `roles`.",
+      "notes": "Cursor ships no subagents, so the adapter emits only the twelve commands as skills and ignores `roles`. Cursor reads the open Agent Skills tree `.agents/skills/` natively (a first-party peer of `.cursor/skills/`, since Cursor 2.4), so skills ship to the shared `.agents/skills/` location — byte-identical with codex/antigravity/copilot. Verified 2026-08-03.",
       "agent_path": ".cursor/agents/{name}.md",
-      "skill_path": ".cursor/skills/{name}/SKILL.md",
+      "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
       "permission_model": "permission-map",
       "scopes": {
@@ -131,8 +164,14 @@
         "agent": "agent"
       },
       "tools": {
-        "read": ["read", "search", "glob"],
-        "edit": ["edit"],
+        "read": [
+          "read",
+          "search",
+          "glob"
+        ],
+        "edit": [
+          "edit"
+        ],
         "bash": "bash",
         "web": {
           "search": "web_search",
@@ -142,25 +181,31 @@
       }
     },
     "github-copilot": {
-      "notes": "Copilot CLI discovers skills under `.github/skills/` (project) or `~/.copilot/skills` (personal); a repo-scoped install writes the project tree. Copilot ships no subagents, so the adapter emits the crew as twelve skills and ignores `roles`.",
-      "agent_path": ".github/agents/{name}.md",
-      "skill_path": ".github/skills/{name}/SKILL.md",
+      "notes": "Custom agents at `.github/agents/<name>.agent.md` \u2014 the double extension is required; a plain `<name>.md` in that directory is never discovered. Markdown + YAML frontmatter; `tools` takes the canonical names (read, search, edit, execute, web, agent) and OMITTING the key enables every tool, so an empty mapping must never silently become an unrestricted agent. Frontmatter + body capped at 30,000 characters. Copilot accepts skills at `.github/skills`, `.claude/skills` AND the open `.agents/skills` (all first-party, since 2025-12-18), so skills ship to the shared `.agents/skills/` tree — byte-identical with codex/antigravity/cursor; only the crew are `.github`-native. Verified 2026-08-03.",
+      "agent_path": ".github/agents/{name}.agent.md",
+      "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
       "permission_model": "allowlist",
       "scopes": {
         "read": "read",
         "search": "search",
-        "glob": "glob",
+        "glob": "search",
         "write": "edit",
         "edit": "edit",
-        "bash": "bash",
-        "web-search": "web_search",
-        "web-fetch": "web_fetch",
+        "bash": "execute",
+        "web-search": "web",
+        "web-fetch": "web",
         "agent": "agent"
       },
       "tools": {
-        "read": ["read", "search", "glob"],
-        "edit": ["edit"],
+        "read": [
+          "read",
+          "search",
+          "glob"
+        ],
+        "edit": [
+          "edit"
+        ],
         "bash": "bash",
         "web": {
           "search": "web_search",
@@ -187,37 +232,15 @@
         "agent": "agent"
       },
       "tools": {
-        "read": ["read", "search", "glob"],
-        "edit": ["edit"],
+        "read": [
+          "read",
+          "search",
+          "glob"
+        ],
+        "edit": [
+          "edit"
+        ],
         "bash": "bash",
-        "web": {
-          "search": "web_search",
-          "fetch": "web_fetch"
-        },
-        "agent": "agent"
-      }
-    },
-    "zed": {
-      "notes": "Zed discovers skills under `.zed/skills/`. It ships no subagents, so the adapter emits the crew as twelve skills and ignores `roles`.",
-      "agent_path": ".zed/agents/{name}.md",
-      "skill_path": ".zed/skills/{name}/SKILL.md",
-      "project_instructions": "AGENTS.md",
-      "permission_model": "allowlist",
-      "scopes": {
-        "read": "read",
-        "search": "search",
-        "glob": "glob",
-        "write": "edit",
-        "edit": "edit",
-        "bash": "terminal",
-        "web-search": "web_search",
-        "web-fetch": "web_fetch",
-        "agent": "agent"
-      },
-      "tools": {
-        "read": ["read", "search", "glob"],
-        "edit": ["edit"],
-        "bash": "terminal",
         "web": {
           "search": "web_search",
           "fetch": "web_fetch"

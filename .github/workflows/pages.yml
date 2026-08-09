@@ -41,9 +41,16 @@ jobs:
       # Gates every target payload against its reference digest
       - name: Check target payload digests
         run: |
-          for target in claude-code opencode antigravity codex cursor github-copilot windsurf zed; do
+          for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
             cargo run -- check --target "$target"
           done
+      # Config-only (no network): each harness_watch entry's declared tree must
+      # agree with its adapter skill path. The live docs-drift check
+      # (python3 tools/harness_watch.py) is a manual dev command — see
+      # .claude/commands/harness-watch.md — not a CI gate, to avoid red builds
+      # when an upstream docs site is momentarily down.
+      - name: Check harness-watch config is self-consistent (offline)
+        run: python3 tools/harness_watch.py --offline
       - name: Run the skill-lint regression suite
         run: bash tests/test_validate_skills.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
@@ -58,6 +65,12 @@ jobs:
           pip install "Pillow==12.3.0"
       - name: Check demo GIF/poster artifacts are up to date
         run: python3 tools/gen_demo_gif.py --check
+      - name: Check install (CLI) demo GIF/poster artifacts are up to date
+        run: python3 tools/gen_cli_demo_gif.py --check
+      # Verifies each reel's stage count against its SKILL.md too (needs cargo,
+      # which this job already has), so an upstream stage change red-builds here.
+      - name: Check per-command demo GIF/poster artifacts are up to date
+        run: python3 tools/gen_command_demos.py --check
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
@@ -66,6 +79,15 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Test installer source resolution
         run: bash tests/test_resolve_src.sh
+      # The FSM tool-gate shims (reference + every per-harness shim, #216). The
+      # reference test needs a built `shipmates`; the per-harness tests stub it.
+      # Neither was gated before — close that gap for all of them.
+      - name: Run the FSM tool-gate shim tests
+        run: |
+          for t in tests/test_fsm_gate_shim.sh tests/test_fsm_gate_shim_*.sh; do
+            echo "== $t =="
+            bash "$t"
+          done
       - name: Check install.sh is executable (#100)
         run: |
           mode=$(git ls-files -s install.sh | awk '{print $1}')
@@ -87,7 +109,7 @@ jobs:
           python-version: "3.9"
       - name: Build and check every target payload
         run: |
-          for target in claude-code opencode antigravity codex cursor github-copilot windsurf zed; do
+          for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
             cargo run -- check --target "$target"
             cargo run -- build --target "$target" --out "$RUNNER_TEMP/floor"
           done
@@ -96,6 +118,61 @@ jobs:
           cargo run -- install --harness claude-code --dir "$RUNNER_TEMP/install"
           test -f "$RUNNER_TEMP/install/.claude/skills/ship-issue/SKILL.md"
           test -f "$RUNNER_TEMP/install/.claude/agents/sdet.md"
+      - name: Install every harness at once (--harness all)
+        run: |
+          cargo run -- install --harness all --dir "$RUNNER_TEMP/install-all"
+          # crew-bearing target and a skill-only target both land under one root
+          test -f "$RUNNER_TEMP/install-all/.claude/agents/sdet.md"
+          test -f "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
+          # The four harnesses on the open tree share ONE .agents/skills rendering,
+          # so a multi-harness install must NOT collide: the merged skill carries
+          # the neutral crew glob, never a per-harness one (the pre-dedup bug).
+          grep -q '\.agents/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
+          ! grep -qE '\.(codex|cursor|github)/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
+          # None of the shared harnesses write their own private skills tree.
+          # (.cursor/ now legitimately holds the FSM tool-gate shim (#216), but
+          # never a skills tree — assert on .cursor/skills, not the whole dotdir.)
+          test ! -d "$RUNNER_TEMP/install-all/.cursor/skills"
+          test ! -d "$RUNNER_TEMP/install-all/.codex/skills"
+          test ! -d "$RUNNER_TEMP/install-all/.github/skills"
+          # The FSM tool-gate shim ships into every harness's payload (#216).
+          test -f "$RUNNER_TEMP/install-all/.claude/hooks/fsm-gate.sh"
+          test -f "$RUNNER_TEMP/install-all/.cursor/hooks/fsm-gate.sh"
+          test -f "$RUNNER_TEMP/install-all/.opencode/plugin/fsm-gate.ts"
+      # Tools are opt-in (--with-tools) and map per harness: an agent-only skill
+      # on Claude Code (user-invocable: false), a native code tool on opencode.
+      - name: Install an opt-in tool end to end (--with-tools)
+        run: |
+          # a plain install ships NO tool
+          test ! -e "$RUNNER_TEMP/install/.claude/skills/termgif"
+          cargo run -- install --harness claude-code --with-tools termgif --dir "$RUNNER_TEMP/install-tool"
+          test -f "$RUNNER_TEMP/install-tool/.claude/skills/termgif/SKILL.md"
+          test -f "$RUNNER_TEMP/install-tool/.claude/skills/termgif/termgif.py"
+          grep -q "user-invocable: false" "$RUNNER_TEMP/install-tool/.claude/skills/termgif/SKILL.md"
+          # a named tool that is not termgif also installs correctly (agent-only skill + its script)
+          cargo run -- install --harness claude-code --with-tools pixelart --dir "$RUNNER_TEMP/install-tool-px"
+          test -f "$RUNNER_TEMP/install-tool-px/.claude/skills/pixelart/SKILL.md"
+          test -f "$RUNNER_TEMP/install-tool-px/.claude/skills/pixelart/pixelart.py"
+          test ! -e "$RUNNER_TEMP/install-tool-px/.claude/skills/termgif"   # only the requested tool
+          # comma-separated selection installs exactly those tools
+          cargo run -- install --harness claude-code --with-tools scrub,badge --dir "$RUNNER_TEMP/install-tool-multi"
+          test -d "$RUNNER_TEMP/install-tool-multi/.claude/skills/scrub"
+          test -d "$RUNNER_TEMP/install-tool-multi/.claude/skills/badge"
+          test ! -e "$RUNNER_TEMP/install-tool-multi/.claude/skills/pixelart"
+          # opencode gets a native code tool per selected tool, not a skill
+          cargo run -- install --harness opencode --with-tools all --dir "$RUNNER_TEMP/install-tool-oc"
+          for t in termgif social-card pixelart diagram svgflow badge sparkline scrub fixtures; do
+            script="$(echo "$t" | tr - _)"
+            test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/$t.ts"
+            test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/$script.py"
+          done
+          test ! -d "$RUNNER_TEMP/install-tool-oc/.opencode/skills"
+          # shared-tree harness (codex): --with-tools all lands every tool in .agents/skills, not .codex
+          cargo run -- install --harness codex --with-tools all --dir "$RUNNER_TEMP/install-tool-cx"
+          for t in termgif social-card pixelart diagram svgflow badge sparkline scrub fixtures; do
+            test -f "$RUNNER_TEMP/install-tool-cx/.agents/skills/$t/SKILL.md"
+          done
+          test ! -d "$RUNNER_TEMP/install-tool-cx/.codex/skills"
       - name: Install the opencode harness end to end
         run: |
           cargo run -- install --harness opencode --dir "$RUNNER_TEMP/install-opencode"
@@ -107,11 +184,35 @@ jobs:
           test -f "$RUNNER_TEMP/install-antigravity/.agents/skills/ship-issue/SKILL.md"
           test -f "$RUNNER_TEMP/install-antigravity/.agents/agents/sdet.md"
           test ! -d "$RUNNER_TEMP/install-antigravity/.gemini"
-      - name: Install a skill-only harness end to end
+      # Codex agents are TOML and Copilot needs the .agent.md double extension.
+      # Both are easy to regress into a plain <name>.md that installs cleanly
+      # and is silently never loaded, so assert the format, not just presence.
+      - name: Install the crew-bearing non-Claude harnesses end to end
         run: |
           cargo run -- install --harness codex --dir "$RUNNER_TEMP/install-codex"
-          test -f "$RUNNER_TEMP/install-codex/.codex/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-codex/.codex/agents"
+          # skills follow the open Agent Skills standard (.agents/skills), crew stay Codex-native (.codex/agents)
+          test -f "$RUNNER_TEMP/install-codex/.agents/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-codex/.codex/skills"
+          test -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.toml"
+          test ! -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.md"
+          cargo run -- install --harness github-copilot --dir "$RUNNER_TEMP/install-copilot"
+          # Copilot skills follow the open standard (.agents/skills); crew stay .github-native
+          test -f "$RUNNER_TEMP/install-copilot/.agents/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-copilot/.github/skills"
+          test -f "$RUNNER_TEMP/install-copilot/.github/agents/sdet.agent.md"
+          test ! -f "$RUNNER_TEMP/install-copilot/.github/agents/sdet.md"
+
+      # cursor: agents directory reported but frontmatter schema unverified.
+      # windsurf: target identity under review since the Devin Desktop rename.
+      - name: Install a skill-only harness end to end
+        run: |
+          cargo run -- install --harness cursor --dir "$RUNNER_TEMP/install-cursor"
+          # Cursor reads the open Agent Skills tree (.agents/skills); its only
+          # .cursor/ file is the FSM tool-gate shim (#216), never a skills tree.
+          test -f "$RUNNER_TEMP/install-cursor/.agents/skills/ship-issue/SKILL.md"
+          test -f "$RUNNER_TEMP/install-cursor/.cursor/hooks/fsm-gate.sh"
+          test ! -d "$RUNNER_TEMP/install-cursor/.cursor/skills"
+          test ! -d "$RUNNER_TEMP/install-cursor/.agents/agents"
 
   deploy:
     name: Deploy to GitHub Pages

@@ -79,12 +79,22 @@ DOCS_HUB_BACK_HREF = "../"
 DOCS_LEAF_BACK_HREF = "../"
 
 # The hand-maintained docs section: one leaf page per slug, hard error if any
-# is missing (the hub is checked separately in check_docs_coverage).
-DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture")
+# is missing (the hub is checked separately in check_docs_coverage). Discovered
+# from the docs subdirectories on disk — the single source of truth shared with
+# tools/gen_command_pages.py — rather than a second hardcoded copy that could
+# drift from it. A subdir present on disk but without a published index.html
+# still trips check_docs_coverage, so the cross-check is preserved.
+DOCS_SLUGS = tuple(sorted(p.name for p in (SITE / "docs").glob("*") if p.is_dir()))
 
 # One published detail page per agents/*.md — the filename is the role handle.
 AGENT_SLUGS = tuple(p.stem for p in sorted(CREW.glob("*.md")))
 AGENT_BACK_HREF = "../../#crew"
+
+# One published detail page per toolbox/<slug>/tool.md. Tools are opt-in and
+# absent from the rendered payload, so they come from the repo `toolbox/` source.
+TOOLBOX = ROOT / "toolbox"
+TOOL_SLUGS = tuple(p.parent.name for p in sorted(TOOLBOX.glob("*/tool.md")))
+TOOL_BACK_HREF = "../../#tools"
 # Section anchors every agent page must carry.
 AGENT_SECTIONS = ("scenarios", "checks", "crew-fit", "reference")
 
@@ -100,6 +110,7 @@ C3_CLASSES = (
     "order-stage__crew-item", "order-stage__body",
     "order-prose", "order-code", "order-table",
     "order-source",
+    "demo", "demo__media", "demo__toggle", "demo__caption",
     "order-siblings", "order-siblings__list", "order-siblings__item",
     "order-siblings__link", "order-siblings__link--current",
     "order-card__link", "order-card__more",
@@ -107,6 +118,7 @@ C3_CLASSES = (
     "agent-scenario__desc",
     "agent-ref",
     "crew-card__link", "crew-card__more",
+    "tool-gallery", "tool-example", "tool-example__img", "tool-example__caption",
 )
 
 # Markdown markers that must never survive tokenization into rendered text.
@@ -264,6 +276,8 @@ def discover_pages(site: Path) -> list[Page]:
     paths += sorted(p for p in docs.glob("*/index.html") if p.is_file())
     agents = site / "agents"
     paths += sorted(p for p in agents.glob("*/index.html") if p.is_file())
+    tools = site / "tools"
+    paths += sorted(p for p in tools.glob("*/index.html") if p.is_file())
     return [load_page(p) for p in paths]
 
 
@@ -962,6 +976,25 @@ def check_agent_coverage(pages: list[Page]) -> None:
         ok(f"agent coverage: {len(AGENT_SLUGS)} role(s) in agents/, {len(published)} published")
 
 
+def check_tool_coverage(pages: list[Page]) -> None:
+    """One published page per toolbox/<slug>/tool.md, and no tool page without a source."""
+    published = {p.slug: p for p in pages if p.path.parent.parent.name == "tools"}
+    for slug in TOOL_SLUGS:
+        if slug not in published:
+            fail(
+                f"no published page for toolbox/{slug}/tool.md — expected "
+                f"site/tools/{slug}/index.html ({REGEN_HINT})"
+            )
+    for slug in sorted(published):
+        if slug not in TOOL_SLUGS:
+            fail(
+                f"site/tools/{slug}/index.html has no source toolbox/{slug}/tool.md "
+                "(renamed or removed a tool? delete the stale page)"
+            )
+    if len(published) == len(TOOL_SLUGS) and all(s in published for s in TOOL_SLUGS):
+        ok(f"tool coverage: {len(TOOL_SLUGS)} tool(s) in toolbox/, {len(published)} published")
+
+
 def check_docs_coverage(pages: list[Page]) -> None:
     """The docs hub plus one published leaf per DOCS_SLUGS — hard error if missing."""
     if not (SITE / "docs" / "index.html").is_file():
@@ -1028,7 +1061,7 @@ def check_css(css: str) -> None:
         ok(f"all {len(C3_CLASSES)} detail-page class(es) styled")
 
 
-def check_sitemap(pages: list[Page], n_commands: int, n_docs: int, n_agents: int) -> None:
+def check_sitemap(pages: list[Page], n_commands: int, n_docs: int, n_agents: int, n_tools: int) -> None:
     if not SITEMAP.is_file():
         fail(f"missing {SITEMAP.relative_to(ROOT).as_posix()}")
         return
@@ -1061,11 +1094,11 @@ def check_sitemap(pages: list[Page], n_commands: int, n_docs: int, n_agents: int
         if lastmod is None or not LASTMOD_RE.match(lastmod.strip()):
             fail(f"sitemap.xml: {loc} has no valid <lastmod> (YYYY-MM-DD), got {lastmod!r}")
 
-    want = 1 + n_commands + n_docs + n_agents
+    want = 1 + n_commands + n_docs + n_agents + n_tools
     if len(entries) != want:
         fail(
             f"sitemap.xml: {len(entries)} <url> entries, expected {want} "
-            "(homepage + one per command + docs hub and leaves + one per agent)"
+            "(homepage + one per command + docs hub and leaves + one per agent + one per tool)"
         )
     if len(failures) == before:
         ok(f"sitemap.xml: {len(entries)} URLs, all resolve to a page and carry a lastmod")
@@ -1094,6 +1127,8 @@ def main() -> int:
     n_docs = len(docs_hub) + len(docs_leaves)
     agent_pages = [p for p in pages if p.path.parent.parent.name == "agents"]
     n_agents = len(AGENT_SLUGS)
+    tool_pages = [p for p in pages if p.path.parent.parent.name == "tools"]
+    n_tools = len(TOOL_SLUGS)
 
     check_page_common(homepage, expect_ldjson_type="SoftwareApplication")
     check_homepage(homepage, css, n_commands)
@@ -1114,12 +1149,16 @@ def main() -> int:
         check_page_common(page, expect_ldjson_type="TechArticle")
         check_agent_page(page)
 
+    for page in tool_pages:
+        check_page_common(page, expect_ldjson_type="TechArticle")
+
     check_coverage(pages, slugs)
     check_docs_coverage(pages)
     check_agent_coverage(pages)
+    check_tool_coverage(pages)
     check_uniqueness(pages)
     check_css(css)
-    check_sitemap(pages, n_commands, n_docs, n_agents)
+    check_sitemap(pages, n_commands, n_docs, n_agents, n_tools)
 
     return report()
 

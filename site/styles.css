@@ -495,6 +495,28 @@ html.js .codeblock__copy{ display:inline-flex; }
   color:var(--text-muted);
 }
 
+/* --- Demo figure: a playable terminal in a prose column (install + command pages) --- */
+.demo{
+  margin:0 0 var(--space-6);
+}
+.demo__media{
+  display:block;
+  width:100%;
+  max-width:var(--maxw-prose);
+  height:auto;
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-2);
+}
+.demo__toggle{
+  margin-top:var(--space-3);
+}
+.demo__caption{
+  margin-top:var(--space-3);
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
 /* --- 5.3 Install (§3): prose width, vertical stack of codeblocks --- */
 .install__blocks{
   display:flex;
@@ -508,8 +530,11 @@ html.js .codeblock__copy{ display:inline-flex; }
   color:var(--text-muted);
 }
 
-/* --- 5.4 Crew (§3): auto-fit grid; non-interactive cards --- */
-.crew__grid{
+/* --- 5.4 Crew (§3): auto-fit grid; non-interactive cards. The Tools grid (§ tools)
+   reuses the same layout via a parallel `.tool-*` class so validate_site can still
+   count crew-cards separately (exactly one per crew role). --- */
+.crew__grid,
+.tool__grid{
   display:grid;
   grid-template-columns:repeat(auto-fit, minmax(15rem, 1fr));
   gap:var(--grid-gap);
@@ -517,7 +542,8 @@ html.js .codeblock__copy{ display:inline-flex; }
   margin:0;
   padding:0;
 }
-.crew-card{
+.crew-card,
+.tool-card{
   display:flex;
   flex-direction:column;
   gap:var(--space-2);
@@ -532,6 +558,7 @@ html.js .codeblock__copy{ display:inline-flex; }
    height as that disc/.order-stage__num gives every icon the same optical
    centre instead of each component reinventing this (#130). */
 .crew-card__icon,
+.tool-card__icon,
 .how-step__icon{
   display:inline-flex;
   align-items:center;
@@ -539,18 +566,46 @@ html.js .codeblock__copy{ display:inline-flex; }
   font-size:var(--fs-700);
   line-height:1;
 }
-.crew-card__name{
+.crew-card__name,
+.tool-card__name{
   font-size:var(--fs-500);
   line-height:1.25;
   min-height:calc(2 * 1.25em);
   font-weight:var(--fw-semibold);
 }
-.crew-card__handle{
+.crew-card__handle,
+.tool-card__handle{
   font-family:var(--font-mono);
   font-weight:var(--fw-semibold);
   color:var(--accent-strong);
 }
-.crew-card__duty{
+.crew-card__duty,
+.tool-card__duty{
+  font-size:var(--fs-300);
+  line-height:1.5;
+  color:var(--text-muted);
+}
+
+/* --- Tool page demo gallery: stacked recordings, each with a caption --- */
+.tool-gallery{
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-6);
+  margin-top:var(--space-4);
+}
+.tool-example{
+  margin:0;
+}
+.tool-example__img{
+  display:block;
+  max-width:100%;
+  height:auto;
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  box-shadow:var(--shadow-1);
+}
+.tool-example__caption{
+  margin-top:var(--space-2);
   font-size:var(--fs-300);
   line-height:1.5;
   color:var(--text-muted);
@@ -1147,14 +1202,17 @@ summary::-webkit-details-marker{ display:none; }
 .agent-ref dd{
   margin:0;
 }
-.crew-card__link{
+.crew-card__link,
+.tool-card__link{
   color:inherit;
   text-decoration:none;
 }
-.crew-card__link:hover{
+.crew-card__link:hover,
+.tool-card__link:hover{
   text-decoration:underline;
 }
-.crew-card__more{
+.crew-card__more,
+.tool-card__more{
   display:block;
   margin-top:var(--space-1);
   font-size:var(--fs-300);

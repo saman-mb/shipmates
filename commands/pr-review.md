@@ -13,7 +13,7 @@ board: native
 # /pr-review — classify → convene the board → consolidate
 
 Point the crew at a pull request **somebody else wrote** — a teammate's, an outside contributor's, a
-dependency bump, or one you opened by hand before you thought to use Shipmates. Every other order
+dependency bump, or one you opened by hand before you thought to use Shipmates. Every other command
 assumes the crew authored the change; this one doesn't, and that single fact sets its shape: **no
 worktree, no build, no fix loop.** You don't own the branch, so the deliverable is findings, not
 commits.
@@ -77,6 +77,8 @@ do*. Where the PR description and the diff disagree, that mismatch is itself a f
 - `IS_DELIVERY_SENSITIVE` — does the diff change how the project is built, packaged, configured or
   shipped (pipeline/build definitions, image or environment definitions, infrastructure-as-code,
   dependency or toolchain pins)? Gates `devops-engineer`.
+- `IS_DOCS_AFFECTING` — does the change touch documented behaviour, flags, commands, config, or public
+  API/CLI surface that user- or agent-facing docs describe? Gates `technical-writer`.
 
 This flag vocabulary is **shared with `/ship-issue`** — a new flag must be added to both files.
 `IS_SECURITY_SENSITIVE` is the deliberate exception: it stays wired to the `security-engineer`
@@ -110,6 +112,7 @@ review exactly what would merge. Two always run; the rest only when their flag i
 | `devops-engineer` | only if `IS_DELIVERY_SENSITIVE` |
 | `ux-ui-designer` | only if `IS_UI_STORY` |
 | `art-director` | only if `IS_VISUAL_STORY` |
+| `technical-writer` | only if `IS_DOCS_AFFECTING` |
 | `performance-engineer` | if the PR claims a performance win, or touches a known hot path |
 | `site-reliability-engineer` | if it changes runtime behaviour, failure handling, or rollout |
 | `data-scientist` | if the deliverable is an analysis or a model |
@@ -129,6 +132,10 @@ If a visual specialist could not actually render the change, carry its **"needs 
 flag into the output rather than implying the visuals were confirmed. The same rule holds for any
 reviewer whose inspection was partial — carry its stated gap forward; an ACCEPT/PASS never reads as
 covering ground the reviewer said it didn't see.
+
+The board convenes a specialist only when the change can plausibly trip its concern surface — so name
+every specialist that was **gated out** together with the flag that gated it. A role left out is
+recorded with its flag in the output, never silently skipped.
 
 ## Stage 4 — Deliver
 

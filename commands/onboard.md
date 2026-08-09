@@ -1,6 +1,6 @@
 ---
 name: onboard
-description: Read an unfamiliar repo and write the agent-facing context file every other order depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew's real questions from the file alone.
+description: Read an unfamiliar repo and write the agent-facing context file every other command depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew's real questions from the file alone.
 argument-hint: [path to the repo — defaults to the current one]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
@@ -15,14 +15,14 @@ board: native
 Every role in this crew is told to hold the work to the standard in *your* repo's `README` /
 `AGENTS.md`. Nothing produces that file. On a repo without a good one the whole crew quietly degrades
 to generic advice — and the failure is silent, because a vague context file still yields confident
-output. This order writes it, and **gates on a fresh agent being able to answer the crew's actual
+output. This command writes it, and **gates on a fresh agent being able to answer the crew's actual
 questions from the file alone**.
 
 Input (**{{path}}**): a path to a repo. Empty means the current one.
 
 **This is not `/document`.** The difference is the *audience*, not the topic. `/document` writes for
 **humans** and gates on a fresh reader completing a task. `/onboard` writes the **agent-facing
-contract** that every other order loads at run time, and gates on a fresh agent answering the crew's
+contract** that every other command loads at run time, and gates on a fresh agent answering the crew's
 questions correctly. Same philosophy, different question — so neither forks the other. If what you
 want is a README or a tutorial, stop and run `/document`.
 
@@ -62,7 +62,7 @@ Detect what already exists before writing anything:
   the existing file either way, and treat every hand-written rule in it as authoritative unless the
   repo contradicts it — a human wrote that for a reason you can't see from the code.
 - **Both exist** → they are two sources of truth for one contract, which is the exact failure this
-  order exists to prevent. Keep the richer one, and reduce the other to a one-line pointer at it.
+  command exists to prevent. Keep the richer one, and reduce the other to a one-line pointer at it.
 
 Also read the repo's `README`, contributing docs, CI config and any existing rules files, so the
 context file agrees with them instead of competing.

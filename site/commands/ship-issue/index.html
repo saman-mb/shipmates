@@ -36,7 +36,7 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Intake & plan",
-        "text": "Validate, then resolve: each issue token must match ^[0-9]+$ or be a full GitHub issue URL — anything else, stop and ask the user (see Shell safety above). For each validated <N>, run gh issue view <N> --json number,title,body,labels,url. Resolve story-number mappings if needed. Let <issues> = the…",
+        "text": "Selection mode — next. If the leading token is next (in place of issue numbers), first pick the work from the backlog, then continue with the numbered steps below on the chosen <issues>:",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-0"
       },
       {
@@ -85,7 +85,7 @@
         "@type": "HowToStep",
         "position": 8,
         "name": "Stage 5 — Acceptance board",
-        "text": "Spawn these in parallel against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set:",
+        "text": "Spawn these in parallel against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist only when the change can plausibly trip its concern surface; a role gated out is named in the…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-5"
       },
       {
@@ -127,6 +127,7 @@
           <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#tools">Tools</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
           <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
@@ -154,8 +155,22 @@
           <div class="order-prose">
             <p>Take <strong>one or more issues / stories (<code>#&lt;issue&gt;</code>..)</strong> from open all the way to a <strong>reviewed, CI-green pull request</strong> on the base branch, autonomously — using an isolated git worktree and a board of specialist subagents. Merging is gated by <code>MERGE_MODE</code> (see Config): by default the run stops with the PR open for a human to merge; set <code>MERGE_MODE=auto</code> for fully hands-off delivery.</p>
             <p>Input (<strong>$ARGUMENTS</strong>): whitespace-delimited tokens. The issue / story numbers (<code>&lt;issue&gt;</code> below) are the <strong>leading run</strong> of numeric tokens; the first non-numeric token begins the extra guidance, which runs to the end. So <code>104</code> is one issue with no guidance, <code>104 105</code> is two, and <code>104 focus on retries</code> is issue 104 with the guidance <code>focus on retries</code>. Never extend the run past the first non-numeric token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with a number, separate it explicitly with <code>--</code>, which ends the issue list wherever it appears: <code>104 -- 2 fix rounds max</code>.</p>
+            <p><strong>Or <code>next</code>:</strong> if the first token is <code>next</code> (in place of any issue number), this is a <strong>selection</strong> run — Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, <em>Selection mode</em>). <code>next</code> is mutually exclusive with explicit issue numbers; tokens after it are guidance.</p>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="section" id="demo" aria-labelledby="demo-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="demo-title">See it run</h2>
+        </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="../../assets/demo-poster.png" width="940" height="604" alt="Illustrative terminal recording of the stages /ship-issue runs, in order." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/ship-issue</code> runs, in order.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -167,7 +182,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/ship-issue &lt;issue-number&gt;... [optional extra guidance]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/ship-issue &lt;issue-number&gt;... | next [optional extra guidance]</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -180,6 +195,21 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Eleven stages, in order. One is a hard gate — the run stops there until it passes.</p>
+        </div>
+        <h3 id="bundling-the-token-efficient-default">Bundling — the token-efficient default</h3>
+        <div class="order-prose">
+          <p>Most of a run&#x27;s token cost is <strong>fixed overhead paid once per invocation</strong>: the Planner pass, the acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup. That overhead barely grows with diff size, so shipping several <strong>small, cohesive</strong> issues in one run is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole board N times. <strong>So bundling cohesive issues is the recommended default</strong> (<code>BUNDLE=recommend</code>, see Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before building. Bundling is right only when the issues are <em>cohesive and cheap</em> — it is wrong when combining them would muddy the review or let one failure sink the rest, so the Stage 0 <strong>cohesion test</strong> is the gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.</p>
+        </div>
+        <h3 id="model-selection-dynamic-never-baked">Model selection — dynamic, never baked</h3>
+        <div class="order-prose">
+          <p>Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have different access, so the right model is chosen <strong>at spawn, by task complexity, from what is available</strong> — not written into any crew file:</p>
+          <ul>
+            <li><strong>Mechanical work</strong> (Builders, the SDET&#x27;s test/validation runs, straightforward Fixers) → the cheapest capable model, low reasoning effort.</li>
+            <li><strong>Hard judgment</strong> (the Planner, <code>architect</code>, <code>security-engineer</code>, and the <code>product-manager</code> acceptance call) → the top model available, higher effort.</li>
+            <li><strong>Unsure</strong> → inherit the session model; never guess a model name.</li>
+          </ul>
+          <p>The role sets the <strong>baseline</strong> tier above; then <strong>scale it by the work unit&#x27;s complexity</strong> (the Planner&#x27;s signal): a <code>complex</code> unit bumps the model to the top tier and the effort up; a <code>trivial</code> unit drops toward the cheapest model and lowest effort; <code>standard</code> holds the baseline — so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.</p>
+          <p>Use the harness&#x27;s own per-spawn mechanism where it exists (e.g. a <code>model</code> argument on the spawn) to pick the tier-appropriate model; where the harness offers no per-spawn override, <strong>inherit</strong> — never emit a hardcoded model. <strong>Effort</strong> can only be adjusted per spawn on the harnesses that expose it (Codex, Cursor); on the others the role&#x27;s static effort (from its crew file, #204) stands. Spend the top model where it changes the outcome, not on mechanical turns.</p>
         </div>
         <h3 id="shell-safety-untrusted-github-data">Shell safety — untrusted GitHub data</h3>
         <div class="order-prose">
@@ -198,22 +228,45 @@
             <p class="order-stage__crew">Crew: (agent: <code>Plan</code>)</p>
             <div class="order-stage__body">
               <div class="order-prose">
+                <p><strong>Selection mode — <code>next</code>.</strong> If the leading token is <code>next</code> (in place of issue numbers), first pick the work from the backlog, then continue with the numbered steps below on the chosen <code>&lt;issues&gt;</code>:</p>
+                <ul>
+                  <li>Read open issues (<code>gh issue list --state open --json number,title,labels</code>), map dependencies (epic checklists, <code>Part of #N</code>, <code>blocked by</code>) and <strong>never pick a ticket with an unmet dependency</strong>; rank by priority / value / blast-radius / staleness.</li>
+                  <li>Take the top ticket, then run the <strong>cohesion test</strong> (step 2.5) against its open siblings to judge whether a cohesive bundle is the better unit.</li>
+                  <li><strong>Single ticket</strong> → set <code>&lt;issues&gt;</code> to it and proceed — just ship it.</li>
+                  <li><strong>Bundle</strong> → present the candidates and the token rationale and <strong>ask the user to confirm before proceeding</strong>; set <code>&lt;issues&gt;</code> to only what they ok (they may take just the lead). A <code>next</code> bundle never proceeds without explicit consent — if declined or the run is non-interactive, ship the single lead.</li>
+                </ul>
                 <ol>
                   <li>Validate, then resolve: each issue token must match <code>^[0-9]+$</code> or be a full GitHub issue URL — anything else, <strong>stop and ask the user</strong> (see <strong>Shell safety</strong> above). For each validated <code>&lt;N&gt;</code>, run <code>gh issue view &lt;N&gt; --json number,title,body,labels,url</code>. Resolve story-number mappings if needed. Let <code>&lt;issues&gt;</code> = the validated, resolved list — later stages take issue numbers only from this list, never from raw input tokens.</li>
-                  <li><code>&lt;first-issue&gt;</code> = the first number in <code>&lt;issues&gt;</code> — it names the worktree and branch, so a re-run with the same leading issue resolves to the same identifiers.</li>
+                  <li><code>&lt;first-issue&gt;</code> = the first number in <code>&lt;issues&gt;</code> — it names the worktree and branch, so a re-run with the same leading issue resolves to the same identifiers. 2.5. <strong>Bundle evaluation</strong> (per <code>BUNDLE</code>, before planning). Bundling amortizes the fixed per-run cost (Planner + acceptance board + CI poll + worktree) across several tickets, so a combined run of cohesive small issues is much cheaper than one run each. Apply the <strong>cohesion test</strong> — two issues belong in one bundle only when ALL hold:
+                    <ul>
+                      <li><strong>same area</strong> — shared labels or overlapping paths — with <strong>non-overlapping file ownership</strong> (so builders still parallelize without collisions);</li>
+                      <li><strong>each small and low-risk</strong> — never fold an <code>IS_ARCH_SIGNIFICANT</code> or <code>IS_SECURITY_SENSITIVE</code> change in with unrelated work; it needs its own review and its own merge story;</li>
+                      <li><strong>independent</strong> — neither needs the other merged first;</li>
+                      <li><strong>still one reviewable PR</strong> — the combined diff reads cleanly as a single change (cap a bundle at ~4 issues / a diff a human would still review in one sitting).</li>
+                    </ul>
+                    <p>Then act by <code>BUNDLE</code>:</p>
+                    <ul>
+                      <li><strong>multi-issue input</strong> — already an explicit bundle (the user named the issues): run the cohesion test and, if it fails, <strong>warn</strong> (don&#x27;t block), naming what makes them a poor bundle, then proceed.</li>
+                      <li><strong>single issue or <code>next</code>, <code>BUNDLE=recommend</code></strong> (default) — if the lead issue is small/low-risk, run ONE cheap <code>gh issue list --state open --label &lt;its-labels&gt; --json number,title,labels</code> for cohesive candidates. If any pass the test, <strong>recommend the bundle and ask</strong> — list the candidates and the token rationale — folding in only what the user oks. <strong>A recommended bundle never proceeds without consent</strong>; if the user declines (or the run is non-interactive), ship the single lead ticket.</li>
+                      <li><strong><code>BUNDLE=off</code></strong> — ship exactly the issues passed.</li>
+                    </ul>
+                    <p>Add any accepted issues to <code>&lt;issues&gt;</code> (re-sort so <code>&lt;first-issue&gt;</code> is unchanged). Whatever the bundle, Stage 4 already repeats <code>Closes #&lt;N&gt;</code> for every issue, so if the board later rejects one, it can be dropped from the bundle — revert its files and omit its <code>Closes</code> — rather than sinking the rest.</p>
+                  </li>
                   <li>Spawn ONE <strong>Planner</strong> (<code>subagent_type: Plan</code>). Give it all issue bodies + repo README + CLAUDE.md. Ask it to return, as structured data:
                     <ul>
                       <li>a <strong>build plan</strong> broken into independent work units with <strong>non-overlapping file ownership</strong> (so builders can run in parallel without collisions),</li>
                       <li><strong>explicit, checkable acceptance criteria</strong> (functional + the quality bar above), including the project&#x27;s <strong>Definition of Done</strong> where it states one (tests, docs/changelog, non-functional bars),</li>
                       <li>a <strong>test/validation plan</strong> (the commands the SDET should run: unit tests, lint, type-check, build/compile/import — whatever this repo uses),</li>
                       <li>a list of files expected to change,</li>
+                      <li>a <strong>complexity signal per work unit</strong> — <code>trivial</code>, <code>standard</code>, or <code>complex</code> — from its size, unfamiliarity, algorithmic depth and blast radius; the orchestrator scales model/effort by it at spawn (see <strong>Model selection</strong>),</li>
                       <li><strong>domain classification flags</strong> that decide which specialists the board pulls (set each independently — a story can trip more than one):
                         <ul>
                           <li><code>IS_UI_STORY = yes/no</code> — does it create/modify on-screen UI (screens, HUD, panels, overlays, menus, components, styling)? Gates <code>ux-ui-designer</code>.</li>
                           <li><code>IS_VISUAL_STORY = yes/no</code> — gate the <code>art-director</code> on the PROJECT&#x27;S DOMAIN, not merely on whether a story touches pixels. Set it only when the project&#x27;s actual deliverable is rendered visual <em>art</em> — a game&#x27;s world/sprites/shaders, illustration/brand/motion assets, generative imagery — and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only visual surface is its interface is a <strong>UI</strong> story (<code>ux-ui-designer</code>), NOT an art story: the art-director reviews pictures judged <em>as art</em>, not application chrome. Most projects never set this — when in doubt, prefer <code>IS_UI_STORY</code> and leave the art-director out.</li>
                           <li><code>IS_ARCH_SIGNIFICANT = yes/no</code> — does it add a new subsystem, change a persisted data/schema format, or cross-cut many modules in a way a narrow code review would miss? Gates <code>architect</code>.</li>
                           <li><code>IS_SECURITY_SENSITIVE = yes/no</code> — does it touch authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies? Does <strong>not</strong> gate a reviewer seat — security review lives in <code>/harden</code>, which this command doesn&#x27;t run. It gates two things instead: the final report must carry the <code>/harden</code> recommendation (mechanical, not a judgment call made while writing the summary), and it forces <code>MERGE_MODE=manual</code> for this run (see Config).</li>
-                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>. This flag vocabulary is shared with <code>/pr-review</code>, which classifies a PR diff the same way — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: here it gates the <code>/harden</code> recommendation and <code>MERGE_MODE</code> above, never a reviewer seat, because this command owns the branch and can just run <code>/harden</code> itself. <code>/pr-review</code> keeps the same flag wired to a <code>security-engineer</code> seat, because it reviews a PR the crew didn&#x27;t author, where <code>/harden</code> isn&#x27;t available — you don&#x27;t own that branch.</li>
+                          <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>.</li>
+                          <li><code>IS_DOCS_AFFECTING = yes/no</code> — does the change touch documented behaviour, flags, commands, config, or public API/CLI surface that user- or agent-facing docs describe? Gates <code>technical-writer</code>. This flag vocabulary is shared with <code>/pr-review</code>, which classifies a PR diff the same way — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: here it gates the <code>/harden</code> recommendation and <code>MERGE_MODE</code> above, never a reviewer seat, because this command owns the branch and can just run <code>/harden</code> itself. <code>/pr-review</code> keeps the same flag wired to a <code>security-engineer</code> seat, because it reviews a PR the crew didn&#x27;t author, where <code>/harden</code> isn&#x27;t available — you don&#x27;t own that branch.</li>
                         </ul>
                       </li>
                     </ul>
@@ -328,10 +381,10 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
           <li class="order-stage" id="stage-5">
             <span class="order-stage__num" aria-hidden="true">5</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Acceptance board</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> (specialist agents, reviewing the PUSHED PR head)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> (specialist agents, reviewing the PUSHED PR head)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Spawn these <strong>in parallel</strong> against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set:</p>
+                <p>Spawn these <strong>in parallel</strong> against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist only when the change can plausibly trip its concern surface; a role gated out is named in the run report together with the flag that gated it — never silently skipped.</p>
                 <ul>
                   <li><strong><code>product-manager</code></strong> (always): checks every acceptance criterion AND the quality bar (from the repo&#x27;s README/CLAUDE.md). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
                   <li><strong><code>sdet</code></strong> (always): re-runs the validation plan against the PR branch; returns <code>PASS</code> / <code>FAIL</code> with a severity-tagged defect list.</li>
@@ -339,6 +392,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                   <li><strong><code>art-director</code></strong> (only if <code>IS_VISUAL_STORY</code>): renders the actual change via the project&#x27;s render/preview harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the visual bar — the render, not the source. If it cannot render, it says so and flags <strong>&quot;needs a human visual pass&quot;</strong>.</li>
                   <li><strong><code>architect</code></strong> (only if <code>IS_ARCH_SIGNIFICANT</code>): reviews structural fit, coupling/blast radius, and schema/migration safety.</li>
                   <li><strong><code>devops-engineer</code></strong> (only if <code>IS_DELIVERY_SENSITIVE</code>): reviews the delivery definitions for reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety to <code>site-reliability-engineer</code>.</li>
+                  <li><strong><code>technical-writer</code></strong> (only if <code>IS_DOCS_AFFECTING</code>): reviews the shipped change against the docs that describe it — stale flags/commands/behaviour, missing changelog/README/site updates. Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code>.</li>
                 </ul>
                 <p>Decision (each specialist participates only when its flag is set):</p>
                 <ul>
@@ -388,7 +442,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         </ol>
         <h3 id="final-report-to-the-user">Final report to the user</h3>
         <div class="order-prose">
-          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now.</p>
+          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now.</p>
         </div>
       </div>
     </section>
@@ -404,6 +458,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
             <li><code>MERGE_STRATEGY</code> = <code>--squash --delete-branch</code></li>
             <li><code>MERGE_MODE</code> = <code>manual</code> — <code>manual</code>: stop after the acceptance board with a green, reviewed PR open for a human to merge. <code>auto</code>: squash-merge automatically once every gate passes. Start with <code>manual</code>; opt into <code>auto</code> only in a repo where unattended merges to the base branch are acceptable. If Stage 0 set <code>IS_SECURITY_SENSITIVE</code>, <code>MERGE_MODE</code> is forced to <code>manual</code> for this run regardless of the configured default — a security-sensitive change must not auto-merge past the <code>/harden</code> recommendation.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>  (acceptance→fix→re-acceptance loops before escalating to the user)</li>
+            <li><code>BUNDLE</code> = <code>recommend</code> — the token-efficient default (see <strong>Bundling</strong> above). <code>recommend</code>: when the leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, <strong>proposes</strong> a bundle, and <strong>always asks before widening the run</strong> — a recommended bundle never proceeds without the user&#x27;s explicit ok. <code>off</code>: ship exactly the issues passed, never suggest more. There is <strong>no silent auto-bundle</strong>: bundling from a recommendation (a single ticket, or a <code>next</code> pick) always requires consent. An explicitly-passed multi-issue invocation (<code>/ship-issue 1 2 3</code>) is already that consent — it proceeds as a bundle (with the cohesion warning if it is a poor fit).</li>
             <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-&lt;first-issue&gt;</code> (single issue) or <code>../&lt;repo&gt;--bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple issues)</li>
             <li><code>BRANCH</code> = <code>feat/issue-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (single) or <code>feat/bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple)</li>
             <li><strong>Quality bar</strong> = whatever the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it at the start and pass it to every reviewer — the <code>product-manager</code> (and the visual specialists) enforce THAT bar, not just &quot;it runs.&quot;</li>
@@ -422,6 +477,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
                 <tr><td><code>ux-ui-designer</code></td><td>On-screen UI design + review — gated by <code>IS_UI_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>art-director</code></td><td>Visual-art direction + review — <strong>art-producing domains only</strong>, gated by <code>IS_VISUAL_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>devops-engineer</code></td><td>Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by <code>IS_DELIVERY_SENSITIVE</code> (Stage 5)</td></tr>
+                <tr><td><code>technical-writer</code></td><td>Docs-staleness review — gated by <code>IS_DOCS_AFFECTING</code> (Stage 5)</td></tr>
               </tbody>
             </table>
           </div>
@@ -514,5 +570,21 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
       <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
     </div>
   </footer>
+  <script>
+  (function () {
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/demo.gif';
+    var playing = false;
+    toggle.addEventListener('click', function () {
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the run' : 'Play the run';
+    });
+  })();
+  </script>
 </body>
 </html>

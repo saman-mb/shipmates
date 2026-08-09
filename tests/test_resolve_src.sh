@@ -53,8 +53,33 @@ assert "antigravity: install exits 0" install_to antigravity "$D"
 assert "antigravity: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
 assert "antigravity: agent under .agents/agents" test -f "$D/.agents/agents/sdet.md"
 
-# --- skill-only targets: skills only, no agent files ---
-for pair in "codex:.codex" "cursor:.cursor" "github-copilot:.github" "windsurf:.windsurf" "zed:.zed"; do
+# --- crew-bearing targets whose agent format is not Claude's ---
+# Codex agents are TOML, not Markdown; Copilot needs the .agent.md double
+# extension or the file is not discovered. Both are easy to regress into a
+# plain <name>.md that installs cleanly and is silently never loaded.
+D="$WORK/codex"
+assert "codex: install exits 0" install_to codex "$D"
+# Codex reads skills from the open Agent Skills standard (.agents/skills), NOT
+# .codex/skills; only its crew are Codex-native (.codex/agents).
+assert "codex: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
+assert "codex: no skills under .codex" test ! -d "$D/.codex/skills"
+assert "codex: agent is TOML under .codex/agents" test -f "$D/.codex/agents/sdet.toml"
+assert "codex: agent is not markdown" test ! -f "$D/.codex/agents/sdet.md"
+
+# Copilot reads Agent Skills from the open .agents/skills tree; only its crew
+# are .github-native (.github/agents/*.agent.md).
+D="$WORK/github-copilot"
+assert "github-copilot: install exits 0" install_to github-copilot "$D"
+assert "github-copilot: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
+assert "github-copilot: no skills under .github" test ! -d "$D/.github/skills"
+assert "github-copilot: agent uses .agent.md" test -f "$D/.github/agents/sdet.agent.md"
+assert "github-copilot: bare .md is not emitted" test ! -f "$D/.github/agents/sdet.md"
+
+# --- skill-only targets on the open Agent Skills tree: skills only, no crew ---
+# cursor: reads .agents/skills natively (first-party peer of .cursor/skills).
+# windsurf: keeps its canonical .windsurf/skills (.agents/skills is only a
+#   secondary compat scan there — do not move it off its documented path).
+for pair in "cursor:.agents" "windsurf:.windsurf"; do
   harness="${pair%%:*}"
   dirname="${pair##*:}"
   D="$WORK/$harness"
@@ -62,6 +87,10 @@ for pair in "codex:.codex" "cursor:.cursor" "github-copilot:.github" "windsurf:.
   assert "$harness: skill under $dirname/skills" test -f "$D/$dirname/skills/ship-issue/SKILL.md"
   assert "$harness: no agent files emitted" test ! -d "$D/$dirname/agents"
 done
+# Cursor reads the open tree for skills; its only .cursor/ file is the FSM
+# tool-gate shim (#216), never a private skills tree.
+assert "cursor: FSM gate shim under .cursor/hooks" test -f "$WORK/cursor/.cursor/hooks/fsm-gate.sh"
+assert "cursor: no .cursor skills tree" test ! -d "$WORK/cursor/.cursor/skills"
 
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"

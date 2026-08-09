@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "description": "Repo-local watch config for tools/harness_watch.py. One injected entry per harness: what its FIRST-PARTY docs must still say about skill discovery, and what our adapter currently assumes. When a harness ships a new version and its docs drift from `expect`, the checker flags it so we can re-verify and, if needed, change the adapter's approach. Nothing about any harness is hard-coded in the script — it iterates this config. Update `verified_on` and the `expect` rules here (never in the script) whenever a harness is re-reviewed.",
+  "trees": {
+    "shared": "reads the open agentskills.io tree .agents/skills/ — skills go there via emit_shared_skills (one byte-identical copy across all shared harnesses)",
+    "native": "reads its own <root>/skills/ — skills rendered in the harness dialect",
+    "commands": "opencode-only: the twelve ship as /-invoked .opencode/commands/*.md, not skills (its skills are auto-invoked and have no disable-model-invocation)"
+  },
+  "harnesses": {
+    "claude-code": {
+      "docs_url": "https://code.claude.com/docs/en/skills",
+      "tree": "native",
+      "adapter_skill_path": ".claude/skills/<name>/SKILL.md",
+      "expect_contains": [".claude/skills"],
+      "expect_absent": [],
+      "verified_on": "2026-08-03",
+      "note": "Claude Code's own skills tree; not on the open .agents/skills standard here."
+    },
+    "opencode": {
+      "docs_url": "https://opencode.ai/docs/commands/",
+      "tree": "commands",
+      "adapter_skill_path": ".opencode/commands/<name>.md",
+      "expect_contains": [".opencode"],
+      "expect_absent": ["disable-model-invocation"],
+      "verified_on": "2026-08-03",
+      "note": "Ships as commands, not skills, because opencode skills are auto-invoked with no disable-model-invocation key. If `disable-model-invocation` ever appears in the docs, revisit shipping the twelve as skills."
+    },
+    "codex": {
+      "docs_url": "https://developers.openai.com/codex/skills",
+      "tree": "shared",
+      "adapter_skill_path": ".agents/skills/<name>/SKILL.md",
+      "expect_contains": [".agents/skills"],
+      "expect_absent": [],
+      "verified_on": "2026-08-03",
+      "note": "Reads ONLY the open .agents/skills tree (never .codex/skills); crew stay Codex-native at .codex/agents/*.toml. If the docs start naming .codex/skills, re-check."
+    },
+    "cursor": {
+      "docs_url": "https://cursor.com/docs/skills",
+      "tree": "shared",
+      "adapter_skill_path": ".agents/skills/<name>/SKILL.md",
+      "expect_contains": [".agents/skills", ".cursor/skills"],
+      "expect_absent": [],
+      "verified_on": "2026-08-03",
+      "note": "Reads BOTH .agents/skills and .cursor/skills (first-party peers, since Cursor 2.4); we use the shared .agents/skills. Also watch: `.cursor/agents` subagent schema is still undocumented — if it lands, cursor could become crew-bearing (harness_matrix agents=false)."
+    },
+    "github-copilot": {
+      "docs_url": "https://docs.github.com/en/copilot/concepts/agents/about-agent-skills",
+      "tree": "shared",
+      "adapter_skill_path": ".agents/skills/<name>/SKILL.md",
+      "expect_contains": [".agents/skills", ".github/skills"],
+      "expect_absent": [],
+      "verified_on": "2026-08-03",
+      "note": "Accepts .github/skills, .claude/skills AND .agents/skills; we use the shared .agents/skills. Crew are .github/agents/*.agent.md (personas)."
+    },
+    "antigravity": {
+      "docs_url": "https://antigravity.google/docs/cli/plugins",
+      "tree": "shared",
+      "adapter_skill_path": ".agents/skills/<name>/SKILL.md",
+      "check": "reachable",
+      "expect_contains": [".agents/skills"],
+      "expect_absent": [],
+      "verified_on": "2026-08-03",
+      "note": "agy reads .agents/ throughout: skills at .agents/skills (shared), crew at .agents/agents/*.md. The docs page (antigravity.google) is a JS-rendered app, so its content is not in the static HTML — check=reachable confirms it still loads and flags it for manual review rather than false-flagging every run."
+    },
+    "windsurf": {
+      "docs_url": "https://docs.windsurf.com/windsurf/cascade/skills",
+      "tree": "native",
+      "adapter_skill_path": ".windsurf/skills/<name>/SKILL.md",
+      "expect_contains": [".windsurf/skills"],
+      "expect_absent": [],
+      "verified_on": "2026-08-03",
+      "note": "Canonical location is .windsurf/skills; .agents/skills is only a SECONDARY compat scan, so we deliberately keep windsurf OFF the shared tree. Now Devin Desktop — docs.windsurf.com 307-redirects to docs.devin.ai. If the canonical path moves to .agents/skills, windsurf could join the shared tree."
+    }
+  }
+}
