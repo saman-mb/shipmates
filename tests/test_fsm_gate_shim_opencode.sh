@@ -38,12 +38,12 @@ has "$PLUGIN" 'input.tool !== "bash"' && ok "gates only the bash tool" || bad "d
 has "$PLUGIN" 'throw new Error' && ok "denies by throwing an Error" || bad "missing throw-on-deny"
 
 # Discovery: parses a feat/issue-<N> branch and reads .shipmates/run-<N>.json.
-has "$PLUGIN" 'issue-(' && ok "discovers run from feat/issue-<N> branch" || bad "missing branch discovery"
+has "$PLUGIN" 'feat\/(?:issue|bundle)-(\d+)' && ok "discovers run from issue and bundle branches" || bad "missing branch discovery"
 has "$PLUGIN" '.shipmates' && ok "reads the .shipmates run file" || bad "missing run-file discovery"
 
 # Engine: shells out to `shipmates state gate` and only denies on exit 1.
 has "$PLUGIN" 'shipmates state gate' && ok "shells out to shipmates state gate" || bad "missing engine call"
-has "$PLUGIN" 'res.exitCode === 1' && ok "denies only on engine exit 1" || bad "missing exit-1 deny mapping"
+has "$PLUGIN" 'res.exitCode === 1 || res.exitCode === 2' && ok "denies on policy or active-run error" || bad "missing deny mapping"
 
 # Fail-safe: a catch that returns (allows) on any discovery/engine fault.
 has "$PLUGIN" 'catch' && ok "has a fail-safe catch (allow on error)" || bad "missing fail-safe catch"

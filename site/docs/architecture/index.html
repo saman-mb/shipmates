@@ -242,7 +242,7 @@
 <text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">out-of-phase call denied</text>
 </g>
 </svg>
-            <figcaption class="tool-example__caption">All seven supported harnesses expose a blocking pre-tool hook, so the same gate runs before every tool call on each of them. (Enforcement goes live per harness once its shim is installed &mdash; today only Claude Code&#x27;s ships; see <a href="#honest">How it stays honest</a>.)</figcaption>
+            <figcaption class="tool-example__caption">All seven supported harnesses expose a blocking pre-tool hook, so the same gate can run before shell tools on each of them. Install registers each target; runtime verification remains Claude-Code-only.</figcaption>
           </figure>
           <div class="order-table" tabindex="0">
             <table>
@@ -259,7 +259,7 @@
             </table>
           </div>
           <p><small>* <code>windsurf</code>&#x27;s product identity is in doubt &mdash; it became Devin Desktop in 2026, so this target may be renamed or retargeted; its <code>pre_run_command</code> hook is documented but unverified here. See the <a href="../harnesses/">harness matrix</a>.</small></p>
-          <p>Two honest limits, plainly. <strong>Only tool-boundary transitions hard-block</strong> &mdash; a judgment gate with no tool to intercept, like <code>board-accepted</code>, stays advisory guidance because there is nothing to deny. And <strong>enforcement is live only once the hook is installed</strong>: the mechanism is per-harness, and today only the Claude Code shim ships (the other six are in progress &mdash; see <a href="#honest">How it stays honest</a>).</p>
+          <p>Two honest limits, plainly. <strong>Only tool-boundary transitions hard-block</strong> &mdash; a judgment gate with no tool to intercept, like <code>board-accepted</code>, stays advisory guidance because there is nothing to deny. Install registers the hook, but only Claude Code has completed live harness verification; the other targets remain format-verified and experimental.</p>
         </div>
       </div>
     </section>
@@ -272,7 +272,7 @@
         </div>
         <div class="order-prose">
           <p>Each adapter&#x27;s payload is deterministic and checked against <code>tests/payload-digests/&lt;name&gt;.sha256</code>; the feature matrix is validated too, so adding a frontmatter key without registering it fails the build. The site you are reading is generated from the rendered Claude Code payload and gated the same way.</p>
-          <p>On enforcement specifically: <code>claude-code</code> ships the reference hook today (<code>enforcement/hooks/claude-code/</code>). Wiring an equivalent shim into the other six hook-capable adapters is in progress (<a href="https://github.com/saman-mb/shipmates/issues/217">#217</a>) &mdash; until it lands, treat those as advisory in practice. Nothing here is described as tested on a harness Shipmates has not been run on.</p>
+          <p>On enforcement specifically: every target payload carries a per-harness shim, and installation registers it without replacing user hooks. The Rust dispatcher owns parsing and native deny translation. Nothing here is described as runtime-tested on a harness Shipmates has not been run on.</p>
         </div>
       </div>
     </section>
