@@ -84,10 +84,10 @@ use serde::{Deserialize, Serialize};
 use crate::cli::StateAction;
 use crate::installer;
 
-/// The current on-disk run-file schema. A file whose `schema_version` is absent
-/// or not exactly this value is rejected (fail-closed) rather than migrated —
-/// older files are abandoned cleanly, not upgraded across schema boundaries.
-const SCHEMA_VERSION: u32 = 3;
+/// The current on-disk run-file schema. v2/v3 shapes are upgraded in memory
+/// because they have the same FSM fields; the next write persists the current
+/// schema. Legacy attestations without PR identity are not accepted for merge.
+const SCHEMA_VERSION: u32 = 4;
 
 /// Terminal success phase — reached out of the last stage on a gate pass.
 pub const PHASE_COMPLETE: &str = "complete";
@@ -122,7 +122,10 @@ pub struct RunFile {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CiAttestation {
-    pub pr: u64,
+    #[serde(default)]
+    pub pr: Option<u64>,
+    #[serde(default)]
+    pub branch: Option<String>,
     pub sha: String,
     pub green: bool,
     pub at: String,
@@ -416,9 +419,9 @@ fn run_path(base: &Path, issue: u64) -> PathBuf {
 }
 
 /// Read and validate the run file. Fail-closed: a missing file, unparseable
-/// JSON, or an unknown `schema_version` is an error. The immediately previous
-/// v2 shape is upgraded in memory because it has the same FSM fields; the next
-/// state write persists it as v3 with optional CI/event fields.
+/// JSON, or an unknown `schema_version` is an error. v2/v3 shapes are upgraded
+/// in memory because they have the same FSM fields; the next state write
+/// persists the current schema with optional CI/event fields.
 fn read_run(base: &Path, issue: u64) -> Result<RunFile, StateError> {
     let path = run_path(base, issue);
     let raw = std::fs::read_to_string(&path).map_err(|e| {
@@ -427,7 +430,7 @@ fn read_run(base: &Path, issue: u64) -> Result<RunFile, StateError> {
     let mut run: RunFile = serde_json::from_str(&raw).map_err(|e| {
         StateError::Error(format!("run file {} is malformed: {}", path.display(), e))
     })?;
-    if run.schema_version != SCHEMA_VERSION && run.schema_version != SCHEMA_VERSION - 1 {
+    if run.schema_version < 2 || run.schema_version > SCHEMA_VERSION {
         return Err(StateError::Error(format!(
             "run file {} has unsupported schema_version {} (expected {})",
             path.display(),
@@ -435,7 +438,7 @@ fn read_run(base: &Path, issue: u64) -> Result<RunFile, StateError> {
             SCHEMA_VERSION
         )));
     }
-    if run.schema_version == SCHEMA_VERSION - 1 {
+    if run.schema_version < SCHEMA_VERSION {
         run.schema_version = SCHEMA_VERSION;
     }
     if run.issue != issue {
@@ -818,7 +821,9 @@ fn tool_matches(needle: &str, tool_command: &str) -> bool {
     // The orchestrator commonly targets a sibling worktree with `git -C
     // <path> push`; normalize that equivalent form without attempting to parse
     // arbitrary shell syntax.
-    regex::Regex::new(r"(?m)(^|[;&|]\s*)git\s+(?:(?:-C|--git-dir)\s+\S+\s+)*push(?:\s|$)")
+    regex::Regex::new(
+        r#"(?m)(^|[;&|]\s*)git\s+(?:(?:-C|--git-dir)\s+(?:"[^"]+"|'[^']+'|\S+)\s+)*push(?:\s|$)"#,
+    )
         .expect("static git push matcher")
         .is_match(tool_command)
 }
@@ -846,11 +851,29 @@ fn merge_attestation(base: &Path, record: &RunFile, tool: &str) -> GateDecision 
     let Some(ci) = &record.ci else {
         return GateDecision::Deny("gate: gh pr merge requires a fresh CI attestation".to_string());
     };
-    if let Some(target_pr) = explicit_merge_pr(tool) {
-        if target_pr != ci.pr {
+    let Some(attested_pr) = ci.pr else {
+        return GateDecision::Deny(
+            "gate: legacy CI attestation has no pull-request identity; re-run ci-attest".to_string(),
+        );
+    };
+    let Some(attested_branch) = ci.branch.as_deref() else {
+        return GateDecision::Deny(
+            "gate: legacy CI attestation has no branch identity; re-run ci-attest".to_string(),
+        );
+    };
+    if tool.contains("--repo") {
+        return GateDecision::Deny("gate: merge must target the attested repository".to_string());
+    }
+    if let Some(target) = merge_target(tool) {
+        if let Ok(target_pr) = target.parse::<u64>() {
+            if target_pr != attested_pr {
+                return GateDecision::Deny(format!(
+                    "gate: CI attestation belongs to pull request #{attested_pr}, not #{target_pr}"
+                ));
+            }
+        } else if target != attested_branch {
             return GateDecision::Deny(format!(
-                "gate: CI attestation belongs to pull request #{}, not #{target_pr}",
-                ci.pr
+                "gate: CI attestation belongs to branch {attested_branch:?}, not {target:?}"
             ));
         }
     }
@@ -873,34 +896,40 @@ fn merge_attestation(base: &Path, record: &RunFile, tool: &str) -> GateDecision 
             ci.sha, current
         ));
     }
-    let pr = ci.pr.to_string();
-    let remote = Command::new("gh")
-        .args(["pr", "view", &pr, "--json", "headRefOid"])
-        .current_dir(base)
-        .output();
-    let Ok(remote) = remote else {
-        return GateDecision::Error("cannot verify remote pull-request HEAD".to_string());
-    };
-    if !remote.status.success() {
-        return GateDecision::Error("cannot verify remote pull-request HEAD".to_string());
-    }
-    let Ok(remote_json) = serde_json::from_slice::<serde_json::Value>(&remote.stdout) else {
-        return GateDecision::Error("gh pr view returned invalid HEAD JSON".to_string());
-    };
-    let remote_sha = remote_json["headRefOid"].as_str().unwrap_or_default();
-    if remote_sha != ci.sha {
+    if match_head_sha(tool) != Some(ci.sha.as_str()) {
         return GateDecision::Deny(format!(
-            "gate: CI attestation is stale for remote PR HEAD (attested {}, remote {})",
-            ci.sha, remote_sha
+            "gate: merge must include --match-head-commit {} from fresh CI attestation",
+            ci.sha
         ));
     }
     GateDecision::Allow
 }
 
-fn explicit_merge_pr(tool: &str) -> Option<u64> {
+fn merge_target(tool: &str) -> Option<&str> {
     let tokens: Vec<&str> = tool.split_whitespace().collect();
     let index = tokens.iter().position(|token| *token == "merge")?;
-    tokens.get(index + 1).and_then(|token| token.parse().ok())
+    let mut skip = false;
+    for token in tokens.iter().skip(index + 1) {
+        if skip {
+            skip = false;
+            continue;
+        }
+        if *token == "--match-head-commit" || *token == "--repo" {
+            skip = true;
+            continue;
+        }
+        if token.starts_with('-') {
+            continue;
+        }
+        return Some(token);
+    }
+    None
+}
+
+fn match_head_sha(tool: &str) -> Option<&str> {
+    let tokens: Vec<&str> = tool.split_whitespace().collect();
+    let index = tokens.iter().position(|token| *token == "--match-head-commit")?;
+    tokens.get(index + 1).copied()
 }
 
 fn cmd_ci_attest(base: &Path, run: u64, pr: u64) -> Result<(), StateError> {
@@ -909,7 +938,7 @@ fn cmd_ci_attest(base: &Path, run: u64, pr: u64) -> Result<(), StateError> {
     read_run(base, run)?;
     let pr_text = pr.to_string();
     let head_output = Command::new("gh")
-        .args(["pr", "view", &pr_text, "--json", "headRefOid"])
+        .args(["pr", "view", &pr_text, "--json", "headRefOid,headRefName"])
         .current_dir(base)
         .output()
         .map_err(|e| StateError::Error(format!("cannot run gh pr view: {e}")))?;
@@ -925,6 +954,11 @@ fn cmd_ci_attest(base: &Path, run: u64, pr: u64) -> Result<(), StateError> {
         .as_str()
         .filter(|sha| !sha.is_empty())
         .ok_or_else(|| StateError::Error("gh pr view returned no headRefOid".to_string()))?
+        .to_string();
+    let branch = head_json["headRefName"]
+        .as_str()
+        .filter(|branch| !branch.is_empty())
+        .ok_or_else(|| StateError::Error("gh pr view returned no headRefName".to_string()))?
         .to_string();
 
     let checks_output = Command::new("gh")
@@ -946,7 +980,8 @@ fn cmd_ci_attest(base: &Path, run: u64, pr: u64) -> Result<(), StateError> {
     with_run_lock(base, run, || {
         let mut record = read_run(base, run)?;
         record.ci = Some(CiAttestation {
-            pr,
+            pr: Some(pr),
+            branch: Some(branch.clone()),
             sha: sha.clone(),
             green,
             at,
@@ -1315,6 +1350,15 @@ mod tests {
         )
         .unwrap();
         assert_eq!(read_run(base, 12).unwrap().schema_version, SCHEMA_VERSION);
+
+        installer::atomic_write(
+            &run_path(base, 13),
+            r#"{"schema_version":3,"command":"ship-issue","issue":13,"phase":"deliver","fix_rounds":{},"ci":{"sha":"old","green":true,"at":"now"}}"#,
+        )
+        .unwrap();
+        let legacy = read_run(base, 13).unwrap();
+        assert_eq!(legacy.schema_version, SCHEMA_VERSION);
+        assert!(legacy.ci.unwrap().pr.is_none());
     }
 
     #[test]
@@ -1566,7 +1610,8 @@ mod tests {
             phase: "deliver".into(),
             fix_rounds: no_rounds(),
             ci: Some(CiAttestation {
-                pr: 77,
+                pr: Some(77),
+                branch: Some("feat/issue-77-slug".into()),
                 sha: sha.clone(),
                 green: true,
                 at: "now".into(),
@@ -1574,7 +1619,8 @@ mod tests {
             events: Vec::new(),
         };
         write_run(base, &seed).unwrap();
-        assert_eq!(explicit_merge_pr("gh pr merge 77 --squash"), Some(77));
+        assert_eq!(merge_target("gh pr merge 77 --squash"), Some("77"));
+        assert_eq!(match_head_sha("gh pr merge 77 --match-head-commit abc"), Some("abc"));
 
         let mut stale = seed.clone();
         stale.ci.as_mut().unwrap().sha = "stale".into();

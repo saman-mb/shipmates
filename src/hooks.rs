@@ -314,9 +314,15 @@ fn resolve_repo_root(cwd: &Path) -> Option<PathBuf> {
 }
 
 fn command_worktree(command: &str, fallback: &Path) -> Option<PathBuf> {
-    let rest = command.split_once("git -C ")?.1.trim_start();
+    let rest = command
+        .split_once("git -C ")
+        .map(|(_, rest)| rest)
+        .or_else(|| command.split_once("cd ").map(|(_, rest)| rest))?
+        .trim_start();
     let (raw, _) = if let Some(rest) = rest.strip_prefix('"') {
         rest.split_once('"')?
+    } else if let Some(rest) = rest.strip_prefix('\'') {
+        rest.split_once('\'')?
     } else {
         (rest.split_whitespace().next()?, "")
     };
@@ -424,7 +430,7 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
                     "hooks": [{"type": "command", "command": HOOK_COMMANDS[0].1, "timeout": 30}]
                 }),
             )?;
-            for event in ["SessionStart", "PreCompact", "SubagentStart"] {
+            for event in ["SessionStart", "SubagentStart"] {
                 paths.extend(register_group_json(
                     &path,
                     event,
@@ -437,6 +443,17 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
                     }),
                 )?);
             }
+            paths.extend(register_group_json(
+                &path,
+                "PreCompact",
+                json!({
+                    "hooks": [{
+                        "type": "command",
+                        "command": "shipmates hook record --harness claude-code --event PreCompact",
+                        "timeout": 10
+                    }]
+                }),
+            )?);
             for (event, matcher) in [("PostToolUse", "Bash|Edit|Write"), ("SubagentStop", "")] {
                 paths.extend(register_group_json(
                     &path,
@@ -476,7 +493,7 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
                 }),
             )?;
             let config = target_dir.join(".codex/hooks.json");
-            for event in ["SessionStart", "PreCompact", "SubagentStart"] {
+            for event in ["SessionStart", "SubagentStart"] {
                 paths.extend(register_group_json(
                     &config,
                     event,
@@ -489,6 +506,17 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
                     }),
                 )?);
             }
+            paths.extend(register_group_json(
+                &config,
+                "PreCompact",
+                json!({
+                    "hooks": [{
+                        "type": "command",
+                        "command": "shipmates hook record --harness codex --event PreCompact",
+                        "timeout": 10
+                    }]
+                }),
+            )?);
             for event in ["PostToolUse", "SubagentStop"] {
                 paths.extend(register_group_json(
                     &config,

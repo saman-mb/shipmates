@@ -24,7 +24,7 @@ SHA="$(git -C "$GIT" rev-parse HEAD)"
 cat > "$BINDIR/gh" <<'GH'
 #!/usr/bin/env bash
 case "$*" in
-  *"pr view"*) printf '{"headRefOid":"%s"}\n' "$FAKE_SHA" ;;
+  *"pr view"*) printf '{"headRefOid":"%s","headRefName":"feat/issue-42-ci"}\n' "$FAKE_SHA" ;;
   *"pr checks"*) printf '[{"bucket":"pass"},{"bucket":"skipping"}]\n' ;;
   *) exit 1 ;;
 esac
@@ -40,13 +40,14 @@ for phase in isolate build verify review deliver; do
 done
 "$BIN" state ci-attest --dir "$GIT" --run 42 --pr 249 >/dev/null || exit 1
 
-payload="$(python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":"gh pr merge 249 --squash"},"cwd":sys.argv[1]}))' "$GIT")"
+payload="$(python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[2]},"cwd":sys.argv[1]}))' "$GIT" "gh pr merge 249 --squash --match-head-commit $SHA")"
 out="$(printf '%s' "$payload" | SHIPMATES_NATIVE_HOOK=1 bash "$SHIM")"
 [ -z "$out" ] || { printf 'fresh attestation should allow merge: %s\n' "$out"; exit 1; }
 
 FAKE_SHA="stale-remote"
 export FAKE_SHA
-out="$(printf '%s' "$payload" | SHIPMATES_NATIVE_HOOK=1 bash "$SHIM")"
+stale_payload="$(python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[2]},"cwd":sys.argv[1]}))' "$GIT" "gh pr merge 249 --squash --match-head-commit stale-remote")"
+out="$(printf '%s' "$stale_payload" | SHIPMATES_NATIVE_HOOK=1 bash "$SHIM")"
 decision="$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"]["permissionDecision"])')"
 [ "$decision" = deny ] || { printf 'remote head change should deny merge: %s\n' "$out"; exit 1; }
 

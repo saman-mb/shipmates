@@ -329,7 +329,7 @@ shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --t
 shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --to verify    # after local self-check passes
 shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --to review    # before the acceptance board
 shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --to deliver   # after PR, CI, and review criteria pass</code></pre>
-                <p>For a rejected verify/review, use the declared loopback (<code>--to build</code>) so the per-stage budget is charged. Before merging, run <code>shipmates state ci-attest --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --pr &lt;pr-number&gt;</code>; the merge hook accepts only the attested, currently checked-out PR head with green checks. Bundles use the first issue as their run id and receive the same tool-boundary protection.</p>
+                <p>For a rejected verify/review, use the declared loopback (<code>--to build</code>) so the per-stage budget is charged. Before merging, run <code>shipmates state ci-attest --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --pr &lt;pr-number&gt;</code>; then pass the returned SHA to <code>gh pr merge</code> as <code>--match-head-commit &lt;sha&gt;</code>. The merge hook accepts only that attested, currently checked-out PR head with green checks, and GitHub enforces the same SHA at merge time. Bundles use the first issue as their run id and receive the same tool-boundary protection.</p>
               </div>
             </div>
           </li>
@@ -450,7 +450,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
               <div class="order-prose">
                 <ul>
                   <li><strong>If <code>MERGE_MODE=manual</code></strong> (default): stop here. Post a completion comment on the PR (what shipped, how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes the issues on this path: the repeated <code>Closes</code> keywords in the PR body do that when a human merges, so name every issue the PR will close in the completion comment.</li>
-                  <li><strong>If <code>MERGE_MODE=auto</code></strong>: <code>gh pr merge &lt;BRANCH&gt; --squash --delete-branch</code>, then confirm all issues auto-closed (for each issue in <code>&lt;issues&gt;</code>: <code>gh issue close &lt;N&gt;</code> if not already closed), tick the epic checklist box if any, remove the worktree (<code>git -C &lt;repo&gt; worktree remove &lt;WORKTREE_DIR&gt;</code>), and post the completion comment.</li>
+                  <li><strong>If <code>MERGE_MODE=auto</code></strong>: <code>(cd &lt;WORKTREE_DIR&gt; &amp;&amp; gh pr merge &lt;BRANCH&gt; --squash --delete-branch --match-head-commit &lt;attested-sha&gt;)</code>, then confirm all issues auto-closed (for each issue in <code>&lt;issues&gt;</code>: <code>gh issue close &lt;N&gt;</code> if not already closed), tick the epic checklist box if any, remove the worktree (<code>git -C &lt;repo&gt; worktree remove &lt;WORKTREE_DIR&gt;</code>), and post the completion comment.</li>
                 </ul>
               </div>
             </div>

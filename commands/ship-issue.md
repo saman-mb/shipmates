@@ -293,8 +293,10 @@ shipmates state advance --dir <WORKTREE_DIR> --run <first-issue> --to deliver   
 
 For a rejected verify/review, use the declared loopback (`--to build`) so the per-stage budget is
 charged. Before merging, run `shipmates state ci-attest --dir <WORKTREE_DIR> --run <first-issue> --pr <pr-number>`;
-the merge hook accepts only the attested, currently checked-out PR head with green checks. Bundles
-use the first issue as their run id and receive the same tool-boundary protection.
+then pass the returned SHA to `gh pr merge` as `--match-head-commit <sha>`. The merge hook accepts
+only that attested, currently checked-out PR head with green checks, and GitHub enforces the same
+SHA at merge time. Bundles use the first issue as their run id and receive the same tool-boundary
+protection.
 
 ## Stage 3 — Self-check before PR  (agent: `sdet`)
 
@@ -417,7 +419,7 @@ Decision (each specialist participates only when its flag is set):
   the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
   the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
   so name every issue the PR will close in the completion comment.
-- **If `MERGE_MODE=auto`**: `gh pr merge <BRANCH> --squash --delete-branch`, then confirm all issues
+- **If `MERGE_MODE=auto`**: `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch --match-head-commit <attested-sha>)`, then confirm all issues
   auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
   epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
   and post the completion comment.
