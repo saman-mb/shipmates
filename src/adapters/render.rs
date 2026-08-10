@@ -249,6 +249,23 @@ pub fn emit_shared_tool_skills(container: &str, tools: &[CanonicalTool]) -> Hash
     emit_tool_files(&format!("{container}/.agents"), tools, &AGENT_SKILLS, false)
 }
 
+/// Native pre-tool channel used by each emitted FSM shim.
+///
+/// Keep this capability table in code so matrix tests compare evidence against
+/// the adapter's source of truth rather than repeating channel names in tests.
+pub fn hook_channel(target: &str) -> Option<&'static str> {
+    match target {
+        "claude-code" => Some("PreToolUse"),
+        "opencode" => Some("tool.execute.before"),
+        "cursor" => Some("beforeShellExecution"),
+        "windsurf" => Some("pre_run_command"),
+        "codex" => Some("PreToolUse"),
+        "antigravity" => Some("PreToolUse"),
+        "github-copilot" => Some("preToolUse"),
+        _ => None,
+    }
+}
+
 /// Emit a harness's FSM tool-gate hook shim into its payload.
 ///
 /// Every supported harness gets a shim that turns a `shipmates state gate`
@@ -264,6 +281,12 @@ pub fn emit_shared_tool_skills(container: &str, tools: &[CanonicalTool]) -> Hash
 /// destination is payload-relative, so the shim installs at the target root once
 /// the installer strips `harnesses/<target>/`.
 pub fn emit_hook_shim(container: &str, target: &str) -> HashMap<String, String> {
+    // Keep unsupported targets from silently acquiring an install path without
+    // a recorded native channel.
+    hook_channel(target).unwrap_or_else(|| {
+        panic!("emit_hook_shim: no hook channel for target {target:?}")
+    });
+
     // target → (embedded source filename, payload-relative destination). The
     // shim is a bash script for every harness except opencode, whose deny
     // channel is a throwing `tool.execute.before` plugin (a `.ts` file).
