@@ -71,7 +71,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">&#129517;</span> Architecture</p>
           <h1 class="order-detail__title" id="architecture-title">Architecture</h1>
           <p class="order-detail__tagline">One crew, compiled for your harness. The workflow enforced at the tool boundary.</p>
-          <p class="order-detail__desc">One mental model to keep: Shipmates ships a single canonical crew and command set, and the <code>shipmates</code> CLI compiles it into whatever your harness understands &mdash; so you install once and get the same crew on Claude Code, Cursor, or Codex, each getting only the features it supports. A small state machine then enforces the workflow through the harness&#x27;s own tool hook, so an out-of-order tool call is hard-blocked. The rest of this page is those three layers in detail; the internals are here if you want them, but you don&#x27;t need them to use the crew.</p>
+          <p class="order-detail__desc">One mental model to keep: Shipmates ships a single canonical crew and command set, and the <code>shipmates</code> CLI compiles it into whatever your harness understands &mdash; so you install once and get the same crew on Claude Code, Cursor, or Codex, each getting only the features it supports. A small state machine then guards recognized shell-boundary calls through the harness&#x27;s own hook: an active run can block premature push or merge, while judgment stages remain orchestrator-owned. The rest of this page is those layers in detail; the internals are here if you want them, but you don&#x27;t need them to use the crew.</p>
         </div>
       </div>
     </section>
@@ -85,7 +85,7 @@
             <li><a href="#source">One source of truth</a></li>
             <li><a href="#adapters">Feature-aware adapters</a></li>
             <li><a href="#enforcement">State machine &amp; hooks</a></li>
-            <li><a href="#principle">Enforced everywhere</a></li>
+            <li><a href="#principle">Supported hook surfaces</a></li>
             <li><a href="#honest">How it stays honest</a></li>
           </ul>
         </nav>
@@ -163,12 +163,12 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="enforcement-title">State machine &amp; hooks</h2>
-          <p class="section__lead">Each command declares its stages; <code>shipmates state</code> turns them into a state machine, and a tool hook makes the gates real.</p>
+          <p class="section__lead">Each command declares its stages; <code>shipmates state</code> turns them into a state machine, and a harness hook makes recognized tool-boundary gates real.</p>
         </div>
         <div class="order-prose">
-          <p>A command&#x27;s <code>stages:</code> frontmatter defines a finite-state machine; <code>shipmates state</code> checks each transition against a per-run <code>.shipmates/run-&lt;N&gt;.json</code> file and answers <em>legal</em> (exit&nbsp;0), <em>illegal</em> (exit&nbsp;1) or <em>error</em> (exit&nbsp;2). One extra binding, <code>tool_gates</code>, ties a specific tool call to the phase it&#x27;s allowed in.</p>
+          <p>A command&#x27;s <code>stages:</code> frontmatter defines a finite-state machine; <code>shipmates state</code> checks each transition against a per-run <code>.shipmates/run-&lt;N&gt;.json</code> file and answers <em>legal</em> (exit&nbsp;0), <em>illegal</em> (exit&nbsp;1) or <em>error</em> (exit&nbsp;2). One extra binding, <code>tool_gates</code>, ties a recognized shell call to the phase it&#x27;s allowed in. Merge adds a second proof: CI must be attested for the PR head, then <code>--match-head-commit &lt;sha&gt;</code> binds GitHub&#x27;s merge to that exact checked commit.</p>
           <figure class="tool-example">
-            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Enforcement flow: an agent calls gh pr merge; the PreToolUse hook discovers the run from the feat/issue-N branch, calls shipmates state gate, checks whether the run has reached the deliver phase, and allows the merge if it has or denies it if the run is too early." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="366" height="846" viewBox="0 0 366 846">
+            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Enforcement flow: an agent calls gh pr merge; the pre-tool hook discovers the active run, calls shipmates state gate, checks phase and fresh CI/SHA attestation, and allows the merge only when every proof is present." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="366" height="846" viewBox="0 0 366 846">
 <style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
 <rect x="0.5" y="0.5" width="365" height="845" rx="16" class="panel" stroke-width="1"/>
 <g transform="translate(165,28)">
@@ -193,9 +193,9 @@
 <rect x="-110" y="372" width="220" height="46" rx="10" class="node" stroke-width="1.5"/>
 <text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">shipmates state gate</text>
 <rect x="-92" y="496" width="184" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="524.25" text-anchor="middle" font-size="15" class="label">phase ≥ deliver?</text>
+<text x="0" y="524.25" text-anchor="middle" font-size="15" class="label">phase + CI/SHA valid?</text>
 <rect x="-101" y="620" width="202" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="648.25" text-anchor="middle" font-size="15" class="label">ALLOW — merge runs</text>
+<text x="0" y="648.25" text-anchor="middle" font-size="15" class="label">ALLOW — SHA-bound merge</text>
 <rect x="-83" y="744" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
 <text x="0" y="772.25" text-anchor="middle" font-size="15" class="label">DENY — blocked</text>
 <rect x="-94.8" y="570" width="82.8" height="22" rx="6" class="mask"/>
@@ -204,9 +204,9 @@
 <text x="131.38" y="647.2" text-anchor="middle" font-size="12" class="chip">too early</text>
 </g>
 </svg>
-            <figcaption class="tool-example__caption">On a harness with a blocking pre-tool hook, a thin shim calls <code>shipmates state gate</code> <em>before</em> a tool runs. A tool the workflow hasn&#x27;t earned yet is denied &mdash; <code>gh pr merge</code> before the run reaches <code>deliver</code>, <code>git push</code> before it is built.</figcaption>
+            <figcaption class="tool-example__caption">On a harness with a blocking pre-tool hook, a thin shim calls <code>shipmates state gate</code> <em>before</em> a recognized shell call runs. Push requires the build phase; merge requires deliver, green CI, current checkout, and the matching <code>--match-head-commit</code> SHA.</figcaption>
           </figure>
-          <p>That is the whole trick: the same <code>stages:</code> that read as prose guidance become hard, unskippable gates at the tool boundary. The hook only ever blocks a run it can positively identify; anything ambiguous is allowed through.</p>
+          <p>That is the whole trick: the same <code>stages:</code> that read as prose guidance become hard guardrails at recognized tool boundaries. The hook only blocks an identified run; ordinary or ambiguous sessions stay untouched. Stage judgment, board acceptance, and role validity remain orchestrator responsibilities.</p>
         </div>
       </div>
     </section>
@@ -214,12 +214,12 @@
     <section class="section" id="principle" aria-labelledby="principle-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="principle-title">Enforced on every supported harness</h2>
-          <p class="section__lead">Shipmates only supports harnesses with a blocking pre-tool hook &mdash; so every supported harness enforces the workflow at the tool boundary.</p>
+          <h2 class="section__title" id="principle-title">Supported hook surfaces</h2>
+          <p class="section__lead">Shipmates records a native blocking shell-hook surface for each target; only Claude Code has completed live runtime verification.</p>
         </div>
         <div class="order-prose">
           <div style="background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--radius-md);padding:var(--space-4) var(--space-5);">
-            <p><strong>Every one of the seven supported harnesses exposes a scriptable, blocking pre-tool hook</strong> that the installer wires to <code>shipmates state gate</code>. There is no hook-less supported harness, and so no advisory-only fallback: the same gate runs before every tool call, everywhere.</p>
+            <p><strong>Every one of the seven supported harnesses exposes a documented shell-capable blocking hook surface</strong> that installation wires to the native deny adapter. The dispatcher gates recognized shell calls only; payload format and registration are verified for every target, while live harness behavior remains verified only for Claude Code.</p>
           </div>
           <figure class="tool-example">
             <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Harness support: all seven supported harnesses expose a blocking pre-tool hook, so the gate runs before each tool call and an out-of-phase call is denied on every one of them." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="330" height="474" viewBox="0 0 330 474">
@@ -237,29 +237,30 @@
 <rect x="-128" y="124" width="256" height="46" rx="10" class="node" stroke-width="1.5"/>
 <text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">each has a blocking hook</text>
 <rect x="-137" y="248" width="274" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">gate runs before each tool</text>
+<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">gate runs before shell calls</text>
 <rect x="-128" y="372" width="256" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">out-of-phase call denied</text>
+<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">recognized call denied</text>
 </g>
 </svg>
             <figcaption class="tool-example__caption">All seven supported harnesses expose a blocking pre-tool hook, so the same gate can run before shell tools on each of them. Install registers each target; runtime verification remains Claude-Code-only.</figcaption>
           </figure>
           <div class="order-table" tabindex="0">
             <table>
-              <thead><tr><th scope="col">Harness</th><th scope="col">Blocking pre-tool hook</th><th scope="col">State machine</th></tr></thead>
+              <thead><tr><th scope="col">Harness</th><th scope="col">Blocking shell hook</th><th scope="col">Evidence</th></tr></thead>
               <tbody>
-                <tr><td><code>claude-code</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
-                <tr><td><code>cursor</code></td><td><code>beforeShellExecution</code></td><td>Enforceable</td></tr>
-                <tr><td><code>codex</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
-                <tr><td><code>antigravity</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
-                <tr><td><code>github-copilot</code></td><td><code>PreToolUse</code></td><td>Enforceable</td></tr>
-                <tr><td><code>windsurf</code></td><td><code>pre_run_command</code>&#160;*</td><td>Enforceable</td></tr>
-                <tr><td><code>opencode</code></td><td><code>tool.execute.before</code></td><td>Enforceable</td></tr>
+                <tr><td><code>claude-code</code></td><td><code>PreToolUse</code></td><td>Runtime-verified</td></tr>
+                <tr><td><code>cursor</code></td><td><code>beforeShellExecution</code></td><td>Format-verified</td></tr>
+                <tr><td><code>codex</code></td><td><code>PreToolUse</code></td><td>Format-verified</td></tr>
+                <tr><td><code>antigravity</code></td><td><code>PreToolUse</code></td><td>Format-verified</td></tr>
+                <tr><td><code>github-copilot</code></td><td><code>PreToolUse</code></td><td>Format-verified</td></tr>
+                <tr><td><code>windsurf</code></td><td><code>pre_run_command</code>&#160;*</td><td>Format-verified</td></tr>
+                <tr><td><code>opencode</code></td><td><code>tool.execute.before</code></td><td>Format-verified</td></tr>
               </tbody>
             </table>
           </div>
           <p><small>* <code>windsurf</code>&#x27;s product identity is in doubt &mdash; it became Devin Desktop in 2026, so this target may be renamed or retargeted; its <code>pre_run_command</code> hook is documented but unverified here. See the <a href="../harnesses/">harness matrix</a>.</small></p>
-          <p>Two honest limits, plainly. <strong>Only tool-boundary transitions hard-block</strong> &mdash; a judgment gate with no tool to intercept, like <code>board-accepted</code>, stays advisory guidance because there is nothing to deny. Install registers the hook, but only Claude Code has completed live harness verification; the other targets remain format-verified and experimental.</p>
+          <p>Two honest limits, plainly. <strong>Only recognized shell-boundary transitions hard-block</strong> &mdash; a judgment gate with no tool to intercept, like <code>board-accepted</code>, stays advisory guidance because there is nothing to deny. Install registers every target, but only Claude Code has completed live harness verification; the other targets remain format-verified and experimental.</p>
+          <p>Claude Code and Codex also register lifecycle hooks: session start/resume restores the active phase, PreCompact and post-tool/subagent events write bounded receipts, and Stop prevents an identified unfinished run from ending silently. These receipts preserve evidence; they do not infer plan quality, formatter choice, or board judgment.</p>
         </div>
       </div>
     </section>
