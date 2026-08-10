@@ -18,21 +18,18 @@ rather than a hook fault. Allow is a silent `exit 0`; an engine error is a
 fail-safe allow with a stderr log.
 
 > Caveat: Codex hooks are experimental, and this `PreToolUse` event-JSON shape and
-> deny response are assumed from the docs, not yet verified against a running
-> Codex — the shim parses defensively and fails safe on any unrecognised shape.
-> That verify-live pass, with all install-time wiring, is #217.
+> deny response are format-verified but not yet proven against a running Codex.
+> Installation enables the canonical `[features].hooks = true` flag and writes
+> the project hook config.
 
 ## Fail-safe rules
 
 Allowed with no output (never blocked): a non-shell tool, `main`, a detached
-HEAD, a `feat/bundle-*` branch, a missing `.shipmates/run-<N>.json`, a non-git
-cwd, no `shipmates` on `PATH`, or an engine error (exit 2). The shim never fails
-open — it only ever denies on a definite engine deny (exit 1). Requires `jq` and
-`git`.
+HEAD, a missing `.shipmates/run-<N>.json`, a non-git cwd, or no active run. The
+installed dispatcher uses Rust JSON parsing and requires `git` plus `shipmates`.
 
 ## Scope
 
-The script is emitted into the Codex payload by #216. Codex hooks are
-experimental and shell-tool-only. Install-time config wiring — registering it
-under `.codex/hooks/` **and setting `config.toml [features].codex_hooks = true`**
-— is #217.
+The script is emitted into the Codex payload. Codex hooks remain experimental and
+shell-tool-only; installation registers `.codex/hooks.json` and sets the
+canonical `config.toml [features].hooks = true` flag.

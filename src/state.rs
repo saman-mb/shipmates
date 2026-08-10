@@ -1,12 +1,10 @@
 //! `shipmates state` — the finite-state-machine **engine** for a command run.
 //!
-//! This is the foundation the enforcement hook calls. The engine still does
-//! **not** block anything by itself — it reads and writes a run file and answers
-//! two questions over a command's declared FSM: "is this phase transition legal?"
-//! (`assert`/`advance`) and "is this tool allowed at the current phase?"
-//! (`gate`). A harness PreToolUse hook shim (`enforcement/hooks/<harness>/`) is
-//! what turns a `gate` *deny* into a *blocked* tool call; the engine only
-//! supplies the verdict and its 0/1/2 exit ABI.
+//! This is the state engine used by the installed enforcement hook. It reads and
+//! writes a run file and answers two questions over a command's declared FSM:
+//! "is this phase transition legal?" (`assert`/`advance`) and "is this tool
+//! allowed at the current phase?" (`gate`). The harness dispatcher turns a gate
+//! deny into the target's native blocked-tool response.
 //!
 //! ## Tool→phase gate (`gate`)
 //!
@@ -67,13 +65,19 @@
 //!
 //! ## Known limits (deliberately not modeled here — the hook slice's concern)
 //!
-//! * The folded push / CI-poll / merge phases of a real run are not stages here.
+//! * The folded push / CI-poll phases of a real run are not stages here; merge
+//!   freshness is an attested delivery precondition in the run file.
 //! * There are no conditional edges (e.g. selection mode, bundling).
 //!
 //! Those are all the enforcement hook's job, not this engine's.
 
 use std::collections::BTreeMap;
+use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::thread;
+use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
@@ -81,10 +85,9 @@ use crate::cli::StateAction;
 use crate::installer;
 
 /// The current on-disk run-file schema. A file whose `schema_version` is absent
-/// or not exactly this value is rejected (fail-closed) rather than migrated — a
-/// v1 file (single monotonic `fix_rounds` counter) is abandoned cleanly, not
-/// upgraded.
-const SCHEMA_VERSION: u32 = 2;
+/// or not exactly this value is rejected (fail-closed) rather than migrated —
+/// older files are abandoned cleanly, not upgraded across schema boundaries.
+const SCHEMA_VERSION: u32 = 3;
 
 /// Terminal success phase — reached out of the last stage on a gate pass.
 pub const PHASE_COMPLETE: &str = "complete";
@@ -107,6 +110,29 @@ pub struct RunFile {
     /// each stage's budget be spent independently. A stage absent from the map
     /// has spent zero rounds.
     pub fix_rounds: BTreeMap<String, u32>,
+    /// CI evidence is optional until the delivery stage is reached. It is
+    /// omitted from older-style run files and becomes mandatory for merge.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ci: Option<CiAttestation>,
+    /// Bounded, low-sensitivity lifecycle receipts. Tool arguments and output
+    /// never enter the run file.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub events: Vec<HookEvent>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CiAttestation {
+    pub sha: String,
+    pub green: bool,
+    pub at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HookEvent {
+    pub event: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool: Option<String>,
+    pub at: String,
 }
 
 /// Failure modes, kept apart so the exit-code ABI can route them: an **illegal
@@ -136,7 +162,7 @@ impl StateError {
         }
     }
 
-    fn reason(&self) -> &str {
+    pub fn reason(&self) -> &str {
         match self {
             StateError::Illegal(m) | StateError::Denied(m) | StateError::Error(m) => m,
         }
@@ -431,6 +457,58 @@ fn write_run(base: &Path, run: &RunFile) -> Result<(), StateError> {
     })
 }
 
+/// Serialize read-modify-write transitions and lifecycle receipts. Atomic
+/// rename prevents torn JSON but cannot prevent two hooks from losing each
+/// other's updates, so active runs get a short-lived same-directory lock.
+fn with_run_lock<T, F>(base: &Path, issue: u64, operation: F) -> Result<T, StateError>
+where
+    F: FnOnce() -> Result<T, StateError>,
+{
+    let lock_dir = base.join(".shipmates");
+    std::fs::create_dir_all(&lock_dir)
+        .map_err(|e| StateError::Error(format!("cannot create run lock directory: {e}")))?;
+    let lock_path = lock_dir.join(format!("run-{issue}.lock"));
+    let mut acquired = false;
+    for _ in 0..200 {
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&lock_path)
+        {
+            Ok(_) => {
+                acquired = true;
+                break;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                let stale = std::fs::metadata(&lock_path)
+                    .and_then(|meta| meta.modified())
+                    .ok()
+                    .and_then(|modified| modified.elapsed().ok())
+                    .is_some_and(|age| age > Duration::from_secs(120));
+                if stale {
+                    let _ = std::fs::remove_file(&lock_path);
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+            Err(error) => {
+                return Err(StateError::Error(format!(
+                    "cannot create run lock {}: {error}",
+                    lock_path.display()
+                )));
+            }
+        }
+    }
+    if !acquired {
+        return Err(StateError::Error(format!(
+            "timed out waiting for run lock {}",
+            lock_path.display()
+        )));
+    }
+    let result = operation();
+    let _ = std::fs::remove_file(lock_path);
+    result
+}
+
 /// Look up a command's declared stages from the embedded catalog (the payload
 /// compiled in by `build.rs`), so an installed binary with no checkout still
 /// resolves the FSM.
@@ -479,7 +557,8 @@ pub fn dispatch(action: &StateAction) -> i32 {
         | StateAction::Assert { dir, .. }
         | StateAction::Advance { dir, .. }
         | StateAction::Status { dir, .. }
-        | StateAction::Gate { dir, .. } => dir,
+        | StateAction::Gate { dir, .. }
+        | StateAction::CiAttest { dir, .. } => dir,
     };
     dispatch_at(Path::new(dir), action)
 }
@@ -494,6 +573,7 @@ pub fn dispatch_at(base: &Path, action: &StateAction) -> i32 {
         StateAction::Advance { run, to, .. } => cmd_advance(base, *run, to),
         StateAction::Status { run, .. } => cmd_status(base, *run),
         StateAction::Gate { run, tool, .. } => cmd_gate(base, *run, tool),
+        StateAction::CiAttest { run, pr, .. } => cmd_ci_attest(base, *run, *pr),
     };
     match result {
         Ok(()) => 0,
@@ -518,24 +598,55 @@ fn cmd_init(base: &Path, run: u64, command: &str) -> Result<(), StateError> {
     let stages = command_stages(command)?;
     let fsm = Fsm::from_stages(command, &stages)?;
 
-    let path = run_path(base, run);
-    if path.exists() {
-        return Err(StateError::Error(format!(
-            "run file {} already exists; refusing to overwrite",
-            path.display()
-        )));
-    }
-
     let record = RunFile {
         schema_version: SCHEMA_VERSION,
         command: command.to_string(),
         issue: run,
         phase: fsm.first_phase().to_string(),
         fix_rounds: BTreeMap::new(),
+        ci: None,
+        events: Vec::new(),
     };
-    write_run(base, &record)?;
-    print_run(&record);
-    Ok(())
+    with_run_lock(base, run, || {
+        let path = run_path(base, run);
+        if path.exists() {
+            return Err(StateError::Error(format!(
+                "run file {} already exists; refusing to overwrite",
+                path.display()
+            )));
+        }
+        ensure_run_excluded(base)?;
+        write_run(base, &record)?;
+        print_run(&record);
+        Ok(())
+    })
+}
+
+fn ensure_run_excluded(base: &Path) -> Result<(), StateError> {
+    let output = Command::new("git")
+        .args(["-C", base.to_str().unwrap_or("."), "rev-parse", "--git-path", "info/exclude"])
+        .output()
+        .map_err(|e| StateError::Error(format!("cannot inspect git excludes: {e}")))?;
+    if !output.status.success() {
+        return Ok(());
+    }
+    let raw_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if raw_path.is_empty() {
+        return Ok(());
+    }
+    let path = PathBuf::from(&raw_path);
+    let path = if path.is_absolute() { path } else { base.join(path) };
+    let old = std::fs::read_to_string(&path).unwrap_or_default();
+    if old.lines().any(|line| line.trim() == ".shipmates/") {
+        return Ok(());
+    }
+    let mut next = old;
+    if !next.is_empty() && !next.ends_with('\n') {
+        next.push('\n');
+    }
+    next.push_str("\n.shipmates/\n");
+    installer::atomic_write(&path, &next)
+        .map_err(|e| StateError::Error(format!("cannot update git excludes: {e}")))
 }
 
 /// `state assert --run N --to PHASE` — answer whether current→PHASE is legal for
@@ -565,6 +676,10 @@ fn cmd_assert(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
 /// phase. A loopback charges one round to the **departing** stage's own counter;
 /// a forward or escalate leaves every counter unchanged (see the module docs).
 fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
+    with_run_lock(base, run, || cmd_advance_locked(base, run, to))
+}
+
+fn cmd_advance_locked(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
     let record = read_run(base, run)?;
     let stages = command_stages(&record.command)?;
     let fsm = Fsm::from_stages(&record.command, &stages)?;
@@ -593,7 +708,7 @@ fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
 /// FSM does not know). These map onto the process exit ABI 0 / 1 / 2 exactly as
 /// [`StateError`] does — allow → 0, deny → 1, error → 2.
 #[derive(Debug, PartialEq)]
-enum GateDecision {
+pub enum GateDecision {
     /// The tool is ungated, or the run has reached the required stage — exit 0.
     Allow,
     /// The tool is gated and the run is too early — exit 1, with the reason.
@@ -693,9 +808,8 @@ fn gate(
 /// `tool_gates`, and routes the decision onto the 0 / 1 / 2 exit ABI.
 fn cmd_gate(base: &Path, run: u64, tool: &str) -> Result<(), StateError> {
     let record = read_run(base, run)?;
-    let stages = command_stages(&record.command)?;
-    let gates = command_tool_gates(&record.command)?;
-    match gate(&stages, &record.phase, &gates, tool) {
+    let decision = gate_for_hook(base, run, tool)?;
+    match decision {
         GateDecision::Allow => {
             print_gate(&record, tool, true, None);
             Ok(())
@@ -706,6 +820,146 @@ fn cmd_gate(base: &Path, run: u64, tool: &str) -> Result<(), StateError> {
         }
         GateDecision::Error(msg) => Err(StateError::Error(msg)),
     }
+}
+
+fn merge_attestation(base: &Path, record: &RunFile) -> GateDecision {
+    let Some(ci) = &record.ci else {
+        return GateDecision::Deny("gate: gh pr merge requires a fresh CI attestation".to_string());
+    };
+    if !ci.green {
+        return GateDecision::Deny("gate: gh pr merge requires green CI".to_string());
+    }
+    let head = Command::new("git")
+        .args(["-C", base.to_str().unwrap_or("."), "rev-parse", "HEAD"])
+        .output();
+    let Ok(output) = head else {
+        return GateDecision::Error("cannot read current git HEAD for CI freshness".to_string());
+    };
+    if !output.status.success() {
+        return GateDecision::Error("cannot read current git HEAD for CI freshness".to_string());
+    }
+    let current = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if current != ci.sha {
+        return GateDecision::Deny(format!(
+            "gate: CI attestation is stale (attested {}, current {})",
+            ci.sha, current
+        ));
+    }
+    GateDecision::Allow
+}
+
+fn cmd_ci_attest(base: &Path, run: u64, pr: u64) -> Result<(), StateError> {
+    // Validate the run before doing network work; the final write is locked so
+    // concurrent lifecycle receipts are not overwritten by a stale snapshot.
+    read_run(base, run)?;
+    let pr_text = pr.to_string();
+    let head_output = Command::new("gh")
+        .args(["pr", "view", &pr_text, "--json", "headRefOid"])
+        .current_dir(base)
+        .output()
+        .map_err(|e| StateError::Error(format!("cannot run gh pr view: {e}")))?;
+    if !head_output.status.success() {
+        return Err(StateError::Error(format!(
+            "gh pr view failed: {}",
+            String::from_utf8_lossy(&head_output.stderr).trim()
+        )));
+    }
+    let head_json: serde_json::Value = serde_json::from_slice(&head_output.stdout)
+        .map_err(|e| StateError::Error(format!("gh pr view returned invalid JSON: {e}")))?;
+    let sha = head_json["headRefOid"]
+        .as_str()
+        .filter(|sha| !sha.is_empty())
+        .ok_or_else(|| StateError::Error("gh pr view returned no headRefOid".to_string()))?
+        .to_string();
+
+    let checks_output = Command::new("gh")
+        .args(["pr", "checks", &pr_text, "--json", "bucket"])
+        .current_dir(base)
+        .output()
+        .map_err(|e| StateError::Error(format!("cannot run gh pr checks: {e}")))?;
+    let checks: Vec<serde_json::Value> = serde_json::from_slice(&checks_output.stdout)
+        .map_err(|e| StateError::Error(format!("gh pr checks returned invalid JSON: {e}")))?;
+    let green = !checks.is_empty()
+        && checks
+            .iter()
+            .all(|check| check["bucket"].as_str() == Some("pass"));
+    let at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+        .to_string();
+    with_run_lock(base, run, || {
+        let mut record = read_run(base, run)?;
+        record.ci = Some(CiAttestation {
+            sha: sha.clone(),
+            green,
+            at,
+        });
+        write_run(base, &record)
+    })?;
+    println!(
+        "{}",
+        serde_json::json!({"run": run, "pr": pr, "sha": sha, "green": green})
+    );
+    if green {
+        Ok(())
+    } else {
+        Err(StateError::Illegal(format!(
+            "CI is not green for pull request #{pr}"
+        )))
+    }
+}
+
+/// Evaluate a tool gate for a hook without printing the CLI result. Hook
+/// dispatchers use this to translate one engine verdict into each harness's
+/// native response shape.
+pub fn gate_for_hook(base: &Path, run: u64, tool: &str) -> Result<GateDecision, StateError> {
+    let record = read_run(base, run)?;
+    let mut decision = gate_for_record(tool, &record)?;
+    if matches!(decision, GateDecision::Allow) && tool.contains("gh pr merge") {
+        decision = merge_attestation(base, &record);
+    }
+    Ok(decision)
+}
+
+/// Read a run record for lifecycle hooks without exposing the on-disk path
+/// convention to those adapters.
+pub fn status_for_hook(base: &Path, run: u64) -> Result<RunFile, StateError> {
+    read_run(base, run)
+}
+
+/// Append a bounded lifecycle receipt to an active run. Hook payload details
+/// and tool output are intentionally excluded from durable state.
+pub fn record_hook_event(
+    base: &Path,
+    run: u64,
+    event: &str,
+    tool: Option<&str>,
+) -> Result<(), StateError> {
+    with_run_lock(base, run, || {
+        let mut record = read_run(base, run)?;
+        record.events.push(HookEvent {
+            event: event.to_string(),
+            tool: tool.map(str::to_string),
+            at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
+                .to_string(),
+        });
+        const MAX_EVENTS: usize = 64;
+        if record.events.len() > MAX_EVENTS {
+            let drop_count = record.events.len() - MAX_EVENTS;
+            record.events.drain(..drop_count);
+        }
+        write_run(base, &record)
+    })
+}
+
+fn gate_for_record(tool: &str, record: &RunFile) -> Result<GateDecision, StateError> {
+    let stages = command_stages(&record.command)?;
+    let gates = command_tool_gates(&record.command)?;
+    Ok(gate(&stages, &record.phase, &gates, tool))
 }
 
 /// `state status --run N` — print the run JSON. Fail-closed on read.
@@ -954,6 +1208,8 @@ mod tests {
             issue: 42,
             phase: "plan".into(),
             fix_rounds: no_rounds(),
+            ci: None,
+            events: Vec::new(),
         };
         write_run(base, &record).unwrap();
         let back = read_run(base, 42).unwrap();
@@ -1007,6 +1263,8 @@ mod tests {
             issue: 5,
             phase: "verify".into(),
             fix_rounds: no_rounds(),
+            ci: None,
+            events: Vec::new(),
         };
         write_run(base, &seed).unwrap();
 
@@ -1032,6 +1290,8 @@ mod tests {
             issue: 6,
             phase: "verify".into(),
             fix_rounds: rounds(&[("build", 3)]),
+            ci: None,
+            events: Vec::new(),
         };
         write_run(base, &seed).unwrap();
         // verify still has its own budget: verify -> build is a legal loopback,
@@ -1053,6 +1313,8 @@ mod tests {
             issue: 9,
             phase: "plan".into(),
             fix_rounds: no_rounds(),
+            ci: None,
+            events: Vec::new(),
         };
         write_run(base, &seed).unwrap();
         // plan -> build skips isolate and is a forward jump (build is later than
@@ -1180,6 +1442,8 @@ mod tests {
             issue: 1,
             phase: "build".into(),
             fix_rounds: no_rounds(),
+            ci: None,
+            events: Vec::new(),
         };
         write_run(base, &seed).unwrap();
         let err = cmd_gate(base, 1, "gh pr merge --squash").unwrap_err();
@@ -1188,5 +1452,100 @@ mod tests {
 
         // ...and `git push` is allowed at `build` → Ok (exit 0).
         assert!(cmd_gate(base, 1, "git push origin HEAD").is_ok());
+    }
+
+    #[test]
+    fn merge_gate_requires_green_ci_attestation_for_current_head() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(base)
+            .status()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@example.invalid"])
+            .current_dir(base)
+            .status()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "test"])
+            .current_dir(base)
+            .status()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "--allow-empty", "-qm", "init"])
+            .current_dir(base)
+            .status()
+            .unwrap();
+        let sha = String::from_utf8(
+            std::process::Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(base)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string();
+
+        let seed = RunFile {
+            schema_version: SCHEMA_VERSION,
+            command: "ship-issue".into(),
+            issue: 77,
+            phase: "deliver".into(),
+            fix_rounds: no_rounds(),
+            ci: Some(CiAttestation {
+                sha: sha.clone(),
+                green: true,
+                at: "now".into(),
+            }),
+            events: Vec::new(),
+        };
+        write_run(base, &seed).unwrap();
+        assert!(cmd_gate(base, 77, "gh pr merge --squash").is_ok());
+
+        let mut stale = seed.clone();
+        stale.ci.as_mut().unwrap().sha = "stale".into();
+        write_run(base, &stale).unwrap();
+        let err = cmd_gate(base, 77, "gh pr merge --squash").unwrap_err();
+        assert!(err.reason().contains("stale"), "{}", err.reason());
+
+        let mut red = seed;
+        red.ci.as_mut().unwrap().green = false;
+        write_run(base, &red).unwrap();
+        let err = cmd_gate(base, 77, "gh pr merge --squash").unwrap_err();
+        assert!(err.reason().contains("green CI"), "{}", err.reason());
+    }
+
+    #[test]
+    fn lifecycle_receipts_are_serialized_under_concurrent_writes() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        let seed = RunFile {
+            schema_version: SCHEMA_VERSION,
+            command: "ship-issue".into(),
+            issue: 88,
+            phase: "build".into(),
+            fix_rounds: no_rounds(),
+            ci: None,
+            events: Vec::new(),
+        };
+        write_run(base, &seed).unwrap();
+        let base = base.to_path_buf();
+        let mut workers = Vec::new();
+        for worker in 0..4 {
+            let base = base.clone();
+            workers.push(std::thread::spawn(move || {
+                for event in 0..10 {
+                    record_hook_event(&base, 88, &format!("event-{worker}-{event}"), None).unwrap();
+                }
+            }));
+        }
+        for worker in workers {
+            worker.join().unwrap();
+        }
+        assert_eq!(read_run(&base, 88).unwrap().events.len(), 40);
     }
 }

@@ -27,7 +27,8 @@
 // opencode propagates tool hooks into subagents. Tracked upstream at
 // https://github.com/sst/opencode/issues/5894 — documented, not worked around.
 //
-// Install-time wiring (dropping this into `.opencode/plugin/`) is #217; opencode
+// Install-time wiring (dropping this into `.opencode/plugins/`) is automatic;
+// opencode
 // auto-loads any plugin under that directory.
 
 import type { Plugin } from "@opencode-ai/plugin"
@@ -51,19 +52,22 @@ export const FsmGate: Plugin = async ({ $, directory, worktree }) => {
         // Discover the run from the branch name. `.nothrow()`/`.quiet()` keep a
         // non-git dir or a failed rev-parse from throwing; an empty/non-matching
         // branch (main, feat/bundle-*, detached HEAD) → allow.
+        const root = (
+          await $`git -C ${dir} rev-parse --show-toplevel`.nothrow().quiet().text()
+        ).trim() || dir
         const branch = (
-          await $`git -C ${dir} rev-parse --abbrev-ref HEAD`.nothrow().quiet().text()
+          await $`git -C ${root} rev-parse --abbrev-ref HEAD`.nothrow().quiet().text()
         ).trim()
-        const match = branch.match(/^feat\/issue-(\d+)/)
+        const match = branch.match(/^feat\/(?:issue|bundle)-(\d+)(?:-|$)/)
         if (!match) return
         const n = match[1]
 
         // The run file must exist for this issue, or there is nothing to gate.
-        if (!existsSync(join(dir, ".shipmates", `run-${n}.json`))) return
+        if (!existsSync(join(root, ".shipmates", `run-${n}.json`))) return
 
         // Ask the engine. Exit 1 = deny; 0 = allow; 2 (or a missing binary,
         // caught below) = fail-safe allow.
-        const res = await $`shipmates state gate --dir ${dir} --run ${n} --tool ${command}`
+        const res = await $`shipmates state gate --dir ${root} --run ${n} --tool ${command}`
           .nothrow()
           .quiet()
         if (res.exitCode === 1) {

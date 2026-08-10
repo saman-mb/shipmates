@@ -292,7 +292,7 @@ pub fn emit_hook_shim(container: &str, target: &str) -> HashMap<String, String> 
     // channel is a throwing `tool.execute.before` plugin (a `.ts` file).
     let (src_file, dest) = match target {
         "claude-code" => ("fsm-gate.sh", ".claude/hooks/fsm-gate.sh"),
-        "opencode" => ("fsm-gate.ts", ".opencode/plugin/fsm-gate.ts"),
+        "opencode" => ("fsm-gate.ts", ".opencode/plugins/fsm-gate.ts"),
         "windsurf" => ("fsm-gate.sh", ".windsurf/hooks/fsm-gate.sh"),
         "antigravity" => ("fsm-gate.sh", ".agents/hooks/fsm-gate.sh"),
         "codex" => ("fsm-gate.sh", ".codex/hooks/fsm-gate.sh"),
@@ -335,7 +335,7 @@ mod tests {
         // opencode's deny channel is a throwing `.ts` plugin, not a bash shim.
         let files = emit_hook_shim("harnesses/opencode", "opencode");
         let plugin = files
-            .get("harnesses/opencode/.opencode/plugin/fsm-gate.ts")
+            .get("harnesses/opencode/.opencode/plugins/fsm-gate.ts")
             .expect("opencode plugin key present");
         assert!(plugin.contains("tool.execute.before"), "opencode hook name present");
         assert!(plugin.contains("throw new Error"), "opencode denies by throwing");

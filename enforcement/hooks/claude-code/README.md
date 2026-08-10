@@ -30,9 +30,10 @@ Add a PreToolUse hook for the `Bash` matcher in your Claude Code settings
 }
 ```
 
-Requires `jq`, `git`, and `shipmates` on `PATH`. If any is missing, or the run
-cannot be identified, the shim allows the call — it never blocks an ambiguous or
-unknown run.
+Installed configurations set `SHIPMATES_NATIVE_HOOK=1`, routing through
+`shipmates hook gate` so the production path needs only `git` and `shipmates` on
+`PATH`; ordinary sessions with no identified run remain allowed. Manual wiring
+without that flag uses the legacy shell parser and requires `jq`.
 
 ## Scope
 
@@ -40,6 +41,6 @@ This is the Claude Code reference implementation, and the pattern every other
 harness's shim mirrors (`enforcement/hooks/<harness>/`). As of #216 the script
 IS emitted into every harness's payload — each adapter's `build()` writes its
 shim via `emit_hook_shim` (Claude Code lands it at `.claude/hooks/fsm-gate.sh`).
-What remains for #217 is the install-time **config wiring** that registers the
-shim with each harness (Claude Code's `settings.json`, the other harnesses'
-`hooks.json`/plugin directories, and Codex's `[features].codex_hooks` flag).
+`shipmates install` now merges the registration into `settings.json` without
+clobbering existing hooks, marks the shell shim executable, and uses the same
+registration path on reinstall. `shipmates doctor` reports missing registration.

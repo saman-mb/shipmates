@@ -9,6 +9,7 @@
 use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
+use crate::hooks;
 use crate::installer::{atomic_write, migrate};
 use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -149,6 +150,32 @@ fn diagnose_built(
             ),
             fixable: false,
         });
+    }
+
+    // 1b. Hook registration — payload files alone are inert. The config must
+    // point at the installed shim (and Codex must have hooks enabled).
+    match hooks::is_registered(target_dir, harness) {
+        Ok(true) => checks.push(Check {
+            name: "Hook registration".into(),
+            severity: Severity::Ok,
+            detail: "the harness will invoke the Shipmates enforcement hook".into(),
+            fixable: true,
+        }),
+        Ok(false) => checks.push(Check {
+            name: "Hook registration".into(),
+            severity: Severity::Problem,
+            detail: format!(
+                "the {} hook is not registered — run `shipmates install --harness {}`",
+                harness, harness
+            ),
+            fixable: true,
+        }),
+        Err(error) => checks.push(Check {
+            name: "Hook registration".into(),
+            severity: Severity::Problem,
+            detail: format!("cannot inspect {} hook registration: {error}", harness),
+            fixable: true,
+        }),
     }
 
     // 2. Legacy/duplicate layout — a superseded `commands/<name>.md` beside a
@@ -450,6 +477,10 @@ pub fn fix(
         );
     }
 
+    // Registration is repaired after payload files exist, so a config can never
+    // point at a missing shim.
+    hooks::register(target_dir, harness)?;
+
     // 3. Re-diagnose and hand back the fresh report — reusing the single built
     // payload rather than rebuilding it.
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
@@ -525,6 +556,7 @@ mod tests {
         for (rel, content) in expected_files(adapter.as_ref(), roles, cmds).unwrap() {
             atomic_write(&target.join(&rel), &content).unwrap();
         }
+        hooks::register(target, "claude-code").unwrap();
     }
 
     fn sev(report: &Report, name: &str) -> Severity {

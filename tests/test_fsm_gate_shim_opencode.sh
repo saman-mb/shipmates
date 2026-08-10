@@ -38,7 +38,7 @@ has "$PLUGIN" 'input.tool !== "bash"' && ok "gates only the bash tool" || bad "d
 has "$PLUGIN" 'throw new Error' && ok "denies by throwing an Error" || bad "missing throw-on-deny"
 
 # Discovery: parses a feat/issue-<N> branch and reads .shipmates/run-<N>.json.
-has "$PLUGIN" 'issue-(' && ok "discovers run from feat/issue-<N> branch" || bad "missing branch discovery"
+has "$PLUGIN" 'feat\/(?:issue|bundle)-(\d+)' && ok "discovers run from issue and bundle branches" || bad "missing branch discovery"
 has "$PLUGIN" '.shipmates' && ok "reads the .shipmates run file" || bad "missing run-file discovery"
 
 # Engine: shells out to `shipmates state gate` and only denies on exit 1.

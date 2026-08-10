@@ -285,6 +285,12 @@
                 <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
 git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
                 <p>All build/fix work happens <strong>inside <code>&lt;WORKTREE_DIR&gt;</code></strong> so the base branch and the user&#x27;s checkout stay clean. Pass the absolute worktree path to every agent.</p>
+                <p>Immediately after creating the worktree, install the selected harness payload there and start or resume durable state there. This is load-bearing: sibling worktrees do not inherit untracked hook files or <code>.shipmates/</code> from the base checkout:</p>
+                <pre class="order-code" tabindex="0"><code>shipmates install --harness &lt;HARNESS&gt; --dir &lt;WORKTREE_DIR&gt; --with-tools none
+shipmates state init --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --command ship-issue
+EXCLUDE=$(git -C &lt;WORKTREE_DIR&gt; rev-parse --git-path info/exclude)
+grep -qxF &#x27;.shipmates/&#x27; &quot;$EXCLUDE&quot; || printf &#x27;\n.shipmates/\n&#x27; &gt;&gt; &quot;$EXCLUDE&quot;</code></pre>
+                <p>An existing run is a resume, not a reset; inspect it with <code>shipmates state status --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt;</code> and continue from its recorded phase. Add <code>.shipmates/</code> to the worktree&#x27;s Git exclude list before the first commit so durable receipts never enter the PR.</p>
               </div>
             </div>
           </li>
@@ -314,6 +320,13 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
                   <li>Builders write code only — they do <strong>not</strong> commit, push, or open PRs (the orchestrator owns git).</li>
                   <li>After they report done, <strong>verify the files on disk yourself</strong> (Read/Grep). Never trust a &quot;done&quot; report blindly.</li>
                 </ul>
+                <p>Record each durable boundary in the same run file. Advance only after the preceding boundary is actually satisfied; never skip a phase to make a hook quiet:</p>
+                <pre class="order-code" tabindex="0"><code>shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --to isolate   # after worktree creation
+shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --to build     # after builders finish
+shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --to verify    # after local self-check passes
+shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --to review    # before the acceptance board
+shipmates state advance --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --to deliver   # after PR, CI, and review criteria pass</code></pre>
+                <p>For a rejected verify/review, use the declared loopback (<code>--to build</code>) so the per-stage budget is charged. Before merging, run <code>shipmates state ci-attest --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --pr &lt;pr-number&gt;</code>; the merge hook accepts only the attested, currently checked-out PR head with green checks. Bundles use the first issue as their run id and receive the same tool-boundary protection.</p>
               </div>
             </div>
           </li>
