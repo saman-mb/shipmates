@@ -140,7 +140,7 @@ jobs:
           # The FSM tool-gate shim ships into every harness's payload (#216).
           test -f "$RUNNER_TEMP/install-all/.claude/hooks/fsm-gate.sh"
           test -f "$RUNNER_TEMP/install-all/.cursor/hooks/fsm-gate.sh"
-          test -f "$RUNNER_TEMP/install-all/.opencode/plugin/fsm-gate.ts"
+           test -f "$RUNNER_TEMP/install-all/.opencode/plugins/fsm-gate.ts"
       # Tools are opt-in (--with-tools) and map per harness: an agent-only skill
       # on Claude Code (user-invocable: false), a native code tool on opencode.
       - name: Install an opt-in tool end to end (--with-tools)

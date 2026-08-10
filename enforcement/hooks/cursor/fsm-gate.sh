@@ -38,6 +38,10 @@
 
 set -u
 
+if [ "${SHIPMATES_NATIVE_HOOK:-}" = "1" ]; then
+    exec shipmates hook gate --harness cursor
+fi
+
 payload="$(cat)"
 
 # Extract with jq; a missing field yields "" via `// empty`.

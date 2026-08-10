@@ -75,6 +75,19 @@ pub fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Mark an installed hook executable on Unix. Non-Unix targets rely on the
+/// registered command invoking the script through its shell.
+pub fn set_executable(path: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(path)?.permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

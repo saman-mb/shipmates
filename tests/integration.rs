@@ -5,6 +5,7 @@ use shipmates::adapters::codex::CodexAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
 use shipmates::catalog::{reject_positional, CanonicalCommand, CanonicalRole};
 use shipmates::digest;
+use shipmates::hooks;
 use std::path::PathBuf;
 
 #[test]
@@ -167,6 +168,35 @@ fn test_cli_build_and_install() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("Installed harness: claude-code"));
+}
+
+#[test]
+fn test_hook_registration_events_are_idempotent_and_preserve_user_config() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let settings = temp_dir.path().join(".claude/settings.json");
+    shipmates::installer::atomic_write(
+        &settings,
+        r#"{"custom":true,"hooks":{"PostToolUse":[{"hooks":[]}]}}"#,
+    )
+    .unwrap();
+
+    hooks::register(temp_dir.path(), "claude-code").unwrap();
+    hooks::register(temp_dir.path(), "claude-code").unwrap();
+    let config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(settings).unwrap()).unwrap();
+    assert_eq!(config["custom"], true);
+    for event in [
+        "PreToolUse",
+        "SessionStart",
+        "PreCompact",
+        "SubagentStart",
+        "PostToolUse",
+        "SubagentStop",
+        "Stop",
+    ] {
+        let expected = if event == "PostToolUse" { 2 } else { 1 };
+        assert_eq!(config["hooks"][event].as_array().unwrap().len(), expected, "{event}");
+    }
 }
 
 /// No adapter may stamp a model into a crew agent file — a model is a runtime

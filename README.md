@@ -197,6 +197,13 @@ drifted files — and backs up everything it touches under `.shipmates-backup/` 
 `install` also migrates a superseded command layout for you as it writes; pass `--no-migrate` to
 leave your old files in place.
 
+Install also registers the harness's Shipmates pre-tool hook without replacing existing hook
+entries. The hook stays inactive for ordinary sessions and activates when `/ship-issue` creates its
+`.shipmates/run-<issue>.json` state file. It blocks recognized `git push` and premature merge calls;
+merge additionally requires a green CI attestation for the current PR head.
+Claude Code and Codex also receive the active phase on session start, resume, compaction, and
+subagent start so long runs do not lose their durable state.
+
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
 `disable-model-invocation` is not a frontmatter key a `SKILL.md` recognises there, so declaring it
@@ -210,7 +217,7 @@ a `"*": deny` catch-all first and its specific allows after; opencode resolves p
 last-match-wins, so the ordering is the mechanism. The result is marginally stronger than Claude's
 allowlist: a tool a wildcard denies is hidden from the model rather than refused at call time.
 
-> ⚠️ **Only Claude Code is runtime-verified.** Every other target's payload was checked against the
+> ⚠️ **Only Claude Code is runtime-verified.** Every other target's payload and registration shape was checked against the
 > harness's own parsing source and first-party docs, not by installing and running it. Whether agents
 > resolve, whether argument passing behaves, and whether `/ship-issue` completes end to end are open
 > on those targets — for opencode, tracked in
@@ -257,7 +264,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 
 ## 🛠️ How the voyage works
 
-`/ship-issue` isn't a clever prompt — it's a **state machine with gates**:
+`/ship-issue` isn't a clever prompt — it records a **state machine with tool-boundary gates**:
 
 1. **Plan** 🗺️ — a planner reads the issue + your docs → build plan, acceptance criteria, validation
    plan, and flags for which specialists this story needs.
@@ -276,7 +283,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 
 The tricks that make the loop hold together:
 
-- 🎯 **An explicit state machine, not a wish.** Stages converge; "go fix it" drifts.
+- 🎯 **An explicit state machine, not a wish.** Stages converge; recognized push/merge boundaries are blocked until earned.
 - 📦 **An isolated sandbox.** Autonomy is only safe when the blast radius is zero.
 - 🚦 **Objective gates over vibes.** Green CI beats "looks done to me."
 - 👥 **Reviewers can't grade their own homework.** A *fresh* agent reviews the PR — never the builder.
@@ -470,9 +477,10 @@ No. Shipmates is an independent, MIT-licensed community project that builds on C
 subagent and skill features. "Claude" and "Claude Code" are trademarks of Anthropic.
 
 **How is it different from just prompting Claude Code?**
-A raw prompt drifts; Shipmates is a **state machine with gates** — an isolated worktree, a mandatory
-green-CI gate, and a *fresh* reviewer that never grades its own work — so an autonomous run converges
-instead of wandering. See [how the voyage works](#-how-the-voyage-works).
+A raw prompt drifts; Shipmates combines an isolated worktree, a mandatory green-CI workflow gate,
+fresh review, and hook-enforced push/merge boundaries so an autonomous run converges instead of
+wandering. Stage judgment and reviewer acceptance remain orchestrator responsibilities. See [how the
+voyage works](#-how-the-voyage-works).
 
 **Which languages and frameworks does it work with?**
 Any. The agents are **domain-neutral** — they enforce the standard in *your* repo's `README` / `CLAUDE.md`,

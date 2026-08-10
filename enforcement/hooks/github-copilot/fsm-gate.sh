@@ -36,6 +36,10 @@
 
 set -u
 
+if [ "${SHIPMATES_NATIVE_HOOK:-}" = "1" ]; then
+    exec shipmates hook gate --harness github-copilot
+fi
+
 payload="$(cat)"
 
 # Extract with jq; a missing field yields "" via `// empty`.

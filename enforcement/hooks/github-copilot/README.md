@@ -18,19 +18,16 @@ On a deny the shim writes JSON with `permissionDecision: "deny"` (plus a
 rather than a hook fault. Allow is a silent `exit 0`; an engine error is a
 fail-safe allow with a stderr log.
 
-> Caveat: the Copilot deny channel is not yet verified live — the exact
-> `preToolUse` response shape that produces a real block still needs a
-> verify-live pass. That, with all install-time wiring, is #217.
+> Caveat: the Copilot deny channel is format-verified but not yet proven live.
+> Installation writes a project hook file under `.github/hooks/`.
 
 ## Fail-safe rules
 
 Allowed with no output (never blocked): a non-shell tool, `main`, a detached
-HEAD, a `feat/bundle-*` branch, a missing `.shipmates/run-<N>.json`, a non-git
-cwd, no `shipmates` on `PATH`, or an engine error (exit 2). The shim never fails
-open — it only ever denies on a definite engine deny (exit 1). Requires `jq` and
-`git`.
+HEAD, a missing `.shipmates/run-<N>.json`, a non-git cwd, or no active run. The
+installed dispatcher uses Rust JSON parsing and requires `git` plus `shipmates`.
 
 ## Scope
 
-The script is emitted into the Copilot payload by #216. Install-time config
-wiring — registering it under `.github/hooks/` for `preToolUse` — is #217.
+The script is emitted into the Copilot payload and installation registers it
+under `.github/hooks/` for `preToolUse`.

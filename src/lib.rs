@@ -6,4 +6,5 @@ pub mod doctor;
 pub mod embedded;
 pub mod installer;
 pub mod manifest;
+pub mod hooks;
 pub mod state;

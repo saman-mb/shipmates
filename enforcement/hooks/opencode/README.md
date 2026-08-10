@@ -7,7 +7,8 @@ command run to its finite-state machine: it blocks a shell (`bash`) tool call a
 Unlike the other harnesses, opencode has no exit-code hook contract — a plugin
 **denies a tool call by throwing an Error** from `tool.execute.before`. This
 plugin replicates the reference shim's run discovery (parse the
-`feat/issue-<N>[-<slug>]` branch → read `.shipmates/run-<N>.json`) and shells out
+`feat/issue-<N>[-<slug>]` or `feat/bundle-<N>[-<slug>]` branch → read
+`.shipmates/run-<N>.json`) and shells out
 to `shipmates state gate` via Bun's `$`, throwing on a deny.
 
 ## Deny form
@@ -32,6 +33,6 @@ it only ever throws on a definite engine deny (exit 1). Requires `git` and a
 
 ## Scope
 
-The plugin is emitted into the opencode payload by #216. opencode auto-loads any
-plugin under `.opencode/plugin/`; the install-time drop into that directory is
-#217.
+The plugin is emitted into the opencode payload and installed under
+`.opencode/plugins/`, which opencode auto-loads. No separate registration file is
+needed.

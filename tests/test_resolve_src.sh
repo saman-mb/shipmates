@@ -40,18 +40,22 @@ assert "claude-code: install exits 0" install_to claude-code "$D"
 assert "claude-code: skill under .claude/skills" test -f "$D/.claude/skills/ship-issue/SKILL.md"
 assert "claude-code: agent under .claude/agents" test -f "$D/.claude/agents/sdet.md"
 assert "claude-code: no harnesses/ container leaks" test ! -d "$D/harnesses"
+assert "claude-code: hook registration" test -f "$D/.claude/settings.json"
+assert "claude-code: hook executable" test -x "$D/.claude/hooks/fsm-gate.sh"
 
 # --- opencode: commands + agents land under .opencode/ ---
 D="$WORK/opencode"
 assert "opencode: install exits 0" install_to opencode "$D"
 assert "opencode: command under .opencode/commands" test -f "$D/.opencode/commands/ship-issue.md"
 assert "opencode: agent under .opencode/agents" test -f "$D/.opencode/agents/sdet.md"
+assert "opencode: plugin under .opencode/plugins" test -f "$D/.opencode/plugins/fsm-gate.ts"
 
 # --- antigravity: agents + skills land under .agents/ ---
 D="$WORK/antigravity"
 assert "antigravity: install exits 0" install_to antigravity "$D"
 assert "antigravity: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
 assert "antigravity: agent under .agents/agents" test -f "$D/.agents/agents/sdet.md"
+assert "antigravity: hook registration" test -f "$D/.agents/hooks.json"
 
 # --- crew-bearing targets whose agent format is not Claude's ---
 # Codex agents are TOML, not Markdown; Copilot needs the .agent.md double
@@ -65,6 +69,8 @@ assert "codex: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue
 assert "codex: no skills under .codex" test ! -d "$D/.codex/skills"
 assert "codex: agent is TOML under .codex/agents" test -f "$D/.codex/agents/sdet.toml"
 assert "codex: agent is not markdown" test ! -f "$D/.codex/agents/sdet.md"
+assert "codex: hook registration" test -f "$D/.codex/hooks.json"
+assert "codex: hooks feature enabled" grep -q "hooks = true" "$D/.codex/config.toml"
 
 # Copilot reads Agent Skills from the open .agents/skills tree; only its crew
 # are .github-native (.github/agents/*.agent.md).
@@ -74,6 +80,7 @@ assert "github-copilot: skill under .agents/skills" test -f "$D/.agents/skills/s
 assert "github-copilot: no skills under .github" test ! -d "$D/.github/skills"
 assert "github-copilot: agent uses .agent.md" test -f "$D/.github/agents/sdet.agent.md"
 assert "github-copilot: bare .md is not emitted" test ! -f "$D/.github/agents/sdet.md"
+assert "github-copilot: hook registration" test -f "$D/.github/hooks/shipmates-fsm-gate.json"
 
 # --- skill-only targets on the open Agent Skills tree: skills only, no crew ---
 # cursor: reads .agents/skills natively (first-party peer of .cursor/skills).
@@ -91,6 +98,8 @@ done
 # tool-gate shim (#216), never a private skills tree.
 assert "cursor: FSM gate shim under .cursor/hooks" test -f "$WORK/cursor/.cursor/hooks/fsm-gate.sh"
 assert "cursor: no .cursor skills tree" test ! -d "$WORK/cursor/.cursor/skills"
+assert "cursor: hook registration" test -f "$WORK/cursor/.cursor/hooks.json"
+assert "windsurf: hook registration" test -f "$WORK/windsurf/.windsurf/hooks.json"
 
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"
