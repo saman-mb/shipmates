@@ -68,6 +68,7 @@ fn dispatch_gate(harness: &str) -> i32 {
     let Some(cwd) = hook_cwd(harness, &payload) else {
         return 0;
     };
+    let cwd = command_worktree(&command, &cwd).unwrap_or(cwd);
     let Some(run) = discover_run(&cwd) else {
         return 0;
     };
@@ -212,8 +213,18 @@ fn dispatch_stop(harness: &str) -> i32 {
     {
         return 0;
     }
-    let Ok(record) = state::status_for_hook(&cwd, run) else {
-        return 0;
+    let record = match state::status_for_hook(&cwd, run) {
+        Ok(record) => record,
+        Err(error) => {
+            println!(
+                "{}",
+                json!({
+                    "decision": "block",
+                    "reason": format!("Shipmates run state is invalid: {}", error.reason())
+                })
+            );
+            return 0;
+        }
     };
     let finished = record.phase == state::PHASE_COMPLETE
         || record.phase == state::PHASE_ESCALATED
@@ -300,6 +311,25 @@ fn resolve_repo_root(cwd: &Path) -> Option<PathBuf> {
         .filter(|output| output.status.success())?;
     let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
     (!root.is_empty()).then(|| PathBuf::from(root))
+}
+
+fn command_worktree(command: &str, fallback: &Path) -> Option<PathBuf> {
+    let rest = command.split_once("git -C ")?.1.trim_start();
+    let (raw, _) = if let Some(rest) = rest.strip_prefix('"') {
+        rest.split_once('"')?
+    } else {
+        (rest.split_whitespace().next()?, "")
+    };
+    if raw.starts_with('$') || raw.is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(raw);
+    let path = if path.is_absolute() {
+        path
+    } else {
+        fallback.join(path)
+    };
+    resolve_repo_root(&path).or(Some(path))
 }
 
 fn discover_run(cwd: &Path) -> Option<u64> {
@@ -721,7 +751,8 @@ fn enable_codex_hooks(path: &Path) -> Result<bool> {
             .unwrap_or(lines.len());
         for line in &mut lines[start + 1..end] {
             let trimmed = line.trim();
-            if trimmed.starts_with("hooks =") || trimmed.starts_with("codex_hooks =") {
+            let key = trimmed.split_once('=').map(|(key, _)| key.trim());
+            if matches!(key, Some("hooks") | Some("codex_hooks")) {
                 *line = "hooks = true".to_string();
                 found = true;
             }
@@ -802,6 +833,15 @@ mod tests {
         assert_eq!(text.matches("hooks = true").count(), 1);
         atomic_write(&dir.path().join(".codex/hooks/fsm-gate.sh"), "#!/bin/sh\n").unwrap();
         assert!(is_registered(dir.path(), "codex").unwrap());
+
+        atomic_write(
+            &dir.path().join(".codex/config.toml"),
+            "[features]\nhooks=true\n",
+        )
+        .unwrap();
+        register(dir.path(), "codex").unwrap();
+        let text = fs::read_to_string(dir.path().join(".codex/config.toml")).unwrap();
+        assert_eq!(text.matches("hooks = true").count(), 1);
     }
 
     #[test]

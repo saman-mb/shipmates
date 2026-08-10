@@ -10,6 +10,6 @@ target=cursor
 .agents/skills/pr-review/SKILL.md 6e01eae196d3d3130e99d78bef56551a8c3bc46f0d1012eac2c56d8b5c5f243e
 .agents/skills/refactor/SKILL.md 746ca0bf96e6001d1f19f35ad3d56cd66a5eb86865af93350e95e8e32e3cd7d8
 .agents/skills/release/SKILL.md f4254dfceca1d13e98acb29fe8e24bb138fba8bf897bf80c7651a7aa39b47dd2
-.agents/skills/ship-issue/SKILL.md bff35df04fdc9447b01a20ff8dcf6d979c1ea2a46426de366bc9e03ec1a0e6b9
+.agents/skills/ship-issue/SKILL.md d5d2b79b2869c22a7a9e3a4574ac713151a77cc6bcaff10f1d0dd2ca9128f0f3
 .agents/skills/spike/SKILL.md 17eb214489ebd42451c81c6633d81ac767dc12fce08da4ae141025b70e23db2e
 .cursor/hooks/fsm-gate.sh f2958718d2ec6097ed94bbb97bd816b7cb0dc0b1e85b5c10cd8af1d8908603cf

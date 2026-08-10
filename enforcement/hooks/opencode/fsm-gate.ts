@@ -65,14 +65,15 @@ export const FsmGate: Plugin = async ({ $, directory, worktree }) => {
         // The run file must exist for this issue, or there is nothing to gate.
         if (!existsSync(join(root, ".shipmates", `run-${n}.json`))) return
 
-        // Ask the engine. Exit 1 = deny; 0 = allow; 2 (or a missing binary,
-        // caught below) = fail-safe allow.
+        // Ask engine. Exit 1 = policy deny; exit 2 = active-run error and must
+        // also block. Missing binary/discovery faults are caught below and
+        // remain fail-safe for sessions without a positively identified run.
         const res = await $`shipmates state gate --dir ${root} --run ${n} --tool ${command}`
           .nothrow()
           .quiet()
-        if (res.exitCode === 1) {
+        if (res.exitCode === 1 || res.exitCode === 2) {
           const stderr = (res.stderr?.toString() ?? "").trim()
-          denyReason = stderr || "shipmates FSM gate: tool not permitted at this phase"
+          denyReason = stderr || "shipmates FSM gate: tool not permitted or run state is invalid"
         }
       } catch {
         // Any discovery/engine fault (including `shipmates` not on PATH) →

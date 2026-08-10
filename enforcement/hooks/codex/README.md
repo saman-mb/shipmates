@@ -33,3 +33,5 @@ installed dispatcher uses Rust JSON parsing and requires `git` plus `shipmates`.
 The script is emitted into the Codex payload. Codex hooks remain experimental and
 shell-tool-only; installation registers `.codex/hooks.json` and sets the
 canonical `config.toml [features].hooks = true` flag.
+Codex may require a one-time `/hooks` review/trust action before a changed
+project hook executes.

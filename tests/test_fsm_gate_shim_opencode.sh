@@ -43,7 +43,7 @@ has "$PLUGIN" '.shipmates' && ok "reads the .shipmates run file" || bad "missing
 
 # Engine: shells out to `shipmates state gate` and only denies on exit 1.
 has "$PLUGIN" 'shipmates state gate' && ok "shells out to shipmates state gate" || bad "missing engine call"
-has "$PLUGIN" 'res.exitCode === 1' && ok "denies only on engine exit 1" || bad "missing exit-1 deny mapping"
+has "$PLUGIN" 'res.exitCode === 1 || res.exitCode === 2' && ok "denies on policy or active-run error" || bad "missing deny mapping"
 
 # Fail-safe: a catch that returns (allows) on any discovery/engine fault.
 has "$PLUGIN" 'catch' && ok "has a fail-safe catch (allow on error)" || bad "missing fail-safe catch"

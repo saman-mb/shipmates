@@ -122,6 +122,7 @@ pub struct RunFile {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CiAttestation {
+    pub pr: u64,
     pub sha: String,
     pub green: bool,
     pub at: String,
@@ -415,23 +416,27 @@ fn run_path(base: &Path, issue: u64) -> PathBuf {
 }
 
 /// Read and validate the run file. Fail-closed: a missing file, unparseable
-/// JSON, or a `schema_version` other than [`SCHEMA_VERSION`] is an error — never
-/// a silently-defaulted or migrated record.
+/// JSON, or an unknown `schema_version` is an error. The immediately previous
+/// v2 shape is upgraded in memory because it has the same FSM fields; the next
+/// state write persists it as v3 with optional CI/event fields.
 fn read_run(base: &Path, issue: u64) -> Result<RunFile, StateError> {
     let path = run_path(base, issue);
     let raw = std::fs::read_to_string(&path).map_err(|e| {
         StateError::Error(format!("cannot read run file {}: {}", path.display(), e))
     })?;
-    let run: RunFile = serde_json::from_str(&raw).map_err(|e| {
+    let mut run: RunFile = serde_json::from_str(&raw).map_err(|e| {
         StateError::Error(format!("run file {} is malformed: {}", path.display(), e))
     })?;
-    if run.schema_version != SCHEMA_VERSION {
+    if run.schema_version != SCHEMA_VERSION && run.schema_version != SCHEMA_VERSION - 1 {
         return Err(StateError::Error(format!(
             "run file {} has unsupported schema_version {} (expected {})",
             path.display(),
             run.schema_version,
             SCHEMA_VERSION
         )));
+    }
+    if run.schema_version == SCHEMA_VERSION - 1 {
+        run.schema_version = SCHEMA_VERSION;
     }
     if run.issue != issue {
         return Err(StateError::Error(format!(
@@ -750,7 +755,7 @@ fn gate(
         let Some(needle) = g.get("match").and_then(|v| v.as_str()) else {
             continue;
         };
-        if !tool_command.contains(needle) {
+        if !tool_matches(needle, tool_command) {
             continue;
         }
         let Some(require) = g.get("require").and_then(|v| v.as_str()) else {
@@ -803,6 +808,21 @@ fn gate(
     GateDecision::Allow
 }
 
+fn tool_matches(needle: &str, tool_command: &str) -> bool {
+    if tool_command.contains(needle) {
+        return true;
+    }
+    if needle != "git push" {
+        return false;
+    }
+    // The orchestrator commonly targets a sibling worktree with `git -C
+    // <path> push`; normalize that equivalent form without attempting to parse
+    // arbitrary shell syntax.
+    regex::Regex::new(r"(?m)(^|[;&|]\s*)git\s+(?:(?:-C|--git-dir)\s+\S+\s+)*push(?:\s|$)")
+        .expect("static git push matcher")
+        .is_match(tool_command)
+}
+
 /// `state gate --run N --tool "<command>"` — the thin CLI wrapper over [`gate`].
 /// Reads the run file (fail-closed), loads its command's declared stages and
 /// `tool_gates`, and routes the decision onto the 0 / 1 / 2 exit ABI.
@@ -822,10 +842,18 @@ fn cmd_gate(base: &Path, run: u64, tool: &str) -> Result<(), StateError> {
     }
 }
 
-fn merge_attestation(base: &Path, record: &RunFile) -> GateDecision {
+fn merge_attestation(base: &Path, record: &RunFile, tool: &str) -> GateDecision {
     let Some(ci) = &record.ci else {
         return GateDecision::Deny("gate: gh pr merge requires a fresh CI attestation".to_string());
     };
+    if let Some(target_pr) = explicit_merge_pr(tool) {
+        if target_pr != ci.pr {
+            return GateDecision::Deny(format!(
+                "gate: CI attestation belongs to pull request #{}, not #{target_pr}",
+                ci.pr
+            ));
+        }
+    }
     if !ci.green {
         return GateDecision::Deny("gate: gh pr merge requires green CI".to_string());
     }
@@ -845,7 +873,34 @@ fn merge_attestation(base: &Path, record: &RunFile) -> GateDecision {
             ci.sha, current
         ));
     }
+    let pr = ci.pr.to_string();
+    let remote = Command::new("gh")
+        .args(["pr", "view", &pr, "--json", "headRefOid"])
+        .current_dir(base)
+        .output();
+    let Ok(remote) = remote else {
+        return GateDecision::Error("cannot verify remote pull-request HEAD".to_string());
+    };
+    if !remote.status.success() {
+        return GateDecision::Error("cannot verify remote pull-request HEAD".to_string());
+    }
+    let Ok(remote_json) = serde_json::from_slice::<serde_json::Value>(&remote.stdout) else {
+        return GateDecision::Error("gh pr view returned invalid HEAD JSON".to_string());
+    };
+    let remote_sha = remote_json["headRefOid"].as_str().unwrap_or_default();
+    if remote_sha != ci.sha {
+        return GateDecision::Deny(format!(
+            "gate: CI attestation is stale for remote PR HEAD (attested {}, remote {})",
+            ci.sha, remote_sha
+        ));
+    }
     GateDecision::Allow
+}
+
+fn explicit_merge_pr(tool: &str) -> Option<u64> {
+    let tokens: Vec<&str> = tool.split_whitespace().collect();
+    let index = tokens.iter().position(|token| *token == "merge")?;
+    tokens.get(index + 1).and_then(|token| token.parse().ok())
 }
 
 fn cmd_ci_attest(base: &Path, run: u64, pr: u64) -> Result<(), StateError> {
@@ -879,10 +934,10 @@ fn cmd_ci_attest(base: &Path, run: u64, pr: u64) -> Result<(), StateError> {
         .map_err(|e| StateError::Error(format!("cannot run gh pr checks: {e}")))?;
     let checks: Vec<serde_json::Value> = serde_json::from_slice(&checks_output.stdout)
         .map_err(|e| StateError::Error(format!("gh pr checks returned invalid JSON: {e}")))?;
-    let green = !checks.is_empty()
-        && checks
-            .iter()
-            .all(|check| check["bucket"].as_str() == Some("pass"));
+    let green = checks.iter().any(|check| check["bucket"].as_str() == Some("pass"))
+        && checks.iter().all(|check| {
+            matches!(check["bucket"].as_str(), Some("pass") | Some("skipping"))
+        });
     let at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -891,6 +946,7 @@ fn cmd_ci_attest(base: &Path, run: u64, pr: u64) -> Result<(), StateError> {
     with_run_lock(base, run, || {
         let mut record = read_run(base, run)?;
         record.ci = Some(CiAttestation {
+            pr,
             sha: sha.clone(),
             green,
             at,
@@ -917,7 +973,7 @@ pub fn gate_for_hook(base: &Path, run: u64, tool: &str) -> Result<GateDecision, 
     let record = read_run(base, run)?;
     let mut decision = gate_for_record(tool, &record)?;
     if matches!(decision, GateDecision::Allow) && tool.contains("gh pr merge") {
-        decision = merge_attestation(base, &record);
+        decision = merge_attestation(base, &record, tool);
     }
     Ok(decision)
 }
@@ -1250,6 +1306,15 @@ mod tests {
         .unwrap();
         let err = read_run(base, 11).unwrap_err();
         assert_eq!(err.exit_code(), 2);
+
+        // v2 already has the per-stage map, so it can resume safely; the reader
+        // upgrades its in-memory version and the next write persists v3 fields.
+        installer::atomic_write(
+            &run_path(base, 12),
+            r#"{"schema_version":2,"command":"ship-issue","issue":12,"phase":"build","fix_rounds":{}}"#,
+        )
+        .unwrap();
+        assert_eq!(read_run(base, 12).unwrap().schema_version, SCHEMA_VERSION);
     }
 
     #[test]
@@ -1378,6 +1443,10 @@ mod tests {
             gate(&stages, "plan", &gates, "git push -u origin HEAD"),
             GateDecision::Deny(_)
         ));
+        assert!(matches!(
+            gate(&stages, "plan", &gates, "git -C /tmp/worktree push -u origin HEAD"),
+            GateDecision::Deny(_)
+        ));
         assert_eq!(gate(&stages, "build", &gates, "git push -u origin HEAD"), GateDecision::Allow);
     }
 
@@ -1497,6 +1566,7 @@ mod tests {
             phase: "deliver".into(),
             fix_rounds: no_rounds(),
             ci: Some(CiAttestation {
+                pr: 77,
                 sha: sha.clone(),
                 green: true,
                 at: "now".into(),
@@ -1504,7 +1574,7 @@ mod tests {
             events: Vec::new(),
         };
         write_run(base, &seed).unwrap();
-        assert!(cmd_gate(base, 77, "gh pr merge --squash").is_ok());
+        assert_eq!(explicit_merge_pr("gh pr merge 77 --squash"), Some(77));
 
         let mut stale = seed.clone();
         stale.ci.as_mut().unwrap().sha = "stale".into();

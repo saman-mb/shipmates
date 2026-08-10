@@ -257,10 +257,13 @@ resume durable state there. This is load-bearing: sibling worktrees do not inher
 files or `.shipmates/` from the base checkout:
 
 ```bash
+shipmates install --harness <HARNESS> --dir <repo> --with-tools none
 shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 shipmates state init --dir <WORKTREE_DIR> --run <first-issue> --command ship-issue
 EXCLUDE=$(git -C <WORKTREE_DIR> rev-parse --git-path info/exclude)
-grep -qxF '.shipmates/' "$EXCLUDE" || printf '\n.shipmates/\n' >> "$EXCLUDE"
+for runtime in .shipmates .claude .opencode .agents .codex .cursor .github/hooks .github/agents .windsurf; do
+  grep -qxF "$runtime/" "$EXCLUDE" || printf '%s\n' "$runtime/" >> "$EXCLUDE"
+done
 ```
 
 An existing run is a resume, not a reset; inspect it with `shipmates state status --dir

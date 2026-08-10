@@ -158,7 +158,11 @@ fn diagnose_built(
         Ok(true) => checks.push(Check {
             name: "Hook registration".into(),
             severity: Severity::Ok,
-            detail: "the harness will invoke the Shipmates enforcement hook".into(),
+            detail: if harness == "codex" {
+                "registered; Codex may require reviewing/trusting the changed hook in `/hooks`".into()
+            } else {
+                "the harness will invoke the Shipmates enforcement hook".into()
+            },
             fixable: true,
         }),
         Ok(false) => checks.push(Check {
