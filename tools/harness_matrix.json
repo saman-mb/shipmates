@@ -730,7 +730,7 @@
   },
   "lifecycle_events": {
     "_schema": {
-      "note": "Each event maps to a `harnesses` object keyed over every target in shipmates::adapters::targets(). Per-cell keys: `supported` (bool); `channel` (the harness-native event id string when supported, else null); `blocking` (bool when supported — true = can deny/gate, false = observe-only — else null); `notes` (non-empty evidence string, naming the source); `verified` (\"YYYY-MM-DD\" for cells confirmed against the harness's first-party docs, or literal false when unverified); and for `supported:false` also `policy` (\"warn\" — record the gap). The `notes`+`verified` evidence pair is a machine-readable evidence style this matrix introduces (the sibling `features` block uses `reason` + prose dates instead) — it is the precedent epic #113 builds on, not an existing convention. There is deliberately no JSON-Schema file: the shape is enforced by tests/integration.rs::test_matrix_lifecycle_events_matrix_is_consistent plus this note. Only the PreToolUse row is cross-checked — its `channel` per harness is pinned (via a literal table in the test) to the native pre-tool channel each harness's shim uses; `emit_hook_shim` (src/adapters/render.rs) owns the install path, the shim source owns the channel name. The other events have no adapter emission yet (epic #113) and record capability, not shipped behaviour."
+      "note": "Each event maps to a `harnesses` object keyed over every target in shipmates::adapters::targets(). Per-cell keys: `supported` (bool); `channel` (the primary harness-native event id string when supported, else null); optional `channels` (additional native channels for the same event); `blocking` (bool when supported — true = can deny/gate, false = observe-only — else null); `notes` (non-empty evidence string, naming the source); `verified` (\"YYYY-MM-DD\" for cells confirmed against the harness's first-party docs, or literal false when unverified); and for `supported:false` also `policy` (\"warn\" — record the gap). A supported cell must be verified; an unverified cell is a gap and must not be emitted. The `notes`+`verified` evidence pair is a machine-readable evidence style this matrix introduces (the sibling `features` block uses `reason` + prose dates instead) — it is the precedent epic #113 builds on, not an existing convention. There is deliberately no JSON-Schema file: the shape is enforced by tests/integration.rs::test_matrix_lifecycle_events_matrix_is_consistent plus this note. Only the PreToolUse row is cross-checked against the shared adapter hook-channel table; the other events have no adapter emission yet (epic #113) and record capability, not shipped behaviour."
     },
     "PreToolUse": {
       "harnesses": {
@@ -935,6 +935,7 @@
         "windsurf": {
           "supported": true,
           "channel": "post_run_command",
+          "channels": ["post_run_command", "post_mcp_tool_use", "post_write_code", "post_read_code"],
           "blocking": false,
           "notes": "Windsurf/Devin per-tool post hooks: `post_run_command` (used here) plus `post_mcp_tool_use` / `post_write_code` / `post_read_code`; observe-only. Verified 2026-08-06.",
           "verified": "2026-08-06"
@@ -1329,10 +1330,11 @@
           "verified": "2026-08-06"
         },
         "opencode": {
-          "supported": true,
-          "channel": "chat.message",
-          "blocking": true,
-          "notes": "opencode `chat.message` on the event bus, blocking via a thrown exception — first-party-likely but unconfirmed against a direct docs fetch, so left unverified.",
+          "supported": false,
+          "policy": "warn",
+          "channel": null,
+          "blocking": null,
+          "notes": "Unverified — opencode `chat.message` may expose a prompt event, but no direct first-party evidence is recorded; do not emit until confirmed.",
           "verified": false
         }
       }

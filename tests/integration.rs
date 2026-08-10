@@ -360,6 +360,18 @@ fn test_matrix_lifecycle_events_matrix_is_consistent() {
 
     let shipped: std::collections::BTreeSet<&str> = shipmates::adapters::targets().into_iter().collect();
 
+    fn is_verified_date(value: &serde_json::Value) -> bool {
+        let Some(s) = value.as_str() else { return false };
+        let bytes = s.as_bytes();
+        bytes.len() == 10
+            && bytes[4] == b'-'
+            && bytes[7] == b'-'
+            && bytes
+                .iter()
+                .enumerate()
+                .all(|(i, b)| i == 4 || i == 7 || b.is_ascii_digit())
+    }
+
     // Every lifecycle event we claim to have researched must be present.
     let expected_events = [
         "PreToolUse",
@@ -391,18 +403,19 @@ fn test_matrix_lifecycle_events_matrix_is_consistent() {
                 .as_bool()
                 .unwrap_or_else(|| panic!("{event}/{harness}: no `supported` boolean"));
 
-            // Every cell — supported or not — records whether it is first-party
-            // verified: a "YYYY-MM-DD" string, or literal `false` for unverified.
-            // This is how "mark unverified, don't guess" is enforced.
+            // Every cell records whether it is first-party verified. A positive
+            // capability claim must carry a date; literal false is reserved for
+            // unsupported/unresearched cells so consumers cannot emit guesses.
             let verified = &cell["verified"];
-            assert!(
-                verified.as_str().is_some_and(|s| !s.trim().is_empty()) || verified.as_bool() == Some(false),
-                "{event}/{harness}: `verified` must be a date string or literal false, got {verified}",
-            );
 
             let notes_ok = cell["notes"].as_str().is_some_and(|s| !s.trim().is_empty());
 
             if supported {
+                assert!(
+                    is_verified_date(verified),
+                    "{event}/{harness}: supported capability must have verified YYYY-MM-DD date, got {verified}",
+                );
+                assert!(cell["policy"].is_null(), "{event}/{harness}: supported cell must not carry a gap policy");
                 assert!(
                     cell["channel"].as_str().is_some_and(|s| !s.trim().is_empty()),
                     "{event}/{harness}: a supported cell needs a non-empty `channel`",
@@ -414,33 +427,47 @@ fn test_matrix_lifecycle_events_matrix_is_consistent() {
                 assert!(notes_ok, "{event}/{harness}: a supported cell needs non-empty `notes`");
             } else {
                 assert!(
+                    is_verified_date(verified) || verified.as_bool() == Some(false),
+                    "{event}/{harness}: unsupported cell needs verified YYYY-MM-DD date or literal false, got {verified}",
+                );
+                assert!(
                     cell["policy"].as_str().is_some_and(|s| !s.trim().is_empty()),
                     "{event}/{harness}: an unsupported cell needs a `policy` (the `features` convention)",
                 );
+                assert!(cell["channel"].is_null(), "{event}/{harness}: unsupported cell must have null `channel`");
+                assert!(cell["blocking"].is_null(), "{event}/{harness}: unsupported cell must have null `blocking`");
                 assert!(notes_ok, "{event}/{harness}: an unsupported cell needs non-empty `notes`");
+            }
+
+            if let Some(channels) = cell.get("channels") {
+                let values = channels
+                    .as_array()
+                    .unwrap_or_else(|| panic!("{event}/{harness}: `channels` must be an array"));
+                assert!(!values.is_empty(), "{event}/{harness}: `channels` must not be empty");
+                assert!(
+                    values.iter().all(|v| v.as_str().is_some_and(|s| !s.trim().is_empty())),
+                    "{event}/{harness}: `channels` entries must be non-empty strings",
+                );
+                if supported {
+                    assert!(
+                        values.iter().any(|v| v.as_str() == cell["channel"].as_str()),
+                        "{event}/{harness}: anchor `channel` must be included in `channels`",
+                    );
+                }
             }
         }
     }
 
-    // PreToolUse anchor cross-check: the matrix's channel per harness must agree
-    // with the harness-native event `emit_hook_shim` (src/adapters/render.rs)
-    // actually binds the FSM gate to. These are the only channels with a real
-    // emission today; the other events are capability-only until epic #113.
+    // PreToolUse anchor cross-check: matrix channel must agree with the shared
+    // adapter table that describes each emitted shim's native hook channel.
     let pre = events["PreToolUse"]["harnesses"].as_object().unwrap();
-    let native_channel = [
-        ("claude-code", "PreToolUse"),
-        ("opencode", "tool.execute.before"),
-        ("cursor", "beforeShellExecution"),
-        ("windsurf", "pre_run_command"),
-        ("codex", "PreToolUse"),
-        ("antigravity", "PreToolUse"),
-        ("github-copilot", "preToolUse"),
-    ];
-    for (harness, channel) in native_channel {
+    for harness in shipmates::adapters::targets() {
+        let channel = shipmates::adapters::render::hook_channel(harness)
+            .unwrap_or_else(|| panic!("no hook channel for target {harness}"));
         assert_eq!(
             pre[harness]["channel"].as_str().unwrap(),
             channel,
-            "PreToolUse/{harness}: matrix channel must match the emit_hook_shim native channel",
+            "PreToolUse/{harness}: matrix channel must match adapter hook channel",
         );
         assert_eq!(
             pre[harness]["blocking"].as_bool(),
