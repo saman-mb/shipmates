@@ -33,7 +33,7 @@
 
 import type { Plugin } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 
 export const FsmGate: Plugin = async ({ $, directory, worktree }) => {
   // Discovery keys off the git worktree root; fall back to the plugin's
@@ -51,9 +51,13 @@ export const FsmGate: Plugin = async ({ $, directory, worktree }) => {
       try {
         // Discover the run from the branch name. `.nothrow()`/`.quiet()` keep a
         // non-git dir or a failed rev-parse from throwing; an empty/non-matching
-        // branch (main, feat/bundle-*, detached HEAD) → allow.
+        // branch (main, detached HEAD) → allow. If the orchestrator targets a
+        // sibling worktree with `cd` or `git -C`, gate that checkout instead of
+        // the session's base directory.
+        const target = command.match(/(?:^|[;&|]\s*)(?:git -C|cd)\s+(?:"([^"]+)"|'([^']+)'|(\S+))/)
+        const commandDir = target ? resolve(dir, target[1] ?? target[2] ?? target[3]) : dir
         const root = (
-          await $`git -C ${dir} rev-parse --show-toplevel`.nothrow().quiet().text()
+          await $`git -C ${commandDir} rev-parse --show-toplevel`.nothrow().quiet().text()
         ).trim() || dir
         const branch = (
           await $`git -C ${root} rev-parse --abbrev-ref HEAD`.nothrow().quiet().text()

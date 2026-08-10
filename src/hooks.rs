@@ -177,6 +177,7 @@ fn dispatch_record(harness: &str, event: &str) -> i32 {
         .get("tool_name")
         .or_else(|| payload.get("toolName"))
         .or_else(|| payload.get("tool"))
+        .or_else(|| payload.get("toolCall").and_then(|v| v.get("name")))
         .and_then(Value::as_str)
         .map(str::to_string);
     let _ = state::record_hook_event(&cwd, run, event, tool.as_deref());
@@ -229,10 +230,13 @@ fn dispatch_stop(harness: &str) -> i32 {
     let finished = record.phase == state::PHASE_COMPLETE
         || record.phase == state::PHASE_ESCALATED
         || (record.phase == "deliver"
-            && matches!(
-                state::gate_for_hook(&cwd, run, "gh pr merge"),
-                Ok(GateDecision::Allow)
-            ));
+            && record.ci.as_ref().is_some_and(|ci| {
+                let command = format!("gh pr merge --match-head-commit {}", ci.sha);
+                matches!(
+                    state::gate_for_hook(&cwd, run, &command),
+                    Ok(GateDecision::Allow)
+                )
+            }));
     if finished {
         return 0;
     }
@@ -249,6 +253,7 @@ fn hook_command(harness: &str, payload: &Value) -> Option<String> {
         .get("tool_name")
         .or_else(|| payload.get("toolName"))
         .or_else(|| payload.get("tool"))
+        .or_else(|| payload.get("toolCall").and_then(|v| v.get("name")))
         .and_then(Value::as_str)
         .unwrap_or_default();
 
@@ -269,14 +274,32 @@ fn hook_command(harness: &str, payload: &Value) -> Option<String> {
         }
     }
 
-    let command = payload
+    let mut command = payload
         .get("command")
         .or_else(|| payload.get("tool_input").and_then(|v| v.get("command")))
         .or_else(|| payload.get("toolArgs").and_then(|v| v.get("command")))
         .or_else(|| payload.get("tool_info").and_then(|v| v.get("command_line")))
+        .or_else(|| {
+            payload
+                .get("toolCall")
+                .and_then(|v| v.get("args"))
+                .and_then(|v| v.get("CommandLine").or_else(|| v.get("command")))
+        })
         .and_then(Value::as_str)
-        .filter(|value| !value.is_empty())?;
-    Some(command.to_string())
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    if command.is_none() {
+        if let Some(raw_args) = payload.get("toolArgs").and_then(Value::as_str) {
+            command = serde_json::from_str::<Value>(raw_args)
+                .ok()
+                .and_then(|args| {
+                    args.get("command")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                });
+        }
+    }
+    command
 }
 
 fn hook_cwd(harness: &str, payload: &Value) -> Option<PathBuf> {
@@ -284,6 +307,12 @@ fn hook_cwd(harness: &str, payload: &Value) -> Option<PathBuf> {
         .get("cwd")
         .or_else(|| payload.get("tool_input").and_then(|v| v.get("cwd")))
         .or_else(|| payload.get("tool_info").and_then(|v| v.get("cwd")))
+        .or_else(|| {
+            payload
+                .get("toolCall")
+                .and_then(|v| v.get("args"))
+                .and_then(|v| v.get("Cwd").or_else(|| v.get("cwd")))
+        })
         .and_then(Value::as_str)
         .filter(|value| !value.is_empty())
         .map(PathBuf::from);
@@ -618,8 +647,21 @@ fn register_group_json(path: &Path, event: &str, group: Value) -> Result<Vec<Pat
     let mut root = read_json_object(path)?;
     let hooks = ensure_object(&mut root, "hooks", path)?;
     let events = ensure_array(hooks, event, path)?;
+    let mut changed = false;
+    if event == "PreCompact" {
+        let before = events.len();
+        events.retain(|entry| {
+            !command_from_entry(entry).is_some_and(|command| {
+                command.contains("shipmates hook context") && command.contains("--event PreCompact")
+            })
+        });
+        changed = events.len() != before;
+    }
     if !array_contains_command(events, &group) {
         events.push(group);
+        changed = true;
+    }
+    if changed {
         write_json(path, &root)?;
         return Ok(vec![path.to_path_buf()]);
     }
@@ -833,7 +875,7 @@ mod tests {
         let path = dir.path().join(".claude/settings.json");
         atomic_write(
             &path,
-            r#"{"hooks":{"PostToolUse":[{"hooks":[]}]},"custom":true}"#,
+            r#"{"hooks":{"PostToolUse":[{"hooks":[]}],"PreCompact":[{"hooks":[{"type":"command","command":"shipmates hook context --harness claude-code --event PreCompact"}]}]},"custom":true}"#,
         )
         .unwrap();
 
@@ -845,6 +887,8 @@ mod tests {
         assert!(second.is_empty());
         assert_eq!(root["custom"], true);
         assert_eq!(root["hooks"]["PreToolUse"].as_array().unwrap().len(), 1);
+        let compact = &root["hooks"]["PreCompact"][0]["hooks"][0]["command"];
+        assert!(compact.as_str().unwrap().contains("hook record"));
         atomic_write(&dir.path().join(".claude/hooks/fsm-gate.sh"), "#!/bin/sh\n").unwrap();
         assert!(is_registered(dir.path(), "claude-code").unwrap());
     }

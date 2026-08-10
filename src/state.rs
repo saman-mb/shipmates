@@ -856,22 +856,25 @@ fn merge_attestation(base: &Path, record: &RunFile, tool: &str) -> GateDecision 
             "gate: legacy CI attestation has no pull-request identity; re-run ci-attest".to_string(),
         );
     };
-    let Some(attested_branch) = ci.branch.as_deref() else {
-        return GateDecision::Deny(
-            "gate: legacy CI attestation has no branch identity; re-run ci-attest".to_string(),
-        );
-    };
     if tool.contains("--repo") {
         return GateDecision::Deny("gate: merge must target the attested repository".to_string());
     }
-    if let Some(target) = merge_target(tool) {
+    let target = merge_target(tool);
+    if ci.branch.is_none() && target.is_none() {
+        return GateDecision::Deny(
+            "gate: legacy CI attestation requires an explicit pull-request target".to_string(),
+        );
+    }
+    if let Some(target) = target {
         if let Ok(target_pr) = target.parse::<u64>() {
             if target_pr != attested_pr {
                 return GateDecision::Deny(format!(
                     "gate: CI attestation belongs to pull request #{attested_pr}, not #{target_pr}"
                 ));
             }
-        } else if target != attested_branch {
+        } else if let Some(attested_branch) = ci.branch.as_deref()
+            && target != attested_branch
+        {
             return GateDecision::Deny(format!(
                 "gate: CI attestation belongs to branch {attested_branch:?}, not {target:?}"
             ));
@@ -895,6 +898,21 @@ fn merge_attestation(base: &Path, record: &RunFile, tool: &str) -> GateDecision 
             "gate: CI attestation is stale (attested {}, current {})",
             ci.sha, current
         ));
+    }
+    if let Some(attested_branch) = ci.branch.as_deref() {
+        let branch = Command::new("git")
+            .args(["-C", base.to_str().unwrap_or("."), "rev-parse", "--abbrev-ref", "HEAD"])
+            .output();
+        let Ok(branch) = branch else {
+            return GateDecision::Error("cannot read current git branch for CI identity".to_string());
+        };
+        if !branch.status.success()
+            || String::from_utf8_lossy(&branch.stdout).trim() != attested_branch
+        {
+            return GateDecision::Deny(format!(
+                "gate: CI attestation belongs to branch {attested_branch:?}, not current checkout"
+            ));
+        }
     }
     if match_head_sha(tool) != Some(ci.sha.as_str()) {
         return GateDecision::Deny(format!(
@@ -1591,6 +1609,11 @@ mod tests {
             .current_dir(base)
             .status()
             .unwrap();
+        std::process::Command::new("git")
+            .args(["branch", "-m", "feat/issue-77-slug"])
+            .current_dir(base)
+            .status()
+            .unwrap();
         let sha = String::from_utf8(
             std::process::Command::new("git")
                 .args(["rev-parse", "HEAD"])
@@ -1621,6 +1644,12 @@ mod tests {
         write_run(base, &seed).unwrap();
         assert_eq!(merge_target("gh pr merge 77 --squash"), Some("77"));
         assert_eq!(match_head_sha("gh pr merge 77 --match-head-commit abc"), Some("abc"));
+        assert!(cmd_gate(
+            base,
+            77,
+            &format!("gh pr merge 77 --match-head-commit {sha} --squash")
+        )
+        .is_ok());
 
         let mut stale = seed.clone();
         stale.ci.as_mut().unwrap().sha = "stale".into();
