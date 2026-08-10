@@ -816,6 +816,13 @@ fn tool_matches(needle: &str, tool_command: &str) -> bool {
         return true;
     }
     if needle != "git push" {
+        if needle == "gh pr merge" {
+            return regex::Regex::new(
+                r#"(?m)(^|[;&|]\s*)gh\s+(?:(?:--[A-Za-z0-9_-]+)(?:=\S+|\s+\S+)?\s+)*pr\s+merge(?:\s|$)"#,
+            )
+            .expect("static gh merge matcher")
+            .is_match(tool_command);
+        }
         return false;
     }
     // The orchestrator commonly targets a sibling worktree with `git -C
@@ -1477,6 +1484,10 @@ mod tests {
             }
             other => panic!("expected deny, got {other:?}"),
         }
+        assert!(matches!(
+            gate(&stages, "build", &gates, "gh --repo org/repo pr merge --squash"),
+            GateDecision::Deny(_)
+        ));
     }
 
     #[test]

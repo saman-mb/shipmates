@@ -69,7 +69,7 @@ fn dispatch_gate(harness: &str) -> i32 {
         return 0;
     };
     let cwd = command_worktree(&command, &cwd).unwrap_or(cwd);
-    let Some(run) = discover_run(&cwd) else {
+    let Some((cwd, run)) = discover_target(&cwd) else {
         return 0;
     };
 
@@ -217,12 +217,9 @@ fn dispatch_stop(harness: &str) -> i32 {
     let record = match state::status_for_hook(&cwd, run) {
         Ok(record) => record,
         Err(error) => {
-            println!(
-                "{}",
-                json!({
-                    "decision": "block",
-                    "reason": format!("Shipmates run state is invalid: {}", error.reason())
-                })
+            emit_stop_block(
+                harness,
+                &format!("Shipmates run state is invalid: {}", error.reason()),
             );
             return 0;
         }
@@ -244,8 +241,16 @@ fn dispatch_stop(harness: &str) -> i32 {
         "Shipmates run #{} is still at phase `{}`; continue the run or escalate it before stopping.",
         record.issue, record.phase
     );
-    println!("{}", json!({"decision": "block", "reason": reason}));
+    emit_stop_block(harness, &reason);
     0
+}
+
+fn emit_stop_block(harness: &str, reason: &str) {
+    if harness == "codex" {
+        println!("{}", json!({"continue": false, "stopReason": reason}));
+    } else {
+        println!("{}", json!({"decision": "block", "reason": reason}));
+    }
 }
 
 fn hook_command(harness: &str, payload: &Value) -> Option<String> {
@@ -342,6 +347,13 @@ fn resolve_repo_root(cwd: &Path) -> Option<PathBuf> {
     (!root.is_empty()).then(|| PathBuf::from(root))
 }
 
+fn discover_target(cwd: &Path) -> Option<(PathBuf, u64)> {
+    if let Some(run) = discover_run(cwd) {
+        return Some((cwd.to_path_buf(), run));
+    }
+    discover_worktree_run(cwd)
+}
+
 fn command_worktree(command: &str, fallback: &Path) -> Option<PathBuf> {
     let rest = command
         .split_once("git -C ")
@@ -375,6 +387,10 @@ fn discover_run(cwd: &Path) -> Option<u64> {
         .filter(|output| output.status.success())
         .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())?;
 
+    run_id_from_branch(&branch)
+}
+
+fn run_id_from_branch(branch: &str) -> Option<u64> {
     for prefix in ["feat/issue-", "feat/bundle-"] {
         let Some(rest) = branch.strip_prefix(prefix) else {
             continue;
@@ -389,6 +405,35 @@ fn discover_run(cwd: &Path) -> Option<u64> {
         }
     }
     None
+}
+
+fn discover_worktree_run(base: &Path) -> Option<(PathBuf, u64)> {
+    let output = Command::new("git")
+        .args(["-C", base.to_str()?, "worktree", "list", "--porcelain"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut current_path: Option<PathBuf> = None;
+    let mut candidates = Vec::new();
+    for line in text.lines().chain(std::iter::once("")) {
+        if let Some(path) = line.strip_prefix("worktree ") {
+            current_path = Some(PathBuf::from(path));
+        } else if let Some(branch) = line.strip_prefix("branch refs/heads/") {
+            if let (Some(path), Some(run)) = (current_path.take(), run_id_from_branch(branch)) {
+                if path
+                    .join(".shipmates")
+                    .join(format!("run-{run}.json"))
+                    .is_file()
+                {
+                    candidates.push((path, run));
+                }
+            }
+        } else if line.is_empty() {
+            current_path = None;
+        }
+    }
+    (candidates.len() == 1).then(|| candidates.remove(0))
 }
 
 fn emit_deny(harness: &str, reason: &str) -> i32 {

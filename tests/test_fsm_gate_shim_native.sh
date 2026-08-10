@@ -30,6 +30,8 @@ git -C "$GIT" branch -m feat/issue-1-native
 
 stop="$(printf '{"cwd":"%s","stop_hook_active":false}\n' "$GIT" | "$BIN" hook stop --harness claude-code)"
 printf '%s' "$stop" | python3 -c 'import json,sys; assert json.load(sys.stdin)["decision"] == "block"'
+codex_stop="$(printf '{"cwd":"%s","stop_hook_active":false}\n' "$GIT" | "$BIN" hook stop --harness codex)"
+printf '%s' "$codex_stop" | python3 -c 'import json,sys; assert json.load(sys.stdin)["continue"] is False'
 
 context="$(printf '{"cwd":"%s"}\n' "$GIT" | "$BIN" hook context --harness claude-code --event SessionStart)"
 printf '%s' "$context" | python3 -c 'import json,sys; value=json.load(sys.stdin); assert "phase `build`" in value["hookSpecificOutput"]["additionalContext"]'
@@ -59,6 +61,24 @@ mkdir -p "$GIT/subdir"
 out="$(payload_at 'gh pr merge --squash' "$GIT/subdir" | SHIPMATES_NATIVE_HOOK=1 bash "$SHIM")"
 decision="$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"]["permissionDecision"])')"
 [ "$decision" = deny ] || { printf 'expected subdirectory deny, got: %s\n' "$out"; exit 1; }
+
+# A base-session command with an active sibling worktree is discovered from git's
+# worktree list even when the hook event cwd is still the base checkout.
+BASE="$WORK/base"
+WT="$WORK/worktree"
+mkdir -p "$BASE"
+git -C "$BASE" init -q
+git -C "$BASE" config user.email test@example.invalid
+git -C "$BASE" config user.name test
+git -C "$BASE" commit -q --allow-empty -m init
+git -C "$BASE" branch -m main
+git -C "$BASE" worktree add -q -b feat/issue-2-native "$WT" HEAD
+"$BIN" state init --dir "$WT" --run 2 --command ship-issue >/dev/null
+"$BIN" state advance --dir "$WT" --run 2 --to isolate >/dev/null
+"$BIN" state advance --dir "$WT" --run 2 --to build >/dev/null
+out="$(payload_at 'gh pr merge --squash' "$BASE" | SHIPMATES_NATIVE_HOOK=1 bash "$SHIM")"
+decision="$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["hookSpecificOutput"]["permissionDecision"])')"
+[ "$decision" = deny ] || { printf 'expected sibling-worktree deny, got: %s\n' "$out"; exit 1; }
 
 # Bundle branches use the same first issue run and must not silently bypass gates.
 git -C "$GIT" branch -m feat/bundle-1-native

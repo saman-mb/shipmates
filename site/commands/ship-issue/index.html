@@ -286,8 +286,7 @@
 git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
                 <p>All build/fix work happens <strong>inside <code>&lt;WORKTREE_DIR&gt;</code></strong> so the base branch and the user&#x27;s checkout stay clean. Pass the absolute worktree path to every agent.</p>
                 <p>Immediately after creating the worktree, install the selected harness payload there and start or resume durable state there. This is load-bearing: sibling worktrees do not inherit untracked hook files or <code>.shipmates/</code> from the base checkout:</p>
-                <pre class="order-code" tabindex="0"><code>shipmates install --harness &lt;HARNESS&gt; --dir &lt;repo&gt; --with-tools none
-shipmates install --harness &lt;HARNESS&gt; --dir &lt;WORKTREE_DIR&gt; --with-tools none
+                <pre class="order-code" tabindex="0"><code>shipmates install --harness &lt;HARNESS&gt; --dir &lt;WORKTREE_DIR&gt; --with-tools none
 shipmates state init --dir &lt;WORKTREE_DIR&gt; --run &lt;first-issue&gt; --command ship-issue
 EXCLUDE=$(git -C &lt;WORKTREE_DIR&gt; rev-parse --git-path info/exclude)
 for runtime in .shipmates .claude .opencode .agents .codex .cursor .github/hooks .github/agents .windsurf; do

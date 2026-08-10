@@ -257,7 +257,6 @@ resume durable state there. This is load-bearing: sibling worktrees do not inher
 files or `.shipmates/` from the base checkout:
 
 ```bash
-shipmates install --harness <HARNESS> --dir <repo> --with-tools none
 shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 shipmates state init --dir <WORKTREE_DIR> --run <first-issue> --command ship-issue
 EXCLUDE=$(git -C <WORKTREE_DIR> rev-parse --git-path info/exclude)
