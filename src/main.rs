@@ -139,6 +139,8 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Install {
             harness,
+            global: _,
+            local,
             dir,
             with_tools,
             no_migrate,
@@ -206,7 +208,13 @@ fn main() -> Result<()> {
                 }
             };
 
-            let target_dir = dir.map(PathBuf::from).unwrap_or_else(|| root.to_path_buf());
+            let target_dir = if let Some(d) = dir {
+                PathBuf::from(d)
+            } else if local {
+                root.to_path_buf()
+            } else {
+                home::home_dir().context("Failed to determine home directory")?
+            };
 
             // `--harness all` fans out to every supported target; a single name
             // installs just that one.
@@ -378,6 +386,8 @@ fn main() -> Result<()> {
         }
         Command::Doctor {
             harness,
+            global: _,
+            local,
             dir,
             fix,
             no_migrate,
@@ -406,9 +416,14 @@ fn main() -> Result<()> {
                 catalog::load_tools_embedded().context("Failed to load embedded tools")?
             };
 
-            // Honour `--dir` (default `.`) — operate on the resolved target, not
-            // the current directory.
-            let target_dir = dir.map(PathBuf::from).unwrap_or_else(|| root.to_path_buf());
+            // Honour `--dir`, or default to global home dir unless `--local`
+            let target_dir = if let Some(d) = dir {
+                PathBuf::from(d)
+            } else if local {
+                root.to_path_buf()
+            } else {
+                home::home_dir().context("Failed to determine home directory")?
+            };
 
             let report = if fix {
                 doctor::fix(&target_dir, &harness, &roles, &cmds, &tools, no_migrate)?

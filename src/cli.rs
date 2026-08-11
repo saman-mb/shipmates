@@ -13,7 +13,16 @@ pub enum Command {
         #[arg(long, default_value = "claude-code")]
         harness: String,
 
-        #[arg(long)]
+        /// Install to the global home directory (default)
+        #[arg(long, conflicts_with = "local", conflicts_with = "dir")]
+        global: bool,
+
+        /// Install to the current local directory
+        #[arg(long, conflicts_with = "global", conflicts_with = "dir")]
+        local: bool,
+
+        /// Install to a specific directory
+        #[arg(long, conflicts_with = "global", conflicts_with = "local")]
         dir: Option<String>,
 
         /// Which agent-invoked tools to install (comma-separated names, `all`,
@@ -64,7 +73,16 @@ pub enum Command {
         #[arg(long, default_value = "claude-code")]
         harness: String,
 
-        #[arg(long)]
+        /// Check the global home directory (default)
+        #[arg(long, conflicts_with = "local", conflicts_with = "dir")]
+        global: bool,
+
+        /// Check the current local directory
+        #[arg(long, conflicts_with = "global", conflicts_with = "dir")]
+        local: bool,
+
+        /// Check a specific directory
+        #[arg(long, conflicts_with = "global", conflicts_with = "local")]
         dir: Option<String>,
 
         #[arg(long, default_value_t = false)]
