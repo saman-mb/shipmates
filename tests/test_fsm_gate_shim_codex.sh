@@ -5,7 +5,8 @@
 # against a throwaway git repo + run file, with a STUBBED `shipmates` on PATH
 # whose exit code we control (0 allow / 1 deny / 2 error).
 #
-# Deny form (Codex): stdout JSON with `permissionDecision: "deny"`, exit 0.
+# Deny form (Codex): stdout JSON with `hookSpecificOutput` containing
+# `permissionDecision: "deny"`, exit 0.
 #
 #   bash tests/test_fsm_gate_shim_codex.sh
 #
@@ -51,13 +52,13 @@ run_shell() {
     ERR="$(cat "$err")"; rm -f "$err"
 }
 
-# (a) engine deny (exit 1) → permissionDecision:deny on stdout, exit 0.
+# (a) engine deny (exit 1) → hookSpecificOutput with permissionDecision:deny, exit 0.
 export STUB_EXIT=1
 run_shell 'gh pr merge --squash'
-if printf '%s' "$OUT" | jq -e '.permissionDecision == "deny"' >/dev/null 2>&1 && [ "$RC" -eq 0 ]; then
-    ok "(a) deny → permissionDecision:deny, exit 0"
+if printf '%s' "$OUT" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1 && [ "$RC" -eq 0 ]; then
+    ok "(a) deny → hookSpecificOutput.permissionDecision:deny, exit 0"
 else
-    bad "(a) expected permissionDecision=deny, got rc=$RC out=$OUT"
+    bad "(a) expected hookSpecificOutput.permissionDecision=deny, got rc=$RC out=$OUT"
 fi
 
 # (b) engine allow (exit 0) → silent allow.
