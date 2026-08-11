@@ -22,6 +22,10 @@ a silent `exit 0`; an engine error is a fail-safe allow with a stderr log.
 > parses defensively and fails safe on any unrecognised shape. That verify-live
 > pass, with all install-time wiring, is #217.
 
+> Verified: the actual agy event uses `.toolCall.name` for the tool name and
+> `.toolCall.args.CommandLine` for the command (not `.tool_input.command` as
+> originally assumed). The shim now handles both formats defensively.
+
 ## Fail-safe rules
 
 Allowed with no output (never blocked): a non-shell tool, `main`, a detached

@@ -26,8 +26,8 @@
 #
 # ASSUMPTION (flag for the board): the `PreToolUse` event JSON is parsed
 # defensively. The shell tool is matched by name against `run_command` (agy's
-# documented run tool), and the command is read from `.tool_input.command`. If
-# Antigravity's real event shape differs, an unrecognised tool-name or missing
+# documented run tool), and the command is read from `.toolCall.args.CommandLine`.
+# If Antigravity's real event shape differs, an unrecognised tool-name or missing
 # command falls through to a fail-safe ALLOW rather than a wrong block. Live
 # wiring (`.agents/hooks.json`, with a tool-name regex matcher) is #217.
 #
@@ -42,17 +42,17 @@ jqr() { printf '%s' "$payload" | jq -r "$1" 2>/dev/null; }
 
 # Only the shell tool is gated. Any other tool (or an absent/unknown tool-name,
 # which we cannot confirm is a shell) → allow.
-tool_name="$(jqr '.tool_name // .tool // empty')"
+tool_name="$(jqr '.tool_name // .tool // .toolCall.name // empty')"
 case "$tool_name" in
     run_command | run_terminal_command | shell | bash) ;;
     *) exit 0 ;;
 esac
 
-command="$(jqr '.tool_input.command // .command // empty')"
+command="$(jqr '.tool_input.command // .command // .toolCall.args.CommandLine // empty')"
 [ -n "$command" ] || exit 0
 
 # Where the tool would run. Fall back to $PWD if no cwd is supplied.
-cwd="$(jqr '.cwd // .tool_input.cwd // empty')"
+cwd="$(jqr '.cwd // .tool_input.cwd // .toolCall.args.Cwd // empty')"
 [ -n "$cwd" ] || cwd="$PWD"
 
 # The engine must be reachable; degrade to allow if it is not installed.
