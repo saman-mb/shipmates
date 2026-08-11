@@ -89,7 +89,7 @@ impl Adapter for OpencodeAdapter {
             content.push_str(&render_body(&command.narrative, &OPENCODE));
             files.insert(format!("{}/commands/{}.md", self.base_dir(), command.name), content);
         }
-        // The FSM tool-gate plugin (`.opencode/plugin/fsm-gate.ts`).
+        // The FSM tool-gate plugin (`.opencode/plugins/fsm-gate.ts`).
         files.extend(emit_hook_shim(self.container(), "opencode"));
         Ok(files)
     }
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn test_fsm_gate_plugin_is_emitted() {
         let files = OpencodeAdapter.build(&[], &[]).unwrap();
-        assert!(files.contains_key("harnesses/opencode/.opencode/plugin/fsm-gate.ts"));
+        assert!(files.contains_key("harnesses/opencode/.opencode/plugins/fsm-gate.ts"));
     }
 
     fn role_with_effort(effort: Option<&str>) -> CanonicalRole {

@@ -24,6 +24,13 @@
 
 set -u
 
+# Installed registrations set this flag so the dependency-free Rust dispatcher
+# owns production parsing. Manual wiring without the flag retains the reference
+# shell implementation below for compatibility with the documented example.
+if [ "${SHIPMATES_NATIVE_HOOK:-}" = "1" ]; then
+    exec shipmates hook gate --harness claude-code
+fi
+
 payload="$(cat)"
 
 # Extract with jq; a missing field yields "" via `// empty`.

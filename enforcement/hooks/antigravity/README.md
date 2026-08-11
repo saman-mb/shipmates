@@ -18,9 +18,8 @@ stdout and exits 0, so agy reads the decision rather than a hook fault. Allow is
 a silent `exit 0`; an engine error is a fail-safe allow with a stderr log.
 
 > Caveat: the `PreToolUse` event-JSON shape and this `decision:deny` response are
-> assumed from the docs, not yet verified against a running Antigravity — the shim
-> parses defensively and fails safe on any unrecognised shape. That verify-live
-> pass, with all install-time wiring, is #217.
+> format-verified but not yet proven against a running Antigravity. Installation
+> registers the project hook; the dispatcher remains inactive outside a run.
 
 > Verified: the actual agy event uses `.toolCall.name` for the tool name and
 > `.toolCall.args.CommandLine` for the command (not `.tool_input.command` as
@@ -29,13 +28,10 @@ a silent `exit 0`; an engine error is a fail-safe allow with a stderr log.
 ## Fail-safe rules
 
 Allowed with no output (never blocked): a non-shell tool, `main`, a detached
-HEAD, a `feat/bundle-*` branch, a missing `.shipmates/run-<N>.json`, a non-git
-cwd, no `shipmates` on `PATH`, or an engine error (exit 2). The shim never fails
-open — it only ever denies on a definite engine deny (exit 1). Requires `jq` and
-`git`.
+HEAD, a missing `.shipmates/run-<N>.json`, a non-git cwd, or no active run. The
+installed dispatcher uses Rust JSON parsing and requires `git` plus `shipmates`.
 
 ## Scope
 
-The script is emitted into the Antigravity payload by #216. Install-time config
-wiring — registering it in `.agents/hooks.json` for `PreToolUse` with a
-tool-name regex matcher — is #217.
+The script is emitted into the Antigravity payload and installation registers it
+in `.agents/hooks.json` for `PreToolUse` with a tool-name matcher.

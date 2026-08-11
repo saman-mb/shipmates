@@ -95,10 +95,15 @@ pub enum Command {
         no_migrate: bool,
     },
     Targets,
-    /// Drive a command run's finite-state machine (the FSM **engine** the
-    /// planned enforcement hook will call — it does not enforce anything on its
-    /// own yet; see #114). Exit code is the transition verdict: 0 legal, 1
-    /// illegal, 2 error.
+    /// Run a harness lifecycle hook dispatcher. Hook shims pass their stdin
+    /// through this command so parsing and policy stay in the binary.
+    Hook {
+        #[command(subcommand)]
+        action: HookAction,
+    },
+    /// Drive a command run's finite-state machine. Installed pre-tool hooks call
+    /// the same engine for tool-boundary decisions. Exit code is the transition
+    /// verdict: 0 legal, 1 illegal, 2 error.
     State {
         #[command(subcommand)]
         action: StateAction,
@@ -177,5 +182,83 @@ pub enum StateAction {
         /// gate's `match` substring.
         #[arg(long)]
         tool: String,
+    },
+    /// Record a CI-green attestation for the current pull-request head.
+    CiAttest {
+        #[arg(long, default_value = ".")]
+        dir: String,
+
+        #[arg(long)]
+        run: u64,
+
+        #[arg(long)]
+        pr: u64,
+    },
+    /// Snapshot the current phase and fix_rounds as a recoverable checkpoint.
+    Checkpoint {
+        #[arg(long, default_value = ".")]
+        dir: String,
+
+        #[arg(long)]
+        run: u64,
+    },
+    /// Detect which convention files (AGENTS.md, CLAUDE.md, README.md) exist at
+    /// the project root and print them as JSON.
+    Conventions {
+        #[arg(long, default_value = ".")]
+        dir: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum HookAction {
+    /// Read a harness pre-tool event from stdin and emit its native deny form.
+    Gate {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Inject the active run summary into a session/compaction hook.
+    Context {
+        #[arg(long)]
+        harness: String,
+
+        #[arg(long)]
+        event: String,
+    },
+    /// Record a low-sensitivity lifecycle event in the active run file.
+    Record {
+        #[arg(long)]
+        harness: String,
+
+        #[arg(long)]
+        event: String,
+    },
+    /// Snapshot the current phase and fix_rounds as a recoverable checkpoint.
+    Checkpoint {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Inject detected convention files (AGENTS.md, CLAUDE.md, README.md) as
+    /// context for a session-start hook.
+    Conventions {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Validate the spawned role is legal for the run's current phase, then
+    /// inject role-specific context. Deny an out-of-phase spawn.
+    SubagentStart {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Record a tool event and auto-advance the FSM on unambiguous terminal
+    /// signals (e.g. successful `gh pr merge` → complete).
+    PostToolUseAdvance {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Keep an identified run from ending in a non-terminal phase.
+    Stop {
+        #[arg(long)]
+        harness: String,
     },
 }
