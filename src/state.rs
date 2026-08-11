@@ -80,6 +80,7 @@ use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::cli::StateAction;
 use crate::installer;
@@ -562,6 +563,40 @@ fn command_tool_gates(command: &str) -> Result<Vec<serde_json::Value>, StateErro
         .ok_or_else(|| StateError::Error(format!("unknown command {command:?}")))
 }
 
+/// Return the roles declared for a given phase in a command's FSM stages.
+/// Returns an empty Vec if the phase has no declared roles (allows all).
+pub fn valid_roles_for_phase(command: &str, phase: &str) -> Result<Vec<String>, StateError> {
+    let stages = command_stages(command)?;
+    for stage in &stages {
+        if stage.get("stage").and_then(Value::as_str) == Some(phase) {
+            let roles = stage
+                .get("roles")
+                .and_then(Value::as_array)
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default();
+            return Ok(roles);
+        }
+    }
+    Ok(vec![])
+}
+
+/// Check if a tool command looks like a successful `gh pr merge` (unambiguous
+/// terminal signal for FSM auto-advance). Returns `true` only for commands that
+/// are clearly a merge (not a query, not a dry-run).
+pub fn is_merge_completion(tool_command: &str) -> bool {
+    let cmd = tool_command.trim().to_lowercase();
+    // Must contain `gh pr merge` and not be a query/dry-run/abort
+    cmd.contains("gh pr merge")
+        && !cmd.contains("--dry-run")
+        && !cmd.contains("--abort")
+        && !cmd.contains("gh pr view")
+        && !cmd.contains("gh pr list")
+}
+
 /// The JSON result printed by `assert` / `advance` / `status`.
 #[derive(Debug, Serialize)]
 struct AssertResult<'a> {
@@ -707,7 +742,7 @@ fn cmd_assert(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
 /// `state advance --run N --to PHASE` — assert, then atomically commit the new
 /// phase. A loopback charges one round to the **departing** stage's own counter;
 /// a forward or escalate leaves every counter unchanged (see the module docs).
-fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
+pub fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
     with_run_lock(base, run, || cmd_advance_locked(base, run, to))
 }
 
@@ -1876,5 +1911,34 @@ mod tests {
             ev.files.as_deref(),
             Some(&["src/main.rs".to_string(), "tests/test.rs".to_string()][..])
         );
+    }
+
+    #[test]
+    fn valid_roles_for_phase_returns_roles_from_fsm() {
+        let roles = valid_roles_for_phase("ship-issue", "build").unwrap();
+        assert!(roles.contains(&"senior-engineer".to_string()));
+        assert!(!roles.contains(&"sdet".to_string()));
+    }
+
+    #[test]
+    fn valid_roles_for_phase_verify_returns_sdet() {
+        let roles = valid_roles_for_phase("ship-issue", "verify").unwrap();
+        assert!(roles.contains(&"sdet".to_string()));
+    }
+
+    #[test]
+    fn valid_roles_for_phase_unknown_phase_returns_empty() {
+        let roles = valid_roles_for_phase("ship-issue", "nonexistent").unwrap();
+        assert!(roles.is_empty());
+    }
+
+    #[test]
+    fn is_merge_completion_detects_gh_pr_merge() {
+        assert!(is_merge_completion("gh pr merge 42 --squash"));
+        assert!(is_merge_completion("gh pr merge --squash"));
+        assert!(!is_merge_completion("gh pr merge --dry-run 42"));
+        assert!(!is_merge_completion("gh pr view 42"));
+        assert!(!is_merge_completion("gh pr list"));
+        assert!(!is_merge_completion("git push origin main"));
     }
 }

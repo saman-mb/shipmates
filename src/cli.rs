@@ -226,6 +226,18 @@ pub enum HookAction {
         #[arg(long)]
         harness: String,
     },
+    /// Validate the spawned role is legal for the run's current phase, then
+    /// inject role-specific context. Deny an out-of-phase spawn.
+    SubagentStart {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Record a tool event and auto-advance the FSM on unambiguous terminal
+    /// signals (e.g. successful `gh pr merge` → complete).
+    PostToolUseAdvance {
+        #[arg(long)]
+        harness: String,
+    },
     /// Keep an identified run from ending in a non-terminal phase.
     Stop {
         #[arg(long)]

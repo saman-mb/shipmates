@@ -50,6 +50,8 @@ pub fn dispatch(action: &HookAction) -> i32 {
         HookAction::Record { harness, event } => dispatch_record(harness, event),
         HookAction::Checkpoint { harness } => dispatch_checkpoint(harness),
         HookAction::Conventions { harness } => dispatch_conventions(harness),
+        HookAction::SubagentStart { harness } => dispatch_subagent_start(harness),
+        HookAction::PostToolUseAdvance { harness } => dispatch_post_tool_use_advance(harness),
         HookAction::Stop { harness } => dispatch_stop(harness),
     }
 }
@@ -220,6 +222,135 @@ fn dispatch_conventions(harness: &str) -> i32 {
         return 0;
     };
     let _ = state::cmd_conventions(&cwd);
+    0
+}
+
+/// Validate the spawned role is legal for the run's current phase, then inject
+/// role-specific context. Deny an out-of-phase spawn (exit 1) or allow with
+/// context (exit 0). Fail-open on missing run or unknown command.
+fn dispatch_subagent_start(harness: &str) -> i32 {
+    let mut input = String::new();
+    if io::stdin().read_to_string(&mut input).is_err() {
+        return 0;
+    }
+    let payload: Value = match serde_json::from_str(&input) {
+        Ok(value) => value,
+        Err(_) => return 0,
+    };
+    let Some(cwd) = hook_cwd(harness, &payload) else {
+        return 0;
+    };
+    let Some(run) = discover_run(&cwd) else {
+        return 0;
+    };
+    if !cwd
+        .join(".shipmates")
+        .join(format!("run-{run}.json"))
+        .is_file()
+    {
+        return 0;
+    }
+    let record = match state::status_for_hook(&cwd, run) {
+        Ok(record) => record,
+        Err(_) => return 0,
+    };
+    // Extract the role from the payload — try common field names
+    let role = payload
+        .get("agent_name")
+        .or_else(|| payload.get("agentName"))
+        .or_else(|| payload.get("role"))
+        .or_else(|| payload.get("name"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if role.is_empty() {
+        // No role info — fail open, just inject run context
+        let context = format!(
+            "Shipmates run #{} ({}) is at phase `{}`.",
+            record.issue, record.command, record.phase
+        );
+        emit_context(harness, &context);
+        return 0;
+    }
+    // Check if this role is valid for the current phase
+    let valid_roles = state::valid_roles_for_phase(&record.command, &record.phase)
+        .unwrap_or_default();
+    if !valid_roles.is_empty() && !valid_roles.iter().any(|r| r == role) {
+        // Role is not valid for this phase — deny
+        let reason = format!(
+            "Role `{}` is not valid at phase `{}` for {}. Valid roles: {}",
+            role,
+            record.phase,
+            record.command,
+            valid_roles.join(", ")
+        );
+        emit_deny(harness, &reason);
+        return 1;
+    }
+    // Role is valid — inject context
+    let rounds = if record.fix_rounds.is_empty() {
+        "none".to_string()
+    } else {
+        record
+            .fix_rounds
+            .iter()
+            .map(|(stage, count)| format!("{stage}:{count}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let context = format!(
+        "Shipmates run #{} ({}) is at phase `{}`. Fix rounds: {}. \
+         Role `{}` is valid for this phase. Continue from this phase; do not reset or skip state.",
+        record.issue, record.command, record.phase, rounds, role
+    );
+    emit_context(harness, &context);
+    0
+}
+
+/// Record a tool event and auto-advance the FSM on unambiguous terminal signals.
+/// A successful `gh pr merge` (not dry-run, not query) advances to `complete`.
+fn dispatch_post_tool_use_advance(harness: &str) -> i32 {
+    let mut input = String::new();
+    if io::stdin().read_to_string(&mut input).is_err() {
+        return 0;
+    }
+    let payload: Value = match serde_json::from_str(&input) {
+        Ok(value) => value,
+        Err(_) => return 0,
+    };
+    let tool = payload
+        .get("tool_name")
+        .or_else(|| payload.get("toolName"))
+        .or_else(|| payload.get("tool"))
+        .or_else(|| payload.get("toolCall").and_then(|v| v.get("name")))
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let tool_command = payload
+        .get("tool_input")
+        .or_else(|| payload.get("toolInput"))
+        .and_then(|v| v.get("command"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let Some(cwd) = hook_cwd(harness, &payload) else {
+        return 0;
+    };
+    let Some(run) = discover_run(&cwd) else {
+        return 0;
+    };
+    // Record the event
+    let _ = state::record_hook_event(
+        &cwd,
+        run,
+        "PostToolUse",
+        tool.as_deref(),
+        None,
+        None,
+        None,
+        None,
+    );
+    // Check for unambiguous terminal signal: successful gh pr merge
+    if state::is_merge_completion(tool_command) {
+        let _ = state::cmd_advance(&cwd, run, state::PHASE_COMPLETE);
+    }
     0
 }
 
@@ -475,6 +606,21 @@ fn discover_worktree_run(base: &Path) -> Option<(PathBuf, u64)> {
     (candidates.len() == 1).then(|| candidates.remove(0))
 }
 
+fn emit_context(harness: &str, context: &str) {
+    match harness {
+        "claude-code" | "codex" => println!(
+            "{}",
+            json!({
+                "hookSpecificOutput": {
+                    "hookEventName": "SubagentStart",
+                    "additionalContext": context
+                }
+            })
+        ),
+        _ => println!("{}", json!({"additionalContext": context})),
+    }
+}
+
 fn emit_deny(harness: &str, reason: &str) -> i32 {
     match harness {
         "claude-code" => {
@@ -543,7 +689,7 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
                     "hooks": [{"type": "command", "command": HOOK_COMMANDS[0].1, "timeout": 30}]
                 }),
             )?;
-            for event in ["SessionStart", "SubagentStart"] {
+            for event in ["SessionStart"] {
                 paths.extend(register_group_json(
                     &path,
                     event,
@@ -558,6 +704,17 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
             }
             paths.extend(register_group_json(
                 &path,
+                "SubagentStart",
+                json!({
+                    "hooks": [{
+                        "type": "command",
+                        "command": "shipmates hook subagent-start --harness claude-code",
+                        "timeout": 10
+                    }]
+                }),
+            )?);
+            paths.extend(register_group_json(
+                &path,
                 "PreCompact",
                 json!({
                     "hooks": [{
@@ -567,20 +724,29 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
                     }]
                 }),
             )?);
-            for (event, matcher) in [("PostToolUse", "Bash|Edit|Write"), ("SubagentStop", "")] {
-                paths.extend(register_group_json(
-                    &path,
-                    event,
-                    json!({
-                        "matcher": matcher,
-                        "hooks": [{
-                            "type": "command",
-                            "command": format!("shipmates hook record --harness claude-code --event {event}"),
-                            "timeout": 10
-                        }]
-                    }),
-                )?);
-            }
+            paths.extend(register_group_json(
+                &path,
+                "PostToolUse",
+                json!({
+                    "matcher": "Bash|Edit|Write",
+                    "hooks": [{
+                        "type": "command",
+                        "command": "shipmates hook post-tool-use-advance --harness claude-code",
+                        "timeout": 10
+                    }]
+                }),
+            )?);
+            paths.extend(register_group_json(
+                &path,
+                "SubagentStop",
+                json!({
+                    "hooks": [{
+                        "type": "command",
+                        "command": format!("shipmates hook record --harness claude-code --event SubagentStop"),
+                        "timeout": 10
+                    }]
+                }),
+            )?);
             paths.extend(register_group_json(
                 &path,
                 "Stop",
@@ -606,7 +772,7 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
                 }),
             )?;
             let config = target_dir.join(".codex/hooks.json");
-            for event in ["SessionStart", "SubagentStart"] {
+            for event in ["SessionStart"] {
                 paths.extend(register_group_json(
                     &config,
                     event,
@@ -621,6 +787,17 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
             }
             paths.extend(register_group_json(
                 &config,
+                "SubagentStart",
+                json!({
+                    "hooks": [{
+                        "type": "command",
+                        "command": "shipmates hook subagent-start --harness codex",
+                        "timeout": 10
+                    }]
+                }),
+            )?);
+            paths.extend(register_group_json(
+                &config,
                 "PreCompact",
                 json!({
                     "hooks": [{
@@ -630,19 +807,28 @@ pub fn register(target_dir: &Path, harness: &str) -> Result<Vec<PathBuf>> {
                     }]
                 }),
             )?);
-            for event in ["PostToolUse", "SubagentStop"] {
-                paths.extend(register_group_json(
-                    &config,
-                    event,
-                    json!({
-                        "hooks": [{
-                            "type": "command",
-                            "command": format!("shipmates hook record --harness codex --event {event}"),
-                            "timeout": 10
-                        }]
-                    }),
-                )?);
-            }
+            paths.extend(register_group_json(
+                &config,
+                "PostToolUse",
+                json!({
+                    "hooks": [{
+                        "type": "command",
+                        "command": "shipmates hook post-tool-use-advance --harness codex",
+                        "timeout": 10
+                    }]
+                }),
+            )?);
+            paths.extend(register_group_json(
+                &config,
+                "SubagentStop",
+                json!({
+                    "hooks": [{
+                        "type": "command",
+                        "command": "shipmates hook record --harness codex --event SubagentStop",
+                        "timeout": 10
+                    }]
+                }),
+            )?);
             paths.extend(register_group_json(
                 &config,
                 "Stop",
