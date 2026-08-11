@@ -75,10 +75,11 @@ export const FsmGate: Plugin = async ({ $, directory, worktree }) => {
         const res = await $`shipmates state gate --dir ${root} --run ${n} --tool ${command}`
           .nothrow()
           .quiet()
-        if (res.exitCode === 1 || res.exitCode === 2) {
+        if (res.exitCode === 1) {
           const stderr = (res.stderr?.toString() ?? "").trim()
-          denyReason = stderr || "shipmates FSM gate: tool not permitted or run state is invalid"
+          denyReason = stderr || "shipmates FSM gate: tool not permitted"
         }
+        // exit 2 = engine error → fail-safe allow (do not wedge the session)
       } catch {
         // Any discovery/engine fault (including `shipmates` not on PATH) →
         // fail-safe ALLOW. Never fail open by blocking on an internal error.
