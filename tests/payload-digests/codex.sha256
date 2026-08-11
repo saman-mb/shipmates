@@ -24,4 +24,4 @@ target=codex
 .codex/agents/site-reliability-engineer.toml 59bb46a98b20931ebd9336e9b8ef5d8bba15b6f68aef6764e3ca97dbe78290c4
 .codex/agents/technical-writer.toml 600923001b81804a02dbbc54cebcaa39ab7c13077ced49af5a432c9a49bfdffb
 .codex/agents/ux-ui-designer.toml 5ef1dc02897339709a3ae0fe75a40eba9606955686cbcda04d18a43a1c633141
-.codex/hooks/fsm-gate.sh 8a030286b0573e4e19f5a88a24bea0dc43d439a6bf838075e1b66269c0453072
+.codex/hooks/fsm-gate.sh 1dd0222c5c32ccc3b488b5c30dae29c37a0f36a4811f97876b8ed9e3b83add9f

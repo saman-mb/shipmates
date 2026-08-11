@@ -94,8 +94,11 @@ case "$code" in
         # Deny — emit Codex's permission decision on stdout. Exit 0 so Codex
         # honours the decision rather than treating a non-zero exit as a fault.
         jq -cn --arg reason "$reason" '{
-            permissionDecision: "deny",
-            permissionDecisionReason: $reason
+            hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "deny",
+                permissionDecisionReason: $reason
+            }
         }'
         exit 0
         ;;
