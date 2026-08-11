@@ -21,6 +21,10 @@ a silent `exit 0`; an engine error is a fail-safe allow with a stderr log.
 > format-verified but not yet proven against a running Antigravity. Installation
 > registers the project hook; the dispatcher remains inactive outside a run.
 
+> Verified: the actual agy event uses `.toolCall.name` for the tool name and
+> `.toolCall.args.CommandLine` for the command (not `.tool_input.command` as
+> originally assumed). The shim now handles both formats defensively.
+
 ## Fail-safe rules
 
 Allowed with no output (never blocked): a non-shell tool, `main`, a detached
