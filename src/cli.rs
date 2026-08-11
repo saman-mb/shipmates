@@ -37,6 +37,28 @@ pub enum Command {
         /// escape hatch for a user who wants their old files left in place.
         #[arg(long)]
         no_migrate: bool,
+
+        /// Overwrite colliding files even when a receipt does not claim them.
+        #[arg(long)]
+        force: bool,
+    },
+    /// Remove files recorded by a valid install receipt.
+    Uninstall {
+        /// Harness to remove. Omit only when exactly one valid receipt is found.
+        #[arg(long)]
+        harness: Option<String>,
+
+        /// Uninstall from the global home directory (default)
+        #[arg(long, conflicts_with = "local", conflicts_with = "dir")]
+        global: bool,
+
+        /// Uninstall from the current local directory
+        #[arg(long, conflicts_with = "global", conflicts_with = "dir")]
+        local: bool,
+
+        /// Uninstall from a specific directory
+        #[arg(long, conflicts_with = "global", conflicts_with = "local")]
+        dir: Option<String>,
     },
     Build {
         #[arg(long, default_value = "claude-code")]
@@ -91,7 +113,7 @@ pub enum Command {
         /// Skip the legacy-command migration sweep during `--fix`, matching
         /// `install --no-migrate`: missing/drifted files are still restored, but a
         /// superseded `commands/<name>.md` is left in place.
-        #[arg(long)]
+        #[arg(long, requires = "fix")]
         no_migrate: bool,
     },
     Targets,

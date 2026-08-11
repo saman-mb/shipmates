@@ -4,8 +4,10 @@ mod cli;
 mod digest;
 mod doctor;
 mod embedded;
+mod hooks;
 mod installer;
 mod manifest;
+mod state;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -133,6 +135,16 @@ fn provision_tool_deps(scripts: &[PathBuf]) {
     }
 }
 
+fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
+    if let Some(dir) = dir {
+        Ok(PathBuf::from(dir))
+    } else if local {
+        Ok(Path::new(".").to_path_buf())
+    } else {
+        home::home_dir().context("Failed to determine home directory")
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -143,16 +155,13 @@ fn main() -> Result<()> {
             dir,
             with_tools,
             no_migrate,
+            force,
         } => {
             let root = Path::new(".");
             let roles_path = root.join("crew");
             let commands_path = root.join("commands");
             let tools_path = root.join("toolbox");
 
-            // A `brew`/`cargo`-installed binary has no checkout, so the
-            // canonical sources are compiled in by `build.rs`. Fall back to
-            // the on-disk `crew/` + `commands/` when present (the repo dev
-            // loop), else the embedded payload.
             let roles = if roles_path.is_dir() {
                 catalog::load_roles(&roles_path).context("Failed to load roles")?
             } else {
@@ -164,11 +173,6 @@ fn main() -> Result<()> {
                 catalog::load_commands_embedded().context("Failed to load embedded commands")?
             };
 
-            // Tools are opt-in. When `--with-tools` is omitted, an interactive
-            // terminal gets to pick from the available tools; a non-interactive
-            // run (CI, a pipe, a script) installs none, keeping a plain install
-            // to crew + commands as it has always been. When the flag IS given,
-            // it names the tools (or `all` / `none`) with no prompt.
             let non_interactive_default = with_tools.is_none() && !std::io::stdin().is_terminal();
             let selected_tools = if non_interactive_default {
                 Vec::new()
@@ -179,7 +183,6 @@ fn main() -> Result<()> {
                     catalog::load_tools_embedded().context("Failed to load embedded tools")?
                 };
                 match with_tools {
-                    // Flag given: resolve names / `all` / `none`, error on unknown.
                     Some(want) => {
                         let want: Vec<String> =
                             want.into_iter().filter(|w| !w.is_empty()).collect();
@@ -201,31 +204,18 @@ fn main() -> Result<()> {
                                 .collect()
                         }
                     }
-                    // Flag omitted on a terminal: let the user pick.
                     None if available.is_empty() => Vec::new(),
                     None => prompt_for_tools(&available),
                 }
             };
 
-            let target_dir = if let Some(d) = dir {
-                PathBuf::from(d)
-            } else if local {
-                root.to_path_buf()
-            } else {
-                home::home_dir().context("Failed to determine home directory")?
-            };
-
-            // `--harness all` fans out to every supported target; a single name
-            // installs just that one.
+            let target_dir = resolve_target_dir(local, dir)?;
             let harnesses: Vec<String> = if harness == "all" {
                 adapters::targets().iter().map(|s| s.to_string()).collect()
             } else {
                 vec![harness]
             };
 
-            // Scripts of selected tools that declare runtime deps (`requires:`),
-            // by bundled filename — their installed copies get pre-warmed below so
-            // the tool works without the user installing anything.
             let provision_filenames: std::collections::HashSet<String> = selected_tools
                 .iter()
                 .filter(|t| !t.requires.is_empty())
@@ -240,68 +230,87 @@ fn main() -> Result<()> {
 
             for harness in &harnesses {
                 let adapter = adapters::select(harness)?;
-                let files = adapter.build(&roles, &cmds)?;
-                let tool_files = adapter.build_tools(&selected_tools);
-                // `harnesses/<target>/` — the harness's staging container, so its
-                // own dotdirs (`.claude/`, `.codex/`, the shared `.agents/`, …)
-                // land at the target root when this prefix is stripped.
-                let strip = format!("{}/", adapter.container());
-
-                // Plan the legacy-command → skill migration from the built payload
-                // (container-prefixed keys) BEFORE the write loop consumes `files`.
-                // Self-limiting: only harnesses that ship a skill beside a live
-                // legacy `commands/<name>.md` on disk yield a non-empty plan, so
-                // opencode (commands, no skills) and the `.agents/*` skill trees
-                // never touch a current command file.
+                let built = adapter.build(&roles, &cmds)?;
                 let migration_items = if no_migrate {
                     Vec::new()
                 } else {
-                    installer::migrate::plan(&target_dir, &files, adapter.container())
+                    installer::migrate::plan(&target_dir, &built, adapter.container())
                 };
-
-                // The real count of files this harness writes — 24 for the
-                // crew-bearing targets (12 crew + 12 commands), 12 for the
-                // skill-only ones, plus any opt-in tool files. Never the fixed
-                // roles+commands total, which over-counted every skill-only
-                // install.
-                let mut written = 0usize;
-                for (path_str, content) in files.into_iter().chain(tool_files) {
-                    // Drop the `harnesses/<target>/` container so the harness's
-                    // own tree (`.claude/`, `.opencode/`, …) lands at the target
-                    // root, where the harness actually reads it.
-                    let rel = path_str.strip_prefix(&strip).unwrap_or(&path_str);
-                    let full_path = target_dir.join(rel);
-                    installer::atomic_write(&full_path, &content)?;
-                    written += 1;
-                    // Remember one installed copy of each dependency-bearing script
-                    // (deduped by filename) to pre-warm after all harnesses land.
-                    if let Some(fname) = rel.rsplit('/').next() {
-                        if provision_filenames.contains(fname)
-                            && !provision_scripts
-                                .iter()
-                                .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
-                        {
-                            provision_scripts.push(full_path.clone());
+                let plan = installer::plan::InstallPlan::from_payload(
+                    adapter.as_ref(),
+                    harness,
+                    built.clone(),
+                    adapter.build_tools(&selected_tools),
+                )?;
+                let result = installer::apply::apply(&target_dir, &plan, force)?;
+                for rel in plan.files.keys() {
+                    if rel.to_string_lossy().contains("/hooks/")
+                        && rel.to_string_lossy().ends_with(".sh")
+                    {
+                        installer::set_executable(&target_dir.join(rel))?;
+                    }
+                }
+                if let Some(receipt) = &result.receipt {
+                    for file in &receipt.files {
+                        let rel = PathBuf::from(&file.path);
+                        if let Some(fname) = rel.file_name().and_then(|name| name.to_str()) {
+                            if provision_filenames.contains(fname)
+                                && !provision_scripts
+                                    .iter()
+                                    .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
+                            {
+                                provision_scripts.push(target_dir.join(rel));
+                            }
                         }
                     }
                 }
 
-                if selected_tools.is_empty() {
-                    println!("Installed harness: {} ({} files written)", harness, written);
+                if let Some(previous) = &result.previous_version {
+                    if previous != &plan.version {
+                        println!("Upgrading shipmates v{} → v{}", previous, plan.version);
+                        println!(
+                            "{} files changed, {} new, {} removed",
+                            result.summary.changed, result.summary.new, result.summary.removed
+                        );
+                    }
+                }
+                for warning in &result.warnings {
+                    println!("{}", warning);
+                }
+
+                let registered = hooks::register(&target_dir, harness)?;
+                if registered.is_empty() {
+                    println!("Hook registration: {} already current", harness);
                 } else {
-                    let names: Vec<&str> = selected_tools.iter().map(|t| t.name.as_str()).collect();
+                    println!(
+                        "Hook registration: {} ({})",
+                        harness,
+                        registered
+                            .iter()
+                            .map(|path| path.display().to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                }
+
+                if selected_tools.is_empty() {
+                    println!(
+                        "Installed harness: {} ({} files written)",
+                        harness, result.written
+                    );
+                } else {
+                    let names: Vec<&str> = selected_tools
+                        .iter()
+                        .map(|tool| tool.name.as_str())
+                        .collect();
                     println!(
                         "Installed harness: {} ({} files written, tools: {})",
                         harness,
-                        written,
+                        result.written,
                         names.join(", ")
                     );
                 }
 
-                // Apply the migration AFTER the payload is written: back up each
-                // superseded, Shipmates-owned legacy command, then remove it. A
-                // backup is always written and verified before any delete, and a
-                // non-owned file that merely shares a name is never touched.
                 if !migration_items.is_empty() {
                     let backup_root = installer::migrate::new_backup_root(&target_dir);
                     let report =
@@ -312,19 +321,35 @@ fn main() -> Result<()> {
                             report.migrated.len(),
                             backup_root.display()
                         );
-                        // List each removed legacy file and where its backup
-                        // landed, so this default-on cleanup is never silent.
                         for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
                             println!("  moved {} → {}", legacy.display(), backup.display());
                         }
                     }
                 }
             }
-
-            // Pre-warm the runtime deps of any dependency-bearing tool so it works
-            // out of the box — no separate pip install by the user.
             if !provision_scripts.is_empty() {
                 provision_tool_deps(&provision_scripts);
+            }
+        }
+        Command::Uninstall {
+            harness,
+            global: _,
+            local,
+            dir,
+        } => {
+            let target_dir = resolve_target_dir(local, dir)?;
+            let selected = installer::uninstall::select_receipt(&target_dir, harness.as_deref())?;
+            let Some(selected) = selected else {
+                println!("No install receipt found; nothing to uninstall.");
+                return Ok(());
+            };
+            let report = installer::uninstall::uninstall(&target_dir, selected)?;
+            println!(
+                "Uninstalled harness: {} ({} files removed)",
+                report.harness, report.removed
+            );
+            for warning in report.warnings {
+                println!("{}", warning);
             }
         }
         Command::Build {
@@ -355,6 +380,9 @@ fn main() -> Result<()> {
                 for (path_str, content) in files {
                     let full_path = out_dir.join(&path_str);
                     installer::atomic_write(&full_path, &content)?;
+                    if path_str.contains("/hooks/") && path_str.ends_with(".sh") {
+                        installer::set_executable(&full_path)?;
+                    }
                 }
                 println!("Built payload for target: {}", target);
             }
@@ -440,6 +468,14 @@ fn main() -> Result<()> {
             for name in adapters::targets() {
                 println!("{}", name);
             }
+        }
+        Command::Hook { action } => {
+            std::process::exit(hooks::dispatch(&action));
+        }
+        Command::State { action } => {
+            // The FSM engine owns the 0/1/2 exit ABI, so exit with its code
+            // directly rather than through `bail!` (which would force exit 1).
+            std::process::exit(state::dispatch(&action));
         }
     }
     Ok(())

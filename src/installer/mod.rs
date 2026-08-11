@@ -1,5 +1,8 @@
+pub mod apply;
 pub mod manifest_db;
 pub mod migrate;
+pub mod plan;
+pub mod uninstall;
 
 use std::fs::{self, File};
 use std::io::Write;
