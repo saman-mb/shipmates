@@ -12,10 +12,10 @@ the shell tool, and the translation of a deny verdict into Codex's decision JSON
 
 ## Deny form
 
-On a deny the shim writes JSON with `permissionDecision: "deny"` (plus a
-`permissionDecisionReason`) to stdout and exits 0, so Codex reads the decision
-rather than a hook fault. Allow is a silent `exit 0`; an engine error is a
-fail-safe allow with a stderr log.
+On a deny the shim writes JSON with `hookSpecificOutput` containing
+`permissionDecision: "deny"` (plus a `permissionDecisionReason`) to stdout and
+exits 0, so Codex reads the decision rather than a hook fault. Allow is a silent
+`exit 0`; an engine error is a fail-safe allow with a stderr log.
 
 > Caveat: Codex hooks are experimental, and this `PreToolUse` event-JSON shape and
 > deny response are format-verified but not yet proven against a running Codex.
