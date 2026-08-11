@@ -138,6 +138,10 @@ pass `MODE=edit-in-place` up front instead. Report: the file written, the undo p
 the branch), which commands were proven versus recorded as unverified, and the verification round it
 passed on.
 
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
+
 ---
 
 ### Guardrails

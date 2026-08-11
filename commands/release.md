@@ -77,6 +77,10 @@ breaks a running deployment. A one-way, unrecoverable release is a **blocking** 
 Version, the changelog, the green-CI link, the SRE pre-flight verdict, tag/release state (and the publish
 command if manual), plus any human follow-ups (secret/config changes, migration ordering, announcement).
 
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
+
 ---
 
 ### Guardrails

@@ -84,6 +84,10 @@ Open (or, if `MERGE_MODE=auto`, merge) the PR. Body: the root cause in one parag
 regression test, `Closes #<issue>`, and the green-CI link. File sibling bugs / deferred cleanups as
 follow-up issues. Report: root cause, the red→green proof, review verdicts, fix rounds, PR link.
 
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
+
 ---
 
 ### Guardrails

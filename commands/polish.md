@@ -165,6 +165,10 @@ touched, never `git add -A`, since the tree may hold unrelated uncommitted work 
   `MERGE_MODE=auto` does not apply here — the PR belongs to the caller's feature work, not to this
   run. Push, comment, and stop regardless; say so in the report. Leave `<WORKTREE_DIR>` in place
   either way — it isn't polish's PR to merge or clean up.
+
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
 - `new-branch`: push `<BRANCH>` and open a new PR with the same renders cited by path.
 
 Either way, then run the CI gate: poll `gh pr checks` until nothing is pending; a red check means

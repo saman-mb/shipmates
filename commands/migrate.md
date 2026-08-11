@@ -81,6 +81,10 @@ PR: body lists the census counts, sites migrated, sites excluded (with reasons),
 The inventory (found / migrated / excluded), the clean-sweep confirmation, review verdicts, fix rounds,
 and the PR link. Be explicit about anything deliberately left behind.
 
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
+
 ---
 
 ### Guardrails

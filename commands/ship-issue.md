@@ -423,6 +423,11 @@ Decision (each specialist participates only when its flag is set):
   epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
   and post the completion comment.
 
+**Run file cleanup (always):** Regardless of merge mode, delete the run file before finishing:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch. The hooks are silent-allow
+  when no run file exists, so this is safe to do even if the worktree stays.
+
 ## Final report to the user
 
 One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their

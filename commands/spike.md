@@ -106,6 +106,10 @@ Summarise the recommendation and why, link the ADR — and, under `MODE=pr`, the
 review on — and offer the next step: `/plan-epics` to turn the chosen direction into a backlog, or
 `/ship-issue` if it's already a single unit of work.
 
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
+
 ---
 
 ### Guardrails

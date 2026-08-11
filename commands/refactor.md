@@ -113,6 +113,10 @@ Open (or, if `MERGE_MODE=auto`, merge) the PR. Body: the motivation, the structu
 paragraph, the characterization tests and that they are unmodified, any pre-existing test the diff
 touched and why, and the green-CI link. File the bugs you found and didn't fix as follow-up issues.
 
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
+
 ---
 
 ### Guardrails

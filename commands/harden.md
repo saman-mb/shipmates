@@ -112,6 +112,10 @@ there unless `MERGE_MODE=auto`, and file Medium/Low items as labelled follow-up 
 `MERGE_MODE=auto`, merge the PR and remove `<WORKTREE_DIR>`; the manual default leaves the worktree
 in place with the PR open for a human to merge.
 
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
+
 ---
 
 ### Guardrails

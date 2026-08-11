@@ -153,6 +153,10 @@ gh pr review <PR#> --comment --body-file "$REVIEW_BODY_FILE"
 Use `--comment`, not `--approve`/`--request-changes`, unless the caller explicitly asked for a binding
 verdict — an automated approval carries weight the crew hasn't earned on someone else's work.
 
+**Run file cleanup (always):** Delete the run file when done:
+  `rm -f <WORKTREE_DIR>/.shipmates/run-<N>.json`
+  This ensures the FSM gate hooks stop gating commands on this branch.
+
 ---
 
 ### Guardrails
