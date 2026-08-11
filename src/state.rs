@@ -80,6 +80,7 @@ use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::cli::StateAction;
 use crate::installer;
@@ -87,7 +88,7 @@ use crate::installer;
 /// The current on-disk run-file schema. v2/v3 shapes are upgraded in memory
 /// because they have the same FSM fields; the next write persists the current
 /// schema. Legacy attestations without PR identity are not accepted for merge.
-const SCHEMA_VERSION: u32 = 4;
+const SCHEMA_VERSION: u32 = 5;
 
 /// Terminal success phase — reached out of the last stage on a gate pass.
 pub const PHASE_COMPLETE: &str = "complete";
@@ -118,6 +119,8 @@ pub struct RunFile {
     /// never enter the run file.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<HookEvent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checkpoint: Option<Checkpoint>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,6 +140,23 @@ pub struct HookEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool: Option<String>,
     pub at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Checkpoint {
+    pub at: String,
+    pub phase: String,
+    pub fix_rounds: BTreeMap<String, u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
 }
 
 /// Failure modes, kept apart so the exit-code ABI can route them: an **illegal
@@ -543,6 +563,40 @@ fn command_tool_gates(command: &str) -> Result<Vec<serde_json::Value>, StateErro
         .ok_or_else(|| StateError::Error(format!("unknown command {command:?}")))
 }
 
+/// Return the roles declared for a given phase in a command's FSM stages.
+/// Returns an empty Vec if the phase has no declared roles (allows all).
+pub fn valid_roles_for_phase(command: &str, phase: &str) -> Result<Vec<String>, StateError> {
+    let stages = command_stages(command)?;
+    for stage in &stages {
+        if stage.get("stage").and_then(Value::as_str) == Some(phase) {
+            let roles = stage
+                .get("roles")
+                .and_then(Value::as_array)
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default();
+            return Ok(roles);
+        }
+    }
+    Ok(vec![])
+}
+
+/// Check if a tool command looks like a successful `gh pr merge` (unambiguous
+/// terminal signal for FSM auto-advance). Returns `true` only for commands that
+/// are clearly a merge (not a query, not a dry-run).
+pub fn is_merge_completion(tool_command: &str) -> bool {
+    let cmd = tool_command.trim().to_lowercase();
+    // Must contain `gh pr merge` and not be a query/dry-run/abort
+    cmd.contains("gh pr merge")
+        && !cmd.contains("--dry-run")
+        && !cmd.contains("--abort")
+        && !cmd.contains("gh pr view")
+        && !cmd.contains("gh pr list")
+}
+
 /// The JSON result printed by `assert` / `advance` / `status`.
 #[derive(Debug, Serialize)]
 struct AssertResult<'a> {
@@ -566,7 +620,9 @@ pub fn dispatch(action: &StateAction) -> i32 {
         | StateAction::Advance { dir, .. }
         | StateAction::Status { dir, .. }
         | StateAction::Gate { dir, .. }
-        | StateAction::CiAttest { dir, .. } => dir,
+        | StateAction::CiAttest { dir, .. }
+        | StateAction::Checkpoint { dir, .. }
+        | StateAction::Conventions { dir, .. } => dir,
     };
     dispatch_at(Path::new(dir), action)
 }
@@ -582,6 +638,8 @@ pub fn dispatch_at(base: &Path, action: &StateAction) -> i32 {
         StateAction::Status { run, .. } => cmd_status(base, *run),
         StateAction::Gate { run, tool, .. } => cmd_gate(base, *run, tool),
         StateAction::CiAttest { run, pr, .. } => cmd_ci_attest(base, *run, *pr),
+        StateAction::Checkpoint { run, .. } => record_checkpoint(base, *run),
+        StateAction::Conventions { .. } => cmd_conventions(base),
     };
     match result {
         Ok(()) => 0,
@@ -614,6 +672,7 @@ fn cmd_init(base: &Path, run: u64, command: &str) -> Result<(), StateError> {
         fix_rounds: BTreeMap::new(),
         ci: None,
         events: Vec::new(),
+        checkpoint: None,
     };
     with_run_lock(base, run, || {
         let path = run_path(base, run);
@@ -683,7 +742,7 @@ fn cmd_assert(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
 /// `state advance --run N --to PHASE` — assert, then atomically commit the new
 /// phase. A loopback charges one round to the **departing** stage's own counter;
 /// a forward or escalate leaves every counter unchanged (see the module docs).
-fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
+pub fn cmd_advance(base: &Path, run: u64, to: &str) -> Result<(), StateError> {
     with_run_lock(base, run, || cmd_advance_locked(base, run, to))
 }
 
@@ -1051,6 +1110,10 @@ pub fn record_hook_event(
     run: u64,
     event: &str,
     tool: Option<&str>,
+    role: Option<&str>,
+    status: Option<&str>,
+    summary: Option<&str>,
+    files: Option<&[String]>,
 ) -> Result<(), StateError> {
     with_run_lock(base, run, || {
         let mut record = read_run(base, run)?;
@@ -1062,6 +1125,10 @@ pub fn record_hook_event(
                 .unwrap_or_default()
                 .as_secs()
                 .to_string(),
+            role: role.map(str::to_string),
+            status: status.map(str::to_string),
+            summary: summary.map(str::to_string),
+            files: files.map(|f| f.to_vec()),
         });
         const MAX_EVENTS: usize = 64;
         if record.events.len() > MAX_EVENTS {
@@ -1070,6 +1137,38 @@ pub fn record_hook_event(
         }
         write_run(base, &record)
     })
+}
+
+/// `state checkpoint --run N` — snapshot the current phase and fix_rounds as a
+/// recoverable checkpoint. Overwrites any previous checkpoint on the same run.
+pub fn record_checkpoint(base: &Path, run: u64) -> Result<(), StateError> {
+    with_run_lock(base, run, || {
+        let mut record = read_run(base, run)?;
+        record.checkpoint = Some(Checkpoint {
+            at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
+                .to_string(),
+            phase: record.phase.clone(),
+            fix_rounds: record.fix_rounds.clone(),
+            instructions: None,
+        });
+        write_run(base, &record)
+    })
+}
+
+/// `state conventions --base PATH` — detect which convention files exist at the
+/// project root and print them as JSON. No run file required.
+pub fn cmd_conventions(base: &Path) -> Result<(), StateError> {
+    let candidates = ["AGENTS.md", "CLAUDE.md", "README.md"];
+    let found: Vec<&str> = candidates
+        .iter()
+        .filter(|name| base.join(name).is_file())
+        .copied()
+        .collect();
+    println!("{}", serde_json::json!({"conventions": found}));
+    Ok(())
 }
 
 fn gate_for_record(tool: &str, record: &RunFile) -> Result<GateDecision, StateError> {
@@ -1326,6 +1425,7 @@ mod tests {
             fix_rounds: no_rounds(),
             ci: None,
             events: Vec::new(),
+            checkpoint: None,
         };
         write_run(base, &record).unwrap();
         let back = read_run(base, 42).unwrap();
@@ -1399,6 +1499,7 @@ mod tests {
             fix_rounds: no_rounds(),
             ci: None,
             events: Vec::new(),
+            checkpoint: None,
         };
         write_run(base, &seed).unwrap();
 
@@ -1426,6 +1527,7 @@ mod tests {
             fix_rounds: rounds(&[("build", 3)]),
             ci: None,
             events: Vec::new(),
+            checkpoint: None,
         };
         write_run(base, &seed).unwrap();
         // verify still has its own budget: verify -> build is a legal loopback,
@@ -1449,6 +1551,7 @@ mod tests {
             fix_rounds: no_rounds(),
             ci: None,
             events: Vec::new(),
+            checkpoint: None,
         };
         write_run(base, &seed).unwrap();
         // plan -> build skips isolate and is a forward jump (build is later than
@@ -1586,6 +1689,7 @@ mod tests {
             fix_rounds: no_rounds(),
             ci: None,
             events: Vec::new(),
+            checkpoint: None,
         };
         write_run(base, &seed).unwrap();
         let err = cmd_gate(base, 1, "gh pr merge --squash").unwrap_err();
@@ -1651,6 +1755,7 @@ mod tests {
                 at: "now".into(),
             }),
             events: Vec::new(),
+            checkpoint: None,
         };
         write_run(base, &seed).unwrap();
         assert_eq!(merge_target("gh pr merge 77 --squash"), Some("77"));
@@ -1687,6 +1792,7 @@ mod tests {
             fix_rounds: no_rounds(),
             ci: None,
             events: Vec::new(),
+            checkpoint: None,
         };
         write_run(base, &seed).unwrap();
         let base = base.to_path_buf();
@@ -1695,7 +1801,7 @@ mod tests {
             let base = base.clone();
             workers.push(std::thread::spawn(move || {
                 for event in 0..10 {
-                    record_hook_event(&base, 88, &format!("event-{worker}-{event}"), None).unwrap();
+                    record_hook_event(&base, 88, &format!("event-{worker}-{event}"), None, None, None, None, None).unwrap();
                 }
             }));
         }
@@ -1703,5 +1809,136 @@ mod tests {
             worker.join().unwrap();
         }
         assert_eq!(read_run(&base, 88).unwrap().events.len(), 40);
+    }
+
+    #[test]
+    fn checkpoint_captures_current_state() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        let seed = RunFile {
+            schema_version: SCHEMA_VERSION,
+            command: "ship-issue".into(),
+            issue: 100,
+            phase: "verify".into(),
+            fix_rounds: rounds(&[("build", 2), ("verify", 1)]),
+            ci: None,
+            events: Vec::new(),
+            checkpoint: None,
+        };
+        write_run(base, &seed).unwrap();
+        record_checkpoint(base, 100).unwrap();
+        let back = read_run(base, 100).unwrap();
+        let cp = back.checkpoint.expect("checkpoint should be set");
+        assert_eq!(cp.phase, "verify");
+        assert_eq!(cp.fix_rounds.get("build").copied(), Some(2));
+        assert_eq!(cp.fix_rounds.get("verify").copied(), Some(1));
+        assert!(!cp.at.is_empty());
+    }
+
+    #[test]
+    fn checkpoint_overwrites_previous() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        let seed = RunFile {
+            schema_version: SCHEMA_VERSION,
+            command: "ship-issue".into(),
+            issue: 101,
+            phase: "plan".into(),
+            fix_rounds: no_rounds(),
+            ci: None,
+            events: Vec::new(),
+            checkpoint: None,
+        };
+        write_run(base, &seed).unwrap();
+        record_checkpoint(base, 101).unwrap();
+        // Advance to a new phase and checkpoint again
+        cmd_init(base, 101, "ship-issue").unwrap_or(());
+        let mut record = read_run(base, 101).unwrap();
+        record.phase = "build".into();
+        write_run(base, &record).unwrap();
+        record_checkpoint(base, 101).unwrap();
+        let back = read_run(base, 101).unwrap();
+        assert_eq!(back.checkpoint.unwrap().phase, "build");
+    }
+
+    #[test]
+    fn conventions_detects_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        // No files yet
+        cmd_conventions(base).unwrap();
+        // Create AGENTS.md
+        std::fs::write(base.join("AGENTS.md"), "# Agents").unwrap();
+        // Can't easily capture stdout in unit test, but verify no panic/error
+        cmd_conventions(base).unwrap();
+    }
+
+    #[test]
+    fn record_hook_event_with_enriched_fields() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = dir.path();
+        let seed = RunFile {
+            schema_version: SCHEMA_VERSION,
+            command: "ship-issue".into(),
+            issue: 200,
+            phase: "build".into(),
+            fix_rounds: no_rounds(),
+            ci: None,
+            events: Vec::new(),
+            checkpoint: None,
+        };
+        write_run(base, &seed).unwrap();
+        record_hook_event(
+            base,
+            200,
+            "SubagentStop",
+            Some("Task"),
+            Some("senior-engineer"),
+            Some("completed"),
+            Some("Fixed the bug"),
+            Some(&["src/main.rs".to_string(), "tests/test.rs".to_string()]),
+        )
+        .unwrap();
+        let back = read_run(base, 200).unwrap();
+        assert_eq!(back.events.len(), 1);
+        let ev = &back.events[0];
+        assert_eq!(ev.event, "SubagentStop");
+        assert_eq!(ev.tool.as_deref(), Some("Task"));
+        assert_eq!(ev.role.as_deref(), Some("senior-engineer"));
+        assert_eq!(ev.status.as_deref(), Some("completed"));
+        assert_eq!(ev.summary.as_deref(), Some("Fixed the bug"));
+        assert_eq!(
+            ev.files.as_deref(),
+            Some(&["src/main.rs".to_string(), "tests/test.rs".to_string()][..])
+        );
+    }
+
+    #[test]
+    fn valid_roles_for_phase_returns_roles_from_fsm() {
+        let roles = valid_roles_for_phase("ship-issue", "build").unwrap();
+        assert!(roles.contains(&"senior-engineer".to_string()));
+        assert!(!roles.contains(&"sdet".to_string()));
+    }
+
+    #[test]
+    fn valid_roles_for_phase_verify_returns_sdet() {
+        let roles = valid_roles_for_phase("ship-issue", "verify").unwrap();
+        assert!(roles.contains(&"sdet".to_string()));
+    }
+
+    #[test]
+    fn valid_roles_for_phase_unknown_phase_returns_empty() {
+        let roles = valid_roles_for_phase("ship-issue", "nonexistent").unwrap();
+        assert!(roles.is_empty());
+    }
+
+    #[test]
+    fn is_merge_completion_detects_gh_pr_merge() {
+        assert!(is_merge_completion("gh pr merge 42 --squash"));
+        assert!(is_merge_completion("gh pr merge --squash"));
+        assert!(!is_merge_completion("gh pr merge --dry-run 42"));
+        assert!(!is_merge_completion("gh pr view 42"));
+        assert!(!is_merge_completion("gh pr list"));
+        assert!(!is_merge_completion("git push origin main"));
     }
 }

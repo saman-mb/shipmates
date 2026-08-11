@@ -194,6 +194,20 @@ pub enum StateAction {
         #[arg(long)]
         pr: u64,
     },
+    /// Snapshot the current phase and fix_rounds as a recoverable checkpoint.
+    Checkpoint {
+        #[arg(long, default_value = ".")]
+        dir: String,
+
+        #[arg(long)]
+        run: u64,
+    },
+    /// Detect which convention files (AGENTS.md, CLAUDE.md, README.md) exist at
+    /// the project root and print them as JSON.
+    Conventions {
+        #[arg(long, default_value = ".")]
+        dir: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -218,6 +232,29 @@ pub enum HookAction {
 
         #[arg(long)]
         event: String,
+    },
+    /// Snapshot the current phase and fix_rounds as a recoverable checkpoint.
+    Checkpoint {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Inject detected convention files (AGENTS.md, CLAUDE.md, README.md) as
+    /// context for a session-start hook.
+    Conventions {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Validate the spawned role is legal for the run's current phase, then
+    /// inject role-specific context. Deny an out-of-phase spawn.
+    SubagentStart {
+        #[arg(long)]
+        harness: String,
+    },
+    /// Record a tool event and auto-advance the FSM on unambiguous terminal
+    /// signals (e.g. successful `gh pr merge` → complete).
+    PostToolUseAdvance {
+        #[arg(long)]
+        harness: String,
     },
     /// Keep an identified run from ending in a non-terminal phase.
     Stop {
