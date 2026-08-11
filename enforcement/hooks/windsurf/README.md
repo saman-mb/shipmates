@@ -16,20 +16,17 @@ translation of a deny verdict into a blocked command.
 deny is a bare **`exit 2` with no stdout**. Allow is a silent `exit 0`; an engine
 error is a fail-safe allow with a stderr log.
 
-> Caveat: the `pre_run_command` event-JSON shape and this exit-2 block are assumed
-> from the docs, not yet verified against a running Windsurf/Devin — the shim
-> parses defensively and fails safe on any unrecognised shape. That verify-live
-> pass, with all install-time wiring, is #217.
+> Caveat: the `pre_run_command` event-JSON shape and exit-2 block are
+> format-verified but not yet proven against a running Windsurf/Devin.
+> Installation writes the workspace hook config.
 
 ## Fail-safe rules
 
-Allowed with no output (never blocked): `main`, a detached HEAD, a
-`feat/bundle-*` branch, a missing `.shipmates/run-<N>.json`, a non-git cwd, no
-`shipmates` on `PATH`, or an engine error (exit 2). The shim never fails open —
-it only ever blocks on a definite engine deny (exit 1). Requires `jq` and `git`.
+Allowed with no output (never blocked): `main`, a detached HEAD, a missing
+`.shipmates/run-<N>.json`, a non-git cwd, or no active run. The installed
+dispatcher uses Rust JSON parsing and requires `git` plus `shipmates`.
 
 ## Scope
 
-The script is emitted into the Windsurf payload by #216. Install-time config
-wiring — registering it in `.windsurf/hooks.json` for `pre_run_command` — is
-#217.
+The script is emitted into the Windsurf payload and installation registers it in
+`.windsurf/hooks.json` for `pre_run_command`.
