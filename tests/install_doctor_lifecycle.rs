@@ -163,6 +163,102 @@ fn fresh_install_writes_receipt_with_harness_layout_and_hashes() {
 }
 
 #[test]
+fn first_install_preserves_existing_collision_without_force() {
+    let dir = tempdir().unwrap();
+    let collision = managed_file(dir.path());
+    fs::create_dir_all(collision.parent().unwrap()).unwrap();
+    fs::write(&collision, b"user content\n").unwrap();
+
+    install_ok(dir.path());
+
+    assert_eq!(fs::read(&collision).unwrap(), b"user content\n");
+    let receipt = read_receipt(dir.path());
+    assert!(
+        !receipt_files(&receipt)
+            .iter()
+            .any(|file| file["path"] == ".claude/agents/architect.md")
+    );
+}
+
+#[test]
+fn invalid_receipt_aborts_install_without_writes() {
+    let dir = tempdir().unwrap();
+    let collision = managed_file(dir.path());
+    fs::create_dir_all(collision.parent().unwrap()).unwrap();
+    fs::write(&collision, b"keep\n").unwrap();
+    fs::create_dir_all(receipt_path(dir.path()).parent().unwrap()).unwrap();
+    fs::write(receipt_path(dir.path()), b"{\"schema_version\":99}\n").unwrap();
+
+    let output = install(dir.path());
+
+    assert!(!output.status.success(), "invalid receipt must fail closed");
+    assert_eq!(fs::read(&collision).unwrap(), b"keep\n");
+    assert_eq!(
+        fs::read(receipt_path(dir.path())).unwrap(),
+        b"{\"schema_version\":99}\n"
+    );
+    assert!(!dir.path().join(".claude/skills").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_harness_root_cannot_write_outside_target() {
+    use std::os::unix::fs::symlink;
+
+    let target = tempdir().unwrap();
+    let outside = tempdir().unwrap();
+    symlink(outside.path(), target.path().join(".claude")).unwrap();
+
+    let output = install(target.path());
+
+    assert!(
+        !output.status.success(),
+        "symlinked harness root must fail closed"
+    );
+    assert!(fs::read_dir(outside.path()).unwrap().next().is_none());
+    assert!(!receipt_path(target.path()).exists());
+}
+
+#[test]
+fn invalid_sibling_receipt_aborts_other_harness_install() {
+    let dir = tempdir().unwrap();
+    let first = run(dir.path(), &["install", "--harness", "codex"]);
+    assert!(
+        first.status.success(),
+        "first install failed: {}",
+        output_text(&first)
+    );
+    fs::write(
+        dir.path().join(".shipmates/receipts/codex.json"),
+        b"corrupt\n",
+    )
+    .unwrap();
+
+    let second = run(dir.path(), &["install", "--harness", "antigravity"]);
+
+    assert!(!second.status.success(), "corrupt sibling must fail closed");
+    assert!(
+        !dir.path()
+            .join(".shipmates/receipts/antigravity.json")
+            .exists()
+    );
+}
+
+#[test]
+fn install_preflight_failure_keeps_prior_tree_and_receipt_absent() {
+    let dir = tempdir().unwrap();
+    let agents = dir.path().join(".claude/agents");
+    fs::create_dir_all(agents.parent().unwrap()).unwrap();
+    fs::write(&agents, b"user file\n").unwrap();
+
+    let output = install(dir.path());
+
+    assert!(!output.status.success());
+    assert_eq!(fs::read(&agents).unwrap(), b"user file\n");
+    assert!(!receipt_path(dir.path()).exists());
+}
+
+#[test]
 fn unchanged_reinstall_creates_no_backups() {
     let dir = tempdir().unwrap();
     install_ok(dir.path());
@@ -275,13 +371,7 @@ fn removed_receipt_files_remain_with_warning() {
     let dir = tempdir().unwrap();
     let first = run(
         dir.path(),
-        &[
-            "install",
-            "--harness",
-            HARNESS,
-            "--with-tools",
-            "termgif",
-        ],
+        &["install", "--harness", HARNESS, "--with-tools", "termgif"],
     );
     assert!(
         first.status.success(),
@@ -293,13 +383,7 @@ fn removed_receipt_files_remain_with_warning() {
 
     let second = run(
         dir.path(),
-        &[
-            "install",
-            "--harness",
-            HARNESS,
-            "--with-tools",
-            "none",
-        ],
+        &["install", "--harness", HARNESS, "--with-tools", "none"],
     );
     assert!(
         second.status.success(),
@@ -404,6 +488,107 @@ fn shared_path_uninstall_does_not_remove_files_owned_by_another_harness() {
         shared_skill.exists(),
         "uninstalling codex must preserve shared skill still owned by antigravity"
     );
+    assert!(!dir.path().join(".shipmates/receipts/codex.json").exists());
+    assert!(
+        dir.path()
+            .join(".shipmates/receipts/antigravity.json")
+            .exists()
+    );
+}
+
+#[test]
+fn doctor_fix_leaves_unowned_drift_untouched() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+    let managed = managed_file(dir.path());
+    let mut receipt = read_receipt(dir.path());
+    receipt["files"]
+        .as_array_mut()
+        .unwrap()
+        .retain(|entry| entry["path"] != ".claude/agents/architect.md");
+    fs::write(
+        receipt_path(dir.path()),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+    fs::write(&managed, b"unmanaged edit\n").unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+
+    assert!(
+        output.status.success(),
+        "doctor fix failed: {}",
+        output_text(&output)
+    );
+    assert_eq!(fs::read(&managed).unwrap(), b"unmanaged edit\n");
+}
+
+#[test]
+fn doctor_fix_without_receipt_reports_unknown_ownership_and_preserves_drift() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+    let managed = managed_file(dir.path());
+    fs::remove_file(receipt_path(dir.path())).unwrap();
+    fs::write(&managed, b"unknown owner\n").unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+
+    assert!(
+        output.status.success(),
+        "doctor fix failed: {}",
+        output_text(&output)
+    );
+    assert_eq!(fs::read(&managed).unwrap(), b"unknown owner\n");
+    assert!(String::from_utf8_lossy(&output.stdout).contains("ownership is unknown"));
+}
+
+#[test]
+fn doctor_fix_invalid_receipt_fails_without_writing() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+    let managed = managed_file(dir.path());
+    fs::write(&managed, b"keep this drift\n").unwrap();
+    fs::write(receipt_path(dir.path()), b"not json\n").unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+
+    assert!(!output.status.success());
+    assert_eq!(fs::read(&managed).unwrap(), b"keep this drift\n");
+    assert_eq!(fs::read(receipt_path(dir.path())).unwrap(), b"not json\n");
+}
+
+#[test]
+fn doctor_fix_refreshes_receipt_hash_after_owned_repair() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+    let managed = managed_file(dir.path());
+    let mut receipt = read_receipt(dir.path());
+    for file in receipt["files"].as_array_mut().unwrap() {
+        if file["path"] == ".claude/agents/architect.md" {
+            file["sha256"] = Value::String("a".repeat(64));
+        }
+    }
+    fs::write(
+        receipt_path(dir.path()),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+    fs::write(&managed, b"drift\n").unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+
+    assert!(
+        output.status.success(),
+        "doctor fix failed: {}",
+        output_text(&output)
+    );
+    let refreshed = read_receipt(dir.path());
+    let entry = receipt_files(&refreshed)
+        .iter()
+        .find(|file| file["path"] == ".claude/agents/architect.md")
+        .unwrap();
+    let expected_hash = shipmates::digest::compute_sha256(&managed).unwrap();
+    assert_eq!(entry["sha256"].as_str(), Some(expected_hash.as_str()));
 }
 
 #[test]

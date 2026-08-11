@@ -157,7 +157,7 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
             <li>Writes into the tree each harness reads. Four harnesses (<code>codex</code>, <code>antigravity</code>, <code>cursor</code>, <code>github-copilot</code>) share one <code>.agents/skills/</code> tree — rendered once, byte-identical, so a multi-harness install has a single copy, not four. Crew stay harness-native (<code>.codex/agents/</code>, <code>.github/agents/</code>, <code>.agents/agents/</code>). The rest keep their own root: <code>.claude/</code>, <code>.windsurf/</code>, and opencode&#x27;s <code>.opencode/commands/</code>.</li>
             <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on the five crew-bearing harnesses, the twelve crew personas: <code>agents/*.md</code> on claude-code, opencode and antigravity, <code>agents/*.toml</code> on codex, and <code>agents/*.agent.md</code> on github-copilot. The two skill-only harnesses (cursor, windsurf) get the skills and nothing else.</li>
             <li>Writes an install receipt at <code>&lt;target&gt;/.shipmates/receipts/&lt;harness&gt;.json</code>. The receipt records Shipmates version, harness, resolved layout, and each file Shipmates owns with its SHA-256 hash.</li>
-            <li>Reinstalling is idempotent: unchanged receipt-owned files are skipped; changed receipt-owned files get a sibling <code>.bak-…</code> backup before replacement. New files are added. Files present on disk but absent from the receipt are unmanaged, so the installer warns and leaves them untouched.</li>
+            <li>Reinstalling is idempotent: unchanged receipt-owned files are skipped; changed receipt-owned files get a sibling <code>.bak-…</code> backup before replacement. New files are added. Existing colliding files, including first-install files, are unmanaged until <code>--force</code> explicitly replaces them. Symlinked target paths are rejected.</li>
             <li>Warns about files recorded by the previous receipt but absent from the new payload instead of silently deleting them.</li>
           </ul>
         </div>
@@ -179,7 +179,7 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
               <tr><td><code>--dir PATH</code></td><td>none</td><td>Install into an explicit target directory. Cannot be combined with <code>--global</code> or <code>--local</code>.</td></tr>
               <tr><td><code>--with-tools NAMES</code></td><td>prompt / none</td><td>Which agent-invoked tools to install: names (comma-separated), <code>all</code>, or <code>none</code>. Omit it and a terminal prompts you to pick; omit it non-interactively and none are installed.</td></tr>
               <tr><td><code>--no-migrate</code></td><td>no</td><td>Leave superseded legacy command files in place during install.</td></tr>
-              <tr><td><code>--force</code></td><td>no</td><td>Overwrite a colliding file even when the receipt does not claim it.</td></tr>
+              <tr><td><code>--force</code></td><td>no</td><td>Explicitly replace an existing colliding file, including one not claimed by a receipt.</td></tr>
             </tbody>
           </table>
         </div>
@@ -241,13 +241,13 @@ shipmates doctor --local
 shipmates doctor --dir /path/to/project
 shipmates doctor --fix
 shipmates doctor --fix --no-migrate</code></pre>
-          <p><code>doctor</code> uses the global home directory by default; <code>--local</code> checks the current directory and <code>--dir</code> checks an explicit root. It reports whether the harness tree is present, whether expected files are missing, and whether installed files are modified or unreadable. It is read-only unless you pass <code>--fix</code>.</p>
-          <p><code>--no-migrate</code> requires <code>--fix</code>. <code>shipmates doctor --fix --no-migrate</code> restores missing or modified files but leaves superseded legacy command files in place.</p>
-          <p>The receipt lives below the target at <code>.shipmates/receipts/&lt;harness&gt;.json</code>. It records harness, layout, version, and SHA-256 hashes for files Shipmates owns. <code>shipmates uninstall</code> reads that receipt to discover the harness when exactly one valid receipt exists, and removes only unchanged, receipt-owned files. With multiple receipts, pass <code>--harness</code>. Modified or unmanaged files trigger warnings and remain untouched.</p>
+          <p><code>doctor</code> uses the global home directory and the <code>claude-code</code> harness by default; pass <code>--harness</code> to check another harness, <code>--local</code> for the current directory, or <code>--dir</code> for an explicit root. It does not discover harnesses from receipts. It reports whether the harness tree is present, whether expected files are missing, whether installed files are modified or unreadable, and whether hooks are registered. It is read-only unless you pass <code>--fix</code>.</p>
+          <p><code>--no-migrate</code> requires <code>--fix</code>. <code>shipmates doctor --fix --no-migrate</code> restores receipt-owned missing or modified files but leaves superseded legacy command files in place. Install migrates receipt-owned legacy files; a receipt-less tree preserves existing legacy files unless <code>--force</code> is explicit. A missing receipt reports ownership unknown and preserves existing files; an invalid receipt is a problem and <code>--fix</code> refuses ownership-based repair.</p>
+          <p>The receipt lives below the target at <code>.shipmates/receipts/&lt;harness&gt;.json</code>. It records harness, layout, version, and SHA-256 hashes for files Shipmates owns. <code>shipmates uninstall</code> defaults to the global home directory and discovers the harness only when exactly one valid receipt exists. With multiple valid receipts, pass <code>--harness</code>; an explicit missing or invalid receipt fails closed. It removes only unchanged, receipt-owned files, unregisters Shipmates hook entries while preserving user entries, and leaves modified, unreadable, or unmanaged files untouched.</p>
           <pre class="order-code" tabindex="0"><code>shipmates uninstall
 shipmates uninstall --local
 shipmates uninstall --dir /path/to/project</code></pre>
-          <p>Do not remove the whole harness directory: it may contain files the user owns. Uninstall is receipt-scoped and fails safe when ownership is uncertain.</p>
+          <p>Do not remove the whole harness directory: it may contain files the user owns. Uninstall is receipt-scoped, validates all sibling receipts first, and fails safe when ownership is uncertain. A shared-only block preserves the shared file while removing the selected receipt.</p>
         </div>
       </div>
     </section>
@@ -259,7 +259,7 @@ shipmates uninstall --dir /path/to/project</code></pre>
         </div>
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>shipmates uninstall</code></pre>
-          <p>Uninstall uses the receipt at <code>&lt;target&gt;/.shipmates/receipts/&lt;harness&gt;.json</code> to discover the harness and layout. With one valid receipt, <code>--harness</code> is optional; with multiple receipts, specify it. It removes only files recorded there whose contents still match the recorded hashes. Modified receipt-owned files and unmanaged files are warned about and left untouched. The command never guesses by deleting a whole harness tree.</p>
+          <p>Uninstall defaults to the global home directory; use <code>--local</code> or <code>--dir</code> for another root. It uses the receipt at <code>&lt;target&gt;/.shipmates/receipts/&lt;harness&gt;.json</code>. With one valid receipt, <code>--harness</code> is optional; with multiple valid receipts, specify it. Missing or invalid receipts fail closed, while no receipt directory is a no-op. It removes only files recorded there whose contents still match the hashes, unregisters only Shipmates hook entries, and preserves user hook entries. Modified, unreadable, and unmanaged files are warned about and left untouched. The command never guesses by deleting a whole harness tree.</p>
         </div>
       </div>
     </section>

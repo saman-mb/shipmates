@@ -4,7 +4,7 @@
 //! formatting. The installer records what it wrote; consumers can later use
 //! that record to compare, upgrade, or remove only Shipmates-owned files.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fs;
@@ -37,7 +37,8 @@ impl ReceiptFile {
             )
         })?;
         let relative = relative_path(relative, "receipt file")?;
-        let sha256 = digest::compute_sha256(path)
+        let path = resolve_target_relative(target_dir, Path::new(&relative))?;
+        let sha256 = digest::compute_sha256(&path)
             .with_context(|| format!("hashing receipt file {}", path.display()))?;
         Ok(Self {
             path: relative,
@@ -153,22 +154,28 @@ impl ReceiptRepository {
         &self.target_dir
     }
 
-    pub fn receipts_dir(&self) -> PathBuf {
-        self.target_dir.join(RECEIPTS_DIR)
+    pub fn receipts_dir(&self) -> Result<PathBuf> {
+        resolve_target_relative(&self.target_dir, Path::new(RECEIPTS_DIR))
     }
 
     pub fn receipt_path(&self, harness: &str) -> Result<PathBuf> {
         validate_harness(harness)?;
-        Ok(self.receipts_dir().join(format!("{harness}.json")))
+        resolve_target_relative(
+            &self.target_dir,
+            &Path::new(RECEIPTS_DIR).join(format!("{harness}.json")),
+        )
     }
 
     /// Read one receipt. Missing receipt means no prior Shipmates install.
     pub fn load(&self, harness: &str) -> Result<Option<InstallReceipt>> {
         let path = self.receipt_path(harness)?;
-        if !path.exists() {
-            return Ok(None);
+        match fs::symlink_metadata(&path) {
+            Ok(_) => Ok(Some(read_receipt(&path, harness)?)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => {
+                Err(error).with_context(|| format!("inspecting receipt {}", path.display()))
+            }
         }
-        Ok(Some(read_receipt(&path, harness)?))
     }
 
     pub fn read(&self, harness: &str) -> Result<Option<InstallReceipt>> {
@@ -204,7 +211,8 @@ impl ReceiptRepository {
 
     /// Load every valid JSON receipt beside this target, sorted by harness.
     pub fn load_all(&self) -> Result<Vec<InstallReceipt>> {
-        let directory = match fs::read_dir(self.receipts_dir()) {
+        let receipts_dir = self.receipts_dir()?;
+        let directory = match fs::read_dir(&receipts_dir) {
             Ok(directory) => directory,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
             Err(error) => return Err(error).context("reading install receipt directory"),
@@ -230,6 +238,12 @@ impl ReceiptRepository {
                     anyhow::anyhow!("receipt filename is not valid UTF-8: {}", path.display())
                 })?;
             validate_harness(harness)?;
+            let path = resolve_target_relative(
+                &self.target_dir,
+                Path::new(RECEIPTS_DIR)
+                    .join(format!("{harness}.json"))
+                    .as_path(),
+            )?;
             receipts.push(read_receipt(&path, harness)?);
         }
         receipts.sort_by(|left, right| left.harness.cmp(&right.harness));
@@ -275,6 +289,49 @@ impl ReceiptRepository {
 pub type ManifestDb = ReceiptRepository;
 pub type Manifest = InstallReceipt;
 pub type ManifestEntry = ReceiptFile;
+
+/// Resolve one target-relative path without traversing symlinks.
+///
+/// Missing final components are allowed for installs, but every existing
+/// component is inspected with `symlink_metadata`, including target roots,
+/// receipt directories, harness roots, and the final path.
+pub fn resolve_target_relative(target_dir: &Path, relative: &Path) -> Result<PathBuf> {
+    if relative.as_os_str().is_empty() || relative.is_absolute() {
+        bail!("unsafe target-relative path: {}", relative.display());
+    }
+    for component in relative.components() {
+        if !matches!(component, Component::Normal(_)) {
+            bail!("unsafe target-relative path: {}", relative.display());
+        }
+    }
+
+    // The target itself must not be a symlink. Parent components belong to the
+    // caller's path namespace (for example, macOS `/var`), while components
+    // below this target are checked one by one below.
+    reject_symlink(target_dir)?;
+    let mut current = target_dir.to_path_buf();
+    for component in relative.components() {
+        current.push(component.as_os_str());
+        reject_symlink(&current)?;
+    }
+    Ok(current)
+}
+
+fn reject_symlink(path: &Path) -> Result<()> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            bail!(
+                "refusing symlink component in target path {}",
+                path.display()
+            )
+        }
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => {
+            Err(error).with_context(|| format!("inspecting target path {}", path.display()))
+        }
+    }
+}
 
 fn read_receipt(path: &Path, expected_harness: &str) -> Result<InstallReceipt> {
     let bytes =
@@ -405,11 +462,9 @@ mod tests {
             repository.claims_for_path(Path::new(path)).unwrap(),
             vec!["codex", "github-copilot"]
         );
-        assert!(
-            repository
-                .is_claimed_by_other(Path::new(path), "codex")
-                .unwrap()
-        );
+        assert!(repository
+            .is_claimed_by_other(Path::new(path), "codex")
+            .unwrap());
     }
 
     #[test]
@@ -432,26 +487,22 @@ mod tests {
             assert!(error.to_string().contains("path"));
         }
 
-        assert!(
-            InstallReceipt::new(
-                "0.1.3",
-                "claude-code",
-                LAYOUT_SKILLS,
-                vec![".claude".into()],
-                vec![file("b", HASH), file("a", HASH)],
-            )
-            .is_err()
-        );
-        assert!(
-            InstallReceipt::new(
-                "0.1.3",
-                "claude-code",
-                LAYOUT_SKILLS,
-                vec![".claude".into()],
-                vec![file("a", &HASH.to_ascii_uppercase())],
-            )
-            .is_err()
-        );
+        assert!(InstallReceipt::new(
+            "0.1.3",
+            "claude-code",
+            LAYOUT_SKILLS,
+            vec![".claude".into()],
+            vec![file("b", HASH), file("a", HASH)],
+        )
+        .is_err());
+        assert!(InstallReceipt::new(
+            "0.1.3",
+            "claude-code",
+            LAYOUT_SKILLS,
+            vec![".claude".into()],
+            vec![file("a", &HASH.to_ascii_uppercase())],
+        )
+        .is_err());
     }
 
     #[test]

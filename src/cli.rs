@@ -38,7 +38,8 @@ pub enum Command {
         #[arg(long)]
         no_migrate: bool,
 
-        /// Overwrite colliding files even when a receipt does not claim them.
+        /// Overwrite existing colliding files, including files not claimed by
+        /// a receipt. Without this flag, existing files are preserved.
         #[arg(long)]
         force: bool,
     },

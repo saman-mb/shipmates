@@ -2,7 +2,7 @@
 
 use crate::adapters::Adapter;
 use crate::installer::manifest_db::{self, InstallReceipt, ReceiptFile, ReceiptRepository};
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -82,10 +82,8 @@ impl InstallPlan {
 }
 
 /// Canonical receipt location for one harness install.
-pub fn receipt_path(target_dir: &Path, harness: &str) -> PathBuf {
-    target_dir
-        .join(manifest_db::RECEIPTS_DIR)
-        .join(format!("{harness}.json"))
+pub fn receipt_path(target_dir: &Path, harness: &str) -> Result<PathBuf> {
+    ReceiptRepository::new(target_dir).receipt_path(harness)
 }
 
 pub fn save_receipt(target_dir: &Path, receipt: &Receipt) -> Result<()> {
@@ -110,13 +108,14 @@ pub fn unmanaged_files(
     target_dir: &Path,
     roots: &[String],
     managed: &std::collections::BTreeSet<String>,
-) -> Vec<PathBuf> {
+) -> Result<Vec<PathBuf>> {
     let mut result = Vec::new();
     for root in roots {
-        collect_unmanaged(&target_dir.join(root), target_dir, managed, &mut result);
+        let root = manifest_db::resolve_target_relative(target_dir, Path::new(root))?;
+        collect_unmanaged(&root, target_dir, managed, &mut result)?;
     }
     result.sort();
-    result
+    Ok(result)
 }
 
 fn collect_unmanaged(
@@ -124,12 +123,19 @@ fn collect_unmanaged(
     target_dir: &Path,
     managed: &std::collections::BTreeSet<String>,
     result: &mut Vec<PathBuf>,
-) {
+) -> Result<()> {
     let Ok(entries) = fs::read_dir(path) else {
-        return;
+        return Ok(());
     };
     for entry in entries.flatten() {
         let path = entry.path();
+        let relative = path.strip_prefix(target_dir).map_err(|error| {
+            anyhow::anyhow!(
+                "unmanaged path escaped target: {} ({error})",
+                path.display()
+            )
+        })?;
+        let path = manifest_db::resolve_target_relative(target_dir, relative)?;
         let name = entry.file_name();
         if name == ".shipmates" || name == ".shipmates-backup" {
             continue;
@@ -138,7 +144,7 @@ fn collect_unmanaged(
             continue;
         };
         if file_type.is_dir() {
-            collect_unmanaged(&path, target_dir, managed, result);
+            collect_unmanaged(&path, target_dir, managed, result)?;
         } else if file_type.is_file() {
             let Ok(relative) = path.strip_prefix(target_dir) else {
                 continue;
@@ -149,6 +155,7 @@ fn collect_unmanaged(
             }
         }
     }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -2,16 +2,16 @@
 //!
 //! Read-only by default: `diagnose` inspects the on-disk tree against the payload
 //! the running binary would install and reports what is healthy, stale, missing or
-//! superseded. `fix` migrates superseded commands (backed up first) and rewrites
-//! any missing or drifted crew/skill files (backing up whatever it overwrites),
-//! then re-diagnoses and hands back the fresh report.
+//! superseded. `fix` repairs only paths claimed by a valid receipt; without one,
+//! it may restore missing files but never overwrites existing content. It then
+//! re-diagnoses and hands back the fresh report.
 
 use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
 use crate::hooks;
-use crate::installer::{atomic_write, migrate};
-use anyhow::Result;
+use crate::installer::{atomic_write, manifest_db, migrate, plan};
+use anyhow::{bail, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 
@@ -114,6 +114,34 @@ fn diagnose_built(
     let expected = strip_container(built, adapter.container());
     let version = env!("CARGO_PKG_VERSION");
     let mut checks = Vec::new();
+
+    match plan::read_receipt(target_dir, harness) {
+        (plan::ReceiptState::Valid, _, _) => checks.push(Check {
+            name: "Ownership".into(),
+            severity: Severity::Ok,
+            detail: "install receipt is valid".into(),
+            fixable: true,
+        }),
+        (plan::ReceiptState::Missing, _, _) => checks.push(Check {
+            name: "Ownership".into(),
+            severity: Severity::Warn,
+            detail: "install receipt missing; ownership is unknown, existing files will be left untouched".into(),
+            fixable: false,
+        }),
+        (plan::ReceiptState::Invalid, _, error) => checks.push(Check {
+            name: "Ownership".into(),
+            severity: Severity::Problem,
+            detail: format!(
+                "install receipt is invalid; refusing ownership-based repair: {}",
+                error.unwrap_or_else(|| "unknown receipt error".into())
+            ),
+            fixable: false,
+        }),
+    }
+
+    for rel in expected.keys() {
+        manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+    }
 
     // 1. Install present — the harness's expected dotdir(s) exist.
     let dotdirs: BTreeSet<&str> = expected
@@ -417,14 +445,24 @@ fn diagnose_built(
         fixable: !tool_drift.is_empty() && tool_unreadable.is_empty(),
     });
 
-    // 6. Orphan/unmanaged detection — deferred.
-    // #190: true orphan detection needs the receipt manifest to know which files
-    // shipmates wrote; until it lands we cannot tell a user's own file from a
-    // stale one, so this is an informational note rather than a check that acts.
+    // 6. Receipt ownership. The receipt is the authority for repair; files not
+    // listed there remain user-owned from doctor's perspective and are never
+    // changed automatically.
+    let ownership_detail = match plan::read_receipt(target_dir, harness).0 {
+        plan::ReceiptState::Valid => {
+            "receipt tracks Shipmates-owned files; unlisted files are preserved"
+        }
+        plan::ReceiptState::Missing => {
+            "receipt missing; ownership is unknown and existing files are preserved"
+        }
+        plan::ReceiptState::Invalid => {
+            "receipt invalid; ownership checks fail closed and existing files are preserved"
+        }
+    };
     checks.push(Check {
         name: "Unmanaged files".into(),
         severity: Severity::Ok,
-        detail: "orphan detection is deferred until the receipt manifest lands (#190)".into(),
+        detail: ownership_detail.into(),
         fixable: false,
     });
 
@@ -449,12 +487,38 @@ pub fn fix(
     let adapter = adapters::select(harness)?;
     let built = adapter.build(roles, cmds)?;
     let expected = strip_container(&built, adapter.container());
+    let repository = manifest_db::ReceiptRepository::new(target_dir);
+    repository.load_all()?;
+    let (receipt_state, mut receipt, receipt_error) = plan::read_receipt(target_dir, harness);
+    if receipt_state == plan::ReceiptState::Invalid {
+        bail!(
+            "install receipt for harness {} is invalid; refusing doctor --fix: {}",
+            harness,
+            receipt_error.unwrap_or_else(|| "unknown receipt error".into())
+        );
+    }
+    for rel in expected.keys() {
+        manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+    }
     let backup_root = migrate::new_backup_root(target_dir);
 
     // 1. Migrate any superseded command files (backed up before removal), unless
     // the caller opted out with `--no-migrate`.
     if !no_migrate {
-        let items = migrate::plan(target_dir, &built, adapter.container());
+        let mut items = if receipt_state == plan::ReceiptState::Valid {
+            migrate::plan(target_dir, &built, adapter.container())
+        } else {
+            Vec::new()
+        };
+        if receipt_state == plan::ReceiptState::Valid {
+            let owned = receipt.as_ref().expect("valid receipt must be present");
+            items.retain(|item| owned.file(&item.legacy_path.to_string_lossy()).is_some());
+        } else {
+            // Without a receipt, existing files have unknown ownership. Do not
+            // migrate or delete them; only genuinely missing payload files may
+            // be restored below.
+            items.clear();
+        }
         if !items.is_empty() {
             let report = migrate::apply(target_dir, &items, &backup_root)?;
             if !report.migrated.is_empty() {
@@ -471,12 +535,21 @@ pub fn fix(
     let mut restored = 0usize;
     let mut backed_up = 0usize;
     let mut skipped: Vec<String> = Vec::new();
+    let mut repaired: BTreeSet<String> = BTreeSet::new();
     for (rel, want) in &expected {
-        let path = target_dir.join(rel);
+        let path = manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+        let owned = receipt
+            .as_ref()
+            .and_then(|current| current.file(rel))
+            .is_some();
         match std::fs::read_to_string(&path) {
             Ok(on_disk) => {
                 if digest::hash(&on_disk) == digest::hash(want) {
                     continue; // already current — nothing to restore
+                }
+                if receipt_state != plan::ReceiptState::Valid || !owned {
+                    skipped.push(rel.clone());
+                    continue;
                 }
                 // Drifted: back up the user's file and VERIFY the copy exists
                 // before overwriting, mirroring `migrate::apply`. If the backup
@@ -490,7 +563,10 @@ pub fn fix(
                 backed_up += 1;
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                // Genuinely missing — nothing to back up, just write it below.
+                if receipt_state == plan::ReceiptState::Valid && !owned {
+                    skipped.push(rel.clone());
+                    continue;
+                }
             }
             Err(_) => {
                 // Present but unreadable (chmod 000, non-UTF-8, …). `read_to_string`
@@ -507,6 +583,7 @@ pub fn fix(
         }
         atomic_write(&path, want)?;
         restored += 1;
+        repaired.insert(rel.clone());
     }
     if restored > 0 {
         // A backup dir is only created for drifted overwrites; restoring only
@@ -537,7 +614,24 @@ pub fn fix(
 
     // Registration is repaired after payload files exist, so a config can never
     // point at a missing shim.
-    hooks::register(target_dir, harness)?;
+    if receipt_state == plan::ReceiptState::Valid {
+        hooks::register(target_dir, harness)?;
+    }
+
+    if let Some(current) = receipt.as_mut() {
+        if restored > 0 {
+            for file in &mut current.files {
+                if repaired.contains(&file.path) {
+                    let path =
+                        manifest_db::resolve_target_relative(target_dir, Path::new(&file.path))?;
+                    file.sha256 = digest::compute_sha256(&path)?;
+                }
+            }
+            current.version = env!("CARGO_PKG_VERSION").into();
+            current.validate()?;
+            repository.save(current)?;
+        }
+    }
 
     // 3. Re-diagnose and hand back the fresh report — reusing the single built
     // payload rather than rebuilding it.
@@ -718,7 +812,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fix_restores_missing_and_migrates_legacy() {
+    fn test_fix_restores_missing_but_leaves_unowned_legacy() {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let roles = [role("architect"), role("devops-engineer")];
@@ -736,13 +830,9 @@ mod tests {
         assert!(before.has_problems());
 
         let after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
-        assert!(
-            !after.has_problems(),
-            "fix should leave a healthy install: {:?}",
-            after
-        );
+        assert!(after.has_problems());
         assert!(target.join(".claude/agents/devops-engineer.md").exists());
-        assert!(!target.join(".claude/commands/ship-issue.md").exists());
+        assert!(target.join(".claude/commands/ship-issue.md").exists());
     }
 
     #[test]

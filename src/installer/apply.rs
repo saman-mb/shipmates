@@ -4,7 +4,8 @@ use crate::installer::{
     atomic_write,
     plan::{self, InstallPlan, Receipt, ReceiptState},
 };
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -32,39 +33,69 @@ pub struct ApplyReport {
 
 /// Apply normalized payload. Existing receipts make ownership explicit: a new
 /// payload never overwrites an unrelated file at a colliding path unless
-/// `force` is set. Missing receipts retain legacy install behaviour.
+/// `force` is set. Missing receipts still permit new files, but preserve
+/// existing collisions.
 pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<ApplyReport> {
+    let repository = crate::installer::manifest_db::ReceiptRepository::new(target_dir);
+    // Validate complete receipt set before inspecting or changing payload
+    // files. A sibling receipt is part of ownership state, even when it is
+    // unrelated to this harness.
+    let all_receipts = repository
+        .load_all()
+        .context("validating install receipt set")?;
     let (state, old, receipt_error) = plan::read_receipt(target_dir, &install.harness);
+    if state == ReceiptState::Invalid {
+        bail!(
+            "install receipt for harness {} is invalid; refusing to install: {}",
+            install.harness,
+            receipt_error.unwrap_or_else(|| "unknown receipt error".into())
+        );
+    }
     let mut report = ApplyReport::default();
     report.previous_version = old.as_ref().map(|receipt| receipt.version.clone());
-    if let Some(error) = receipt_error {
-        report.warnings.push(format!(
-            "Warning: install receipt is invalid; using receipt-less compatibility mode: {}",
-            error
-        ));
-    }
 
     if let Some(old_receipt) = old.as_ref() {
         report.summary = compare_receipts(
             old_receipt,
             &install.receipt_for(install.files.keys().cloned())?,
         );
-    } else if state == ReceiptState::Missing || state == ReceiptState::Invalid {
+    } else if state == ReceiptState::Missing {
         report.summary.new = install.files.len();
     }
 
+    let sibling_claims: BTreeSet<String> = all_receipts
+        .iter()
+        .filter(|receipt| receipt.harness != install.harness)
+        .flat_map(|receipt| receipt.files.iter().map(|file| file.path.clone()))
+        .collect();
     let mut managed = Vec::new();
+    let mut pending = Vec::new();
     for (rel, want) in &install.files {
-        let path = target_dir.join(rel);
+        let path = crate::installer::manifest_db::resolve_target_relative(target_dir, rel)?;
+        let rel_string = rel.to_string_lossy().into_owned();
+        let owned = old
+            .as_ref()
+            .and_then(|receipt| receipt.file(&rel_string))
+            .is_some();
+        if sibling_claims.contains(&rel_string) {
+            report.warnings.push(format!(
+                "Warning: shared-managed file left untouched: {}",
+                rel.display()
+            ));
+            if owned
+                || fs::read(&path)
+                    .map(|current| current == want.as_bytes())
+                    .unwrap_or(false)
+            {
+                managed.push(rel.clone());
+            }
+            continue;
+        }
         match fs::read(&path) {
             Ok(current) if current == want.as_bytes() => {
-                let already_owned = old
-                    .as_ref()
-                    .and_then(|receipt| receipt.file(rel.to_string_lossy().as_ref()))
-                    .is_some();
-                if old.is_some() && !already_owned && !force {
+                if !owned && !force {
                     report.warnings.push(format!(
-                        "Warning: unmanaged file left untouched: {}",
+                        "Warning: existing file left untouched (use --force to replace): {}",
                         rel.display()
                     ));
                     continue;
@@ -73,55 +104,49 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
                 report.skipped += 1;
             }
             Ok(current) => {
-                let owned = old
-                    .as_ref()
-                    .and_then(|receipt| receipt.file(rel.to_string_lossy().as_ref()))
-                    .is_some();
-                if old.is_some() && !owned && !force {
+                if !owned && !force {
                     report.warnings.push(format!(
-                        "Warning: unmanaged file left untouched: {}",
+                        "Warning: existing file left untouched (use --force to replace): {}",
                         rel.display()
                     ));
                     continue;
                 }
-                if std::str::from_utf8(&current).is_err() {
+                if std::str::from_utf8(&current).is_err() && !force {
                     report.warnings.push(format!(
                         "Warning: non-text file left untouched: {}",
                         rel.display()
                     ));
                     continue;
                 }
-                if let Some(backup) = backup_existing(&path, &current)? {
-                    report.backups.push(backup);
-                }
-                atomic_write(&path, want)
-                    .with_context(|| format!("writing installed file {}", path.display()))?;
-                managed.push(rel.clone());
-                report.written += 1;
+                pending.push(PendingWrite {
+                    rel: rel.clone(),
+                    path,
+                    content: want.clone(),
+                    previous: Some(current),
+                });
             }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                atomic_write(&path, want)
-                    .with_context(|| format!("writing installed file {}", path.display()))?;
-                managed.push(rel.clone());
-                report.written += 1;
+                pending.push(PendingWrite {
+                    rel: rel.clone(),
+                    path,
+                    content: want.clone(),
+                    previous: None,
+                });
             }
             Err(error) => {
-                report.warnings.push(format!(
-                    "Warning: file {} could not be read and was left untouched: {}",
-                    rel.display(),
-                    error
-                ));
+                return Err(error)
+                    .with_context(|| format!("preflighting installed file {}", path.display()));
             }
         }
     }
 
     if let Some(old_receipt) = old.as_ref() {
-        let managed = old_receipt
+        let old_managed = old_receipt
             .files
             .iter()
             .map(|file| file.path.clone())
-            .collect::<std::collections::BTreeSet<_>>();
-        for path in plan::unmanaged_files(target_dir, &old_receipt.roots, &managed) {
+            .collect::<BTreeSet<_>>();
+        for path in plan::unmanaged_files(target_dir, &old_receipt.roots, &old_managed)? {
             report.warnings.push(format!(
                 "Warning: unmanaged file left untouched: {}",
                 path.strip_prefix(target_dir).unwrap_or(&path).display()
@@ -131,8 +156,11 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
             if install.files.contains_key(Path::new(&old_file.path)) {
                 continue;
             }
-            let path = target_dir.join(&old_file.path);
-            if path.exists() {
+            let path = crate::installer::manifest_db::resolve_target_relative(
+                target_dir,
+                Path::new(&old_file.path),
+            )?;
+            if fs::symlink_metadata(&path).is_ok() {
                 report.warnings.push(format!(
                     "Warning: previous managed file left untouched (no longer in payload): {}",
                     old_file.path
@@ -141,6 +169,34 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
         }
     }
 
+    let mut changed: Vec<(PathBuf, Option<Vec<u8>>)> = Vec::new();
+    let mut created_backups = Vec::new();
+    for action in &pending {
+        if let Some(previous) = &action.previous {
+            let backup = match backup_existing(&action.path, previous) {
+                Ok(backup) => backup,
+                Err(error) => {
+                    rollback_files(&changed, &created_backups);
+                    return Err(error);
+                }
+            };
+            if let Some(backup) = backup {
+                report.backups.push(backup.clone());
+                created_backups.push(backup);
+            }
+        }
+        if let Err(error) = atomic_write(&action.path, &action.content)
+            .with_context(|| format!("writing installed file {}", action.path.display()))
+        {
+            rollback_files(&changed, &created_backups);
+            return Err(error);
+        }
+        changed.push((action.path.clone(), action.previous.clone()));
+        managed.push(action.rel.clone());
+        report.written += 1;
+    }
+
+    managed.sort();
     // Publish only what this run actually owns. This preserves a user's file at
     // a new colliding path and makes a later uninstall fail closed for it.
     let mut receipt = install.receipt_for(managed)?;
@@ -163,7 +219,19 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
             receipt.files,
         )?;
     }
-    plan::save_receipt(target_dir, &receipt)?;
+    let receipt_path = repository.receipt_path(&receipt.harness)?;
+    let previous_receipt = fs::read(&receipt_path).ok();
+    if let Err(error) = plan::save_receipt(target_dir, &receipt) {
+        rollback_files(&changed, &created_backups);
+        if let Some(bytes) = previous_receipt {
+            if let Ok(contents) = String::from_utf8(bytes) {
+                let _ = atomic_write(&receipt_path, &contents);
+            }
+        } else {
+            let _ = fs::remove_file(&receipt_path);
+        }
+        return Err(error).context("publishing install receipt");
+    }
     report.receipt = Some(receipt);
     Ok(report)
 }
@@ -189,6 +257,31 @@ fn compare_receipts(old: &Receipt, new: &Receipt) -> UpgradeSummary {
     summary
 }
 
+struct PendingWrite {
+    rel: PathBuf,
+    path: PathBuf,
+    content: String,
+    previous: Option<Vec<u8>>,
+}
+
+fn rollback_files(changed: &[(PathBuf, Option<Vec<u8>>)], backups: &[PathBuf]) {
+    for (path, previous) in changed.iter().rev() {
+        match previous {
+            Some(bytes) => {
+                if let Ok(contents) = std::str::from_utf8(bytes) {
+                    let _ = atomic_write(path, contents);
+                }
+            }
+            None => {
+                let _ = fs::remove_file(path);
+            }
+        }
+    }
+    for backup in backups {
+        let _ = fs::remove_file(backup);
+    }
+}
+
 fn backup_existing(path: &Path, bytes: &[u8]) -> Result<Option<PathBuf>> {
     let Some(parent) = path.parent() else {
         return Ok(None);
@@ -208,6 +301,11 @@ fn backup_existing(path: &Path, bytes: &[u8]) -> Result<Option<PathBuf>> {
         std::process::id(),
         counter
     ));
+    if let Ok(metadata) = fs::symlink_metadata(&backup) {
+        if metadata.file_type().is_symlink() {
+            bail!("refusing symlink backup path {}", backup.display());
+        }
+    }
     // Payloads are UTF-8. Refuse to overwrite a non-UTF-8 existing file: there
     // is no byte-preserving atomic_write API in the legacy installer surface.
     let contents = match std::str::from_utf8(bytes) {

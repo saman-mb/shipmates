@@ -231,23 +231,56 @@ fn main() -> Result<()> {
             for harness in &harnesses {
                 let adapter = adapters::select(harness)?;
                 let built = adapter.build(&roles, &cmds)?;
-                let migration_items = if no_migrate {
-                    Vec::new()
-                } else {
-                    installer::migrate::plan(&target_dir, &built, adapter.container())
-                };
+                let payload_prefix = format!("{}/", adapter.container());
+                for key in built.keys() {
+                    if let Some(rel) = key.strip_prefix(&payload_prefix) {
+                        installer::manifest_db::resolve_target_relative(
+                            &target_dir,
+                            Path::new(rel),
+                        )?;
+                    }
+                }
                 let plan = installer::plan::InstallPlan::from_payload(
                     adapter.as_ref(),
                     harness,
                     built.clone(),
                     adapter.build_tools(&selected_tools),
                 )?;
+                let migration_items = if no_migrate {
+                    Vec::new()
+                } else if force {
+                    installer::migrate::plan(&target_dir, &built, adapter.container())
+                } else {
+                    let (_, previous, _) = installer::plan::read_receipt(&target_dir, harness);
+                    if let Some(owned) = previous.as_ref() {
+                        installer::migrate::plan(&target_dir, &built, adapter.container())
+                            .into_iter()
+                            .filter(|item| {
+                                owned.file(&item.legacy_path.to_string_lossy()).is_some()
+                            })
+                            .collect()
+                    } else {
+                        Vec::new()
+                    }
+                };
+                for item in &migration_items {
+                    installer::manifest_db::resolve_target_relative(
+                        &target_dir,
+                        &item.legacy_path,
+                    )?;
+                    installer::manifest_db::resolve_target_relative(
+                        &target_dir,
+                        &item.superseded_by,
+                    )?;
+                }
                 let result = installer::apply::apply(&target_dir, &plan, force)?;
                 for rel in plan.files.keys() {
                     if rel.to_string_lossy().contains("/hooks/")
                         && rel.to_string_lossy().ends_with(".sh")
                     {
-                        installer::set_executable(&target_dir.join(rel))?;
+                        let path =
+                            installer::manifest_db::resolve_target_relative(&target_dir, rel)?;
+                        installer::set_executable(&path)?;
                     }
                 }
                 if let Some(receipt) = &result.receipt {
@@ -259,7 +292,12 @@ fn main() -> Result<()> {
                                     .iter()
                                     .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
                             {
-                                provision_scripts.push(target_dir.join(rel));
+                                provision_scripts.push(
+                                    installer::manifest_db::resolve_target_relative(
+                                        &target_dir,
+                                        &rel,
+                                    )?,
+                                );
                             }
                         }
                     }
