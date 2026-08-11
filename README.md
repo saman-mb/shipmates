@@ -190,22 +190,29 @@ enforces. Each harness records its evidence, and the date it was checked, in
 `<target>/.shipmates/receipts/<harness>.json`. It records Shipmates version, harness, layout, and every
 file Shipmates owns with its SHA-256 hash. Reinstalling the same payload skips unchanged files and
 creates backups only for changed files. Files outside the receipt are unmanaged: Shipmates warns and
-leaves them alone.
+leaves them alone. A first install also preserves existing colliding files and warns; pass `--force`
+when replacement is intentional. Install preflights one harness and rolls back payload changes if
+payload or receipt publication fails; `--harness all` is not globally atomic.
 
-`shipmates uninstall` reads that receipt, so it discovers the harness and layout when exactly one
-valid receipt exists. With multiple receipts, pass `--harness`. It removes only receipt-owned,
-unchanged files. Modified or unmanaged files are warned about and left in place. The receipt is the
-ownership record — never remove a whole harness tree to uninstall.
+`shipmates uninstall` reads that receipt. It defaults to the global home directory; use `--local` or
+`--dir /path/to/project` for another root. With exactly one valid receipt, `--harness` is optional;
+multiple valid receipts require `--harness`. An explicit missing or invalid receipt fails closed, and
+an invalid sibling receipt also blocks discovery. No receipt directory means nothing to uninstall. It
+removes only receipt-owned, unchanged files, unregisters only Shipmates hook entries, and preserves
+user hook entries and unmanaged files. Modified or unreadable files retain the receipt. The receipt
+is the ownership record — never remove a whole harness tree to uninstall.
 
 **Check an install with `shipmates doctor`.** Run `shipmates doctor` for a read-only health report
-against the global home directory, or use `--local` / `--dir /path/to/project` for another root. It
-checks the harness tree, missing files, modified or unreadable files, and an old
-`commands/<name>.md` layout shadowing a skill. `shipmates doctor --fix` repairs what it can —
-migrating a superseded command layout to the skill that supersedes it and restoring missing or
-drifted files — while backing up existing files it replaces or migrates under `.shipmates-backup/`
-first. A plain
-`install` also migrates a superseded command layout for you as it writes; pass `--no-migrate` to
-leave your old files in place. For doctor, `--no-migrate` is valid only with `--fix`:
+against the global home directory and the `claude-code` harness by default. Pass `--harness` to
+check another harness, or use `--local` / `--dir /path/to/project` for another root; doctor does not
+discover harnesses from receipts. It checks the harness tree, receipt ownership, missing files,
+modified or unreadable files, hook registration, and an old `commands/<name>.md` layout shadowing a
+skill. A missing receipt warns that ownership is unknown; existing files stay untouched and only
+genuinely missing payload files may be restored. An invalid receipt is a problem, and `doctor --fix`
+refuses ownership-based repair. `doctor --fix` repairs receipt-owned files only, backing up existing
+files it replaces or migrates under `.shipmates-backup/` first. A plain `install` also migrates a
+receipt-owned superseded command layout as it writes; pass `--no-migrate` to leave old files in place.
+For doctor, `--no-migrate` is valid only with `--fix`:
 `shipmates doctor --fix --no-migrate` restores files without migrating old commands.
 
 Install also registers the harness's Shipmates pre-tool hook without replacing existing hook

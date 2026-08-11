@@ -34,9 +34,9 @@ fn temp_path_for(path: &Path) -> PathBuf {
     }
 }
 
-fn write_temp(temp_path: &Path, content: &str) -> std::io::Result<()> {
+fn write_temp(temp_path: &Path, content: &[u8]) -> std::io::Result<()> {
     let mut file = File::create(temp_path)?;
-    file.write_all(content.as_bytes())?;
+    file.write_all(content)?;
     file.sync_all()?;
     Ok(())
 }
@@ -49,6 +49,11 @@ fn write_temp(temp_path: &Path, content: &str) -> std::io::Result<()> {
 /// across a crash or power loss, not merely within the process — without them a
 /// rename can be durable while the file's contents are not.
 pub fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
+    atomic_write_bytes(path, content.as_bytes())
+}
+
+/// Write arbitrary bytes atomically and durably.
+pub fn atomic_write_bytes(path: &Path, content: &[u8]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
