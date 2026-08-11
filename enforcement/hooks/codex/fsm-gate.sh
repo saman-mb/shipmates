@@ -21,8 +21,8 @@
 #               error → allow + log to stderr (fail-safe; an engine fault must
 #                       not wedge the session).
 #
-# Deny form: stdout JSON with `permissionDecision: "deny"` (and a
-# `permissionDecisionReason`), exit 0.
+# Deny form: stdout JSON with `hookSpecificOutput` containing
+# `permissionDecision: "deny"` (and a `permissionDecisionReason`), exit 0.
 #
 # ASSUMPTION (flag for the board): Codex hooks are experimental and the
 # `PreToolUse` event JSON is parsed defensively. The shell tool is matched by
@@ -36,11 +36,19 @@
 
 set -u
 
-if [ "${SHIPMATES_NATIVE_HOOK:-}" = "1" ]; then
-    exec shipmates hook gate --harness codex
-fi
-
+# Read payload once — both the native path and the shell fallback need it.
 payload="$(cat)"
+
+if [ "${SHIPMATES_NATIVE_HOOK:-}" = "1" ]; then
+    # Try the native Rust dispatcher first. If it fails (e.g. installed
+    # shipmates is too old and lacks the `hook` subcommand), fall through
+    # to the shell fallback rather than blocking the session.
+    if result=$(echo "$payload" | shipmates hook gate --harness codex 2>/dev/null); then
+        echo "$result"
+        exit 0
+    fi
+    # Native path failed — fall through to shell fallback.
+fi
 
 # Extract with jq; a missing field yields "" via `// empty`.
 jqr() { printf '%s' "$payload" | jq -r "$1" 2>/dev/null; }
@@ -94,8 +102,11 @@ case "$code" in
         # Deny — emit Codex's permission decision on stdout. Exit 0 so Codex
         # honours the decision rather than treating a non-zero exit as a fault.
         jq -cn --arg reason "$reason" '{
-            permissionDecision: "deny",
-            permissionDecisionReason: $reason
+            hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "deny",
+                permissionDecisionReason: $reason
+            }
         }'
         exit 0
         ;;
