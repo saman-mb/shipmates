@@ -48,6 +48,8 @@ pub fn dispatch(action: &HookAction) -> i32 {
         HookAction::Gate { harness } => dispatch_gate(harness),
         HookAction::Context { harness, event } => dispatch_context(harness, event),
         HookAction::Record { harness, event } => dispatch_record(harness, event),
+        HookAction::Checkpoint { harness } => dispatch_checkpoint(harness),
+        HookAction::Conventions { harness } => dispatch_conventions(harness),
         HookAction::Stop { harness } => dispatch_stop(harness),
     }
 }
@@ -180,7 +182,44 @@ fn dispatch_record(harness: &str, event: &str) -> i32 {
         .or_else(|| payload.get("toolCall").and_then(|v| v.get("name")))
         .and_then(Value::as_str)
         .map(str::to_string);
-    let _ = state::record_hook_event(&cwd, run, event, tool.as_deref());
+    let _ = state::record_hook_event(&cwd, run, event, tool.as_deref(), None, None, None, None);
+    0
+}
+
+fn dispatch_checkpoint(harness: &str) -> i32 {
+    let mut input = String::new();
+    if io::stdin().read_to_string(&mut input).is_err() {
+        return 0;
+    }
+    let payload: Value = match serde_json::from_str(&input) {
+        Ok(value) => value,
+        Err(_) => return 0,
+    };
+    let Some(cwd) = hook_cwd(harness, &payload) else {
+        return 0;
+    };
+    let Some(run) = discover_run(&cwd) else {
+        return 0;
+    };
+    if state::record_checkpoint(&cwd, run).is_err() {
+        return 2;
+    }
+    0
+}
+
+fn dispatch_conventions(harness: &str) -> i32 {
+    let mut input = String::new();
+    if io::stdin().read_to_string(&mut input).is_err() {
+        return 0;
+    }
+    let payload: Value = match serde_json::from_str(&input) {
+        Ok(value) => value,
+        Err(_) => return 0,
+    };
+    let Some(cwd) = hook_cwd(harness, &payload) else {
+        return 0;
+    };
+    let _ = state::cmd_conventions(&cwd);
     0
 }
 
