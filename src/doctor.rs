@@ -56,7 +56,10 @@ fn strip_container(built: &HashMap<String, String>, container: &str) -> BTreeMap
     let prefix = format!("{}/", container);
     built
         .iter()
-        .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|rel| (rel.to_string(), v.clone())))
+        .filter_map(|(k, v)| {
+            k.strip_prefix(&prefix)
+                .map(|rel| (rel.to_string(), v.clone()))
+        })
         .collect()
 }
 
@@ -159,7 +162,8 @@ fn diagnose_built(
             name: "Hook registration".into(),
             severity: Severity::Ok,
             detail: if harness == "codex" {
-                "registered; Codex may require reviewing/trusting the changed hook in `/hooks`".into()
+                "registered; Codex may require reviewing/trusting the changed hook in `/hooks`"
+                    .into()
             } else {
                 "the harness will invoke the Shipmates enforcement hook".into()
             },
@@ -280,18 +284,45 @@ fn diagnose_built(
     // 4. Content drift — present files whose bytes differ from what we'd install.
     // #190: receipt manifest enables true installed-vs-running semantic version compare
     let mut drifted: Vec<String> = Vec::new();
+    let mut unreadable: Vec<String> = Vec::new();
     for (rel, want) in &expected {
-        if let Ok(on_disk) = std::fs::read_to_string(target_dir.join(rel)) {
-            if digest::hash(&on_disk) != digest::hash(want) {
-                drifted.push(rel.clone());
+        match std::fs::read_to_string(target_dir.join(rel)) {
+            Ok(on_disk) => {
+                if digest::hash(&on_disk) != digest::hash(want) {
+                    drifted.push(rel.clone());
+                }
             }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => unreadable.push(rel.clone()),
         }
     }
-    if drifted.is_empty() {
+    if unreadable.is_empty() && drifted.is_empty() {
         checks.push(Check {
             name: "Content".into(),
             severity: Severity::Ok,
             detail: format!("every installed file matches shipmates v{}", version),
+            fixable: false,
+        });
+    } else if !unreadable.is_empty() {
+        unreadable.sort();
+        drifted.sort();
+        let mut details = format!(
+            "{} file(s) are present but unreadable: {}",
+            unreadable.len(),
+            unreadable.join(", ")
+        );
+        if !drifted.is_empty() {
+            details.push_str(&format!(
+                "; {} file(s) differ from shipmates v{}: {}",
+                drifted.len(),
+                version,
+                drifted.join(", ")
+            ));
+        }
+        checks.push(Check {
+            name: "Content".into(),
+            severity: Severity::Problem,
+            detail: details,
             fixable: false,
         });
     } else {
@@ -318,25 +349,48 @@ fn diagnose_built(
         .collect();
     let mut installed: Vec<String> = Vec::new();
     let mut tool_drift: Vec<String> = Vec::new();
+    let mut tool_unreadable: Vec<String> = Vec::new();
     for t in tools {
         let files: Vec<(&String, &String)> = tool_expected
             .iter()
             .filter(|(k, _)| k.split('/').any(|s| s == t.name))
             .collect();
-        if files.is_empty() || !files.iter().all(|(k, _)| target_dir.join(k).exists()) {
+        if files.is_empty() {
             continue;
         }
-        installed.push(t.name.clone());
+        let complete = files.iter().all(|(k, _)| target_dir.join(k).exists());
+        if complete {
+            installed.push(t.name.clone());
+        }
         for (k, want) in &files {
-            if let Ok(on_disk) = std::fs::read_to_string(target_dir.join(k)) {
-                if digest::hash(&on_disk) != digest::hash(want) {
-                    tool_drift.push(t.name.clone());
+            match std::fs::read_to_string(target_dir.join(k)) {
+                Ok(on_disk) => {
+                    if complete && digest::hash(&on_disk) != digest::hash(want) {
+                        tool_drift.push(t.name.clone());
+                        break;
+                    }
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(_) => {
+                    tool_unreadable.push(t.name.clone());
                     break;
                 }
             }
         }
     }
-    let (severity, detail) = if installed.is_empty() {
+    let (severity, detail) = if !tool_unreadable.is_empty() {
+        tool_unreadable.sort();
+        tool_drift.sort();
+        let mut details = format!(
+            "installed: {}; unreadable: {}",
+            installed.join(", "),
+            tool_unreadable.join(", ")
+        );
+        if !tool_drift.is_empty() {
+            details.push_str(&format!("; drifted: {}", tool_drift.join(", ")));
+        }
+        (Severity::Problem, details)
+    } else if installed.is_empty() {
         (
             Severity::Ok,
             "no optional tools installed — tools are opt-in".to_string(),
@@ -360,7 +414,7 @@ fn diagnose_built(
         name: "Tools".into(),
         severity,
         detail,
-        fixable: !tool_drift.is_empty(),
+        fixable: !tool_drift.is_empty() && tool_unreadable.is_empty(),
     });
 
     // 6. Orphan/unmanaged detection — deferred.
@@ -555,12 +609,31 @@ mod tests {
         }
     }
 
+    fn tool(name: &str) -> CanonicalTool {
+        CanonicalTool {
+            name: name.into(),
+            description: "d".into(),
+            body: "b".into(),
+            assets: vec![],
+            requires: vec![],
+            source: PathBuf::from(""),
+        }
+    }
+
     fn install_healthy(target: &Path, roles: &[CanonicalRole], cmds: &[CanonicalCommand]) {
         let adapter = adapters::select("claude-code").unwrap();
         for (rel, content) in expected_files(adapter.as_ref(), roles, cmds).unwrap() {
             atomic_write(&target.join(&rel), &content).unwrap();
         }
         hooks::register(target, "claude-code").unwrap();
+    }
+
+    fn install_tools(target: &Path, tools: &[CanonicalTool]) {
+        let adapter = adapters::select("claude-code").unwrap();
+        let built = adapter.build_tools(tools);
+        for (rel, content) in strip_container(&built, adapter.container()) {
+            atomic_write(&target.join(&rel), &content).unwrap();
+        }
     }
 
     fn sev(report: &Report, name: &str) -> Severity {
@@ -687,12 +760,45 @@ mod tests {
         let bad_bytes = [0xffu8, 0xfe, 0x00, 0x9c];
         std::fs::write(&victim, bad_bytes).unwrap();
 
-        let _ = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        let report = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
 
         // Byte-for-byte untouched — never overwritten via atomic_write.
         assert_eq!(std::fs::read(&victim).unwrap(), bad_bytes);
         // Still unreadable as text, proving it was skipped rather than restored.
         assert!(std::fs::read_to_string(&victim).is_err());
+        assert!(report.has_problems());
+        assert_eq!(sev(&report, "Content"), Severity::Problem);
+    }
+
+    #[test]
+    fn test_diagnose_reports_unreadable_crew_skill_hook_and_tool() {
+        let cases = [
+            (".claude/agents/architect.md", "Content", false),
+            (".claude/skills/ship-issue/SKILL.md", "Content", false),
+            (".claude/hooks/fsm-gate.sh", "Content", false),
+            (".claude/skills/termgif/SKILL.md", "Tools", true),
+        ];
+
+        for (relative, check_name, is_tool) in cases {
+            let dir = tempdir().unwrap();
+            let roles = [role("architect")];
+            let cmds = [cmd("ship-issue")];
+            let tools = if is_tool {
+                vec![tool("termgif")]
+            } else {
+                vec![]
+            };
+            install_healthy(dir.path(), &roles, &cmds);
+            if is_tool {
+                install_tools(dir.path(), &tools);
+            }
+
+            std::fs::write(dir.path().join(relative), [0xffu8, 0xfe, 0x00]).unwrap();
+
+            let report = diagnose(dir.path(), "claude-code", &roles, &cmds, &tools).unwrap();
+            assert_eq!(sev(&report, check_name), Severity::Problem, "{relative}");
+            assert!(report.has_problems(), "{relative}: {report:?}");
+        }
     }
 
     #[test]

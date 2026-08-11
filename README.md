@@ -143,13 +143,15 @@ cargo install shipmates
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
-Then install the crew for a harness. By default it drops into the current directory; pass `--dir`
-to target a specific project:
+Then install the crew for a harness. By default it drops into your global home directory. Use
+`--local` for the current directory, or `--dir` to target a specific project:
 
 ```bash
 shipmates install --harness claude-code     # the proven target
 shipmates install --harness opencode        # format-verified, not runtime-verified
 shipmates install --harness codex
+shipmates install --harness claude-code --local
+shipmates install --harness claude-code --dir /path/to/project
 ```
 
 Tools are off by default. Run `install` in a terminal and it asks which you'd like; name them
@@ -184,18 +186,27 @@ ones. Their crew still land in each harness's own native format. `windsurf` keep
 One caveat worth knowing before you pick Codex: it documents no per-agent tool allowlist, so its
 crew inherit whatever the session can do rather than the least-privilege set every other target
 enforces. Each harness records its evidence, and the date it was checked, in
-`tools/harness_matrix.json`. Installing never touches your working tree — anything that
-changes a repo does so on a branch — and `shipmates uninstall` is not (yet) implemented; delete the
-tree the harness installed instead.
+`tools/harness_matrix.json`. Each harness install writes a receipt at
+`<target>/.shipmates/receipts/<harness>.json`. It records Shipmates version, harness, layout, and every
+file Shipmates owns with its SHA-256 hash. Reinstalling the same payload skips unchanged files and
+creates backups only for changed files. Files outside the receipt are unmanaged: Shipmates warns and
+leaves them alone.
 
-**Check an install with `shipmates doctor`.** Run `shipmates doctor` (add `--dir` to point at a
-specific project) for a read-only health report: is the harness tree present, did every crew agent
-and skill land, has any installed file drifted from the running binary, and is an old
-`commands/<name>.md` layout shadowing a skill? `shipmates doctor --fix` repairs what it can —
-migrating a superseded command layout to the skill that supersedes it and rewriting missing or
-drifted files — and backs up everything it touches under `.shipmates-backup/` first. A plain
+`shipmates uninstall` reads that receipt, so it discovers the harness and layout when exactly one
+valid receipt exists. With multiple receipts, pass `--harness`. It removes only receipt-owned,
+unchanged files. Modified or unmanaged files are warned about and left in place. The receipt is the
+ownership record — never remove a whole harness tree to uninstall.
+
+**Check an install with `shipmates doctor`.** Run `shipmates doctor` for a read-only health report
+against the global home directory, or use `--local` / `--dir /path/to/project` for another root. It
+checks the harness tree, missing files, modified or unreadable files, and an old
+`commands/<name>.md` layout shadowing a skill. `shipmates doctor --fix` repairs what it can —
+migrating a superseded command layout to the skill that supersedes it and restoring missing or
+drifted files — while backing up existing files it replaces or migrates under `.shipmates-backup/`
+first. A plain
 `install` also migrates a superseded command layout for you as it writes; pass `--no-migrate` to
-leave your old files in place.
+leave your old files in place. For doctor, `--no-migrate` is valid only with `--fix`:
+`shipmates doctor --fix --no-migrate` restores files without migrating old commands.
 
 Install also registers the harness's Shipmates pre-tool hook without replacing existing hook
 entries. The hook stays inactive for ordinary sessions and activates when `/ship-issue` creates its
