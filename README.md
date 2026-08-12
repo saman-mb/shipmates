@@ -198,16 +198,16 @@ payload or receipt publication fails; `--harness all` is not globally atomic.
 `--dir /path/to/project` for another root. With exactly one valid receipt, `--harness` is optional;
 multiple valid receipts require `--harness`. An explicit missing or invalid receipt fails closed, and
 an invalid sibling receipt also blocks discovery. No receipt directory means nothing to uninstall. It
-removes only receipt-owned, unchanged files, unregisters only Shipmates hook entries, and preserves
-user hook entries and unmanaged files. Modified or unreadable files retain the receipt. The receipt
-is the ownership record — never remove a whole harness tree to uninstall.
+removes only receipt-owned, unchanged files and preserves unmanaged files. Modified or unreadable
+files retain the receipt. The receipt is the ownership record — never remove a whole harness tree to
+uninstall.
 
 **Check an install with `shipmates doctor`.** Run `shipmates doctor` for a read-only health report
 against the global home directory and the `claude-code` harness by default. Pass `--harness` to
 check another harness, or use `--local` / `--dir /path/to/project` for another root; doctor does not
 discover harnesses from receipts. It checks the harness tree, receipt ownership, missing files,
-modified or unreadable files, hook registration, and an old `commands/<name>.md` layout shadowing a
-skill. A missing receipt warns that ownership is unknown; existing files stay untouched and only
+modified or unreadable files, and an old `commands/<name>.md` layout shadowing a skill. A missing receipt
+warns that ownership is unknown; existing files stay untouched and only
 genuinely missing payload files may be restored. An invalid receipt is a problem, and `doctor --fix`
 refuses ownership-based repair. `doctor --fix` repairs receipt-owned files only, backing up existing
 files it replaces or migrates under `.shipmates-backup/` first. A plain `install` also migrates a

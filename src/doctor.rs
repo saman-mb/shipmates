@@ -9,7 +9,6 @@
 use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
-use crate::hooks;
 use crate::installer::{atomic_write, manifest_db, migrate, plan};
 use anyhow::{bail, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -181,37 +180,6 @@ fn diagnose_built(
             ),
             fixable: false,
         });
-    }
-
-    // 1b. Hook registration — payload files alone are inert. The config must
-    // point at the installed shim (and Codex must have hooks enabled).
-    match hooks::is_registered(target_dir, harness) {
-        Ok(true) => checks.push(Check {
-            name: "Hook registration".into(),
-            severity: Severity::Ok,
-            detail: if harness == "codex" {
-                "registered; Codex may require reviewing/trusting the changed hook in `/hooks`"
-                    .into()
-            } else {
-                "the harness will invoke the Shipmates enforcement hook".into()
-            },
-            fixable: true,
-        }),
-        Ok(false) => checks.push(Check {
-            name: "Hook registration".into(),
-            severity: Severity::Problem,
-            detail: format!(
-                "the {} hook is not registered — run `shipmates install --harness {}`",
-                harness, harness
-            ),
-            fixable: true,
-        }),
-        Err(error) => checks.push(Check {
-            name: "Hook registration".into(),
-            severity: Severity::Problem,
-            detail: format!("cannot inspect {} hook registration: {error}", harness),
-            fixable: true,
-        }),
     }
 
     // 2. Legacy/duplicate layout — a superseded `commands/<name>.md` beside a
@@ -612,12 +580,6 @@ pub fn fix(
         );
     }
 
-    // Registration is repaired after payload files exist, so a config can never
-    // point at a missing shim.
-    if receipt_state == plan::ReceiptState::Valid {
-        hooks::register(target_dir, harness)?;
-    }
-
     if let Some(current) = receipt.as_mut() {
         if restored > 0 {
             for file in &mut current.files {
@@ -693,9 +655,6 @@ mod tests {
             allowed_tools: "".into(),
             disable_model_invocation: true,
             arguments: vec![],
-            loop_max: 0,
-            stages: vec![],
-            tool_gates: vec![],
             narrative: "n".into(),
             invocation: "".into(),
             board: "".into(),
@@ -719,7 +678,6 @@ mod tests {
         for (rel, content) in expected_files(adapter.as_ref(), roles, cmds).unwrap() {
             atomic_write(&target.join(&rel), &content).unwrap();
         }
-        hooks::register(target, "claude-code").unwrap();
     }
 
     fn install_tools(target: &Path, tools: &[CanonicalTool]) {
@@ -861,11 +819,10 @@ mod tests {
     }
 
     #[test]
-    fn test_diagnose_reports_unreadable_crew_skill_hook_and_tool() {
+    fn test_diagnose_reports_unreadable_crew_skill_and_tool() {
         let cases = [
             (".claude/agents/architect.md", "Content", false),
             (".claude/skills/ship-issue/SKILL.md", "Content", false),
-            (".claude/hooks/fsm-gate.sh", "Content", false),
             (".claude/skills/termgif/SKILL.md", "Tools", true),
         ];
 

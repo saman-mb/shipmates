@@ -4,10 +4,8 @@ mod cli;
 mod digest;
 mod doctor;
 mod embedded;
-mod hooks;
 mod installer;
 mod manifest;
-mod state;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -274,15 +272,6 @@ fn main() -> Result<()> {
                     )?;
                 }
                 let result = installer::apply::apply(&target_dir, &plan, force)?;
-                for rel in plan.files.keys() {
-                    if rel.to_string_lossy().contains("/hooks/")
-                        && rel.to_string_lossy().ends_with(".sh")
-                    {
-                        let path =
-                            installer::manifest_db::resolve_target_relative(&target_dir, rel)?;
-                        installer::set_executable(&path)?;
-                    }
-                }
                 if let Some(receipt) = &result.receipt {
                     for file in &receipt.files {
                         let rel = PathBuf::from(&file.path);
@@ -314,21 +303,6 @@ fn main() -> Result<()> {
                 }
                 for warning in &result.warnings {
                     println!("{}", warning);
-                }
-
-                let registered = hooks::register(&target_dir, harness)?;
-                if registered.is_empty() {
-                    println!("Hook registration: {} already current", harness);
-                } else {
-                    println!(
-                        "Hook registration: {} ({})",
-                        harness,
-                        registered
-                            .iter()
-                            .map(|path| path.display().to_string())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    );
                 }
 
                 if selected_tools.is_empty() {
@@ -418,9 +392,6 @@ fn main() -> Result<()> {
                 for (path_str, content) in files {
                     let full_path = out_dir.join(&path_str);
                     installer::atomic_write(&full_path, &content)?;
-                    if path_str.contains("/hooks/") && path_str.ends_with(".sh") {
-                        installer::set_executable(&full_path)?;
-                    }
                 }
                 println!("Built payload for target: {}", target);
             }
@@ -506,14 +477,6 @@ fn main() -> Result<()> {
             for name in adapters::targets() {
                 println!("{}", name);
             }
-        }
-        Command::Hook { action } => {
-            std::process::exit(hooks::dispatch(&action));
-        }
-        Command::State { action } => {
-            // The FSM engine owns the 0/1/2 exit ABI, so exit with its code
-            // directly rather than through `bail!` (which would force exit 1).
-            std::process::exit(state::dispatch(&action));
         }
     }
     Ok(())
