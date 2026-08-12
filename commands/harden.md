@@ -5,8 +5,6 @@ argument-hint: <what to harden — a module, an endpoint, an auth flow, or the w
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: surface
-loop_max: 3
-stages: [{"order":1,"stage":"threat-model","roles":["security-engineer"],"gate":"surface-mapped","max_loops":1},{"order":2,"stage":"remediate","roles":["senior-engineer"],"gate":"blockers-fixed","max_loops":3},{"order":3,"stage":"re-review","roles":["security-engineer"],"gate":"findings-ranked","max_loops":3}]
 invocation: @{{role}}({{surface}})
 board: native
 ---

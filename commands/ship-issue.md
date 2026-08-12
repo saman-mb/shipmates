@@ -5,9 +5,6 @@ argument-hint: <issue-number>... | next [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: issue, guidance
-loop_max: 3
-stages: [{"order":1,"stage":"plan","roles":["product-manager"],"gate":"plan-ready","max_loops":1},{"order":2,"stage":"isolate","roles":["senior-engineer"],"gate":"isolated-worktree","max_loops":1},{"order":3,"stage":"build","roles":["senior-engineer"],"gate":"implementation-complete","max_loops":3},{"order":4,"stage":"verify","roles":["sdet"],"gate":"tests-green","max_loops":3,"on_fail":"build"},{"order":5,"stage":"review","roles":["product-manager"],"gate":"board-accepted","max_loops":3,"on_fail":"build"},{"order":6,"stage":"deliver","roles":["senior-engineer"],"gate":"pr-ready","max_loops":1}]
-tool_gates: [{"match":"gh pr merge","require":"deliver"},{"match":"git push","require":"build"}]
 invocation: @{{role}}({{issue}})
 board: native
 ---
@@ -252,22 +249,11 @@ git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 All build/fix work happens **inside `<WORKTREE_DIR>`** so the base branch and the user's checkout
 stay clean. Pass the absolute worktree path to every agent.
 
-Immediately after creating the worktree, install the selected harness payload there and start or
-resume durable state there. This is load-bearing: sibling worktrees do not inherit untracked hook
-files or `.shipmates/` from the base checkout:
+Immediately after creating the worktree, install selected harness payload there:
 
 ```bash
 shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
-shipmates state init --dir <WORKTREE_DIR> --run <first-issue> --command ship-issue
-EXCLUDE=$(git -C <WORKTREE_DIR> rev-parse --git-path info/exclude)
-for runtime in .shipmates .claude .opencode .agents .codex .cursor .github/hooks .github/agents .windsurf; do
-  grep -qxF "$runtime/" "$EXCLUDE" || printf '%s\n' "$runtime/" >> "$EXCLUDE"
-done
 ```
-
-An existing run is a resume, not a reset; inspect it with `shipmates state status --dir
-<WORKTREE_DIR> --run <first-issue>` and continue from its recorded phase. Add `.shipmates/` to the
-worktree's Git exclude list before the first commit so durable receipts never enter the PR.
 
 ## Stage 2 — Build  (agents: `senior-engineer` × N, parallel)
 
@@ -279,23 +265,7 @@ worktree's Git exclude list before the first commit so durable receipts never en
 - After they report done, **verify the files on disk yourself** (Read/Grep). Never trust a "done"
   report blindly.
 
-Record each durable boundary in the same run file. Advance only after the preceding boundary is
-actually satisfied; never skip a phase to make a hook quiet:
-
-```bash
-shipmates state advance --dir <WORKTREE_DIR> --run <first-issue> --to isolate   # after worktree creation
-shipmates state advance --dir <WORKTREE_DIR> --run <first-issue> --to build     # after builders finish
-shipmates state advance --dir <WORKTREE_DIR> --run <first-issue> --to verify    # after local self-check passes
-shipmates state advance --dir <WORKTREE_DIR> --run <first-issue> --to review    # before the acceptance board
-shipmates state advance --dir <WORKTREE_DIR> --run <first-issue> --to deliver   # after PR, CI, and review criteria pass
-```
-
-For a rejected verify/review, use the declared loopback (`--to build`) so the per-stage budget is
-charged. Before merging, run `shipmates state ci-attest --dir <WORKTREE_DIR> --run <first-issue> --pr <pr-number>`;
-then pass the returned SHA to `gh pr merge` as `--match-head-commit <sha>`. The merge hook accepts
-only that attested, currently checked-out PR head with green checks, and GitHub enforces the same
-SHA at merge time. Bundles use the first issue as their run id and receive the same tool-boundary
-protection.
+For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUNDS`.
 
 ## Stage 3 — Self-check before PR  (agent: `sdet`)
 
@@ -418,7 +388,7 @@ Decision (each specialist participates only when its flag is set):
   the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
   the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
   so name every issue the PR will close in the completion comment.
-- **If `MERGE_MODE=auto`**: `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch --match-head-commit <attested-sha>)`, then confirm all issues
+- **If `MERGE_MODE=auto`**: `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch)`, then confirm all issues
   auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
   epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
   and post the completion comment.

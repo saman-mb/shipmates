@@ -197,13 +197,6 @@ drifted files — and backs up everything it touches under `.shipmates-backup/` 
 `install` also migrates a superseded command layout for you as it writes; pass `--no-migrate` to
 leave your old files in place.
 
-Install also registers the harness's Shipmates pre-tool hook without replacing existing hook
-entries. The hook stays inactive for ordinary sessions and activates when `/ship-issue` creates its
-`.shipmates/run-<issue>.json` state file. It blocks recognized `git push` and premature merge calls;
-merge additionally requires a green CI attestation for the current PR head.
-Claude Code and Codex also receive the active phase on session start, resume, compaction, and
-subagent start so long runs do not lose their durable state.
-
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
 `disable-model-invocation` is not a frontmatter key a `SKILL.md` recognises there, so declaring it
@@ -264,7 +257,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 
 ## 🛠️ How the voyage works
 
-`/ship-issue` isn't a clever prompt — it records a **state machine with tool-boundary gates**:
+`/ship-issue` isn't a clever prompt — it runs a **structured workflow with explicit quality gates**:
 
 1. **Plan** 🗺️ — a planner reads the issue + your docs → build plan, acceptance criteria, validation
    plan, and flags for which specialists this story needs.
@@ -283,7 +276,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 
 The tricks that make the loop hold together:
 
-- 🎯 **An explicit state machine, not a wish.** Stages converge; recognized push/merge boundaries are blocked until earned.
+- 🎯 **Explicit gates over wishful thinking.** Stages converge on checkable work and green CI.
 - 📦 **An isolated sandbox.** Autonomy is only safe when the blast radius is zero.
 - 🚦 **Objective gates over vibes.** Green CI beats "looks done to me."
 - 👥 **Reviewers can't grade their own homework.** A *fresh* agent reviews the PR — never the builder.
@@ -478,9 +471,9 @@ subagent and skill features. "Claude" and "Claude Code" are trademarks of Anthro
 
 **How is it different from just prompting Claude Code?**
 A raw prompt drifts; Shipmates combines an isolated worktree, a mandatory green-CI workflow gate,
-fresh review, and hook-enforced push/merge boundaries so an autonomous run converges instead of
-wandering. Stage judgment and reviewer acceptance remain orchestrator responsibilities. See [how the
-voyage works](#-how-the-voyage-works).
+fresh review, and explicit acceptance criteria so an autonomous run converges instead of wandering.
+Stage judgment and reviewer acceptance remain orchestrator responsibilities. See [how the voyage
+works](#-how-the-voyage-works).
 
 **Which languages and frameworks does it work with?**
 Any. The agents are **domain-neutral** — they enforce the standard in *your* repo's `README` / `CLAUDE.md`,

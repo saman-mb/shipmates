@@ -6,8 +6,6 @@ mod doctor;
 mod embedded;
 mod installer;
 mod manifest;
-mod hooks;
-mod state;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -274,9 +272,6 @@ fn main() -> Result<()> {
                     let rel = path_str.strip_prefix(&strip).unwrap_or(&path_str);
                     let full_path = target_dir.join(rel);
                     installer::atomic_write(&full_path, &content)?;
-                    if rel.contains("/hooks/") && rel.ends_with(".sh") {
-                        installer::set_executable(&full_path)?;
-                    }
                     written += 1;
                     // Remember one installed copy of each dependency-bearing script
                     // (deduped by filename) to pre-warm after all harnesses land.
@@ -289,21 +284,6 @@ fn main() -> Result<()> {
                             provision_scripts.push(full_path.clone());
                         }
                     }
-                }
-
-                let registered = hooks::register(&target_dir, harness)?;
-                if registered.is_empty() {
-                    println!("Hook registration: {} already current", harness);
-                } else {
-                    println!(
-                        "Hook registration: {} ({})",
-                        harness,
-                        registered
-                            .iter()
-                            .map(|path| path.display().to_string())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    );
                 }
 
                 if selected_tools.is_empty() {
@@ -375,9 +355,6 @@ fn main() -> Result<()> {
                 for (path_str, content) in files {
                     let full_path = out_dir.join(&path_str);
                     installer::atomic_write(&full_path, &content)?;
-                    if path_str.contains("/hooks/") && path_str.ends_with(".sh") {
-                        installer::set_executable(&full_path)?;
-                    }
                 }
                 println!("Built payload for target: {}", target);
             }
@@ -463,14 +440,6 @@ fn main() -> Result<()> {
             for name in adapters::targets() {
                 println!("{}", name);
             }
-        }
-        Command::Hook { action } => {
-            std::process::exit(hooks::dispatch(&action));
-        }
-        Command::State { action } => {
-            // The FSM engine owns the 0/1/2 exit ABI, so exit with its code
-            // directly rather than through `bail!` (which would force exit 1).
-            std::process::exit(state::dispatch(&action));
         }
     }
     Ok(())

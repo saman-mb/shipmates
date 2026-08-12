@@ -220,7 +220,7 @@ Derived from the copy that already works. Four rules:
 4. **Confident without overclaiming.** State what the thing does. Then state, in the same
    breath, where it doesn't. ["Scope & honesty" in `AGENTS.md`](../AGENTS.md#scope--honesty) is
    the precedent: three blunt bullets about Claude-Code-only support, prompt-driven rather than
-   hook-enforced gates, and no Anthropic affiliation. Every surface owes the reader that
+   prompt-driven gates, and no Anthropic affiliation. Every surface owes the reader that
    treatment.
 
 ### Say / don't say
