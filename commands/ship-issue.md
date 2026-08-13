@@ -388,7 +388,9 @@ Decision (each specialist participates only when its flag is set):
   the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
   the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
   so name every issue the PR will close in the completion comment.
-- **If `MERGE_MODE=auto`**: `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch)`, then confirm all issues
+- **If `MERGE_MODE=auto`**: immediately before merging, capture current PR head and bind merge to it:
+  `HEAD_SHA=$(gh pr view <PR#> --json headRefOid -q .headRefOid)` followed by
+  `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch --match-head-commit "$HEAD_SHA")`, then confirm all issues
   auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
   epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
   and post the completion comment.

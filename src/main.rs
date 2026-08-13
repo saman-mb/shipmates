@@ -318,6 +318,29 @@ fn main() -> Result<()> {
                             println!("  moved {} → {}", legacy.display(), backup.display());
                         }
                     }
+                    if !report.skipped_unmanaged.is_empty() {
+                        let skipped: Vec<String> = report
+                            .skipped_unmanaged
+                            .iter()
+                            .map(|path| path.display().to_string())
+                            .collect();
+                        println!(
+                            "Skipped {} ambiguous legacy command(s) — no receipt ownership or exact historical signature; left untouched: {}",
+                            skipped.len(),
+                            skipped.join(", ")
+                        );
+                    }
+                }
+
+                // Releases before the FSM removal registered hooks separately
+                // from the payload. Remove only known Shipmates-owned remnants;
+                // current installs never register hooks.
+                let hook_cleanup = installer::legacy_hooks::cleanup(&target_dir, harness)?;
+                if hook_cleanup.changed() {
+                    println!(
+                        "Removed {} legacy Shipmates hook file/config item(s)",
+                        hook_cleanup.removed_files.len() + hook_cleanup.changed_configs.len()
+                    );
                 }
             }
 
