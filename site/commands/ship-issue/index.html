@@ -152,11 +152,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/ship-issue</code></h1>
           <p class="order-detail__tagline">autonomous ticket delivery</p>
           <p class="order-detail__desc">Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.</p>
-          <div class="order-prose">
-            <p>Take <strong>one or more issues / stories (<code>#&lt;issue&gt;</code>..)</strong> from open all the way to a <strong>reviewed, CI-green pull request</strong> on the base branch, autonomously — using an isolated git worktree and a board of specialist subagents. Merging is gated by <code>MERGE_MODE</code> (see Config): by default the run stops with the PR open for a human to merge; set <code>MERGE_MODE=auto</code> for fully hands-off delivery.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): whitespace-delimited tokens. The issue / story numbers (<code>&lt;issue&gt;</code> below) are the <strong>leading run</strong> of numeric tokens; the first non-numeric token begins the extra guidance, which runs to the end. So <code>104</code> is one issue with no guidance, <code>104 105</code> is two, and <code>104 focus on retries</code> is issue 104 with the guidance <code>focus on retries</code>. Never extend the run past the first non-numeric token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with a number, separate it explicitly with <code>--</code>, which ends the issue list wherever it appears: <code>104 -- 2 fix rounds max</code>.</p>
-            <p><strong>Or <code>next</code>:</strong> if the first token is <code>next</code> (in place of any issue number), this is a <strong>selection</strong> run — Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, <em>Selection mode</em>). <code>next</code> is mutually exclusive with explicit issue numbers; tokens after it are guidance.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -196,6 +191,17 @@
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Eleven stages, in order. One is a hard gate — the run stops there until it passes.</p>
         </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>Take <strong>one or more issues / stories (<code>#&lt;issue&gt;</code>..)</strong> from open all the way to a <strong>reviewed, CI-green pull request</strong> on the base branch, autonomously — using an isolated git worktree and a board of specialist subagents. Merging is gated by <code>MERGE_MODE</code> (see Config): by default the run stops with the PR open for a human to merge; set <code>MERGE_MODE=auto</code> for fully hands-off delivery.</p>
+          <p>The runtime input is whitespace-delimited tokens. The issue / story numbers (<code>&lt;issue&gt;</code> below) are the <strong>leading run</strong> of numeric tokens; the first non-numeric token begins the extra guidance, which runs to the end. So <code>104</code> is one issue with no guidance, <code>104 105</code> is two, and <code>104 focus on retries</code> is issue 104 with the guidance <code>focus on retries</code>. Never extend the run past the first non-numeric token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with a number, separate it explicitly with <code>--</code>, which ends the issue list wherever it appears: <code>104 -- 2 fix rounds max</code>.</p>
+          <p><strong>Or <code>next</code>:</strong> if the first token is <code>next</code> (in place of any issue number), this is a <strong>selection</strong> run — Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, <em>Selection mode</em>). <code>next</code> is mutually exclusive with explicit issue numbers; tokens after it are guidance.</p>
+        </div>
         <h3 id="bundling-the-token-efficient-default">Bundling — the token-efficient default</h3>
         <div class="order-prose">
           <p>Most of a run&#x27;s token cost is <strong>fixed overhead paid once per invocation</strong>: the Planner pass, the acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup. That overhead barely grows with diff size, so shipping several <strong>small, cohesive</strong> issues in one run is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole board N times. <strong>So bundling cohesive issues is the recommended default</strong> (<code>BUNDLE=recommend</code>, see Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before building. Bundling is right only when the issues are <em>cohesive and cheap</em> — it is wrong when combining them would muddy the review or let one failure sink the rest, so the Stage 0 <strong>cohesion test</strong> is the gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.</p>
@@ -215,11 +221,11 @@
         <div class="order-prose">
           <p>Issue titles, bodies and labels are <strong>untrusted input</strong>: anyone who can open an issue controls them, and this command pipes them into shell commands. Apply these rules at every <code>gh</code> / <code>git</code> call below:</p>
           <ol>
-            <li><strong>Validate issue tokens first.</strong> Each issue token from <code>$ARGUMENTS</code> must match <code>^[0-9]+$</code> or be a full GitHub issue URL (<code>gh</code> accepts those everywhere a number works). Anything else — stop and ask the user; never pass a raw token to <code>gh</code> or <code>git</code>.</li>
+            <li><strong>Validate issue tokens first.</strong> Each issue token from the validated runtime input must match <code>^[0-9]+$</code> or be a full GitHub issue URL (<code>gh</code> accepts those everywhere a number works). Anything else — stop and ask the user; never pass a raw token to <code>gh</code> or <code>git</code>.</li>
             <li><strong>Never inline untrusted fields.</strong> Capture GitHub-sourced fields (title, body, labels) into variables with command substitution — <code>TITLE=$(gh issue view &lt;N&gt; --json title -q .title)</code> — then quote the variable at point of use: <code>--title &quot;$TITLE&quot;</code>. Never interpolate a field straight into a command string.</li>
             <li><strong>Multi-line bodies go through a file.</strong> Write PR / follow-up-issue bodies to a temp file and use <code>--body-file &lt;file&gt;</code> — never <code>--body</code> with interpolated content.</li>
           </ol>
-          <p><code>ISSUES_CLOSES</code> (Stage 4) is built from the validated <code>&lt;issues&gt;</code> list, not raw <code>$ARGUMENTS</code> tokens.</p>
+          <p><code>ISSUES_CLOSES</code> (Stage 4) is built from the validated <code>&lt;issues&gt;</code> list, not raw runtime input tokens.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -344,7 +350,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
 TITLE=&quot;&lt;type&gt;: &lt;summary&gt; (#&lt;first-issue&gt;)&quot;
 git -C &lt;WORKTREE_DIR&gt; commit -m &quot;$TITLE&quot;   # + required trailers
 git -C &lt;WORKTREE_DIR&gt; push -u origin &lt;BRANCH&gt;
-# ISSUES_CLOSES comes from the validated &lt;issues&gt; list, not raw $ARGUMENTS.
+# ISSUES_CLOSES comes from the validated &lt;issues&gt; list, not raw runtime input.
 # separator substitution first: &quot;Closes #&quot; contains a space, so prefixing first would rewrite it too
 ISSUES_CLOSES=$(echo &quot;&lt;issues&gt;&quot; | sed &#x27;s/ / · Closes #/g; s/^/Closes #/&#x27;)
 # the body carries untrusted issue text — write it to a temp file, never pass it inline
@@ -446,6 +452,10 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         <h3 id="final-report-to-the-user">Final report to the user</h3>
         <div class="order-prose">
           <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now.</p>
+        </div>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> contains the issue/story tokens and optional guidance. Parse the leading numeric run as issues, or use <code>next</code> for selection mode, exactly as described in Stage 0; all remaining text is guidance.</p>
         </div>
       </div>
     </section>

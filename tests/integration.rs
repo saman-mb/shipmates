@@ -3,8 +3,9 @@ use shipmates::adapters::antigravity::AntigravityAdapter;
 use shipmates::adapters::claude_code::ClaudeCodeAdapter;
 use shipmates::adapters::codex::CodexAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
-use shipmates::catalog::{reject_positional, CanonicalCommand, CanonicalRole};
+use shipmates::catalog::{load_commands, load_roles, reject_positional, CanonicalCommand, CanonicalRole};
 use shipmates::digest;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 #[test]
@@ -69,6 +70,93 @@ fn test_opencode_permissions_deny_first() {
 }
 
 #[test]
+fn test_opencode_cli_build_matches_golden_payload() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let out = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .current_dir(&root)
+        .args(["build", "--target", "opencode", "--out", out.path().to_str().unwrap()])
+        .output()
+        .expect("failed to execute opencode build");
+    assert!(
+        output.status.success(),
+        "opencode build failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let expected = read_payload_digest(&root.join("tests/payload-digests/opencode.sha256"));
+    let payload = out.path().join("harnesses/opencode/.opencode");
+    let mut actual = BTreeMap::new();
+    for path in walk(&payload) {
+        let relative = path
+            .strip_prefix(&payload)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        actual.insert(relative, digest::compute_sha256(&path).unwrap());
+    }
+
+    assert_eq!(actual, expected, "opencode build drifted from golden payload");
+}
+
+#[test]
+fn test_opencode_embedded_install_fidelity() {
+    let empty_cwd = tempfile::tempdir().unwrap();
+    let sandbox = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        // No checkout source is visible here. `install` must use the payload
+        // embedded in the test binary, as a packaged CLI does.
+        .current_dir(empty_cwd.path())
+        .args([
+            "install",
+            "--harness",
+            "opencode",
+            "--dir",
+            sandbox.path().to_str().unwrap(),
+            "--with-tools",
+            "none",
+        ])
+        .output()
+        .expect("failed to execute opencode install");
+    assert!(
+        output.status.success(),
+        "opencode install failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let agents = sandbox.path().join(".opencode/agents");
+    let commands = sandbox.path().join(".opencode/commands");
+    let expected_roles = [
+        "architect",
+        "art-director",
+        "data-scientist",
+        "devops-engineer",
+        "performance-engineer",
+        "product-manager",
+        "sdet",
+        "security-engineer",
+        "senior-engineer",
+        "site-reliability-engineer",
+        "technical-writer",
+        "ux-ui-designer",
+    ];
+
+    for role in expected_roles {
+        let path = agents.join(format!("{role}.md"));
+        let content = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("missing {path:?}"));
+        assert!(content.contains("mode: subagent\n"), "{path:?} is not a subagent");
+        assert!(content.contains("permission:\n"), "{path:?} has no permission map");
+    }
+    assert_eq!(file_count(&agents), expected_roles.len());
+    assert_eq!(file_count(&commands), 12);
+
+    let report_order = std::fs::read_to_string(commands.join("harden.md")).unwrap();
+    assert!(report_order.contains("report"), "harden order lost report-only mode");
+    assert!(report_order.contains("$ARGUMENTS"), "harden order lost argument passing");
+    assert!(!report_order.contains("{{"), "neutral argument placeholder leaked");
+}
+
+#[test]
 fn test_positional_args_rejected() {
     let result = reject_positional("test", "some text with $1 here");
     assert!(result.is_err());
@@ -77,6 +165,96 @@ fn test_positional_args_rejected() {
 
     let ok_result = reject_positional("test", "some text with \\$1 here");
     assert!(ok_result.is_ok());
+}
+
+#[test]
+fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let commands = load_commands(&root.join("commands")).unwrap();
+    let roles = load_roles(&root.join("crew")).unwrap();
+
+    assert_eq!(commands.len(), 12, "cost preamble must cover every command");
+    for command in &commands {
+        assert_eq!(
+            command.narrative.matches("<!-- shipmates:command-preamble -->").count(),
+            1,
+            "{} must reference shared command preamble once",
+            command.name
+        );
+        assert_eq!(
+            command.narrative.matches("## Runtime input").count(),
+            1,
+            "{} must have one runtime-input section",
+            command.name
+        );
+        assert_eq!(
+            command.narrative.matches("$ARGUMENTS").count(),
+            1,
+            "{} must keep its only argument token in runtime input",
+            command.name
+        );
+        assert!(
+            command.narrative.find("## Runtime input").unwrap()
+                > command.narrative.find("<!-- shipmates:command-preamble -->").unwrap(),
+            "{} places volatile input below stable workflow",
+            command.name
+        );
+        assert!(!command.narrative.contains("{{"), "{} has non-ARGUMENTS body interpolation", command.name);
+
+        let source = std::fs::read_to_string(root.join("commands").join(format!("{}.md", command.name)))
+            .unwrap();
+        assert!(!source.contains("{{"), "{} has legacy command metadata", command.name);
+        for key in ["arguments:", "invocation:", "board:"] {
+            assert!(!source.lines().any(|line| line.starts_with(key)), "{} has {key}", command.name);
+        }
+    }
+
+    assert_eq!(roles.len(), 12);
+    for role in &roles {
+        assert_eq!(
+            role.body.matches("<!-- shipmates:subagent-preamble -->").count(),
+            1,
+            "{} must reference shared subagent preamble once",
+            role.name
+        );
+    }
+
+    for target in shipmates::adapters::targets() {
+        let files = shipmates::adapters::select(target).unwrap().build(&roles, &commands).unwrap();
+
+        for command in &commands {
+            let suffixes = [
+                format!("/{}/SKILL.md", command.name),
+                format!("/commands/{}.md", command.name),
+            ];
+            let matches: Vec<_> = files
+                .iter()
+                .filter(|(path, _)| suffixes.iter().any(|suffix| path.ends_with(suffix)))
+                .collect();
+            assert_eq!(matches.len(), 1, "{target} must emit one {} command", command.name);
+            let (path, content) = matches[0];
+            assert!(content.contains("## Cost discipline"), "{target} {path} missed command preamble");
+            assert!(!content.contains("shipmates:command-preamble"), "{target} {path} leaked command marker");
+        }
+
+        let role_outputs: Vec<_> = files
+            .iter()
+            .filter(|(path, _)| path.contains("/agents/") && !path.ends_with("AGENTS.md"))
+            .collect();
+        for role in &roles {
+            let matches: Vec<_> = role_outputs
+                .iter()
+                .filter(|(path, _)| path.contains(&format!("/agents/{}.", role.name)))
+                .collect();
+            if matches.is_empty() {
+                continue;
+            }
+            assert_eq!(matches.len(), 1, "{target} must emit one {} role", role.name);
+            let (path, content) = matches[0];
+            assert!(content.contains("## Return discipline"), "{target} {path} missed role preamble");
+            assert!(!content.contains("shipmates:subagent-preamble"), "{target} {path} leaked role marker");
+        }
+    }
 }
 
 #[test]
@@ -121,6 +299,61 @@ fn test_non_claude_targets_build_via_cli() {
     let codex_bytes = std::fs::read(&codex_skill).unwrap();
     let copilot_bytes = std::fs::read(&copilot_skill).unwrap();
     assert_eq!(codex_bytes, copilot_bytes, "shared skill must be identical across harnesses");
+}
+
+/// The Copilot payload digest is a checked-in golden file for the complete
+/// `build --target github-copilot` output.  Check both missing and unexpected
+/// files so a newly emitted file cannot bypass the fixture.
+#[test]
+fn test_github_copilot_build_matches_golden_payload() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .args([
+            "build",
+            "--target",
+            "github-copilot",
+            "--out",
+            temp_dir.path().to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to execute github-copilot build");
+    assert!(
+        output.status.success(),
+        "github-copilot build failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let digest_path = root.join("tests/payload-digests/github-copilot.sha256");
+    let payload_root = temp_dir.path().join("harnesses/github-copilot");
+    let mut expected = std::collections::BTreeMap::new();
+    for line in std::fs::read_to_string(digest_path).unwrap().lines().skip(2) {
+        let (path, hash) = line.split_once(' ').expect("malformed Copilot golden entry");
+        expected.insert(path.to_string(), hash.to_string());
+    }
+
+    for (path, expected_hash) in &expected {
+        let file = payload_root.join(path);
+        assert!(file.is_file(), "golden payload file missing: {path}");
+        let content = std::fs::read_to_string(file).unwrap();
+        assert_eq!(digest::hash(&content), *expected_hash, "golden mismatch: {path}");
+    }
+
+    let actual: std::collections::BTreeSet<String> = walk(&payload_root)
+        .into_iter()
+        .map(|path| normalized_relative_path(&path, &payload_root))
+        .collect();
+    let expected_paths: std::collections::BTreeSet<String> = expected.keys().cloned().collect();
+    assert_eq!(actual, expected_paths, "Copilot payload file set drifted from golden");
+}
+
+fn normalized_relative_path(path: &std::path::Path, root: &std::path::Path) -> String {
+    path.strip_prefix(root)
+        .unwrap()
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 #[test]
@@ -338,4 +571,27 @@ fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
         }
     }
     out
+}
+
+fn file_count(dir: &std::path::Path) -> usize {
+    std::fs::read_dir(dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_file())
+        .count()
+}
+
+fn read_payload_digest(path: &std::path::Path) -> BTreeMap<String, String> {
+    std::fs::read_to_string(path)
+        .unwrap()
+        .lines()
+        .skip(2)
+        .map(|line| {
+            let mut fields = line.split_whitespace();
+            let relative = fields.next().expect("digest entry has no path");
+            let hash = fields.next().expect("digest entry has no hash");
+            assert!(fields.next().is_none(), "digest entry has extra fields: {line}");
+            (relative.to_string(), hash.to_string())
+        })
+        .collect()
 }

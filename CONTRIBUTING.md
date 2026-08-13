@@ -91,6 +91,11 @@ are correct; which one belongs in a given sentence is set by the
 
 ## Testing your change
 
+Prompt-cost rules are documented in [`docs/COST.md`](docs/COST.md). Keep command instructions
+cache-friendly: stable workflow text first, one runtime `$ARGUMENTS` section last; ask subagents for
+compact structured decisions rather than transcripts. The shared preamble markers are expanded by
+the renderer, so update the doctrine instead of copying its wording into commands or crew.
+
 ### Portability sources
 
 **`commands/` and `crew/` are the only things you edit.** Harness-neutral role and workflow

@@ -88,7 +88,7 @@
               <tr><td><code>claude-code</code></td><td><span class="chip">Runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>opencode</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a></td></tr>
               <tr><td><code>antigravity</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
-              <tr><td><code>github-copilot</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>github-copilot</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="../github-copilot/">Quickstart</a></td></tr>
               <tr><td><code>codex</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/46">#46</a>, <a href="https://github.com/saman-mb/shipmates/issues/47">#47</a></td></tr>
               <tr><td><code>cursor</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
               <tr><td><code>windsurf</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
@@ -98,6 +98,7 @@
         <div class="order-prose">
           <p><strong>Runtime-verified</strong> means the payload is compiled from neutral canonical sources, byte-compared against its committed reference digest, and the harness is one Shipmates has actually been run on. Only <code>claude-code</code> meets all of that.</p>
           <p><strong>Builds, not runtime-verified</strong> is every other harness. <code>shipmates install --harness &lt;name&gt;</code> produces the payload, and each format was verified against the harness's own parsing source and first-party docs. None has been exercised against a running harness — whether agents resolve, whether argument passing behaves, and whether <code>/ship-issue</code> completes end to end are open questions, tracked for opencode in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>. Nothing on this site should be read as &#x201C;tested on <em>&lt;harness&gt;</em>&#x201D; until those close.</p>
+          <p>GitHub Copilot has a <a href="../github-copilot/">dedicated quickstart</a> with its payload checks, safe smoke-test command, and the current <code>/ship-issue</code> Tier B boundary.</p>
           <p><strong>Builds (skills only)</strong> marks harnesses where the crew has nowhere to go and only the twelve skills land. That is now <code>cursor</code> and <code>windsurf</code>, and for two different reasons. <code>cursor</code> is unconfirmed rather than absent: <code>.cursor/agents/*.md</code> is widely reported and Cursor describes delegating to named subagents, but no first-party page documents the frontmatter schema, so emitting one would be guesswork. <code>windsurf</code> is under review — Windsurf became Devin Desktop in June 2026 and that target may no longer address a live product. Each harness now carries its evidence and the date it was checked in <code>tools/harness_matrix.json</code>.</p>
         </div>
       </div>
@@ -154,6 +155,26 @@ CODEX_PROJECT="$SANDBOX" CODEX_SMOKE=1 bash tests/test_codex_smoke.sh</code></pr
       </div>
     </section>
 
+    <section class="section" id="opencode-quickstart" aria-labelledby="opencode-quickstart-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="opencode-quickstart-title">opencode quickstart</h2>
+          <p class="section__lead">Install the native payload, inspect the crew, then try a report-mode order.</p>
+        </div>
+        <div class="order-prose">
+          <pre class="order-code" tabindex="0"><code>shipmates install --harness opencode --dir /path/to/project --with-tools none
+cd /path/to/project
+ls .opencode/agents .opencode/commands
+opencode agent list
+opencode run --command harden --format json \
+  "Review this project in report mode. Do not modify files."</code></pre>
+          <p>The install places twelve Markdown subagents under <code>.opencode/agents/</code> and twelve user-invoked commands under <code>.opencode/commands/</code>. <code>agent list</code> should include all twelve Shipmates roles; the report-only <code>harden</code> order is a narrow manual probe of command loading. Keep <code>--auto</code> off.</p>
+          <p>CI runs deterministic install-fidelity checks without network or model credentials: it builds against the committed opencode golden file, installs from the embedded payload into a temporary directory, checks all twelve crew files and commands, and verifies the report-only <code>/harden</code> rendering. This proves exporter and installer fidelity, not opencode runtime behaviour.</p>
+          <p><strong>Fidelity caveat.</strong> The current status remains <em>Builds, not runtime-verified</em>. These checks do not prove all twelve agents spawn, argument substitution, permission enforcement, parallel acceptance-board subagents, CI polling, or the full <code>/ship-issue</code> workflow. Those remain the explicit follow-up for <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</p>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="tools" aria-labelledby="tools-matrix-title">
       <div class="container container--prose">
         <div class="section__head">
@@ -176,6 +197,7 @@ CODEX_PROJECT="$SANDBOX" CODEX_SMOKE=1 bash tests/test_codex_smoke.sh</code></pr
           <ul class="order-siblings__list" role="list">
             <li class="order-siblings__item"><a class="order-siblings__link" href="../install/">Install reference</a></li>
             <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page">Harness matrix<span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../github-copilot/">GitHub Copilot quickstart</a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../troubleshooting/">Troubleshooting</a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../architecture/">Architecture</a></li>
           </ul>

@@ -4,19 +4,16 @@ description: Run a mechanical migration across a whole codebase — discover eve
 argument-hint: <from → to — e.g. "moment.js → date-fns" or "callback API → async/await">
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: migration
-invocation: @{{role}}({{migration}})
-board: native
 ---
 # /migrate — discover → transform each → verify → sweep clean
+<!-- shipmates:command-preamble -->
 
 Carry a repeated, mechanical change across an entire codebase without missing a site or leaving it
 half-migrated. Discover **every** occurrence, transform each independently in isolation, verify per site,
 and close only when a **grep for the old pattern comes back empty** and the suite is green. The gate is
 "zero remnants + still green," and nothing is dropped silently.
 
-Input (**{{migration}}**): the migration — `from → to`: an API/signature change, a dependency swap, a
-language/framework idiom, a config format, a renamed symbol. If empty, ask what's migrating to what.
+The migration comes from the Runtime input section at the end of this workflow.
 
 ---
 
@@ -90,3 +87,8 @@ and the PR link. Be explicit about anything deliberately left behind.
 - Bounded loops; never advance a red PR; the reviewer is a **fresh** agent.
 - If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
   inlined and note it.
+
+## Runtime input
+
+`$ARGUMENTS` describes the `from → to` migration: an API/signature change, dependency swap,
+language/framework idiom, config format, or renamed symbol. If empty, ask what is migrating to what.

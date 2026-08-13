@@ -4,11 +4,9 @@ description: Run the specialist acceptance board against an existing pull reques
 argument-hint: <pr-number or PR url> [optional emphasis passed to every reviewer — e.g. "weight the schema change"]
 allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: pull-request
-invocation: @{{role}}({{pull-request}})
-board: native
 ---
 # /pr-review — classify → convene the board → consolidate
+<!-- shipmates:command-preamble -->
 
 Point the crew at a pull request **somebody else wrote** — a teammate's, an outside contributor's, a
 dependency bump, or one you opened by hand before you thought to use Shipmates. Every other command
@@ -16,8 +14,7 @@ assumes the crew authored the change; this one doesn't, and that single fact set
 worktree, no build, no fix loop.** You don't own the branch, so the deliverable is findings, not
 commits.
 
-Input (**{{pull-request}}**): a PR number or URL, plus an optional focus hint. If it's empty, default to the
-PR for the current branch (`gh pr view --json number`); if there isn't one, ask which PR to review.
+The PR and optional focus hint come from the Runtime input section at the end of this workflow.
 
 ---
 
@@ -170,3 +167,8 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
 - Don't pad the board. A flag that isn't set means that specialist has nothing to say.
 - If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
   inlined, and note it.
+
+## Runtime input
+
+`$ARGUMENTS` contains a PR number or URL plus an optional focus hint. If empty, use the PR for the
+current branch (`gh pr view --json number`); if none exists, ask which PR to review.

@@ -123,10 +123,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/spike</code></h1>
           <p class="order-detail__tagline">prototype the options, recommend with an ADR</p>
           <p class="order-detail__desc">De-risk an open technical decision with a time-boxed spike — frame the question, prototype several approaches in parallel as throwaways, judge them against the project&#x27;s constraints, and return a recommendation as an ADR. Produces a decision, not production code.</p>
-          <div class="order-prose">
-            <p>Answer a hard &quot;which way should we build this?&quot; question with evidence instead of a hunch. Frame the decision, have engineers prototype <strong>several approaches in parallel as disposable spikes</strong>, judge them against the project&#x27;s real constraints, and record the outcome as an <strong>ADR</strong> (Architecture Decision Record). The output is a <em>decision with reasoning</em>, not shippable code — the prototypes are throwaway.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): the open question or decision to resolve. If empty, ask what decision is blocked.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -165,6 +161,16 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Seven stages, in order.</p>
+        </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>Answer a hard &quot;which way should we build this?&quot; question with evidence instead of a hunch. Frame the decision, have engineers prototype <strong>several approaches in parallel as disposable spikes</strong>, judge them against the project&#x27;s real constraints, and record the outcome as an <strong>ADR</strong> (Architecture Decision Record). The output is a <em>decision with reasoning</em>, not shippable code — the prototypes are throwaway.</p>
+          <p>The open question comes from the Runtime input section at the end of this workflow.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -237,6 +243,10 @@
             </div>
           </li>
         </ol>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> is the open question or decision to resolve. If empty, ask what decision is blocked.</p>
+        </div>
       </div>
     </section>
 
@@ -250,7 +260,7 @@
             <li><code>APPROACHES</code> = 2–4 — the distinct options to prototype (derive from the question; name them up front).</li>
             <li><code>JUDGE</code> = <code>architect</code> (structural/quality-attribute trade-offs) — add <code>security-engineer</code>, <code>performance-engineer</code>, or <code>data-scientist</code> as extra judges when the decision hinges on their axis.</li>
             <li><code>PROTOTYPER</code> = <code>senior-engineer</code>. <code>TIME_BOX</code> = keep each spike minimal — just enough to answer the question, thrown away after. <code>ISOLATION</code> = each prototype in its own throwaway worktree/branch so they don&#x27;t collide and nothing lands on the base branch.</li>
-            <li><strong>Constraints &amp; priorities</strong> = from the repo (quality attributes that matter here — performance, simplicity, reversibility, team familiarity, cost) plus anything in <code>$ARGUMENTS</code>.</li>
+            <li><strong>Constraints &amp; priorities</strong> = from the repo (quality attributes that matter here — performance, simplicity, reversibility, team familiarity, cost) plus anything in the validated runtime input.</li>
             <li><strong>ADR delivery</strong> — <code>MODE</code> = <code>pr</code> (default) or <code>edit-in-place</code>: where the <strong>ADR</strong> lands. This is a different axis from <code>ISOLATION</code> above: <code>ISOLATION</code> governs the throwaway prototype worktrees in Stage 1, which always exist and are always torn down; <code>MODE</code> governs only where the <em>deliverable</em> (the ADR) ends up, and defaults to a reviewed PR. Under <code>MODE=pr</code>: <code>BASE_BRANCH</code> = the repo&#x27;s default branch — the PR&#x27;s target, not what the worktree is cut from (that&#x27;s current <code>HEAD</code>). <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--adr-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>docs/adr-&lt;slug&gt;</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). <code>MAX_FIX_ROUNDS</code> = <code>2</code> — the cap on CI-fix rounds at Stage 3.5, so a permanently-red check escalates to the user instead of looping. A repo with no remote to open a PR against is the one fallback: build the branch, stop there, and report the branch as the undo path — never quietly write to the tree instead.</li>
           </ul>
         </div>

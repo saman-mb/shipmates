@@ -12,7 +12,7 @@
       "agents": true,
       "agents_notes": "Custom agents at `.github/agents/<name>.agent.md` \u2014 note the double extension. Markdown + YAML frontmatter; `tools` accepts canonical names (read, search, edit, execute, web, agent); combined frontmatter+body capped at 30,000 chars. Verified 2026-08-03: https://docs.github.com/en/copilot/reference/custom-agents-configuration",
       "effort": false,
-      "effort_notes": "No per-agent effort field \u2014 reasoning effort is global/session only (open request copilot-cli#2904). Adapter emits nothing rather than invent a key. Verified 2026-08-05."
+      "effort_notes": "No per-agent effort field \u2014 reasoning effort is global/session only (open request copilot-cli#2904). Adapter emits nothing rather than invent a key. This static-format gap does not disable runtime model selection: the orchestrator chooses a model at spawn when Copilot supports it, otherwise the session model is inherited. Verified 2026-08-05."
     },
     "codex": {
       "agents": true,
