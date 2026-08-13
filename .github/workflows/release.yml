@@ -41,6 +41,7 @@ permissions:
 on:
   pull_request:
   push:
+    branches: [main]
     tags:
       - '**[0-9]+.[0-9]+.[0-9]+*'
 
@@ -50,9 +51,9 @@ jobs:
     runs-on: "ubuntu-22.04"
     outputs:
       val: ${{ steps.plan.outputs.manifest }}
-      tag: ${{ !github.event.pull_request && github.ref_name || '' }}
-      tag-flag: ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }}
-      publishing: ${{ !github.event.pull_request }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      tag-flag: ${{ steps.resolve.outputs.tag-flag }}
+      publishing: ${{ steps.resolve.outputs.publishing }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -60,6 +61,37 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
+      # Resolve the release context: PR -> plan only; tag push -> publish that
+      # tag; push to main -> derive v<version> from Cargo.toml and publish only
+      # when that release does not exist yet (auto-release on version bump).
+      - id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            TAG=""
+            FLAG=""
+            PUBLISH="false"
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${{ github.ref_name }}"
+            FLAG="--tag=${TAG}"
+            PUBLISH="true"
+          else
+            VERSION="$(grep -m1 '^version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')"
+            TAG="v${VERSION}"
+            if gh release view "${TAG}" >/dev/null 2>&1; then
+              FLAG=""
+              PUBLISH="false"
+            else
+              FLAG="--tag=${TAG}"
+              PUBLISH="true"
+            fi
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "tag-flag=${FLAG}" >> "$GITHUB_OUTPUT"
+          echo "publishing=${PUBLISH}" >> "$GITHUB_OUTPUT"
+          echo "resolved tag=${TAG:-<none>} publishing=${PUBLISH}"
       - name: Install dist
         # we specify bash to get pipefail; it guards against the `curl` command
         # failing. otherwise `sh` won't catch that `curl` returned non-0
@@ -70,14 +102,9 @@ jobs:
         with:
           name: cargo-dist-cache
           path: ~/.cargo/bin/dist
-      # sure would be cool if github gave us proper conditionals...
-      # so here's a doubly-nested ternary-via-truthiness to try to provide the best possible
-      # functionality based on whether this is a pull_request, and whether it's from a fork.
-      # (PRs run on the *source* but secrets are usually on the *target* -- that's *good*
-      # but also really annoying to build CI around when it needs secrets to work right.)
       - id: plan
         run: |
-          dist ${{ (!github.event.pull_request && format('host --steps=create --tag={0}', github.ref_name)) || 'plan' }} --output-format=json > plan-dist-manifest.json
+          dist ${{ (steps.resolve.outputs.publishing == 'true' && format('host --steps=create --tag={0}', steps.resolve.outputs.tag)) || 'plan' }} --output-format=json > plan-dist-manifest.json
           echo "dist ran successfully"
           cat plan-dist-manifest.json
           echo "manifest=$(jq -c "." plan-dist-manifest.json)" >> "$GITHUB_OUTPUT"
