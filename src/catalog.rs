@@ -1,5 +1,4 @@
-use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -62,21 +61,58 @@ pub fn reject_positional(label: &str, text: &str) -> Result<(), String> {
         let mut prev_char = ' ';
         for (j, c) in line.chars().enumerate() {
             if c == '$' && prev_char != '\\' {
-                let rest = &line[j+1..];
+                let rest = &line[j + 1..];
                 if rest.starts_with('{') {
                     if let Some(c2) = rest.chars().nth(1)
-                        && c2.is_ascii_digit() {
-                            return Err(format!("{}:{}: a command has no positional arguments", label, i + 1));
-                        }
+                        && c2.is_ascii_digit()
+                    {
+                        return Err(format!(
+                            "{}:{}: a command has no positional arguments",
+                            label,
+                            i + 1
+                        ));
+                    }
                 } else {
                     if let Some(c2) = rest.chars().next()
-                        && c2.is_ascii_digit() {
-                            return Err(format!("{}:{}: a command has no positional arguments", label, i + 1));
-                        }
+                        && c2.is_ascii_digit()
+                    {
+                        return Err(format!(
+                            "{}:{}: a command has no positional arguments",
+                            label,
+                            i + 1
+                        ));
+                    }
                 }
             }
             prev_char = c;
         }
+    }
+    Ok(())
+}
+
+fn parse_list(fm: &HashMap<String, String>, key: &str) -> Vec<String> {
+    fm.get(key)
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub fn validate_role_name(name: &str, label: &str) -> anyhow::Result<()> {
+    let valid = !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+        && !name.starts_with('-')
+        && !name.ends_with('-')
+        && !name.contains("--");
+    if !valid {
+        anyhow::bail!("{}: invalid role name {:?}", label, name);
     }
     Ok(())
 }
@@ -96,7 +132,11 @@ fn parse_effort(fm: &HashMap<String, String>, label: &str) -> anyhow::Result<Opt
     if let Some(v) = &effort
         && !matches!(v.as_str(), "low" | "medium" | "high")
     {
-        anyhow::bail!("{}: invalid effort {:?}; expected one of low|medium|high", label, v);
+        anyhow::bail!(
+            "{}: invalid effort {:?}; expected one of low|medium|high",
+            label,
+            v
+        );
     }
     Ok(effort)
 }
@@ -118,7 +158,10 @@ pub fn parse_frontmatter(path: &Path) -> Result<(HashMap<String, String>, String
     parse_frontmatter_from(&content, &path.to_string_lossy())
 }
 
-pub fn parse_frontmatter_from(content: &str, label: &str) -> Result<(HashMap<String, String>, String), String> {
+pub fn parse_frontmatter_from(
+    content: &str,
+    label: &str,
+) -> Result<(HashMap<String, String>, String), String> {
     let mut lines = content.lines();
     if lines.next().unwrap_or("").trim() != "---" {
         return Err(format!("{:?}: missing opening frontmatter", label));
@@ -147,27 +190,38 @@ pub fn parse_frontmatter_from(content: &str, label: &str) -> Result<(HashMap<Str
     if close_idx == 0 {
         return Err(format!("{:?}: unterminated frontmatter", label));
     }
-    let remaining = content.lines().skip(close_idx + 1).collect::<Vec<&str>>().join("\n");
+    let remaining = content
+        .lines()
+        .skip(close_idx + 1)
+        .collect::<Vec<&str>>()
+        .join("\n");
     Ok((values, remaining))
 }
 
 pub fn load_roles(path: &Path) -> anyhow::Result<Vec<CanonicalRole>> {
     let mut roles = Vec::new();
-    let _re = Regex::new(r"^[a-z0-9-]+$")?;
-    let _ = HashSet::<String>::new();
     if !path.exists() {
         return Ok(roles);
-    }    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+    }
+    for entry in walkdir::WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
         if entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "md") {
             let (fm, body) = parse_frontmatter(entry.path()).map_err(|e| anyhow::anyhow!(e))?;
+            let name = fm.get("name").cloned().unwrap_or_default();
+            validate_role_name(&name, &entry.path().to_string_lossy())?;
             roles.push(CanonicalRole {
-                name: fm.get("name").cloned().unwrap_or_default(),
+                name,
                 description: fm.get("description").cloned().unwrap_or_default(),
-                capabilities: fm.get("capabilities").map(|s| s.split(',').map(|s| s.trim().to_string()).collect()).unwrap_or_default(),
+                capabilities: fm
+                    .get("capabilities")
+                    .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+                    .unwrap_or_default(),
                 writes: fm.get("writes").map(|s| s == "true").unwrap_or(false),
-                web_scopes: Vec::new(),
-                read_scopes: Vec::new(),
-                tool_order: Vec::new(),
+                web_scopes: parse_list(&fm, "web-scopes"),
+                read_scopes: parse_list(&fm, "read-scopes"),
+                tool_order: parse_list(&fm, "tool-order"),
                 effort: parse_effort(&fm, &entry.path().to_string_lossy())?,
                 source: entry.path().to_path_buf(),
                 body,
@@ -182,17 +236,24 @@ pub fn load_commands(path: &Path) -> anyhow::Result<Vec<CanonicalCommand>> {
     if !path.exists() {
         return Ok(commands);
     }
-    for entry in walkdir::WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+    for entry in walkdir::WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
         if entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "md") {
             let (fm, body) = parse_frontmatter(entry.path()).map_err(|e| anyhow::anyhow!(e))?;
-            reject_positional(&entry.path().to_string_lossy(), &body).map_err(|e| anyhow::anyhow!(e))?;
+            reject_positional(&entry.path().to_string_lossy(), &body)
+                .map_err(|e| anyhow::anyhow!(e))?;
             commands.push(CanonicalCommand {
                 name: fm.get("name").cloned().unwrap_or_default(),
                 description: fm.get("description").cloned().unwrap_or_default(),
                 argument_hint: fm.get("argument-hint").cloned().unwrap_or_default(),
                 allowed_tools: fm.get("allowed-tools").cloned().unwrap_or_default(),
-                disable_model_invocation: fm.get("disable-model-invocation").map(|s| s == "true").unwrap_or(false),
-                arguments: Vec::new(),
+                disable_model_invocation: fm
+                    .get("disable-model-invocation")
+                    .map(|s| s == "true")
+                    .unwrap_or(false),
+                arguments: parse_list(&fm, "arguments"),
                 narrative: body,
                 invocation: String::new(),
                 board: String::new(),
@@ -210,15 +271,21 @@ pub fn load_roles_embedded() -> anyhow::Result<Vec<CanonicalRole>> {
     let mut roles = Vec::new();
     for (rel, content) in crate::embedded::embedded_sources() {
         if let Some(name) = rel.strip_prefix("crew/") {
-            let (fm, body) = parse_frontmatter_from(content, rel).map_err(|e| anyhow::anyhow!(e))?;
+            let (fm, body) =
+                parse_frontmatter_from(content, rel).map_err(|e| anyhow::anyhow!(e))?;
+            let name = fm.get("name").cloned().unwrap_or_else(|| name.to_string());
+            validate_role_name(&name, rel)?;
             roles.push(CanonicalRole {
-                name: fm.get("name").cloned().unwrap_or_else(|| name.to_string()),
+                name,
                 description: fm.get("description").cloned().unwrap_or_default(),
-                capabilities: fm.get("capabilities").map(|s| s.split(',').map(|s| s.trim().to_string()).collect()).unwrap_or_default(),
+                capabilities: fm
+                    .get("capabilities")
+                    .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+                    .unwrap_or_default(),
                 writes: fm.get("writes").map(|s| s == "true").unwrap_or(false),
-                web_scopes: Vec::new(),
-                read_scopes: Vec::new(),
-                tool_order: Vec::new(),
+                web_scopes: parse_list(&fm, "web-scopes"),
+                read_scopes: parse_list(&fm, "read-scopes"),
+                tool_order: parse_list(&fm, "tool-order"),
                 effort: parse_effort(&fm, rel)?,
                 source: std::path::PathBuf::from(rel),
                 body,
@@ -233,15 +300,19 @@ pub fn load_commands_embedded() -> anyhow::Result<Vec<CanonicalCommand>> {
     let mut commands = Vec::new();
     for (rel, content) in crate::embedded::embedded_sources() {
         if let Some(name) = rel.strip_prefix("commands/") {
-            let (fm, body) = parse_frontmatter_from(content, rel).map_err(|e| anyhow::anyhow!(e))?;
+            let (fm, body) =
+                parse_frontmatter_from(content, rel).map_err(|e| anyhow::anyhow!(e))?;
             reject_positional(rel, &body).map_err(|e| anyhow::anyhow!(e))?;
             commands.push(CanonicalCommand {
                 name: fm.get("name").cloned().unwrap_or_else(|| name.to_string()),
                 description: fm.get("description").cloned().unwrap_or_default(),
                 argument_hint: fm.get("argument-hint").cloned().unwrap_or_default(),
                 allowed_tools: fm.get("allowed-tools").cloned().unwrap_or_default(),
-                disable_model_invocation: fm.get("disable-model-invocation").map(|s| s == "true").unwrap_or(false),
-                arguments: Vec::new(),
+                disable_model_invocation: fm
+                    .get("disable-model-invocation")
+                    .map(|s| s == "true")
+                    .unwrap_or(false),
+                arguments: parse_list(&fm, "arguments"),
                 narrative: body,
                 invocation: String::new(),
                 board: String::new(),
@@ -251,7 +322,6 @@ pub fn load_commands_embedded() -> anyhow::Result<Vec<CanonicalCommand>> {
     }
     Ok(commands)
 }
-
 
 /// Tools loaded from an on-disk `toolbox/` tree (the repo dev loop).
 pub fn load_tools(path: &Path) -> anyhow::Result<Vec<CanonicalTool>> {
@@ -283,7 +353,11 @@ pub fn load_tools(path: &Path) -> anyhow::Result<Vec<CanonicalTool>> {
         {
             let p = entry.path();
             if p.is_file() && p != tool_md {
-                let rel = p.strip_prefix(&dir).unwrap().to_string_lossy().replace('\\', "/");
+                let rel = p
+                    .strip_prefix(&dir)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/");
                 let content = fs::read_to_string(p).map_err(|e| anyhow::anyhow!(e))?;
                 assets.push((rel, content));
             }
@@ -310,7 +384,10 @@ pub fn load_tools_embedded() -> anyhow::Result<Vec<CanonicalTool>> {
         if let Some(rest) = rel.strip_prefix("toolbox/")
             && let Some((dir, file_rel)) = rest.split_once('/')
         {
-            groups.entry(dir.to_string()).or_default().push((file_rel.to_string(), content));
+            groups
+                .entry(dir.to_string())
+                .or_default()
+                .push((file_rel.to_string(), content));
         }
     }
     let mut tools = Vec::new();
@@ -408,5 +485,29 @@ mod tests {
         .unwrap();
         let err = load_roles(dir.path()).unwrap_err();
         assert!(err.to_string().contains("invalid effort"), "{err}");
+    }
+
+    #[test]
+    fn test_loader_preserves_scope_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("role.md");
+        fs::write(
+            &path,
+            "---\nname: role\ndescription: d\ncapabilities: read,web\nweb-scopes: search\nread-scopes: read\ntool-order: bash,read\n---\nbody",
+        )
+        .unwrap();
+        let roles = load_roles(dir.path()).unwrap();
+        assert_eq!(roles[0].web_scopes, vec!["search"]);
+        assert_eq!(roles[0].read_scopes, vec!["read"]);
+        assert_eq!(roles[0].tool_order, vec!["bash", "read"]);
+    }
+
+    #[test]
+    fn test_loader_rejects_path_traversal_role_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("role.md");
+        fs::write(&path, "---\nname: ../escape\ndescription: d\n---\nbody").unwrap();
+        let err = load_roles(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("invalid role name"), "{err}");
     }
 }

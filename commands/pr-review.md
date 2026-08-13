@@ -25,7 +25,7 @@ The PR and optional focus hint come from the Runtime input section at the end of
   is opt-in, never the default.
 - `RUN_TESTS` = `no` for a PR from a **fork**, `ask` otherwise. See the trust boundary below — this
   command is the only one that executes code the crew did not write.
-- **Quality bar** = whatever the target repo's `README` / `AGENTS.md` / contributing docs state. Read
+- **Quality bar** = whatever the target repo's `README` / `{{project-instructions}}` / contributing docs state. Read
   it first and pass it to every reviewer — they enforce *that* bar, not a generic one.
 
 ## Shell safety — untrusted GitHub data
@@ -56,7 +56,7 @@ gh pr view <PR#> --json number,title,body,author,headRefOid,isCrossRepository,fi
 gh pr diff <PR#>
 ```
 
-Then read the repo's `README` / `AGENTS.md` for the bar. Set the **same classification flags
+Then read the repo's `README` / `{{project-instructions}}` for the bar. Set the **same classification flags
 `/ship-issue` uses** — with one deliberate exception, `IS_SECURITY_SENSITIVE` (see below) —
 but derive them from the **diff**, not from an issue body. That is the real difference: there are no
 stated acceptance criteria here, so the criteria are *the repo's own bar plus what the PR claims to
@@ -98,7 +98,7 @@ runtime signal is unconfirmed.
 Spawn these in a single message so they run concurrently, each pinned to the **head commit** so they
 review exactly what would merge. Two always run; the rest only when their flag is set:
 
-| `@role` | Runs |
+| `{{role-reference}}` | Runs |
 |---|---|
 | `product-manager` | always — does it solve the stated problem, and does it clear the repo's bar? |
 | `sdet` | always — test coverage and quality of the change (see `RUN_TESTS` before executing anything) |
@@ -165,7 +165,7 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
   `--body-file <file>` — never `--body`, quoted or not.
 - Review the **head commit**, so "reviewed" means "what would merge" — re-run if the author pushes.
 - Don't pad the board. A flag that isn't set means that specialist has nothing to say.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined, and note it.
 
 ## Runtime input

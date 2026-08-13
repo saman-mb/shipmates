@@ -7,6 +7,7 @@ use shipmates::catalog::{load_commands, load_roles, reject_positional, Canonical
 use shipmates::digest;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use regex::Regex;
 
 #[test]
 fn test_claude_code_payload_digest() {
@@ -23,9 +24,14 @@ fn test_claude_code_payload_digest() {
         body: "body content".into(),
     };
     let files = ClaudeCodeAdapter.build(&[role], &[]).unwrap();
-    let content = files.get("harnesses/claude-code/.claude/agents/test-role.md").unwrap();
+    let content = files
+        .get("harnesses/claude-code/.claude/agents/test-role.md")
+        .unwrap();
     let hashed = digest::hash(content);
-    assert_eq!(hashed, "491b209dc45c12fd8b89e113ba775ca5c6c03b0b977c868427cdbf22e0705209");
+    assert_eq!(
+        hashed,
+        "491b209dc45c12fd8b89e113ba775ca5c6c03b0b977c868427cdbf22e0705209"
+    );
 }
 
 #[test]
@@ -43,9 +49,14 @@ fn test_opencode_payload_digest() {
         source: PathBuf::from("cmd.md"),
     };
     let files = OpencodeAdapter.build(&[], &[command]).unwrap();
-    let content = files.get("harnesses/opencode/.opencode/commands/test-cmd.md").unwrap();
+    let content = files
+        .get("harnesses/opencode/.opencode/commands/test-cmd.md")
+        .unwrap();
     let hashed = digest::hash(content);
-    assert_eq!(hashed, "d7f5ef7b388b4472f7005bd7788b93ff8a637cc2e889528f8a505af60d3fbe5f");
+    assert_eq!(
+        hashed,
+        "d7f5ef7b388b4472f7005bd7788b93ff8a637cc2e889528f8a505af60d3fbe5f"
+    );
 }
 
 #[test]
@@ -63,7 +74,9 @@ fn test_opencode_permissions_deny_first() {
         body: "body content".into(),
     };
     let files = OpencodeAdapter.build(&[role], &[]).unwrap();
-    let content = files.get("harnesses/opencode/.opencode/agents/test-role.md").unwrap();
+    let content = files
+        .get("harnesses/opencode/.opencode/agents/test-role.md")
+        .unwrap();
     assert!(content.starts_with("---\n"));
     assert!(content.contains("  \"*\": deny\n"));
     assert!(content.contains("  read: allow\n"));
@@ -174,6 +187,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
     let roles = load_roles(&root.join("crew")).unwrap();
 
     assert_eq!(commands.len(), 12, "cost preamble must cover every command");
+    let re_tokens = regex::Regex::new(r"\{\{[a-zA-Z:-]+\}\}").unwrap();
     for command in &commands {
         assert_eq!(
             command.narrative.matches("<!-- shipmates:command-preamble -->").count(),
@@ -199,11 +213,33 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
             "{} places volatile input below stable workflow",
             command.name
         );
-        assert!(!command.narrative.contains("{{"), "{} has non-ARGUMENTS body interpolation", command.name);
+        let tokens: Vec<&str> = re_tokens
+            .find_iter(&command.narrative)
+            .map(|m| m.as_str())
+            .collect();
+        let allowed = [
+            "{{project-instructions}}",
+            "{{project-instructions-fallback}}",
+            "{{agents-glob}}",
+            "{{session-key}}",
+            "{{general-purpose}}",
+            "{{role:planner}}",
+            "{{planner-agent}}",
+            "{{role:senior-engineer}}",
+            "{{role:sdet}}",
+            "{{role-reference}}",
+        ];
+        for token in &tokens {
+            let is_argument = token.starts_with("{{") && !token.contains(':');
+            assert!(
+                allowed.contains(token) || is_argument,
+                "{} has unknown exporter token {token}",
+                command.name
+            );
+        }
 
         let source = std::fs::read_to_string(root.join("commands").join(format!("{}.md", command.name)))
             .unwrap();
-        assert!(!source.contains("{{"), "{} has legacy command metadata", command.name);
         for key in ["arguments:", "invocation:", "board:"] {
             assert!(!source.lines().any(|line| line.starts_with(key)), "{} has {key}", command.name);
         }
@@ -284,21 +320,41 @@ fn test_non_claude_targets_build_via_cli() {
     let temp_dir = tempfile::tempdir().unwrap();
     for target in ["codex", "cursor", "github-copilot", "windsurf"] {
         let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
-            .args(["build", "--target", target, "--out", temp_dir.path().to_str().unwrap()])
+            .args([
+                "build",
+                "--target",
+                target,
+                "--out",
+                temp_dir.path().to_str().unwrap(),
+            ])
             .output()
             .expect("failed to execute shipmates build");
-        assert!(output.status.success(), "{target} build failed: {}", String::from_utf8_lossy(&output.stderr));
+        assert!(
+            output.status.success(),
+            "{target} build failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
     // Every harness that reads the open Agent Skills tree ships its skills to the
     // shared `.agents/skills/` location, not a harness-private one.
-    let codex_skill = temp_dir.path().join("harnesses/codex/.agents/skills/ship-issue/SKILL.md");
+    let codex_skill = temp_dir
+        .path()
+        .join("harnesses/codex/.agents/skills/ship-issue/SKILL.md");
     assert!(codex_skill.is_file(), "codex ship-issue skill not emitted");
-    let copilot_skill = temp_dir.path().join("harnesses/github-copilot/.agents/skills/ship-issue/SKILL.md");
-    assert!(copilot_skill.is_file(), "copilot ship-issue skill not emitted");
+    let copilot_skill = temp_dir
+        .path()
+        .join("harnesses/github-copilot/.agents/skills/ship-issue/SKILL.md");
+    assert!(
+        copilot_skill.is_file(),
+        "copilot ship-issue skill not emitted"
+    );
     // ...and the shared rendering is byte-identical across those harnesses.
     let codex_bytes = std::fs::read(&codex_skill).unwrap();
     let copilot_bytes = std::fs::read(&copilot_skill).unwrap();
-    assert_eq!(codex_bytes, copilot_bytes, "shared skill must be identical across harnesses");
+    assert_eq!(
+        codex_bytes, copilot_bytes,
+        "shared skill must be identical across harnesses"
+    );
 }
 
 /// The Copilot payload digest is a checked-in golden file for the complete
@@ -365,14 +421,16 @@ fn test_codex_adapter_renders_dialect() {
         allowed_tools: "".into(),
         disable_model_invocation: true,
         arguments: vec![],
-        narrative: "Write `TARGET.md` if one exists, else `AGENTS.md`; resolve via `agent-files/*.md`; use {{repo}}."
+        narrative: "Write `{{project-instructions}}` if one exists, else `{{project-instructions-fallback}}`; resolve via {{agents-glob}}; use {{repo}}."
             .into(),
         invocation: "invoke".into(),
         board: "board".into(),
         source: PathBuf::from("cmd.md"),
     };
     let files = CodexAdapter.build(&[], &[command]).unwrap();
-    let content = files.get("harnesses/codex/.agents/skills/onboard/SKILL.md").unwrap();
+    let content = files
+        .get("harnesses/codex/.agents/skills/onboard/SKILL.md")
+        .unwrap();
     assert!(content.contains("`AGENTS.md` if one exists, else `CLAUDE.md`"));
     // Shared neutral dialect: crew glob is the open `.agents/agents`, not `.codex/`.
     assert!(content.contains(".agents/agents/*.md"));
@@ -387,7 +445,13 @@ fn test_codex_adapter_renders_dialect() {
 fn test_cli_build_and_install() {
     let temp_dir = tempfile::tempdir().unwrap();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
-        .args(["install", "--harness", "claude-code", "--dir", temp_dir.path().to_str().unwrap()])
+        .args([
+            "install",
+            "--harness",
+            "claude-code",
+            "--dir",
+            temp_dir.path().to_str().unwrap(),
+        ])
         .output()
         .expect("failed to execute shipmates install");
 
@@ -424,17 +488,24 @@ fn test_no_adapter_emits_a_model_line() {
     // dialects: `model:` (YAML/MD frontmatter) and `model = ` (codex TOML) —
     // neither trips on `reasoningEffort:`/`effort:` or `model_reasoning_effort =`.
     for target in shipmates::adapters::targets() {
-        let files = shipmates::adapters::select(target).unwrap().build(&[role()], &[]).unwrap();
+        let files = shipmates::adapters::select(target)
+            .unwrap()
+            .build(&[role()], &[])
+            .unwrap();
         for (path, content) in &files {
             if !path.contains("/agents/") {
                 continue;
             }
             assert!(
-                !content.lines().any(|l| l.trim_start().starts_with("model:")),
+                !content
+                    .lines()
+                    .any(|l| l.trim_start().starts_with("model:")),
                 "{target} agent file {path} emitted a model line:\n{content}"
             );
             assert!(
-                !content.lines().any(|l| l.trim_start().starts_with("model = ")),
+                !content
+                    .lines()
+                    .any(|l| l.trim_start().starts_with("model = ")),
                 "{target} agent file {path} emitted a model line:\n{content}"
             );
         }
@@ -456,7 +527,9 @@ fn test_antigravity_adapter_integration() {
         body: "system prompt body".into(),
     };
     let files = AntigravityAdapter.build(&[role], &[]).unwrap();
-    let content = files.get("harnesses/antigravity/.agents/agents/architect.md").unwrap();
+    let content = files
+        .get("harnesses/antigravity/.agents/agents/architect.md")
+        .unwrap();
     assert!(content.contains("name: architect"));
     assert!(content.contains("subagent: true"));
     assert!(content.contains("system prompt body"));
@@ -475,19 +548,31 @@ fn test_antigravity_adapter_integration() {
 #[test]
 fn test_matrix_agents_flag_matches_adapter_output() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let matrix: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap()).unwrap();
-    let harnesses = matrix["harnesses"].as_object().expect("harness_matrix.json has no harnesses map");
+    let matrix: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap(),
+    )
+    .unwrap();
+    let harnesses = matrix["harnesses"]
+        .as_object()
+        .expect("harness_matrix.json has no harnesses map");
 
     let declared: std::collections::BTreeSet<&str> = harnesses.keys().map(|k| k.as_str()).collect();
-    let shipped: std::collections::BTreeSet<&str> = shipmates::adapters::targets().into_iter().collect();
-    assert_eq!(declared, shipped, "harness_matrix.json and adapters::targets() disagree");
+    let shipped: std::collections::BTreeSet<&str> =
+        shipmates::adapters::targets().into_iter().collect();
+    assert_eq!(
+        declared, shipped,
+        "harness_matrix.json and adapters::targets() disagree"
+    );
 
     let temp_dir = tempfile::tempdir().unwrap();
     for (name, entry) in harnesses {
-        let claims_agents = entry["agents"].as_bool().unwrap_or_else(|| panic!("{name}: no `agents` boolean"));
+        let claims_agents = entry["agents"]
+            .as_bool()
+            .unwrap_or_else(|| panic!("{name}: no `agents` boolean"));
         assert!(
-            entry["agents_notes"].as_str().is_some_and(|s| !s.trim().is_empty()),
+            entry["agents_notes"]
+                .as_str()
+                .is_some_and(|s| !s.trim().is_empty()),
             "{name}: `agents` must carry `agents_notes` recording the evidence — a bare flag is how              three harnesses stayed wrong",
         );
 
@@ -499,7 +584,8 @@ fn test_matrix_agents_flag_matches_adapter_output() {
         assert!(status.success(), "{name}: build failed");
 
         let emits_agents = walk(&out).iter().any(|p| {
-            p.components().any(|c| c.as_os_str() == "agents") && p.file_name().is_some_and(|f| f != "AGENTS.md")
+            p.components().any(|c| c.as_os_str() == "agents")
+                && p.file_name().is_some_and(|f| f != "AGENTS.md")
         });
         assert_eq!(
             claims_agents, emits_agents,
@@ -517,15 +603,21 @@ fn test_matrix_agents_flag_matches_adapter_output() {
 #[test]
 fn test_matrix_effort_flag_matches_adapter_output() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let matrix: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap()).unwrap();
-    let harnesses = matrix["harnesses"].as_object().expect("harness_matrix.json has no harnesses map");
+    let matrix: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap(),
+    )
+    .unwrap();
+    let harnesses = matrix["harnesses"]
+        .as_object()
+        .expect("harness_matrix.json has no harnesses map");
 
     // Detect a reasoning-effort key across every dialect: claude-code's
     // `effort:` line, codex's `model_reasoning_effort` TOML key, opencode's
     // top-level `reasoningEffort`.
     fn carries_effort(content: &str) -> bool {
-        content.lines().any(|l| l.trim_start().starts_with("effort:"))
+        content
+            .lines()
+            .any(|l| l.trim_start().starts_with("effort:"))
             || content.contains("model_reasoning_effort")
             || content.contains("reasoningEffort")
     }
@@ -533,9 +625,13 @@ fn test_matrix_effort_flag_matches_adapter_output() {
     let temp_dir = tempfile::tempdir().unwrap();
     for name in shipmates::adapters::targets() {
         let entry = &harnesses[name];
-        let claims_effort = entry["effort"].as_bool().unwrap_or_else(|| panic!("{name}: no `effort` boolean"));
+        let claims_effort = entry["effort"]
+            .as_bool()
+            .unwrap_or_else(|| panic!("{name}: no `effort` boolean"));
         assert!(
-            entry["effort_notes"].as_str().is_some_and(|s| !s.trim().is_empty()),
+            entry["effort_notes"]
+                .as_str()
+                .is_some_and(|s| !s.trim().is_empty()),
             "{name}: `effort` must carry `effort_notes` recording the evidence — a bare flag is how three harnesses' `agents` claims stayed wrong",
         );
 

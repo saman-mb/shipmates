@@ -280,7 +280,7 @@
             <li>The decision and its trade-offs are <strong>recorded</strong> (the ADR) so the &quot;why&quot; survives — an unrecorded decision gets re-litigated in six months.</li>
             <li>Keep spikes minimal and time-boxed; more prototypes ≠ better if they don&#x27;t sharpen the criteria.</li>
             <li><strong>The ADR is the deliverable, so it gets a branch.</strong> Prototypes stay disposable; the ADR itself lands as a diff a human can read, not a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption — and it&#x27;s a different switch from <code>ISOLATION</code>, which only governs the throwaway prototype worktrees.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
           </ul>
         </div>

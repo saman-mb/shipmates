@@ -47,6 +47,7 @@ NEUTRAL_TOKENS = (
 
 #: Argument placeholders are per-command, so they are checked by shape.
 NEUTRAL_ARGUMENT_RE = r"\{\{[a-z][a-z0-9_-]*\}\}"
+UNRESOLVED_EXPORTER_RE = r"\{\{[a-z][a-z0-9_-]*(?::[a-z][a-z0-9_-]*)?\}\}"
 
 
 class SiteGenerationTests(unittest.TestCase):
@@ -78,6 +79,15 @@ class SiteGenerationTests(unittest.TestCase):
                     NEUTRAL_ARGUMENT_RE,
                     f"{page.relative_to(ROOT)} contains a `{{{{name}}}}` placeholder — "
                     "the rendered payload uses $ARGUMENTS",
+                )
+
+    def test_published_pages_carry_no_unresolved_exporter_tokens(self) -> None:
+        for page in self.published_pages():
+            with self.subTest(page=page.name):
+                self.assertNotRegex(
+                    page.read_text(encoding="utf-8"),
+                    UNRESOLVED_EXPORTER_RE,
+                    f"{page.relative_to(ROOT)} contains an unresolved exporter token",
                 )
 
     def test_command_pages_carry_the_rendered_dialect(self) -> None:
