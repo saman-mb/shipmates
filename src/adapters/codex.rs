@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_shared_skills, emit_shared_tool_skills, render_body, CODEX};
+use super::render::{emit_shared_skills, emit_shared_tool_skills, render_role_body, CODEX};
 use super::Adapter;
 
 /// Codex CLI — twelve skills under `.agents/skills/<name>/SKILL.md` plus the
@@ -77,7 +77,7 @@ impl Adapter for CodexAdapter {
     fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
         let mut files = HashMap::new();
         for role in roles {
-            let body = render_body(&role.body, &CODEX);
+            let body = render_role_body(&role.body, &CODEX);
             let mut content = String::new();
             content.push_str(&format!("name = {}\n", toml_basic(&role.name)));
             content.push_str(&format!("description = {}\n", toml_basic(&role.description)));

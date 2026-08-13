@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{render_body, OPENCODE};
+use super::render::{render_body, render_role_body, OPENCODE};
 use super::Adapter;
 
 pub struct OpencodeAdapter;
@@ -78,7 +78,7 @@ impl Adapter for OpencodeAdapter {
                 content.push_str(&format!("  {}: allow\n", cap));
             }
             content.push_str("---\n");
-            content.push_str(&role.body);
+            content.push_str(&render_role_body(&role.body, &OPENCODE));
             files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
         }
         for command in commands {
