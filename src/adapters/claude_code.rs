@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_tool_files, render_body, CLAUDE_CODE};
+use super::render::{emit_tool_files, render_body, render_role_body, CLAUDE_CODE};
 use super::Adapter;
 
 const TOOL_MAP: [(&str, &[&str]); 5] = [
@@ -43,7 +43,7 @@ impl Adapter for ClaudeCodeAdapter {
                 content.push_str(&format!("effort: {}\n", e));
             }
             content.push_str("---\n");
-            content.push_str(&role.body);
+            content.push_str(&render_role_body(&role.body, &CLAUDE_CODE));
             files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
         }
         for command in commands {

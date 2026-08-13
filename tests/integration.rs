@@ -3,7 +3,7 @@ use shipmates::adapters::antigravity::AntigravityAdapter;
 use shipmates::adapters::claude_code::ClaudeCodeAdapter;
 use shipmates::adapters::codex::CodexAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
-use shipmates::catalog::{reject_positional, CanonicalCommand, CanonicalRole};
+use shipmates::catalog::{load_commands, load_roles, reject_positional, CanonicalCommand, CanonicalRole};
 use shipmates::digest;
 use std::path::PathBuf;
 
@@ -77,6 +77,96 @@ fn test_positional_args_rejected() {
 
     let ok_result = reject_positional("test", "some text with \\$1 here");
     assert!(ok_result.is_ok());
+}
+
+#[test]
+fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let commands = load_commands(&root.join("commands")).unwrap();
+    let roles = load_roles(&root.join("crew")).unwrap();
+
+    assert_eq!(commands.len(), 12, "cost preamble must cover every command");
+    for command in &commands {
+        assert_eq!(
+            command.narrative.matches("<!-- shipmates:command-preamble -->").count(),
+            1,
+            "{} must reference shared command preamble once",
+            command.name
+        );
+        assert_eq!(
+            command.narrative.matches("## Runtime input").count(),
+            1,
+            "{} must have one runtime-input section",
+            command.name
+        );
+        assert_eq!(
+            command.narrative.matches("$ARGUMENTS").count(),
+            1,
+            "{} must keep its only argument token in runtime input",
+            command.name
+        );
+        assert!(
+            command.narrative.find("## Runtime input").unwrap()
+                > command.narrative.find("<!-- shipmates:command-preamble -->").unwrap(),
+            "{} places volatile input below stable workflow",
+            command.name
+        );
+        assert!(!command.narrative.contains("{{"), "{} has non-ARGUMENTS body interpolation", command.name);
+
+        let source = std::fs::read_to_string(root.join("commands").join(format!("{}.md", command.name)))
+            .unwrap();
+        assert!(!source.contains("{{"), "{} has legacy command metadata", command.name);
+        for key in ["arguments:", "invocation:", "board:"] {
+            assert!(!source.lines().any(|line| line.starts_with(key)), "{} has {key}", command.name);
+        }
+    }
+
+    assert_eq!(roles.len(), 12);
+    for role in &roles {
+        assert_eq!(
+            role.body.matches("<!-- shipmates:subagent-preamble -->").count(),
+            1,
+            "{} must reference shared subagent preamble once",
+            role.name
+        );
+    }
+
+    for target in shipmates::adapters::targets() {
+        let files = shipmates::adapters::select(target).unwrap().build(&roles, &commands).unwrap();
+
+        for command in &commands {
+            let suffixes = [
+                format!("/{}/SKILL.md", command.name),
+                format!("/commands/{}.md", command.name),
+            ];
+            let matches: Vec<_> = files
+                .iter()
+                .filter(|(path, _)| suffixes.iter().any(|suffix| path.ends_with(suffix)))
+                .collect();
+            assert_eq!(matches.len(), 1, "{target} must emit one {} command", command.name);
+            let (path, content) = matches[0];
+            assert!(content.contains("## Cost discipline"), "{target} {path} missed command preamble");
+            assert!(!content.contains("shipmates:command-preamble"), "{target} {path} leaked command marker");
+        }
+
+        let role_outputs: Vec<_> = files
+            .iter()
+            .filter(|(path, _)| path.contains("/agents/") && !path.ends_with("AGENTS.md"))
+            .collect();
+        for role in &roles {
+            let matches: Vec<_> = role_outputs
+                .iter()
+                .filter(|(path, _)| path.contains(&format!("/agents/{}.", role.name)))
+                .collect();
+            if matches.is_empty() {
+                continue;
+            }
+            assert_eq!(matches.len(), 1, "{target} must emit one {} role", role.name);
+            let (path, content) = matches[0];
+            assert!(content.contains("## Return discipline"), "{target} {path} missed role preamble");
+            assert!(!content.contains("shipmates:subagent-preamble"), "{target} {path} leaked role marker");
+        }
+    }
 }
 
 #[test]
