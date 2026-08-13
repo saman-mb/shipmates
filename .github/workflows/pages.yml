@@ -44,7 +44,7 @@ jobs:
           for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
             cargo run -- check --target "$target"
           done
-- name: Run opencode golden and embedded install-fidelity tests
+      - name: Run opencode golden and embedded install-fidelity tests
         run: |
           cargo test --test integration -- --list | python3 -c '
           import sys
