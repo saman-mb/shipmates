@@ -36,7 +36,7 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Inventory (orchestrator)",
-        "text": "Pull the entire open-issue set: gh issue list --state open --limit 1000 with number,title,labels,milestone,assignees,createdAt,updatedAt and the body for each. Also pull gh label list and the project's README / CLAUDE.md (conventions, quality bar, where work is tracked) so triage uses the…",
+        "text": "Pull the entire open-issue set: gh issue list --state open --limit 1000 with number,title,labels,milestone,assignees,createdAt,updatedAt and the body for each. Also pull gh label list and the project's README / AGENTS.md (conventions, quality bar, where work is tracked) so triage uses the…",
         "url": "https://saman-mb.github.io/shipmates/commands/consolidate-issues/#stage-0"
       },
       {
@@ -172,7 +172,7 @@
             <div class="order-stage__body">
               <div class="order-prose">
                 <ol>
-                  <li>Pull the <strong>entire open-issue set</strong>: <code>gh issue list --state open --limit 1000</code> with <code>number,title,labels,milestone,assignees,createdAt,updatedAt</code> and the body for each. Also pull <code>gh label list</code> and the project&#x27;s <code>README</code> / <code>CLAUDE.md</code> (conventions, quality bar, where work is tracked) so triage uses the project&#x27;s own standards.</li>
+                  <li>Pull the <strong>entire open-issue set</strong>: <code>gh issue list --state open --limit 1000</code> with <code>number,title,labels,milestone,assignees,createdAt,updatedAt</code> and the body for each. Also pull <code>gh label list</code> and the project&#x27;s <code>README</code> / <code>AGENTS.md</code> (conventions, quality bar, where work is tracked) so triage uses the project&#x27;s own standards.</li>
                   <li>Apply <code>SCOPE</code> if set; otherwise take the full set.</li>
                   <li>Snapshot the baseline count and, per issue, its age, last activity, labels, and milestone. These numbers feed the report; record them before anything is touched.</li>
                 </ol>
@@ -264,7 +264,7 @@
             <li><strong>Never lose intent.</strong> Migrating preserves the issue&#x27;s substance; a migration that would change meaning is reported, not performed. Dedupe only on unmistakable overlap, and always cross-link.</li>
             <li><strong>Don&#x27;t over-close or over-bundle.</strong> A <code>STALE</code> verdict with any live signal goes to the user. Bundles are thematic and shippable — never arbitrary groupings to make the count look better.</li>
             <li><strong>Respect <code>MODE</code>.</strong> In <code>report</code> mode, the tracker is never modified, not even a label.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the product-manager brief inlined, and note the fallback.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>agent-files/*.md</code>, fall back to <code>general-purpose</code> with the product-manager brief inlined, and note the fallback.</li>
           </ul>
         </div>
       </div>
@@ -279,7 +279,7 @@
           <ul>
             <li><code>MODE</code> = <code>report</code> (default) — <strong>read-only</strong>: inventory, cross-check, triage, bundle. It changes nothing on the tracker. <code>apply</code> — do the work, only with an explicit request: close the evidence-backed ones, migrate the legacy ones, add the bundle labels. When ambiguous, default to <code>report</code> and state which mode you ran.</li>
             <li><code>SCOPE</code> = optional narrowing of the triage — a label or comma-separated labels, an area, an owner, or an age/activity filter. Empty means the entire open-issue set.</li>
-            <li><code>TRAILER</code> = the session&#x27;s required trailer line (a <code>Claude-Session:</code> or <code>Co-Authored-By:</code>, read from context; never invent). Every comment or edit you write carries it.</li>
+            <li><code>TRAILER</code> = the session&#x27;s required trailer line (a <code>Harness-Session:</code> or <code>Co-Authored-By:</code>, read from context; never invent). Every comment or edit you write carries it.</li>
             <li><code>REVIEWER</code> = <code>product-manager</code> — the only role this workflow spawns; everything else is the orchestrator reading the tracker and the repo directly.</li>
           </ul>
         </div>
