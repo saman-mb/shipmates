@@ -183,6 +183,28 @@ one source of truth, byte-identical, so a multi-harness repo gets a single copy 
 ones. Their crew still land in each harness's own native format. `windsurf` keeps its canonical
 `.windsurf/skills/` (its docs make `.agents/skills/` only a secondary scan) and `claude-code` its own
 `.claude/skills/`.
+
+### opencode quickstart
+
+Install opencode's native payload into a project, then inspect its two load paths:
+
+```bash
+shipmates install --harness opencode --dir /path/to/project --with-tools none
+cd /path/to/project
+ls .opencode/agents .opencode/commands
+opencode agent list
+opencode run --command harden --format json \
+  "Review this project in report mode. Do not modify files."
+```
+
+The agent list should include all twelve Shipmates roles. The report-mode command is a narrow manual
+probe; keep `--auto` disabled. Deterministic CI install-fidelity tests check all twelve installed agents
+and commands, the exact opencode golden payload, and the translated report-only `/harden` order. They do
+not use model credentials and do not claim that opencode runtime behavior is verified. Full crew resolution,
+argument passing, permission enforcement,
+parallel board execution, and `/ship-issue` end-to-end remain open for [#31](https://github.com/saman-mb/shipmates/issues/31)
+and [#32](https://github.com/saman-mb/shipmates/issues/32).
+
 One caveat worth knowing before you pick Codex: it documents no per-agent tool allowlist, so its
 crew inherit whatever the session can do rather than the least-privilege set every other target
 enforces. Each harness records its evidence, and the date it was checked, in

@@ -97,6 +97,13 @@ class SiteGenerationTests(unittest.TestCase):
             self.assertIn(tool, architect)
         self.assertNotIn("read, bash", architect)
 
+    def test_opencode_quickstart_keeps_runtime_claim_narrow(self) -> None:
+        page = (ROOT / "site/docs/harnesses/index.html").read_text(encoding="utf-8")
+        self.assertIn('id="opencode-quickstart"', page)
+        self.assertIn("install-fidelity checks", page)
+        self.assertIn("not opencode runtime behaviour", page)
+        self.assertIn("/ship-issue", page)
+
     @unittest.skipIf(
         sys.version_info < GENERATOR_MIN,
         "gen_command_pages requires Python 3.10+ (dataclass slots)",
