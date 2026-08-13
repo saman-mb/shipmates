@@ -27,8 +27,8 @@ The scope and the go-ahead to change anything come from the Runtime input sectio
   `report` and state which mode you ran.
 - `SCOPE` = optional narrowing of the triage — a label or comma-separated labels, an area, an owner,
   or an age/activity filter. Empty means the entire open-issue set.
-- `TRAILER` = the session's required trailer line (a `Harness-Session:` or `Co-Authored-By:`, read
-  from context; never invent). Every comment or edit you write carries it.
+- `TRAILER` = the session's required session/author trailer line, read from context; never invent
+  one. Every comment or edit you write carries it.
 - `REVIEWER` = `product-manager` — the only role this workflow spawns; everything else is the
   orchestrator reading the tracker and the repo directly.
 

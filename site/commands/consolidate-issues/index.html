@@ -279,7 +279,7 @@
           <ul>
             <li><code>MODE</code> = <code>report</code> (default) — <strong>read-only</strong>: inventory, cross-check, triage, bundle. It changes nothing on the tracker. <code>apply</code> — do the work, only with an explicit request: close the evidence-backed ones, migrate the legacy ones, add the bundle labels. When ambiguous, default to <code>report</code> and state which mode you ran.</li>
             <li><code>SCOPE</code> = optional narrowing of the triage — a label or comma-separated labels, an area, an owner, or an age/activity filter. Empty means the entire open-issue set.</li>
-            <li><code>TRAILER</code> = the session&#x27;s required trailer line (a <code>Harness-Session:</code> or <code>Co-Authored-By:</code>, read from context; never invent). Every comment or edit you write carries it.</li>
+            <li><code>TRAILER</code> = the session&#x27;s required session/author trailer line, read from context; never invent one. Every comment or edit you write carries it.</li>
             <li><code>REVIEWER</code> = <code>product-manager</code> — the only role this workflow spawns; everything else is the orchestrator reading the tracker and the repo directly.</li>
           </ul>
         </div>

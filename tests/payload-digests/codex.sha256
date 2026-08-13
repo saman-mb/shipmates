@@ -1,6 +1,6 @@
 payload_digest_version=1
 target=codex
-.agents/skills/consolidate-issues/SKILL.md 931f64a2f236d00660beac04d4d412cbf4630977b0d468b30dfcb3c221f40e1e
+.agents/skills/consolidate-issues/SKILL.md 4fddbc3075001a31064bed31ffa7d1b684894643e9388189c03db4ab27b8929c
 .agents/skills/document/SKILL.md 981e69af81dd1ebbffbd1b3c1d2bf0daa805841dd552e1af5884d651983f72ca
 .agents/skills/fix-bug/SKILL.md 7bbf51bb4872b9b88bb1e825e6d241ddf0f354ce344170e1d8a99e08672f4f4d
 .agents/skills/harden/SKILL.md 424ab7cc20be997a835fe4a76475a6cf8a633855e81063b18aeb448c8202a7c3
