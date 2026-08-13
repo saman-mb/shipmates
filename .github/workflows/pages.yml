@@ -44,7 +44,7 @@ jobs:
           for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
             cargo run -- check --target "$target"
           done
-      - name: Run opencode golden and embedded install-fidelity tests
+- name: Run opencode golden and embedded install-fidelity tests
         run: |
           cargo test --test integration -- --list | python3 -c '
           import sys
@@ -59,11 +59,15 @@ jobs:
           }
           missing = expected - found
           if missing:
-              print("missing opencode integration tests:", ", ".join(sorted(missing)))
+              print("missing tests:", *sorted(missing))
               raise SystemExit(1)
           '
           cargo test --test integration test_opencode_cli_build_matches_golden_payload -- --exact --nocapture
           cargo test --test integration test_opencode_embedded_install_fidelity -- --exact --nocapture
+      # Codex has a native TOML crew plus shared Agent Skills. This checks the
+      # golden payload and installed layout only; it never invokes Codex.
+      - name: Check Codex golden payload and layout-install smoke
+        run: bash tests/test_codex_smoke.sh
       # Config-only (no network): each harness_watch entry's declared tree must
       # agree with its adapter skill path. The live docs-drift check
       # (python3 tools/harness_watch.py) is a manual dev command — see

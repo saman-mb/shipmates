@@ -161,11 +161,20 @@
           </details>
           <details class="faq__item">
             <summary class="faq__q">
-              <span class="faq__q-text">Subagents missing on codex / cursor / copilot / windsurf</span>
+              <span class="faq__q-text">Subagents missing on codex</span>
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> by design. Those four harnesses have no documented native subagent directory, so only the twelve skills land — the crew is dropped entirely. <strong>Fix:</strong> not a bug; the workflows themselves are still available via <code>/&lt;command&gt;</code>.</p>
+              <p><strong>Cause:</strong> Codex keeps crew and skills in separate trees. <strong>Fix:</strong> confirm <code>.codex/agents/sdet.toml</code> exists for crew and <code>.agents/skills/ship-issue/SKILL.md</code> exists for skills, then restart Codex. The payload is format-, golden-digest-, and install-verified, but not runtime-verified; use the <a href="../harnesses/#codex">Codex quickstart</a> for the optional read-only <code>harden</code> skill check.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span class="faq__q-text">Subagents missing on cursor or windsurf</span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p><strong>Cause:</strong> these targets are skills-only in the current adapter. <strong>Fix:</strong> not an install failure; the twelve workflows land as skills, without named crew personas.</p>
             </div>
           </details>
           <details class="faq__item">
