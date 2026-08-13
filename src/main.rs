@@ -244,14 +244,12 @@ fn main() -> Result<()> {
                     built.clone(),
                     adapter.build_tools(&selected_tools),
                 )?;
-                let migration_items = if no_migrate {
-                    Vec::new()
-                } else if force {
-                    installer::migrate::plan(&target_dir, &built, adapter.container())
+                let migration_candidates = if force {
+                    installer::migrate::plan(&target_dir, &built, adapter.container())?
                 } else {
                     let (_, previous, _) = installer::plan::read_receipt(&target_dir, harness);
                     if let Some(owned) = previous.as_ref() {
-                        installer::migrate::plan(&target_dir, &built, adapter.container())
+                        installer::migrate::plan(&target_dir, &built, adapter.container())?
                             .into_iter()
                             .filter(|item| {
                                 owned.file(&item.legacy_path.to_string_lossy()).is_some()
@@ -261,7 +259,12 @@ fn main() -> Result<()> {
                         Vec::new()
                     }
                 };
-                for item in &migration_items {
+                let migration_items = if no_migrate {
+                    Vec::new()
+                } else {
+                    migration_candidates.clone()
+                };
+                for item in &migration_candidates {
                     installer::manifest_db::resolve_target_relative(
                         &target_dir,
                         &item.legacy_path,
@@ -271,7 +274,63 @@ fn main() -> Result<()> {
                         &item.superseded_by,
                     )?;
                 }
-                let result = installer::apply::apply(&target_dir, &plan, force)?;
+
+                // Migration runs before receipt publication. If backup/removal
+                // fails, apply never publishes a receipt that drops legacy
+                // ownership. Paths deliberately left in place remain claimed so
+                // a later install can retry the migration.
+                let mut preserved_paths = std::collections::BTreeSet::new();
+                let mut migration_report = None;
+                if no_migrate {
+                    preserved_paths.extend(
+                        migration_candidates
+                            .iter()
+                            .map(|item| item.legacy_path.to_string_lossy().into_owned()),
+                    );
+                } else if !migration_items.is_empty() {
+                    let backup_root = installer::migrate::new_backup_root(&target_dir);
+                    let report =
+                        installer::migrate::apply(&target_dir, &migration_items, &backup_root)?;
+                    for item in &migration_items {
+                        if !report.migrated.contains(&item.legacy_path) {
+                            preserved_paths.insert(item.legacy_path.to_string_lossy().into_owned());
+                        }
+                    }
+                    migration_report = Some(report);
+                    if let Some(report) = migration_report.as_ref()
+                        && !report.migrated.is_empty()
+                    {
+                        println!(
+                            "Migrated {} superseded command(s) → skills (backup: {})",
+                            report.migrated.len(),
+                            backup_root.display()
+                        );
+                        for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
+                            println!("  moved {} → {}", legacy.display(), backup.display());
+                        }
+                    }
+                }
+
+                let apply_result = if preserved_paths.is_empty() {
+                    installer::apply::apply(&target_dir, &plan, force)
+                } else {
+                    installer::apply::apply_with_preserved_paths(
+                        &target_dir,
+                        &plan,
+                        force,
+                        &preserved_paths,
+                    )
+                };
+                let result = match apply_result {
+                    Ok(result) => result,
+                    Err(error) => {
+                        let rollback = match migration_report.as_ref() {
+                            Some(report) => installer::migrate::rollback(&target_dir, report),
+                            None => Ok(()),
+                        };
+                        return Err(combine_rollback_error(error, rollback));
+                    }
+                };
                 if let Some(receipt) = &result.receipt {
                     for file in &receipt.files {
                         let rel = PathBuf::from(&file.path);
@@ -322,22 +381,6 @@ fn main() -> Result<()> {
                         names.join(", ")
                     );
                 }
-
-                if !migration_items.is_empty() {
-                    let backup_root = installer::migrate::new_backup_root(&target_dir);
-                    let report =
-                        installer::migrate::apply(&target_dir, &migration_items, &backup_root)?;
-                    if !report.migrated.is_empty() {
-                        println!(
-                            "Migrated {} superseded command(s) → skills (backup: {})",
-                            report.migrated.len(),
-                            backup_root.display()
-                        );
-                        for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
-                            println!("  moved {} → {}", legacy.display(), backup.display());
-                        }
-                    }
-                }
             }
             if !provision_scripts.is_empty() {
                 provision_tool_deps(&provision_scripts);
@@ -355,7 +398,36 @@ fn main() -> Result<()> {
                 println!("No install receipt found; nothing to uninstall.");
                 return Ok(());
             };
-            let report = installer::uninstall::uninstall(&target_dir, selected)?;
+            let root = Path::new(".");
+            let roles_path = root.join("crew");
+            let commands_path = root.join("commands");
+            let tools_path = root.join("toolbox");
+            let roles = if roles_path.is_dir() {
+                catalog::load_roles(&roles_path).context("Failed to load roles")?
+            } else {
+                catalog::load_roles_embedded().context("Failed to load embedded roles")?
+            };
+            let cmds = if commands_path.is_dir() {
+                catalog::load_commands(&commands_path).context("Failed to load commands")?
+            } else {
+                catalog::load_commands_embedded().context("Failed to load embedded commands")?
+            };
+            let tools = if tools_path.is_dir() {
+                catalog::load_tools(&tools_path).context("Failed to load tools")?
+            } else {
+                catalog::load_tools_embedded().context("Failed to load embedded tools")?
+            };
+            let known_payload = installer::uninstall::payload_for(
+                &selected.receipt.harness,
+                &roles,
+                &cmds,
+                &tools,
+            )?;
+            let report = installer::uninstall::uninstall_with_payload(
+                &target_dir,
+                selected,
+                &known_payload,
+            )?;
             println!(
                 "Uninstalled harness: {} ({} files removed)",
                 report.harness, report.removed
@@ -562,6 +634,13 @@ fn write_digests(
     installer::atomic_write(&digest_file, &out)?;
     println!("Wrote digests for target: {}", target);
     Ok(())
+}
+
+fn combine_rollback_error(error: anyhow::Error, rollback: Result<()>) -> anyhow::Error {
+    match rollback {
+        Ok(()) => error,
+        Err(rollback) => error.context(rollback.to_string()),
+    }
 }
 
 #[cfg(test)]

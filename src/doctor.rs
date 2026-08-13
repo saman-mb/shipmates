@@ -9,10 +9,10 @@
 use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
-use crate::installer::{atomic_write, manifest_db, migrate, plan};
-use anyhow::{bail, Result};
+use crate::installer::{manifest_db, migrate, plan};
+use anyhow::{Context, Result, bail};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
@@ -114,25 +114,26 @@ fn diagnose_built(
     let version = env!("CARGO_PKG_VERSION");
     let mut checks = Vec::new();
 
-    match plan::read_receipt(target_dir, harness) {
-        (plan::ReceiptState::Valid, _, _) => checks.push(Check {
+    let (receipt_state, receipt, receipt_error) = plan::read_receipt(target_dir, harness);
+    match (receipt_state, receipt_error.as_deref()) {
+        (plan::ReceiptState::Valid, _) => checks.push(Check {
             name: "Ownership".into(),
             severity: Severity::Ok,
             detail: "install receipt is valid".into(),
             fixable: true,
         }),
-        (plan::ReceiptState::Missing, _, _) => checks.push(Check {
+        (plan::ReceiptState::Missing, _) => checks.push(Check {
             name: "Ownership".into(),
             severity: Severity::Warn,
             detail: "install receipt missing; ownership is unknown, existing files will be left untouched".into(),
             fixable: false,
         }),
-        (plan::ReceiptState::Invalid, _, error) => checks.push(Check {
+        (plan::ReceiptState::Invalid, error) => checks.push(Check {
             name: "Ownership".into(),
             severity: Severity::Problem,
             detail: format!(
                 "install receipt is invalid; refusing ownership-based repair: {}",
-                error.unwrap_or_else(|| "unknown receipt error".into())
+                error.unwrap_or("unknown receipt error").to_string()
             ),
             fixable: false,
         }),
@@ -186,16 +187,22 @@ fn diagnose_built(
     // skill. Only Shipmates-owned files are a fixable Problem (`--fix` migrates
     // them); a user's own file sharing a skill name is theirs to keep, so it is
     // an informational note rather than a Problem `--fix` could never clear.
-    let migration_items = migrate::plan(target_dir, built, adapter.container());
-    let (owned, unmanaged): (Vec<&migrate::MigrationItem>, Vec<&migrate::MigrationItem>) =
-        migration_items.iter().partition(|i| {
-            let name = i
-                .legacy_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or_default();
-            migrate::is_shipmates_owned(&target_dir.join(&i.legacy_path), name)
-        });
+    let migration_items = migrate::plan(target_dir, built, adapter.container())?;
+    let mut owned = Vec::new();
+    let mut unmanaged = Vec::new();
+    for item in &migration_items {
+        let path = manifest_db::resolve_target_relative(target_dir, &item.legacy_path)?;
+        let name = item
+            .legacy_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default();
+        if migrate::is_shipmates_owned(&path, name) {
+            owned.push(item);
+        } else {
+            unmanaged.push(item);
+        }
+    }
     if owned.is_empty() {
         checks.push(Check {
             name: "Layout".into(),
@@ -279,25 +286,42 @@ fn diagnose_built(
 
     // 4. Content drift — present files whose bytes differ from what we'd install.
     // #190: receipt manifest enables true installed-vs-running semantic version compare
+    let mut missing: Vec<String> = Vec::new();
     let mut drifted: Vec<String> = Vec::new();
     let mut unreadable: Vec<String> = Vec::new();
     for (rel, want) in &expected {
-        match std::fs::read_to_string(target_dir.join(rel)) {
+        match std::fs::read(target_dir.join(rel)) {
             Ok(on_disk) => {
-                if digest::hash(&on_disk) != digest::hash(want) {
+                if std::str::from_utf8(&on_disk).is_err() {
+                    unreadable.push(rel.clone());
+                } else if digest::hash_bytes(&on_disk) != digest::hash_bytes(want.as_bytes()) {
                     drifted.push(rel.clone());
                 }
             }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => missing.push(rel.clone()),
             Err(_) => unreadable.push(rel.clone()),
         }
     }
-    if unreadable.is_empty() && drifted.is_empty() {
+    if !missing.is_empty() {
+        missing.sort();
+        drifted.sort();
+        unreadable.sort();
+        let mut detail = format!(
+            "{} core file(s) missing: {}",
+            missing.len(),
+            missing.join(", ")
+        );
+        if !drifted.is_empty() {
+            detail.push_str(&format!("; drifted: {}", drifted.join(", ")));
+        }
+        if !unreadable.is_empty() {
+            detail.push_str(&format!("; unreadable: {}", unreadable.join(", ")));
+        }
         checks.push(Check {
             name: "Content".into(),
-            severity: Severity::Ok,
-            detail: format!("every installed file matches shipmates v{}", version),
-            fixable: false,
+            severity: Severity::Problem,
+            detail,
+            fixable: true,
         });
     } else if !unreadable.is_empty() {
         unreadable.sort();
@@ -321,6 +345,13 @@ fn diagnose_built(
             detail: details,
             fixable: false,
         });
+    } else if drifted.is_empty() {
+        checks.push(Check {
+            name: "Content".into(),
+            severity: Severity::Ok,
+            detail: format!("every installed file matches shipmates v{}", version),
+            fixable: false,
+        });
     } else {
         drifted.sort();
         checks.push(Check {
@@ -336,16 +367,23 @@ fn diagnose_built(
         });
     }
 
-    // 5. Tool status — which opt-in tool skills are installed, and consistent.
+    // 5. Tool status — optional tools are healthy only when every selected
+    // file is present and its raw bytes match. A partially present tool is not
+    // the same as no tool installed.
     let prefix = format!("{}/", adapter.container());
     let tool_expected: BTreeMap<String, String> = adapter
         .build_tools(tools)
         .into_iter()
         .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|r| (r.to_string(), v)))
         .collect();
+    for rel in tool_expected.keys() {
+        manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+    }
     let mut installed: Vec<String> = Vec::new();
+    let mut tool_missing: Vec<String> = Vec::new();
     let mut tool_drift: Vec<String> = Vec::new();
     let mut tool_unreadable: Vec<String> = Vec::new();
+    let mut tool_unfixable: Vec<String> = Vec::new();
     for t in tools {
         let files: Vec<(&String, &String)> = tool_expected
             .iter()
@@ -354,39 +392,83 @@ fn diagnose_built(
         if files.is_empty() {
             continue;
         }
-        let complete = files.iter().all(|(k, _)| target_dir.join(k).exists());
-        if complete {
-            installed.push(t.name.clone());
+        let any_on_disk = files.iter().any(|(k, _)| target_dir.join(k).exists());
+        let claimed = |k: &str| {
+            receipt
+                .as_ref()
+                .and_then(|current| current.file(k))
+                .is_some()
+        };
+        if !any_on_disk && !files.iter().any(|(k, _)| claimed(k)) {
+            continue;
         }
+        let mut complete = true;
+        let mut has_issue = false;
+        let mut issues_owned = receipt_state == plan::ReceiptState::Valid;
         for (k, want) in &files {
-            match std::fs::read_to_string(target_dir.join(k)) {
+            match std::fs::read(target_dir.join(k)) {
                 Ok(on_disk) => {
-                    if complete && digest::hash(&on_disk) != digest::hash(want) {
+                    if std::str::from_utf8(&on_disk).is_err() {
+                        complete = false;
+                        has_issue = true;
+                        tool_unreadable.push(t.name.clone());
+                        issues_owned = false;
+                    } else if digest::hash_bytes(&on_disk) != digest::hash_bytes(want.as_bytes()) {
+                        has_issue = true;
                         tool_drift.push(t.name.clone());
-                        break;
+                        issues_owned &= claimed(k);
                     }
                 }
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    complete = false;
+                    has_issue = true;
+                    tool_missing.push(t.name.clone());
+                    issues_owned &= claimed(k);
+                }
                 Err(_) => {
+                    complete = false;
+                    has_issue = true;
                     tool_unreadable.push(t.name.clone());
-                    break;
+                    issues_owned = false;
                 }
             }
         }
-    }
-    let (severity, detail) = if !tool_unreadable.is_empty() {
-        tool_unreadable.sort();
-        tool_drift.sort();
-        let mut details = format!(
-            "installed: {}; unreadable: {}",
-            installed.join(", "),
-            tool_unreadable.join(", ")
-        );
-        if !tool_drift.is_empty() {
-            details.push_str(&format!("; drifted: {}", tool_drift.join(", ")));
+        if complete {
+            installed.push(t.name.clone());
         }
-        (Severity::Problem, details)
-    } else if installed.is_empty() {
+        if has_issue && !issues_owned {
+            tool_unfixable.push(t.name.clone());
+        }
+    }
+    installed.sort();
+    tool_missing.sort();
+    tool_missing.dedup();
+    tool_drift.sort();
+    tool_drift.dedup();
+    tool_unreadable.sort();
+    tool_unreadable.dedup();
+    tool_unfixable.sort();
+    tool_unfixable.dedup();
+    let (severity, detail) = if !tool_missing.is_empty() || !tool_unreadable.is_empty() {
+        let mut detail = format!(
+            "installed: {}; missing: {}",
+            installed.join(", "),
+            tool_missing.join(", ")
+        );
+        if !tool_unreadable.is_empty() {
+            detail.push_str(&format!("; unreadable: {}", tool_unreadable.join(", ")));
+        }
+        if !tool_drift.is_empty() {
+            detail.push_str(&format!("; drifted: {}", tool_drift.join(", ")));
+        }
+        if !tool_unfixable.is_empty() {
+            detail.push_str(&format!(
+                "; cannot repair without receipt ownership: {}",
+                tool_unfixable.join(", ")
+            ));
+        }
+        (Severity::Problem, detail)
+    } else if installed.is_empty() && tool_drift.is_empty() {
         (
             Severity::Ok,
             "no optional tools installed — tools are opt-in".to_string(),
@@ -400,9 +482,17 @@ fn diagnose_built(
         (
             Severity::Warn,
             format!(
-                "installed: {}; drifted: {}",
+                "installed: {}; drifted: {}{}",
                 installed.join(", "),
-                tool_drift.join(", ")
+                tool_drift.join(", "),
+                if tool_unfixable.is_empty() {
+                    String::new()
+                } else {
+                    format!(
+                        "; cannot repair without receipt ownership: {}",
+                        tool_unfixable.join(", ")
+                    )
+                }
             ),
         )
     };
@@ -410,7 +500,7 @@ fn diagnose_built(
         name: "Tools".into(),
         severity,
         detail,
-        fixable: !tool_drift.is_empty() && tool_unreadable.is_empty(),
+        fixable: (!tool_missing.is_empty() || !tool_drift.is_empty()) && tool_unfixable.is_empty(),
     });
 
     // 6. Receipt ownership. The receipt is the authority for repair; files not
@@ -468,13 +558,27 @@ pub fn fix(
     for rel in expected.keys() {
         manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
     }
+    manifest_db::resolve_target_relative(target_dir, Path::new(migrate::BACKUP_DIR))?;
     let backup_root = migrate::new_backup_root(target_dir);
+    let mut migrated_paths = BTreeSet::new();
+    let mut migration_report = None;
+    let tool_prefix = format!("{}/", adapter.container());
+    let tool_expected: BTreeMap<String, String> = adapter
+        .build_tools(tools)
+        .into_iter()
+        .filter_map(|(k, v)| k.strip_prefix(&tool_prefix).map(|r| (r.to_string(), v)))
+        .collect();
+    for rel in tool_expected.keys() {
+        manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+    }
+    let mut repair_expected = expected.clone();
+    repair_expected.extend(tool_expected);
 
     // 1. Migrate any superseded command files (backed up before removal), unless
     // the caller opted out with `--no-migrate`.
     if !no_migrate {
         let mut items = if receipt_state == plan::ReceiptState::Valid {
-            migrate::plan(target_dir, &built, adapter.container())
+            migrate::plan(target_dir, &built, adapter.container())?
         } else {
             Vec::new()
         };
@@ -489,7 +593,16 @@ pub fn fix(
         }
         if !items.is_empty() {
             let report = migrate::apply(target_dir, &items, &backup_root)?;
-            if !report.migrated.is_empty() {
+            migrated_paths.extend(
+                report
+                    .migrated
+                    .iter()
+                    .map(|path| path.to_string_lossy().into_owned()),
+            );
+            migration_report = Some(report);
+            if let Some(report) = migration_report.as_ref()
+                && !report.migrated.is_empty()
+            {
                 println!(
                     "Migrated {} superseded command(s) → skills (backup: {})",
                     report.migrated.len(),
@@ -499,73 +612,104 @@ pub fn fix(
         }
     }
 
-    // 2. Write any missing or drifted crew/skill files, backing up what we overwrite.
+    // 2. Write any missing or drifted core or optional-tool files. Receipt
+    // ownership remains the authority for overwrites; a missing receipt only
+    // permits restoring genuinely missing core files, never replacing content.
     let mut restored = 0usize;
     let mut backed_up = 0usize;
     let mut skipped: Vec<String> = Vec::new();
     let mut repaired: BTreeSet<String> = BTreeSet::new();
-    for (rel, want) in &expected {
-        let path = manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
-        let owned = receipt
-            .as_ref()
-            .and_then(|current| current.file(rel))
-            .is_some();
-        match std::fs::read_to_string(&path) {
-            Ok(on_disk) => {
-                if digest::hash(&on_disk) == digest::hash(want) {
-                    continue; // already current — nothing to restore
+    let mut changed: Vec<(String, PathBuf, Option<Vec<u8>>)> = Vec::new();
+    let mut repair_backups = Vec::new();
+    let repair_result: Result<()> = (|| {
+        for (rel, want) in &repair_expected {
+            let path = manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+            let owned = receipt
+                .as_ref()
+                .and_then(|current| current.file(rel))
+                .is_some();
+            let previous = match std::fs::read(&path) {
+                Ok(on_disk) => {
+                    if digest::hash_bytes(&on_disk) == digest::hash_bytes(want.as_bytes()) {
+                        continue; // already current — nothing to restore
+                    }
+                    if std::str::from_utf8(&on_disk).is_err() {
+                        // Doctor has no --force mode. Leave binary drift untouched;
+                        // install --force uses the byte-verified backup path below.
+                        skipped.push(rel.clone());
+                        continue;
+                    }
+                    if receipt_state != plan::ReceiptState::Valid || !owned {
+                        skipped.push(rel.clone());
+                        continue;
+                    }
+                    // Preserve arbitrary bytes before replacing drift, then verify
+                    // the backup byte-for-byte. This is required for --fix too:
+                    // payload files are text, user files need not be.
+                    let backup_path = backup_root.join(rel);
+                    let backup_relative = backup_path.strip_prefix(target_dir).map_err(|error| {
+                        anyhow::anyhow!("doctor backup escaped target: {}", error)
+                    })?;
+                    let backup_path =
+                        manifest_db::resolve_target_relative(target_dir, backup_relative)?;
+                    let backup_ok = crate::installer::atomic_write_bytes(&backup_path, &on_disk)
+                        .is_ok()
+                        && std::fs::read(&backup_path)
+                            .map(|backup| backup == on_disk)
+                            .unwrap_or(false);
+                    if !backup_ok {
+                        skipped.push(rel.clone());
+                        continue;
+                    }
+                    backed_up += 1;
+                    repair_backups.push(backup_path);
+                    Some(on_disk)
                 }
-                if receipt_state != plan::ReceiptState::Valid || !owned {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    if receipt_state == plan::ReceiptState::Valid && !owned {
+                        skipped.push(rel.clone());
+                        continue;
+                    }
+                    None
+                }
+                Err(_) => {
+                    // Present but unreadable: no verified byte backup is possible.
                     skipped.push(rel.clone());
                     continue;
                 }
-                // Drifted: back up the user's file and VERIFY the copy exists
-                // before overwriting, mirroring `migrate::apply`. If the backup
-                // can't be written we skip this file rather than destroy the
-                // customization with no recoverable copy.
-                let backup_path = backup_root.join(rel);
-                if atomic_write(&backup_path, &on_disk).is_err() || !backup_path.exists() {
-                    skipped.push(rel.clone());
-                    continue;
-                }
-                backed_up += 1;
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                if receipt_state == plan::ReceiptState::Valid && !owned {
-                    skipped.push(rel.clone());
-                    continue;
-                }
-            }
-            Err(_) => {
-                // Present but unreadable (chmod 000, non-UTF-8, …). `read_to_string`
-                // conflates this with "missing", but the two are not the same: we
-                // cannot hash the file to tell a drifted copy from a
-                // correct-but-unreadable one, and our text-based backup path cannot
-                // faithfully preserve arbitrary bytes. Overwriting here would
-                // destroy an existing file with no recoverable copy, so — the same
-                // "never destroy without a verified backup" rule `migrate::apply`
-                // follows — we leave it exactly as-is and report it skipped.
-                skipped.push(rel.clone());
-                continue;
-            }
+            };
+            crate::installer::atomic_write_bytes(&path, want.as_bytes())
+                .map_err(anyhow::Error::from)?;
+            changed.push((rel.clone(), path, previous));
+            restored += 1;
+            repaired.insert(rel.clone());
         }
-        atomic_write(&path, want)?;
-        restored += 1;
-        repaired.insert(rel.clone());
+        Ok(())
+    })();
+    if let Err(error) = repair_result {
+        let repair_rollback = rollback_repairs(target_dir, &changed, &repair_backups);
+        let migration_rollback = match migration_report.as_ref() {
+            Some(report) => migrate::rollback(target_dir, report),
+            None => Ok(()),
+        };
+        return Err(combine_rollback_error(
+            combine_rollback_error(error, repair_rollback),
+            migration_rollback,
+        ));
     }
     if restored > 0 {
         // A backup dir is only created for drifted overwrites; restoring only
         // missing files writes no backup, so don't advertise one that isn't there.
         if backed_up > 0 {
             println!(
-                "Restored {} crew/skill file(s) to shipmates v{} (backup: {})",
+                "Restored {} payload file(s) to shipmates v{} (backup: {})",
                 restored,
                 env!("CARGO_PKG_VERSION"),
                 backup_root.display()
             );
         } else {
             println!(
-                "Restored {} crew/skill file(s) to shipmates v{}",
+                "Restored {} payload file(s) to shipmates v{}",
                 restored,
                 env!("CARGO_PKG_VERSION")
             );
@@ -580,24 +724,87 @@ pub fn fix(
         );
     }
 
-    if let Some(current) = receipt.as_mut() {
-        if restored > 0 {
-            for file in &mut current.files {
-                if repaired.contains(&file.path) {
-                    let path =
-                        manifest_db::resolve_target_relative(target_dir, Path::new(&file.path))?;
-                    file.sha256 = digest::compute_sha256(&path)?;
-                }
-            }
-            current.version = env!("CARGO_PKG_VERSION").into();
-            current.validate()?;
-            repository.save(current)?;
+    let publication_result: Result<()> = (|| {
+        let Some(current) = receipt.as_mut() else {
+            return Ok(());
+        };
+        if restored == 0 && migrated_paths.is_empty() {
+            return Ok(());
         }
+        current
+            .files
+            .retain(|file| !migrated_paths.contains(&file.path));
+        for file in &mut current.files {
+            if repaired.contains(&file.path) {
+                let path =
+                    manifest_db::resolve_target_relative(target_dir, Path::new(&file.path))?;
+                file.sha256 = digest::compute_sha256(&path)?;
+            }
+        }
+        current.version = env!("CARGO_PKG_VERSION").into();
+        current.validate()?;
+        let receipt_path = repository.receipt_path(harness)?;
+        let previous_receipt = std::fs::read(&receipt_path).ok();
+        if let Err(error) = repository.save(current) {
+            if let Some(bytes) = previous_receipt {
+                let _ = crate::installer::atomic_write_bytes(&receipt_path, &bytes);
+            } else {
+                let _ = std::fs::remove_file(&receipt_path);
+            }
+            return Err(error);
+        }
+        Ok(())
+    })();
+    if let Err(error) = publication_result {
+        let repair_rollback = rollback_repairs(target_dir, &changed, &repair_backups);
+        let migration_rollback = match migration_report.as_ref() {
+            Some(report) => migrate::rollback(target_dir, report),
+            None => Ok(()),
+        };
+        return Err(combine_rollback_error(
+            combine_rollback_error(error, repair_rollback),
+            migration_rollback,
+        ));
     }
 
     // 3. Re-diagnose and hand back the fresh report — reusing the single built
     // payload rather than rebuilding it.
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
+}
+
+fn rollback_repairs(
+    target_dir: &Path,
+    changed: &[(String, PathBuf, Option<Vec<u8>>)],
+    backups: &[PathBuf],
+) -> Result<()> {
+    for (rel, _path, previous) in changed.iter().rev() {
+        let path = manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+        match previous {
+            Some(bytes) => crate::installer::atomic_write_bytes(&path, bytes)
+                .map_err(anyhow::Error::from)
+                .with_context(|| format!("restoring doctor repair {}", path.display()))?,
+            None => match std::fs::remove_file(&path) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            },
+        }
+    }
+    for backup in backups {
+        let relative = backup
+            .strip_prefix(target_dir)
+            .map_err(|error| anyhow::anyhow!("doctor backup escaped target: {}", error))?;
+        let backup = manifest_db::resolve_target_relative(target_dir, relative)?;
+        let _ = std::fs::remove_file(backup);
+    }
+    Ok(())
+}
+
+fn combine_rollback_error(error: anyhow::Error, rollback: Result<()>) -> anyhow::Error {
+    match rollback {
+        Ok(()) => error,
+        Err(rollback) => error.context(rollback.to_string()),
+    }
 }
 
 /// Print a report in a plain, positive voice — OKs included, so a healthy
@@ -629,6 +836,7 @@ pub fn print_report(report: &Report) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::installer::atomic_write;
     use std::path::PathBuf;
     use tempfile::tempdir;
 
@@ -686,6 +894,24 @@ mod tests {
         for (rel, content) in strip_container(&built, adapter.container()) {
             atomic_write(&target.join(&rel), &content).unwrap();
         }
+    }
+
+    fn write_receipt(
+        target: &Path,
+        roles: &[CanonicalRole],
+        cmds: &[CanonicalCommand],
+        tools: &[CanonicalTool],
+    ) {
+        let adapter = adapters::select("claude-code").unwrap();
+        let install = crate::installer::plan::InstallPlan::from_payload(
+            adapter.as_ref(),
+            "claude-code",
+            adapter.build(roles, cmds).unwrap(),
+            adapter.build_tools(tools),
+        )
+        .unwrap();
+        let receipt = install.receipt_for(install.files.keys().cloned()).unwrap();
+        crate::installer::plan::save_receipt(target, &receipt).unwrap();
     }
 
     fn sev(report: &Report, name: &str) -> Severity {
@@ -871,5 +1097,84 @@ mod tests {
         assert!(target.join(".claude/commands/ship-issue.md").exists());
         // And the report still flags the un-migrated legacy layout as a Problem.
         assert_eq!(sev(&after, "Layout"), Severity::Problem);
+    }
+
+    #[test]
+    fn test_fix_repairs_owned_tool_drift_and_missing_file() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        let mut termgif = tool("termgif");
+        termgif
+            .assets
+            .push(("termgif.py".into(), "print('termgif')".into()));
+        let tools = [termgif];
+        install_healthy(target, &roles, &cmds);
+        install_tools(target, &tools);
+        write_receipt(target, &roles, &cmds, &tools);
+
+        let adapter = adapters::select("claude-code").unwrap();
+        let tool_files = strip_container(
+            &adapter.build_tools(&tools),
+            adapter.container(),
+        );
+        let mut paths = tool_files.keys();
+        let drifted = paths.next().unwrap();
+        atomic_write(&target.join(drifted), "drifted").unwrap();
+        let missing = paths.next();
+        if let Some(missing) = missing {
+            std::fs::remove_file(target.join(missing)).unwrap();
+        }
+
+        let report = fix(target, "claude-code", &roles, &cmds, &tools, false).unwrap();
+
+        for (rel, expected) in tool_files {
+            assert_eq!(std::fs::read_to_string(target.join(rel)).unwrap(), expected);
+        }
+        assert_eq!(sev(&report, "Tools"), Severity::Ok);
+    }
+
+    #[test]
+    fn test_diagnose_reports_unowned_tool_drift_as_unrepairable() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        let tools = [tool("termgif")];
+        install_healthy(target, &roles, &cmds);
+        install_tools(target, &tools);
+
+        let adapter = adapters::select("claude-code").unwrap();
+        let path = strip_container(&adapter.build_tools(&tools), adapter.container())
+            .into_keys()
+            .next()
+            .unwrap();
+        atomic_write(&target.join(path), "user drift").unwrap();
+
+        let report = diagnose(target, "claude-code", &roles, &cmds, &tools).unwrap();
+        let tools_check = report.checks.iter().find(|check| check.name == "Tools").unwrap();
+        assert_eq!(tools_check.severity, Severity::Warn);
+        assert!(tools_check.detail.contains("cannot repair without receipt ownership"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_diagnose_rejects_symlinked_legacy_migration_component() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(dir.path(), &roles, &cmds);
+        let outside_file = outside.path().join("ship-issue.md");
+        atomic_write(&outside_file, "---\nname: ship-issue\n---\nold\n").unwrap();
+        symlink(outside.path(), dir.path().join(".claude/commands")).unwrap();
+
+        let error = diagnose(dir.path(), "claude-code", &roles, &cmds, &[]).unwrap_err();
+
+        assert!(error.to_string().contains("symlink component"));
+        assert!(outside_file.exists());
     }
 }

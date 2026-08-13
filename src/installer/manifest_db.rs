@@ -4,7 +4,7 @@
 //! formatting. The installer records what it wrote; consumers can later use
 //! that record to compare, upgrade, or remove only Shipmates-owned files.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fs;
@@ -97,6 +97,7 @@ impl InstallReceipt {
             bail!("receipt version must be non-empty and contain no NUL bytes");
         }
         validate_harness(&self.harness)?;
+        let allowed_roots = allowed_roots(&self.harness);
         if !matches!(self.layout.as_str(), LAYOUT_SKILLS | LAYOUT_COMMANDS) {
             bail!("unsupported receipt layout {:?}", self.layout);
         }
@@ -106,6 +107,13 @@ impl InstallReceipt {
         let mut previous: Option<&str> = None;
         for root in &self.roots {
             validate_relative_path(root, "receipt root")?;
+            if !allowed_roots.contains(&root.as_str()) {
+                bail!(
+                    "receipt root {:?} is not part of harness {} install layout",
+                    root,
+                    self.harness
+                );
+            }
             if let Some(previous) = previous {
                 if root.as_str() <= previous {
                     bail!("receipt roots must be sorted and unique");
@@ -117,6 +125,18 @@ impl InstallReceipt {
         let mut previous: Option<&str> = None;
         for file in &self.files {
             file.validate()?;
+            if !allowed_receipt_path(&self.harness, &file.path)
+                || !self
+                    .roots
+                    .iter()
+                    .any(|root| file.path == *root || file.path.starts_with(&format!("{root}/")))
+            {
+                bail!(
+                    "receipt file path {:?} is not part of harness {} install layout",
+                    file.path,
+                    self.harness
+                );
+            }
             if let Some(previous) = previous {
                 match file.path.as_str().cmp(previous) {
                     Ordering::Less => bail!("receipt files must be sorted by path"),
@@ -358,7 +378,112 @@ fn validate_harness(harness: &str) -> Result<()> {
     {
         bail!("invalid harness name {:?}", harness);
     }
+    if !matches!(
+        harness,
+        "claude-code"
+            | "opencode"
+            | "antigravity"
+            | "codex"
+            | "cursor"
+            | "github-copilot"
+            | "windsurf"
+    ) {
+        bail!("unsupported harness {:?}", harness);
+    }
     Ok(())
+}
+
+fn allowed_roots(harness: &str) -> &'static [&'static str] {
+    match harness {
+        "claude-code" => &[".claude"],
+        "opencode" => &[".opencode"],
+        "antigravity" | "cursor" => &[".agents"],
+        "codex" => &[".agents", ".codex"],
+        "github-copilot" => &[".agents", ".github"],
+        "windsurf" => &[".windsurf"],
+        _ => &[],
+    }
+}
+
+/// Receipt paths are attacker-controlled input. Keep them inside the exact
+/// payload trees each adapter can write; a syntactically relative path is not
+/// enough because uninstall and doctor use receipts as deletion/overwrite
+/// authority.
+fn allowed_receipt_path(harness: &str, path: &str) -> bool {
+    let parts = path.split('/').collect::<Vec<_>>();
+    if parts.iter().any(|part| {
+        *part == ".git"
+            || (part.starts_with(".git") && *part != ".github")
+            || part.starts_with("README")
+    }) {
+        return false;
+    }
+    let Some(root) = parts.first().copied() else {
+        return false;
+    };
+    let is_skill_tree = |root: &str| {
+        parts.len() >= 4
+            && parts[0] == root
+            && parts[1] == "skills"
+            && !parts[2].is_empty()
+            && (parts[3] == "SKILL.md" || (parts.len() == 4 && parts[3].ends_with(".py")))
+    };
+    match harness {
+        "claude-code" => {
+            (parts.len() == 3
+                && root == ".claude"
+                && parts[1] == "agents"
+                && parts[2].ends_with(".md"))
+                || is_skill_tree(".claude")
+                || (parts.len() == 3
+                    && root == ".claude"
+                    && parts[1] == "commands"
+                    && parts[2].ends_with(".md"))
+        }
+        "opencode" => {
+            (parts.len() == 3
+                && root == ".opencode"
+                && parts[1] == "agents"
+                && parts[2].ends_with(".md"))
+                || (parts.len() == 3
+                    && root == ".opencode"
+                    && parts[1] == "commands"
+                    && parts[2].ends_with(".md"))
+                || (parts.len() == 3
+                    && root == ".opencode"
+                    && parts[1] == "tools"
+                    && parts[2].ends_with(".ts"))
+                || (parts.len() > 3
+                    && root == ".opencode"
+                    && parts[1] == "tools"
+                    && !parts[2].is_empty()
+                    && parts.last().is_some_and(|part| part.ends_with(".py")))
+        }
+        "antigravity" => {
+            (parts.len() == 3
+                && root == ".agents"
+                && parts[1] == "agents"
+                && parts[2].ends_with(".md"))
+                || is_skill_tree(".agents")
+        }
+        "codex" => {
+            (parts.len() == 3
+                && root == ".codex"
+                && parts[1] == "agents"
+                && parts[2].ends_with(".toml"))
+                || is_skill_tree(".agents")
+        }
+        "cursor" => is_skill_tree(".agents"),
+        "windsurf" => is_skill_tree(".windsurf"),
+        "github-copilot" => {
+            (parts.len() == 3
+                && root == ".github"
+                && parts[1] == "agents"
+                && parts[2].ends_with(".agent.md"))
+                || is_skill_tree(".agents")
+        }
+        _ => false,
+    }
 }
 
 fn validate_sha256(sha256: &str) -> Result<()> {
@@ -462,9 +587,11 @@ mod tests {
             repository.claims_for_path(Path::new(path)).unwrap(),
             vec!["codex", "github-copilot"]
         );
-        assert!(repository
-            .is_claimed_by_other(Path::new(path), "codex")
-            .unwrap());
+        assert!(
+            repository
+                .is_claimed_by_other(Path::new(path), "codex")
+                .unwrap()
+        );
     }
 
     #[test]
@@ -487,22 +614,26 @@ mod tests {
             assert!(error.to_string().contains("path"));
         }
 
-        assert!(InstallReceipt::new(
-            "0.1.3",
-            "claude-code",
-            LAYOUT_SKILLS,
-            vec![".claude".into()],
-            vec![file("b", HASH), file("a", HASH)],
-        )
-        .is_err());
-        assert!(InstallReceipt::new(
-            "0.1.3",
-            "claude-code",
-            LAYOUT_SKILLS,
-            vec![".claude".into()],
-            vec![file("a", &HASH.to_ascii_uppercase())],
-        )
-        .is_err());
+        assert!(
+            InstallReceipt::new(
+                "0.1.3",
+                "claude-code",
+                LAYOUT_SKILLS,
+                vec![".claude".into()],
+                vec![file("b", HASH), file("a", HASH)],
+            )
+            .is_err()
+        );
+        assert!(
+            InstallReceipt::new(
+                "0.1.3",
+                "claude-code",
+                LAYOUT_SKILLS,
+                vec![".claude".into()],
+                vec![file("a", &HASH.to_ascii_uppercase())],
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -511,7 +642,7 @@ mod tests {
         let repository = ReceiptRepository::new(dir.path());
         let path = repository.receipt_path("codex").unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
-        let mut value = serde_json::to_value(receipt("other", vec![])).unwrap();
+        let mut value = serde_json::to_value(receipt("codex", vec![])).unwrap();
         value["schema_version"] = serde_json::json!(99);
         fs::write(path, serde_json::to_vec(&value).unwrap()).unwrap();
 

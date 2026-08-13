@@ -6,6 +6,7 @@ use crate::installer::{
     plan,
 };
 use anyhow::{bail, Context, Result};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -84,9 +85,23 @@ pub fn select_receipt(target_dir: &Path, harness: Option<&str>) -> Result<Option
     }
 }
 
-/// Remove only files listed by a valid receipt whose raw bytes still match its
-/// recorded hash. Other valid receipts claim shared paths; those paths remain.
-pub fn uninstall(target_dir: &Path, selected: LocatedReceipt) -> Result<UninstallReport> {
+/// Remove only files listed by a valid receipt whose paths and expected bytes
+/// still belong to the current harness payload. Other valid receipts claim
+/// shared paths; those paths remain. Receipt entries from an older payload are
+/// preserved with a warning rather than treated as deletion authority.
+pub fn uninstall(
+    target_dir: &Path,
+    selected: LocatedReceipt,
+) -> Result<UninstallReport> {
+    let known_payload = current_payload(&selected.receipt.harness)?;
+    uninstall_with_payload(target_dir, selected, &known_payload)
+}
+
+pub fn uninstall_with_payload(
+    target_dir: &Path,
+    selected: LocatedReceipt,
+    known_payload: &BTreeMap<String, String>,
+) -> Result<UninstallReport> {
     let mut report = UninstallReport {
         harness: selected.receipt.harness.clone(),
         ..UninstallReport::default()
@@ -112,6 +127,22 @@ pub fn uninstall(target_dir: &Path, selected: LocatedReceipt) -> Result<Uninstal
                 "Warning: shared-managed file preserved: {}",
                 rel.display()
             ));
+            continue;
+        }
+        let Some(expected) = known_payload.get(&file.path) else {
+            report.warnings.push(format!(
+                "Warning: old or unknown payload entry preserved: {}",
+                rel.display()
+            ));
+            blocked = true;
+            continue;
+        };
+        if digest::hash_bytes(expected.as_bytes()) != file.sha256 {
+            report.warnings.push(format!(
+                "Warning: old payload entry preserved (receipt hash does not match current payload): {}",
+                rel.display()
+            ));
+            blocked = true;
             continue;
         }
         let current = match fs::read(&path) {
@@ -184,6 +215,37 @@ pub fn uninstall(target_dir: &Path, selected: LocatedReceipt) -> Result<Uninstal
             ))
         }
     }
+}
+
+/// Build complete current payload knowledge for receipt validation. All tools
+/// are included deliberately: uninstall has no tool-selection flag, and an
+/// old receipt entry must be recognized only when current Shipmates still
+/// knows its exact path and bytes.
+fn current_payload(harness: &str) -> Result<BTreeMap<String, String>> {
+    let roles = crate::catalog::load_roles_embedded()?;
+    let commands = crate::catalog::load_commands_embedded()?;
+    let tools = crate::catalog::load_tools_embedded()?;
+    payload_for(harness, &roles, &commands, &tools)
+}
+
+pub fn payload_for(
+    harness: &str,
+    roles: &[crate::catalog::CanonicalRole],
+    commands: &[crate::catalog::CanonicalCommand],
+    tools: &[crate::catalog::CanonicalTool],
+) -> Result<BTreeMap<String, String>> {
+    let adapter = crate::adapters::select(harness)?;
+    let plan = crate::installer::plan::InstallPlan::from_payload(
+        adapter.as_ref(),
+        harness,
+        adapter.build(roles, commands)?,
+        adapter.build_tools(tools),
+    )?;
+    Ok(plan
+        .files
+        .into_iter()
+        .map(|(path, content)| (path.to_string_lossy().into_owned(), content))
+        .collect())
 }
 
 struct Removal {
@@ -334,5 +396,61 @@ mod tests {
         let report = uninstall(dir.path(), selected).unwrap();
         assert_eq!(report.removed, 0);
         assert!(path.exists());
+    }
+
+    #[test]
+    fn old_receipt_entry_is_preserved_when_not_in_current_payload() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(".claude/agents/old.md");
+        crate::installer::atomic_write(&path, "old payload").unwrap();
+        receipt(
+            dir.path(),
+            "claude-code",
+            ".claude/agents/old.md",
+            b"old payload",
+        );
+        let selected = select_receipt(dir.path(), Some("claude-code"))
+            .unwrap()
+            .unwrap();
+        let report = uninstall_with_payload(
+            dir.path(),
+            selected,
+            &BTreeMap::from([(String::from(".claude/agents/current.md"), String::from("current"))]),
+        )
+        .unwrap();
+
+        assert_eq!(report.removed, 0);
+        assert!(!report.receipt_removed);
+        assert!(path.exists());
+        assert!(report
+            .warnings
+            .iter()
+            .any(|warning| warning.contains("old or unknown payload entry")));
+    }
+
+    #[test]
+    fn current_payload_entry_is_removed_only_when_hash_matches() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(".claude/agents/current.md");
+        crate::installer::atomic_write(&path, "current").unwrap();
+        receipt(
+            dir.path(),
+            "claude-code",
+            ".claude/agents/current.md",
+            b"current",
+        );
+        let selected = select_receipt(dir.path(), Some("claude-code"))
+            .unwrap()
+            .unwrap();
+        let report = uninstall_with_payload(
+            dir.path(),
+            selected,
+            &BTreeMap::from([(String::from(".claude/agents/current.md"), String::from("current"))]),
+        )
+        .unwrap();
+
+        assert_eq!(report.removed, 1);
+        assert!(!path.exists());
+        assert!(report.receipt_removed);
     }
 }

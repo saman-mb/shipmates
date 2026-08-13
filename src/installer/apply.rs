@@ -4,7 +4,7 @@ use crate::installer::{
     atomic_write,
     plan::{self, InstallPlan, Receipt, ReceiptState},
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -36,6 +36,17 @@ pub struct ApplyReport {
 /// `force` is set. Missing receipts still permit new files, but preserve
 /// existing collisions.
 pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<ApplyReport> {
+    apply_with_preserved_paths(target_dir, install, force, &BTreeSet::new())
+}
+
+/// Apply an install while retaining receipt ownership for migration items that
+/// were deliberately left in place (`--no-migrate` or a skipped migration).
+pub fn apply_with_preserved_paths(
+    target_dir: &Path,
+    install: &InstallPlan,
+    force: bool,
+    preserved_paths: &BTreeSet<String>,
+) -> Result<ApplyReport> {
     let repository = crate::installer::manifest_db::ReceiptRepository::new(target_dir);
     // Validate complete receipt set before inspecting or changing payload
     // files. A sibling receipt is part of ownership state, even when it is
@@ -78,16 +89,29 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
             .and_then(|receipt| receipt.file(&rel_string))
             .is_some();
         if sibling_claims.contains(&rel_string) {
-            report.warnings.push(format!(
-                "Warning: shared-managed file left untouched: {}",
-                rel.display()
-            ));
-            if owned
-                || fs::read(&path)
-                    .map(|current| current == want.as_bytes())
-                    .unwrap_or(false)
-            {
+            let current = fs::read(&path).ok();
+            if current.as_deref() == Some(want.as_bytes()) {
                 managed.push(rel.clone());
+            } else if let (Some(old_file), Some(current)) = (
+                old.as_ref().and_then(|receipt| receipt.file(&rel_string)),
+                current.as_deref(),
+            ) {
+                if crate::digest::hash_bytes(current) == old_file.sha256 {
+                    report.warnings.push(format!(
+                        "Warning: shared-managed file left untouched; preserving existing ownership: {}",
+                        rel.display()
+                    ));
+                } else {
+                    report.warnings.push(format!(
+                        "Warning: shared-managed file left untouched; current bytes match neither desired nor existing ownership: {}",
+                        rel.display()
+                    ));
+                }
+            } else {
+                report.warnings.push(format!(
+                    "Warning: shared-managed file left untouched; current install does not claim it: {}",
+                    rel.display()
+                ));
             }
             continue;
         }
@@ -121,7 +145,7 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
                 pending.push(PendingWrite {
                     rel: rel.clone(),
                     path,
-                    content: want.clone(),
+                    content: want.as_bytes().to_vec(),
                     previous: Some(current),
                 });
             }
@@ -129,7 +153,7 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
                 pending.push(PendingWrite {
                     rel: rel.clone(),
                     path,
-                    content: want.clone(),
+                    content: want.as_bytes().to_vec(),
                     previous: None,
                 });
             }
@@ -185,7 +209,7 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
                 created_backups.push(backup);
             }
         }
-        if let Err(error) = atomic_write(&action.path, &action.content)
+        if let Err(error) = crate::installer::atomic_write_bytes(&action.path, &action.content)
             .with_context(|| format!("writing installed file {}", action.path.display()))
         {
             rollback_files(&changed, &created_backups);
@@ -202,8 +226,16 @@ pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<Ap
     let mut receipt = install.receipt_for(managed)?;
     if let Some(old_receipt) = old.as_ref() {
         for old_file in &old_receipt.files {
-            if install.files.contains_key(Path::new(&old_file.path))
+            let path = Path::new(&old_file.path);
+            let preserve = preserved_paths.contains(&old_file.path);
+            let unchanged_on_disk = fs::read(
+                crate::installer::manifest_db::resolve_target_relative(target_dir, path)?,
+            )
+            .map(|bytes| crate::digest::hash_bytes(&bytes) == old_file.sha256)
+            .unwrap_or(false);
+            if (preserve || install.files.contains_key(path))
                 && !receipt.files.iter().any(|file| file.path == old_file.path)
+                && (preserve || unchanged_on_disk)
             {
                 receipt.files.push(old_file.clone());
             }
@@ -260,7 +292,7 @@ fn compare_receipts(old: &Receipt, new: &Receipt) -> UpgradeSummary {
 struct PendingWrite {
     rel: PathBuf,
     path: PathBuf,
-    content: String,
+    content: Vec<u8>,
     previous: Option<Vec<u8>>,
 }
 
@@ -268,9 +300,7 @@ fn rollback_files(changed: &[(PathBuf, Option<Vec<u8>>)], backups: &[PathBuf]) {
     for (path, previous) in changed.iter().rev() {
         match previous {
             Some(bytes) => {
-                if let Ok(contents) = std::str::from_utf8(bytes) {
-                    let _ = atomic_write(path, contents);
-                }
+                let _ = crate::installer::atomic_write_bytes(path, bytes);
             }
             None => {
                 let _ = fs::remove_file(path);
@@ -301,18 +331,13 @@ fn backup_existing(path: &Path, bytes: &[u8]) -> Result<Option<PathBuf>> {
         std::process::id(),
         counter
     ));
-    if let Ok(metadata) = fs::symlink_metadata(&backup) {
-        if metadata.file_type().is_symlink() {
-            bail!("refusing symlink backup path {}", backup.display());
-        }
+    if fs::symlink_metadata(&backup).is_ok() {
+        bail!("refusing existing backup path {}", backup.display());
     }
-    // Payloads are UTF-8. Refuse to overwrite a non-UTF-8 existing file: there
-    // is no byte-preserving atomic_write API in the legacy installer surface.
-    let contents = match std::str::from_utf8(bytes) {
-        Ok(contents) => contents,
-        Err(_) => return Ok(None),
-    };
-    atomic_write(&backup, contents).with_context(|| format!("backing up {}", path.display()))?;
+    // Backups are raw bytes. `--force` must not destroy a binary file merely
+    // because the payload itself happens to be text.
+    crate::installer::atomic_write_bytes(&backup, bytes)
+        .with_context(|| format!("backing up {}", path.display()))?;
     if fs::read(&backup)? != bytes {
         anyhow::bail!("backup verification failed for {}", path.display());
     }

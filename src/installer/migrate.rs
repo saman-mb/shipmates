@@ -8,7 +8,7 @@
 //! and only ever touching files Shipmates itself installed.
 
 use crate::catalog::parse_frontmatter;
-use crate::installer::atomic_write;
+use crate::installer::atomic_write_bytes;
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs;
@@ -56,11 +56,13 @@ pub struct MigrationReport {
 /// the current payload no longer ships that command. If the built payload itself
 /// still ships `…/commands/<name>.md`, that command is live — it is kept, never
 /// scheduled for removal — even when a same-named skill is written beside it.
+/// Plan migration, rejecting symlink components before inspecting whether a
+/// legacy file exists.
 pub fn plan(
     target_dir: &Path,
     built: &HashMap<String, String>,
     container: &str,
-) -> Vec<MigrationItem> {
+) -> Result<Vec<MigrationItem>> {
     let prefix = format!("{}/", container);
     let mut items = Vec::new();
     for key in built.keys() {
@@ -87,13 +89,14 @@ pub fn plan(
         }
         legacy_path.push("commands");
         legacy_path.push(format!("{}.md", name));
+        crate::installer::manifest_db::resolve_target_relative(target_dir, &legacy_path)?;
         // Structural self-limiting: if the CURRENT payload still ships this
         // command, the skill does not supersede it — never schedule a live file
         // for deletion, even when a same-named skill is written beside it.
         if built.contains_key(&format!("{}/{}", container, legacy_path.display())) {
             continue;
         }
-        if !target_dir.join(&legacy_path).exists() {
+        if fs::symlink_metadata(target_dir.join(&legacy_path)).is_err() {
             continue;
         }
         let superseded_by: PathBuf = parts.iter().collect();
@@ -103,7 +106,7 @@ pub fn plan(
         });
     }
     items.sort_by(|a, b| a.legacy_path.cmp(&b.legacy_path));
-    items
+    Ok(items)
 }
 
 /// Whether a legacy command file is one Shipmates installed — and so safe to
@@ -155,40 +158,130 @@ pub fn apply(
     backup_root: &Path,
 ) -> Result<MigrationReport> {
     let mut report = MigrationReport::default();
+    let backup_relative = backup_root.strip_prefix(target_dir).map_err(|error| {
+        anyhow::anyhow!(
+            "migration backup escaped target {}: {}",
+            backup_root.display(),
+            error
+        )
+    })?;
+    crate::installer::manifest_db::resolve_target_relative(target_dir, backup_relative)?;
     for item in items {
-        let full_legacy = target_dir.join(&item.legacy_path);
-        if !full_legacy.exists() {
-            continue;
+        let result = (|| -> Result<()> {
+            // Resolve immediately before every read/delete. Do not let a
+            // symlink inserted after planning redirect migration elsewhere.
+            let full_legacy = crate::installer::manifest_db::resolve_target_relative(
+                target_dir,
+                &item.legacy_path,
+            )?;
+            let metadata = match fs::symlink_metadata(&full_legacy) {
+                Ok(metadata) => metadata,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+                Err(error) => {
+                    return Err(error).with_context(|| {
+                        format!("inspecting legacy file {}", full_legacy.display())
+                    })
+                }
+            };
+            if !metadata.file_type().is_file() {
+                report.skipped_unmanaged.push(item.legacy_path.clone());
+                return Ok(());
+            }
+            let name = item
+                .legacy_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or_default();
+            if !is_shipmates_owned(&full_legacy, name) {
+                report.skipped_unmanaged.push(item.legacy_path.clone());
+                return Ok(());
+            }
+            // Back up raw bytes first. Legacy files are normally text, but receipt
+            // ownership and rollback must not make UTF-8 a safety requirement.
+            let contents = fs::read(&full_legacy)
+                .with_context(|| format!("reading legacy file {}", full_legacy.display()))?;
+            let backup_path = backup_root.join(&item.legacy_path);
+            let backup_relative = backup_path.strip_prefix(target_dir).map_err(|error| {
+                anyhow::anyhow!("migration backup escaped target: {}", error)
+            })?;
+            let backup_path =
+                crate::installer::manifest_db::resolve_target_relative(target_dir, backup_relative)?;
+            atomic_write_bytes(&backup_path, &contents)
+                .with_context(|| format!("backing up legacy file {}", full_legacy.display()))?;
+            let backup_relative = backup_path
+                .strip_prefix(target_dir)
+                .map_err(|error| anyhow::anyhow!("migration backup escaped target: {}", error))?;
+            let verified_backup = crate::installer::manifest_db::resolve_target_relative(
+                target_dir,
+                backup_relative,
+            )?;
+            if fs::read(&verified_backup)
+                .map(|backup| backup != contents)
+                .unwrap_or(true)
+            {
+                let _ = fs::remove_file(&verified_backup);
+                anyhow::bail!("backup verification failed for {}", full_legacy.display());
+            }
+            // Record backup before delete so an error in the delete itself is
+            // still covered by the transaction rollback.
+            report.migrated.push(item.legacy_path.clone());
+            report.backups.push(backup_path.clone());
+            let full_legacy = crate::installer::manifest_db::resolve_target_relative(
+                target_dir,
+                &item.legacy_path,
+            )?;
+            fs::remove_file(&full_legacy)
+                .with_context(|| format!("removing superseded file {}", full_legacy.display()))?;
+            Ok(())
+        })();
+        if let Err(error) = result {
+            let rollback = rollback(target_dir, &report);
+            return Err(combine_rollback_error(error, rollback));
         }
-        let name = item
-            .legacy_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or_default();
-        if !is_shipmates_owned(&full_legacy, name) {
-            report.skipped_unmanaged.push(item.legacy_path.clone());
-            continue;
-        }
-        // Back up first — read the bytes and write them through the same atomic
-        // path the installer uses.
-        let contents = fs::read_to_string(&full_legacy)
-            .with_context(|| format!("reading legacy file {}", full_legacy.display()))?;
-        let backup_path = backup_root.join(&item.legacy_path);
-        if atomic_write(&backup_path, &contents).is_err() || !backup_path.exists() {
-            // Backup failed — never delete without a verified copy.
-            continue;
-        }
-        fs::remove_file(&full_legacy)
-            .with_context(|| format!("removing superseded file {}", full_legacy.display()))?;
-        report.migrated.push(item.legacy_path.clone());
-        report.backups.push(backup_path);
     }
     Ok(report)
+}
+
+/// Restore files migrated by a successful apply. Used when a later payload or
+/// receipt operation fails, so migration never becomes an irreversible side
+/// effect of an unsuccessful install.
+pub fn rollback(target_dir: &Path, report: &MigrationReport) -> Result<()> {
+    for (legacy, backup) in report.migrated.iter().zip(&report.backups).rev() {
+        let backup_relative = backup
+            .strip_prefix(target_dir)
+            .map_err(|error| anyhow::anyhow!("migration backup escaped target: {}", error))?;
+        let backup_path =
+            crate::installer::manifest_db::resolve_target_relative(target_dir, backup_relative)?;
+        let bytes = fs::read(&backup_path)
+            .with_context(|| format!("reading migration backup {}", backup_path.display()))?;
+        let legacy_path =
+            crate::installer::manifest_db::resolve_target_relative(target_dir, legacy)?;
+        atomic_write_bytes(&legacy_path, &bytes)
+            .with_context(|| format!("restoring migrated file {}", legacy_path.display()))?;
+        let legacy_path =
+            crate::installer::manifest_db::resolve_target_relative(target_dir, legacy)?;
+        if fs::read(&legacy_path).map(|restored| restored != bytes).unwrap_or(true) {
+            anyhow::bail!("migration rollback verification failed for {}", legacy_path.display());
+        }
+        let backup_path =
+            crate::installer::manifest_db::resolve_target_relative(target_dir, backup_relative)?;
+        fs::remove_file(&backup_path)
+            .with_context(|| format!("removing migration backup {}", backup_path.display()))?;
+    }
+    Ok(())
+}
+
+fn combine_rollback_error(error: anyhow::Error, rollback: Result<()>) -> anyhow::Error {
+    match rollback {
+        Ok(()) => error,
+        Err(rollback) => error.context(rollback.to_string()),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::installer::atomic_write;
     use tempfile::tempdir;
 
     const CONTAINER: &str = "harnesses/claude-code";
@@ -217,7 +310,7 @@ mod tests {
         atomic_write(&skill, "current skill").unwrap();
 
         let built = built_with_skill("ship-issue");
-        let items = plan(target, &built, CONTAINER);
+        let items = plan(target, &built, CONTAINER).unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(
             items[0].legacy_path,
@@ -256,7 +349,7 @@ mod tests {
         let foreign = "---\nname: my-own-thing\n---\nkeep me\n";
         atomic_write(&legacy, foreign).unwrap();
 
-        let items = plan(target, &built_with_skill("ship-issue"), CONTAINER);
+        let items = plan(target, &built_with_skill("ship-issue"), CONTAINER).unwrap();
         assert_eq!(items.len(), 1); // planned (the file exists); ownership decides its fate
 
         let backup_root = new_backup_root(target);
@@ -281,7 +374,7 @@ mod tests {
             "just prose, no frontmatter\n",
         )
         .unwrap();
-        let items = plan(target, &built_with_skill("ship-issue"), CONTAINER);
+        let items = plan(target, &built_with_skill("ship-issue"), CONTAINER).unwrap();
         let report = apply(target, &items, &new_backup_root(target)).unwrap();
         assert!(report.migrated.is_empty());
         assert_eq!(report.skipped_unmanaged.len(), 1);
@@ -301,7 +394,7 @@ mod tests {
             "current command".to_string(),
         );
         // The command is live, so it must never be scheduled for removal.
-        let items = plan(target, &built, CONTAINER);
+        let items = plan(target, &built, CONTAINER).unwrap();
         assert!(
             items.is_empty(),
             "a command the current payload still ships must not be scheduled for deletion"
@@ -315,7 +408,7 @@ mod tests {
         let target = dir.path();
         // Only the skill exists — no legacy commands/ tree at all.
         atomic_write(&target.join(".claude/skills/ship-issue/SKILL.md"), "skill").unwrap();
-        let items = plan(target, &built_with_skill("ship-issue"), CONTAINER);
+        let items = plan(target, &built_with_skill("ship-issue"), CONTAINER).unwrap();
         assert!(items.is_empty());
     }
 
@@ -330,17 +423,73 @@ mod tests {
         .unwrap();
         let built = built_with_skill("ship-issue");
 
-        let items = plan(target, &built, CONTAINER);
+        let items = plan(target, &built, CONTAINER).unwrap();
         let report = apply(target, &items, &new_backup_root(target)).unwrap();
         assert_eq!(report.migrated.len(), 1);
 
         // Second run: the legacy file is gone, so the plan is empty and nothing
         // new is backed up.
-        let items2 = plan(target, &built, CONTAINER);
+        let items2 = plan(target, &built, CONTAINER).unwrap();
         assert!(items2.is_empty());
         let backup_root2 = new_backup_root(target);
         let report2 = apply(target, &items2, &backup_root2).unwrap();
         assert!(report2.migrated.is_empty());
         assert!(!backup_root2.exists());
+    }
+
+    #[test]
+    fn rollback_restores_migrated_bytes_and_removes_backup() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let legacy = target.join(".claude/commands/ship-issue.md");
+        let bytes = owned_command("ship-issue").into_bytes();
+        atomic_write_bytes(&legacy, &bytes).unwrap();
+        let items = plan(target, &built_with_skill("ship-issue"), CONTAINER).unwrap();
+        let backup_root = new_backup_root(target);
+        let report = apply(target, &items, &backup_root).unwrap();
+
+        rollback(target, &report).unwrap();
+
+        assert_eq!(fs::read(&legacy).unwrap(), bytes);
+        assert!(report.backups.iter().all(|backup| !backup.exists()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_legacy_component_is_rejected_before_read_or_delete() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let outside = tempdir().unwrap();
+        let outside_file = outside.path().join("ship-issue.md");
+        fs::write(&outside_file, owned_command("ship-issue")).unwrap();
+        fs::create_dir_all(target.join(".claude")).unwrap();
+        symlink(outside.path(), target.join(".claude/commands")).unwrap();
+
+        let error = plan(target, &built_with_skill("ship-issue"), CONTAINER).unwrap_err();
+
+        assert!(error.to_string().contains("symlink component"));
+        assert!(outside_file.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_backup_root_is_rejected_before_migration() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let outside = tempdir().unwrap();
+        let legacy = target.join(".claude/commands/ship-issue.md");
+        atomic_write(&legacy, &owned_command("ship-issue")).unwrap();
+        symlink(outside.path(), target.join(BACKUP_DIR)).unwrap();
+
+        let items = plan(target, &built_with_skill("ship-issue"), CONTAINER).unwrap();
+        let error = apply(target, &items, &new_backup_root(target)).unwrap_err();
+
+        assert!(error.to_string().contains("symlink component"));
+        assert!(legacy.exists());
+        assert!(outside.path().read_dir().unwrap().next().is_none());
     }
 }
