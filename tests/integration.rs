@@ -161,7 +161,7 @@ fn test_opencode_embedded_install_fidelity() {
         assert!(content.contains("permission:\n"), "{path:?} has no permission map");
     }
     assert_eq!(file_count(&agents), expected_roles.len());
-    assert_eq!(file_count(&commands), 12);
+    assert_eq!(file_count(&commands), 13);
 
     let report_order = std::fs::read_to_string(commands.join("harden.md")).unwrap();
     assert!(report_order.contains("report"), "harden order lost report-only mode");
@@ -186,7 +186,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
     let commands = load_commands(&root.join("commands")).unwrap();
     let roles = load_roles(&root.join("crew")).unwrap();
 
-    assert_eq!(commands.len(), 12, "cost preamble must cover every command");
+    assert_eq!(commands.len(), 13, "cost preamble must cover every command");
     let re_tokens = regex::Regex::new(r"\{\{[a-zA-Z:-]+\}\}").unwrap();
     for command in &commands {
         assert_eq!(

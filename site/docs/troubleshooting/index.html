@@ -156,7 +156,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> the twelve install as <code>.opencode/commands/&lt;name&gt;.md</code> (flat files, <code>/</code>-invoked) rather than skills, and agents land in <code>.opencode/agents/</code>. If files are missing, the install went to a different root than opencode reads. <strong>Fix:</strong> confirm <code>.opencode/commands/ship-issue.md</code> and <code>.opencode/agents/sdet.md</code> exist, then restart opencode. Note the payload is format-verified but not runtime-verified — see the <a href="../harnesses/">harness matrix</a>.</p>
+              <p><strong>Cause:</strong> the thirteen install as <code>.opencode/commands/&lt;name&gt;.md</code> (flat files, <code>/</code>-invoked) rather than skills, and agents land in <code>.opencode/agents/</code>. If files are missing, the install went to a different root than opencode reads. <strong>Fix:</strong> confirm <code>.opencode/commands/ship-issue.md</code> and <code>.opencode/agents/sdet.md</code> exist, then restart opencode. Note the payload is format-verified but not runtime-verified — see the <a href="../harnesses/">harness matrix</a>.</p>
             </div>
           </details>
           <details class="faq__item">
@@ -174,7 +174,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> these targets are skills-only in the current adapter. <strong>Fix:</strong> not an install failure; the twelve workflows land as skills, without named crew personas.</p>
+              <p><strong>Cause:</strong> by design. Those four harnesses have no documented native subagent directory, so only the thirteen skills land — the crew is dropped entirely. <strong>Fix:</strong> not a bug; the workflows themselves are still available via <code>/&lt;command&gt;</code>.</p>
             </div>
           </details>
           <details class="faq__item">
