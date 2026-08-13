@@ -452,12 +452,7 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                 || (parts.len() == 3
                     && root == ".opencode"
                     && parts[1] == "tools"
-                    && parts[2].ends_with(".ts"))
-                || (parts.len() > 3
-                    && root == ".opencode"
-                    && parts[1] == "tools"
-                    && !parts[2].is_empty()
-                    && parts.last().is_some_and(|part| part.ends_with(".py")))
+                    && (parts[2].ends_with(".ts") || parts[2].ends_with(".py")))
         }
         "antigravity" => {
             (parts.len() == 3
