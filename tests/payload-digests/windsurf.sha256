@@ -1,5 +1,6 @@
 payload_digest_version=1
 target=windsurf
+skills/consolidate-issues/SKILL.md 931f64a2f236d00660beac04d4d412cbf4630977b0d468b30dfcb3c221f40e1e
 skills/document/SKILL.md 500d848a926ea5bf96a4ec78159e873b1a60a4188cc61e1875ceaa18459a517e
 skills/fix-bug/SKILL.md de800ac4e5fc70977e970b06ff78e5321b03bbea238ba81ca5819a884af28fc6
 skills/harden/SKILL.md 855e58901bcbda435681b093d8014f3bc25cd3a558dbeb1d5ffa49de7fe2df3e
