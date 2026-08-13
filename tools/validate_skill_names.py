@@ -35,7 +35,7 @@ def load_builtins(harness: str) -> Set[str]:
     if not path.exists():
         # Harnesses now come from harness_matrix.json, so a new target arrives
         # here the moment it is registered. Returning an empty set would compare
-        # our twelve names against nothing and report "no collisions" for that
+        # our thirteen names against nothing and report "no collisions" for that
         # harness forever — the check would silently opt out of every target
         # added after this one.
         raise SystemExit(

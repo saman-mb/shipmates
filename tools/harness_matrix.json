@@ -296,7 +296,7 @@
         "antigravity": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The twelve commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The thirteen commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "windsurf": {
           "supported": false,
@@ -305,7 +305,7 @@
         },
         "opencode": {
           "supported": true,
-          "reason": "Honoured structurally rather than as a frontmatter key: the payload ships the twelve as `/`-invoked entries under .opencode/commands/, and deliberately does NOT use .opencode/skills/, whose entries opencode's model invokes itself through its native `skill` tool and which has no `disable-model-invocation` equivalent."
+          "reason": "Honoured structurally rather than as a frontmatter key: the payload ships the thirteen as `/`-invoked entries under .opencode/commands/, and deliberately does NOT use .opencode/skills/, whose entries opencode's model invokes itself through its native `skill` tool and which has no `disable-model-invocation` equivalent."
         }
       }
     },

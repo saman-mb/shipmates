@@ -61,6 +61,18 @@ COMMANDS = {
         ],
         "closer": "Backlog ready — epics + linked stories on GitHub. ⚓",
     },
+    "consolidate-issues": {
+        "arg": "area:* apply",
+        "stages": [
+            ("INVENTORY", "every open issue, scoped"),
+            ("CROSS-CHECK", "git history — what already shipped"),
+            ("TRIAGE", "close / keep / dedupe, evidence-backed"),
+            ("MIGRATE", "legacy issues to the current shape"),
+            ("BUNDLE", "survivors into themed groups"),
+            ("APPLY", "labels, closes, before/after report"),
+        ],
+        "closer": "Backlog slimmed — the survivors ship as bundles. ⚓",
+    },
     "harden": {
         "arg": "the auth flow",
         "stages": [

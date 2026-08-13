@@ -137,7 +137,7 @@ class SiteGenerationTests(unittest.TestCase):
         agents = generator.load_agents(rendered / "agents", nested)
         self.assertEqual(12, len(agents))
         commands = generator.load_skills(nested, tuple(a.name for a in agents))
-        self.assertEqual(12, len(commands))
+        self.assertEqual(13, len(commands))
         self.assertIn("ship-issue", {c.slug for c in commands})
 
         flat = generator.load_skills(ROOT / "commands", tuple(a.name for a in agents))

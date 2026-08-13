@@ -24,7 +24,7 @@ the emoji mappings are frozen, and the name/logo trademark position — are trac
 as TODOs in this file.
 
 The published `commands/<name>/` URL segment is **settled**, not open: under the three-tier naming
-above, a page documenting one of the twelve documents a *command*, so the path is correct. That
+above, a page documenting one of the thirteen documents a *command*, so the path is correct. That
 supersedes an earlier decision to move it to `skills/`, which was taken before "command" and "order"
 were distinguished. Recorded on issue #72; do not reopen it here.
 
@@ -92,7 +92,7 @@ swapped at will.
 | Term | Register | What it names |
 |---|---|---|
 | **skill** | technical | The artifact on disk — `skills/<name>/SKILL.md`, in the [Agent Skills](https://agentskills.io) open-standard shape. |
-| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/fix-bug`. The twelve of them are **the commands**. |
+| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/fix-bug`. The thirteen of them are **the commands**. |
 | **order** | brand | What a single subagent is told to do *within* a command — one specialist's instruction. |
 
 The metaphor holds the three together: the captain issues a **command** to the crew, and carrying
@@ -122,10 +122,10 @@ belong to different registers.
 
 ### The narrow sense of "order"
 
-**"Order" is not a synonym for "command", and it is not a name for the twelve.** It is deliberately
+**"Order" is not a synonym for "command", and it is not a name for the thirteen.** It is deliberately
 smaller: an order is what one crew member is told to do inside a run. `/ship-issue` is a command;
 "root-cause the failure and write the minimal fix", handed to `senior-engineer` at the remediation
-loop, is an order. Test it by rewriting: if the sentence still works with "one of the twelve
+loop, is an order. Test it by rewriting: if the sentence still works with "one of the thirteen
 workflows", the word is **command**; if it only works with "one specialist's instruction", the word
 is **order**.
 
@@ -139,7 +139,7 @@ Worked examples:
 - ✅ "Install the crew, then run your first **command**: `/ship-issue 42`." — brand, the whole workflow.
 - ✅ "`/ship-issue` is defined by the `ship-issue` **skill**, installed at `.claude/skills/ship-issue/SKILL.md`." — technical, the file on disk.
 - ✅ "Every reviewer on the acceptance board gets the same **order**: judge the pushed PR head, independently." — brand, one subagent's instruction inside one command.
-- ❌ "Shipmates ships twelve **orders**." — they are **commands**.
+- ❌ "Shipmates ships thirteen **orders**." — they are **commands**.
 - ❌ "Install the **orders** into `~/.claude/`." — wrong twice: wrong tier, and install paths are tech-leading, so it is **skills**.
 
 ### Which register
@@ -160,13 +160,13 @@ where the reader first meets it, is better than picking a side.
 | **slash command**, **slash-command workflow** | "command" (brand-leading) or "skill" (tech-leading) | Anthropic's old label. Custom commands were merged into skills. It is also Claude-Code-only, and Shipmates' artifact is a portable standard. |
 | `.claude/commands/<name>.md` as the current layout | `.claude/skills/<name>/SKILL.md` | The flat layout is legacy. `install.sh` sweeps it aside on upgrade; document it only in migration notes. |
 | **sub-agent**, **sub agent** (hyphenated or spaced) | **subagent**, one word | Matches the Claude Code, Cursor, and OpenCode docs. One spelling, everywhere. |
-| **the orders**, **an order** *meaning one of the twelve workflows* | **the commands**, **a command** | "Order" was narrowed to a single subagent's instruction inside a command. Using it for the twelve collapses two tiers of the taxonomy. |
+| **the orders**, **an order** *meaning one of the thirteen workflows* | **the commands**, **a command** | "Order" was narrowed to a single subagent's instruction inside a command. Using it for the thirteen collapses two tiers of the taxonomy. |
 
 Plain **"command"** as the product noun is correct and wanted. The retirement is of the
 *compound* "slash command", not of the word "command".
 
 **"Order" is not retired — it is narrowed.** It stays in the vocabulary in its new, smaller sense
-([above](#the-narrow-sense-of-order)); what is retired is using it for the twelve workflows.
+([above](#the-narrow-sense-of-order)); what is retired is using it for the thirteen workflows.
 
 `subagent` is the technical noun. "The crew" / "shipmates" / "a shipmate" is the brand
 equivalent — use those in brand-leading copy, `subagent` in tech-leading copy.
@@ -363,7 +363,7 @@ Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 | No nouns-as-names | Not `/quality-gate`, not `/pr-flow`. If you can't phrase it as an instruction, it isn't a command. |
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
-The twelve that exist: `/ship-issue` · `/fix-bug` · `/plan-epics` · `/harden` · `/spike` ·
+The thirteen that exist: `/ship-issue` · `/fix-bug` · `/plan-epics` · `/consolidate-issues` · `/harden` · `/spike` ·
 `/migrate` · `/document` · `/release` · `/polish` · `/pr-review` · `/onboard` · `/refactor`.
 
 ---

@@ -43,7 +43,7 @@
       }
     },
     "opencode": {
-      "notes": "skill_path targets .opencode/commands/ rather than .opencode/skills/ as a safety property, not a preference: opencode skills are model-invoked through its native `skill` tool and have no `disable-model-invocation` equivalent, so shipping twelve worktree-creating, branch-pushing workflows as skills would make them auto-startable. Commands are `/`-invoked only. Subdirectories under .opencode take their plural names.",
+      "notes": "skill_path targets .opencode/commands/ rather than .opencode/skills/ as a safety property, not a preference: opencode skills are model-invoked through its native `skill` tool and have no `disable-model-invocation` equivalent, so shipping thirteen worktree-creating, branch-pushing workflows as skills would make them auto-startable. Commands are `/`-invoked only. Subdirectories under .opencode take their plural names.",
       "agent_path": ".opencode/agents/{name}.md",
       "skill_path": ".opencode/commands/{name}.md",
       "project_instructions": "AGENTS.md",
@@ -147,7 +147,7 @@
       }
     },
     "cursor": {
-      "notes": "Cursor ships no subagents, so the adapter emits only the twelve commands as skills and ignores `roles`. Cursor reads the open Agent Skills tree `.agents/skills/` natively (a first-party peer of `.cursor/skills/`, since Cursor 2.4), so skills ship to the shared `.agents/skills/` location — byte-identical with codex/antigravity/copilot. Verified 2026-08-03.",
+      "notes": "Cursor ships no subagents, so the adapter emits only the thirteen commands as skills and ignores `roles`. Cursor reads the open Agent Skills tree `.agents/skills/` natively (a first-party peer of `.cursor/skills/`, since Cursor 2.4), so skills ship to the shared `.agents/skills/` location — byte-identical with codex/antigravity/copilot. Verified 2026-08-03.",
       "agent_path": ".cursor/agents/{name}.md",
       "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
@@ -215,7 +215,7 @@
       }
     },
     "windsurf": {
-      "notes": "Windsurf (Cascade) discovers skills under `.windsurf/skills/`. It ships no subagents, so the adapter emits the crew as twelve skills and ignores `roles`.",
+      "notes": "Windsurf (Cascade) discovers skills under `.windsurf/skills/`. It ships no subagents, so the adapter emits the crew as thirteen skills and ignores `roles`.",
       "agent_path": ".windsurf/agents/{name}.md",
       "skill_path": ".windsurf/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Install reference · Shipmates docs</title>
-  <meta name="description" content="Install the shipmates CLI via Homebrew, Cargo, or the binary installer — then drop the crew and twelve commands into any harness's own tree.">
+  <meta name="description" content="Install the shipmates CLI via Homebrew, Cargo, or the binary installer — then drop the crew and thirteen commands into any harness's own tree.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/install/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="Install reference — Shipmates docs">
-  <meta property="og:description" content="Install the shipmates CLI via Homebrew, Cargo, or the binary installer — then drop the crew and twelve commands into any harness's own tree.">
+  <meta property="og:description" content="Install the shipmates CLI via Homebrew, Cargo, or the binary installer — then drop the crew and thirteen commands into any harness's own tree.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/install/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Install reference — Shipmates docs">
-  <meta name="twitter:description" content="Install the shipmates CLI via Homebrew, Cargo, or the binary installer — then drop the crew and twelve commands into any harness's own tree.">
+  <meta name="twitter:description" content="Install the shipmates CLI via Homebrew, Cargo, or the binary installer — then drop the crew and thirteen commands into any harness's own tree.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "name": "Install reference",
-    "description": "Install the shipmates CLI via Homebrew, Cargo, or the binary installer — then drop the crew and twelve commands into any harness's own tree.",
+    "description": "Install the shipmates CLI via Homebrew, Cargo, or the binary installer — then drop the crew and thirteen commands into any harness's own tree.",
     "url": "https://saman-mb.github.io/shipmates/docs/install/",
     "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
   }
@@ -102,14 +102,14 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="install-crew-title">2. Install the crew</h2>
-          <p class="section__lead">One command drops the crew and the twelve commands into a harness&#x27;s own tree.</p>
+          <p class="section__lead">One command drops the crew and the thirteen commands into a harness&#x27;s own tree.</p>
         </div>
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code
 shipmates install --harness opencode --local
 shipmates install --harness all --dir /path/to/project</code></pre>
-          <p>Installs into your global home directory by default. Use <code>--local</code> for the current directory, or <code>--dir /path/to/project</code> for a specific root. The crew and the twelve commands land in the exact tree your harness reads, in its own native format — nothing is downloaded; the CLI compiles the payload from sources built into the binary. Full per-harness paths are in the <a href="#harness-paths">table below</a>.</p>
-          <p>One thing to know up front: five harnesses take the full crew (<code>claude-code</code>, <code>opencode</code>, <code>antigravity</code>, <code>codex</code>, <code>github-copilot</code>). The two skill-only harnesses (<code>cursor</code>, <code>windsurf</code>) have no native subagent directory, so only the twelve commands land — the workflows still run, just without the named specialists.</p>
+          <p>Installs into your global home directory by default. Use <code>--local</code> for the current directory, or <code>--dir /path/to/project</code> for a specific root. The crew and the thirteen commands land in the exact tree your harness reads, in its own native format — nothing is downloaded; the CLI compiles the payload from sources built into the binary. Full per-harness paths are in the <a href="#harness-paths">table below</a>.</p>
+          <p>One thing to know up front: five harnesses take the full crew (<code>claude-code</code>, <code>opencode</code>, <code>antigravity</code>, <code>codex</code>, <code>github-copilot</code>). The two skill-only harnesses (<code>cursor</code>, <code>windsurf</code>) have no native subagent directory, so only the thirteen commands land — the workflows still run, just without the named specialists.</p>
         </div>
       </div>
     </section>
@@ -155,7 +155,7 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
           <ul>
             <li>Compiles the payload from its built-in canonical sources (<code>commands/</code> + <code>crew/</code>), rendering each command and persona into the harness&#x27;s own dialect — where its agents live, what its session metadata is called, which project-instructions file it reads.</li>
             <li>Writes into the tree each harness reads. Four harnesses (<code>codex</code>, <code>antigravity</code>, <code>cursor</code>, <code>github-copilot</code>) share one <code>.agents/skills/</code> tree — rendered once, byte-identical, so a multi-harness install has a single copy, not four. Crew stay harness-native (<code>.codex/agents/</code>, <code>.github/agents/</code>, <code>.agents/agents/</code>). The rest keep their own root: <code>.claude/</code>, <code>.windsurf/</code>, and opencode&#x27;s <code>.opencode/commands/</code>.</li>
-            <li>Emits the twelve skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on the five crew-bearing harnesses, the twelve crew personas: <code>agents/*.md</code> on claude-code, opencode and antigravity, <code>agents/*.toml</code> on codex, and <code>agents/*.agent.md</code> on github-copilot. The two skill-only harnesses (cursor, windsurf) get the skills and nothing else.</li>
+            <li>Emits the thirteen skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on the five crew-bearing harnesses, the twelve crew personas: <code>agents/*.md</code> on claude-code, opencode and antigravity, <code>agents/*.toml</code> on codex, and <code>agents/*.agent.md</code> on github-copilot. The two skill-only harnesses (cursor, windsurf) get the skills and nothing else.</li>
             <li>Writes an install receipt at <code>&lt;target&gt;/.shipmates/receipts/&lt;harness&gt;.json</code>. The receipt records Shipmates version, harness, resolved layout, and each file Shipmates owns with its SHA-256 hash.</li>
             <li>Reinstalling is idempotent: unchanged receipt-owned files are skipped; changed receipt-owned files get a sibling <code>.bak-…</code> backup before replacement. New files are added. Existing colliding files, including first-install files, are unmanaged until <code>--force</code> explicitly replaces them. Symlinked target paths are rejected.</li>
             <li>Warns about files recorded by the previous receipt but absent from the new payload instead of silently deleting them.</li>
@@ -206,8 +206,8 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
           </table>
         </div>
         <div class="order-prose">
-          <p><code>opencode</code> takes the twelve as flat <code>commands/&lt;name&gt;.md</code> files rather than skill directories. That is a safety decision, not a formatting one — opencode&#x27;s skills are model-invoked and its <code>SKILL.md</code> has no <code>disable-model-invocation</code> equivalent, so <code>commands/</code> is what keeps the twelve user-invoked only. The reasoning is on the <a href="../harnesses/#opencode">harness matrix</a>.</p>
-          <p><strong>One shared skills tree.</strong> <code>codex</code>, <code>antigravity</code>, <code>cursor</code> and <code>github-copilot</code> all read Agent Skills from the open <code>.agents/skills/</code> location, so shipmates renders the twelve skills <em>once</em>, in a neutral dialect, and writes them there — one source of truth, byte-identical across all four. Install several into one repo and you get a single <code>.agents/skills/</code>, not four divergent copies (which is what a per-harness rendering would collide into). The crew, whose formats differ, stay harness-native: <code>.codex/agents/&lt;name&gt;.toml</code>, <code>.github/agents/&lt;name&gt;.agent.md</code>, and <code>.agents/agents/&lt;name&gt;.md</code> for <code>antigravity</code> (the <code>agy</code> CLI, successor to the retired Gemini CLI). <code>windsurf</code> is deliberately left out of the shared tree — its docs make <code>.windsurf/skills/</code> the canonical location and <code>.agents/skills/</code> only a secondary scan — and <code>claude-code</code> keeps its own <code>.claude/skills/</code>.</p>
+          <p><code>opencode</code> takes the thirteen as flat <code>commands/&lt;name&gt;.md</code> files rather than skill directories. That is a safety decision, not a formatting one — opencode&#x27;s skills are model-invoked and its <code>SKILL.md</code> has no <code>disable-model-invocation</code> equivalent, so <code>commands/</code> is what keeps the thirteen user-invoked only. The reasoning is on the <a href="../harnesses/#opencode">harness matrix</a>.</p>
+          <p><strong>One shared skills tree.</strong> <code>codex</code>, <code>antigravity</code>, <code>cursor</code> and <code>github-copilot</code> all read Agent Skills from the open <code>.agents/skills/</code> location, so shipmates renders the thirteen skills <em>once</em>, in a neutral dialect, and writes them there — one source of truth, byte-identical across all four. Install several into one repo and you get a single <code>.agents/skills/</code>, not four divergent copies (which is what a per-harness rendering would collide into). The crew, whose formats differ, stay harness-native: <code>.codex/agents/&lt;name&gt;.toml</code>, <code>.github/agents/&lt;name&gt;.agent.md</code>, and <code>.agents/agents/&lt;name&gt;.md</code> for <code>antigravity</code> (the <code>agy</code> CLI, successor to the retired Gemini CLI). <code>windsurf</code> is deliberately left out of the shared tree — its docs make <code>.windsurf/skills/</code> the canonical location and <code>.agents/skills/</code> only a secondary scan — and <code>claude-code</code> keeps its own <code>.claude/skills/</code>.</p>
         </div>
       </div>
     </section>
@@ -220,7 +220,7 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>ls .claude/agents
 ls .claude/skills</code></pre>
-          <p>You should see twelve <code>.md</code> files in <code>agents/</code> and twelve directories in <code>skills/</code> each holding a <code>SKILL.md</code> — then run <code>/ship-issue &lt;issue#&gt;</code>.</p>
+          <p>You should see twelve <code>.md</code> files in <code>agents/</code> and thirteen directories in <code>skills/</code> each holding a <code>SKILL.md</code> — then run <code>/ship-issue &lt;issue#&gt;</code>.</p>
           <p>For an opencode install, check the two directories it uses instead:</p>
           <pre class="order-code" tabindex="0"><code>ls .opencode/agents
 ls .opencode/commands</code></pre>
