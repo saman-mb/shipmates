@@ -44,6 +44,10 @@ jobs:
           for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
             cargo run -- check --target "$target"
           done
+      # Codex has a native TOML crew plus shared Agent Skills. This checks the
+      # golden payload and installed layout only; it never invokes Codex.
+      - name: Check Codex golden payload and layout-install smoke
+        run: bash tests/test_codex_smoke.sh
       # Config-only (no network): each harness_watch entry's declared tree must
       # agree with its adapter skill path. The live docs-drift check
       # (python3 tools/harness_watch.py) is a manual dev command — see

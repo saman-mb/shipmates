@@ -89,7 +89,7 @@
               <tr><td><code>opencode</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a></td></tr>
               <tr><td><code>antigravity</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>github-copilot</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
-              <tr><td><code>codex</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>codex</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/46">#46</a>, <a href="https://github.com/saman-mb/shipmates/issues/47">#47</a></td></tr>
               <tr><td><code>cursor</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
               <tr><td><code>windsurf</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
             </tbody>
@@ -127,6 +127,29 @@
           <p>Role-level refinements survive the translation too. <code>art-director</code> declares <code>web-scopes: search</code> once in the canonical sources, and gets <code>WebSearch</code> without <code>WebFetch</code> on Claude Code, and <code>websearch: allow</code> without <code>webfetch</code> on opencode.</p>
           <p>opencode receives subagents at <code>.opencode/agents/&lt;name&gt;.md</code>, each with <code>mode: subagent</code>. Four other harnesses also take the full crew: <code>antigravity</code> (<code>.agents/agents/&lt;name&gt;.md</code>), <code>codex</code> (<code>.codex/agents/&lt;name&gt;.toml</code> — the one target whose agent format is TOML rather than Markdown), <code>github-copilot</code> (<code>.github/agents/&lt;name&gt;.agent.md</code>, note the double extension), and Claude Code itself.</p>
           <p><strong>One caveat on Codex, worth knowing before you install it.</strong> Every other crew-bearing harness restricts each specialist to the tools its role declares — the <code>architect</code> reviews and cannot edit, the <code>art-director</code> can search the web but not fetch. Codex documents no per-agent tool allowlist, so there is nothing for the adapter to write: its twelve subagents inherit whatever the session itself can do. That is a real gap, not an oversight — emitting an invented <code>tools</code> key would be ignored at best and rejected at worst, and claiming a boundary we do not enforce would be worse than saying plainly that we cannot. If per-agent least privilege matters to you, prefer a harness that supports it.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="codex" aria-labelledby="codex-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="codex-title">Codex quickstart</h2>
+          <p class="section__lead">Validate compiled payload and install layout; optionally run one safe headless skill.</p>
+        </div>
+        <div class="order-prose">
+          <pre class="order-code" tabindex="0"><code># Run from a Shipmates checkout
+SANDBOX="$(mktemp -d)"
+trap 'rm -rf "$SANDBOX"' EXIT
+printf '# Codex smoke sandbox\n' &gt; "$SANDBOX/README.md"
+printf '# Project instructions\n' &gt; "$SANDBOX/AGENTS.md"
+
+CODEX_PROJECT="$SANDBOX" bash tests/test_codex_smoke.sh
+# Optional live Codex check; requires authenticated `codex`:
+CODEX_PROJECT="$SANDBOX" CODEX_SMOKE=1 bash tests/test_codex_smoke.sh</code></pre>
+          <p>Codex skills follow the open Agent Skills layout at <code>.agents/skills/&lt;name&gt;/SKILL.md</code>. Named crew are Codex-native TOML files at <code>.codex/agents/&lt;name&gt;.toml</code>. The default smoke is explicitly a golden/layout-install check: it verifies all twelve skills, all twelve TOML agents, the committed Codex digest, and the install diagnosis. It does not invoke Codex.</p>
+          <p><strong>Fidelity and caveats.</strong> Skills use the shared neutral payload, while crew instructions are rendered for Codex. Codex has no documented per-agent tool allowlist, so crew inherit the session's tools. Agent Skills vendor keys such as <code>disable-model-invocation</code> are not emitted. The optional live path invokes the installed <code>harden</code> skill in read-only report mode; that bounded exercise does not make Codex runtime-verified.</p>
+          <p><strong>Tier C status.</strong> The current adapter emits the files above, but the external orchestrator in <a href="https://github.com/saman-mb/shipmates/issues/13">#13</a> is not implemented here. Therefore a real issue → reviewed PR with CI polling and a bounded remediation loop has not been demonstrated on Codex; flagship validation remains tracked in <a href="https://github.com/saman-mb/shipmates/issues/46">#46</a>.</p>
         </div>
       </div>
     </section>

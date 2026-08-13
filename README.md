@@ -215,6 +215,25 @@ receipt-owned superseded command layout as it writes; pass `--no-migrate` to lea
 For doctor, `--no-migrate` is valid only with `--fix`:
 `shipmates doctor --fix --no-migrate` restores files without migrating old commands.
 
+**Codex quickstart.** From a Shipmates checkout, run this layout/install smoke. It creates a temporary
+sandbox, checks the Codex golden digest, installs the payload, and diagnoses the receipt-backed install:
+
+```bash
+bash tests/test_codex_smoke.sh
+```
+
+With an authenticated local Codex CLI, add `CODEX_SMOKE=1` to run the optional read-only `harden` skill
+headlessly in that temporary sandbox:
+
+```bash
+CODEX_SMOKE=1 bash tests/test_codex_smoke.sh
+```
+
+The CI smoke is deliberately layout/install-only; neither path proves Codex runtime support or Tier C
+`/ship-issue` completion. Tier C still needs the external orchestrator tracked in
+[#13](https://github.com/saman-mb/shipmates/issues/13); see the
+[Codex quickstart](https://saman-mb.github.io/shipmates/docs/harnesses/#codex).
+
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
 `disable-model-invocation` is not a frontmatter key a `SKILL.md` recognises there, so declaring it
