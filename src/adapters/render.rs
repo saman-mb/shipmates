@@ -23,8 +23,33 @@ pub struct Dialect {
     pub args_token: &'static str,
 }
 
+const SENTINEL: &str = "\u{00A7}agents-instructions";
+const COMMAND_PREAMBLE_MARKER: &str = "<!-- shipmates:command-preamble -->";
+const SUBAGENT_PREAMBLE_MARKER: &str = "<!-- shipmates:subagent-preamble -->";
+const COST_DOCTRINE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/COST.md"));
+
 fn render_token(text: &str, token: &str, value: &str) -> String {
     text.replace(token, value)
+}
+
+fn doctrine_section(start: &str, end: &str) -> &'static str {
+    let start = COST_DOCTRINE
+        .find(start)
+        .expect("cost doctrine start marker missing")
+        + start.len();
+    let end = COST_DOCTRINE[start..]
+        .find(end)
+        .expect("cost doctrine end marker missing")
+        + start;
+    COST_DOCTRINE[start..end].trim()
+}
+
+fn command_preamble() -> &'static str {
+    doctrine_section("<!-- command-preamble:start -->", "<!-- command-preamble:end -->")
+}
+
+fn subagent_preamble() -> &'static str {
+    doctrine_section("<!-- subagent-preamble:start -->", "<!-- subagent-preamble:end -->")
 }
 
 /// Resolve explicit repo-instructions tokens in neutral prose.
@@ -39,7 +64,9 @@ fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
 
 /// Render a harness-neutral command body into a harness's dialect.
 pub fn render_body(text: &str, d: &Dialect) -> String {
-    let mut out = render_instructions(text, d.instructions_primary, d.instructions_fallback);
+    let mut out = text.replace(COMMAND_PREAMBLE_MARKER, command_preamble());
+    out = out.replace(SUBAGENT_PREAMBLE_MARKER, subagent_preamble());
+    out = render_instructions(&out, d.instructions_primary, d.instructions_fallback);
     out = render_token(&out, "{{agents-glob}}", &format!("{}/*.md", d.agents_glob));
     out = render_token(&out, "{{session-key}}", d.session_key);
     out = render_token(&out, "{{general-purpose}}", d.general_purpose);
@@ -57,6 +84,12 @@ pub fn render_body(text: &str, d: &Dialect) -> String {
     out = render_token(&out, "{{role:sdet}}", "subagent_type: sdet");
     out = render_token(&out, "{{role-reference}}", "`subagent_type`");
     out
+}
+
+/// Render a role body through the same neutral-to-harness rules as commands,
+/// including the stable return preamble shared by every subagent.
+pub fn render_role_body(text: &str, d: &Dialect) -> String {
+    render_body(text, d)
 }
 
 /// Replace every `{{name}}` argument placeholder with the harness's token.
@@ -389,5 +422,16 @@ mod tests {
             &CLAUDE_CODE,
         );
         assert_eq!(body, "Literal AGENTS.md and __AGENTS__ stay unchanged.");
+    }
+
+    #[test]
+    fn test_shared_preambles_expand_and_leave_no_markers() {
+        let command = render_body("<!-- shipmates:command-preamble -->\nbody", &CLAUDE_CODE);
+        let role = render_role_body("<!-- shipmates:subagent-preamble -->\nrole", &CLAUDE_CODE);
+
+        assert!(command.contains("## Cost discipline"));
+        assert!(role.contains("## Return discipline"));
+        assert!(!command.contains("shipmates:command-preamble"));
+        assert!(!role.contains("shipmates:subagent-preamble"));
     }
 }

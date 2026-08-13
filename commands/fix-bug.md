@@ -4,18 +4,15 @@ description: Fix a bug the honest way — reproduce it as a failing test first, 
 argument-hint: <issue-number or a description of the bug> [optional repro hints]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: issue, repro
-invocation: @{{role}}({{issue}})
-board: native
 ---
 # /fix-bug — reproduce → root-cause → fix → prove
+<!-- shipmates:command-preamble -->
 
 Take a bug from report to a **reviewed, CI-green PR** — but gated on the one signal that actually
 proves a bug is fixed: a **regression test that fails before the change and passes after**. No repro,
 no fix. Symptom-patching without a root cause is rejected.
 
-Input (**{{issue}}**): a GitHub issue number *or* a plain-text description of the bug, plus any repro
-hints. If it's a number, pull it with `gh issue view`. If it's empty, ask what's broken.
+The bug description and reproduction hints come from the Runtime input section at the end of this workflow.
 
 ---
 
@@ -93,3 +90,9 @@ follow-up issues. Report: root cause, the red→green proof, review verdicts, fi
 - The reviewer is a **fresh** agent, never the one who wrote the fix.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined, and note it.
+
+## Runtime input
+
+`$ARGUMENTS` is the complete invocation text: a GitHub issue number or plain-text bug description,
+plus optional reproduction hints. If it is a number, pull it with `gh issue view`; if empty, ask
+what is broken.

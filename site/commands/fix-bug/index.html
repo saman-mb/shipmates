@@ -123,10 +123,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/fix-bug</code></h1>
           <p class="order-detail__tagline">reproduce → root-cause → fix → prove</p>
           <p class="order-detail__desc">Fix a bug the honest way — reproduce it as a failing test first, root-cause it, apply the minimal fix, and prove it with the test flipping red→green while the suite stays green. Worktree-isolated, CI-gated, opens a PR.</p>
-          <div class="order-prose">
-            <p>Take a bug from report to a <strong>reviewed, CI-green PR</strong> — but gated on the one signal that actually proves a bug is fixed: a <strong>regression test that fails before the change and passes after</strong>. No repro, no fix. Symptom-patching without a root cause is rejected.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): a GitHub issue number <em>or</em> a plain-text description of the bug, plus any repro hints. If it&#x27;s a number, pull it with <code>gh issue view</code>. If it&#x27;s empty, ask what&#x27;s broken.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -165,6 +161,16 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Seven stages, in order. Two are hard gates — the run stops there until they pass.</p>
+        </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>Take a bug from report to a <strong>reviewed, CI-green PR</strong> — but gated on the one signal that actually proves a bug is fixed: a <strong>regression test that fails before the change and passes after</strong>. No repro, no fix. Symptom-patching without a root cause is rejected.</p>
+          <p>The bug description and reproduction hints come from the Runtime input section at the end of this workflow.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -244,6 +250,10 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             </div>
           </li>
         </ol>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> is the complete invocation text: a GitHub issue number or plain-text bug description, plus optional reproduction hints. If it is a number, pull it with <code>gh issue view</code>; if empty, ask what is broken.</p>
+        </div>
       </div>
     </section>
 

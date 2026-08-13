@@ -4,11 +4,9 @@ description: Read an unfamiliar repo and write the agent-facing context file eve
 argument-hint: [path to the repo — defaults to the current one]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
-arguments: path
-invocation: @{{role}}({{path}})
-board: native
 ---
 # /onboard — recon → draft → prove it answers
+<!-- shipmates:command-preamble -->
 
 Every role in this crew is told to hold the work to the standard in *your* repo's `README` /
 `{{project-instructions}}`. Nothing produces that file. On a repo without a good one the whole crew quietly degrades
@@ -16,7 +14,7 @@ to generic advice — and the failure is silent, because a vague context file st
 output. This command writes it, and **gates on a fresh agent being able to answer the crew's actual
 questions from the file alone**.
 
-Input (**{{path}}**): a path to a repo. Empty means the current one.
+The repository path comes from the Runtime input section at the end of this workflow.
 
 **This is not `/document`.** The difference is the *audience*, not the topic. `/document` writes for
 **humans** and gates on a fresh reader completing a task. `/onboard` writes the **agent-facing
@@ -151,3 +149,7 @@ passed on.
 - Don't write a README. If the content is for humans, it belongs in `/document`.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined, and note it.
+
+## Runtime input
+
+`$ARGUMENTS` is an optional repository path. Empty means the current repository.

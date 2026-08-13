@@ -4,18 +4,16 @@ description: De-risk an open technical decision with a time-boxed spike — fram
 argument-hint: <the open question or decision — e.g. "which queue for the job system" or "SSR vs SPA">
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: question
-invocation: @{{role}}({{question}})
-board: native
 ---
 # /spike — prototype the options, recommend with an ADR
+<!-- shipmates:command-preamble -->
 
 Answer a hard "which way should we build this?" question with evidence instead of a hunch. Frame the
 decision, have engineers prototype **several approaches in parallel as disposable spikes**, judge them
 against the project's real constraints, and record the outcome as an **ADR** (Architecture Decision
 Record). The output is a *decision with reasoning*, not shippable code — the prototypes are throwaway.
 
-Input (**{{question}}**): the open question or decision to resolve. If empty, ask what decision is blocked.
+The open question comes from the Runtime input section at the end of this workflow.
 
 ---
 
@@ -28,7 +26,7 @@ Input (**{{question}}**): the open question or decision to resolve. If empty, as
   question, thrown away after. `ISOLATION` = each prototype in its own throwaway worktree/branch so they
   don't collide and nothing lands on the base branch.
 - **Constraints & priorities** = from the repo (quality attributes that matter here — performance,
-  simplicity, reversibility, team familiarity, cost) plus anything in `{{question}}`.
+  simplicity, reversibility, team familiarity, cost) plus anything in the validated runtime input.
 - **ADR delivery** — `MODE` = `pr` (default) or `edit-in-place`: where the **ADR** lands. This is a
   different axis from `ISOLATION` above: `ISOLATION` governs the throwaway prototype worktrees in
   Stage 1, which always exist and are always torn down; `MODE` governs only where the *deliverable*
@@ -122,3 +120,7 @@ review on — and offer the next step: `/plan-epics` to turn the chosen directio
   inlined and note it.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work.
+
+## Runtime input
+
+`$ARGUMENTS` is the open question or decision to resolve. If empty, ask what decision is blocked.

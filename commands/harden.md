@@ -4,19 +4,16 @@ description: Security-harden a surface — threat-model it, rank the findings, a
 argument-hint: <what to harden — a module, an endpoint, an auth flow, or the whole app>
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: surface
-invocation: @{{role}}({{surface}})
-board: native
 ---
 # /harden — threat-model → remediate → re-review
+<!-- shipmates:command-preamble -->
 
 Take a surface and make it defensibly secure: a `security-engineer` threat-models it, findings are
 ranked and fixed, and the loop closes only when **every finding is either remediated or carries an
 explicit, reasoned accepted-risk note** — and the secrets/dependency scans are clean. The gate is
 "nothing Critical/High left unaddressed," not "looks fine."
 
-Input (**{{surface}}**): the surface to harden — a module, an endpoint/route, an auth or payment flow,
-a dependency set, or the whole app. If empty, ask which surface (don't silently pick the whole repo).
+The hardening surface comes from the Runtime input section at the end of this workflow.
 
 ---
 
@@ -43,7 +40,7 @@ a dependency set, or the whole app. If empty, ask which surface (don't silently 
 
 Map what's in scope: the entry points (routes, CLI, message handlers), the trust boundaries, what data
 crosses them, and what an attacker controls. List the assets worth protecting. Keep the surface bounded
-to `{{surface}}` — note explicitly what you're *not* covering so it isn't mistaken for cleared.
+to the validated runtime input — note explicitly what you're *not* covering so it isn't mistaken for cleared.
 
 ## Stage 1 — Threat-model & find  (agent: `security-engineer`)
 
@@ -133,3 +130,8 @@ in place with the PR open for a human to merge.
   classifies the change as such and **recommends** a `/harden` pass rather than convening the review
   itself. If the `security-engineer` role doesn't resolve to an `{{agents-glob}}` here, fall back
   to `{{general-purpose}}` with the brief inlined and note it.
+
+## Runtime input
+
+`$ARGUMENTS` names the surface to harden: a module, endpoint/route, auth or payment flow, dependency
+set, or whole app. If empty, ask which surface; do not silently pick the whole repo.

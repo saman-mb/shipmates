@@ -1,8 +1,5 @@
 use super::Adapter;
-use super::render::{
-    ANTIGRAVITY, CrewFormat, emit_crew_files, emit_shared_skills,
-    emit_shared_tool_skills,
-};
+use super::render::{emit_crew_files, emit_shared_skills, emit_shared_tool_skills, ANTIGRAVITY, CrewFormat};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 

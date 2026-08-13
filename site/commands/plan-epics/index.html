@@ -109,10 +109,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/plan-epics</code></h1>
           <p class="order-detail__tagline">briefs → GitHub epics + user stories</p>
           <p class="order-detail__desc">Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a product-manager subagent authoring each epic&#x27;s stories in parallel.</p>
-          <div class="order-prose">
-            <p>Turn the brief(s) in <strong>$ARGUMENTS</strong> into a tracked backlog: one or more <strong>epics</strong> (labelled <code>epic</code>), each broken into <strong>user stories</strong> (labelled <code>user-story</code> + area tags), created as GitHub issues and cross-linked. When the work spans <strong>multiple epics, a <code>product-manager</code> subagent authors each epic&#x27;s stories in parallel</strong> — one PM per epic.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): the brief(s). May be inline text, a path to a file/dir of briefs, or several briefs separated by <code>---</code> or numbered. If it&#x27;s empty, ask the user for the brief before doing anything.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -151,6 +147,16 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Five stages, in order.</p>
+        </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>Turn the supplied brief(s) into a tracked backlog: one or more <strong>epics</strong> (labelled <code>epic</code>), each broken into <strong>user stories</strong> (labelled <code>user-story</code> + area tags), created as GitHub issues and cross-linked. When the work spans <strong>multiple epics, a <code>product-manager</code> subagent authors each epic&#x27;s stories in parallel</strong> — one PM per epic.</p>
+          <p>The briefs come from the Runtime input section at the end of this workflow.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -223,6 +229,10 @@
             </div>
           </li>
         </ol>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> contains one or more briefs. A brief may be inline text, a path to a file or directory, or several briefs separated by <code>---</code> or numbering. If empty, ask for the brief before doing anything.</p>
+        </div>
       </div>
     </section>
 

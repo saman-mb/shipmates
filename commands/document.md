@@ -4,18 +4,16 @@ description: Write or refresh documentation that actually works — the technica
 argument-hint: <what to document — a module, a feature, a public API, the README, the whole repo>
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: target
-invocation: @{{role}}({{target}})
-board: native
 ---
 # /document — draft from the code → fresh-reader test → fix drift
+<!-- shipmates:command-preamble -->
 
 Produce docs that get a reader to *done*, gated on the one check that catches bad docs: a **fresh agent
 with no prior context follows the instructions against the real repo and must reach the stated result**.
 Docs that drift from the code or can't be completed are rejected and fixed. The gate is "a newcomer can
 actually follow this," not "it reads well."
 
-Input (**{{target}}**): what to document — a module, a feature, a public API/CLI, the README/getting-started,
+Input: what to document — a module, a feature, a public API/CLI, the README/getting-started,
 a migration guide, or the whole repo. If empty, ask what to document and for whom.
 
 ---
@@ -108,3 +106,8 @@ the doc type, the fresh-reader's final result (in its words), rounds taken, and 
   than erroring or duplicating work.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.
+
+## Runtime input
+
+`$ARGUMENTS` is the complete invocation text. Use it as the documentation target and audience hint;
+if empty, ask what to document and for whom.

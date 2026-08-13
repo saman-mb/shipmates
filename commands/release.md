@@ -4,20 +4,16 @@ description: Cut a release safely — assemble the changelog from what actually 
 argument-hint: [version — e.g. v1.4.0, or "patch"/"minor"/"major" to derive it]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: version
-invocation: @{{role}}({{version}})
-board: native
 ---
 # /release — changelog → CI-green tag → (opt-in) publish
+<!-- shipmates:command-preamble -->
 
 Turn "what's merged since the last release" into a clean, reversible release. The `technical-writer`
 builds the changelog from the real merge history (every user-visible change covered), the version is
 bumped consistently, and it's gated on **green CI at the exact commit being tagged** plus an SRE
 pre-flight for rollback and migration safety. Publishing is opt-in.
 
-Input (**{{version}}**): an explicit version (`v1.4.0`) or a bump keyword (`patch`/`minor`/`major`) to
-derive it from the last tag via semver. If empty, infer the bump from the change set (breaking →
-major, features → minor, fixes only → patch) and propose it.
+The requested version comes from the Runtime input section at the end of this workflow.
 
 ---
 
@@ -86,3 +82,8 @@ command if manual), plus any human follow-ups (secret/config changes, migration 
 - Respect `PUBLISH_MODE` — never publish unattended unless explicitly set to `auto`.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.
+
+## Runtime input
+
+`$ARGUMENTS` contains the requested version or bump keyword. If empty, infer the bump from the change
+set and propose it.
