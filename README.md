@@ -143,13 +143,15 @@ cargo install shipmates
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
-Then install the crew for a harness. By default it drops into the current directory; pass `--dir`
-to target a specific project:
+Then install the crew for a harness. By default it drops into your global home directory. Use
+`--local` for the current directory, or `--dir` to target a specific project:
 
 ```bash
 shipmates install --harness claude-code     # the proven target
 shipmates install --harness opencode        # format-verified, not runtime-verified
 shipmates install --harness codex
+shipmates install --harness claude-code --local
+shipmates install --harness claude-code --dir /path/to/project
 ```
 
 Tools are off by default. Run `install` in a terminal and it asks which you'd like; name them
@@ -184,18 +186,34 @@ ones. Their crew still land in each harness's own native format. `windsurf` keep
 One caveat worth knowing before you pick Codex: it documents no per-agent tool allowlist, so its
 crew inherit whatever the session can do rather than the least-privilege set every other target
 enforces. Each harness records its evidence, and the date it was checked, in
-`tools/harness_matrix.json`. Installing never touches your working tree — anything that
-changes a repo does so on a branch — and `shipmates uninstall` is not (yet) implemented; delete the
-tree the harness installed instead.
+`tools/harness_matrix.json`. Each harness install writes a receipt at
+`<target>/.shipmates/receipts/<harness>.json`. It records Shipmates version, harness, layout, and every
+file Shipmates owns with its SHA-256 hash. Reinstalling the same payload skips unchanged files and
+creates backups only for changed files. Files outside the receipt are unmanaged: Shipmates warns and
+leaves them alone. A first install also preserves existing colliding files and warns; pass `--force`
+when replacement is intentional. Install preflights one harness and rolls back payload changes if
+payload or receipt publication fails; `--harness all` is not globally atomic.
 
-**Check an install with `shipmates doctor`.** Run `shipmates doctor` (add `--dir` to point at a
-specific project) for a read-only health report: is the harness tree present, did every crew agent
-and skill land, has any installed file drifted from the running binary, and is an old
-`commands/<name>.md` layout shadowing a skill? `shipmates doctor --fix` repairs what it can —
-migrating a superseded command layout to the skill that supersedes it and rewriting missing or
-drifted files — and backs up everything it touches under `.shipmates-backup/` first. A plain
-`install` also migrates a superseded command layout for you as it writes; pass `--no-migrate` to
-leave your old files in place.
+`shipmates uninstall` reads that receipt. It defaults to the global home directory; use `--local` or
+`--dir /path/to/project` for another root. With exactly one valid receipt, `--harness` is optional;
+multiple valid receipts require `--harness`. An explicit missing or invalid receipt fails closed, and
+an invalid sibling receipt also blocks discovery. No receipt directory means nothing to uninstall. It
+removes only receipt-owned, unchanged files and preserves unmanaged files. Modified or unreadable
+files retain the receipt. The receipt is the ownership record — never remove a whole harness tree to
+uninstall.
+
+**Check an install with `shipmates doctor`.** Run `shipmates doctor` for a read-only health report
+against the global home directory and the `claude-code` harness by default. Pass `--harness` to
+check another harness, or use `--local` / `--dir /path/to/project` for another root; doctor does not
+discover harnesses from receipts. It checks the harness tree, receipt ownership, missing files,
+modified or unreadable files, and an old `commands/<name>.md` layout shadowing a skill. A missing receipt
+warns that ownership is unknown; existing files stay untouched and only
+genuinely missing payload files may be restored. An invalid receipt is a problem, and `doctor --fix`
+refuses ownership-based repair. `doctor --fix` repairs receipt-owned files only, backing up existing
+files it replaces or migrates under `.shipmates-backup/` first. A plain `install` also migrates a
+receipt-owned superseded command layout as it writes; pass `--no-migrate` to leave old files in place.
+For doctor, `--no-migrate` is valid only with `--fix`:
+`shipmates doctor --fix --no-migrate` restores files without migrating old commands.
 
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and

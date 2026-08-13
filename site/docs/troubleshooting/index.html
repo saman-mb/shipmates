@@ -119,7 +119,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> <code>shipmates install</code> writes into the <em>current</em> directory by default — <code>claude-code</code> files go to <code>./.claude/</code>, not <code>~/.claude/</code>. <strong>Fix:</strong> run it from the project directory you want, or pin the root with <code>--dir /path/to/project</code>. Verify with <code>ls .claude/agents</code> and <code>ls .claude/skills</code>.</p>
+              <p><strong>Cause:</strong> <code>shipmates install</code> writes into the global home directory by default — <code>claude-code</code> files go to <code>~/.claude/</code>, not the current directory. <strong>Fix:</strong> pass <code>--local</code> for the current directory, or pin the root with <code>--dir /path/to/project</code>. Verify with <code>ls .claude/agents</code> and <code>ls .claude/skills</code>.</p>
             </div>
           </details>
           <details class="faq__item">
@@ -193,7 +193,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Check it:</strong> run <code>shipmates doctor</code> (add <code>--dir /path/to/project</code> to point at a specific tree). It reports, in a plain pass/attention list, whether the harness&#x27;s directory is present, whether every crew agent and skill landed, whether any installed file has drifted from the running binary, and whether an old <code>commands/&lt;name&gt;.md</code> layout is shadowing a skill. Doctor is read-only — it never changes anything until you ask. <strong>Fix it:</strong> run <code>shipmates doctor --fix</code> and it repairs what it can — it migrates a superseded command layout to the skill that replaces it, and rewrites any missing or drifted crew and skill files back to the running version. Everything it touches is backed up first, under <code>.shipmates-backup/</code> in the target directory, so a change is always recoverable. Add <code>--no-migrate</code> to restore missing and drifted files while leaving a superseded <code>commands/&lt;name&gt;.md</code> in place — the same escape hatch <code>install --no-migrate</code> gives. Doctor exits non-zero when a problem remains, so it slots cleanly into a script or CI check.</p>
+              <p><strong>Check it:</strong> run <code>shipmates doctor</code> (global home and <code>claude-code</code> by default; use <code>--harness</code>, <code>--local</code>, or <code>--dir /path/to/project</code> to select another harness or root). Doctor does not discover harnesses from receipts. It reports, in a plain pass/attention list, whether the harness tree is present, whether expected files are missing, whether installed files are modified or unreadable. Doctor is read-only — it never changes anything until you ask. A missing receipt reports unknown ownership and preserves existing files; an invalid receipt is a problem and <code>--fix</code> refuses repair. <strong>Fix it:</strong> run <code>shipmates doctor --fix</code> and it repairs receipt-owned files only, backing up replacements under <code>.shipmates-backup/</code>. Receipt-owned legacy commands may be migrated; unowned legacy files remain. <code>--no-migrate</code> requires <code>--fix</code>: use <code>shipmates doctor --fix --no-migrate</code> to restore files while leaving a superseded <code>commands/&lt;name&gt;.md</code> in place. Doctor exits non-zero when a problem remains, so it slots cleanly into a script or CI check.</p>
             </div>
           </details>
           <details class="faq__item">
@@ -220,7 +220,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> <code>--harness</code> selects the tree, and the default is <code>claude-code</code> — a forgotten flag installs there. <strong>Fix:</strong> remove the wrong tree (<code>rm -rf .claude</code> — Shipmates installs whole trees, so removal is by hand) and reinstall with the correct <code>--harness</code>. Run <code>shipmates targets</code> to list the names. If the tree is the <em>right</em> harness but looks stale or partly missing — say after an upgrade — reach for <code>shipmates doctor --fix</code> first: it restores the missing and drifted files (backing up whatever it changes) instead of removing anything.</p>
+              <p><strong>Cause:</strong> <code>--harness</code> selects the tree, and the default is <code>claude-code</code> — a forgotten flag installs there. <strong>Fix:</strong> run <code>shipmates targets</code> to list the names, then reinstall with the correct <code>--harness</code>. If the tree is the <em>right</em> harness but looks stale or partly missing — say after an upgrade — reach for <code>shipmates doctor --fix</code> first: it restores the missing and drifted files (backing up whatever it changes) instead of removing anything. The install receipt records the harness and layout for uninstall, so uninstall does not need a guessed <code>--harness</code>.</p>
             </div>
           </details>
           <details class="faq__item">
@@ -229,7 +229,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p>Shipmates installs whole trees and keeps no manifest. Remove the installed paths by hand: for claude-code <code>rm -rf .claude/agents .claude/skills</code>; for opencode <code>rm -rf .opencode/agents .opencode/commands</code>; for skill-only harnesses <code>rm -rf &lt;tree&gt;/skills</code>. Nothing outside the harness tree is ever touched.</p>
+              <p>Run <code>shipmates uninstall</code>. It defaults to the global home directory and reads <code>&lt;target&gt;/.shipmates/receipts/&lt;harness&gt;.json</code>; one valid receipt permits omitted <code>--harness</code>, while multiple valid receipts require it. Missing or invalid receipts fail closed; no receipt directory is a no-op. It removes only receipt-owned files whose hashes still match. Modified, unreadable, and unmanaged files trigger warnings and remain untouched. Use <code>--local</code> or <code>--dir /path/to/project</code> when the install is not in the global home directory. Do not use <code>rm -rf</code> on the whole harness tree.</p>
             </div>
           </details>
         </div>

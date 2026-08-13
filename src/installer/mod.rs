@@ -1,6 +1,8 @@
-pub mod legacy_hooks;
+pub mod apply;
 pub mod manifest_db;
 pub mod migrate;
+pub mod plan;
+pub mod uninstall;
 
 use std::fs::{self, File};
 use std::io::Write;
@@ -50,9 +52,7 @@ pub fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
     atomic_write_bytes(path, content.as_bytes())
 }
 
-/// Write arbitrary bytes to `path` atomically and durably.
-///
-/// Used where backup fidelity must not depend on UTF-8 decoding.
+/// Write arbitrary bytes atomically and durably.
 pub fn atomic_write_bytes(path: &Path, content: &[u8]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;

@@ -133,6 +133,16 @@ fn provision_tool_deps(scripts: &[PathBuf]) {
     }
 }
 
+fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
+    if let Some(dir) = dir {
+        Ok(PathBuf::from(dir))
+    } else if local {
+        Ok(Path::new(".").to_path_buf())
+    } else {
+        home::home_dir().context("Failed to determine home directory")
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -143,16 +153,13 @@ fn main() -> Result<()> {
             dir,
             with_tools,
             no_migrate,
+            force,
         } => {
             let root = Path::new(".");
             let roles_path = root.join("crew");
             let commands_path = root.join("commands");
             let tools_path = root.join("toolbox");
 
-            // A `brew`/`cargo`-installed binary has no checkout, so the
-            // canonical sources are compiled in by `build.rs`. Fall back to
-            // the on-disk `crew/` + `commands/` when present (the repo dev
-            // loop), else the embedded payload.
             let roles = if roles_path.is_dir() {
                 catalog::load_roles(&roles_path).context("Failed to load roles")?
             } else {
@@ -164,11 +171,6 @@ fn main() -> Result<()> {
                 catalog::load_commands_embedded().context("Failed to load embedded commands")?
             };
 
-            // Tools are opt-in. When `--with-tools` is omitted, an interactive
-            // terminal gets to pick from the available tools; a non-interactive
-            // run (CI, a pipe, a script) installs none, keeping a plain install
-            // to crew + commands as it has always been. When the flag IS given,
-            // it names the tools (or `all` / `none`) with no prompt.
             let non_interactive_default = with_tools.is_none() && !std::io::stdin().is_terminal();
             let selected_tools = if non_interactive_default {
                 Vec::new()
@@ -179,7 +181,6 @@ fn main() -> Result<()> {
                     catalog::load_tools_embedded().context("Failed to load embedded tools")?
                 };
                 match with_tools {
-                    // Flag given: resolve names / `all` / `none`, error on unknown.
                     Some(want) => {
                         let want: Vec<String> =
                             want.into_iter().filter(|w| !w.is_empty()).collect();
@@ -201,31 +202,18 @@ fn main() -> Result<()> {
                                 .collect()
                         }
                     }
-                    // Flag omitted on a terminal: let the user pick.
                     None if available.is_empty() => Vec::new(),
                     None => prompt_for_tools(&available),
                 }
             };
 
-            let target_dir = if let Some(d) = dir {
-                PathBuf::from(d)
-            } else if local {
-                root.to_path_buf()
-            } else {
-                home::home_dir().context("Failed to determine home directory")?
-            };
-
-            // `--harness all` fans out to every supported target; a single name
-            // installs just that one.
+            let target_dir = resolve_target_dir(local, dir)?;
             let harnesses: Vec<String> = if harness == "all" {
                 adapters::targets().iter().map(|s| s.to_string()).collect()
             } else {
                 vec![harness]
             };
 
-            // Scripts of selected tools that declare runtime deps (`requires:`),
-            // by bundled filename — their installed copies get pre-warmed below so
-            // the tool works without the user installing anything.
             let provision_filenames: std::collections::HashSet<String> = selected_tools
                 .iter()
                 .filter(|t| !t.requires.is_empty())
@@ -240,114 +228,212 @@ fn main() -> Result<()> {
 
             for harness in &harnesses {
                 let adapter = adapters::select(harness)?;
-                let files = adapter.build(&roles, &cmds)?;
-                let tool_files = adapter.build_tools(&selected_tools);
-                // `harnesses/<target>/` — the harness's staging container, so its
-                // own dotdirs (`.claude/`, `.codex/`, the shared `.agents/`, …)
-                // land at the target root when this prefix is stripped.
-                let strip = format!("{}/", adapter.container());
-
-                // Plan the legacy-command → skill migration from the built payload
-                // (container-prefixed keys) BEFORE the write loop consumes `files`.
-                // Self-limiting: only harnesses that ship a skill beside a live
-                // legacy `commands/<name>.md` on disk yield a non-empty plan, so
-                // opencode (commands, no skills) and the `.agents/*` skill trees
-                // never touch a current command file.
+                let built = adapter.build(&roles, &cmds)?;
+                let payload_prefix = format!("{}/", adapter.container());
+                for key in built.keys() {
+                    if let Some(rel) = key.strip_prefix(&payload_prefix) {
+                        installer::manifest_db::resolve_target_relative(
+                            &target_dir,
+                            Path::new(rel),
+                        )?;
+                    }
+                }
+                let plan = installer::plan::InstallPlan::from_payload(
+                    adapter.as_ref(),
+                    harness,
+                    built.clone(),
+                    adapter.build_tools(&selected_tools),
+                )?;
+                let migration_candidates = if force {
+                    installer::migrate::plan(&target_dir, &built, adapter.container())?
+                } else {
+                    let (_, previous, _) = installer::plan::read_receipt(&target_dir, harness);
+                    if let Some(owned) = previous.as_ref() {
+                        installer::migrate::plan(&target_dir, &built, adapter.container())?
+                            .into_iter()
+                            .filter(|item| {
+                                owned.file(&item.legacy_path.to_string_lossy()).is_some()
+                            })
+                            .collect()
+                    } else {
+                        Vec::new()
+                    }
+                };
                 let migration_items = if no_migrate {
                     Vec::new()
                 } else {
-                    installer::migrate::plan(&target_dir, &files, adapter.container())
+                    migration_candidates.clone()
                 };
-
-                // The real count of files this harness writes — 24 for the
-                // crew-bearing targets (12 crew + 12 commands), 12 for the
-                // skill-only ones, plus any opt-in tool files. Never the fixed
-                // roles+commands total, which over-counted every skill-only
-                // install.
-                let mut written = 0usize;
-                for (path_str, content) in files.into_iter().chain(tool_files) {
-                    // Drop the `harnesses/<target>/` container so the harness's
-                    // own tree (`.claude/`, `.opencode/`, …) lands at the target
-                    // root, where the harness actually reads it.
-                    let rel = path_str.strip_prefix(&strip).unwrap_or(&path_str);
-                    let full_path = target_dir.join(rel);
-                    installer::atomic_write(&full_path, &content)?;
-                    written += 1;
-                    // Remember one installed copy of each dependency-bearing script
-                    // (deduped by filename) to pre-warm after all harnesses land.
-                    if let Some(fname) = rel.rsplit('/').next() {
-                        if provision_filenames.contains(fname)
-                            && !provision_scripts
-                                .iter()
-                                .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
-                        {
-                            provision_scripts.push(full_path.clone());
-                        }
-                    }
+                for item in &migration_candidates {
+                    installer::manifest_db::resolve_target_relative(
+                        &target_dir,
+                        &item.legacy_path,
+                    )?;
+                    installer::manifest_db::resolve_target_relative(
+                        &target_dir,
+                        &item.superseded_by,
+                    )?;
                 }
 
-                if selected_tools.is_empty() {
-                    println!("Installed harness: {} ({} files written)", harness, written);
-                } else {
-                    let names: Vec<&str> = selected_tools.iter().map(|t| t.name.as_str()).collect();
-                    println!(
-                        "Installed harness: {} ({} files written, tools: {})",
-                        harness,
-                        written,
-                        names.join(", ")
+                // Migration runs before receipt publication. If backup/removal
+                // fails, apply never publishes a receipt that drops legacy
+                // ownership. Paths deliberately left in place remain claimed so
+                // a later install can retry the migration.
+                let mut preserved_paths = std::collections::BTreeSet::new();
+                let mut migration_report = None;
+                if no_migrate {
+                    preserved_paths.extend(
+                        migration_candidates
+                            .iter()
+                            .map(|item| item.legacy_path.to_string_lossy().into_owned()),
                     );
-                }
-
-                // Apply the migration AFTER the payload is written: back up each
-                // superseded, Shipmates-owned legacy command, then remove it. A
-                // backup is always written and verified before any delete, and a
-                // non-owned file that merely shares a name is never touched.
-                if !migration_items.is_empty() {
+                } else if !migration_items.is_empty() {
                     let backup_root = installer::migrate::new_backup_root(&target_dir);
                     let report =
                         installer::migrate::apply(&target_dir, &migration_items, &backup_root)?;
-                    if !report.migrated.is_empty() {
+                    for item in &migration_items {
+                        if !report.migrated.contains(&item.legacy_path) {
+                            preserved_paths.insert(item.legacy_path.to_string_lossy().into_owned());
+                        }
+                    }
+                    migration_report = Some(report);
+                    if let Some(report) = migration_report.as_ref()
+                        && !report.migrated.is_empty()
+                    {
                         println!(
                             "Migrated {} superseded command(s) → skills (backup: {})",
                             report.migrated.len(),
                             backup_root.display()
                         );
-                        // List each removed legacy file and where its backup
-                        // landed, so this default-on cleanup is never silent.
                         for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
                             println!("  moved {} → {}", legacy.display(), backup.display());
                         }
                     }
-                    if !report.skipped_unmanaged.is_empty() {
-                        let skipped: Vec<String> = report
-                            .skipped_unmanaged
-                            .iter()
-                            .map(|path| path.display().to_string())
-                            .collect();
-                        println!(
-                            "Skipped {} ambiguous legacy command(s) — no receipt ownership or exact historical signature; left untouched: {}",
-                            skipped.len(),
-                            skipped.join(", ")
-                        );
+                }
+
+                let apply_result = if preserved_paths.is_empty() {
+                    installer::apply::apply(&target_dir, &plan, force)
+                } else {
+                    installer::apply::apply_with_preserved_paths(
+                        &target_dir,
+                        &plan,
+                        force,
+                        &preserved_paths,
+                    )
+                };
+                let result = match apply_result {
+                    Ok(result) => result,
+                    Err(error) => {
+                        let rollback = match migration_report.as_ref() {
+                            Some(report) => installer::migrate::rollback(&target_dir, report),
+                            None => Ok(()),
+                        };
+                        return Err(combine_rollback_error(error, rollback));
+                    }
+                };
+                if let Some(receipt) = &result.receipt {
+                    for file in &receipt.files {
+                        let rel = PathBuf::from(&file.path);
+                        if let Some(fname) = rel.file_name().and_then(|name| name.to_str()) {
+                            if provision_filenames.contains(fname)
+                                && !provision_scripts
+                                    .iter()
+                                    .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
+                            {
+                                provision_scripts.push(
+                                    installer::manifest_db::resolve_target_relative(
+                                        &target_dir,
+                                        &rel,
+                                    )?,
+                                );
+                            }
+                        }
                     }
                 }
 
-                // Releases before the FSM removal registered hooks separately
-                // from the payload. Remove only known Shipmates-owned remnants;
-                // current installs never register hooks.
-                let hook_cleanup = installer::legacy_hooks::cleanup(&target_dir, harness)?;
-                if hook_cleanup.changed() {
+                if let Some(previous) = &result.previous_version {
+                    if previous != &plan.version {
+                        println!("Upgrading shipmates v{} → v{}", previous, plan.version);
+                        println!(
+                            "{} files changed, {} new, {} removed",
+                            result.summary.changed, result.summary.new, result.summary.removed
+                        );
+                    }
+                }
+                for warning in &result.warnings {
+                    println!("{}", warning);
+                }
+
+                if selected_tools.is_empty() {
                     println!(
-                        "Removed {} legacy Shipmates hook file/config item(s)",
-                        hook_cleanup.removed_files.len() + hook_cleanup.changed_configs.len()
+                        "Installed harness: {} ({} files written)",
+                        harness, result.written
+                    );
+                } else {
+                    let names: Vec<&str> = selected_tools
+                        .iter()
+                        .map(|tool| tool.name.as_str())
+                        .collect();
+                    println!(
+                        "Installed harness: {} ({} files written, tools: {})",
+                        harness,
+                        result.written,
+                        names.join(", ")
                     );
                 }
             }
-
-            // Pre-warm the runtime deps of any dependency-bearing tool so it works
-            // out of the box — no separate pip install by the user.
             if !provision_scripts.is_empty() {
                 provision_tool_deps(&provision_scripts);
+            }
+        }
+        Command::Uninstall {
+            harness,
+            global: _,
+            local,
+            dir,
+        } => {
+            let target_dir = resolve_target_dir(local, dir)?;
+            let selected = installer::uninstall::select_receipt(&target_dir, harness.as_deref())?;
+            let Some(selected) = selected else {
+                println!("No install receipt found; nothing to uninstall.");
+                return Ok(());
+            };
+            let root = Path::new(".");
+            let roles_path = root.join("crew");
+            let commands_path = root.join("commands");
+            let tools_path = root.join("toolbox");
+            let roles = if roles_path.is_dir() {
+                catalog::load_roles(&roles_path).context("Failed to load roles")?
+            } else {
+                catalog::load_roles_embedded().context("Failed to load embedded roles")?
+            };
+            let cmds = if commands_path.is_dir() {
+                catalog::load_commands(&commands_path).context("Failed to load commands")?
+            } else {
+                catalog::load_commands_embedded().context("Failed to load embedded commands")?
+            };
+            let tools = if tools_path.is_dir() {
+                catalog::load_tools(&tools_path).context("Failed to load tools")?
+            } else {
+                catalog::load_tools_embedded().context("Failed to load embedded tools")?
+            };
+            let known_payload = installer::uninstall::payload_for(
+                &selected.receipt.harness,
+                &roles,
+                &cmds,
+                &tools,
+            )?;
+            let report = installer::uninstall::uninstall_with_payload(
+                &target_dir,
+                selected,
+                &known_payload,
+            )?;
+            println!(
+                "Uninstalled harness: {} ({} files removed)",
+                report.harness, report.removed
+            );
+            for warning in report.warnings {
+                println!("{}", warning);
             }
         }
         Command::Build {
@@ -548,6 +634,13 @@ fn write_digests(
     installer::atomic_write(&digest_file, &out)?;
     println!("Wrote digests for target: {}", target);
     Ok(())
+}
+
+fn combine_rollback_error(error: anyhow::Error, rollback: Result<()>) -> anyhow::Error {
+    match rollback {
+        Ok(()) => error,
+        Err(rollback) => error.context(rollback.to_string()),
+    }
 }
 
 #[cfg(test)]
