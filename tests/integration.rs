@@ -5,6 +5,7 @@ use shipmates::adapters::codex::CodexAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
 use shipmates::catalog::{reject_positional, CanonicalCommand, CanonicalRole};
 use shipmates::digest;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 #[test]
@@ -66,6 +67,93 @@ fn test_opencode_permissions_deny_first() {
     assert!(content.starts_with("---\n"));
     assert!(content.contains("  \"*\": deny\n"));
     assert!(content.contains("  read: allow\n"));
+}
+
+#[test]
+fn test_opencode_cli_build_matches_golden_payload() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let out = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .current_dir(&root)
+        .args(["build", "--target", "opencode", "--out", out.path().to_str().unwrap()])
+        .output()
+        .expect("failed to execute opencode build");
+    assert!(
+        output.status.success(),
+        "opencode build failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let expected = read_payload_digest(&root.join("tests/payload-digests/opencode.sha256"));
+    let payload = out.path().join("harnesses/opencode/.opencode");
+    let mut actual = BTreeMap::new();
+    for path in walk(&payload) {
+        let relative = path
+            .strip_prefix(&payload)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        actual.insert(relative, digest::compute_sha256(&path).unwrap());
+    }
+
+    assert_eq!(actual, expected, "opencode build drifted from golden payload");
+}
+
+#[test]
+fn test_opencode_embedded_install_fidelity() {
+    let empty_cwd = tempfile::tempdir().unwrap();
+    let sandbox = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        // No checkout source is visible here. `install` must use the payload
+        // embedded in the test binary, as a packaged CLI does.
+        .current_dir(empty_cwd.path())
+        .args([
+            "install",
+            "--harness",
+            "opencode",
+            "--dir",
+            sandbox.path().to_str().unwrap(),
+            "--with-tools",
+            "none",
+        ])
+        .output()
+        .expect("failed to execute opencode install");
+    assert!(
+        output.status.success(),
+        "opencode install failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let agents = sandbox.path().join(".opencode/agents");
+    let commands = sandbox.path().join(".opencode/commands");
+    let expected_roles = [
+        "architect",
+        "art-director",
+        "data-scientist",
+        "devops-engineer",
+        "performance-engineer",
+        "product-manager",
+        "sdet",
+        "security-engineer",
+        "senior-engineer",
+        "site-reliability-engineer",
+        "technical-writer",
+        "ux-ui-designer",
+    ];
+
+    for role in expected_roles {
+        let path = agents.join(format!("{role}.md"));
+        let content = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("missing {path:?}"));
+        assert!(content.contains("mode: subagent\n"), "{path:?} is not a subagent");
+        assert!(content.contains("permission:\n"), "{path:?} has no permission map");
+    }
+    assert_eq!(file_count(&agents), expected_roles.len());
+    assert_eq!(file_count(&commands), 12);
+
+    let report_order = std::fs::read_to_string(commands.join("harden.md")).unwrap();
+    assert!(report_order.contains("report"), "harden order lost report-only mode");
+    assert!(report_order.contains("$ARGUMENTS"), "harden order lost argument passing");
+    assert!(!report_order.contains("{{"), "neutral argument placeholder leaked");
 }
 
 #[test]
@@ -338,4 +426,27 @@ fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
         }
     }
     out
+}
+
+fn file_count(dir: &std::path::Path) -> usize {
+    std::fs::read_dir(dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_file())
+        .count()
+}
+
+fn read_payload_digest(path: &std::path::Path) -> BTreeMap<String, String> {
+    std::fs::read_to_string(path)
+        .unwrap()
+        .lines()
+        .skip(2)
+        .map(|line| {
+            let mut fields = line.split_whitespace();
+            let relative = fields.next().expect("digest entry has no path");
+            let hash = fields.next().expect("digest entry has no hash");
+            assert!(fields.next().is_none(), "digest entry has extra fields: {line}");
+            (relative.to_string(), hash.to_string())
+        })
+        .collect()
 }
