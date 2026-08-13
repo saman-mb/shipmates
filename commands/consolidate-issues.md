@@ -139,5 +139,5 @@ makes, not the default.
 - **Don't over-close or over-bundle.** A `STALE` verdict with any live signal goes to the user.
   Bundles are thematic and shippable — never arbitrary groupings to make the count look better.
 - **Respect `MODE`.** In `report` mode, the tracker is never modified, not even a label.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the
+- If a role doesn't resolve to its installed role file, fall back to `general-purpose` with the
   product-manager brief inlined, and note the fallback.
