@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::render::{emit_shared_skills, emit_shared_tool_skills, render_role_body, CODEX};
 use super::Adapter;
 
-/// Codex CLI — twelve skills under `.agents/skills/<name>/SKILL.md` plus the
+/// Codex CLI — thirteen skills under `.agents/skills/<name>/SKILL.md` plus the
 /// crew as project-scoped subagents under `.codex/agents/<name>.toml`.
 ///
 /// Skills and crew land in **two different dotdirs**. Codex discovers skills at

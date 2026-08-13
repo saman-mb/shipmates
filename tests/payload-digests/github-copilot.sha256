@@ -1,5 +1,6 @@
 payload_digest_version=1
 target=github-copilot
+.agents/skills/consolidate-issues/SKILL.md df77bc9760b3f03025a3d88fa4bf196e767a37e6834d3f0da2759efb031627d4
 .agents/skills/document/SKILL.md ec34b621bef7861e2f098f08e828eebaa5682d2141cf71ce358ca2817512881b
 .agents/skills/fix-bug/SKILL.md 98492f9b63c08ee1af139903c591c3319e7afa493855dd515a578b16de5ea681
 .agents/skills/harden/SKILL.md ac734ff0b2880ec772ca700d8be1b38ad4cdf3375e61aeb2dfea4c78dc212ce4
