@@ -7,7 +7,7 @@
 //! plans and applies the cleanup — always backing a file up before removing it,
 //! and only ever touching files Shipmates itself installed.
 
-use crate::catalog::parse_frontmatter;
+use crate::digest;
 use crate::installer::atomic_write;
 use anyhow::{Context, Result};
 use std::collections::HashMap;
@@ -106,23 +106,43 @@ pub fn plan(
     items
 }
 
-/// Whether a legacy command file is one Shipmates installed — and so safe to
-/// migrate — rather than a user's own file that happens to share the name.
+/// SHA-256 signatures for the last canonical command payload before migration
+/// receipts existed. A receipt-free file is removable only when its complete
+/// bytes match one of these historical payloads; name/frontmatter matches alone
+/// remain ambiguous.
+fn historical_signature(name: &str) -> Option<&'static str> {
+    match name {
+        "document" => Some("8f61d2991fc5a655faa92b2a1b8bef9245d54ed5a77131b8da4569b688b83caf"),
+        "fix-bug" => Some("bff39504a32db690a9247c6f62bc47ef0308884f680a83f9c9afadc236a2e2df"),
+        "harden" => Some("d99a1ebb84c84fe599e52b79833ba54b2e0d1ac4bd5f7c35354c36ff7c45f951"),
+        "migrate" => Some("52e3a74566e89b1362f226151ac506d203bcb86376ca2c68f47b9a7743dc269e"),
+        "onboard" => Some("634389700141dd533b2c9a2a42b4789251a9519b0bb5c860d4d3cdb62cbed4a9"),
+        "plan-epics" => Some("7ddc27b01597cdbaa3b11d7ce8467cc31a53c4ecc08675bb83fab706eb033fe4"),
+        "polish" => Some("71df68ffb3ddc02636874fe3a2055d0870222d90be46bf4dd46a3018fc70e2ba"),
+        "pr-review" => Some("0dc39884a425108b729e028bc2cc7957fc68728ef43420b50a61109752be5351"),
+        "refactor" => Some("77dc95d7d20f099a6f030d1c66a540f58073589196dc9ce1e2f480037bc50304"),
+        "release" => Some("95d380f72b7f1a77212d730ac2f262f0d401268decb7a500932cce5d729aa4dd"),
+        "ship-issue" => Some("d967b980f4747790ec278f1093b0ede3ec933e259211fb1c6121588df8a6f9fc"),
+        "spike" => Some("160080959a06cf7f2f78de3cba07ff47fdb5ccfdb407583059e68cb486bf3437"),
+        _ => None,
+    }
+}
+
+/// Whether a legacy command file has verified Shipmates ownership.
 ///
-/// The filename must be `<name>.md` and the file's frontmatter `name:` must equal
-/// `<name>`. A file that fails to parse, or declares a different (or no) `name:`,
-/// is NEVER owned, so a user's own workflow at that path is left intact.
-//
-// #190: replace this name/content heuristic with receipt-manifest ownership once
-// manifest_db lands.
+/// Receipt-free installs cannot prove ownership from a filename or frontmatter:
+/// users can create the same command name and metadata. Exact bytes from the
+/// historical canonical payload are accepted; every other match is left intact.
 pub fn is_shipmates_owned(legacy_path: &Path, name: &str) -> bool {
     if legacy_path.file_stem().and_then(|s| s.to_str()) != Some(name) {
         return false;
     }
-    match parse_frontmatter(legacy_path) {
-        Ok((fm, _)) => fm.get("name").map(|n| n == name).unwrap_or(false),
-        Err(_) => false,
-    }
+    let Some(signature) = historical_signature(name) else {
+        return false;
+    };
+    fs::read_to_string(legacy_path)
+        .ok()
+        .is_some_and(|contents| digest::hash(&contents) == signature)
 }
 
 /// A fresh, collision-proof backup directory under the target:
@@ -207,10 +227,10 @@ mod tests {
     }
 
     #[test]
-    fn test_owned_legacy_is_backed_up_and_removed() {
+    fn test_receipt_free_match_is_skipped() {
         let dir = tempdir().unwrap();
         let target = dir.path();
-        // A prior install's legacy command sitting beside the current skill.
+        // A same-named receipt-free command sitting beside the current skill.
         let legacy = target.join(".claude/commands/ship-issue.md");
         atomic_write(&legacy, &owned_command("ship-issue")).unwrap();
         let skill = target.join(".claude/skills/ship-issue/SKILL.md");
@@ -231,17 +251,16 @@ mod tests {
         let backup_root = new_backup_root(target);
         let report = apply(target, &items, &backup_root).unwrap();
 
+        assert!(report.migrated.is_empty());
+        assert!(report.backups.is_empty());
         assert_eq!(
-            report.migrated,
+            report.skipped_unmanaged,
             vec![PathBuf::from(".claude/commands/ship-issue.md")]
         );
-        assert!(report.skipped_unmanaged.is_empty());
-        // Legacy gone, backup present and faithful, skill untouched.
-        assert!(!legacy.exists());
-        assert_eq!(report.backups.len(), 1);
-        assert!(report.backups[0].exists());
+        // Matching name/frontmatter is ambiguous without receipt ownership.
+        assert!(legacy.exists());
         assert_eq!(
-            fs::read_to_string(&report.backups[0]).unwrap(),
+            fs::read_to_string(&legacy).unwrap(),
             owned_command("ship-issue")
         );
         assert_eq!(fs::read_to_string(&skill).unwrap(), "current skill");
@@ -332,15 +351,16 @@ mod tests {
 
         let items = plan(target, &built, CONTAINER);
         let report = apply(target, &items, &new_backup_root(target)).unwrap();
-        assert_eq!(report.migrated.len(), 1);
+        assert!(report.migrated.is_empty());
+        assert_eq!(report.skipped_unmanaged.len(), 1);
+        assert!(target.join(".claude/commands/ship-issue.md").exists());
 
-        // Second run: the legacy file is gone, so the plan is empty and nothing
-        // new is backed up.
+        // Second run remains safe and idempotent: no receipt-free deletion.
         let items2 = plan(target, &built, CONTAINER);
-        assert!(items2.is_empty());
         let backup_root2 = new_backup_root(target);
         let report2 = apply(target, &items2, &backup_root2).unwrap();
         assert!(report2.migrated.is_empty());
+        assert_eq!(report2.skipped_unmanaged.len(), 1);
         assert!(!backup_root2.exists());
     }
 }

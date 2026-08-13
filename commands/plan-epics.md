@@ -5,8 +5,6 @@ argument-hint: <brief text | path to a brief file | several briefs> [area/label 
 allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: brief
-loop_max: 1
-stages: [{"order":1,"stage":"scope","roles":["product-manager"],"gate":"epics-scoped","max_loops":1},{"order":2,"stage":"author","roles":["product-manager"],"gate":"stories-authored","max_loops":1}]
 invocation: @{{role}}({{brief}})
 board: native
 ---

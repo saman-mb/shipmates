@@ -5,8 +5,6 @@ argument-hint: <issue-number or a description of the bug> [optional repro hints]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: issue, repro
-loop_max: 3
-stages: [{"order":1,"stage":"reproduce","roles":["sdet"],"gate":"failing-test","max_loops":1},{"order":2,"stage":"root-cause","roles":["site-reliability-engineer"],"gate":"cause-found","max_loops":1},{"order":3,"stage":"fix","roles":["senior-engineer"],"gate":"minimal-fix","max_loops":3},{"order":4,"stage":"prove","roles":["sdet"],"gate":"tests-green","max_loops":3},{"order":5,"stage":"review","roles":["product-manager"],"gate":"accepted","max_loops":1}]
 invocation: @{{role}}({{issue}})
 board: native
 ---

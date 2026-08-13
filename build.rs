@@ -9,7 +9,6 @@ fn main() {
     println!("cargo:rerun-if-changed=crew");
     println!("cargo:rerun-if-changed=commands");
     println!("cargo:rerun-if-changed=toolbox");
-    println!("cargo:rerun-if-changed=enforcement");
 
     let mut entries: Vec<(String, String)> = Vec::new();
     for dir in ["crew", "commands"] {
@@ -42,25 +41,6 @@ fn main() {
             let rel = path
                 .strip_prefix(root)
                 .expect("toolbox path under root")
-                .to_string_lossy()
-                .replace('\\', "/");
-            entries.push((rel, path.to_string_lossy().into_owned()));
-        }
-    }
-
-    // The per-harness FSM hook shims (`enforcement/hooks/<harness>/fsm-gate.*`)
-    // embed the same way: `render.rs` reads their bytes at runtime to emit each
-    // harness's shim into its payload, and a brew/cargo binary has no repo tree
-    // to read them from. Recursive + all-extension, like `toolbox`.
-    let enforcement = root.join("enforcement");
-    if enforcement.is_dir() {
-        let mut shim_files: Vec<std::path::PathBuf> = Vec::new();
-        collect_files(&enforcement, &mut shim_files);
-        shim_files.sort();
-        for path in shim_files {
-            let rel = path
-                .strip_prefix(root)
-                .expect("enforcement path under root")
                 .to_string_lossy()
                 .replace('\\', "/");
             entries.push((rel, path.to_string_lossy().into_owned()));

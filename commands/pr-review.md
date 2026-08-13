@@ -5,8 +5,6 @@ argument-hint: <pr-number or PR url> [optional emphasis passed to every reviewer
 allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: pull-request
-loop_max: 1
-stages: [{"order":1,"stage":"classify","roles":["architect"],"gate":"diff-classified","max_loops":1},{"order":2,"stage":"board","roles":["product-manager","sdet"],"gate":"board-complete","max_loops":1}]
 invocation: @{{role}}({{pull-request}})
 board: native
 ---

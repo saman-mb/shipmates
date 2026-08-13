@@ -1,3 +1,4 @@
+pub mod legacy_hooks;
 pub mod manifest_db;
 pub mod migrate;
 
@@ -31,9 +32,9 @@ fn temp_path_for(path: &Path) -> PathBuf {
     }
 }
 
-fn write_temp(temp_path: &Path, content: &str) -> std::io::Result<()> {
+fn write_temp(temp_path: &Path, content: &[u8]) -> std::io::Result<()> {
     let mut file = File::create(temp_path)?;
-    file.write_all(content.as_bytes())?;
+    file.write_all(content)?;
     file.sync_all()?;
     Ok(())
 }
@@ -46,6 +47,13 @@ fn write_temp(temp_path: &Path, content: &str) -> std::io::Result<()> {
 /// across a crash or power loss, not merely within the process — without them a
 /// rename can be durable while the file's contents are not.
 pub fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
+    atomic_write_bytes(path, content.as_bytes())
+}
+
+/// Write arbitrary bytes to `path` atomically and durably.
+///
+/// Used where backup fidelity must not depend on UTF-8 decoding.
+pub fn atomic_write_bytes(path: &Path, content: &[u8]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -71,19 +79,6 @@ pub fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
         if let Ok(dir_file) = File::open(dir) {
             let _ = dir_file.sync_all();
         }
-    }
-    Ok(())
-}
-
-/// Mark an installed hook executable on Unix. Non-Unix targets rely on the
-/// registered command invoking the script through its shell.
-pub fn set_executable(path: &Path) -> std::io::Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut permissions = fs::metadata(path)?.permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(path, permissions)?;
     }
     Ok(())
 }

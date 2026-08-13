@@ -5,8 +5,6 @@ argument-hint: [path to the repo — defaults to the current one]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 arguments: path
-loop_max: 2
-stages: [{"order":1,"stage":"survey","roles":["architect"],"gate":"repo-understood","max_loops":1},{"order":2,"stage":"draft","roles":["technical-writer"],"gate":"context-written","max_loops":1},{"order":3,"stage":"verify","roles":["sdet"],"gate":"fresh-reader-complete","max_loops":2}]
 invocation: @{{role}}({{path}})
 board: native
 ---

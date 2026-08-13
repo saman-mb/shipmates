@@ -5,8 +5,6 @@ argument-hint: <what to document — a module, a feature, a public API, the READ
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: target
-loop_max: 3
-stages: [{"order":1,"stage":"survey","roles":["technical-writer"],"gate":"source-understood","max_loops":1},{"order":2,"stage":"draft","roles":["technical-writer"],"gate":"docs-written","max_loops":1},{"order":3,"stage":"verify","roles":["technical-writer"],"gate":"fresh-reader-complete","max_loops":3}]
 invocation: @{{role}}({{target}})
 board: native
 ---
