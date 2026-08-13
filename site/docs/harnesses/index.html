@@ -88,7 +88,7 @@
               <tr><td><code>claude-code</code></td><td><span class="chip">Runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>opencode</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a></td></tr>
               <tr><td><code>antigravity</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
-              <tr><td><code>github-copilot</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>github-copilot</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="../github-copilot/">Quickstart</a></td></tr>
               <tr><td><code>codex</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
               <tr><td><code>cursor</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
               <tr><td><code>windsurf</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
@@ -98,6 +98,7 @@
         <div class="order-prose">
           <p><strong>Runtime-verified</strong> means the payload is compiled from neutral canonical sources, byte-compared against its committed reference digest, and the harness is one Shipmates has actually been run on. Only <code>claude-code</code> meets all of that.</p>
           <p><strong>Builds, not runtime-verified</strong> is every other harness. <code>shipmates install --harness &lt;name&gt;</code> produces the payload, and each format was verified against the harness's own parsing source and first-party docs. None has been exercised against a running harness — whether agents resolve, whether argument passing behaves, and whether <code>/ship-issue</code> completes end to end are open questions, tracked for opencode in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>. Nothing on this site should be read as &#x201C;tested on <em>&lt;harness&gt;</em>&#x201D; until those close.</p>
+          <p>GitHub Copilot has a <a href="../github-copilot/">dedicated quickstart</a> with its payload checks, safe smoke-test command, and the current <code>/ship-issue</code> Tier B boundary.</p>
           <p><strong>Builds (skills only)</strong> marks harnesses where the crew has nowhere to go and only the twelve skills land. That is now <code>cursor</code> and <code>windsurf</code>, and for two different reasons. <code>cursor</code> is unconfirmed rather than absent: <code>.cursor/agents/*.md</code> is widely reported and Cursor describes delegating to named subagents, but no first-party page documents the frontmatter schema, so emitting one would be guesswork. <code>windsurf</code> is under review — Windsurf became Devin Desktop in June 2026 and that target may no longer address a live product. Each harness now carries its evidence and the date it was checked in <code>tools/harness_matrix.json</code>.</p>
         </div>
       </div>
@@ -153,6 +154,7 @@
           <ul class="order-siblings__list" role="list">
             <li class="order-siblings__item"><a class="order-siblings__link" href="../install/">Install reference</a></li>
             <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page">Harness matrix<span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../github-copilot/">GitHub Copilot quickstart</a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../troubleshooting/">Troubleshooting</a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../architecture/">Architecture</a></li>
           </ul>

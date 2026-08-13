@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GitHub Copilot payload quickstart · Shipmates docs</title>
+  <meta name="description" content="Install and validate the Shipmates GitHub Copilot payload, with explicit runtime and approval caveats.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/github-copilot/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="GitHub Copilot payload quickstart — Shipmates docs">
+  <meta property="og:description" content="Install and validate the Shipmates GitHub Copilot payload, with explicit runtime and approval caveats.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/github-copilot/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="GitHub Copilot payload quickstart — Shipmates docs">
+  <meta name="twitter:description" content="Install and validate the Shipmates GitHub Copilot payload, with explicit runtime and approval caveats.">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "GitHub Copilot payload quickstart",
+    "description": "Install and validate the Shipmates GitHub Copilot payload, with explicit runtime and approval caveats.",
+    "url": "https://saman-mb.github.io/shipmates/docs/github-copilot/",
+    "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
+  }
+  </script>
+</head>
+<body class="page--doc">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../" aria-current="location">Docs</a></li>
+        </ul>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+    <section class="section" aria-labelledby="copilot-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../harnesses/"><span aria-hidden="true">←</span> Harness matrix</a>
+        <div class="order-detail">
+          <p class="order-detail__eyebrow"><span aria-hidden="true">🤖</span> GitHub Copilot</p>
+          <h1 class="order-detail__title" id="copilot-title">GitHub Copilot quickstart</h1>
+          <p class="order-detail__tagline">Install the crew, verify the payload, then run a safe smoke test.</p>
+          <p class="order-detail__desc">Shipmates emits Copilot custom agents under <code>.github/agents/</code> and Agent Skills under the shared <code>.agents/skills/</code> tree.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install" aria-labelledby="install-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="install-title">Install in a sandbox</h2>
+          <p class="section__lead">Keep this first run outside a production repository.</p>
+        </div>
+        <div class="order-prose">
+          <pre class="order-code" tabindex="0"><code>shipmates install --harness github-copilot --dir /path/to/sandbox --with-tools none</code></pre>
+          <p>The install writes twelve custom agents at <code>/path/to/sandbox/.github/agents/*.agent.md</code> and twelve skills at <code>/path/to/sandbox/.agents/skills/*/SKILL.md</code>. The <code>.agent.md</code> suffix is required by Copilot discovery.</p>
+          <p>Restart or start a new Copilot session after installing. The current adapter emits the documented Copilot frontmatter and maps semantic capabilities to <code>read</code>, <code>search</code>, <code>edit</code>, <code>execute</code>, <code>web</code>, and <code>agent</code>. These are payload tool names, not necessarily names accepted by the CLI approval flags.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="verify" aria-labelledby="verify-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="verify-title">Verify payload fidelity</h2>
+          <p class="section__lead">This is deterministic validation, not a live Copilot claim.</p>
+        </div>
+        <div class="order-prose">
+          <pre class="order-code" tabindex="0"><code>cargo run -- check --target github-copilot
+ls /path/to/sandbox/.github/agents
+ls /path/to/sandbox/.agents/skills/ship-issue</code></pre>
+          <p>CI compares every file produced by <code>build --target github-copilot</code> with the checked-in golden digest. The fixture covers both dot-directories and rejects missing or unexpected files.</p>
+          <p>Passing this check proves adapter output and registration shape. It does not prove that a running Copilot session discovers agents, loads skills, passes arguments, or completes a workflow.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="smoke" aria-labelledby="smoke-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="smoke-title">Optional non-destructive smoke test</h2>
+          <p class="section__lead">Runtime smoke is unavailable in current validation; keep this recipe manual and disposable.</p>
+        </div>
+        <div class="order-prose">
+          <pre class="order-code" tabindex="0"><code>copilot --agent security-engineer \
+  --prompt "Run the installed /harden order in report mode against this sandbox. Read AGENTS.md, report findings, and do not edit files or open a PR."</code></pre>
+          <p>If runtime prerequisites become available, expected result is Copilot resolving <code>security-engineer.agent.md</code>, selecting the installed read-only <code>harden</code> skill, reporting findings, and changing no files. No such result is recorded here; this command is a recipe, not evidence of runtime support.</p>
+          <p>Custom-agent <code>tools</code> frontmatter describes the model's tool surface. Headless CLI approval is a separate layer and may use different patterns; consult <code>copilot help permissions</code> for the installed CLI. Do not translate <code>read</code>/<code>search</code> blindly into <code>--allow-tool</code>, and do not use <code>--allow-all</code>. Unavailable CLI, authentication, approval, or model selection means <strong>not run</strong>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="tier-b" aria-labelledby="tier-b-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="tier-b-title">/ship-issue Tier B boundary</h2>
+          <p class="section__lead">The adapter provides the dispatch surface; it does not provide the external runner.</p>
+        </div>
+        <div class="order-prose">
+          <ul>
+            <li><strong>Validated statically:</strong> the shared <code>ship-issue</code> skill is emitted, and the custom agents it names are emitted with Copilot-native filenames and least-privilege tools.</li>
+            <li><strong>Not validated here:</strong> a real issue-to-PR run, scripted acceptance board, CI polling, or bounded fix loop through <code>copilot --agent</code>.</li>
+            <li><strong>Reason:</strong> those behaviours belong to the external orchestrator described by issue <a href="https://github.com/saman-mb/shipmates/issues/13">#13</a>; the current Copilot adapter only compiles and installs payload files.</li>
+          </ul>
+          <p><strong>Model note.</strong> <code>effort: false</code> means Copilot has no documented install-time per-agent effort field; the adapter emits no <code>model:</code> or effort key. That is separate from runtime model selection: the orchestrator chooses a model at spawn where supported, otherwise the session model is inherited.</p>
+          <p>Therefore GitHub Copilot remains <em>builds, not runtime-verified</em>. This page intentionally does not call the target tested, Tier B-complete, or flagship-complete.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="more-docs-title">
+      <div class="container container--prose">
+        <div class="section__head"><h2 class="section__title" id="more-docs-title">More docs</h2></div>
+        <nav class="order-siblings" aria-label="More docs">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../install/">Install reference</a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../harnesses/">Harness matrix</a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page">GitHub Copilot quickstart<span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../troubleshooting/">Troubleshooting</a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../"><span aria-hidden="true">←</span> All docs</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for your AI coding harness.</p>
+      </div>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>

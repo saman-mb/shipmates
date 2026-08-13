@@ -123,6 +123,61 @@ fn test_non_claude_targets_build_via_cli() {
     assert_eq!(codex_bytes, copilot_bytes, "shared skill must be identical across harnesses");
 }
 
+/// The Copilot payload digest is a checked-in golden file for the complete
+/// `build --target github-copilot` output.  Check both missing and unexpected
+/// files so a newly emitted file cannot bypass the fixture.
+#[test]
+fn test_github_copilot_build_matches_golden_payload() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .args([
+            "build",
+            "--target",
+            "github-copilot",
+            "--out",
+            temp_dir.path().to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to execute github-copilot build");
+    assert!(
+        output.status.success(),
+        "github-copilot build failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let digest_path = root.join("tests/payload-digests/github-copilot.sha256");
+    let payload_root = temp_dir.path().join("harnesses/github-copilot");
+    let mut expected = std::collections::BTreeMap::new();
+    for line in std::fs::read_to_string(digest_path).unwrap().lines().skip(2) {
+        let (path, hash) = line.split_once(' ').expect("malformed Copilot golden entry");
+        expected.insert(path.to_string(), hash.to_string());
+    }
+
+    for (path, expected_hash) in &expected {
+        let file = payload_root.join(path);
+        assert!(file.is_file(), "golden payload file missing: {path}");
+        let content = std::fs::read_to_string(file).unwrap();
+        assert_eq!(digest::hash(&content), *expected_hash, "golden mismatch: {path}");
+    }
+
+    let actual: std::collections::BTreeSet<String> = walk(&payload_root)
+        .into_iter()
+        .map(|path| normalized_relative_path(&path, &payload_root))
+        .collect();
+    let expected_paths: std::collections::BTreeSet<String> = expected.keys().cloned().collect();
+    assert_eq!(actual, expected_paths, "Copilot payload file set drifted from golden");
+}
+
+fn normalized_relative_path(path: &std::path::Path, root: &std::path::Path) -> String {
+    path.strip_prefix(root)
+        .unwrap()
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 #[test]
 fn test_codex_adapter_renders_dialect() {
     let command = CanonicalCommand {
