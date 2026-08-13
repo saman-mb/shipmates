@@ -13,5 +13,9 @@ tap = "saman-mb/homebrew-tap"
 formula = "shipmates"
 # Publish the formula to the tap and the crate to crates.io on release
 publish-jobs = ["homebrew", "./publish-cargo"]
+# The release workflow is hand-authored to auto-publish only when the
+# Cargo.toml version is newer than the latest published tag. Tell dist to
+# treat the generated CI file as ours and skip its drift check.
+allow-dirty = ["ci"]
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
