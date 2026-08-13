@@ -5,8 +5,6 @@ argument-hint: <the open question or decision — e.g. "which queue for the job 
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: question
-loop_max: 1
-stages: [{"order":1,"stage":"frame","roles":["architect"],"gate":"question-framed","max_loops":1},{"order":2,"stage":"prototype","roles":["senior-engineer"],"gate":"options-prototyped","max_loops":1},{"order":3,"stage":"judge","roles":["architect"],"gate":"decision-made","max_loops":1}]
 invocation: @{{role}}({{question}})
 board: native
 ---

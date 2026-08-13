@@ -2,15 +2,15 @@
 //!
 //! Read-only by default: `diagnose` inspects the on-disk tree against the payload
 //! the running binary would install and reports what is healthy, stale, missing or
-//! superseded. `fix` migrates superseded commands (backed up first) and rewrites
-//! any missing or drifted crew/skill files (backing up whatever it overwrites),
-//! then re-diagnoses and hands back the fresh report.
+//! superseded. `fix` migrates superseded commands and removes known stale FSM hook
+//! remnants (backed up first), rewrites any missing or drifted crew/skill files
+//! (backing up whatever it overwrites), then re-diagnoses and hands back the fresh
+//! report.
 
 use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
-use crate::hooks;
-use crate::installer::{atomic_write, migrate};
+use crate::installer::{atomic_write, legacy_hooks, migrate};
 use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
@@ -152,40 +152,9 @@ fn diagnose_built(
         });
     }
 
-    // 1b. Hook registration — payload files alone are inert. The config must
-    // point at the installed shim (and Codex must have hooks enabled).
-    match hooks::is_registered(target_dir, harness) {
-        Ok(true) => checks.push(Check {
-            name: "Hook registration".into(),
-            severity: Severity::Ok,
-            detail: if harness == "codex" {
-                "registered; Codex may require reviewing/trusting the changed hook in `/hooks`".into()
-            } else {
-                "the harness will invoke the Shipmates enforcement hook".into()
-            },
-            fixable: true,
-        }),
-        Ok(false) => checks.push(Check {
-            name: "Hook registration".into(),
-            severity: Severity::Problem,
-            detail: format!(
-                "the {} hook is not registered — run `shipmates install --harness {}`",
-                harness, harness
-            ),
-            fixable: true,
-        }),
-        Err(error) => checks.push(Check {
-            name: "Hook registration".into(),
-            severity: Severity::Problem,
-            detail: format!("cannot inspect {} hook registration: {error}", harness),
-            fixable: true,
-        }),
-    }
-
     // 2. Legacy/duplicate layout — a superseded `commands/<name>.md` beside a
-    // skill. Only Shipmates-owned files are a fixable Problem (`--fix` migrates
-    // them); a user's own file sharing a skill name is theirs to keep, so it is
-    // an informational note rather than a Problem `--fix` could never clear.
+    // skill. Receipt-free matches are ambiguous, so they remain untouched and
+    // informational rather than becoming a destructive `--fix` action.
     let migration_items = migrate::plan(target_dir, built, adapter.container());
     let (owned, unmanaged): (Vec<&migrate::MigrationItem>, Vec<&migrate::MigrationItem>) =
         migration_items.iter().partition(|i| {
@@ -228,10 +197,29 @@ fn diagnose_built(
             name: "Shadowed commands".into(),
             severity: Severity::Ok,
             detail: format!(
-                "{} of your own command file(s) share a skill name and are shadowed by it — left untouched: {}",
+                "{} ambiguous command file(s) share a skill name and are shadowed by it — left untouched: {}",
                 unmanaged.len(),
                 names.join(", ")
             ),
+            fixable: false,
+        });
+    }
+
+    // Older releases installed FSM hook files and registrations outside the
+    // payload. They have no receipt, so the migration uses exact known paths and
+    // content signatures and leaves unrelated hooks alone.
+    if legacy_hooks::has_legacy(target_dir, harness) {
+        checks.push(Check {
+            name: "Legacy hooks".into(),
+            severity: Severity::Problem,
+            detail: "old Shipmates FSM hook files or registrations remain".into(),
+            fixable: true,
+        });
+    } else {
+        checks.push(Check {
+            name: "Legacy hooks".into(),
+            severity: Severity::Ok,
+            detail: "no removed Shipmates hook remnants detected".into(),
             fixable: false,
         });
     }
@@ -410,7 +398,27 @@ pub fn fix(
                     backup_root.display()
                 );
             }
+            if !report.skipped_unmanaged.is_empty() {
+                let skipped: Vec<String> = report
+                    .skipped_unmanaged
+                    .iter()
+                    .map(|path| path.display().to_string())
+                    .collect();
+                println!(
+                    "Skipped {} ambiguous legacy command(s) — no receipt ownership or exact historical signature; left untouched: {}",
+                    skipped.len(),
+                    skipped.join(", ")
+                );
+            }
         }
+    }
+
+    let hook_cleanup = legacy_hooks::cleanup(target_dir, harness)?;
+    if hook_cleanup.changed() {
+        println!(
+            "Removed {} legacy Shipmates hook file/config item(s)",
+            hook_cleanup.removed_files.len() + hook_cleanup.changed_configs.len()
+        );
     }
 
     // 2. Write any missing or drifted crew/skill files, backing up what we overwrite.
@@ -481,10 +489,6 @@ pub fn fix(
         );
     }
 
-    // Registration is repaired after payload files exist, so a config can never
-    // point at a missing shim.
-    hooks::register(target_dir, harness)?;
-
     // 3. Re-diagnose and hand back the fresh report — reusing the single built
     // payload rather than rebuilding it.
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
@@ -545,9 +549,6 @@ mod tests {
             allowed_tools: "".into(),
             disable_model_invocation: true,
             arguments: vec![],
-            loop_max: 0,
-            stages: vec![],
-            tool_gates: vec![],
             narrative: "n".into(),
             invocation: "".into(),
             board: "".into(),
@@ -560,7 +561,6 @@ mod tests {
         for (rel, content) in expected_files(adapter.as_ref(), roles, cmds).unwrap() {
             atomic_write(&target.join(&rel), &content).unwrap();
         }
-        hooks::register(target, "claude-code").unwrap();
     }
 
     fn sev(report: &Report, name: &str) -> Severity {
@@ -645,6 +645,25 @@ mod tests {
     }
 
     #[test]
+    fn test_fix_removes_receipt_free_legacy_hook() {
+        let dir = tempdir().unwrap();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(dir.path(), &roles, &cmds);
+        atomic_write(
+            &dir.path().join(".claude/hooks/fsm-gate.sh"),
+            "#!/usr/bin/env bash\n# Shipmates FSM tool-gate\nshipmates state gate\n",
+        )
+        .unwrap();
+
+        let before = diagnose(dir.path(), "claude-code", &roles, &cmds, &[]).unwrap();
+        assert_eq!(sev(&before, "Legacy hooks"), Severity::Problem);
+        let after = fix(dir.path(), "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert_eq!(sev(&after, "Legacy hooks"), Severity::Ok);
+        assert!(!dir.path().join(".claude/hooks/fsm-gate.sh").exists());
+    }
+
+    #[test]
     fn test_fix_restores_missing_and_migrates_legacy() {
         let dir = tempdir().unwrap();
         let target = dir.path();
@@ -663,13 +682,9 @@ mod tests {
         assert!(before.has_problems());
 
         let after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
-        assert!(
-            !after.has_problems(),
-            "fix should leave a healthy install: {:?}",
-            after
-        );
+        assert_eq!(sev(&after, "Layout"), Severity::Ok);
         assert!(target.join(".claude/agents/devops-engineer.md").exists());
-        assert!(!target.join(".claude/commands/ship-issue.md").exists());
+        assert!(target.join(".claude/commands/ship-issue.md").exists());
     }
 
     #[test]
@@ -716,7 +731,7 @@ mod tests {
         assert!(target.join(".claude/agents/devops-engineer.md").exists());
         // ...but the owned legacy command is left in place — no migration sweep.
         assert!(target.join(".claude/commands/ship-issue.md").exists());
-        // And the report still flags the un-migrated legacy layout as a Problem.
-        assert_eq!(sev(&after, "Layout"), Severity::Problem);
+        // Receipt-free legacy commands stay visible as an informational shadow.
+        assert_eq!(sev(&after, "Layout"), Severity::Ok);
     }
 }

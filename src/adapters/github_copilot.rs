@@ -1,7 +1,7 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 use super::render::{
-    emit_hook_shim, emit_shared_skills, emit_shared_tool_skills, render_body, GITHUB_COPILOT,
+    emit_shared_skills, emit_shared_tool_skills, render_body, GITHUB_COPILOT,
 };
 use super::Adapter;
 
@@ -126,8 +126,6 @@ impl Adapter for GithubCopilotAdapter {
         }
         // Commands ship to the shared `.agents/skills/` tree (neutral dialect).
         files.extend(emit_shared_skills(self.container(), commands));
-        // The FSM tool-gate preToolUse shim (`.github/hooks/fsm-gate.sh`).
-        files.extend(emit_hook_shim(self.container(), "github-copilot"));
         Ok(files)
     }
 
@@ -172,9 +170,6 @@ mod tests {
             allowed_tools: String::new(),
             disable_model_invocation: true,
             arguments: vec![],
-            loop_max: 0,
-            stages: vec![],
-            tool_gates: vec![],
             narrative: "one consolidated verdict".to_string(),
             invocation: String::new(),
             board: String::new(),
@@ -191,12 +186,6 @@ mod tests {
         assert!(files.contains_key("harnesses/github-copilot/.agents/skills/pr-review/SKILL.md"));
         assert!(!files.keys().any(|k| k.contains(".github/skills/")));
         assert!(files.contains_key("harnesses/github-copilot/.github/agents/architect.agent.md"));
-    }
-
-    #[test]
-    fn test_fsm_gate_shim_is_emitted() {
-        let files = GithubCopilotAdapter.build(&[], &[]).unwrap();
-        assert!(files.contains_key("harnesses/github-copilot/.github/hooks/fsm-gate.sh"));
     }
 
     #[test]

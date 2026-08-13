@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Architecture · Shipmates docs</title>
-  <meta name="description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
+  <meta name="description" content="Shipmates ships one canonical crew and command set, compiles it into native harness formats, and uses explicit quality gates.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/architecture/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="Architecture — Shipmates docs">
-  <meta property="og:description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
+  <meta property="og:description" content="Shipmates ships one canonical crew and command set, compiles it into native harness formats, and uses explicit quality gates.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/architecture/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Architecture — Shipmates docs">
-  <meta name="twitter:description" content="Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.">
+  <meta name="twitter:description" content="Shipmates ships one canonical crew and command set, compiles it into native harness formats, and uses explicit quality gates.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "name": "Architecture",
-    "description": "Shipmates ships one canonical crew and command set. The CLI compiles it into your harness's native format and enforces the workflow at the tool boundary.",
+    "description": "Shipmates ships one canonical crew and command set, compiles it into native harness formats, and uses explicit quality gates.",
     "url": "https://saman-mb.github.io/shipmates/docs/architecture/",
     "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
   }
@@ -70,8 +70,8 @@
         <div class="order-detail">
           <p class="order-detail__eyebrow"><span aria-hidden="true">&#129517;</span> Architecture</p>
           <h1 class="order-detail__title" id="architecture-title">Architecture</h1>
-          <p class="order-detail__tagline">One crew, compiled for your harness. The workflow enforced at the tool boundary.</p>
-          <p class="order-detail__desc">One mental model to keep: Shipmates ships a single canonical crew and command set, and the <code>shipmates</code> CLI compiles it into whatever your harness understands &mdash; so you install once and get the same crew on Claude Code, Cursor, or Codex, each getting only the features it supports. A small state machine then guards recognized shell-boundary calls through the harness&#x27;s own hook: an active run can block premature push or merge, while judgment stages remain orchestrator-owned. The rest of this page is those layers in detail; the internals are here if you want them, but you don&#x27;t need them to use the crew.</p>
+          <p class="order-detail__tagline">One crew, compiled for your harness. The workflow made explicit.</p>
+          <p class="order-detail__desc">One mental model to keep: Shipmates ships a single canonical crew and command set, and the <code>shipmates</code> CLI compiles it into whatever your harness understands &mdash; so you install once and get the same crew on Claude Code, Cursor, or Codex, each getting only the features it supports. The workflow keeps planning, implementation, verification and review explicit, while each harness receives only the features it supports. The rest of this page is those layers in detail; the internals are here if you want them, but you don&#x27;t need them to use the crew.</p>
         </div>
       </div>
     </section>
@@ -84,8 +84,6 @@
             <li><a href="#big-picture">The big picture</a></li>
             <li><a href="#source">One source of truth</a></li>
             <li><a href="#adapters">Feature-aware adapters</a></li>
-            <li><a href="#enforcement">State machine &amp; hooks</a></li>
-            <li><a href="#principle">Supported hook surfaces</a></li>
             <li><a href="#honest">How it stays honest</a></li>
           </ul>
         </nav>
@@ -96,7 +94,7 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="big-picture-title">The big picture</h2>
-          <p class="section__lead">Three layers, one direction of travel: one canonical crew in, a native payload for your harness out, and a workflow that can be enforced at the far end.</p>
+          <p class="section__lead">Three layers, one direction of travel: one canonical crew in, a native payload for your harness out, and a structured workflow with explicit quality gates.</p>
         </div>
         <div class="order-prose">
           <figure class="tool-example">
@@ -159,112 +157,6 @@
       </div>
     </section>
 
-    <section class="section" id="enforcement" aria-labelledby="enforcement-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <h2 class="section__title" id="enforcement-title">State machine &amp; hooks</h2>
-          <p class="section__lead">Each command declares its stages; <code>shipmates state</code> turns them into a state machine, and a harness hook makes recognized tool-boundary gates real.</p>
-        </div>
-        <div class="order-prose">
-          <p>A command&#x27;s <code>stages:</code> frontmatter defines a finite-state machine; <code>shipmates state</code> checks each transition against a per-run <code>.shipmates/run-&lt;N&gt;.json</code> file and answers <em>legal</em> (exit&nbsp;0), <em>illegal</em> (exit&nbsp;1) or <em>error</em> (exit&nbsp;2). One extra binding, <code>tool_gates</code>, ties a recognized shell call to the phase it&#x27;s allowed in. Merge adds a second proof: CI must be attested for the PR head, then <code>--match-head-commit &lt;sha&gt;</code> binds GitHub&#x27;s merge to that exact checked commit.</p>
-          <figure class="tool-example">
-            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Enforcement flow: an agent calls gh pr merge; the pre-tool hook discovers the active run, calls shipmates state gate, checks phase and fresh CI/SHA attestation, and allows the merge only when every proof is present." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="366" height="846" viewBox="0 0 366 846">
-<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
-<rect x="0.5" y="0.5" width="365" height="845" rx="16" class="panel" stroke-width="1"/>
-<g transform="translate(165,28)">
-<line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
-<line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
-<line x1="0" y1="294" x2="0" y2="372" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="0,372 -5.5,361 5.5,361" class="arrow"/>
-<line x1="0" y1="418" x2="0" y2="496" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="0,496 -5.5,485 5.5,485" class="arrow"/>
-<line x1="0" y1="542" x2="0" y2="620" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="0,620 -5.5,609 5.5,609" class="arrow"/>
-<path d="M 92 519 C 146 519 146 767 83 767" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="83,767 94,761.5 94,772.5" class="arrow"/>
-<rect x="-101" y="0" width="202" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">agent: gh pr merge</text>
-<rect x="-87.5" y="124" width="175" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">PreToolUse hook</text>
-<rect x="-137" y="248" width="274" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">discover run: feat/issue-N</text>
-<rect x="-110" y="372" width="220" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">shipmates state gate</text>
-<rect x="-92" y="496" width="184" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="524.25" text-anchor="middle" font-size="15" class="label">phase + CI/SHA valid?</text>
-<rect x="-101" y="620" width="202" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="648.25" text-anchor="middle" font-size="15" class="label">ALLOW — SHA-bound merge</text>
-<rect x="-83" y="744" width="166" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="772.25" text-anchor="middle" font-size="15" class="label">DENY — blocked</text>
-<rect x="-94.8" y="570" width="82.8" height="22" rx="6" class="mask"/>
-<text x="-53.4" y="585.2" text-anchor="middle" font-size="12" class="chip">at / past</text>
-<rect x="89.97" y="632" width="82.8" height="22" rx="6" class="mask"/>
-<text x="131.38" y="647.2" text-anchor="middle" font-size="12" class="chip">too early</text>
-</g>
-</svg>
-            <figcaption class="tool-example__caption">On a harness with a blocking pre-tool hook, a thin shim calls <code>shipmates state gate</code> <em>before</em> a recognized shell call runs. Push requires the build phase; merge requires deliver, green CI, current checkout, and the matching <code>--match-head-commit</code> SHA.</figcaption>
-          </figure>
-          <p>That is the whole trick: the same <code>stages:</code> that read as prose guidance become hard guardrails at recognized tool boundaries. The hook only blocks an identified run; ordinary or ambiguous sessions stay untouched. Stage judgment, board acceptance, and role validity remain orchestrator responsibilities.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="principle" aria-labelledby="principle-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <h2 class="section__title" id="principle-title">Supported hook surfaces</h2>
-          <p class="section__lead">Shipmates records a native blocking shell-hook surface for each target; only Claude Code has completed live runtime verification.</p>
-        </div>
-        <div class="order-prose">
-          <div style="background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--radius-md);padding:var(--space-4) var(--space-5);">
-            <p><strong>Every one of the seven supported harnesses exposes a documented shell-capable blocking hook surface</strong> that installation wires to the native deny adapter. The dispatcher gates recognized shell calls only; payload format and registration are verified for every target, while live harness behavior remains verified only for Claude Code.</p>
-          </div>
-          <figure class="tool-example">
-            <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Harness support: all seven supported harnesses expose a blocking pre-tool hook, so the gate runs before each tool call and an out-of-phase call is denied on every one of them." style="max-width:100%;height:auto;display:block;margin-inline:auto" width="330" height="474" viewBox="0 0 330 474">
-<style>.panel{fill:var(--surface-2);stroke:var(--border)}.node{fill:var(--surface);stroke:var(--border-strong)}.mask{fill:var(--surface-2)}.label{fill:var(--text)}.chip{fill:var(--accent-strong)}.flow{fill:none;stroke:var(--accent-strong)}.arrow{fill:var(--accent-strong);stroke:none}text{font-family:var(--font-sans)}</style>
-<rect x="0.5" y="0.5" width="329" height="473" rx="16" class="panel" stroke-width="1"/>
-<g transform="translate(165,28)">
-<line x1="0" y1="46" x2="0" y2="124" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="0,124 -5.5,113 5.5,113" class="arrow"/>
-<line x1="0" y1="170" x2="0" y2="248" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="0,248 -5.5,237 5.5,237" class="arrow"/>
-<line x1="0" y1="294" x2="0" y2="372" class="flow" stroke-width="2.0" stroke-linecap="round"/>
-<polygon points="0,372 -5.5,361 5.5,361" class="arrow"/>
-<rect x="-114.5" y="0" width="229" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="28.25" text-anchor="middle" font-size="15" class="label">7 supported harnesses</text>
-<rect x="-128" y="124" width="256" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="152.25" text-anchor="middle" font-size="15" class="label">each has a blocking hook</text>
-<rect x="-137" y="248" width="274" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="276.25" text-anchor="middle" font-size="15" class="label">gate runs before shell calls</text>
-<rect x="-128" y="372" width="256" height="46" rx="10" class="node" stroke-width="1.5"/>
-<text x="0" y="400.25" text-anchor="middle" font-size="15" class="label">recognized call denied</text>
-</g>
-</svg>
-            <figcaption class="tool-example__caption">All seven supported harnesses expose a blocking pre-tool hook, so the same gate can run before shell tools on each of them. Install registers each target; runtime verification remains Claude-Code-only.</figcaption>
-          </figure>
-          <div class="order-table" tabindex="0">
-            <table>
-              <thead><tr><th scope="col">Harness</th><th scope="col">Blocking shell hook</th><th scope="col">Evidence</th></tr></thead>
-              <tbody>
-                <tr><td><code>claude-code</code></td><td><code>PreToolUse</code></td><td>Runtime-verified</td></tr>
-                <tr><td><code>cursor</code></td><td><code>beforeShellExecution</code></td><td>Format-verified</td></tr>
-                <tr><td><code>codex</code></td><td><code>PreToolUse</code></td><td>Format-verified</td></tr>
-                <tr><td><code>antigravity</code></td><td><code>PreToolUse</code></td><td>Format-verified</td></tr>
-                <tr><td><code>github-copilot</code></td><td><code>PreToolUse</code></td><td>Format-verified</td></tr>
-                <tr><td><code>windsurf</code></td><td><code>pre_run_command</code>&#160;*</td><td>Format-verified</td></tr>
-                <tr><td><code>opencode</code></td><td><code>tool.execute.before</code></td><td>Format-verified</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p><small>* <code>windsurf</code>&#x27;s product identity is in doubt &mdash; it became Devin Desktop in 2026, so this target may be renamed or retargeted; its <code>pre_run_command</code> hook is documented but unverified here. See the <a href="../harnesses/">harness matrix</a>.</small></p>
-          <p>Two honest limits, plainly. <strong>Only recognized shell-boundary transitions hard-block</strong> &mdash; a judgment gate with no tool to intercept, like <code>board-accepted</code>, stays advisory guidance because there is nothing to deny. Install registers every target, but only Claude Code has completed live harness verification; the other targets remain format-verified and experimental.</p>
-          <p>Claude Code and Codex also register lifecycle hooks: session start/resume restores the active phase, PreCompact and post-tool/subagent events write bounded receipts, and Stop prevents an identified unfinished run from ending silently. These receipts preserve evidence; they do not infer plan quality, formatter choice, or board judgment.</p>
-        </div>
-      </div>
-    </section>
-
     <section class="section" id="honest" aria-labelledby="honest-title">
       <div class="container container--prose">
         <div class="section__head">
@@ -273,7 +165,7 @@
         </div>
         <div class="order-prose">
           <p>Each adapter&#x27;s payload is deterministic and checked against <code>tests/payload-digests/&lt;name&gt;.sha256</code>; the feature matrix is validated too, so adding a frontmatter key without registering it fails the build. The site you are reading is generated from the rendered Claude Code payload and gated the same way.</p>
-          <p>On enforcement specifically: every target payload carries a per-harness shim, and installation registers it without replacing user hooks. The Rust dispatcher owns parsing and native deny translation. Nothing here is described as runtime-tested on a harness Shipmates has not been run on.</p>
+          <p>Nothing here is described as runtime-tested on a harness Shipmates has not been run on.</p>
         </div>
       </div>
     </section>

@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_hook_shim, emit_shared_skills, emit_shared_tool_skills, render_body, CODEX};
+use super::render::{emit_shared_skills, emit_shared_tool_skills, render_body, CODEX};
 use super::Adapter;
 
 /// Codex CLI — twelve skills under `.agents/skills/<name>/SKILL.md` plus the
@@ -90,8 +90,6 @@ impl Adapter for CodexAdapter {
         }
         // Commands ship to the shared `.agents/skills/` tree (neutral dialect).
         files.extend(emit_shared_skills(self.container(), commands));
-        // The FSM tool-gate PreToolUse shim (`.codex/hooks/fsm-gate.sh`).
-        files.extend(emit_hook_shim(self.container(), "codex"));
         Ok(files)
     }
 
@@ -115,9 +113,6 @@ mod tests {
             allowed_tools: String::new(),
             disable_model_invocation: true,
             arguments: vec![],
-            loop_max: 0,
-            stages: vec![],
-            tool_gates: vec![],
             narrative: narrative.to_string(),
             invocation: String::new(),
             board: String::new(),
@@ -158,12 +153,6 @@ mod tests {
         assert!(!skill.contains(".codex/agents/*.md"));
         assert!(skill.contains("$ARGUMENTS"));
         assert!(!skill.contains("{{arg}}"));
-    }
-
-    #[test]
-    fn test_fsm_gate_shim_is_emitted() {
-        let files = CodexAdapter.build(&[], &[]).unwrap();
-        assert!(files.contains_key("harnesses/codex/.codex/hooks/fsm-gate.sh"));
     }
 
     #[test]

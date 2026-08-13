@@ -220,7 +220,7 @@ Derived from the copy that already works. Four rules:
 4. **Confident without overclaiming.** State what the thing does. Then state, in the same
    breath, where it doesn't. ["Scope & honesty" in `AGENTS.md`](../AGENTS.md#scope--honesty) is
    the precedent: three blunt bullets about Claude-Code-only support, prompt-driven rather than
-   hook-enforced gates, and no Anthropic affiliation. Every surface owes the reader that
+   prompt-driven gates, and no Anthropic affiliation. Every surface owes the reader that
    treatment.
 
 ### Say / don't say
@@ -229,7 +229,7 @@ Derived from the copy that already works. Four rules:
 |---|---|---|
 | "Stop being your AI's for-loop. Give it a crew." | "Supercharge your AI-powered development workflow." | Names the reader's actual pain. No marketing verbs. |
 | "Running the crew on opencode / Cursor / Copilot / Codex is on the roadmap, not shipped." | "Works with any coding agent." | Honest about the boundary. Overclaiming is the one unrecoverable brand error. |
-| "The gates are driven by the workflow prompt; a code-enforced state machine is planned, not in the current release." | "Enforced, guaranteed gates." | Precise about the mechanism, so nobody is surprised by it. |
+| "The gates are defined by the structured workflow and explicit quality checks; no code-enforced state machine or tool-boundary hook is shipped." | "Enforced, guaranteed gates." | Precise about the mechanism, so nobody is surprised by it. |
 | "You stay the captain. The shipmates do the twenty steps in between." | "Fully autonomous, zero-touch AI engineering." | The metaphor doing real work — it says who decides. |
 | "Visual specialists flat-out flag *'needs a human visual pass'* when they can't render." | "AI-reviewed pixel-perfect UI." | Says what the tool can't do, unprompted. |
 

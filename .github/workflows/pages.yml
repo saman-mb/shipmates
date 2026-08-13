@@ -81,15 +81,6 @@ jobs:
         run: cargo test --all-targets
       - name: Test installer source resolution
         run: bash tests/test_resolve_src.sh
-      # The FSM tool-gate shims (reference + every per-harness shim, #216). The
-      # reference test needs a built `shipmates`; the per-harness tests stub it.
-      # Neither was gated before — close that gap for all of them.
-      - name: Run the FSM tool-gate shim tests
-        run: |
-          for t in tests/test_fsm_gate_shim.sh tests/test_fsm_gate_shim_*.sh; do
-            echo "== $t =="
-            bash "$t"
-          done
       - name: Check install.sh is executable (#100)
         run: |
           mode=$(git ls-files -s install.sh | awk '{print $1}')
@@ -132,15 +123,9 @@ jobs:
           grep -q '\.agents/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
           ! grep -qE '\.(codex|cursor|github)/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
           # None of the shared harnesses write their own private skills tree.
-          # (.cursor/ now legitimately holds the FSM tool-gate shim (#216), but
-          # never a skills tree — assert on .cursor/skills, not the whole dotdir.)
           test ! -d "$RUNNER_TEMP/install-all/.cursor/skills"
           test ! -d "$RUNNER_TEMP/install-all/.codex/skills"
           test ! -d "$RUNNER_TEMP/install-all/.github/skills"
-          # The FSM tool-gate shim ships into every harness's payload (#216).
-          test -f "$RUNNER_TEMP/install-all/.claude/hooks/fsm-gate.sh"
-          test -f "$RUNNER_TEMP/install-all/.cursor/hooks/fsm-gate.sh"
-           test -f "$RUNNER_TEMP/install-all/.opencode/plugins/fsm-gate.ts"
       # Tools are opt-in (--with-tools) and map per harness: an agent-only skill
       # on Claude Code (user-invocable: false), a native code tool on opencode.
       - name: Install an opt-in tool end to end (--with-tools)
@@ -209,10 +194,8 @@ jobs:
       - name: Install a skill-only harness end to end
         run: |
           cargo run -- install --harness cursor --dir "$RUNNER_TEMP/install-cursor"
-          # Cursor reads the open Agent Skills tree (.agents/skills); its only
-          # .cursor/ file is the FSM tool-gate shim (#216), never a skills tree.
+          # Cursor reads the open Agent Skills tree (.agents/skills).
           test -f "$RUNNER_TEMP/install-cursor/.agents/skills/ship-issue/SKILL.md"
-          test -f "$RUNNER_TEMP/install-cursor/.cursor/hooks/fsm-gate.sh"
           test ! -d "$RUNNER_TEMP/install-cursor/.cursor/skills"
           test ! -d "$RUNNER_TEMP/install-cursor/.agents/agents"
 

@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_hook_shim, render_body, OPENCODE};
+use super::render::{render_body, OPENCODE};
 use super::Adapter;
 
 pub struct OpencodeAdapter;
@@ -89,8 +89,6 @@ impl Adapter for OpencodeAdapter {
             content.push_str(&render_body(&command.narrative, &OPENCODE));
             files.insert(format!("{}/commands/{}.md", self.base_dir(), command.name), content);
         }
-        // The FSM tool-gate plugin (`.opencode/plugins/fsm-gate.ts`).
-        files.extend(emit_hook_shim(self.container(), "opencode"));
         Ok(files)
     }
 
@@ -144,12 +142,6 @@ mod tests {
         assert!(content.ends_with("test body"));
     }
 
-    #[test]
-    fn test_fsm_gate_plugin_is_emitted() {
-        let files = OpencodeAdapter.build(&[], &[]).unwrap();
-        assert!(files.contains_key("harnesses/opencode/.opencode/plugins/fsm-gate.ts"));
-    }
-
     fn role_with_effort(effort: Option<&str>) -> CanonicalRole {
         CanonicalRole {
             name: "architect".to_string(),
@@ -189,9 +181,6 @@ mod tests {
             allowed_tools: "".to_string(),
             disable_model_invocation: true,
             arguments: vec![],
-            loop_max: 0,
-            stages: vec![],
-            tool_gates: vec![],
             narrative: "Resolve via `agent-files/*.md` else `general-purpose`; spawn `@role(planner)`; use {{issue}}."
                 .to_string(),
             invocation: "".to_string(),

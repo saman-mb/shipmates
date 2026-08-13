@@ -5,8 +5,6 @@ argument-hint: <what to polish — a screen, an asset, a rendered surface> [revi
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: target
-loop_max: 3
-stages: [{"order":1,"stage":"inspect","roles":["ux-ui-designer"],"gate":"render-available","max_loops":1},{"order":2,"stage":"iterate","roles":["senior-engineer"],"gate":"polish-improved","max_loops":3},{"order":3,"stage":"sign-off","roles":["art-director"],"gate":"visual-accepted","max_loops":1}]
 invocation: @{{role}}({{target}})
 board: native
 ---

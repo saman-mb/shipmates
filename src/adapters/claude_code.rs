@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_hook_shim, emit_tool_files, render_body, CLAUDE_CODE};
+use super::render::{emit_tool_files, render_body, CLAUDE_CODE};
 use super::Adapter;
 
 const TOOL_MAP: [(&str, &[&str]); 5] = [
@@ -64,8 +64,6 @@ impl Adapter for ClaudeCodeAdapter {
             content.push_str(&render_body(&command.narrative, &CLAUDE_CODE));
             files.insert(format!("{}/skills/{}/SKILL.md", self.base_dir(), command.name), content);
         }
-        // The FSM tool-gate PreToolUse shim (`.claude/hooks/fsm-gate.sh`).
-        files.extend(emit_hook_shim(self.container(), "claude-code"));
         Ok(files)
     }
 
@@ -124,12 +122,6 @@ mod tests {
     }
 
     #[test]
-    fn test_fsm_gate_shim_is_emitted() {
-        let files = ClaudeCodeAdapter.build(&[], &[]).unwrap();
-        assert!(files.contains_key("harnesses/claude-code/.claude/hooks/fsm-gate.sh"));
-    }
-
-    #[test]
     fn test_command_body_is_rendered() {
         let command = CanonicalCommand {
             name: "migrate".to_string(),
@@ -138,9 +130,6 @@ mod tests {
             allowed_tools: "Bash".to_string(),
             disable_model_invocation: true,
             arguments: vec![],
-            loop_max: 0,
-            stages: vec![],
-            tool_gates: vec![],
             narrative: "Resolve via `agent-files/*.md`; use {{arg}}.".to_string(),
             invocation: "".to_string(),
             board: "".to_string(),

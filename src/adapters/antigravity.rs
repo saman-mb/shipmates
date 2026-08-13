@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_hook_shim, emit_shared_skills, emit_shared_tool_skills};
+use super::render::{emit_shared_skills, emit_shared_tool_skills};
 use super::Adapter;
 
 /// The Antigravity CLI (`agy`) — Google's successor to the retired Gemini CLI.
@@ -80,8 +80,6 @@ impl Adapter for AntigravityAdapter {
         // come from the shared emitter (byte-identical with codex/cursor/
         // copilot). Only the crew above are agy-specific.
         files.extend(emit_shared_skills(self.container(), commands));
-        // The FSM tool-gate PreToolUse shim (`.agents/hooks/fsm-gate.sh`).
-        files.extend(emit_hook_shim(self.container(), "antigravity"));
         Ok(files)
     }
 
@@ -124,12 +122,6 @@ mod tests {
     }
 
     #[test]
-    fn test_fsm_gate_shim_is_emitted() {
-        let files = AntigravityAdapter.build(&[], &[]).unwrap();
-        assert!(files.contains_key("harnesses/antigravity/.agents/hooks/fsm-gate.sh"));
-    }
-
-    #[test]
     fn test_antigravity_skill_emits_standard_pair() {
         let command = CanonicalCommand {
             name: "ship-issue".to_string(),
@@ -138,9 +130,6 @@ mod tests {
             allowed_tools: "".to_string(),
             disable_model_invocation: true,
             arguments: vec![],
-            loop_max: 0,
-            stages: vec![],
-            tool_gates: vec![],
             narrative: "Use `agent-files/*.md` and `Harness-Session`.".to_string(),
             invocation: "".to_string(),
             board: "".to_string(),

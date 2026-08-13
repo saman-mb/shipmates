@@ -5,8 +5,6 @@ argument-hint: [version — e.g. v1.4.0, or "patch"/"minor"/"major" to derive it
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: version
-loop_max: 2
-stages: [{"order":1,"stage":"assemble","roles":["technical-writer"],"gate":"changelog-ready","max_loops":1},{"order":2,"stage":"preflight","roles":["site-reliability-engineer"],"gate":"rollback-safe","max_loops":2}]
 invocation: @{{role}}({{version}})
 board: native
 ---

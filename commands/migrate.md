@@ -5,8 +5,6 @@ argument-hint: <from → to — e.g. "moment.js → date-fns" or "callback API �
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 arguments: migration
-loop_max: 3
-stages: [{"order":1,"stage":"discover","roles":["architect"],"gate":"call-sites-found","max_loops":1},{"order":2,"stage":"transform","roles":["senior-engineer"],"gate":"sites-updated","max_loops":3},{"order":3,"stage":"sweep","roles":["sdet"],"gate":"no-old-patterns","max_loops":1},{"order":4,"stage":"review","roles":["sdet","architect"],"gate":"migration-accepted","max_loops":1}]
 invocation: @{{role}}({{migration}})
 board: native
 ---
