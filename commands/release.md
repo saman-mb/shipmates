@@ -84,5 +84,5 @@ command if manual), plus any human follow-ups (secret/config changes, migration 
 - Version is consistent across every file that records it.
 - Reversibility is a release requirement: no rollback / destructive migration is a blocker to justify or fix.
 - Respect `PUBLISH_MODE` — never publish unattended unless explicitly set to `auto`.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.

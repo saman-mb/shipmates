@@ -131,5 +131,5 @@ in place with the PR open for a human to merge.
 - **Security review lives here, not in `/ship-issue`.** `/ship-issue` doesn't seat `security-engineer`
   on its acceptance board — when a story it's shipping touches a security-sensitive surface, it
   classifies the change as such and **recommends** a `/harden` pass rather than convening the review
-  itself. If the `security-engineer` role doesn't resolve to an `agent-files/*.md` here, fall back
-  to `general-purpose` with the brief inlined and note it.
+  itself. If the `security-engineer` role doesn't resolve to an `{{agents-glob}}` here, fall back
+  to `{{general-purpose}}` with the brief inlined and note it.

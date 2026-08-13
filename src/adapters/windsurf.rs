@@ -1,7 +1,7 @@
+use super::Adapter;
+use super::render::{WINDSURF, emit_skill_files, emit_tool_files};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_skill_files, emit_tool_files, WINDSURF};
-use super::Adapter;
 
 /// Windsurf (Cascade) discovers skills under `.windsurf/skills/<name>/SKILL.md`
 /// and has no subagent mechanic, so the crew becomes twelve skills and `roles`
@@ -13,8 +13,12 @@ impl Adapter for WindsurfAdapter {
         "harnesses/windsurf/.windsurf"
     }
 
-    fn build(&self, _roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
-        Ok(emit_skill_files(self.base_dir(), commands, &WINDSURF))
+    fn build(
+        &self,
+        _roles: &[CanonicalRole],
+        commands: &[CanonicalCommand],
+    ) -> anyhow::Result<HashMap<String, String>> {
+        emit_skill_files(self.base_dir(), commands, &WINDSURF)
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
@@ -46,5 +50,4 @@ mod tests {
         assert!(files.contains_key("harnesses/windsurf/.windsurf/skills/refactor/SKILL.md"));
         assert!(!files.keys().any(|k| k.contains("agents/")));
     }
-
 }

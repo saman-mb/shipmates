@@ -23,7 +23,7 @@ hints. If it's a number, pull it with `gh issue view`. If it's empty, ask what's
 
 - `BASE_BRANCH` = the repo's default branch. `WORKTREE_DIR` = `../<repo>--bug-<slug>`. `BRANCH` = `fix/<slug>`.
 - `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in).
-- **Quality bar / test commands** = whatever the repo's README / AGENTS.md / test config states. Read it first.
+- **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states. Read it first.
 - Reuse required trailers from the session context (a `Co-Authored-By:` line at minimum); the
   orchestrator owns all git/gh — agents never push.
 
@@ -91,5 +91,5 @@ follow-up issues. Report: root cause, the red→green proof, review verdicts, fi
 - Minimal, scoped change; unrelated improvements become follow-ups, not part of this PR.
 - Bounded loops; escalate with the log rather than spinning. Never advance a red PR.
 - The reviewer is a **fresh** agent, never the one who wrote the fix.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined, and note it.

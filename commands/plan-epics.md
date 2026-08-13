@@ -26,7 +26,7 @@ briefs separated by `---` or numbered. If it's empty, ask the user for the brief
 - `EPIC_LABEL` = `epic`; `STORY_LABEL` = `user-story` (create if missing).
 - `AREA_LABELS` = derived from the repo's existing `gh label list` (prefer the `area:*` family). Create
   a new area label only when a story clearly needs one that doesn't exist — and say which you created.
-- Issue-body trailer: `Harness-Session: ...` on every epic and story (read from the harness/session
+- Issue-body trailer: `{{session-key}}: ...` on every epic and story (read from the harness/session
   context; do not invent).
 - `DRY_RUN` = on if the caller says "dry run" / "preview": print the full plan and create NOTHING.
 
@@ -35,7 +35,7 @@ briefs separated by `---` or numbered. If it's empty, ask the user for the brief
 ## Stage 0 — Intake & context  (orchestrator)
 
 1. Parse `{{brief}}` into one or more briefs; read any referenced files/dirs.
-2. Gather repo context so the backlog fits the project: `README` / `AGENTS.md` (domain, conventions,
+2. Gather repo context so the backlog fits the project: `README` / `{{project-instructions}}` (domain, conventions,
    quality bar), `gh label list`, and the **existing open issues** (`gh issue list --state open
    --limit 300 --json number,title,labels`) so you can dedupe against work already tracked.
 3. Decide the shape: does the brief map to **one** cohesive epic, or **several** independent ones?
@@ -100,5 +100,5 @@ Otherwise, in this order (numbers must exist before they're referenced):
 - Respect `DRY_RUN` — when set, create nothing.
 - Every epic and story must be individually valuable and traceable (`Part of #`), so the backlog is
   ready to hand to `/ship-issue` one story at a time.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the
   product-manager brief inlined, and note the fallback.

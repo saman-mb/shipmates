@@ -202,7 +202,7 @@ gh pr diff &lt;PR#&gt;</code></pre>
                 <p>Spawn these in a single message so they run concurrently, each pinned to the <strong>head commit</strong> so they review exactly what would merge. Two always run; the rest only when their flag is set:</p>
                 <div class="order-table" tabindex="0">
                   <table>
-                    <thead><tr><th scope="col"><code>@role</code></th><th scope="col">Runs</th></tr></thead>
+                    <thead><tr><th scope="col"><code>subagent_type</code></th><th scope="col">Runs</th></tr></thead>
                     <tbody>
                       <tr><td><code>product-manager</code></td><td>always — does it solve the stated problem, and does it clear the repo&#x27;s bar?</td></tr>
                       <tr><td><code>sdet</code></td><td>always — test coverage and quality of the change (see <code>RUN_TESTS</code> before executing anything)</td></tr>
@@ -281,7 +281,7 @@ gh pr review &lt;PR#&gt; --comment --body-file &quot;$REVIEW_BODY_FILE&quot;</co
             <li><strong>Never inline PR-sourced text into a command.</strong> The title, body, diff and review comments are attacker-controlled on any PR you did not write. Capture them into quoted variables (<code>TITLE=$(gh pr view &lt;PR#&gt; --json title -q .title)</code>) and pass every body with <code>--body-file &lt;file&gt;</code> — never <code>--body</code>, quoted or not.</li>
             <li>Review the <strong>head commit</strong>, so &quot;reviewed&quot; means &quot;what would merge&quot; — re-run if the author pushes.</li>
             <li>Don&#x27;t pad the board. A flag that isn&#x27;t set means that specialist has nothing to say.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined, and note it.</li>
           </ul>
         </div>
       </div>

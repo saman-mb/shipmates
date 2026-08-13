@@ -225,7 +225,7 @@
           <li class="order-stage" id="stage-0">
             <span class="order-stage__num" aria-hidden="true">0</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Intake &amp; plan</h3>
-            <p class="order-stage__crew">Crew: (agent: <code>Plan</code>)</p>
+            <p class="order-stage__crew">Crew: (agent: <code>planner</code>)</p>
             <div class="order-stage__body">
               <div class="order-prose">
                 <p><strong>Selection mode — <code>next</code>.</strong> If the leading token is <code>next</code> (in place of issue numbers), first pick the work from the backlog, then continue with the numbered steps below on the chosen <code>&lt;issues&gt;</code>:</p>
@@ -468,10 +468,10 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
           </ul>
           <p>Required commit trailers (append to every commit and the PR body — read them from the harness / session context; do not invent them). At minimum a <code>Co-Authored-By:</code> line for the agent.</p>
           <h3>The reviewer/builder pool</h3>
-          <p>Every specialist below is a <strong>named subagent</strong> shipped alongside this command (<code>.claude/agents/*.md</code>, installed globally or per-project) and invoked by its <code>subagent_type</code> — NOT a <code>general-purpose</code> agent with a persona pasted inline. The pool:</p>
+          <p>Every specialist below is a <strong>named subagent</strong> shipped alongside this command (<code>.claude/agents/*.md</code>, installed globally or per-project) and invoked by its <code>subagent_type</code> reference — NOT a <code>general-purpose</code> agent with a persona pasted inline. The pool:</p>
           <div class="order-table" tabindex="0">
             <table>
-              <thead><tr><th scope="col"><code>@role</code></th><th scope="col">Used for</th></tr></thead>
+              <thead><tr><th scope="col"><code>subagent_type</code></th><th scope="col">Used for</th></tr></thead>
               <tbody>
                 <tr><td><code>senior-engineer</code></td><td>Building, fixing, remediation (Stages 2, 3, 4.5, 6)</td></tr>
                 <tr><td><code>sdet</code></td><td>Test / build / validation runs (Stages 3, 5)</td></tr>
@@ -484,7 +484,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
               </tbody>
             </table>
           </div>
-          <p>These agents are <strong>generic</strong> (domain-neutral); the project-specific standard they enforce comes from your repo&#x27;s README / CLAUDE.md, passed at spawn — not baked into the role. Which specialists a story needs is decided by the Planner&#x27;s classification flags, so the board is <strong>context-aware to the story&#x27;s domain</strong> (a pure-logic story pulls no designer/art-director; a UI story pulls the designer; a rendered-art story pulls the art-director; a schema story pulls the architect). If a referenced role does not resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback in the final report — never silently skip a gated review.</p>
+          <p>These agents are <strong>generic</strong> (domain-neutral); the project-specific standard they enforce comes from your repo&#x27;s README / CLAUDE.md, passed at spawn — not baked into the role. Which specialists a story needs is decided by the Planner&#x27;s classification flags, so the board is <strong>context-aware to the story&#x27;s domain</strong> (a pure-logic story pulls no designer/art-director; a UI story pulls the designer; a rendered-art story pulls the art-director; a schema story pulls the architect). If a referenced role does not resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback in the final report — never silently skip a gated review.</p>
         </div>
       </div>
     </section>

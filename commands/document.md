@@ -22,7 +22,7 @@ a migration guide, or the whole repo. If empty, ask what to document and for who
 
 ## Config
 
-- `WRITER` = `technical-writer`. `READER` = a **fresh** `general-purpose` (or `technical-writer`) agent that
+- `WRITER` = `technical-writer`. `READER` = a **fresh** `{{general-purpose}}` (or `technical-writer`) agent that
   has NOT seen the drafting — it only gets the doc + the repo, like a real newcomer.
 - `MAX_ROUNDS` = `3` — the fresh-reader fix loop cap (Stage 3). `MODE` = `pr` (default) — a worktree,
   a branch and a CI-gated PR, reusing `/ship-issue`'s isolate stage and its commit-push-PR stage;
@@ -106,5 +106,5 @@ the doc type, the fresh-reader's final result (in its words), rounds taken, and 
   a surprise in someone's checkout. `MODE=edit-in-place` is an explicit request, never an assumption.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.

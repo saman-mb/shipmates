@@ -27,7 +27,7 @@ a chart, a piece of output…) and optionally which reviewer. If it's empty, ask
   - on-screen application **UI** (screens, HUD, panels, components) → `ux-ui-designer`
   - general **output quality** / does-it-meet-the-goal (copy, a data view, a non-visual deliverable) → `product-manager`
 
-  Infer from the repo's README/AGENTS.md domain; when genuinely ambiguous, ask the user which reviewer.
+  Infer from the repo's README/{{project-instructions}} domain; when genuinely ambiguous, ask the user which reviewer.
 - `MAX_ROUNDS` = 5 — loop cap before escalating to the user with the current state and the reviewer's
   outstanding notes. Never loop forever; never declare a sign-off the reviewer didn't give.
 - `MAX_FIX_ROUNDS` = `2` — bounds the Stage 4 CI-fix loop only; separate from `MAX_ROUNDS`, which
@@ -61,7 +61,7 @@ a chart, a piece of output…) and optionally which reviewer. If it's empty, ask
 - The renders are **evidence, not deliverables.** The fixes land in tracked source; the captured
   artifact is often gitignored build output. Never force-add an ignored render to the branch — cite
   its path in the report and the PR body instead.
-- **Quality bar** = the project's stated visual/UX bar (README/AGENTS.md), passed to the reviewer.
+- **Quality bar** = the project's stated visual/UX bar (README/{{project-instructions}}), passed to the reviewer.
 
 ---
 
@@ -190,5 +190,5 @@ remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with th
 - **The loop runs on its own branch by default.** Five rounds of edits belong in a diff a human can
   read, not in someone's checkout. `MODE=edit-in-place` is an explicit request — except when you're
   already inside an isolated worktree, where staying put *is* the isolation.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the role's
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the role's
   brief inlined, and note the fallback.

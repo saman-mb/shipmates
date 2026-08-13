@@ -118,7 +118,7 @@ review on — and offer the next step: `/plan-epics` to turn the chosen directio
   lands as a diff a human can read, not a surprise in someone's checkout. `MODE=edit-in-place` is an
   explicit request, never an assumption — and it's a different switch from `ISOLATION`, which only
   governs the throwaway prototype worktrees.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work.

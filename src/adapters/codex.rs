@@ -1,7 +1,9 @@
+use super::Adapter;
+use super::render::{
+    CODEX, CrewFormat, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
+};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_shared_skills, emit_shared_tool_skills, render_body, CODEX};
-use super::Adapter;
 
 /// Codex CLI — twelve skills under `.agents/skills/<name>/SKILL.md` plus the
 /// crew as project-scoped subagents under `.codex/agents/<name>.toml`.
@@ -63,6 +65,34 @@ fn toml_basic(value: &str) -> String {
     format!("\"{}\"", escaped)
 }
 
+fn no_tools(_role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
+    Ok(Vec::new())
+}
+
+fn serialize(role: &CanonicalRole, body: &str, _tools: &[String]) -> anyhow::Result<String> {
+    let mut content = String::new();
+    content.push_str(&format!("name = {}\n", toml_basic(&role.name)));
+    content.push_str(&format!(
+        "description = {}\n",
+        toml_basic(&role.description)
+    ));
+    if let Some(e) = &role.effort {
+        content.push_str(&format!("model_reasoning_effort = {}\n", toml_basic(e)));
+    }
+    content.push_str(&format!(
+        "developer_instructions = {}\n",
+        toml_literal(body)?
+    ));
+    Ok(content)
+}
+
+const CREW_FORMAT: CrewFormat = CrewFormat {
+    file_suffix: ".toml",
+    dialect: &CODEX,
+    map_tools: no_tools,
+    serialize,
+};
+
 impl Adapter for CodexAdapter {
     fn base_dir(&self) -> &'static str {
         "harnesses/codex/.codex"
@@ -74,22 +104,14 @@ impl Adapter for CodexAdapter {
         self.container()
     }
 
-    fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
-        let mut files = HashMap::new();
-        for role in roles {
-            let body = render_body(&role.body, &CODEX);
-            let mut content = String::new();
-            content.push_str(&format!("name = {}\n", toml_basic(&role.name)));
-            content.push_str(&format!("description = {}\n", toml_basic(&role.description)));
-            // Codex carries reasoning effort as the documented `model_reasoning_effort`.
-            if let Some(e) = &role.effort {
-                content.push_str(&format!("model_reasoning_effort = {}\n", toml_basic(e)));
-            }
-            content.push_str(&format!("developer_instructions = {}\n", toml_literal(&body)?));
-            files.insert(format!("{}/agents/{}.toml", self.base_dir(), role.name), content);
-        }
+    fn build(
+        &self,
+        roles: &[CanonicalRole],
+        commands: &[CanonicalCommand],
+    ) -> anyhow::Result<HashMap<String, String>> {
+        let mut files = emit_crew_files(self.base_dir(), roles, &CREW_FORMAT)?;
         // Commands ship to the shared `.agents/skills/` tree (neutral dialect).
-        files.extend(emit_shared_skills(self.container(), commands));
+        files.extend(emit_shared_skills(self.container(), commands)?);
         Ok(files)
     }
 
@@ -138,13 +160,18 @@ mod tests {
     #[test]
     fn test_codex_adapter_emits_skills_and_crew() {
         let files = CodexAdapter
-            .build(&[role("architect", "body")], &[command("migrate", "use {{arg}} via `agent-files/*.md`")])
+            .build(
+                &[role("architect", "body")],
+                &[command("migrate", "use {{arg}} via {{agents-glob}}")],
+            )
             .unwrap();
         assert!(files.contains_key("harnesses/codex/.agents/skills/migrate/SKILL.md"));
         assert!(files.contains_key("harnesses/codex/.codex/agents/architect.toml"));
         // Skills go to the open standard tree, never `.codex/skills`.
         assert!(!files.keys().any(|k| k.contains(".codex/skills/")));
-        let skill = files.get("harnesses/codex/.agents/skills/migrate/SKILL.md").unwrap();
+        let skill = files
+            .get("harnesses/codex/.agents/skills/migrate/SKILL.md")
+            .unwrap();
         assert!(skill.contains("name: migrate\n"));
         // Shared neutral dialect: the crew glob is the open `.agents/agents`, not
         // the Codex-native `.codex/agents` (crew still install there; the skill's
@@ -157,8 +184,12 @@ mod tests {
 
     #[test]
     fn test_crew_is_toml_not_markdown() {
-        let files = CodexAdapter.build(&[role("architect", "line one\nline two\n")], &[]).unwrap();
-        let agent = files.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
+        let files = CodexAdapter
+            .build(&[role("architect", "line one\nline two\n")], &[])
+            .unwrap();
+        let agent = files
+            .get("harnesses/codex/.codex/agents/architect.toml")
+            .unwrap();
         assert!(agent.starts_with("name = \"architect\"\n"));
         assert!(agent.contains("description = \"desc\"\n"));
         assert!(agent.contains("developer_instructions = '''\nline one\nline two\n'''"));
@@ -171,8 +202,13 @@ mod tests {
         let mut r = role("architect", "body");
         r.effort = Some("high".to_string());
         let files = CodexAdapter.build(&[r], &[]).unwrap();
-        let agent = files.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
-        assert!(agent.contains("model_reasoning_effort = \"high\"\n"), "{agent}");
+        let agent = files
+            .get("harnesses/codex/.codex/agents/architect.toml")
+            .unwrap();
+        assert!(
+            agent.contains("model_reasoning_effort = \"high\"\n"),
+            "{agent}"
+        );
     }
 
     #[test]
@@ -182,16 +218,26 @@ mod tests {
         let mut r = role("architect", "body");
         r.effort = Some("high".to_string());
         let files = CodexAdapter.build(&[r], &[]).unwrap();
-        let agent = files.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
-        assert!(!agent.lines().any(|l| l.trim_start().starts_with("model =")), "{agent}");
+        let agent = files
+            .get("harnesses/codex/.codex/agents/architect.toml")
+            .unwrap();
+        assert!(
+            !agent.lines().any(|l| l.trim_start().starts_with("model =")),
+            "{agent}"
+        );
     }
 
     #[test]
     fn test_crew_body_is_rendered_into_the_codex_dialect() {
         let files = CodexAdapter
-            .build(&[role("architect", "see `agent-files/*.md` and Harness-Session")], &[])
+            .build(
+                &[role("architect", "see {{agents-glob}} and {{session-key}}")],
+                &[],
+            )
             .unwrap();
-        let agent = files.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
+        let agent = files
+            .get("harnesses/codex/.codex/agents/architect.toml")
+            .unwrap();
         assert!(agent.contains(".codex/agents/*.md"));
         assert!(agent.contains("Codex-Session"));
         assert!(!agent.contains("agent-files/"));
@@ -202,9 +248,14 @@ mod tests {
         // A persona containing `\$1` must reach disk byte-for-byte: a TOML basic
         // string would consume the backslash and change the instruction.
         let files = CodexAdapter
-            .build(&[role("architect", "escape a literal as `\\$1` \"quoted\"\n")], &[])
+            .build(
+                &[role("architect", "escape a literal as `\\$1` \"quoted\"\n")],
+                &[],
+            )
             .unwrap();
-        let agent = files.get("harnesses/codex/.codex/agents/architect.toml").unwrap();
+        let agent = files
+            .get("harnesses/codex/.codex/agents/architect.toml")
+            .unwrap();
         assert!(agent.contains("`\\$1`"));
         assert!(agent.contains("\"quoted\""));
     }
@@ -212,6 +263,9 @@ mod tests {
     #[test]
     fn test_literal_terminator_in_body_is_an_error() {
         let result = CodexAdapter.build(&[role("architect", "a ''' b")], &[]);
-        assert!(result.is_err(), "a body containing ''' must fail the build, not corrupt the file");
+        assert!(
+            result.is_err(),
+            "a body containing ''' must fail the build, not corrupt the file"
+        );
     }
 }

@@ -287,7 +287,7 @@ gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
             <li>Reviewer choice follows the project&#x27;s domain: <code>art-director</code> for art, <code>ux-ui-designer</code> for UI, <code>product-manager</code> for general output. When ambiguous, ask.</li>
             <li>Runs standalone, or as the visual pass inside/after <code>/ship-issue</code> on a UI/visual story.</li>
             <li><strong>The loop runs on its own branch by default.</strong> Five rounds of edits belong in a diff a human can read, not in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request — except when you&#x27;re already inside an isolated worktree, where staying put <em>is</em> the isolation.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback.</li>
           </ul>
         </div>
       </div>

@@ -11,7 +11,7 @@ board: native
 # /onboard — recon → draft → prove it answers
 
 Every role in this crew is told to hold the work to the standard in *your* repo's `README` /
-`AGENTS.md`. Nothing produces that file. On a repo without a good one the whole crew quietly degrades
+`{{project-instructions}}`. Nothing produces that file. On a repo without a good one the whole crew quietly degrades
 to generic advice — and the failure is silent, because a vague context file still yields confident
 output. This command writes it, and **gates on a fresh agent being able to answer the crew's actual
 questions from the file alone**.
@@ -45,8 +45,8 @@ want is a README or a tutorial, stop and run `/document`.
   verification-loop `MAX_ROUNDS` below. A repo with no remote to open a PR against is the one
   fallback: build the branch, stop there, and report the branch as the undo path — never quietly
   write to the tree instead.
-- `TARGET` = auto-detected. `TARGET.md` if one exists, else `AGENTS.md` if one exists, else
-  `TARGET.md`. **Never write both** — see below.
+- `TARGET` = auto-detected. `{{project-instructions}}` if one exists, else `{{project-instructions-fallback}}` if one exists, else
+  `{{project-instructions}}`. **Never write both** — see below.
 - `MAX_ROUNDS` = `3` verification loops before escalating (Stage 3).
 
 ## Stage 0 — Survey & mode
@@ -71,7 +71,7 @@ The branch exists before the context file does. First check `git -C <repo> statu
 the caller's tree is dirty, **warn loudly** — a worktree cut from `HEAD` holds committed work only,
 so an uncommitted rule Stage 0's survey just saw won't carry into the draft — then proceed. Exactly
 as `/ship-issue`'s isolate stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>` — so
-an unpushed `TARGET.md`/`AGENTS.md` that Stage 0's survey already saw is actually present in the
+an unpushed `{{project-instructions}}`/`{{project-instructions-fallback}}` that Stage 0's survey already saw is actually present in the
 worktree the draft and refresh work against:
 
 ```bash
@@ -149,5 +149,5 @@ passed on.
   than erroring or duplicating work.
 - Preserve hand-written rules on a refresh. You are augmenting someone's judgement, not replacing it.
 - Don't write a README. If the content is for humans, it belongs in `/document`.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined, and note it.

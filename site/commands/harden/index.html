@@ -272,7 +272,7 @@
             <li>Every Critical/High ends as fixed or explicitly accepted — never silently dropped.</li>
             <li>Bounded loop; escalate with open findings rather than rubber-stamping.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
-            <li><strong>Security review lives here, not in <code>/ship-issue</code>.</strong> <code>/ship-issue</code> doesn&#x27;t seat <code>security-engineer</code> on its acceptance board — when a story it&#x27;s shipping touches a security-sensitive surface, it classifies the change as such and <strong>recommends</strong> a <code>/harden</code> pass rather than convening the review itself. If the <code>security-engineer</code> role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code> here, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li><strong>Security review lives here, not in <code>/ship-issue</code>.</strong> <code>/ship-issue</code> doesn&#x27;t seat <code>security-engineer</code> on its acceptance board — when a story it&#x27;s shipping touches a security-sensitive surface, it classifies the change as such and <strong>recommends</strong> a <code>/harden</code> pass rather than convening the review itself. If the <code>security-engineer</code> role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code> here, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>
       </div>

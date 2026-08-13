@@ -254,7 +254,7 @@
             <li>Bounded loop; escalate with the reader&#x27;s blockers rather than shipping docs that don&#x27;t work.</li>
             <li><strong>Docs are source, so they get a branch.</strong> A doc rewrite lands as a diff a human can read, not as a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
-            <li>If a role doesn&#x27;t resolve to a <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
+            <li>If a role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
           </ul>
         </div>
       </div>
