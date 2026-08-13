@@ -109,10 +109,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/polish</code></h1>
           <p class="order-detail__tagline">iterate to a specialist&#x27;s sign-off</p>
           <p class="order-detail__desc">Iterate a visual / UI / output artifact to a specialist&#x27;s sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or product-manager is genuinely happy (or a round cap).</p>
-          <div class="order-prose">
-            <p>Take a visual / UI / output artifact and refine it in a <strong>loop</strong>: produce it, have the right specialist critique what they actually SEE (not the source that made it), apply the concrete fixes, re-produce, re-review — until that specialist <strong>genuinely signs off</strong> or a round cap is hit. This is the render → critique → refine loop, formalised.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): what to polish (a screen/panel, a generated art asset, a rendered game view, a chart, a piece of output…) and optionally which reviewer. If it&#x27;s empty, ask what to polish.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -151,6 +147,16 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Five stages, in order.</p>
+        </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>Take a visual / UI / output artifact and refine it in a <strong>loop</strong>: produce it, have the right specialist critique what they actually SEE (not the source that made it), apply the concrete fixes, re-produce, re-review — until that specialist <strong>genuinely signs off</strong> or a round cap is hit. This is the render → critique → refine loop, formalised.</p>
+          <p>The artifact and optional reviewer come from the Runtime input section at the end of this workflow.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -235,6 +241,10 @@ gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
             </div>
           </li>
         </ol>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> names the artifact to polish (screen/panel, generated art, rendered view, chart, or other output) and may name a reviewer. If empty, ask what to polish.</p>
+        </div>
       </div>
     </section>
 
@@ -245,7 +255,7 @@ gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
         </div>
         <div class="order-prose">
           <ul>
-            <li><code>REVIEWER</code> — chosen by the artifact&#x27;s domain (or named in <code>$ARGUMENTS</code>):
+            <li><code>REVIEWER</code> — chosen by the artifact&#x27;s domain (or named in the validated runtime input):
               <ul>
                 <li>rendered visual <strong>art</strong> (game world, sprites, shaders, generative imagery, brand/motion) → <code>art-director</code></li>
                 <li>on-screen application <strong>UI</strong> (screens, HUD, panels, components) → <code>ux-ui-designer</code></li>

@@ -4,25 +4,22 @@ description: Iterate a visual / UI / output artifact to a specialist's sign-off 
 argument-hint: <what to polish — a screen, an asset, a rendered surface> [reviewer: art-director|ux-ui-designer|product-manager]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: target
-invocation: @{{role}}({{target}})
-board: native
 ---
 # /polish — iterate to a specialist's sign-off
+<!-- shipmates:command-preamble -->
 
 Take a visual / UI / output artifact and refine it in a **loop**: produce it, have the right
 specialist critique what they actually SEE (not the source that made it), apply the concrete fixes,
 re-produce, re-review — until that specialist **genuinely signs off** or a round cap is hit. This is
 the render → critique → refine loop, formalised.
 
-Input (**{{target}}**): what to polish (a screen/panel, a generated art asset, a rendered game view,
-a chart, a piece of output…) and optionally which reviewer. If it's empty, ask what to polish.
+The artifact and optional reviewer come from the Runtime input section at the end of this workflow.
 
 ---
 
 ## Config
 
-- `REVIEWER` — chosen by the artifact's domain (or named in `{{target}}`):
+- `REVIEWER` — chosen by the artifact's domain (or named in the validated runtime input):
   - rendered visual **art** (game world, sprites, shaders, generative imagery, brand/motion) → `art-director`
   - on-screen application **UI** (screens, HUD, panels, components) → `ux-ui-designer`
   - general **output quality** / does-it-meet-the-goal (copy, a data view, a non-visual deliverable) → `product-manager`
@@ -192,3 +189,8 @@ remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with th
   already inside an isolated worktree, where staying put *is* the isolation.
 - If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the role's
   brief inlined, and note the fallback.
+
+## Runtime input
+
+`$ARGUMENTS` names the artifact to polish (screen/panel, generated art, rendered view, chart, or
+other output) and may name a reviewer. If empty, ask what to polish.

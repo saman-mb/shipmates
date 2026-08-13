@@ -25,6 +25,29 @@ pub struct Dialect {
 }
 
 const SENTINEL: &str = "\u{00A7}agents-instructions";
+const COMMAND_PREAMBLE_MARKER: &str = "<!-- shipmates:command-preamble -->";
+const SUBAGENT_PREAMBLE_MARKER: &str = "<!-- shipmates:subagent-preamble -->";
+const COST_DOCTRINE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/COST.md"));
+
+fn doctrine_section(start: &str, end: &str) -> &'static str {
+    let start = COST_DOCTRINE
+        .find(start)
+        .expect("cost doctrine start marker missing")
+        + start.len();
+    let end = COST_DOCTRINE[start..]
+        .find(end)
+        .expect("cost doctrine end marker missing")
+        + start;
+    COST_DOCTRINE[start..end].trim()
+}
+
+fn command_preamble() -> &'static str {
+    doctrine_section("<!-- command-preamble:start -->", "<!-- command-preamble:end -->")
+}
+
+fn subagent_preamble() -> &'static str {
+    doctrine_section("<!-- subagent-preamble:start -->", "<!-- subagent-preamble:end -->")
+}
 
 /// Resolve the repo-instructions filename the neutral prose refers to.
 ///
@@ -45,7 +68,9 @@ fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
 
 /// Render a harness-neutral command body into a harness's dialect.
 pub fn render_body(text: &str, d: &Dialect) -> String {
-    let mut out = render_instructions(text, d.instructions_primary, d.instructions_fallback);
+    let mut out = text.replace(COMMAND_PREAMBLE_MARKER, command_preamble());
+    out = out.replace(SUBAGENT_PREAMBLE_MARKER, subagent_preamble());
+    out = render_instructions(&out, d.instructions_primary, d.instructions_fallback);
     out = out.replace("agent-files/*.md", &format!("{}/*.md", d.agents_glob));
     out = out.replace("Harness-Session", d.session_key);
     out = out.replace("general-purpose", d.general_purpose);
@@ -60,6 +85,12 @@ pub fn render_body(text: &str, d: &Dialect) -> String {
         &format!("to a `{}/*.md`", d.agents_glob),
     );
     out
+}
+
+/// Render a role body through the same neutral-to-harness rules as commands,
+/// including the stable return preamble shared by every subagent.
+pub fn render_role_body(text: &str, d: &Dialect) -> String {
+    render_body(text, d)
 }
 
 /// Replace every `{{name}}` argument placeholder with the harness's token.
@@ -313,5 +344,16 @@ mod tests {
     fn test_render_args_replaces_all_placeholders() {
         let out = render_args("a {{one}} b {{two}} c", "$ARGUMENTS");
         assert_eq!(out, "a $ARGUMENTS b $ARGUMENTS c");
+    }
+
+    #[test]
+    fn test_shared_preambles_expand_and_leave_no_markers() {
+        let command = render_body("<!-- shipmates:command-preamble -->\nbody", &CLAUDE_CODE);
+        let role = render_role_body("<!-- shipmates:subagent-preamble -->\nrole", &CLAUDE_CODE);
+
+        assert!(command.contains("## Cost discipline"));
+        assert!(role.contains("## Return discipline"));
+        assert!(!command.contains("shipmates:command-preamble"));
+        assert!(!role.contains("shipmates:subagent-preamble"));
     }
 }

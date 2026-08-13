@@ -8,6 +8,7 @@ fn main() {
 
     println!("cargo:rerun-if-changed=crew");
     println!("cargo:rerun-if-changed=commands");
+    println!("cargo:rerun-if-changed=docs/COST.md");
     println!("cargo:rerun-if-changed=toolbox");
 
     let mut entries: Vec<(String, String)> = Vec::new();

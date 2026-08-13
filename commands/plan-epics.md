@@ -4,19 +4,16 @@ description: Turn a brief (or several) into a tracked backlog — GitHub epics +
 argument-hint: <brief text | path to a brief file | several briefs> [area/label hints] [dry-run]
 allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: brief
-invocation: @{{role}}({{brief}})
-board: native
 ---
 # /plan-epics — briefs → GitHub epics + user stories
+<!-- shipmates:command-preamble -->
 
-Turn the brief(s) in **{{brief}}** into a tracked backlog: one or more **epics** (labelled `epic`),
+Turn the supplied brief(s) into a tracked backlog: one or more **epics** (labelled `epic`),
 each broken into **user stories** (labelled `user-story` + area tags), created as GitHub issues and
 cross-linked. When the work spans **multiple epics, a `product-manager` subagent authors each
 epic's stories in parallel** — one PM per epic.
 
-Input (**{{brief}}**): the brief(s). May be inline text, a path to a file/dir of briefs, or several
-briefs separated by `---` or numbered. If it's empty, ask the user for the brief before doing anything.
+The briefs come from the Runtime input section at the end of this workflow.
 
 ---
 
@@ -34,7 +31,7 @@ briefs separated by `---` or numbered. If it's empty, ask the user for the brief
 
 ## Stage 0 — Intake & context  (orchestrator)
 
-1. Parse `{{brief}}` into one or more briefs; read any referenced files/dirs.
+1. Parse the validated runtime input into one or more briefs; read any referenced files/dirs.
 2. Gather repo context so the backlog fits the project: `README` / `AGENTS.md` (domain, conventions,
    quality bar), `gh label list`, and the **existing open issues** (`gh issue list --state open
    --limit 300 --json number,title,labels`) so you can dedupe against work already tracked.
@@ -102,3 +99,8 @@ Otherwise, in this order (numbers must exist before they're referenced):
   ready to hand to `/ship-issue` one story at a time.
 - If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the
   product-manager brief inlined, and note the fallback.
+
+## Runtime input
+
+`$ARGUMENTS` contains one or more briefs. A brief may be inline text, a path to a file or directory,
+or several briefs separated by `---` or numbering. If empty, ask for the brief before doing anything.

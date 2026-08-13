@@ -116,11 +116,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/onboard</code></h1>
           <p class="order-detail__tagline">recon → draft → prove it answers</p>
           <p class="order-detail__desc">Read an unfamiliar repo and write the agent-facing context file every other command depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew&#x27;s real questions from the file alone.</p>
-          <div class="order-prose">
-            <p>Every role in this crew is told to hold the work to the standard in <em>your</em> repo&#x27;s <code>README</code> / <code>CLAUDE.md</code>. Nothing produces that file. On a repo without a good one the whole crew quietly degrades to generic advice — and the failure is silent, because a vague context file still yields confident output. This command writes it, and <strong>gates on a fresh agent being able to answer the crew&#x27;s actual questions from the file alone</strong>.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): a path to a repo. Empty means the current one.</p>
-            <p><strong>This is not <code>/document</code>.</strong> The difference is the <em>audience</em>, not the topic. <code>/document</code> writes for <strong>humans</strong> and gates on a fresh reader completing a task. <code>/onboard</code> writes the <strong>agent-facing contract</strong> that every other command loads at run time, and gates on a fresh agent answering the crew&#x27;s questions correctly. Same philosophy, different question — so neither forks the other. If what you want is a README or a tutorial, stop and run <code>/document</code>.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -159,6 +154,17 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Six stages, in order. One is a hard gate — the run stops there until it passes.</p>
+        </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>Every role in this crew is told to hold the work to the standard in <em>your</em> repo&#x27;s <code>README</code> / <code>CLAUDE.md</code>. Nothing produces that file. On a repo without a good one the whole crew quietly degrades to generic advice — and the failure is silent, because a vague context file still yields confident output. This command writes it, and <strong>gates on a fresh agent being able to answer the crew&#x27;s actual questions from the file alone</strong>.</p>
+          <p>The repository path comes from the Runtime input section at the end of this workflow.</p>
+          <p><strong>This is not <code>/document</code>.</strong> The difference is the <em>audience</em>, not the topic. <code>/document</code> writes for <strong>humans</strong> and gates on a fresh reader completing a task. <code>/onboard</code> writes the <strong>agent-facing contract</strong> that every other command loads at run time, and gates on a fresh agent answering the crew&#x27;s questions correctly. Same philosophy, different question — so neither forks the other. If what you want is a README or a tutorial, stop and run <code>/document</code>.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -242,6 +248,10 @@
             </div>
           </li>
         </ol>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> is an optional repository path. Empty means the current repository.</p>
+        </div>
       </div>
     </section>
 

@@ -130,11 +130,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/refactor</code></h1>
           <p class="order-detail__tagline">pin behaviour → transform → prove equivalence</p>
           <p class="order-detail__desc">Change the shape of the code without changing what it does — pin current behaviour in characterization tests first, transform, then prove equivalence by those tests passing unmodified and no existing test being deleted, skipped or loosened.</p>
-          <div class="order-prose">
-            <p>A refactor that quietly changes behaviour is a bug with good PR copy. The gate here is the one thing that distinguishes the two: <strong>behaviour is pinned in tests written before the change, and those tests pass unmodified afterwards.</strong> If a test had to be edited to make the refactor pass, it wasn&#x27;t a refactor.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): what to restructure <strong>and why</strong>. The motivation is not optional — Stage 5 has to judge whether the structure actually improved, and &quot;it&#x27;s cleaner&quot; is not reviewable. If it&#x27;s empty, ask what hurts and what it&#x27;s costing.</p>
-            <p><strong>If the ask is &quot;rename/replace X with Y across N call sites&quot;, stop and run <code>/migrate</code> instead.</strong> That is a census job: it&#x27;s provable by re-grepping for the old pattern and finding nothing. A refactor has no such grep, which is exactly why it needs behaviour pinned first.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -173,6 +168,17 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Eight stages, in order. Two are hard gates — the run stops there until they pass.</p>
+        </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>A refactor that quietly changes behaviour is a bug with good PR copy. The gate here is the one thing that distinguishes the two: <strong>behaviour is pinned in tests written before the change, and those tests pass unmodified afterwards.</strong> If a test had to be edited to make the refactor pass, it wasn&#x27;t a refactor.</p>
+          <p>The runtime target is what to restructure <strong>and why</strong>. The motivation is not optional — Stage 5 has to judge whether the structure actually improved, and &quot;it&#x27;s cleaner&quot; is not reviewable. If it&#x27;s empty, ask what hurts and what it costs.</p>
+          <p><strong>If the ask is &quot;rename/replace X with Y across N call sites&quot;, stop and run <code>/migrate</code> instead.</strong> That is a census job: it&#x27;s provable by re-grepping for the old pattern and finding nothing. A refactor has no such grep, which is exactly why it needs behaviour pinned first.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -266,6 +272,10 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             </div>
           </li>
         </ol>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> names what to restructure and why. If empty, ask what hurts and what it costs.</p>
+        </div>
       </div>
     </section>
 

@@ -109,10 +109,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/pr-review</code></h1>
           <p class="order-detail__tagline">classify → convene the board → consolidate</p>
           <p class="order-detail__desc">Run the specialist acceptance board against an existing pull request the crew didn&#x27;t author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.</p>
-          <div class="order-prose">
-            <p>Point the crew at a pull request <strong>somebody else wrote</strong> — a teammate&#x27;s, an outside contributor&#x27;s, a dependency bump, or one you opened by hand before you thought to use Shipmates. Every other command assumes the crew authored the change; this one doesn&#x27;t, and that single fact sets its shape: <strong>no worktree, no build, no fix loop.</strong> You don&#x27;t own the branch, so the deliverable is findings, not commits.</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): a PR number or URL, plus an optional focus hint. If it&#x27;s empty, default to the PR for the current branch (<code>gh pr view --json number</code>); if there isn&#x27;t one, ask which PR to review.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -151,6 +147,16 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Five stages, in order.</p>
+        </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>Point the crew at a pull request <strong>somebody else wrote</strong> — a teammate&#x27;s, an outside contributor&#x27;s, a dependency bump, or one you opened by hand before you thought to use Shipmates. Every other command assumes the crew authored the change; this one doesn&#x27;t, and that single fact sets its shape: <strong>no worktree, no build, no fix loop.</strong> You don&#x27;t own the branch, so the deliverable is findings, not commits.</p>
+          <p>The PR and optional focus hint come from the Runtime input section at the end of this workflow.</p>
         </div>
         <h3 id="shell-safety-untrusted-github-data">Shell safety — untrusted GitHub data</h3>
         <div class="order-prose">
@@ -250,6 +256,10 @@ gh pr review &lt;PR#&gt; --comment --body-file &quot;$REVIEW_BODY_FILE&quot;</co
             </div>
           </li>
         </ol>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> contains a PR number or URL plus an optional focus hint. If empty, use the PR for the current branch (<code>gh pr view --json number</code>); if none exists, ask which PR to review.</p>
+        </div>
       </div>
     </section>
 

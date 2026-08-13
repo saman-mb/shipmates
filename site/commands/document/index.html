@@ -116,10 +116,6 @@
           <h1 class="order-detail__title" id="order-title"><code>/document</code></h1>
           <p class="order-detail__tagline">draft from the code → fresh-reader test → fix drift</p>
           <p class="order-detail__desc">Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against the repo and must reach the stated result. Loops until the docs are drift-free and completable.</p>
-          <div class="order-prose">
-            <p>Produce docs that get a reader to <em>done</em>, gated on the one check that catches bad docs: a <strong>fresh agent with no prior context follows the instructions against the real repo and must reach the stated result</strong>. Docs that drift from the code or can&#x27;t be completed are rejected and fixed. The gate is &quot;a newcomer can actually follow this,&quot; not &quot;it reads well.&quot;</p>
-            <p>Input (<strong>$ARGUMENTS</strong>): what to document — a module, a feature, a public API/CLI, the README/getting-started, a migration guide, or the whole repo. If empty, ask what to document and for whom.</p>
-          </div>
         </div>
       </div>
     </section>
@@ -158,6 +154,16 @@
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Six stages, in order. One is a hard gate — the run stops there until it passes.</p>
+        </div>
+        <h3 id="cost-discipline">Cost discipline</h3>
+        <div class="order-prose">
+          <ul>
+            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
+            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
+          </ul>
+          <p>Produce docs that get a reader to <em>done</em>, gated on the one check that catches bad docs: a <strong>fresh agent with no prior context follows the instructions against the real repo and must reach the stated result</strong>. Docs that drift from the code or can&#x27;t be completed are rejected and fixed. The gate is &quot;a newcomer can actually follow this,&quot; not &quot;it reads well.&quot;</p>
+          <p>Input: what to document — a module, a feature, a public API/CLI, the README/getting-started, a migration guide, or the whole repo. If empty, ask what to document and for whom.</p>
         </div>
         <ol class="order-stages" role="list">
           <li class="order-stage" id="stage-0">
@@ -221,6 +227,10 @@
             </div>
           </li>
         </ol>
+        <h3 id="runtime-input">Runtime input</h3>
+        <div class="order-prose">
+          <p><code>$ARGUMENTS</code> is the complete invocation text. Use it as the documentation target and audience hint; if empty, ask what to document and for whom.</p>
+        </div>
       </div>
     </section>
 

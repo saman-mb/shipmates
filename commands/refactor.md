@@ -4,20 +4,18 @@ description: Change the shape of the code without changing what it does — pin 
 argument-hint: <what to refactor + why — e.g. "split the 900-line order service, it's untestable">
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
-arguments: target
-invocation: @{{role}}({{target}})
-board: native
 ---
 # /refactor — pin behaviour → transform → prove equivalence
+<!-- shipmates:command-preamble -->
 
 A refactor that quietly changes behaviour is a bug with good PR copy. The gate here is the one thing
 that distinguishes the two: **behaviour is pinned in tests written before the change, and those tests
 pass unmodified afterwards.** If a test had to be edited to make the refactor pass, it wasn't a
 refactor.
 
-Input (**{{target}}**): what to restructure **and why**. The motivation is not optional — Stage 5 has
+The runtime target is what to restructure **and why**. The motivation is not optional — Stage 5 has
 to judge whether the structure actually improved, and "it's cleaner" is not reviewable. If it's empty,
-ask what hurts and what it's costing.
+ask what hurts and what it costs.
 
 **If the ask is "rename/replace X with Y across N call sites", stop and run `/migrate` instead.** That
 is a census job: it's provable by re-grepping for the old pattern and finding nothing. A refactor has
@@ -123,3 +121,7 @@ touched and why, and the green-CI link. File the bugs you found and didn't fix a
 - A refactor with no stated motivation is unreviewable; ask before starting.
 - If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
   inlined, and note it.
+
+## Runtime input
+
+`$ARGUMENTS` names what to restructure and why. If empty, ask what hurts and what it costs.

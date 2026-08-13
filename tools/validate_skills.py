@@ -51,10 +51,9 @@ REQUIRED_KEYS = ("name", "description")
 STANDARD_OPTIONAL_KEYS = ("license", "compatibility", "metadata")
 # Claude Code extensions the standard does not define. Permitted in any order.
 EXTENSION_KEYS = ("argument-hint", "allowed-tools", "disable-model-invocation")
-SOURCE_KEYS = ("arguments", "invocation", "board")
 # Everything a SKILL.md may declare. Anything else is a typo or a private key
 # no reader honours, and is rejected.
-ALLOWED_KEYS = REQUIRED_KEYS + STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS + SOURCE_KEYS
+ALLOWED_KEYS = REQUIRED_KEYS + STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS
 # The canonical order for the keys the nine ship — recommended, and what the ok()
 # note describes, but only the REQUIRED_KEYS prefix is enforced.
 FRONTMATTER_KEYS = REQUIRED_KEYS + EXTENSION_KEYS

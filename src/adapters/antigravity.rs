@@ -1,6 +1,6 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_shared_skills, emit_shared_tool_skills};
+use super::render::{emit_shared_skills, emit_shared_tool_skills, render_role_body, AGENT_SKILLS};
 use super::Adapter;
 
 /// The Antigravity CLI (`agy`) — Google's successor to the retired Gemini CLI.
@@ -73,7 +73,7 @@ impl Adapter for AntigravityAdapter {
             content.push_str("mainAgent: false\n");
             content.push_str("commandExecutionPolicy: sandbox\n");
             content.push_str("---\n");
-            content.push_str(&role.body);
+            content.push_str(&render_role_body(&role.body, &AGENT_SKILLS));
             files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
         }
         // `.agents/skills/` is the open Agent Skills tree agy reads; the skills

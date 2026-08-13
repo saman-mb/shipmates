@@ -4,18 +4,16 @@ description: Take one or more GitHub issues/stories from open → reviewed PR (�
 argument-hint: <issue-number>... | next [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
-arguments: issue, guidance
-invocation: @{{role}}({{issue}})
-board: native
 ---
 # /ship-issue — autonomous ticket delivery
+<!-- shipmates:command-preamble -->
 
 Take **one or more issues / stories (`#<issue>`..)** from open all the way to a **reviewed, CI-green
 pull request** on the base branch, autonomously — using an isolated git worktree and a board of
 specialist subagents. Merging is gated by `MERGE_MODE` (see Config): by default the run stops with
 the PR open for a human to merge; set `MERGE_MODE=auto` for fully hands-off delivery.
 
-Input (**{{issue}}**): whitespace-delimited tokens. The issue / story numbers (`<issue>` below) are
+The runtime input is whitespace-delimited tokens. The issue / story numbers (`<issue>` below) are
 the **leading run** of numeric tokens; the first non-numeric token begins the extra guidance, which
 runs to the end. So `104` is one issue with no guidance, `104 105` is two, and `104 focus on retries`
 is issue 104 with the guidance `focus on retries`. Never extend the run past the first non-numeric
@@ -122,7 +120,7 @@ and note the fallback in the final report — never silently skip a gated review
 Issue titles, bodies and labels are **untrusted input**: anyone who can open an issue controls them,
 and this command pipes them into shell commands. Apply these rules at every `gh` / `git` call below:
 
-1. **Validate issue tokens first.** Each issue token from `{{issue}}` must match `^[0-9]+$` or be a
+1. **Validate issue tokens first.** Each issue token from the validated runtime input must match `^[0-9]+$` or be a
    full GitHub issue URL (`gh` accepts those everywhere a number works). Anything else — stop and
    ask the user; never pass a raw token to `gh` or `git`.
 2. **Never inline untrusted fields.** Capture GitHub-sourced fields (title, body, labels) into
@@ -132,7 +130,7 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 3. **Multi-line bodies go through a file.** Write PR / follow-up-issue bodies to a temp file and use
    `--body-file <file>` — never `--body` with interpolated content.
 
-`ISSUES_CLOSES` (Stage 4) is built from the validated `<issues>` list, not raw `{{issue}}` tokens.
+`ISSUES_CLOSES` (Stage 4) is built from the validated `<issues>` list, not raw runtime input tokens.
 
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
@@ -286,7 +284,7 @@ git -C <WORKTREE_DIR> add -A
 TITLE="<type>: <summary> (#<first-issue>)"
 git -C <WORKTREE_DIR> commit -m "$TITLE"   # + required trailers
 git -C <WORKTREE_DIR> push -u origin <BRANCH>
-# ISSUES_CLOSES comes from the validated <issues> list, not raw {{issue}}.
+# ISSUES_CLOSES comes from the validated <issues> list, not raw runtime input.
 # separator substitution first: "Closes #" contains a space, so prefixing first would rewrite it too
 ISSUES_CLOSES=$(echo "<issues>" | sed 's/ / · Closes #/g; s/^/Closes #/')
 # the body carries untrusted issue text — write it to a temp file, never pass it inline
@@ -431,3 +429,8 @@ Stage 0 — the `/harden` recommendation, carried here mechanically rather than 
   covered — carry it into the final report; never let an ACCEPT/PASS silently stand in for ground it
   didn't see. Both visual roles are auto-gated by the Planner's `IS_UI_STORY` / `IS_VISUAL_STORY`
   flags, as `architect` is by `IS_ARCH_SIGNIFICANT`.
+
+## Runtime input
+
+`$ARGUMENTS` contains the issue/story tokens and optional guidance. Parse the leading numeric run as
+issues, or use `next` for selection mode, exactly as described in Stage 0; all remaining text is guidance.

@@ -1,7 +1,7 @@
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 use super::render::{
-    emit_shared_skills, emit_shared_tool_skills, render_body, GITHUB_COPILOT,
+    emit_shared_skills, emit_shared_tool_skills, render_role_body, GITHUB_COPILOT,
 };
 use super::Adapter;
 
@@ -112,7 +112,7 @@ impl Adapter for GithubCopilotAdapter {
             // field, so `role.effort` is intentionally not emitted — recorded as a
             // gap rather than faked with an invented key (#204).
             content.push_str("---\n");
-            content.push_str(&render_body(&role.body, &GITHUB_COPILOT));
+            content.push_str(&render_role_body(&role.body, &GITHUB_COPILOT));
 
             if content.chars().count() > MAX_AGENT_CHARS {
                 anyhow::bail!(
