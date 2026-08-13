@@ -1,19 +1,18 @@
-use crate::catalog::{CanonicalCommand, CanonicalTool};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool, validate_role_name};
 use regex::Regex;
 use std::collections::HashMap;
 
 /// Per-harness dialect settings shared by every adapter.
 ///
-/// The canonical `commands/*.md` bodies are harness-neutral prose. They name
-/// the exporter's abstract locations (`agent-files/*.md`, `Harness-Session`,
-/// `TARGET.md`/`AGENTS.md`), spawn roles with `@role(name)`, and reference
+/// The canonical `commands/*.md` and `crew/*.md` bodies are harness-neutral
+/// prose. They use explicit exporter tokens (`{{agents-glob}}`, `{{session-key}}`,
+/// `{{project-instructions}}`), spawn roles with `{{role:name}}`, and reference
 /// command arguments as `{{name}}`. Each harness resolves those tokens into
 /// its own dialect — where its agents live, what its session metadata is
 /// called, which project-instructions file it reads, how a role is spawned.
 ///
 /// Adapters stay thin by declaring a `Dialect` and letting `render_body` do
-/// the substitution. The ordering of the instruction-filename rules is
-/// load-bearing (see `render_instructions`).
+/// the substitution.
 pub struct Dialect {
     pub agents_glob: &'static str,
     pub session_key: &'static str,
@@ -28,6 +27,10 @@ const SENTINEL: &str = "\u{00A7}agents-instructions";
 const COMMAND_PREAMBLE_MARKER: &str = "<!-- shipmates:command-preamble -->";
 const SUBAGENT_PREAMBLE_MARKER: &str = "<!-- shipmates:subagent-preamble -->";
 const COST_DOCTRINE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/COST.md"));
+
+fn render_token(text: &str, token: &str, value: &str) -> String {
+    text.replace(token, value)
+}
 
 fn doctrine_section(start: &str, end: &str) -> &'static str {
     let start = COST_DOCTRINE
@@ -49,21 +52,14 @@ fn subagent_preamble() -> &'static str {
     doctrine_section("<!-- subagent-preamble:start -->", "<!-- subagent-preamble:end -->")
 }
 
-/// Resolve the repo-instructions filename the neutral prose refers to.
+/// Resolve explicit repo-instructions tokens in neutral prose.
 ///
-/// Canonical prose treats `TARGET.md` and `AGENTS.md` as two *different*
-/// fallbacks ("`TARGET.md` if one exists, else `AGENTS.md` if one exists").
-/// A naive sweep of both to one name would produce "`CLAUDE.md` if one
-/// exists, else `CLAUDE.md`". The two specific phrases are protected with a
-/// sentinel first, so the primary target maps both names while the fallback
-/// arm keeps the harness's real second-choice filename.
+/// Primary and fallback remain separate, so literal filenames in prose are not
+/// rewritten accidentally.
 fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
     let mut out = text.to_string();
-    out = out.replace("`TARGET.md`/`AGENTS.md`", &format!("`TARGET.md`/`{SENTINEL}`"));
-    out = out.replace("else `AGENTS.md`", &format!("else `{SENTINEL}`"));
-    out = out.replace("TARGET.md", primary);
-    out = out.replace("AGENTS.md", primary);
-    out.replace(SENTINEL, fallback)
+    out = render_token(&out, "{{project-instructions}}", primary);
+    render_token(&out, "{{project-instructions-fallback}}", fallback)
 }
 
 /// Render a harness-neutral command body into a harness's dialect.
@@ -71,19 +67,22 @@ pub fn render_body(text: &str, d: &Dialect) -> String {
     let mut out = text.replace(COMMAND_PREAMBLE_MARKER, command_preamble());
     out = out.replace(SUBAGENT_PREAMBLE_MARKER, subagent_preamble());
     out = render_instructions(&out, d.instructions_primary, d.instructions_fallback);
-    out = out.replace("agent-files/*.md", &format!("{}/*.md", d.agents_glob));
-    out = out.replace("Harness-Session", d.session_key);
-    out = out.replace("general-purpose", d.general_purpose);
-    out = out.replace("@role(planner)", &format!("subagent_type: {}", d.planner));
-    out = out.replace("agent: `planner`", &format!("agent: `{}`", d.planner));
-    out = out.replace("@role(senior-engineer)", "subagent_type: senior-engineer");
-    out = out.replace("@role(sdet)", "subagent_type: sdet");
-    out = out.replace("`@role` reference", "`subagent_type`");
-    out = render_args(&out, d.args_token);
-    out = out.replace(
-        &format!("to an `{}/*.md`", d.agents_glob),
-        &format!("to a `{}/*.md`", d.agents_glob),
+    out = render_token(&out, "{{agents-glob}}", &format!("{}/*.md", d.agents_glob));
+    out = render_token(&out, "{{session-key}}", d.session_key);
+    out = render_token(&out, "{{general-purpose}}", d.general_purpose);
+    out = render_token(
+        &out,
+        "{{role:planner}}",
+        &format!("subagent_type: {}", d.planner),
     );
+    out = render_token(&out, "{{planner-agent}}", d.planner);
+    out = render_token(
+        &out,
+        "{{role:senior-engineer}}",
+        "subagent_type: senior-engineer",
+    );
+    out = render_token(&out, "{{role:sdet}}", "subagent_type: sdet");
+    out = render_token(&out, "{{role-reference}}", "`subagent_type`");
     out
 }
 
@@ -94,12 +93,29 @@ pub fn render_role_body(text: &str, d: &Dialect) -> String {
 }
 
 /// Replace every `{{name}}` argument placeholder with the harness's token.
-fn render_args(text: &str, token: &str) -> String {
+fn render_args(text: &str, token: &str) -> anyhow::Result<String> {
     let re = Regex::new(r"\{\{[a-z][a-z0-9_-]*\}\}").expect("static regex");
+    let mut names = Vec::new();
+    for matched in re.find_iter(text) {
+        let name = &matched.as_str()[2..matched.as_str().len() - 2];
+        if !names.iter().any(|seen| seen == name) {
+            names.push(name.to_string());
+        }
+    }
+    if names.len() > 1 {
+        anyhow::bail!(
+            "command narrative uses multiple arguments ({}) but target accepts one argument token",
+            names.join(", ")
+        );
+    }
     // `$A` is regex replacement syntax (a named-group reference); double it so
     // the token's `$` survives literally — `$ARGUMENTS` must not vanish.
     let escaped = token.replace('$', "$$");
-    re.replace_all(text, escaped.as_str()).into_owned()
+    Ok(re.replace_all(text, escaped.as_str()).into_owned())
+}
+
+pub fn render_command_body(command: &CanonicalCommand, d: &Dialect) -> anyhow::Result<String> {
+    render_args(&render_body(&command.narrative, d), d.args_token)
 }
 
 /// Claude Code's dialect.
@@ -155,9 +171,20 @@ pub const AGENT_SKILLS: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
-// Antigravity (`agy`, the retired Gemini CLI's successor) renders its crew from
-// raw persona bodies and reads skills from the shared `.agents/skills/` tree, so
-// it needs no dialect of its own — the neutral AGENT_SKILLS covers its skills.
+/// Antigravity's project-instruction fallback is `GEMINI.md`, not the
+/// Claude/Codex fallback used by the shared Agent Skills tree.
+pub const ANTIGRAVITY: Dialect = Dialect {
+    agents_glob: ".agents/agents",
+    session_key: "Agent-Session",
+    instructions_primary: "AGENTS.md",
+    instructions_fallback: "GEMINI.md",
+    general_purpose: "general-purpose",
+    planner: "architect",
+    args_token: "$ARGUMENTS",
+};
+
+// Antigravity (`agy`, the retired Gemini CLI's successor) reads skills from the
+// shared `.agents/skills/` tree, while its crew uses the target dialect above.
 
 /// Codex CLI's dialect.
 pub const CODEX: Dialect = Dialect {
@@ -196,6 +223,34 @@ pub const WINDSURF: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
+pub struct CrewFormat {
+    pub file_suffix: &'static str,
+    pub dialect: &'static Dialect,
+    pub map_tools: fn(&CanonicalRole) -> anyhow::Result<Vec<String>>,
+    pub serialize: fn(&CanonicalRole, &str, &[String]) -> anyhow::Result<String>,
+}
+
+/// Emit crew files with one path/body loop shared by every crew-bearing target.
+/// Format-specific tool mapping and serialisation stay adapter-owned.
+pub fn emit_crew_files(
+    base_dir: &str,
+    roles: &[CanonicalRole],
+    format: &CrewFormat,
+) -> anyhow::Result<HashMap<String, String>> {
+    let mut files = HashMap::new();
+    for role in roles {
+        validate_role_name(&role.name, "role")?;
+        let tools = (format.map_tools)(role)?;
+        let body = render_body(&role.body, format.dialect);
+        let content = (format.serialize)(role, &body, &tools)?;
+        files.insert(
+            format!("{}/agents/{}{}", base_dir, role.name, format.file_suffix),
+            content,
+        );
+    }
+    Ok(files)
+}
+
 /// Emit a command's rendered skill for a skill-only harness.
 ///
 /// The [Agent Skills](https://agentskills.io) standard guarantees exactly two
@@ -210,7 +265,7 @@ pub fn emit_skill_files(
     base_dir: &str,
     commands: &[CanonicalCommand],
     dialect: &Dialect,
-) -> HashMap<String, String> {
+) -> anyhow::Result<HashMap<String, String>> {
     let mut files = HashMap::new();
     for command in commands {
         let mut content = String::new();
@@ -218,10 +273,13 @@ pub fn emit_skill_files(
         content.push_str(&format!("name: {}\n", command.name));
         content.push_str(&format!("description: {}\n", command.description));
         content.push_str("---\n");
-        content.push_str(&render_body(&command.narrative, dialect));
-        files.insert(format!("{}/skills/{}/SKILL.md", base_dir, command.name), content);
+        content.push_str(&render_command_body(command, dialect)?);
+        files.insert(
+            format!("{}/skills/{}/SKILL.md", base_dir, command.name),
+            content,
+        );
     }
-    files
+    Ok(files)
 }
 
 /// Emit an agent-invoked tool as a model-invoked Agent Skill (+ bundled assets).
@@ -251,9 +309,15 @@ pub fn emit_tool_files(
         }
         content.push_str("---\n");
         content.push_str(&render_body(&tool.body, dialect));
-        files.insert(format!("{}/skills/{}/SKILL.md", base_dir, tool.name), content);
+        files.insert(
+            format!("{}/skills/{}/SKILL.md", base_dir, tool.name),
+            content,
+        );
         for (rel, asset) in &tool.assets {
-            files.insert(format!("{}/skills/{}/{}", base_dir, tool.name, rel), asset.clone());
+            files.insert(
+                format!("{}/skills/{}/{}", base_dir, tool.name, rel),
+                asset.clone(),
+            );
         }
     }
     files
@@ -267,7 +331,10 @@ pub fn emit_tool_files(
 /// Rendered with the neutral [`AGENT_SKILLS`] dialect so every harness that
 /// reads this location writes identical bytes — the single source of truth for
 /// the shared tree. See [`AGENT_SKILLS`] for why that matters.
-pub fn emit_shared_skills(container: &str, commands: &[CanonicalCommand]) -> HashMap<String, String> {
+pub fn emit_shared_skills(
+    container: &str,
+    commands: &[CanonicalCommand],
+) -> anyhow::Result<HashMap<String, String>> {
     emit_skill_files(&format!("{container}/.agents"), commands, &AGENT_SKILLS)
 }
 
@@ -276,7 +343,10 @@ pub fn emit_shared_skills(container: &str, commands: &[CanonicalCommand]) -> Has
 /// The neutral-tree harnesses can't hide a skill from manual mention (only
 /// Claude Code's `user-invocable: false` does that), so `agent_only = false` —
 /// the tool is model-invoked but still technically typeable, recorded not faked.
-pub fn emit_shared_tool_skills(container: &str, tools: &[CanonicalTool]) -> HashMap<String, String> {
+pub fn emit_shared_tool_skills(
+    container: &str,
+    tools: &[CanonicalTool],
+) -> HashMap<String, String> {
     emit_tool_files(&format!("{container}/.agents"), tools, &AGENT_SKILLS, false)
 }
 
@@ -287,7 +357,7 @@ mod tests {
     #[test]
     fn test_render_instructions_claude() {
         let out = render_instructions(
-            "`TARGET.md` if one exists, else `AGENTS.md` if one exists, else `TARGET.md`.",
+            "`{{project-instructions}}` if one exists, else `{{project-instructions-fallback}}` if one exists, else `{{project-instructions}}`.",
             CLAUDE_CODE.instructions_primary,
             CLAUDE_CODE.instructions_fallback,
         );
@@ -300,7 +370,7 @@ mod tests {
     #[test]
     fn test_render_instructions_opencode() {
         let out = render_instructions(
-            "`TARGET.md` if one exists, else `AGENTS.md` if one exists, else `TARGET.md`.",
+            "`{{project-instructions}}` if one exists, else `{{project-instructions-fallback}}` if one exists, else `{{project-instructions}}`.",
             OPENCODE.instructions_primary,
             OPENCODE.instructions_fallback,
         );
@@ -313,24 +383,23 @@ mod tests {
     #[test]
     fn test_render_body_claude() {
         let body = render_body(
-            "Ship an issue. Resolve a role via `agent-files/*.md` or fall back to `general-purpose`. \
-             Spawn `@role(sdet)`. Use {{question}} as input. Tag with `Harness-Session`.",
+            "Ship an issue. Resolve a role via `{{agents-glob}}` or fall back to `{{general-purpose}}`. \
+             Spawn `{{role:sdet}}`. Use {{question}} as input. Tag with `{{session-key}}`.",
             &CLAUDE_CODE,
         );
         assert!(body.contains(".claude/agents/*.md"));
         assert!(body.contains("general-purpose"));
         assert!(body.contains("subagent_type: sdet"));
-        assert!(body.contains("$ARGUMENTS"));
         assert!(body.contains("Claude-Session"));
-        assert!(!body.contains("{{question}}"));
-        assert!(!body.contains("@role("));
-        assert!(!body.contains("agent-files/"));
+        assert!(body.contains("{{question}}"));
+        assert!(!body.contains("{{role:"));
+        assert!(!body.contains("{{agents-glob}}"));
     }
 
     #[test]
     fn test_render_body_opencode() {
         let body = render_body(
-            "Resolve via `agent-files/*.md` else `general-purpose`. Spawn `@role(planner)`.",
+            "Resolve via `{{agents-glob}}` else `{{general-purpose}}`. Spawn `{{role:planner}}`.",
             &OPENCODE,
         );
         assert!(body.contains(".opencode/agents/*.md"));
@@ -341,9 +410,18 @@ mod tests {
     }
 
     #[test]
-    fn test_render_args_replaces_all_placeholders() {
+    fn test_render_args_rejects_multiple_placeholders() {
         let out = render_args("a {{one}} b {{two}} c", "$ARGUMENTS");
-        assert_eq!(out, "a $ARGUMENTS b $ARGUMENTS c");
+        assert!(out.is_err());
+    }
+
+    #[test]
+    fn test_render_preserves_literal_harness_names() {
+        let body = render_body(
+            "Literal AGENTS.md and __AGENTS__ stay unchanged.",
+            &CLAUDE_CODE,
+        );
+        assert_eq!(body, "Literal AGENTS.md and __AGENTS__ stay unchanged.");
     }
 
     #[test]

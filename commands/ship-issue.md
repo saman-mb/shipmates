@@ -81,7 +81,7 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
 - `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<first-issue>` (single issue)
   or `../<repo>--bundle-<first-issue>-<short-slug>` (multiple issues)
 - `BRANCH` = `feat/issue-<first-issue>-<short-slug>` (single) or `feat/bundle-<first-issue>-<short-slug>` (multiple)
-- **Quality bar** = whatever the repo's `README` / `AGENTS.md` / contributing docs state. Read it at
+- **Quality bar** = whatever the repo's `README` / `{{project-instructions}}` / contributing docs state. Read it at
   the start and pass it to every reviewer — the `product-manager` (and the visual specialists)
   enforce THAT bar, not just "it runs."
 
@@ -90,11 +90,11 @@ session context; do not invent them). At minimum a `Co-Authored-By:` line for th
 
 ### The reviewer/builder pool
 
-Every specialist below is a **named subagent** shipped alongside this command (`agent-files/*.md`,
-installed globally or per-project) and invoked by its `@role` reference — NOT a `general-purpose`
+Every specialist below is a **named subagent** shipped alongside this command (`{{agents-glob}}`,
+installed globally or per-project) and invoked by its `{{role-reference}}` reference — NOT a `{{general-purpose}}`
 agent with a persona pasted inline. The pool:
 
-| `@role`           | Used for |
+| `{{role-reference}}`           | Used for |
 |--------------------|----------|
 | `senior-engineer`  | Building, fixing, remediation (Stages 2, 3, 4.5, 6) |
 | `sdet`             | Test / build / validation runs (Stages 3, 5) |
@@ -106,11 +106,11 @@ agent with a persona pasted inline. The pool:
 | `technical-writer` | Docs-staleness review — gated by `IS_DOCS_AFFECTING` (Stage 5) |
 
 These agents are **generic** (domain-neutral); the project-specific standard they enforce comes
-from your repo's README / AGENTS.md, passed at spawn — not baked into the role. Which specialists a
+from your repo's README / {{project-instructions}}, passed at spawn — not baked into the role. Which specialists a
 story needs is decided by the Planner's classification flags, so the board is **context-aware to
 the story's domain** (a pure-logic story pulls no designer/art-director; a UI story pulls the designer; a
 rendered-art story pulls the art-director; a schema story pulls the architect). If a referenced role does
-not resolve to an `agent-files/*.md`, fall back to `general-purpose` with the role's brief inlined,
+not resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the role's brief inlined,
 and note the fallback in the final report — never silently skip a gated review.
 
 ---
@@ -178,8 +178,8 @@ work from the backlog, then continue with the numbered steps below on the chosen
    Add any accepted issues to `<issues>` (re-sort so `<first-issue>` is unchanged). Whatever the
    bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
    can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
-3. Spawn ONE **Planner** (`@role(planner)`). Give it all issue bodies + repo README +
-   AGENTS.md. Ask it to return, as structured data:
+3. Spawn ONE **Planner** (`{{role:planner}}`). Give it all issue bodies + repo README +
+   {{project-instructions}}. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
    - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
@@ -255,7 +255,7 @@ shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 
 ## Stage 2 — Build  (agents: `senior-engineer` × N, parallel)
 
-- Spawn one **Builder** (`@role(senior-engineer)`) per independent work unit from the plan,
+- Spawn one **Builder** (`{{role:senior-engineer}}`) per independent work unit from the plan,
   **in a single message** so they run concurrently. Each Builder is told: its exact file ownership,
   the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its
   files, and to match existing code style/idioms.
@@ -267,12 +267,12 @@ For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUN
 
 ## Stage 3 — Self-check before PR  (agent: `sdet`)
 
-- Spawn the **SDET** (`@role(sdet)`) to run the test/validation plan against the worktree:
+- Spawn the **SDET** (`{{role:sdet}}`) to run the test/validation plan against the worktree:
   unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step
   (whatever this repo uses: e.g. `npm test && npm run build`, `cargo test`, `pytest -q`,
   `go build ./...`, `make check`). If the toolchain is absent, it does a rigorous **static** pass
   and says so explicitly in the PR.
-- If self-check fails, loop a **Fixer** (`@role(senior-engineer)`) until green (counts
+- If self-check fails, loop a **Fixer** (`{{role:senior-engineer}}`) until green (counts
   toward `MAX_FIX_ROUNDS`). Only open a PR once self-check passes — never open a known-red PR.
 
 ## Stage 4 — Commit, push, open PR  (orchestrator)
@@ -320,7 +320,7 @@ reduced assurance.)
    ```
    Diagnose the real cause from the log. Before pushing a fix, **grep the whole changeset for sibling
    instances of the same failure class** so you fix them all in one round instead of burning several.
-3. **Dispatch a Fixer** (`@role(senior-engineer)`; or fix directly if it's a trivial,
+3. **Dispatch a Fixer** (`{{role:senior-engineer}}`; or fix directly if it's a trivial,
    unambiguous one-liner you've root-caused from the log) in the worktree, commit with the required
    trailers, push to the same branch. This counts toward `MAX_FIX_ROUNDS`.
 4. **Re-poll CI** (back to step 1) on the new head. Repeat until green or `MAX_FIX_ROUNDS` is
@@ -337,7 +337,7 @@ only when the change can plausibly trip its concern surface; a role gated out is
 together with the flag that gated it — never silently skipped.
 
 - **`product-manager`** (always): checks every acceptance criterion AND the quality bar (from the
-  repo's README/AGENTS.md). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
+  repo's README/{{project-instructions}}). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
 - **`sdet`** (always): re-runs the validation plan against the PR branch; returns `PASS` / `FAIL`
   with a severity-tagged defect list.
 - **`ux-ui-designer`** (only if `IS_UI_STORY`): reviews the pushed head against the Stage 1.5 spec and
@@ -364,7 +364,7 @@ Decision (each specialist participates only when its flag is set):
 
 ## Stage 6 — Remediation loop  (agent: `senior-engineer` as Fixer)
 
-- Spawn a **Fixer** (`@role(senior-engineer)`) to address every blocking item (REJECT reasons
+- Spawn a **Fixer** (`{{role:senior-engineer}}`) to address every blocking item (REJECT reasons
   from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then **re-run Stage 5**
   on the new head.
 - Repeat up to `MAX_FIX_ROUNDS`. If still not green after that, **stop and escalate to the user** with

@@ -1,7 +1,7 @@
+use super::Adapter;
+use super::render::{emit_shared_skills, emit_shared_tool_skills};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{emit_shared_skills, emit_shared_tool_skills};
-use super::Adapter;
 
 /// Cursor ships no subagents, so only the twelve commands ship (as skills) and
 /// `roles` is not emitted. Cursor reads the open Agent Skills tree
@@ -17,14 +17,18 @@ impl Adapter for CursorAdapter {
         "harnesses/cursor/.agents"
     }
 
-    fn build(&self, _roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
+    fn build(
+        &self,
+        _roles: &[CanonicalRole],
+        commands: &[CanonicalCommand],
+    ) -> anyhow::Result<HashMap<String, String>> {
         // Reasoning effort is DEFERRED on Cursor. Cursor folds effort into the
         // model string rather than a standalone key, and Cursor is skills-only
         // today — no crew/role emission and no per-role model string (a model is
         // never stamped, #205). So there is nowhere to carry effort until Cursor
         // grows a subagent emitter; blocked on that (relates #15/#205). Emit
         // nothing rather than fake a key.
-        Ok(emit_shared_skills(self.container(), commands))
+        emit_shared_skills(self.container(), commands)
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {

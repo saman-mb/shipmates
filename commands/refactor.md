@@ -28,7 +28,7 @@ no such grep, which is exactly why it needs behaviour pinned first.
 - `BASE_BRANCH` = the repo's default branch. `WORKTREE_DIR` = `../<repo>--refactor-<slug>`.
   `BRANCH` = `refactor/<slug>`.
 - `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in).
-- **Quality bar / test commands** = whatever the repo's README / AGENTS.md / test config states.
+- **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states.
 - The orchestrator owns all git/gh; agents never push.
 
 ## Stage 0 — Scope, motivation, and the `/migrate` escape hatch
@@ -119,7 +119,7 @@ touched and why, and the green-CI link. File the bugs you found and didn't fix a
   may be moved and renamed but never weakened.
 - Behaviour-preserving means *observable* behaviour — public API, output, side effects, error cases.
 - A refactor with no stated motivation is unreviewable; ask before starting.
-- If a role doesn't resolve to an `agent-files/*.md`, fall back to `general-purpose` with the brief
+- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined, and note it.
 
 ## Runtime input

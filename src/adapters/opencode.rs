@@ -1,7 +1,7 @@
+use super::Adapter;
+use super::render::{CrewFormat, OPENCODE, emit_crew_files, render_command_body};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{render_body, render_role_body, OPENCODE};
-use super::Adapter;
 
 pub struct OpencodeAdapter;
 
@@ -50,44 +50,123 @@ export default tool({{
     )
 }
 
+fn scope_tool(scope: &str) -> Option<&'static str> {
+    match scope {
+        "read" => Some("read"),
+        "write" => Some("write"),
+        "edit" => Some("edit"),
+        "bash" => Some("bash"),
+        "search" => Some("grep"),
+        "glob" => Some("glob"),
+        "web-search" => Some("websearch"),
+        "web-fetch" => Some("webfetch"),
+        "agent" => Some("task"),
+        _ => None,
+    }
+}
+
+fn tools_for(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
+    if !role.tool_order.is_empty() {
+        return role
+            .tool_order
+            .iter()
+            .map(|scope| {
+                scope_tool(scope)
+                    .map(str::to_string)
+                    .ok_or_else(|| anyhow::anyhow!("unknown tool scope {scope:?}"))
+            })
+            .collect();
+    }
+    let mut tools = Vec::new();
+    for cap in &role.capabilities {
+        match cap.as_str() {
+            "read" => {
+                let scopes = if role.read_scopes.is_empty() {
+                    vec!["read"]
+                } else {
+                    role.read_scopes.iter().map(String::as_str).collect()
+                };
+                for scope in scopes {
+                    tools.push(
+                        scope_tool(scope)
+                            .ok_or_else(|| anyhow::anyhow!("unknown read scope {scope:?}"))?
+                            .to_string(),
+                    );
+                }
+            }
+            "edit" => tools.push("edit".to_string()),
+            "bash" => tools.push("bash".to_string()),
+            "web" => {
+                let scopes: Vec<String> = if role.web_scopes.is_empty() {
+                    vec!["web-search".to_string(), "web-fetch".to_string()]
+                } else {
+                    role.web_scopes
+                        .iter()
+                        .map(|scope| format!("web-{scope}"))
+                        .collect()
+                };
+                for scope in scopes {
+                    tools.push(
+                        scope_tool(&scope)
+                            .ok_or_else(|| anyhow::anyhow!("unknown web scope {scope:?}"))?
+                            .to_string(),
+                    );
+                }
+            }
+            "agent" => tools.push("task".to_string()),
+            other => anyhow::bail!("unmapped capability {other:?} for opencode"),
+        }
+    }
+    Ok(tools)
+}
+
+fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Result<String> {
+    let mut content = String::new();
+    content.push_str("---\n");
+    content.push_str(&format!(
+        "description: {}\nmode: subagent\n",
+        role.description
+    ));
+    if let Some(e) = &role.effort {
+        content.push_str(&format!("reasoningEffort: {e}\n"));
+    }
+    content.push_str("permission:\n  \"*\": deny\n");
+    for tool in tools {
+        content.push_str(&format!("  {tool}: allow\n"));
+    }
+    content.push_str("---\n");
+    content.push_str(body);
+    Ok(content)
+}
+
+const CREW_FORMAT: CrewFormat = CrewFormat {
+    file_suffix: ".md",
+    dialect: &OPENCODE,
+    map_tools: tools_for,
+    serialize,
+};
+
 impl Adapter for OpencodeAdapter {
     fn base_dir(&self) -> &'static str {
         "harnesses/opencode/.opencode"
     }
 
-    fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
-        let mut files = HashMap::new();
-        for role in roles {
-            let mut content = String::new();
-            content.push_str("---\n");
-            content.push_str(&format!("description: {}\n", role.description));
-            content.push_str("mode: subagent\n");
-            // opencode carries reasoning effort as a top-level `reasoningEffort`
-            // provider-passthrough key — a sibling of `model`/`temperature` in the
-            // markdown agent frontmatter, not nested under an options/provider
-            // block. Verified against opencode's own agents docs (2026-08-05):
-            // <https://opencode.ai/docs/agents/> shows `reasoningEffort` as a
-            // top-level agent property.
-            if let Some(e) = &role.effort {
-                content.push_str(&format!("reasoningEffort: {}\n", e));
-            }
-            content.push_str("permission:\n");
-            // Opencode's "*": deny first permission logic
-            content.push_str("  \"*\": deny\n");
-            for cap in &role.capabilities {
-                content.push_str(&format!("  {}: allow\n", cap));
-            }
-            content.push_str("---\n");
-            content.push_str(&render_role_body(&role.body, &OPENCODE));
-            files.insert(format!("{}/agents/{}.md", self.base_dir(), role.name), content);
-        }
+    fn build(
+        &self,
+        roles: &[CanonicalRole],
+        commands: &[CanonicalCommand],
+    ) -> anyhow::Result<HashMap<String, String>> {
+        let mut files = emit_crew_files(self.base_dir(), roles, &CREW_FORMAT)?;
         for command in commands {
             let mut content = String::new();
             content.push_str("---\n");
             content.push_str(&format!("description: {}\n", command.description));
             content.push_str("---\n");
-            content.push_str(&render_body(&command.narrative, &OPENCODE));
-            files.insert(format!("{}/commands/{}.md", self.base_dir(), command.name), content);
+            content.push_str(&render_command_body(command, &OPENCODE)?);
+            files.insert(
+                format!("{}/commands/{}.md", self.base_dir(), command.name),
+                content,
+            );
         }
         Ok(files)
     }
@@ -128,7 +207,9 @@ mod tests {
         };
 
         let result = OpencodeAdapter.build(&[role], &[]).unwrap();
-        let content = result.get("harnesses/opencode/.opencode/agents/test-role.md").unwrap();
+        let content = result
+            .get("harnesses/opencode/.opencode/agents/test-role.md")
+            .unwrap();
 
         // Assert the frontmatter
         assert!(content.starts_with("---\n"));
@@ -159,17 +240,30 @@ mod tests {
 
     #[test]
     fn test_effort_is_emitted_as_reasoning_effort() {
-        let files = OpencodeAdapter.build(&[role_with_effort(Some("high"))], &[]).unwrap();
-        let content = files.get("harnesses/opencode/.opencode/agents/architect.md").unwrap();
+        let files = OpencodeAdapter
+            .build(&[role_with_effort(Some("high"))], &[])
+            .unwrap();
+        let content = files
+            .get("harnesses/opencode/.opencode/agents/architect.md")
+            .unwrap();
         assert!(content.contains("reasoningEffort: high\n"), "{content}");
     }
 
     #[test]
     fn test_no_model_line_is_emitted() {
         // A model is never stamped (#205). Prefix check so nothing false-positives.
-        let files = OpencodeAdapter.build(&[role_with_effort(Some("high"))], &[]).unwrap();
-        let content = files.get("harnesses/opencode/.opencode/agents/architect.md").unwrap();
-        assert!(!content.lines().any(|l| l.trim_start().starts_with("model:")), "{content}");
+        let files = OpencodeAdapter
+            .build(&[role_with_effort(Some("high"))], &[])
+            .unwrap();
+        let content = files
+            .get("harnesses/opencode/.opencode/agents/architect.md")
+            .unwrap();
+        assert!(
+            !content
+                .lines()
+                .any(|l| l.trim_start().starts_with("model:")),
+            "{content}"
+        );
     }
 
     #[test]
@@ -181,14 +275,16 @@ mod tests {
             allowed_tools: "".to_string(),
             disable_model_invocation: true,
             arguments: vec![],
-            narrative: "Resolve via `agent-files/*.md` else `general-purpose`; spawn `@role(planner)`; use {{issue}}."
+            narrative: "Resolve via {{agents-glob}} else {{general-purpose}}; spawn {{role:planner}}; use {{issue}}."
                 .to_string(),
             invocation: "".to_string(),
             board: "".to_string(),
             source: std::path::PathBuf::from(""),
         };
         let files = OpencodeAdapter.build(&[], &[command]).unwrap();
-        let content = files.get("harnesses/opencode/.opencode/commands/ship-issue.md").unwrap();
+        let content = files
+            .get("harnesses/opencode/.opencode/commands/ship-issue.md")
+            .unwrap();
         assert!(content.contains(".opencode/agents/*.md"));
         assert!(content.contains("general"));
         assert!(content.contains("subagent_type: architect"));
@@ -210,11 +306,15 @@ mod tests {
         };
         let files = OpencodeAdapter.build_tools(&[tool]);
         // opencode's native tool is code, not a skill.
-        let ts = files.get("harnesses/opencode/.opencode/tools/termgif.ts").unwrap();
+        let ts = files
+            .get("harnesses/opencode/.opencode/tools/termgif.ts")
+            .unwrap();
         assert!(ts.contains("export default tool("));
         assert!(ts.contains("termgif.py"));
         assert_eq!(
-            files.get("harnesses/opencode/.opencode/tools/termgif.py").unwrap(),
+            files
+                .get("harnesses/opencode/.opencode/tools/termgif.py")
+                .unwrap(),
             "print('hi')"
         );
         // No skill or command form for a tool on opencode.

@@ -64,6 +64,13 @@ _RENDERED = Path(_PAYLOAD.name) / "harnesses" / SITE_TARGET / ".claude"
 COMMANDS = _RENDERED / "skills"
 CREW = _RENDERED / "agents"
 
+# Canonical sources use these exporter tokens; none may survive into a
+# rendered payload. Keep this independent from the Rust renderer so a missing
+# replacement fails site validation instead of publishing neutral prose.
+UNRESOLVED_EXPORTER_TOKEN_RE = re.compile(
+    r"\{\{[a-z][a-z0-9_-]*(?::[a-z][a-z0-9_-]*)?\}\}"
+)
+
 SITE_URL = "https://saman-mb.github.io/shipmates/"
 SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 LASTMOD_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -137,6 +144,18 @@ def fail(msg: str) -> None:
 
 def ok(msg: str) -> None:
     notes.append(msg)
+
+
+def check_rendered_exporter_tokens() -> None:
+    before = len(failures)
+    for path in sorted((*COMMANDS.glob("*/SKILL.md"), *CREW.glob("*.md"))):
+        text = path.read_text(encoding="utf-8")
+        for token in sorted(set(UNRESOLVED_EXPORTER_TOKEN_RE.findall(text))):
+            fail(
+                f"{path.relative_to(ROOT)} contains unresolved exporter token {token!r}"
+            )
+    if len(failures) == before:
+        ok("rendered payload contains no unresolved exporter tokens")
 
 
 class Collector(HTMLParser):
@@ -1118,6 +1137,8 @@ def main() -> int:
         fail("no commands/*.md found — nothing to publish")
         return report()
     n_commands = len(slugs)
+
+    check_rendered_exporter_tokens()
 
     pages = discover_pages(SITE)
     homepage = pages[0]

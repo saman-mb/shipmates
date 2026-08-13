@@ -1,9 +1,9 @@
+use super::Adapter;
+use super::render::{
+    CrewFormat, GITHUB_COPILOT, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
+};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
-use super::render::{
-    emit_shared_skills, emit_shared_tool_skills, render_role_body, GITHUB_COPILOT,
-};
-use super::Adapter;
 
 /// GitHub Copilot — twelve skills in the shared open `.agents/skills/` tree plus
 /// the crew as custom agents under `.github/agents/<name>.agent.md`.
@@ -38,20 +38,71 @@ const MAX_AGENT_CHARS: usize = 30_000;
 /// names are *silently skipped* rather than rejected, so a typo here would
 /// quietly narrow an agent with no error — hence an explicit match rather than
 /// a pass-through of whatever the catalog happens to hold.
-fn tools_for(capabilities: &[String]) -> anyhow::Result<Vec<&'static str>> {
-    let mut tools: Vec<&'static str> = Vec::new();
-    for cap in capabilities {
+fn scope_tool(scope: &str) -> Option<&'static str> {
+    match scope {
+        "read" => Some("read"),
+        "write" => Some("edit"),
+        "edit" => Some("edit"),
+        "bash" => Some("execute"),
+        "search" | "glob" => Some("search"),
+        "web-search" | "web-fetch" => Some("web"),
+        "agent" => Some("agent"),
+        _ => None,
+    }
+}
+
+fn tools_for(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
+    if !role.tool_order.is_empty() {
+        let mut ordered = Vec::new();
+        for scope in &role.tool_order {
+            let tool = scope_tool(scope)
+                .ok_or_else(|| anyhow::anyhow!("unknown tool scope {scope:?}"))?
+                .to_string();
+            if !ordered.contains(&tool) {
+                ordered.push(tool);
+            }
+        }
+        return Ok(ordered);
+    }
+    let mut tools = Vec::new();
+    for cap in &role.capabilities {
         match cap.as_str() {
             // `read` covers file contents; `search` is Grep/Glob, which our
             // `read` capability implies on every other target too.
             "read" => {
-                tools.push("read");
-                tools.push("search");
+                let scopes = if role.read_scopes.is_empty() {
+                    vec!["read", "search"]
+                } else {
+                    role.read_scopes.iter().map(String::as_str).collect()
+                };
+                for scope in scopes {
+                    tools.push(
+                        scope_tool(scope)
+                            .ok_or_else(|| anyhow::anyhow!("unknown read scope {scope:?}"))?
+                            .to_string(),
+                    );
+                }
             }
-            "edit" => tools.push("edit"),
-            "bash" => tools.push("execute"),
-            "web" => tools.push("web"),
-            "agent" => tools.push("agent"),
+            "edit" => tools.push("edit".to_string()),
+            "bash" => tools.push("execute".to_string()),
+            "web" => {
+                let scopes = if role.web_scopes.is_empty() {
+                    vec!["web-search".to_string(), "web-fetch".to_string()]
+                } else {
+                    role.web_scopes
+                        .iter()
+                        .map(|scope| format!("web-{scope}"))
+                        .collect()
+                };
+                for scope in scopes {
+                    tools.push(
+                        scope_tool(&scope)
+                            .ok_or_else(|| anyhow::anyhow!("unknown web scope {scope:?}"))?
+                            .to_string(),
+                    );
+                }
+            }
+            "agent" => tools.push("agent".to_string()),
             // Dropping an unknown capability would silently narrow the agent,
             // and — if it were the only one — omitting `tools` entirely would
             // silently *widen* it to everything. Neither is acceptable for a
@@ -76,6 +127,48 @@ fn yaml_scalar(value: &str) -> String {
     format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Result<String> {
+    if tools.is_empty() {
+        anyhow::bail!(
+            "github-copilot agent {} maps to no tools; omitting the key would grant every tool",
+            role.name
+        );
+    }
+    let mut content = String::new();
+    content.push_str("---\n");
+    content.push_str(&format!("name: {}\n", yaml_scalar(&role.name)));
+    content.push_str(&format!(
+        "description: {}\n",
+        yaml_scalar(&role.description)
+    ));
+    content.push_str(&format!(
+        "tools: [{}]\n",
+        tools
+            .iter()
+            .map(|tool| format!("\"{tool}\""))
+            .collect::<Vec<_>>()
+            .join(", ")
+    ));
+    content.push_str("---\n");
+    content.push_str(body);
+    if content.chars().count() > MAX_AGENT_CHARS {
+        anyhow::bail!(
+            "github-copilot agent {} is {} characters, over the documented {} limit",
+            role.name,
+            content.chars().count(),
+            MAX_AGENT_CHARS
+        );
+    }
+    Ok(content)
+}
+
+const CREW_FORMAT: CrewFormat = CrewFormat {
+    file_suffix: ".agent.md",
+    dialect: &GITHUB_COPILOT,
+    map_tools: tools_for,
+    serialize,
+};
+
 impl Adapter for GithubCopilotAdapter {
     fn base_dir(&self) -> &'static str {
         "harnesses/github-copilot/.github"
@@ -87,45 +180,14 @@ impl Adapter for GithubCopilotAdapter {
         self.container()
     }
 
-    fn build(&self, roles: &[CanonicalRole], commands: &[CanonicalCommand]) -> anyhow::Result<HashMap<String, String>> {
-        let mut files = HashMap::new();
-        for role in roles {
-            let mut content = String::new();
-            content.push_str("---\n");
-            content.push_str(&format!("name: {}\n", yaml_scalar(&role.name)));
-            content.push_str(&format!("description: {}\n", yaml_scalar(&role.description)));
-            let tools = tools_for(&role.capabilities)?;
-            // Omitting `tools` enables *every* tool, so an empty mapping must
-            // fail rather than ship an unrestricted agent. This is the fail-open
-            // direction and the only one that matters here.
-            if tools.is_empty() {
-                anyhow::bail!(
-                    "github-copilot agent {} maps to no tools; omitting the key would grant every tool",
-                    role.name
-                );
-            }
-            content.push_str(&format!(
-                "tools: [{}]\n",
-                tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
-            ));
-            // Copilot custom agents have no documented per-agent reasoning-effort
-            // field, so `role.effort` is intentionally not emitted — recorded as a
-            // gap rather than faked with an invented key (#204).
-            content.push_str("---\n");
-            content.push_str(&render_role_body(&role.body, &GITHUB_COPILOT));
-
-            if content.chars().count() > MAX_AGENT_CHARS {
-                anyhow::bail!(
-                    "github-copilot agent {} is {} characters, over the documented {} limit",
-                    role.name,
-                    content.chars().count(),
-                    MAX_AGENT_CHARS
-                );
-            }
-            files.insert(format!("{}/agents/{}.agent.md", self.base_dir(), role.name), content);
-        }
+    fn build(
+        &self,
+        roles: &[CanonicalRole],
+        commands: &[CanonicalCommand],
+    ) -> anyhow::Result<HashMap<String, String>> {
+        let mut files = emit_crew_files(self.base_dir(), roles, &CREW_FORMAT)?;
         // Commands ship to the shared `.agents/skills/` tree (neutral dialect).
-        files.extend(emit_shared_skills(self.container(), commands));
+        files.extend(emit_shared_skills(self.container(), commands)?);
         Ok(files)
     }
 
@@ -180,7 +242,10 @@ mod tests {
     #[test]
     fn test_copilot_adapter_emits_skills_and_crew() {
         let files = GithubCopilotAdapter
-            .build(&[role("architect", &["read", "bash"], "body")], &[command("pr-review")])
+            .build(
+                &[role("architect", &["read", "bash"], "body")],
+                &[command("pr-review")],
+            )
             .unwrap();
         // Skills go to the shared open tree; only the crew are `.github/`-native.
         assert!(files.contains_key("harnesses/github-copilot/.agents/skills/pr-review/SKILL.md"));
@@ -191,7 +256,9 @@ mod tests {
     #[test]
     fn test_agent_uses_the_double_extension() {
         // `<name>.md` in this directory is not discovered by Copilot.
-        let files = GithubCopilotAdapter.build(&[role("sdet", &["read"], "body")], &[]).unwrap();
+        let files = GithubCopilotAdapter
+            .build(&[role("sdet", &["read"], "body")], &[])
+            .unwrap();
         assert!(files.contains_key("harnesses/github-copilot/.github/agents/sdet.agent.md"));
         assert!(!files.contains_key("harnesses/github-copilot/.github/agents/sdet.md"));
     }
@@ -201,7 +268,9 @@ mod tests {
         let files = GithubCopilotAdapter
             .build(&[role("architect", &["read", "bash"], "body")], &[])
             .unwrap();
-        let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
+        let agent = files
+            .get("harnesses/github-copilot/.github/agents/architect.agent.md")
+            .unwrap();
         assert!(agent.contains("tools: [\"execute\", \"read\", \"search\"]\n"));
         assert!(!agent.contains("\"edit\""));
     }
@@ -217,18 +286,37 @@ mod tests {
                 &[],
             )
             .unwrap();
-        let architect = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
-        let engineer = files.get("harnesses/github-copilot/.github/agents/senior-engineer.agent.md").unwrap();
-        assert!(!architect.contains("\"edit\""), "architect must not receive edit");
-        assert!(engineer.contains("\"edit\""), "senior-engineer must receive edit");
+        let architect = files
+            .get("harnesses/github-copilot/.github/agents/architect.agent.md")
+            .unwrap();
+        let engineer = files
+            .get("harnesses/github-copilot/.github/agents/senior-engineer.agent.md")
+            .unwrap();
+        assert!(
+            !architect.contains("\"edit\""),
+            "architect must not receive edit"
+        );
+        assert!(
+            engineer.contains("\"edit\""),
+            "senior-engineer must receive edit"
+        );
     }
 
     #[test]
     fn test_body_is_rendered_into_the_copilot_dialect() {
         let files = GithubCopilotAdapter
-            .build(&[role("architect", &["read"], "see `agent-files/*.md` and Harness-Session")], &[])
+            .build(
+                &[role(
+                    "architect",
+                    &["read"],
+                    "see {{agents-glob}} and {{session-key}}",
+                )],
+                &[],
+            )
             .unwrap();
-        let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
+        let agent = files
+            .get("harnesses/github-copilot/.github/agents/architect.agent.md")
+            .unwrap();
         assert!(agent.contains(".github/agents/*.md"));
         assert!(agent.contains("Copilot-Session"));
         assert!(!agent.contains("agent-files/"));
@@ -240,32 +328,63 @@ mod tests {
         // unquoted it produces frontmatter Copilot cannot parse — the agent
         // installs cleanly and is never loaded.
         let files = GithubCopilotAdapter
-            .build(&[role_with_desc("architect", &["read"], "reviews: structure, not style")], &[])
+            .build(
+                &[role_with_desc(
+                    "architect",
+                    &["read"],
+                    "reviews: structure, not style",
+                )],
+                &[],
+            )
             .unwrap();
-        let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
-        assert!(agent.contains("description: \"reviews: structure, not style\"\n"), "{agent}");
+        let agent = files
+            .get("harnesses/github-copilot/.github/agents/architect.agent.md")
+            .unwrap();
+        assert!(
+            agent.contains("description: \"reviews: structure, not style\"\n"),
+            "{agent}"
+        );
     }
 
     #[test]
     fn test_quotes_in_description_are_escaped() {
         let files = GithubCopilotAdapter
-            .build(&[role_with_desc("architect", &["read"], "the \"right\" shape")], &[])
+            .build(
+                &[role_with_desc(
+                    "architect",
+                    &["read"],
+                    "the \"right\" shape",
+                )],
+                &[],
+            )
             .unwrap();
-        let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
-        assert!(agent.contains(r#"description: "the \"right\" shape""#), "{agent}");
+        let agent = files
+            .get("harnesses/github-copilot/.github/agents/architect.agent.md")
+            .unwrap();
+        assert!(
+            agent.contains(r#"description: "the \"right\" shape""#),
+            "{agent}"
+        );
     }
 
     #[test]
     fn test_unmapped_capability_fails_rather_than_narrowing() {
-        let result = GithubCopilotAdapter.build(&[role("architect", &["read", "telepathy"], "body")], &[]);
-        assert!(result.is_err(), "an unmapped capability must fail the build");
+        let result =
+            GithubCopilotAdapter.build(&[role("architect", &["read", "telepathy"], "body")], &[]);
+        assert!(
+            result.is_err(),
+            "an unmapped capability must fail the build"
+        );
     }
 
     #[test]
     fn test_role_with_no_mappable_tools_fails_rather_than_granting_everything() {
         // Omitting `tools` enables every tool — the fail-open direction.
         let result = GithubCopilotAdapter.build(&[role("architect", &[], "body")], &[]);
-        assert!(result.is_err(), "an empty tool mapping must fail, not ship an unrestricted agent");
+        assert!(
+            result.is_err(),
+            "an empty tool mapping must fail, not ship an unrestricted agent"
+        );
     }
 
     #[test]
@@ -273,14 +392,22 @@ mod tests {
         let files = GithubCopilotAdapter
             .build(&[role("architect", &["read", "bash", "read"], "body")], &[])
             .unwrap();
-        let agent = files.get("harnesses/github-copilot/.github/agents/architect.agent.md").unwrap();
-        assert!(agent.contains("tools: [\"execute\", \"read\", \"search\"]\n"), "{agent}");
+        let agent = files
+            .get("harnesses/github-copilot/.github/agents/architect.agent.md")
+            .unwrap();
+        assert!(
+            agent.contains("tools: [\"execute\", \"read\", \"search\"]\n"),
+            "{agent}"
+        );
     }
 
     #[test]
     fn test_oversized_agent_is_an_error_not_a_truncation() {
         let huge = "x".repeat(MAX_AGENT_CHARS + 1);
         let result = GithubCopilotAdapter.build(&[role("architect", &["read"], &huge)], &[]);
-        assert!(result.is_err(), "an agent over the documented limit must fail the build");
+        assert!(
+            result.is_err(),
+            "an agent over the documented limit must fail the build"
+        );
     }
 }
