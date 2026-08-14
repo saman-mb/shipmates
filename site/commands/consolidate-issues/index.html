@@ -141,7 +141,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/consolidate-issues [scope filters such as label/area] [apply]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/consolidate-issues [scope filter such as label/area] [apply] — no args: the whole open backlog, report-only</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -256,7 +256,7 @@
         </ol>
         <h3 id="runtime-input">Runtime input</h3>
         <div class="order-prose">
-          <p><code>$ARGUMENTS</code> is the complete invocation text. The first word is usually a scope filter (a label or area) or the word <code>apply</code>; parse it in prose and treat anything unstated as <code>MODE=report</code> over the whole tracker. When in doubt, report only — closing other people&#x27;s issues is a decision the captain makes, not the default.</p>
+          <p><code>$ARGUMENTS</code> is the complete invocation text. <strong>Empty means the whole open-issue set</strong>: run in <code>MODE=report</code> over the repo&#x27;s entire backlog — every open issue, no scope filter. Otherwise the first word is usually a scope filter (a label or area) or the word <code>apply</code>; parse it in prose and treat anything unstated as <code>MODE=report</code>. When in doubt, report only — closing other people&#x27;s issues is a decision the captain makes, not the default.</p>
           <h3>Guardrails</h3>
           <ul>
             <li><strong>Evidence or nothing.</strong> An issue is <code>DONE</code> only with a merged PR/commit to point at; it is <code>STALE</code> only after the <code>product-manager</code> pass. Every close comment names the evidence.</li>
