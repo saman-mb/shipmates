@@ -195,6 +195,13 @@
         <div class="order-prose">
           <ul>
             <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
+            <li><strong>Complexity-Based Tiered Execution</strong>: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
+              <ul>
+                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). Bypasses spawning all subagents entirely; the main agent (you) executes, validates, and delivers the PR directly.</li>
+                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Bypasses parallel design specs and the large acceptance board. Spawn a Planner and a single Builder and single SDET. The main agent reviews and delivers.</li>
+                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command.</li>
+              </ul>
+            </li>
             <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
             <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
           </ul>
