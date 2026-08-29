@@ -33,6 +33,10 @@ authors reference it instead of copying cost rules into each workflow.
 - Stable workflow instructions come before runtime input. Read and parse the complete runtime-input
   section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated
   output through this prefix.
+- **Complexity-Based Tiered Execution**: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
+  - **Simple**: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting <= 2 files and <= 15 lines of code, no specialist flags). Bypasses spawning all subagents entirely; the main agent (you) executes, validates, and delivers the PR directly.
+  - **Medium**: Moderate changes (<= 5 files, no major module boundaries, no architectural/security/delivery flags). Bypasses parallel design specs and the large acceptance board. Spawn a Planner and a single Builder and single SDET. The main agent reviews and delivers.
+  - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command.
 - Spend subagent seats only where their decision can change the outcome. Route model and effort at
   spawn by work difficulty; never hardcode a model in canonical content.
 - Ask every subagent for a compact structured return: decision/status first, criterion findings and
