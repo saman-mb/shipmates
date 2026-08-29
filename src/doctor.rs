@@ -10,7 +10,7 @@ use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
 use crate::installer::{manifest_db, migrate, plan};
-use anyhow::{Context, Result, bail};
+  use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
@@ -547,13 +547,18 @@ pub fn fix(
     let expected = strip_container(&built, adapter.container());
     let repository = manifest_db::ReceiptRepository::new(target_dir);
     repository.load_all()?;
-    let (receipt_state, mut receipt, receipt_error) = plan::read_receipt(target_dir, harness);
+    let (mut receipt_state, mut receipt, receipt_error) = plan::read_receipt(target_dir, harness);
     if receipt_state == plan::ReceiptState::Invalid {
-        bail!(
-            "install receipt for harness {} is invalid; refusing doctor --fix: {}",
+        // Invalid receipt — treat as missing. Skip migration (unknown ownership)
+        // and ownership-based drift repair; only restore genuinely missing core
+        // files so --fix makes progress instead of hard-bailing (#272).
+        println!(
+            "Warning: install receipt for harness {} is invalid — {} (migrate and ownership-based drift repair skipped)",
             harness,
             receipt_error.unwrap_or_else(|| "unknown receipt error".into())
         );
+        receipt_state = plan::ReceiptState::Missing;
+        receipt = None;
     }
     for rel in expected.keys() {
         manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
@@ -1185,7 +1190,50 @@ mod tests {
 
         let error = diagnose(dir.path(), "claude-code", &roles, &cmds, &[]).unwrap_err();
 
-        assert!(error.to_string().contains("symlink component"));
+       assert!(error.to_string().contains("symlink component"));
         assert!(outside_file.exists());
+    }
+
+    #[test]
+    fn test_fix_corrupted_receipt_does_not_bail() {
+        // Corrupted receipt must degrade gracefully — restore missing files,
+        // skip migration and ownership-based drift repair (#272).
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(target, &roles, &cmds);
+        write_receipt(target, &roles, &cmds, &[]);
+
+        // Corrupt the receipt by overwriting with invalid bytes.
+        let adapter = adapters::select("claude-code").unwrap();
+        let files = expected_files(adapter.as_ref(), &roles, &cmds).unwrap();
+        let mut receipt_rel = files
+            .keys()
+            .find(|k| k.ends_with(".sha256"))
+            .cloned();
+        if let Some(ref mut rel) = receipt_rel {
+            *rel = rel.replace(".sha256", "");
+        }
+        if let Some(receipt_path) = receipt_rel {
+            let receipt_path = target.join(&receipt_path);
+            std::fs::write(&receipt_path, "CORRUPTED_BYTES_NOT_VALID_JSON").unwrap();
+        }
+
+        // Remove a crew agent to create a missing-file scenario.
+        let agent_rel = files
+            .keys()
+            .find(|k| k.contains("agents") && k.ends_with(".md"))
+            .cloned();
+        if let Some(ref rel) = agent_rel {
+            std::fs::remove_file(target.join(rel)).unwrap();
+        }
+
+        // fix() must succeed (not bail) and restore the missing agent.
+        let report = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert_eq!(sev(&report, "Crew agents"), Severity::Ok);
+        if let Some(ref rel) = agent_rel {
+            assert!(target.join(rel).exists(), "missing agent must be restored");
+        }
     }
 }
