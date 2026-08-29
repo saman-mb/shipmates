@@ -655,3 +655,65 @@ fn doctor_no_migrate_requires_fix_and_fix_leaves_legacy_file() {
     );
     assert!(legacy.exists(), "--no-migrate must preserve legacy command");
 }
+
+#[test]
+fn doctor_fix_skipped_does_not_list_never_installed_tools() {
+    // A healthy no-tools install must not print a scary "Skipped N file(s)"
+    // line listing every optional tool that was never installed (#267).
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+    assert!(
+        output.status.success(),
+        "doctor --fix failed: {}",
+        output_text(&output)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("Skipped"),
+        "no-tools install must not report skipped tool files: {}",
+        stdout
+    );
+}
+
+#[test]
+fn doctor_fix_still_repairs_drifted_installed_tool() {
+    // When tools ARE installed, doctor --fix must still repair drifted files
+    // among them. The #267 fix only suppresses the skip report for tools that
+    // were never claimed by the receipt.
+    let dir = tempdir().unwrap();
+    let output = run(
+        dir.path(),
+        &["install", "--harness", HARNESS, "--with-tools", "termgif"],
+    );
+    assert!(
+        output.status.success(),
+        "tool install failed: {}",
+        output_text(&output)
+    );
+    let tool_skill = dir.path().join(".claude/skills/termgif/SKILL.md");
+    assert!(tool_skill.is_file(), "termgif SKILL.md must exist");
+
+    // Drift the tool file.
+    fs::write(&tool_skill, "drifted content\n").unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+    assert!(
+        output.status.success(),
+        "doctor --fix failed: {}",
+        output_text(&output)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // The drifted file should have been restored, not skipped.
+    let restored = fs::read_to_string(&tool_skill).unwrap();
+    assert!(
+        restored != "drifted content\n",
+        "drifted tool file must be repaired, not left alone"
+    );
+    assert!(
+        !stdout.contains("Skipped"),
+        "installed tool repair must not produce a skipped line: {}",
+        stdout
+    );
+}
