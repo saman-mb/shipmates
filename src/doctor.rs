@@ -572,7 +572,18 @@ pub fn fix(
         manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
     }
     let mut repair_expected = expected.clone();
-    repair_expected.extend(tool_expected);
+    // Only pull optional-tool files into the repair set when the receipt
+    // actually claims them. A no-tools install has no tool files to restore,
+    // and listing every uninstalled tool as "skipped" is alarming noise (#267).
+    // When some tools are installed, only their files are included so that
+    // uninstalled tools do not appear in the skipped report either.
+    if let Some(receipt) = receipt.as_ref() {
+        for (k, v) in tool_expected {
+            if receipt.file(&k).is_some() {
+                repair_expected.insert(k, v);
+            }
+        }
+    }
 
     // 1. Migrate any superseded command files (backed up before removal), unless
     // the caller opted out with `--no-migrate`.
