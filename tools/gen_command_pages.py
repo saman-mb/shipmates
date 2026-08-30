@@ -1504,6 +1504,14 @@ TOOL_COPY = {
             "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools domaincheck`, or pick it from the interactive list. Once installed the crew invokes it implicitly; there is no slash command.",
             "Run `python3 domaincheck.py github.com`, pass several domains, or sweep TLDs with `python3 domaincheck.py --tld com,app,io shipmates`. Add `--detail` for registrar and date fields from RDAP JSON; `--whois` optionally prints human-readable whois output when the binary exists. Use `--delay` on large sweeps — public bootstrap rate-limits rapid queries.",
         ),
+        examples=(
+            ToolExample(
+                src="examples/domaincheck.gif", width=900, height=400,
+                alt="Terminal recording of domaincheck querying github.com as registered, then sweeping shipmates-test-xyzzy across .com and .io as available — ending with a green confirmation that verdicts are registry-authoritative RDAP, not DNS guesswork.",
+                caption="domaincheck querying a registered name, then sweeping a shortlist across TLDs — available means unallocated in RDAP, not cheap at the registrar.",
+                poster="examples/domaincheck_poster.png",
+            ),
+        ),
         sample="$ python3 domaincheck.py github.com\n$ python3 domaincheck.py --tld com,io shipmates-test-name-xyzzy\n\ngithub.com\tregistered\nshipmates-test-name-xyzzy.com\tavailable\nshipmates-test-name-xyzzy.io\tavailable",
     ),
 }

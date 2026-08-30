@@ -92,6 +92,24 @@
       </div>
     </section>
 
+    <section class="section" id="examples" aria-labelledby="examples-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="examples-title">Examples</h2>
+        </div>
+        <p>A few things <code>domaincheck</code> can produce, each from a small spec of its own. If you&#x27;ve set <code>prefers-reduced-motion</code>, any animation shows its final frame instead.</p>
+        <div class="tool-gallery">
+          <figure class="tool-example">
+            <picture>
+              <source media="(prefers-reduced-motion: reduce)" srcset="examples/domaincheck_poster.png">
+              <img class="tool-example__img" src="examples/domaincheck.gif" width="900" height="400" alt="Terminal recording of domaincheck querying github.com as registered, then sweeping shipmates-test-xyzzy across .com and .io as available — ending with a green confirmation that verdicts are registry-authoritative RDAP, not DNS guesswork." loading="lazy" decoding="async">
+            </picture>
+            <figcaption class="tool-example__caption">domaincheck querying a registered name, then sweeping a shortlist across TLDs — available means unallocated in RDAP, not cheap at the registrar.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="sample" aria-labelledby="sample-title">
       <div class="container container--prose">
         <div class="section__head">
