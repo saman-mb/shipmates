@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/ship-epic — sequential epic delivery · Shipmates</title>
-  <meta name="description" content="Loop /ship-issue over an epic&#x27;s unchecked stories in dependency order — gate stories pause for sign-off, failures pause with state, epic closes when the…">
+  <meta name="description" content="Loop /ship-issue over an epic&#x27;s stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause…">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/ship-epic/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/ship-epic — sequential epic delivery">
-  <meta property="og:description" content="Loop /ship-issue over an epic&#x27;s unchecked stories in dependency order — gate stories pause for sign-off, failures pause with state, epic closes when the…">
+  <meta property="og:description" content="Loop /ship-issue over an epic&#x27;s stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause…">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/ship-epic/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/ship-epic — sequential epic delivery">
-  <meta name="twitter:description" content="Loop /ship-issue over an epic&#x27;s unchecked stories in dependency order — gate stories pause for sign-off, failures pause with state, epic closes when the…">
+  <meta name="twitter:description" content="Loop /ship-issue over an epic&#x27;s stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,14 +29,14 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/ship-epic",
-    "description": "Loop /ship-issue over an epic's unchecked stories in dependency order — gate stories pause for sign-off, failures pause with state, epic closes when the checklist is done.",
+    "description": "Loop /ship-issue over an epic's stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause for sign-off.",
     "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Intake (orchestrator)",
-        "text": "Parse runtime input: the first numeric token (or URL) is <epic>; remaining tokens are <guidance> (resume, dry run, epic close auto, etc.).",
+        "text": "Parse runtime input: the first numeric token (or URL) is <epic>; remaining tokens are <guidance> (resume, dry run, epic close auto, batch off, etc.). Guidance batch off sets EPIC_BATCH=off.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-0"
       },
       {
@@ -49,22 +49,29 @@
       {
         "@type": "HowToStep",
         "position": 3,
-        "name": "Stage 2 — Loop (orchestrator)",
-        "text": "Walk the topologically sorted list sequentially — one story at a time. Parallel independent stories are a future opt-in; the default is strict sequence so each /ship-issue run owns its worktree cleanly.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-2"
+        "name": "Stage 1.5 — Epic shipping plan",
+        "text": "Spawn one architect with: the epic title/body, every pending story's title + body + labels (truncate bodies to acceptance-criteria sections when huge), Stage 1 dependency order, repo README / CLAUDE.md, and <done>. Ask for structured data only:",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-1-5"
       },
       {
         "@type": "HowToStep",
         "position": 4,
-        "name": "Stage 3 — Tick epic checklist (orchestrator)",
-        "text": "After each successful story shipment:",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-3"
+        "name": "Stage 2 — Loop (orchestrator)",
+        "text": "Walk <units> in order — one /ship-issue delegation per unit (not one per story unless the unit is a singleton).",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-2"
       },
       {
         "@type": "HowToStep",
         "position": 5,
+        "name": "Stage 3 — Tick epic checklist (orchestrator)",
+        "text": "After each successful unit, for each story in that unit:",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-3"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 6,
         "name": "Stage 4 — Epic closure (orchestrator)",
-        "text": "When no - [ ] #n lines remain (all stories ticked or closed):",
+        "text": "When no - [ ] #n lines remain:",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-4"
       }
     ]
@@ -108,7 +115,7 @@
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <h1 class="order-detail__title" id="order-title"><code>/ship-epic</code></h1>
           <p class="order-detail__tagline">sequential epic delivery</p>
-          <p class="order-detail__desc">Loop /ship-issue over an epic&#x27;s unchecked stories in dependency order — gate stories pause for sign-off, failures pause with state, epic closes when the checklist is done.</p>
+          <p class="order-detail__desc">Loop /ship-issue over an epic&#x27;s stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause for sign-off.</p>
         </div>
       </div>
     </section>
@@ -119,7 +126,7 @@
           <h2 class="section__title" id="demo-title">See it run</h2>
         </div>
         <figure class="demo">
-          <img class="demo__media" id="demo-media" src="../../assets/command-ship-epic-poster.png" width="820" height="372" alt="Illustrative terminal recording of the stages /ship-epic runs, in order." loading="lazy">
+          <img class="demo__media" id="demo-media" src="../../assets/command-ship-epic-poster.png" width="820" height="402" alt="Illustrative terminal recording of the stages /ship-epic runs, in order." loading="lazy">
           <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
           <figcaption class="demo__caption">Illustrative — the stages <code>/ship-epic</code> runs, in order.</figcaption>
         </figure>
@@ -134,7 +141,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/ship-epic &lt;epic-issue-number&gt; [resume | dry-run | epic close auto]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/ship-epic &lt;epic-issue-number&gt; [resume | dry-run | epic close auto | batch off]</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -146,7 +153,7 @@
         <div class="section__head">
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
-          <p class="section__lead">Five stages, in order.</p>
+          <p class="section__lead">Six stages, in order.</p>
         </div>
         <h3 id="cost-discipline">Cost discipline</h3>
         <div class="order-prose">
@@ -162,7 +169,16 @@
             <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
             <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
           </ul>
-          <p>Deliver a whole <strong>epic</strong> by looping the existing <code>/ship-issue</code> pipeline over its unchecked story checklist items — one story at a time, in dependency order — until every non-gate story ships or the loop pauses for human action. Each story gets its own worktree, PR, CI gate, and acceptance board; this command is the <strong>orchestrator</strong> only: it parses the epic, orders stories, delegates to <code>/ship-issue</code>, ticks checklist boxes, and reports pause/resume state.</p>
+          <p>Deliver a whole <strong>epic</strong> by driving the <code>/ship-issue</code> pipeline over its unchecked story checklist — in <strong>shipping units</strong> (one story or a small cohesive bundle), dependency order preserved — until every non-gate story ships or the loop pauses for human action.</p>
+          <p><strong>Epic cost discipline.</strong> A naïve loop pays <code>/ship-issue</code>&#x27;s full fixed overhead <strong>once per story</strong> (Planner, worktree, CI poll, acceptance board). On a five-story epic that is roughly five times the cost of one run for little extra diff. This command <strong>amortizes</strong> that overhead instead:</p>
+          <ol>
+            <li><strong>One epic plan for all stories</strong> — a single <code>architect</code> pass (Stage 1.5) classifies every pending story and groups them into <code>&lt;units&gt;</code> before any build. No re-planning the epic shape per story.</li>
+            <li><strong>Batch cohesive units</strong> — when Stage 1.5 groups two–four small, same-area stories with non-overlapping file ownership, invoke <code>/ship-issue</code> <strong>once</strong> with every story number in the unit. Multi-issue input is already bundle consent in <code>/ship-issue</code>; one board reads one combined diff.</li>
+            <li><strong>Pre-classification passthrough</strong> — pass the epic plan&#x27;s complexity and domain flags into each delegation as guidance so <code>/ship-issue</code>&#x27;s tiered execution (Simple / Medium / High) fires without re-deriving from scratch. The story-level Planner may <strong>amend</strong> the plan if the issue body contradicts it; it must not ignore it.</li>
+            <li><strong>Epic context capsule</strong> — after each successful unit, append a compact <code>&lt;epic-capsule&gt;</code>: validation commands that worked, touched paths, conventions established. Pass only the capsule plus the current unit&#x27;s issue text to the next delegation — not a full epic re-brief every time.</li>
+            <li><strong>Value-gated batching</strong> — never batch to save tokens alone. Gate stories, <code>complex</code> stories, <code>IS_ARCH_SIGNIFICANT</code> / <code>IS_SECURITY_SENSITIVE</code> stories, and unrelated areas always ship as <strong>singleton units</strong>. CI and acceptance still run <strong>per unit</strong>; nothing ships without green checks.</li>
+          </ol>
+          <p>Hard limits that <strong>never</strong> bend for economy: gate pauses, external-blocker pauses, <code>MAX_FIX_ROUNDS</code> escape hatch, shell safety, and <strong>confirmed-green CI</strong> on every unit.</p>
           <p>The epic issue number and optional guidance come from the Runtime input section at the end of this workflow.</p>
         </div>
         <h3 id="shell-safety-untrusted-github-data">Shell safety — untrusted GitHub data</h3>
@@ -181,11 +197,12 @@
             <div class="order-stage__body">
               <div class="order-prose">
                 <ol>
-                  <li>Parse runtime input: the <strong>first numeric token</strong> (or URL) is <code>&lt;epic&gt;</code>; remaining tokens are <code>&lt;guidance&gt;</code> (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, etc.).</li>
+                  <li>Parse runtime input: the <strong>first numeric token</strong> (or URL) is <code>&lt;epic&gt;</code>; remaining tokens are <code>&lt;guidance&gt;</code> (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, <code>batch off</code>, etc.). Guidance <code>batch off</code> sets <code>EPIC_BATCH=off</code>.</li>
                   <li>Fetch the epic: <code>gh issue view &lt;epic&gt; --json number,title,body,labels,state,url</code>. Confirm it is open and labelled <code>epic</code> (or has a story checklist in its body — if neither, stop and ask).</li>
                   <li>Parse the epic body for checklist lines matching <code>- [ ] #&lt;n&gt;</code> (unchecked) and <code>- [x] #&lt;n&gt;</code> (done). Let <code>&lt;pending&gt;</code> = unchecked story numbers in checklist order; let <code>&lt;done&gt;</code> = already ticked.</li>
                   <li>If <code>&lt;pending&gt;</code> is empty, go to <strong>Stage 4 — Epic closure</strong> (checklist complete).</li>
-                  <li>If <code>DRY_RUN</code>, print <code>&lt;epic&gt;</code> title, <code>&lt;done&gt;</code>, <code>&lt;pending&gt;</code>, and continue to Stage 1 without invoking <code>/ship-issue</code>.</li>
+                  <li>Initialize <code>&lt;epic-capsule&gt;</code> empty (or reload from a prior pause comment on the epic if resuming — optional; do not invent state).</li>
+                  <li>If <code>DRY_RUN</code>, print <code>&lt;epic&gt;</code> title, <code>&lt;done&gt;</code>, <code>&lt;pending&gt;</code>, and continue through Stage 1.5 for the unit plan — then stop before Stage 2.</li>
                 </ol>
               </div>
             </div>
@@ -199,7 +216,7 @@
                 <ol>
                   <li>Fetch <code>gh issue view &lt;n&gt; --json number,title,body,labels,state,url</code>.</li>
                   <li>Skip closed stories — treat as already done; note them for checklist backfill in Stage 3.</li>
-                  <li>Detect <strong>gate stories</strong>: <code>gate</code> label present, or the body contains an explicit sign-off section (e.g. a heading like &quot;Sign-off&quot; / &quot;Gate&quot; with criteria the story says must pass before merge). Record <code>&lt;gates&gt;</code>.</li>
+                  <li>Detect <strong>gate stories</strong>: <code>gate</code> label present, or the body contains an explicit sign-off section (e.g. a heading like &quot;Sign-off&quot; / &quot;Gate&quot; with criteria the story says must pass before merge). Record <code>&lt;gates&gt;</code>. Gate stories are always <strong>singleton units</strong> — never batched.</li>
                   <li>Parse <strong>dependencies</strong> from the story body: <code>Blocked by #&lt;n&gt;</code>, <code>blocked_by #&lt;n&gt;</code>, or checklist cross-refs. Build a directed graph over <code>&lt;pending&gt;</code> plus any <strong>external</strong> blockers outside the epic.</li>
                   <li><strong>Topological sort</strong> <code>&lt;pending&gt;</code> respecting dependencies. If a cycle is detected, stop and report the cycle — do not ship out of order.</li>
                   <li>Flag <strong>external blockers</strong>: any dependency on an open issue outside the epic (or outside <code>&lt;done&gt;</code>). Record <code>&lt;blocked-externally&gt;</code> with story → blocker mapping.</li>
@@ -208,28 +225,56 @@
               </div>
             </div>
           </li>
+          <li class="order-stage" id="stage-1-5">
+            <span class="order-stage__num" aria-hidden="true">1.5</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 1.5 — </span>Epic shipping plan</h3>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>architect</code></span> (once)</p>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <p>Spawn <strong>one</strong> <code>architect</code> with: the epic title/body, every pending story&#x27;s title + body + labels (truncate bodies to acceptance-criteria sections when huge), Stage 1 dependency order, repo <code>README</code> / CLAUDE.md, and <code>&lt;done&gt;</code>. Ask for <strong>structured data only</strong>:</p>
+                <ul>
+                  <li>Per story: <code>complexity</code> (<code>trivial</code>, <code>standard</code>, or <code>complex</code>), domain flags (same vocabulary as <code>/ship-issue</code> Stage 0), and one-line rationale.</li>
+                  <li><code>&lt;units&gt;</code>: an <strong>ordered</strong> list of shipping units covering every non-gate pending story exactly once. Each unit: <code>stories</code> (issue numbers), <code>batch_rationale</code> (why together or alone), <code>expected_files</code> (non-overlapping ownership across stories in the unit).</li>
+                  <li><strong>Batching rules the planner must enforce:</strong> gate stories → singleton; <code>complex</code> or <code>IS_ARCH_SIGNIFICANT</code> or <code>IS_SECURITY_SENSITIVE</code> → singleton; different <code>area:*</code> labels → separate units unless each story is <code>trivial</code> and file-disjoint; max <code>MAX_UNIT_SIZE</code> stories per multi-story unit; dependencies satisfied within unit ordering.</li>
+                </ul>
+                <p>Apply <code>EPIC_BATCH</code>:</p>
+                <ul>
+                  <li><code>off</code> → split every multi-story unit into singletons (keep order).</li>
+                  <li><code>max</code> → merge adjacent units only when the architect&#x27;s rules still hold and combined size ≤ <code>MAX_UNIT_SIZE</code>.</li>
+                </ul>
+                <p>Record <code>&lt;units&gt;</code> and <code>&lt;story-classification&gt;</code>. In <code>DRY_RUN</code>, print <code>&lt;units&gt;</code> with story titles, unit sizes, and <strong>token rationale</strong>: &quot;<code>N</code> stories → <code>U</code> <code>/ship-issue</code> invocations&quot;.</p>
+              </div>
+            </div>
+          </li>
           <li class="order-stage" id="stage-2">
             <span class="order-stage__num" aria-hidden="true">2</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Loop (orchestrator)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Walk the topologically sorted list <strong>sequentially</strong> — one story at a time. Parallel independent stories are a future opt-in; the default is strict sequence so each <code>/ship-issue</code> run owns its worktree cleanly.</p>
-                <p>For each <code>&lt;story&gt;</code> in order:</p>
+                <p>Walk <code>&lt;units&gt;</code> in order — one <code>/ship-issue</code> delegation per unit (not one per story unless the unit is a singleton).</p>
+                <p>For each <code>&lt;unit&gt;</code>:</p>
                 <ol>
-                  <li><strong>Already ticked or closed</strong> — skip (resumable re-runs land here).</li>
-                  <li><strong>Gate story</strong> — if <code>&lt;story&gt;</code> is in <code>&lt;gates&gt;</code> and still open: <strong>pause</strong> with an <strong>awaiting sign-off</strong> report naming the epic, the gate story, and what closes/resumes the loop (human closes the gate story or removes the gate label after sign-off). Do <strong>not</strong> invoke <code>/ship-issue</code>. Stop.</li>
-                  <li><strong>External blocker</strong> — if <code>&lt;story&gt;</code> is in <code>&lt;blocked-externally&gt;</code> and the blocker is still open: <strong>pause</strong> with a report naming the story, the external blocker issue, and that the loop resumes when the blocker closes. Do <strong>not</strong> ship out of order. Stop.</li>
-                  <li><strong>Unmet in-epic dependency</strong> — if a <code>Blocked by</code> parent in the epic is still unchecked: skip forward only after the parent completes in this same run; if the sort was wrong, stop and report.</li>
-                  <li><strong>Delegate</strong> — invoke <code>/ship-issue &lt;story&gt;</code> with <code>BUNDLE=off</code> and the configured <code>MERGE_MODE</code> / <code>MAX_FIX_ROUNDS</code>. The orchestrator runs the full ship-issue workflow for that story number only.</li>
+                  <li><strong>Stories already ticked or closed</strong> — skip the whole unit.</li>
+                  <li><strong>Gate unit</strong> — if any story in the unit is in <code>&lt;gates&gt;</code> and still open: <strong>pause</strong> with <strong>awaiting sign-off</strong> (same as before). Do <strong>not</strong> invoke <code>/ship-issue</code>. Stop.</li>
+                  <li><strong>External blocker</strong> — if any story in the unit is blocked externally and the blocker is open: <strong>pause</strong> with blocker details. Stop.</li>
+                  <li><strong>Build delegation guidance</strong> (compact prose, not a transcript). Include:
+                    <ul>
+                      <li><code>epic-run</code> — story numbers in this unit belong to epic <code>&lt;epic&gt;</code>; do <strong>not</strong> scan the wider backlog or propose bundle widening beyond this unit&#x27;s story list.</li>
+                      <li><code>epic-plan</code> — paste the unit&#x27;s pre-classification (complexity + flags per story); the story-level Planner should treat this as the starting plan and amend only on contradiction.</li>
+                      <li><code>epic-capsule</code> — paste <code>&lt;epic-capsule&gt;</code> when non-empty (validation commands, paths, conventions from prior units in this run).</li>
+                      <li>Tier hint — when <strong>every</strong> story in the unit is <code>trivial</code> and no specialist flags are set, include <code>complexity tier: simple</code> so <code>/ship-issue</code> takes the Simple path. When all are <code>trivial</code> or <code>standard</code> with no arch/security/delivery flags, include <code>complexity tier: medium</code>. Otherwise omit (full High path).</li>
+                    </ul>
+                  </li>
+                  <li><strong>Delegate</strong> — invoke <code>/ship-issue</code> with <strong>all story numbers in the unit</strong> as the leading numeric tokens, then the guidance from step 4. Example shape: <code>/ship-issue 101 102 epic-run …</code> for a two-story unit. Singleton: <code>/ship-issue 103 epic-run …</code>. Do <strong>not</strong> set <code>BUNDLE=off</code> — explicit multi-story tokens <strong>are</strong> the bundle; singletons behave as today.</li>
                   <li><strong>Outcome:</strong>
                     <ul>
-                      <li><strong>Success</strong> (reviewed, CI-green PR per ship-issue; merged too when <code>MERGE_MODE=auto</code>) → Stage 3 for this story, then continue to the next story.</li>
-                      <li><strong>Paused / escalated</strong> (ship-issue stopped after <code>MAX_FIX_ROUNDS</code>, ambiguous scope, or user escalation) → <strong>pause the epic loop</strong> with a <strong>state report</strong>: epic number, completed stories, current story, PR link if any, failure summary, and explicit <strong>resume</strong> instruction (<code>/ship-epic &lt;epic&gt; resume</code>). Do <strong>not</strong> advance to the next story. Stop.</li>
-                      <li><strong>Gate encountered mid-run</strong> — same as step 2 if the story was misclassified; pause and stop.</li>
+                      <li><strong>Success</strong> → Stage 3 for <strong>each</strong> story in the unit (tick every checklist line the unit closed), extend <code>&lt;epic-capsule&gt;</code> with validation commands used, key paths touched, and any convention the board enforced — keep the capsule <strong>short</strong> (bullet list, not a narrative). Continue to the next unit.</li>
+                      <li><strong>Paused / escalated</strong> → <strong>pause the epic loop</strong> with state report (epic, completed units, current unit, PR link, failure summary, <code>/ship-epic &lt;epic&gt; resume</code>). Stop.</li>
+                      <li><strong>Gate mid-run</strong> → pause and stop.</li>
                     </ul>
                   </li>
                 </ol>
-                <p>When every non-gate story in <code>&lt;pending&gt;</code> has succeeded, go to Stage 4.</p>
+                <p>When every unit has succeeded, go to Stage 4.</p>
               </div>
             </div>
           </li>
@@ -238,15 +283,14 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Tick epic checklist (orchestrator)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>After each successful story shipment:</p>
+                <p>After each successful unit, for <strong>each story</strong> in that unit:</p>
                 <ol>
                   <li>Re-fetch the epic body.</li>
-                  <li>Replace the line <code>- [ ] #&lt;story&gt;</code> with <code>- [x] #&lt;story&gt;</code> (match the story number exactly).</li>
-                  <li>Write the updated body via a temp file: <code>gh issue edit &lt;epic&gt; --body-file &lt;file&gt;</code>.</li>
-                  <li>Verify the tick landed (re-fetch; grep for <code>- [x] #&lt;story&gt;</code>).</li>
+                  <li>Replace <code>- [ ] #&lt;story&gt;</code> with <code>- [x] #&lt;story&gt;</code>.</li>
+                  <li>Write via <code>--body-file</code>; verify the tick landed.</li>
                 </ol>
-                <p>Also backfill ticks for stories that were already closed before this run but still showed unchecked in the epic body.</p>
-                <p><code>/ship-issue</code> may tick the epic when <code>MERGE_MODE=auto</code>; this stage ensures the tick happens on the <strong>manual</strong> path too so the epic loop stays consistent.</p>
+                <p>Backfill ticks for stories closed before this run but still unchecked in the epic body.</p>
+                <p><code>/ship-issue</code> may tick the epic when <code>MERGE_MODE=auto</code>; this stage ensures ticks on the <strong>manual</strong> path too.</p>
               </div>
             </div>
           </li>
@@ -255,10 +299,10 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Epic closure (orchestrator)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>When no <code>- [ ] #n</code> lines remain (all stories ticked or closed):</p>
+                <p>When no <code>- [ ] #n</code> lines remain:</p>
                 <ul>
-                  <li><strong><code>EPIC_CLOSE_MODE=manual</code></strong> (default): report that the epic checklist is complete and <strong>propose closing</strong> the epic — print <code>gh issue close &lt;epic&gt;</code> as the suggested next step (or ask the user).</li>
-                  <li><strong><code>EPIC_CLOSE_MODE=auto</code></strong>: <code>gh issue close &lt;epic&gt;</code> with a short comment summarizing shipped stories and PR links collected during the loop.</li>
+                  <li><strong><code>EPIC_CLOSE_MODE=manual</code></strong> (default): propose closing the epic.</li>
+                  <li><strong><code>EPIC_CLOSE_MODE=auto</code></strong>: <code>gh issue close &lt;epic&gt;</code> with shipped stories and PR links.</li>
                 </ul>
               </div>
             </div>
@@ -266,11 +310,11 @@
         </ol>
         <h3 id="final-report">Final report</h3>
         <div class="order-prose">
-          <p>One concise summary: epic link, stories shipped (with PR links), gate pauses encountered, external blockers hit, whether the epic was closed or proposed for closure, and — if paused — the <strong>resume</strong> command and outstanding blocker.</p>
+          <p>One concise summary: epic link, units shipped (<code>U</code> invocations for <code>N</code> stories), PR links per story, gate pauses, external blockers, capsule highlights, epic close state, and resume command if paused. Include <strong>economy line</strong>: &quot;<code>N</code> stories in <code>U</code> <code>/ship-issue</code> runs&quot; so the captain sees what batching saved.</p>
         </div>
         <h3 id="runtime-input">Runtime input</h3>
         <div class="order-prose">
-          <p><code>$ARGUMENTS</code> contains the epic issue number and optional guidance. The first token is <code>&lt;epic&gt;</code>; the rest is guidance (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, etc.).</p>
+          <p><code>$ARGUMENTS</code> contains the epic issue number and optional guidance. The first token is <code>&lt;epic&gt;</code>; the rest is guidance (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, <code>batch off</code>, etc.).</p>
         </div>
       </div>
     </section>
@@ -285,10 +329,11 @@
             <li><code>EPIC_LABEL</code> = <code>epic</code> — the epic must carry this label (or be clearly an epic by checklist shape).</li>
             <li><code>GATE_LABEL</code> = <code>gate</code> — stories with this label pause the loop for human sign-off before shipping.</li>
             <li><code>EPIC_CLOSE_MODE</code> = <code>manual</code> — when every checklist box is ticked: <code>manual</code> proposes closing the epic; <code>auto</code> runs <code>gh issue close</code> on the epic. Override with guidance <code>epic close auto</code>.</li>
-            <li><code>MERGE_MODE</code> = passthrough from <code>/ship-issue</code> (default <code>manual</code> there). Set <code>MERGE_MODE=auto</code> for fully hands-off delivery between stories.</li>
-            <li><code>MAX_FIX_ROUNDS</code> = passthrough from <code>/ship-issue</code> (default <code>3</code>). An acceptance failure that exhausts fix rounds on one story <strong>pauses the epic loop</strong> — it does not advance to the next story.</li>
-            <li><code>BUNDLE</code> = forced <code>off</code> for every delegated <code>/ship-issue</code> run — epic scope must not widen.</li>
-            <li><code>DRY_RUN</code> = on if the caller says &quot;dry run&quot; / &quot;preview&quot;: print the story order, gates, and external blockers; invoke nothing.</li>
+            <li><code>EPIC_BATCH</code> = <code>smart</code> — how Stage 1.5 units map to <code>/ship-issue</code> invocations. <code>smart</code> (default): one run per unit; multi-story units pass every story number on one <code>/ship-issue</code> line when the unit has more than one story. <code>off</code> (guidance <code>batch off</code>): force <strong>singleton</strong> units only — one story per <code>/ship-issue</code> even when the planner grouped them (safest, most expensive). <code>max</code>: allow the planner to merge <strong>adjacent</strong> same-area units when every story in the merge is <code>trivial</code> or <code>standard</code>, no arch/security flags, and the combined count stays ≤ <code>MAX_UNIT_SIZE</code>.</li>
+            <li><code>MAX_UNIT_SIZE</code> = <code>4</code> — cap stories per <code>/ship-issue</code> invocation (matches <code>/ship-issue</code> cohesion guidance: one reviewable PR).</li>
+            <li><code>MERGE_MODE</code> = passthrough from <code>/ship-issue</code> (default <code>manual</code> there). Set <code>MERGE_MODE=auto</code> for fully hands-off delivery between units.</li>
+            <li><code>MAX_FIX_ROUNDS</code> = passthrough from <code>/ship-issue</code> (default <code>3</code>). An acceptance failure that exhausts fix rounds on one unit <strong>pauses the epic loop</strong> — it does not advance to the next unit.</li>
+            <li><code>DRY_RUN</code> = on if the caller says &quot;dry run&quot; / &quot;preview&quot;: print the story order, <code>&lt;units&gt;</code>, gates, external blockers, and <strong>estimated <code>/ship-issue</code> invocations</strong> (units count vs raw story count); invoke nothing.</li>
           </ul>
         </div>
       </div>
@@ -301,14 +346,16 @@
         </div>
         <div class="order-prose">
           <ul>
-            <li><strong>Compose, don&#x27;t duplicate</strong> — each story is a full <code>/ship-issue</code> run; never reimplement its stages inline.</li>
-            <li><strong>Sequential default</strong> — one active ship-issue at a time per epic loop.</li>
-            <li><strong>Resumable</strong> — re-running <code>/ship-epic &lt;epic&gt;</code> skips <code>- [x]</code> lines and closed stories; a paused loop resumes with <code>/ship-epic &lt;epic&gt; resume</code> (same as re-invoking without advancing past the pause).</li>
-            <li><strong>Gate-aware</strong> — never auto-ship a gate-labelled story; always pause with <strong>awaiting sign-off</strong>.</li>
-            <li><strong>Failure-aware</strong> — never silently continue after <code>MAX_FIX_ROUNDS</code> exhaustion on one story.</li>
-            <li><strong>No bundling</strong> — delegated runs always use <code>BUNDLE=off</code>.</li>
-            <li><strong>Orchestrator owns <code>gh</code></strong> — subagents spawned inside delegated <code>/ship-issue</code> runs follow that command&#x27;s rules; this orchestrator owns epic edits and loop control only.</li>
-            <li><strong>Domain-neutral</strong> — same crew and quality bar as <code>/ship-issue</code>; read the project&#x27;s CLAUDE.md at intake.</li>
+            <li><strong>Compose, don&#x27;t duplicate</strong> — each unit is a <code>/ship-issue</code> run; never reimplement its stages inline.</li>
+            <li><strong>One epic planner</strong> — Stage 1.5 runs once per <code>/ship-epic</code> invocation; do not spawn a second epic-wide planner inside the loop.</li>
+            <li><strong>Batch only on merit</strong> — cohesion, file ownership, and flags gate batching; never merge unrelated stories because the epic is long.</li>
+            <li><strong>No backlog widening</strong> — delegated runs stay inside the unit&#x27;s story list; no epic-scoped <code>next</code> picking siblings from outside the checklist.</li>
+            <li><strong>Resumable</strong> — re-running skips <code>- [x]</code> lines; paused loops resume with <code>/ship-epic &lt;epic&gt; resume</code>.</li>
+            <li><strong>Gate-aware</strong> — never auto-ship a gate-labelled story.</li>
+            <li><strong>Failure-aware</strong> — never advance after <code>MAX_FIX_ROUNDS</code> exhaustion on a unit.</li>
+            <li><strong>CI every unit</strong> — economy comes from fewer Planner/board <strong>invocations</strong>, not from skipping validation or acceptance on shipped code.</li>
+            <li><strong>Orchestrator owns <code>gh</code></strong> — epic edits and loop control only; builders/reviewers live in <code>/ship-issue</code>.</li>
+            <li><strong>Domain-neutral</strong> — read CLAUDE.md at intake; pass the quality bar into Stage 1.5.</li>
           </ul>
         </div>
       </div>

@@ -40,13 +40,14 @@ COMMANDS = {
     "ship-epic": {
         "arg": "42",
         "stages": [
-            ("INTAKE", "parse the epic checklist"),
-            ("ORDER", "dependency sort + gate map"),
-            ("LOOP", "delegate /ship-issue per story"),
-            ("TICK", "checklist box after each ship"),
+            ("INTAKE", "parse epic checklist"),
+            ("GRAPH", "dependency order + gate map"),
+            ("PLAN", "one architect -> shipping units"),
+            ("LOOP", "delegate /ship-issue per unit"),
+            ("TICK", "checklist after each unit"),
             ("CLOSE", "propose or auto-close epic"),
         ],
-        "closer": "Epic delivered — stories shipped in order, gates respected. ⚓",
+        "closer": "Epic delivered — N stories in U runs, gates respected. ⚓",
     },
     "fix-bug": {
         "arg": "142",

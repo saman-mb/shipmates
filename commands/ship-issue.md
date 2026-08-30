@@ -189,7 +189,12 @@ the cohesion bundle widening in step 2.5.
    bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
    can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
 3. Spawn ONE **Planner** (`{{role:planner}}`). Give it all issue bodies + repo README +
-   {{project-instructions}}. Ask it to return, as structured data:
+   {{project-instructions}}. When runtime guidance includes **`epic-plan`** from a `/ship-epic`
+   delegation, treat that classification and unit grouping as the **starting plan** — amend only where
+   an issue body contradicts it; do not re-derive the epic shape from scratch. When guidance includes
+   **`epic-run`**, do not scan the wider backlog or propose bundle widening beyond the passed issue
+   numbers. When guidance includes **`complexity tier: simple`** or **`medium`**, honour the command
+   preamble's tiered execution path for this run. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
    - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
