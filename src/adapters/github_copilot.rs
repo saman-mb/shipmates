@@ -180,6 +180,10 @@ impl Adapter for GithubCopilotAdapter {
         self.container()
     }
 
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&super::render::GITHUB_COPILOT)
+    }
+
     fn build(
         &self,
         roles: &[CanonicalRole],

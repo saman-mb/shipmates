@@ -29,6 +29,18 @@ pub trait Adapter {
         HashMap::new()
     }
 
+    /// Dialect used to render `steering/shipmates.md` into project instructions.
+    fn steering_dialect(&self) -> Option<&'static render::Dialect> {
+        None
+    }
+
+    fn build_steering(&self, body: &str) -> HashMap<String, String> {
+        match self.steering_dialect() {
+            Some(d) => render::emit_steering(self.container(), d, body),
+            None => HashMap::new(),
+        }
+    }
+
     /// Directory inside the built payload that this adapter owns, e.g.
     /// `harnesses/claude-code/.claude`. Digest checks and manifest validation
     /// resolve payload paths against it — a target's digest can no longer
@@ -76,6 +88,20 @@ pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
         other => anyhow::bail!("Unsupported target: {}", other),
     };
     Ok(adapter)
+}
+
+/// Build crew + commands payload, optionally appending rendered steering.
+pub fn build_payload(
+    adapter: &dyn Adapter,
+    roles: &[CanonicalRole],
+    commands: &[CanonicalCommand],
+    steering: Option<&str>,
+) -> anyhow::Result<HashMap<String, String>> {
+    let mut built = adapter.build(roles, commands)?;
+    if let Some(body) = steering {
+        built.extend(adapter.build_steering(body));
+    }
+    Ok(built)
 }
 
 /// The harnesses a user can `shipmates install --harness <name>` for.

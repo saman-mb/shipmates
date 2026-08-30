@@ -118,6 +118,18 @@ pub fn render_command_body(command: &CanonicalCommand, d: &Dialect) -> anyhow::R
     render_args(&render_body(&command.narrative, d), d.args_token)
 }
 
+/// Render contributor steering into the harness project-instructions file at
+/// the payload container root (`harnesses/<target>/CLAUDE.md` or `AGENTS.md`).
+pub fn emit_steering(
+    container: &str,
+    dialect: &Dialect,
+    body: &str,
+) -> HashMap<String, String> {
+    let rendered = render_instructions(body, dialect.instructions_primary, dialect.instructions_fallback);
+    let path = format!("{}/{}", container, dialect.instructions_primary);
+    HashMap::from([(path, rendered)])
+}
+
 /// Claude Code's dialect.
 pub const CLAUDE_CODE: Dialect = Dialect {
     agents_glob: ".claude/agents",
@@ -422,6 +434,20 @@ mod tests {
             &CLAUDE_CODE,
         );
         assert_eq!(body, "Literal AGENTS.md and __AGENTS__ stay unchanged.");
+    }
+
+    #[test]
+    fn test_emit_steering_claude_writes_claude_md() {
+        let files = emit_steering("harnesses/claude-code", &CLAUDE_CODE, "body");
+        assert_eq!(files.len(), 1);
+        assert!(files.contains_key("harnesses/claude-code/CLAUDE.md"));
+        assert_eq!(files["harnesses/claude-code/CLAUDE.md"], "body");
+    }
+
+    #[test]
+    fn test_emit_steering_cursor_writes_agents_md() {
+        let files = emit_steering("harnesses/cursor", &AGENT_SKILLS, "steering");
+        assert_eq!(files["harnesses/cursor/AGENTS.md"], "steering");
     }
 
     #[test]

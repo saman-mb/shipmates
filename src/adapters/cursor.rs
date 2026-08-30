@@ -17,6 +17,14 @@ impl Adapter for CursorAdapter {
         "harnesses/cursor/.agents"
     }
 
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&super::render::AGENT_SKILLS)
+    }
+
     fn build(
         &self,
         _roles: &[CanonicalRole],

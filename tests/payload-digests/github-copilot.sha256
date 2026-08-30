@@ -12,7 +12,7 @@ target=github-copilot
 .agents/skills/refactor/SKILL.md 601e3d5d01dedea0653796b51ceedb956ff877ca75ae7831b86b9b9cb6cceea2
 .agents/skills/release/SKILL.md cce1208dc9f5a8f9dd8b091a71a15eecf235702b0f386cd9d1d9a8c1ab6973f6
 .agents/skills/ship-epic/SKILL.md f8d2b655cb107518fd2ce16bc3c95205b36fca824d60007759572ceaa4770738
-.agents/skills/ship-issue/SKILL.md d10e27a352ddb709aa1fa613b2155003d7fb5ec6401751bcc0bda885b196147b
+.agents/skills/ship-issue/SKILL.md 4a7c3009c024d444acda227eb1584ef436a12690eadc0b2fe84d1372b358409d
 .agents/skills/spike/SKILL.md 9e178b9379f1394353ef15292ab4d298fef5095815392ec04525c545028af4dd
 .github/agents/architect.agent.md 85f0d22a17b5d716f9962f23b85d5a81f5fff82457952c8030056cdda2cb327a
 .github/agents/art-director.agent.md a820a2a301c097005e08ebd714d3994fe5c2762c19919e2688d97a7d269b6bb7
@@ -26,3 +26,4 @@ target=github-copilot
 .github/agents/site-reliability-engineer.agent.md 6231fda9d0d2ec716b3ceb86c407d270bc22b560e4a186d95cbc615b41fee7fe
 .github/agents/technical-writer.agent.md 91374524415581fd3d50254d244463a6ae842391a0d02281d359e20662bab095
 .github/agents/ux-ui-designer.agent.md 6463c24f25f7ec940e85f7b4ed250048c4c3287922d47d25e454e77eb2485636
+AGENTS.md 14603e679a884a536aef3273d17ea556c2e14196c814335a1e260439e813b1a1

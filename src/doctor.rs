@@ -95,7 +95,14 @@ pub fn diagnose(
     tools: &[CanonicalTool],
 ) -> Result<Report> {
     let adapter = adapters::select(harness)?;
-    let built = adapter.build(roles, cmds)?;
+    let steering = crate::catalog::steering_for_target(target_dir, Path::new("."))
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let built = adapters::build_payload(
+        adapter.as_ref(),
+        roles,
+        cmds,
+        steering.as_deref(),
+    )?;
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
 }
 
@@ -110,7 +117,8 @@ fn diagnose_built(
     built: &HashMap<String, String>,
     tools: &[CanonicalTool],
 ) -> Result<Report> {
-    let expected = strip_container(built, adapter.container());
+    let mut expected = strip_container(built, adapter.container());
+    crate::steering::adjust_expected_map(target_dir, harness, &mut expected);
     let version = env!("CARGO_PKG_VERSION");
     let mut checks = Vec::new();
 
@@ -565,8 +573,16 @@ pub fn fix(
     no_migrate: bool,
 ) -> Result<Report> {
     let adapter = adapters::select(harness)?;
-    let built = adapter.build(roles, cmds)?;
-    let expected = strip_container(&built, adapter.container());
+    let steering = crate::catalog::steering_for_target(target_dir, Path::new("."))
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let built = adapters::build_payload(
+        adapter.as_ref(),
+        roles,
+        cmds,
+        steering.as_deref(),
+    )?;
+    let mut expected = strip_container(&built, adapter.container());
+    crate::steering::adjust_expected_map(target_dir, harness, &mut expected);
     let repository = manifest_db::ReceiptRepository::new(target_dir);
     repository.load_all()?;
     let (mut receipt_state, mut receipt, receipt_error) = plan::read_receipt(target_dir, harness);

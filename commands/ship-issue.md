@@ -289,6 +289,10 @@ For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUN
   (whatever this repo uses: e.g. `npm test && npm run build`, `cargo test`, `pytest -q`,
   `go build ./...`, `make check`). If the toolchain is absent, it does a rigorous **static** pass
   and says so explicitly in the PR.
+- When the diff touches `toolbox/` or `TOOLS` in `tools/gen_command_pages.py`, also run the
+  contributor checklists in `{{project-instructions}}` (Shipmates installs them at install time):
+  terminal tools need an **Examples** termgif gallery like `scrub` / `fixtures`; the homepage `#tools`
+  grid must list every `TOOLS` entry in canonical order.
 - If self-check fails, loop a **Fixer** (`{{role:senior-engineer}}`) until green (counts
   toward `MAX_FIX_ROUNDS`). Only open a PR once self-check passes — never open a known-red PR.
 
