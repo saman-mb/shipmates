@@ -104,6 +104,10 @@ impl Adapter for CodexAdapter {
         self.container()
     }
 
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&CODEX)
+    }
+
     fn build(
         &self,
         roles: &[CanonicalRole],

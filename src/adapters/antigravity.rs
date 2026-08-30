@@ -122,6 +122,14 @@ impl Adapter for AntigravityAdapter {
         "harnesses/antigravity/.agents"
     }
 
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&ANTIGRAVITY)
+    }
+
     fn build(
         &self,
         roles: &[CanonicalRole],

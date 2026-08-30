@@ -395,13 +395,20 @@ fn validate_harness(harness: &str) -> Result<()> {
 
 fn allowed_roots(harness: &str) -> &'static [&'static str] {
     match harness {
-        "claude-code" => &[".claude"],
-        "opencode" => &[".opencode"],
-        "antigravity" | "cursor" => &[".agents"],
-        "codex" => &[".agents", ".codex"],
-        "github-copilot" => &[".agents", ".github"],
-        "windsurf" => &[".windsurf"],
+        "claude-code" => &[".claude", "CLAUDE.md"],
+        "opencode" => &[".opencode", "AGENTS.md"],
+        "antigravity" | "cursor" => &[".agents", "AGENTS.md"],
+        "codex" => &[".agents", ".codex", "AGENTS.md"],
+        "github-copilot" => &[".agents", ".github", "AGENTS.md"],
+        "windsurf" => &[".windsurf", "AGENTS.md"],
         _ => &[],
+    }
+}
+
+fn is_steering_receipt_path(harness: &str, path: &str) -> bool {
+    match harness {
+        "claude-code" => path == "CLAUDE.md",
+        _ => path == "AGENTS.md",
     }
 }
 
@@ -430,10 +437,11 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
     };
     match harness {
         "claude-code" => {
-            (parts.len() == 3
-                && root == ".claude"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".md"))
+            is_steering_receipt_path(harness, path)
+                || (parts.len() == 3
+                    && root == ".claude"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
                 || is_skill_tree(".claude")
                 || (parts.len() == 3
                     && root == ".claude"
@@ -441,10 +449,11 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && parts[2].ends_with(".md"))
         }
         "opencode" => {
-            (parts.len() == 3
-                && root == ".opencode"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".md"))
+            is_steering_receipt_path(harness, path)
+                || (parts.len() == 3
+                    && root == ".opencode"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
                 || (parts.len() == 3
                     && root == ".opencode"
                     && parts[1] == "commands"
@@ -455,26 +464,29 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && (parts[2].ends_with(".ts") || parts[2].ends_with(".py")))
         }
         "antigravity" => {
-            (parts.len() == 3
-                && root == ".agents"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".md"))
+            is_steering_receipt_path(harness, path)
+                || (parts.len() == 3
+                    && root == ".agents"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
                 || is_skill_tree(".agents")
         }
         "codex" => {
-            (parts.len() == 3
-                && root == ".codex"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".toml"))
+            is_steering_receipt_path(harness, path)
+                || (parts.len() == 3
+                    && root == ".codex"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".toml"))
                 || is_skill_tree(".agents")
         }
-        "cursor" => is_skill_tree(".agents"),
-        "windsurf" => is_skill_tree(".windsurf"),
+        "cursor" => is_steering_receipt_path(harness, path) || is_skill_tree(".agents"),
+        "windsurf" => is_steering_receipt_path(harness, path) || is_skill_tree(".windsurf"),
         "github-copilot" => {
-            (parts.len() == 3
-                && root == ".github"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".agent.md"))
+            is_steering_receipt_path(harness, path)
+                || (parts.len() == 3
+                    && root == ".github"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".agent.md"))
                 || is_skill_tree(".agents")
         }
         _ => false,

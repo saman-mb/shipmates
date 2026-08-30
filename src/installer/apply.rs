@@ -117,7 +117,7 @@ pub fn apply_with_preserved_paths(
         }
         match fs::read(&path) {
             Ok(current) if current == want.as_bytes() => {
-                if !owned && !force {
+                if !owned && !force && !crate::steering::bypass_collision_guard(target_dir, &rel_string) {
                     report.warnings.push(format!(
                         "Warning: existing file left untouched (use --force to replace): {}",
                         rel.display()
@@ -128,7 +128,7 @@ pub fn apply_with_preserved_paths(
                 report.skipped += 1;
             }
             Ok(current) => {
-                if !owned && !force {
+                if !owned && !force && !crate::steering::bypass_collision_guard(target_dir, &rel_string) {
                     report.warnings.push(format!(
                         "Warning: existing file left untouched (use --force to replace): {}",
                         rel.display()

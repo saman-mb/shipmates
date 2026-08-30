@@ -151,6 +151,14 @@ impl Adapter for OpencodeAdapter {
         "harnesses/opencode/.opencode"
     }
 
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&OPENCODE)
+    }
+
     fn build(
         &self,
         roles: &[CanonicalRole],
