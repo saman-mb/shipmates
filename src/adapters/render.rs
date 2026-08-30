@@ -118,16 +118,42 @@ pub fn render_command_body(command: &CanonicalCommand, d: &Dialect) -> anyhow::R
     render_args(&render_body(&command.narrative, d), d.args_token)
 }
 
-/// Render contributor steering into the harness project-instructions file at
-/// the payload container root (`harnesses/<target>/CLAUDE.md` or `AGENTS.md`).
-pub fn emit_steering(
+/// How a harness wraps rendered steering prose at its install path.
+pub enum SteeringFormat {
+    PlainMarkdown,
+    CursorMdc { description: &'static str },
+    CopilotInstructions { apply_to: &'static str },
+}
+
+pub struct SteeringTarget {
+    pub rel_path: &'static str,
+    pub format: SteeringFormat,
+}
+
+/// Fallback steering path when a harness has no documented auto-load rules surface.
+pub const SHIPMATES_STEERING_REL: &str = ".shipmates/contributor-steering.md";
+
+/// Render contributor steering to a harness-native modular path (rules file,
+/// instructions file, or `.shipmates/contributor-steering.md` fallback).
+pub fn emit_steering_at(
     container: &str,
+    target: &SteeringTarget,
     dialect: &Dialect,
     body: &str,
 ) -> HashMap<String, String> {
-    let rendered = render_instructions(body, dialect.instructions_primary, dialect.instructions_fallback);
-    let path = format!("{}/{}", container, dialect.instructions_primary);
-    HashMap::from([(path, rendered)])
+    let rendered =
+        render_instructions(body, dialect.instructions_primary, dialect.instructions_fallback);
+    let content = match target.format {
+        SteeringFormat::PlainMarkdown => rendered,
+        SteeringFormat::CursorMdc { description } => {
+            format!("---\ndescription: {description}\nalwaysApply: true\n---\n{rendered}")
+        }
+        SteeringFormat::CopilotInstructions { apply_to } => {
+            format!("---\napplyTo: \"{apply_to}\"\n---\n{rendered}")
+        }
+    };
+    let path = format!("{}/{}", container, target.rel_path);
+    HashMap::from([(path, content)])
 }
 
 /// Claude Code's dialect.
@@ -437,17 +463,29 @@ mod tests {
     }
 
     #[test]
-    fn test_emit_steering_claude_writes_claude_md() {
-        let files = emit_steering("harnesses/claude-code", &CLAUDE_CODE, "body");
+    fn test_emit_steering_claude_rules_path() {
+        let target = SteeringTarget {
+            rel_path: ".claude/rules/shipmates-contributor.md",
+            format: SteeringFormat::PlainMarkdown,
+        };
+        let files = emit_steering_at("harnesses/claude-code", &target, &CLAUDE_CODE, "body");
         assert_eq!(files.len(), 1);
-        assert!(files.contains_key("harnesses/claude-code/CLAUDE.md"));
-        assert_eq!(files["harnesses/claude-code/CLAUDE.md"], "body");
+        assert!(files.contains_key("harnesses/claude-code/.claude/rules/shipmates-contributor.md"));
     }
 
     #[test]
-    fn test_emit_steering_cursor_writes_agents_md() {
-        let files = emit_steering("harnesses/cursor", &AGENT_SKILLS, "steering");
-        assert_eq!(files["harnesses/cursor/AGENTS.md"], "steering");
+    fn test_emit_steering_cursor_mdc_wrapper() {
+        let target = SteeringTarget {
+            rel_path: ".cursor/rules/shipmates-contributor.mdc",
+            format: SteeringFormat::CursorMdc {
+                description: "Shipmates contributor checklists",
+            },
+        };
+        let files = emit_steering_at("harnesses/cursor", &target, &AGENT_SKILLS, "steer");
+        let content = &files["harnesses/cursor/.cursor/rules/shipmates-contributor.mdc"];
+        assert!(content.starts_with("---\n"));
+        assert!(content.contains("alwaysApply: true"));
+        assert!(content.contains("steer"));
     }
 
     #[test]
