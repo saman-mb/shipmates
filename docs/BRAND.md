@@ -363,7 +363,7 @@ Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 | No nouns-as-names | Not `/quality-gate`, not `/pr-flow`. If you can't phrase it as an instruction, it isn't a command. |
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
-The thirteen that exist: `/ship-issue` · `/fix-bug` · `/plan-epics` · `/consolidate-issues` · `/harden` · `/spike` ·
+The fourteen that exist: `/ship-issue` · `/ship-epic` · `/fix-bug` · `/plan-epics` · `/consolidate-issues` · `/harden` · `/spike` ·
 `/migrate` · `/document` · `/release` · `/polish` · `/pr-review` · `/onboard` · `/refactor`.
 
 ---

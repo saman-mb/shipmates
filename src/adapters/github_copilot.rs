@@ -5,7 +5,7 @@ use super::render::{
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
-/// GitHub Copilot — thirteen skills in the shared open `.agents/skills/` tree plus
+/// GitHub Copilot — fourteen skills in the shared open `.agents/skills/` tree plus
 /// the crew as custom agents under `.github/agents/<name>.agent.md`.
 ///
 /// Copilot reads Agent Skills from `.github/skills`, `.claude/skills` AND the
