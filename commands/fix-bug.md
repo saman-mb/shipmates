@@ -29,6 +29,7 @@ The bug description and reproduction hints come from the Runtime input section a
 Spawn the `sdet` (with `site-reliability-engineer` if the bug is a runtime/reliability failure) to
 find the **smallest deterministic reproduction** and encode it as a test in the repo's existing test
 suite — asserting the *correct* behaviour, so it **fails now** for the real reason (not a typo).
+Check {{project-instructions}} for test runner invocations; if the test runner flags are unknown, run `--help` to discover them.
 Run it and confirm it's red. **If the bug genuinely cannot be reproduced, STOP** and report that with
 what was tried — never "fix" an unconfirmed bug. This failing test is the contract for the whole run.
 
@@ -44,7 +45,7 @@ red→green history is visible.
 ## Stage 2 — Root-cause  (agent: `senior-engineer`, or `site-reliability-engineer` for runtime/ops bugs)
 
 Diagnose the **actual mechanism** — work backwards from the failure (logs, stack, bisect, diff vs
-last-known-good) to the defect itself, not the place it surfaced. The agent returns: the root cause
+last-known-good, and `git log` / `git blame` on the affected lines to understand past intent) to the defect itself, not the place it surfaced. The agent returns: the root cause
 named, why it produces the symptom, and the minimal change that addresses it. Reject "add a null
 check where it crashed" when the real cause is upstream.
 

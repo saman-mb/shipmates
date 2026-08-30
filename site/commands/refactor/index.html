@@ -36,7 +36,7 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Scope, motivation, and the /migrate escape hatch",
-        "text": "Name the target precisely (files, module, the seam being introduced) and state the motivation in one sentence. Check the escape hatch above. Then decide IS_ARCH_SIGNIFICANT: does this cross module boundaries, move a public surface, or change who depends on whom? If yes, Stage 1.5 runs.",
+        "text": "Name the target precisely (files, module, the seam being introduced) and state the motivation in one sentence. Inspect git log and git blame on the target files to understand historical context, linked issues, and why current boundaries were chosen. Check the escape hatch above. Then decide…",
         "url": "https://saman-mb.github.io/shipmates/commands/refactor/#stage-0"
       },
       {
@@ -193,7 +193,7 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Scope, motivation, and the <code>/migrate</code> escape hatch</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Name the target precisely (files, module, the seam being introduced) and state the motivation in one sentence. Check the escape hatch above. Then decide <code>IS_ARCH_SIGNIFICANT</code>: does this cross module boundaries, move a public surface, or change who depends on whom? If yes, Stage 1.5 runs.</p>
+                <p>Name the target precisely (files, module, the seam being introduced) and state the motivation in one sentence. Inspect <code>git log</code> and <code>git blame</code> on the target files to understand historical context, linked issues, and why current boundaries were chosen. Check the escape hatch above. Then decide <code>IS_ARCH_SIGNIFICANT</code>: does this cross module boundaries, move a public surface, or change who depends on whom? If yes, Stage 1.5 runs.</p>
               </div>
             </div>
           </li>
