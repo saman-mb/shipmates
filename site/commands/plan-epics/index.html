@@ -298,7 +298,7 @@
             <li><strong>Don&#x27;t over-scope.</strong> A brief becomes the smallest coherent set of epics/stories that delivers it — no speculative epics the brief didn&#x27;t ask for.</li>
             <li><strong>Panel cost.</strong> Respect <code>MAX_PANEL_ADDITIONS</code> for auto-selection; never spawn a specialist whose domain the brief does not implicate. Explicit user-named roles override the cap.</li>
             <li>Respect <code>DRY_RUN</code> — when set, create nothing; still print the selected panel.</li>
-            <li>Every epic and story must be individually valuable and traceable (<code>Part of #</code>), so the backlog is ready to hand to <code>/ship-issue</code> one story at a time.</li>
+            <li>Every epic and story must be individually valuable and traceable (<code>Part of #</code>), so the backlog is ready to hand to <code>/ship-epic &lt;epic#&gt;</code> or <code>/ship-issue</code> one story at a time.</li>
             <li>If a role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role brief inlined, and note the fallback.</li>
           </ul>
         </div>
@@ -326,6 +326,7 @@
         <nav class="order-siblings" aria-label="Other commands">
           <ul class="order-siblings__list" role="list">
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-issue/"><code>/ship-issue</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-epic/"><code>/ship-epic</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../fix-bug/"><code>/fix-bug</code></a></li>
             <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/plan-epics</code><span class="visually-hidden"> (current page)</span></span></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../consolidate-issues/"><code>/consolidate-issues</code></a></li>

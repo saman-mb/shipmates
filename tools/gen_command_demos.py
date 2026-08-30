@@ -37,6 +37,17 @@ ACCENTS = [dt.BLUE, dt.PURPLE, dt.ORANGE, dt.CYAN, dt.CORAL, dt.GOLD, dt.SAGE]
 # against the parsed SKILL.md so a stage added or removed upstream fails the
 # build instead of silently drifting.
 COMMANDS = {
+    "ship-epic": {
+        "arg": "42",
+        "stages": [
+            ("INTAKE", "parse the epic checklist"),
+            ("ORDER", "dependency sort + gate map"),
+            ("LOOP", "delegate /ship-issue per story"),
+            ("TICK", "checklist box after each ship"),
+            ("CLOSE", "propose or auto-close epic"),
+        ],
+        "closer": "Epic delivered — stories shipped in order, gates respected. ⚓",
+    },
     "fix-bug": {
         "arg": "142",
         "stages": [
