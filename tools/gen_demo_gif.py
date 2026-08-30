@@ -77,28 +77,45 @@ SPIN_BRAILLE = ["⠂", "⡆", "⣤", "⣰", "⢸", "⠹", "⠛", "⠏"]
 SPIN_ASCII = ["|", "/", "-", "\\"]
 
 
-def _load_font(filename):
+def _load_font(filename, font_dir=None):
     """Load FILENAME at FONT_SIZE, or exit with an actionable per-distro install message.
 
     DejaVu Sans Mono is the reference face — the committed GIF is rendered with
-    it, so a different face silently re-renders every glyph. No manual search
-    needed: ImageFont.truetype(name) already recursively walks
-    $XDG_DATA_DIRS/fonts, ~/.local/share/fonts, /usr/local/share/fonts,
-    /usr/share/fonts, and on darwin /Library/Fonts, /System/Library/Fonts and
-    ~/Library/Fonts (where the Homebrew cask installs it) — a strict superset
-    of any per-distro directory list this module could hand-maintain, so
-    there is nothing left for this function to search itself.
+    it, so a different face silently re-renders every glyph. ImageFont.truetype
+    delegates to the system font resolver: on linux it searches
+    $XDG_DATA_DIRS/fonts, ~/.local/share/fonts, /usr/local/share/fonts and
+    /usr/share/fonts; on darwin it searches /Library/Fonts,
+    /System/Library/Fonts and ~/Library/Fonts; on windows it searches the
+    system Fonts directory. On other platforms (FreeBSD, OpenBSD, …) Pillow
+    does not walk any directory and falls back to a bare name lookup, so a
+    container or sandbox must either install the font system-wide or pass
+    --font-dir / set SHIPMATES_FONT_DIR.
+
+    When FONT_DIR is set (via the --font-dir flag or the
+    SHIPMATES_FONT_DIR environment variable), the function first attempts to
+    load the file from that directory before falling back to the default
+    resolver — this is the escape hatch for sandboxed environments.
     """
+    if font_dir is not None:
+        candidate = Path(font_dir) / filename
+        if candidate.is_file():
+            try:
+                return ImageFont.truetype(str(candidate), FONT_SIZE)
+            except OSError:
+                pass  # file exists but is not a valid font — fall through
     try:
         return ImageFont.truetype(filename, FONT_SIZE)
     except OSError:
-        sys.exit(
+        hint = (
             f"gen_demo_gif: {filename} not found.\n"
             f"  Debian/Ubuntu:  sudo apt install fonts-dejavu-core\n"
             f"  Fedora/RHEL:    sudo dnf install dejavu-sans-mono-fonts\n"
             f"  Arch:           sudo pacman -S ttf-dejavu\n"
-            f"  macOS:          brew install --cask font-dejavu"
+            f"  macOS:          brew install --cask font-dejavu\n"
+            f"  FreeBSD/OpenBSD: pkg install dejavu\n"
+            f"  Sandbox:        pass --font-dir <path> or set SHIPMATES_FONT_DIR"
         )
+        sys.exit(hint)
 
 
 def _spinner(fb):
@@ -122,13 +139,13 @@ def stage_line(label, symbol, sym_color, detail, detail_color):
             (lab, STAGE_COLORS[label], True), (detail, detail_color, False)]
 
 
-def render_frames():
+def render_frames(font_dir=None):
     """Build every frame + duration, plus the small set of frames used to seed
     the GIF palette. The only I/O is the font load, which fails loudly via
     _load_font rather than silently mis-rendering.
     """
-    f = _load_font(FONT_REGULAR)
-    fb = _load_font(FONT_BOLD)
+    f = _load_font(FONT_REGULAR, font_dir=font_dir)
+    fb = _load_font(FONT_BOLD, font_dir=font_dir)
     ch = fb.getlength("M")  # mono advance
     spin = _spinner(fb)
 
@@ -237,13 +254,13 @@ def _quantize_palette(palette_frames):
     return composite.convert("P", palette=Image.ADAPTIVE, colors=PALETTE_COLORS)
 
 
-def build_artifacts():
+def build_artifacts(font_dir=None):
     """Return ({relative posix path: bytes}, real encoded GIF frame count).
 
     Pure aside from the font load inside render_frames, which can only fail
     loudly (sys.exit with the install message), never silently mis-render.
     """
-    frames, durations, palette_frames = render_frames()
+    frames, durations, palette_frames = render_frames(font_dir=font_dir)
     pal = _quantize_palette(palette_frames)
     qframes = [fr.convert("RGB").quantize(palette=pal, dither=Image.NONE) for fr in frames]
 
@@ -386,10 +403,18 @@ def main(argv=None) -> int:
         metavar="PATH",
         help="repository root (default: the repo this script lives in)",
     )
+    parser.add_argument(
+        "--font-dir",
+        default=os.environ.get("SHIPMATES_FONT_DIR"),
+        metavar="PATH",
+        help="directory to search for font files before the system resolver "
+             "(escape hatch for sandboxes and containers)",
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
-    files, frame_count = build_artifacts()
+    font_dir = args.font_dir or os.environ.get("SHIPMATES_FONT_DIR")
+    files, frame_count = build_artifacts(font_dir=font_dir)
 
     if args.check:
         report = check_all(files, root)
