@@ -1,0 +1,42 @@
+name: CLI E2E
+
+# Run the CLI end-to-end test suite on every push to main and on pull requests.
+# Also triggerable manually so a maintainer can re-run it without pushing.
+#
+# The job installs the freshly built binary into a hermetic temp directory
+# (HOME overridden, no real user dirs touched) and exercises the full
+# install/uninstall/doctor/check/update lifecycle across all seven harness
+# targets.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: CLI e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Build
+        run: cargo build --bin shipmates
+
+      - name: Run CLI e2e suite
+        run: bash tools/e2e_cli.sh
