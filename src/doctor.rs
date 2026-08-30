@@ -385,9 +385,15 @@ fn diagnose_built(
     let mut tool_unreadable: Vec<String> = Vec::new();
     let mut tool_unfixable: Vec<String> = Vec::new();
     for t in tools {
-        let files: Vec<(&String, &String)> = tool_expected
+ let files: Vec<(&String, &String)> = tool_expected
             .iter()
-            .filter(|(k, _)| k.split('/').any(|s| s == t.name))
+            .filter(|(k, _)| {
+                k.split('/').any(|s| s == t.name)
+                    || Path::new(k)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        == Some(t.name.as_str())
+            })
             .collect();
         if files.is_empty() {
             continue;
@@ -1190,7 +1196,7 @@ mod tests {
 
         let error = diagnose(dir.path(), "claude-code", &roles, &cmds, &[]).unwrap_err();
 
-       assert!(error.to_string().contains("symlink component"));
+        assert!(error.to_string().contains("symlink component"));
         assert!(outside_file.exists());
     }
 
@@ -1235,5 +1241,53 @@ mod tests {
         if let Some(ref rel) = agent_rel {
             assert!(target.join(rel).exists(), "missing agent must be restored");
         }
+    }
+
+    #[test]
+    fn test_diagnose_opencode_tool_by_file_stem() {
+        // Opencode stores tools as `tools/<name>.ts` (flat file per tool), not
+        // `skills/<name>/SKILL.md` (directory per tool). The doctor must match
+        // by file stem, not just path segment (#271).
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        let tools = [tool("badge")];
+
+        let adapter = adapters::select("opencode").unwrap();
+        let built = adapter.build(&roles, &cmds).unwrap();
+        let expected = strip_container(&built, adapter.container());
+        for (rel, content) in &expected {
+            atomic_write(&target.join(rel), content).unwrap();
+        }
+        // Write the tool file at the opencode-native flat path.
+        let tool_built = adapter.build_tools(&tools);
+        for (rel, content) in strip_container(&tool_built, adapter.container()) {
+            atomic_write(&target.join(&rel), &content).unwrap();
+        }
+        // Write a valid receipt that claims the tool file.
+        let install =
+            crate::installer::plan::InstallPlan::from_payload(
+                adapter.as_ref(),
+                "opencode",
+                built,
+                tool_built,
+            )
+            .unwrap();
+        let receipt = install.receipt_for(install.files.keys().cloned()).unwrap();
+        crate::installer::plan::save_receipt(target, &receipt).unwrap();
+
+        let report = diagnose(target, "opencode", &roles, &cmds, &tools).unwrap();
+        let tools_check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "Tools")
+            .unwrap();
+        assert_eq!(tools_check.severity, Severity::Ok);
+        assert!(
+            tools_check.detail.contains("badge"),
+            "doctor must detect opencode tool by file stem: {}",
+            tools_check.detail
+        );
     }
 }
