@@ -52,7 +52,7 @@ def build_reel():
     reel.type_command(prompt, "shipmates install --harness claude-code")
     reel.reveal([("Installed harness: ", dt.WHITE, False),
                  ("claude-code", dt.BLUE, True),
-                 (" (25 files written)", dt.GREY, False)])
+                 (" (26 files written)", dt.GREY, False)])
     reel.blank()
 
     # 3) show what landed
