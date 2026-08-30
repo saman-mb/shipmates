@@ -1222,7 +1222,7 @@ AGENT_COPY = {
 TOOL_COPY_SRC = "tools/gen_command_pages.py"
 
 # Canonical tool order — matches the homepage `#tools` grid.
-TOOLS = ("termgif", "social-card", "pixelart", "diagram", "svgflow", "badge", "sparkline", "scrub", "fixtures")
+TOOLS = ("termgif", "social-card", "pixelart", "diagram", "svgflow", "badge", "sparkline", "scrub", "fixtures", "domaincheck")
 
 TOOL_COPY = {
     "termgif": ToolCopy(
@@ -1494,6 +1494,26 @@ TOOL_COPY = {
             ),
         ),
         sample="schema.json\n{\n  \"id\":    \"uuid\",\n  \"email\": \"email\",\n  \"age\":   {\"type\": \"int\", \"min\": 18, \"max\": 65},\n  \"role\":  {\"type\": \"choice\", \"options\": [\"admin\", \"member\"]}\n}\n\n$ python3 fixtures.py --schema schema.json --count 2 --seed 7\n[\n  {\n    \"id\": \"6513270e-269e-4d37-b2a7-4de452e6b438\",\n    \"email\": \"priya.patel@test.dev\",\n    \"age\": 52,\n    \"role\": \"admin\"\n  },\n  {\n    \"id\": \"e8e25d94-0ed9-4475-9531-985d5d9dc9f8\",\n    \"email\": \"ivan.haddad@example.com\",\n    \"age\": 23,\n    \"role\": \"member\"\n  }\n]",
+    ),
+    "domaincheck": ToolCopy(
+        tagline="RDAP domain availability — registry-authoritative, not DNS guesswork.",
+        what=(
+            "`domaincheck` queries `https://rdap.org/domain/<name>` and follows redirects to the authoritative registry. A registry `404` means **available** (unallocated); `200` means **registered**. Verdicts are `available`, `registered`, or `unknown` when the bootstrap path fails. It is stdlib-only (`urllib`) — no API keys — and batch mode staggers queries with backoff on HTTP 429.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it when naming a product, sweeping a shortlist across TLDs, or verifying a domain claim — especially alongside `social-card` and `pixelart` in a launch-branding workflow. RDAP *available* does not mean cheap: premium and aftermarket names only surface at the registrar cart.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools domaincheck`, or pick it from the interactive list. Once installed the crew invokes it implicitly; there is no slash command.",
+            "Run `python3 domaincheck.py github.com`, pass several domains, or sweep TLDs with `python3 domaincheck.py --tld com,app,io shipmates`. Add `--detail` for registrar and date fields from RDAP JSON; `--whois` optionally prints human-readable whois output when the binary exists. Use `--delay` on large sweeps — public bootstrap rate-limits rapid queries.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/domaincheck.gif", width=900, height=400,
+                alt="Terminal recording of domaincheck querying github.com as registered, then sweeping shipmates-test-xyzzy across .com and .io as available — ending with a green confirmation that verdicts are registry-authoritative RDAP, not DNS guesswork.",
+                caption="domaincheck querying a registered name, then sweeping a shortlist across TLDs — available means unallocated in RDAP, not cheap at the registrar.",
+                poster="examples/domaincheck_poster.png",
+            ),
+        ),
+        sample="$ python3 domaincheck.py github.com\n$ python3 domaincheck.py --tld com,io shipmates-test-name-xyzzy\n\ngithub.com\tregistered\nshipmates-test-name-xyzzy.com\tavailable\nshipmates-test-name-xyzzy.io\tavailable",
     ),
 }
 

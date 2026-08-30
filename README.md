@@ -114,6 +114,7 @@ implicitly, when the intent of your prompt calls for it — never typed, never a
 | [`sparkline`](https://saman-mb.github.io/shipmates/tools/sparkline/) | Renders a short number series as a tiny inline SVG trend chart |
 | [`scrub`](https://saman-mb.github.io/shipmates/tools/scrub/) | Redacts secrets and PII from a log or paste before it's shared |
 | [`fixtures`](https://saman-mb.github.io/shipmates/tools/fixtures/) | Generates deterministic fake test data from a small JSON schema |
+| [`domaincheck`](https://saman-mb.github.io/shipmates/tools/domaincheck/) | Checks domain availability via RDAP — registry-authoritative verdicts, TLD batch sweeps, optional registrar detail |
 
 Tools are **opt-in** — a plain install ships only the crew and the commands. Add them with
 `--with-tools` (below), or run `install` in a terminal and pick from the list. Each tool maps to its

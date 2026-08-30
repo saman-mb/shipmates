@@ -1,0 +1,27 @@
+{
+  "title": "domaincheck — RDAP availability",
+  "width": 900,
+  "beats": [
+    {"type": "command", "text": "domaincheck github.com"},
+    {"type": "blank"},
+    {"type": "line", "segments": [
+      {"text": "github.com", "color": "cyan"},
+      {"text": "\t", "color": "grey"},
+      {"text": "registered", "color": "coral", "bold": true}
+    ]},
+    {"type": "blank"},
+    {"type": "command", "text": "domaincheck --tld com,io shipmates-test-xyzzy"},
+    {"type": "blank"},
+    {"type": "line", "segments": [
+      {"text": "shipmates-test-xyzzy.com", "color": "cyan"},
+      {"text": "\t", "color": "grey"},
+      {"text": "available", "color": "green", "bold": true}
+    ]},
+    {"type": "line", "segments": [
+      {"text": "shipmates-test-xyzzy.io", "color": "cyan"},
+      {"text": "\t", "color": "grey"},
+      {"text": "available", "color": "green", "bold": true}
+    ]},
+    {"type": "done", "text": "registry-authoritative — RDAP, not DNS guesswork"}
+  ]
+}
