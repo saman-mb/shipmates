@@ -13,6 +13,14 @@ impl Adapter for WindsurfAdapter {
         "harnesses/windsurf/.windsurf"
     }
 
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&WINDSURF)
+    }
+
     fn build(
         &self,
         _roles: &[CanonicalRole],

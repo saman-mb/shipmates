@@ -98,14 +98,10 @@ fn test_opencode_cli_build_matches_golden_payload() {
     );
 
     let expected = read_payload_digest(&root.join("tests/payload-digests/opencode.sha256"));
-    let payload = out.path().join("harnesses/opencode/.opencode");
+    let payload_root = out.path().join("harnesses/opencode");
     let mut actual = BTreeMap::new();
-    for path in walk(&payload) {
-        let relative = path
-            .strip_prefix(&payload)
-            .unwrap()
-            .to_string_lossy()
-            .replace('\\', "/");
+    for path in walk(&payload_root) {
+        let relative = normalized_relative_path(&path, &payload_root);
         actual.insert(relative, digest::compute_sha256(&path).unwrap());
     }
 

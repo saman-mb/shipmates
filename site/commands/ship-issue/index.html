@@ -343,6 +343,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
               <div class="order-prose">
                 <ul>
                   <li>Spawn the <strong>SDET</strong> (<code>subagent_type: sdet</code>) to run the test/validation plan against the worktree (running <code>--help</code> on unfamiliar test runners/tools to discover flags if needed): unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. <code>npm test &amp;&amp; npm run build</code>, <code>cargo test</code>, <code>pytest -q</code>, <code>go build ./...</code>, <code>make check</code>). If the toolchain is absent, it does a rigorous <strong>static</strong> pass and says so explicitly in the PR.</li>
+                  <li>When the diff touches <code>toolbox/</code> or <code>TOOLS</code> in <code>tools/gen_command_pages.py</code>, also run the contributor checklists in <code>CLAUDE.md</code> (Shipmates installs them at install time): terminal tools need an <strong>Examples</strong> termgif gallery like <code>scrub</code> / <code>fixtures</code>; the homepage <code>#tools</code> grid must list every <code>TOOLS</code> entry in canonical order.</li>
                   <li>If self-check fails, loop a <strong>Fixer</strong> (<code>subagent_type: senior-engineer</code>) until green (counts toward <code>MAX_FIX_ROUNDS</code>). Only open a PR once self-check passes — never open a known-red PR.</li>
                 </ul>
               </div>

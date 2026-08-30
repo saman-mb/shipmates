@@ -101,6 +101,14 @@ impl Adapter for ClaudeCodeAdapter {
         "harnesses/claude-code/.claude"
     }
 
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&CLAUDE_CODE)
+    }
+
     fn build(
         &self,
         roles: &[CanonicalRole],

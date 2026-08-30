@@ -427,6 +427,47 @@ pub fn load_tools_embedded() -> anyhow::Result<Vec<CanonicalTool>> {
     Ok(tools)
 }
 
+const STEERING_REL: &str = "steering/shipmates.md";
+
+/// Load harness-neutral contributor steering for Shipmates itself.
+pub fn load_steering_embedded() -> Result<String, String> {
+    crate::embedded::embedded_sources()
+        .iter()
+        .find(|(rel, _)| *rel == STEERING_REL)
+        .map(|(_, content)| content.to_string())
+        .ok_or_else(|| "embedded steering/shipmates.md missing".to_string())
+}
+
+pub fn load_steering(root: &Path) -> Result<String, String> {
+    let path = root.join("steering").join("shipmates.md");
+    if path.is_file() {
+        fs::read_to_string(&path).map_err(|e| e.to_string())
+    } else {
+        load_steering_embedded()
+    }
+}
+
+/// True when `dir` looks like the Shipmates source tree (not a random project
+/// that merely ran `shipmates install` for the crew).
+pub fn is_shipmates_contributor_tree(dir: &Path) -> bool {
+    dir.join("commands").join("ship-issue.md").is_file()
+        && dir.join("toolbox").is_dir()
+        && dir.join("tools").join("gen_command_pages.py").is_file()
+}
+
+/// Contributor steering is installed only when the target directory is the
+/// Shipmates source tree; digest/build paths always include it.
+pub fn steering_for_target(
+    target_dir: &Path,
+    source_root: &Path,
+) -> Result<Option<String>, String> {
+    if is_shipmates_contributor_tree(target_dir) {
+        load_steering(source_root).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -500,6 +541,29 @@ mod tests {
         assert_eq!(roles[0].web_scopes, vec!["search"]);
         assert_eq!(roles[0].read_scopes, vec!["read"]);
         assert_eq!(roles[0].tool_order, vec!["bash", "read"]);
+    }
+
+    #[test]
+    fn test_steering_for_target_only_on_contributor_tree() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!is_shipmates_contributor_tree(dir.path()));
+        assert_eq!(
+            steering_for_target(dir.path(), dir.path()).unwrap(),
+            None
+        );
+
+        fs::create_dir_all(dir.path().join("commands")).unwrap();
+        fs::write(dir.path().join("commands/ship-issue.md"), "---\n---\n").unwrap();
+        fs::create_dir_all(dir.path().join("toolbox")).unwrap();
+        fs::create_dir_all(dir.path().join("tools")).unwrap();
+        fs::write(dir.path().join("tools/gen_command_pages.py"), "# gen").unwrap();
+        fs::create_dir_all(dir.path().join("steering")).unwrap();
+        fs::write(dir.path().join("steering/shipmates.md"), "checklists").unwrap();
+        assert!(is_shipmates_contributor_tree(dir.path()));
+        assert_eq!(
+            steering_for_target(dir.path(), dir.path()).unwrap().as_deref(),
+            Some("checklists")
+        );
     }
 
     #[test]

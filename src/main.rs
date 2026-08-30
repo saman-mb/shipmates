@@ -208,6 +208,8 @@ fn main() -> Result<()> {
             };
 
             let target_dir = resolve_target_dir(local, dir)?;
+            let install_steering = catalog::steering_for_target(&target_dir, root)
+                .map_err(|e| anyhow::anyhow!(e))?;
             let harnesses: Vec<String> = if harness == "all" {
                 adapters::targets().iter().map(|s| s.to_string()).collect()
             } else {
@@ -228,7 +230,12 @@ fn main() -> Result<()> {
 
             for harness in &harnesses {
                 let adapter = adapters::select(harness)?;
-                let built = adapter.build(&roles, &cmds)?;
+                let built = adapters::build_payload(
+                    adapter.as_ref(),
+                    &roles,
+                    &cmds,
+                    install_steering.as_deref(),
+                )?;
                 let payload_prefix = format!("{}/", adapter.container());
                 for key in built.keys() {
                     if let Some(rel) = key.strip_prefix(&payload_prefix) {
@@ -449,9 +456,15 @@ fn main() -> Result<()> {
 
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
+            let steering = catalog::load_steering(root_path).map_err(|e| anyhow::anyhow!(e))?;
 
             let adapter = adapters::select(&target)?;
-            let files = adapter.build(&roles, &cmds)?;
+            let files = adapters::build_payload(
+                adapter.as_ref(),
+                &roles,
+                &cmds,
+                Some(&steering),
+            )?;
 
             if check {
                 check_digests(&target, adapter.digest_root(), &files, root_path)?;
@@ -475,9 +488,15 @@ fn main() -> Result<()> {
 
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
+            let steering = catalog::load_steering(root_path).map_err(|e| anyhow::anyhow!(e))?;
 
             let adapter = adapters::select(&target)?;
-            let files = adapter.build(&roles, &cmds)?;
+            let files = adapters::build_payload(
+                adapter.as_ref(),
+                &roles,
+                &cmds,
+                Some(&steering),
+            )?;
             check_digests(&target, adapter.digest_root(), &files, root_path)?;
         }
         Command::Update { target, root } => {
@@ -487,9 +506,15 @@ fn main() -> Result<()> {
 
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
+            let steering = catalog::load_steering(root_path).map_err(|e| anyhow::anyhow!(e))?;
 
             let adapter = adapters::select(&target)?;
-            let files = adapter.build(&roles, &cmds)?;
+            let files = adapters::build_payload(
+                adapter.as_ref(),
+                &roles,
+                &cmds,
+                Some(&steering),
+            )?;
             write_digests(&target, adapter.digest_root(), &files, root_path)?;
         }
         Command::Doctor {

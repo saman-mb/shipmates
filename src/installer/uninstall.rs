@@ -296,10 +296,16 @@ pub fn payload_for(
     tools: &[crate::catalog::CanonicalTool],
 ) -> Result<BTreeMap<String, String>> {
     let adapter = crate::adapters::select(harness)?;
+    let steering = crate::catalog::load_steering_embedded().map_err(|e| anyhow::anyhow!(e))?;
     let plan = crate::installer::plan::InstallPlan::from_payload(
         adapter.as_ref(),
         harness,
-        adapter.build(roles, commands)?,
+        crate::adapters::build_payload(
+            adapter.as_ref(),
+            roles,
+            commands,
+            Some(&steering),
+        )?,
         adapter.build_tools(tools),
     )?;
     Ok(plan

@@ -10,8 +10,16 @@ fn main() {
     println!("cargo:rerun-if-changed=commands");
     println!("cargo:rerun-if-changed=docs/COST.md");
     println!("cargo:rerun-if-changed=toolbox");
+    println!("cargo:rerun-if-changed=steering");
 
     let mut entries: Vec<(String, String)> = Vec::new();
+    let steering = root.join("steering").join("shipmates.md");
+    if steering.is_file() {
+        entries.push((
+            "steering/shipmates.md".to_string(),
+            steering.to_string_lossy().into_owned(),
+        ));
+    }
     for dir in ["crew", "commands"] {
         let base = root.join(dir);
         if !base.is_dir() {

@@ -95,7 +95,14 @@ pub fn diagnose(
     tools: &[CanonicalTool],
 ) -> Result<Report> {
     let adapter = adapters::select(harness)?;
-    let built = adapter.build(roles, cmds)?;
+    let steering = crate::catalog::steering_for_target(target_dir, Path::new("."))
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let built = adapters::build_payload(
+        adapter.as_ref(),
+        roles,
+        cmds,
+        steering.as_deref(),
+    )?;
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
 }
 
@@ -565,7 +572,14 @@ pub fn fix(
     no_migrate: bool,
 ) -> Result<Report> {
     let adapter = adapters::select(harness)?;
-    let built = adapter.build(roles, cmds)?;
+    let steering = crate::catalog::steering_for_target(target_dir, Path::new("."))
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let built = adapters::build_payload(
+        adapter.as_ref(),
+        roles,
+        cmds,
+        steering.as_deref(),
+    )?;
     let expected = strip_container(&built, adapter.container());
     let repository = manifest_db::ReceiptRepository::new(target_dir);
     repository.load_all()?;
