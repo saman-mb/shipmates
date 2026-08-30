@@ -243,6 +243,7 @@ jobs:
       - plan
       - build-local-artifacts
       - build-global-artifacts
+      - e2e-cli
     # Only run if we're "publishing", and only if plan, local, global and e2e didn't fail (skipped is fine)
     if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.e2e-cli.result == 'skipped' || needs.e2e-cli.result == 'success') }}
     env:
