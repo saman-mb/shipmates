@@ -57,14 +57,14 @@
         "@type": "HowToStep",
         "position": 4,
         "name": "Stage 2 — Build",
-        "text": "Spawn one Builder (subagent_type: senior-engineer) per independent work unit from the plan, in a single message so they run concurrently. Each Builder is told: its exact file ownership, the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its files, and to…",
+        "text": "Spawn one Builder (subagent_type: senior-engineer) per independent work unit from the plan, in a single message so they run concurrently. Each Builder is told: its exact file ownership, the acceptance criteria it must satisfy, the worktree path, to follow CLAUDE.md for project style/conventions,…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-2"
       },
       {
         "@type": "HowToStep",
         "position": 5,
         "name": "Stage 3 — Self-check before PR",
-        "text": "Spawn the SDET (subagent_type: sdet) to run the test/validation plan against the worktree: unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. npm test && npm run build, cargo test, pytest -q, go build ./..., make check). If…",
+        "text": "Spawn the SDET (subagent_type: sdet) to run the test/validation plan against the worktree (running --help on unfamiliar test runners/tools to discover flags if needed): unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. npm…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-3"
       },
       {
@@ -325,7 +325,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <div class="order-stage__body">
               <div class="order-prose">
                 <ul>
-                  <li>Spawn one <strong>Builder</strong> (<code>subagent_type: senior-engineer</code>) per independent work unit from the plan, <strong>in a single message</strong> so they run concurrently. Each Builder is told: its exact file ownership, the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its files, and to match existing code style/idioms.</li>
+                  <li>Spawn one <strong>Builder</strong> (<code>subagent_type: senior-engineer</code>) per independent work unit from the plan, <strong>in a single message</strong> so they run concurrently. Each Builder is told: its exact file ownership, the acceptance criteria it must satisfy, the worktree path, to follow CLAUDE.md for project style/conventions, to inspect <code>git log</code> and <code>git blame</code> on the files it touches for context, any Stage 1.5 spec that governs its files, and to match existing code style/idioms.</li>
                   <li>Builders write code only — they do <strong>not</strong> commit, push, or open PRs (the orchestrator owns git).</li>
                   <li>After they report done, <strong>verify the files on disk yourself</strong> (Read/Grep). Never trust a &quot;done&quot; report blindly.</li>
                 </ul>
@@ -340,7 +340,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <div class="order-stage__body">
               <div class="order-prose">
                 <ul>
-                  <li>Spawn the <strong>SDET</strong> (<code>subagent_type: sdet</code>) to run the test/validation plan against the worktree: unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. <code>npm test &amp;&amp; npm run build</code>, <code>cargo test</code>, <code>pytest -q</code>, <code>go build ./...</code>, <code>make check</code>). If the toolchain is absent, it does a rigorous <strong>static</strong> pass and says so explicitly in the PR.</li>
+                  <li>Spawn the <strong>SDET</strong> (<code>subagent_type: sdet</code>) to run the test/validation plan against the worktree (running <code>--help</code> on unfamiliar test runners/tools to discover flags if needed): unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. <code>npm test &amp;&amp; npm run build</code>, <code>cargo test</code>, <code>pytest -q</code>, <code>go build ./...</code>, <code>make check</code>). If the toolchain is absent, it does a rigorous <strong>static</strong> pass and says so explicitly in the PR.</li>
                   <li>If self-check fails, loop a <strong>Fixer</strong> (<code>subagent_type: senior-engineer</code>) until green (counts toward <code>MAX_FIX_ROUNDS</code>). Only open a PR once self-check passes — never open a known-red PR.</li>
                 </ul>
               </div>

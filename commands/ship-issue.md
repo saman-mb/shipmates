@@ -257,8 +257,9 @@ shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 
 - Spawn one **Builder** (`{{role:senior-engineer}}`) per independent work unit from the plan,
   **in a single message** so they run concurrently. Each Builder is told: its exact file ownership,
-  the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its
-  files, and to match existing code style/idioms.
+  the acceptance criteria it must satisfy, the worktree path, to follow {{project-instructions}}
+  for project style/conventions, to inspect `git log` and `git blame` on the files it touches for context,
+  any Stage 1.5 spec that governs its files, and to match existing code style/idioms.
 - Builders write code only — they do **not** commit, push, or open PRs (the orchestrator owns git).
 - After they report done, **verify the files on disk yourself** (Read/Grep). Never trust a "done"
   report blindly.
@@ -267,7 +268,8 @@ For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUN
 
 ## Stage 3 — Self-check before PR  (agent: `sdet`)
 
-- Spawn the **SDET** (`{{role:sdet}}`) to run the test/validation plan against the worktree:
+- Spawn the **SDET** (`{{role:sdet}}`) to run the test/validation plan against the worktree (running
+  `--help` on unfamiliar test runners/tools to discover flags if needed):
   unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step
   (whatever this repo uses: e.g. `npm test && npm run build`, `cargo test`, `pytest -q`,
   `go build ./...`, `make check`). If the toolchain is absent, it does a rigorous **static** pass

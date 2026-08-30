@@ -34,7 +34,7 @@ no such grep, which is exactly why it needs behaviour pinned first.
 ## Stage 0 — Scope, motivation, and the `/migrate` escape hatch
 
 Name the target precisely (files, module, the seam being introduced) and state the motivation in one
-sentence. Check the escape hatch above. Then decide `IS_ARCH_SIGNIFICANT`: does this cross module
+sentence. Inspect `git log` and `git blame` on the target files to understand historical context, linked issues, and why current boundaries were chosen. Check the escape hatch above. Then decide `IS_ARCH_SIGNIFICANT`: does this cross module
 boundaries, move a public surface, or change who depends on whom? If yes, Stage 1.5 runs.
 
 ## Stage 1 — Characterization tests  ⛔ HARD GATE  (agent: `sdet`)

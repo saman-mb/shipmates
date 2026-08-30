@@ -36,7 +36,7 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Reproduce as a FAILING test",
-        "text": "Spawn the sdet (with site-reliability-engineer if the bug is a runtime/reliability failure) to find the smallest deterministic reproduction and encode it as a test in the repo's existing test suite — asserting the correct behaviour, so it fails now for the real reason (not a typo). Run it and…",
+        "text": "Spawn the sdet (with site-reliability-engineer if the bug is a runtime/reliability failure) to find the smallest deterministic reproduction and encode it as a test in the repo's existing test suite — asserting the correct behaviour, so it fails now for the real reason (not a typo). Check CLAUDE.md…",
         "url": "https://saman-mb.github.io/shipmates/commands/fix-bug/#stage-0"
       },
       {
@@ -50,7 +50,7 @@
         "@type": "HowToStep",
         "position": 3,
         "name": "Stage 2 — Root-cause",
-        "text": "Diagnose the actual mechanism — work backwards from the failure (logs, stack, bisect, diff vs last-known-good) to the defect itself, not the place it surfaced. The agent returns: the root cause named, why it produces the symptom, and the minimal change that addresses it. Reject \"add a null check…",
+        "text": "Diagnose the actual mechanism — work backwards from the failure (logs, stack, bisect, diff vs last-known-good, and git log / git blame on the affected lines to understand past intent) to the defect itself, not the place it surfaced. The agent returns: the root cause named, why it produces the…",
         "url": "https://saman-mb.github.io/shipmates/commands/fix-bug/#stage-2"
       },
       {
@@ -186,7 +186,7 @@
             <p class="order-stage__gate"><span class="visually-hidden">Gate: </span><span aria-hidden="true">⛔</span> HARD GATE</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Spawn the <code>sdet</code> (with <code>site-reliability-engineer</code> if the bug is a runtime/reliability failure) to find the <strong>smallest deterministic reproduction</strong> and encode it as a test in the repo&#x27;s existing test suite — asserting the <em>correct</em> behaviour, so it <strong>fails now</strong> for the real reason (not a typo). Run it and confirm it&#x27;s red. <strong>If the bug genuinely cannot be reproduced, STOP</strong> and report that with what was tried — never &quot;fix&quot; an unconfirmed bug. This failing test is the contract for the whole run.</p>
+                <p>Spawn the <code>sdet</code> (with <code>site-reliability-engineer</code> if the bug is a runtime/reliability failure) to find the <strong>smallest deterministic reproduction</strong> and encode it as a test in the repo&#x27;s existing test suite — asserting the <em>correct</em> behaviour, so it <strong>fails now</strong> for the real reason (not a typo). Check CLAUDE.md for test runner invocations; if the test runner flags are unknown, run <code>--help</code> to discover them. Run it and confirm it&#x27;s red. <strong>If the bug genuinely cannot be reproduced, STOP</strong> and report that with what was tried — never &quot;fix&quot; an unconfirmed bug. This failing test is the contract for the whole run.</p>
               </div>
             </div>
           </li>
@@ -207,7 +207,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
             <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>senior-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> (for runtime/ops bugs)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Diagnose the <strong>actual mechanism</strong> — work backwards from the failure (logs, stack, bisect, diff vs last-known-good) to the defect itself, not the place it surfaced. The agent returns: the root cause named, why it produces the symptom, and the minimal change that addresses it. Reject &quot;add a null check where it crashed&quot; when the real cause is upstream.</p>
+                <p>Diagnose the <strong>actual mechanism</strong> — work backwards from the failure (logs, stack, bisect, diff vs last-known-good, and <code>git log</code> / <code>git blame</code> on the affected lines to understand past intent) to the defect itself, not the place it surfaced. The agent returns: the root cause named, why it produces the symptom, and the minimal change that addresses it. Reject &quot;add a null check where it crashed&quot; when the real cause is upstream.</p>
               </div>
             </div>
           </li>
