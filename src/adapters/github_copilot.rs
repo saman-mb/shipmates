@@ -184,6 +184,15 @@ impl Adapter for GithubCopilotAdapter {
         Some(&super::render::GITHUB_COPILOT)
     }
 
+    fn steering_target(&self) -> Option<super::render::SteeringTarget> {
+        Some(super::render::SteeringTarget {
+            rel_path: ".github/instructions/shipmates.instructions.md",
+            format: super::render::SteeringFormat::CopilotInstructions {
+                apply_to: "**/*",
+            },
+        })
+    }
+
     fn build(
         &self,
         roles: &[CanonicalRole],

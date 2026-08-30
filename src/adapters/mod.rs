@@ -34,10 +34,16 @@ pub trait Adapter {
         None
     }
 
+    /// Harness-native path and wrapper for contributor steering (rules file,
+    /// instructions file, or `.shipmates/contributor-steering.md` fallback).
+    fn steering_target(&self) -> Option<render::SteeringTarget> {
+        None
+    }
+
     fn build_steering(&self, body: &str) -> HashMap<String, String> {
-        match self.steering_dialect() {
-            Some(d) => render::emit_steering(self.container(), d, body),
-            None => HashMap::new(),
+        match (self.steering_dialect(), self.steering_target()) {
+            (Some(d), Some(t)) => render::emit_steering_at(self.container(), &t, d, body),
+            _ => HashMap::new(),
         }
     }
 

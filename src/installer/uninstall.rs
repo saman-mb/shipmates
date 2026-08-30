@@ -114,9 +114,7 @@ pub fn uninstall_with_payload(
         .flat_map(|item| item.files.into_iter().map(|file| file.path))
         .collect::<std::collections::BTreeSet<_>>();
 
-    let steering_only = crate::catalog::load_steering_embedded().ok();
     let mut removals = Vec::new();
-    let mut rewrites = Vec::new();
     let mut blocked = false;
 
     // Snapshot every byte before changing anything. A later filesystem failure
@@ -131,25 +129,21 @@ pub fn uninstall_with_payload(
             ));
             continue;
         }
-        let is_merged_agents = file.path == "AGENTS.md"
-            && crate::catalog::is_shipmates_contributor_tree(target_dir);
-        if !is_merged_agents {
-            let Some(expected) = known_payload.get(&file.path) else {
-                report.warnings.push(format!(
-                    "Warning: old or unknown payload entry preserved: {}",
-                    rel.display()
-                ));
-                blocked = true;
-                continue;
-            };
-            if digest::hash_bytes(expected.as_bytes()) != file.sha256 {
-                report.warnings.push(format!(
-                    "Warning: old payload entry preserved (receipt hash does not match current payload): {}",
-                    rel.display()
-                ));
-                blocked = true;
-                continue;
-            }
+        let Some(expected) = known_payload.get(&file.path) else {
+            report.warnings.push(format!(
+                "Warning: old or unknown payload entry preserved: {}",
+                rel.display()
+            ));
+            blocked = true;
+            continue;
+        };
+        if digest::hash_bytes(expected.as_bytes()) != file.sha256 {
+            report.warnings.push(format!(
+                "Warning: old payload entry preserved (receipt hash does not match current payload): {}",
+                rel.display()
+            ));
+            blocked = true;
+            continue;
         }
         let current = match fs::read(&path) {
             Ok(bytes) => bytes,
@@ -175,52 +169,6 @@ pub fn uninstall_with_payload(
         let permissions = fs::metadata(&path)
             .with_context(|| format!("inspecting managed file {}", path.display()))?
             .permissions();
-        if is_merged_agents {
-            let Some(steering) = steering_only.as_deref() else {
-                report.warnings.push(format!(
-                    "Warning: merged steering file preserved (embedded steering missing): {}",
-                    rel.display()
-                ));
-                blocked = true;
-                continue;
-            };
-            let current_str = match std::str::from_utf8(&current) {
-                Ok(text) => text,
-                Err(_) => {
-                    report.warnings.push(format!(
-                        "Warning: merged steering file preserved (non-text): {}",
-                        rel.display()
-                    ));
-                    blocked = true;
-                    continue;
-                }
-            };
-            match crate::steering::uninstall_instructions(current_str, steering) {
-                crate::steering::UninstallAction::RemoveFile => {
-                    removals.push(Removal {
-                        path,
-                        bytes: current,
-                        permissions,
-                    });
-                }
-                crate::steering::UninstallAction::Write(body) => {
-                    rewrites.push(Rewrite {
-                        path,
-                        previous: current,
-                        next: body.into_bytes(),
-                        permissions,
-                    });
-                }
-                crate::steering::UninstallAction::Preserve => {
-                    report.warnings.push(format!(
-                        "Warning: merged steering file preserved (user edits outside managed section): {}",
-                        rel.display()
-                    ));
-                    blocked = true;
-                }
-            }
-            continue;
-        }
         removals.push(Removal {
             path,
             bytes: current,
@@ -245,16 +193,11 @@ pub fn uninstall_with_payload(
         ));
     }
 
-    for rewrite in &rewrites {
-        crate::installer::atomic_write_bytes(&rewrite.path, &rewrite.next)
-            .with_context(|| format!("rewriting {}", rewrite.path.display()))?;
-    }
-
     let removed = remove_files_transaction(&removals, |path| fs::remove_file(path))?;
 
     match repository.remove(&selected.receipt.harness) {
         Ok(true) => {
-            report.removed = removed + rewrites.len();
+            report.removed = removed;
             report.receipt_removed = true;
         }
         Ok(false) => {
@@ -375,13 +318,6 @@ pub fn payload_for(
 struct Removal {
     path: PathBuf,
     bytes: Vec<u8>,
-    permissions: fs::Permissions,
-}
-
-struct Rewrite {
-    path: PathBuf,
-    previous: Vec<u8>,
-    next: Vec<u8>,
     permissions: fs::Permissions,
 }
 

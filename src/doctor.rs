@@ -117,8 +117,7 @@ fn diagnose_built(
     built: &HashMap<String, String>,
     tools: &[CanonicalTool],
 ) -> Result<Report> {
-    let mut expected = strip_container(built, adapter.container());
-    crate::steering::adjust_expected_map(target_dir, harness, &mut expected);
+    let expected = strip_container(built, adapter.container());
     let version = env!("CARGO_PKG_VERSION");
     let mut checks = Vec::new();
 
@@ -581,8 +580,7 @@ pub fn fix(
         cmds,
         steering.as_deref(),
     )?;
-    let mut expected = strip_container(&built, adapter.container());
-    crate::steering::adjust_expected_map(target_dir, harness, &mut expected);
+    let expected = strip_container(&built, adapter.container());
     let repository = manifest_db::ReceiptRepository::new(target_dir);
     repository.load_all()?;
     let (mut receipt_state, mut receipt, receipt_error) = plan::read_receipt(target_dir, harness);
