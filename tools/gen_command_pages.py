@@ -47,6 +47,7 @@ from pathlib import Path
 # Canonical order. Drives page order, the sitemap, and the sibling nav.
 SLUGS = (
     "ship-issue",
+    "ship-epic",
     "fix-bug",
     "plan-epics",
     "consolidate-issues",

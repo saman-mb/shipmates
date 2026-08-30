@@ -5,7 +5,7 @@ use super::render::{
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
-/// Codex CLI — thirteen skills under `.agents/skills/<name>/SKILL.md` plus the
+/// Codex CLI — fourteen skills under `.agents/skills/<name>/SKILL.md` plus the
 /// crew as project-scoped subagents under `.codex/agents/<name>.toml`.
 ///
 /// Skills and crew land in **two different dotdirs**. Codex discovers skills at

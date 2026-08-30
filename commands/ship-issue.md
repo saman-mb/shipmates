@@ -1,7 +1,7 @@
 ---
 name: ship-issue
 description: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
-argument-hint: <issue-number>... | next [optional extra guidance]
+argument-hint: <issue-number>... | next [epic <epic-number>] [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -23,7 +23,8 @@ a number, separate it explicitly with `--`, which ends the issue list wherever i
 
 **Or `next`:** if the first token is `next` (in place of any issue number), this is a **selection** run —
 Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, *Selection mode*). `next` is
-mutually exclusive with explicit issue numbers; tokens after it are guidance.
+mutually exclusive with explicit issue numbers; tokens after it are guidance. **`next epic <n>`** scopes
+selection to epic `<n>`'s unchecked story checklist only (see *Selection mode*).
 
 ## Bundling — the token-efficient default
 
@@ -136,6 +137,15 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 
 **Selection mode — `next`.** If the leading token is `next` (in place of issue numbers), first pick the
 work from the backlog, then continue with the numbered steps below on the chosen `<issues>`:
+
+**Epic scope — `next epic <n>`.** When the token after `next` is `epic` and the next token is a valid
+issue number, set `<epic-scope>` to that number and restrict the candidate pool to the epic's
+**unchecked** checklist lines (`- [ ] #<story>` in the epic body). Still map `blocked by` /
+`Blocked by #N` and **never pick a story whose dependencies are unmet**. Do **not** scan the
+whole backlog. Force `BUNDLE=off` for this run — epic-scoped selection ships one story only. Skip
+the cohesion bundle widening in step 2.5.
+
+**Backlog-wide — `next` alone.** When `<epic-scope>` is unset:
 - Read open issues (`gh issue list --state open --json number,title,labels`), map dependencies (epic
   checklists, `Part of #N`, `blocked by`) and **never pick a ticket with an unmet dependency**; rank by
   priority / value / blast-radius / staleness.
@@ -179,7 +189,12 @@ work from the backlog, then continue with the numbered steps below on the chosen
    bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
    can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
 3. Spawn ONE **Planner** (`{{role:planner}}`). Give it all issue bodies + repo README +
-   {{project-instructions}}. Ask it to return, as structured data:
+   {{project-instructions}}. When runtime guidance includes **`epic-plan`** from a `/ship-epic`
+   delegation, treat that classification and unit grouping as the **starting plan** — amend only where
+   an issue body contradicts it; do not re-derive the epic shape from scratch. When guidance includes
+   **`epic-run`**, do not scan the wider backlog or propose bundle widening beyond the passed issue
+   numbers. When guidance includes **`complexity tier: simple`** or **`medium`**, honour the command
+   preamble's tiered execution path for this run. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
    - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
@@ -387,7 +402,11 @@ Decision (each specialist participates only when its flag is set):
   how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave
   the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
   the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
-  so name every issue the PR will close in the completion comment.
+  so name every issue the PR will close in the completion comment. **Tick the epic checklist** when
+  any shipped story belongs to an epic: for each issue in `<issues>`, if its body contains
+  `Part of #<epic>`, edit the epic body — replace `- [ ] #<story>` with `- [x] #<story>` for that
+  story (via `--body-file`; see **Shell safety**). This keeps `/ship-epic` and manual `/ship-issue next
+  epic` runs consistent without requiring `MERGE_MODE=auto`.
 - **If `MERGE_MODE=auto`**: immediately before merging, capture current PR head and bind merge to it:
   `HEAD_SHA=$(gh pr view <PR#> --json headRefOid -q .headRefOid)` followed by
   `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch --match-head-commit "$HEAD_SHA")`, then confirm all issues

@@ -151,7 +151,7 @@ Otherwise, in this order (numbers must exist before they're referenced):
   domain the brief does not implicate. Explicit user-named roles override the cap.
 - Respect `DRY_RUN` — when set, create nothing; still print the selected panel.
 - Every epic and story must be individually valuable and traceable (`Part of #`), so the backlog is
-  ready to hand to `/ship-issue` one story at a time.
+  ready to hand to `/ship-epic <epic#>` or `/ship-issue` one story at a time.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the
   role brief inlined, and note the fallback.
 

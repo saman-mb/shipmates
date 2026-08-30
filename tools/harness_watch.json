@@ -4,7 +4,7 @@
   "trees": {
     "shared": "reads the open agentskills.io tree .agents/skills/ — skills go there via emit_shared_skills (one byte-identical copy across all shared harnesses)",
     "native": "reads its own <root>/skills/ — skills rendered in the harness dialect",
-    "commands": "opencode-only: the thirteen ship as /-invoked .opencode/commands/*.md, not skills (its skills are auto-invoked and have no disable-model-invocation)"
+    "commands": "opencode-only: the fourteen ship as /-invoked .opencode/commands/*.md, not skills (its skills are auto-invoked and have no disable-model-invocation)"
   },
   "harnesses": {
     "claude-code": {
@@ -23,7 +23,7 @@
       "expect_contains": [".opencode"],
       "expect_absent": ["disable-model-invocation"],
       "verified_on": "2026-08-03",
-      "note": "Ships as commands, not skills, because opencode skills are auto-invoked with no disable-model-invocation key. If `disable-model-invocation` ever appears in the docs, revisit shipping the thirteen as skills."
+      "note": "Ships as commands, not skills, because opencode skills are auto-invoked with no disable-model-invocation key. If `disable-model-invocation` ever appears in the docs, revisit shipping the fourteen as skills."
     },
     "codex": {
       "docs_url": "https://developers.openai.com/codex/skills",

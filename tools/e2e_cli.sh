@@ -214,17 +214,17 @@ echo "=== Segment 8: Install file counts ==="
 PROJ="$TMPDIR/proj-counts"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none >/dev/null 2>&1
-assert_file_count "$PROJ" 26 "claude-code no-tools: 25 files + receipt"
+assert_file_count "$PROJ" 27 "claude-code no-tools: 26 files + receipt"
 
 PROJ="$TMPDIR/proj-counts-tools"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools all >/dev/null 2>&1
-assert_file_count "$PROJ" 44 "claude-code all-tools: 44 files"
+assert_file_count "$PROJ" 45 "claude-code all-tools: 45 files"
 
 PROJ="$TMPDIR/proj-counts-scrub"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools scrub >/dev/null 2>&1
-assert_file_count "$PROJ" 28 "claude-code scrub tool: 28 files"
+assert_file_count "$PROJ" 29 "claude-code scrub tool: 29 files"
 
 # ---------------------------------------------------------------------------
 # Segment 9 — Install --with-tools nonexistent fails
@@ -245,7 +245,7 @@ cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none >/d
 cmd_capture "reinstall" "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none
 REINSTALL_RC="$CMD_RC"
 [ "$REINSTALL_RC" -eq 0 ] && ok "Re-install exits 0" || fail "Re-install exited $REINSTALL_RC (expected 0)"
-assert_file_count "$PROJ" 26 "Files unchanged after re-install"
+assert_file_count "$PROJ" 27 "Files unchanged after re-install"
 
 # ---------------------------------------------------------------------------
 # Segment 11 — Conflicting flags
@@ -264,14 +264,14 @@ PROJ="$TMPDIR/proj-shared"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness codex --dir "$PROJ" --with-tools none >/dev/null 2>&1
 CODEX_FILES=$(find "$PROJ" -type f | wc -l)
-[ "$CODEX_FILES" -eq 26 ] && ok "Codex install: 26 files" || fail "Codex install: $CODEX_FILES files (expected 26)"
+[ "$CODEX_FILES" -eq 27 ] && ok "Codex install: 27 files" || fail "Codex install: $CODEX_FILES files (expected 27)"
 assert_file_exists "$PROJ/.agents/skills/ship-issue/SKILL.md" "Shared skill present after codex"
 assert_file_exists "$PROJ/.codex/agents/architect.toml" "Codex agent present"
 
 cmd_run "$BIN" install --harness github-copilot --dir "$PROJ" --with-tools none >/dev/null 2>&1
 SHARED_FILES=$(find "$PROJ" -type f | wc -l)
-# 26 (codex) + 13 (github-copilot agents) = 39
-[ "$SHARED_FILES" -eq 39 ] && ok "After github-copilot: 39 files" || fail "After github-copilot: $SHARED_FILES files (expected 39)"
+# 27 (codex) + 13 (github-copilot agents) = 40
+[ "$SHARED_FILES" -eq 40 ] && ok "After github-copilot: 40 files" || fail "After github-copilot: $SHARED_FILES files (expected 40)"
 assert_file_exists "$PROJ/.github/agents/architect.agent.md" "GitHub agent present"
 assert_file_exists "$PROJ/.agents/skills/ship-issue/SKILL.md" "Shared skill still present"
 
@@ -286,7 +286,7 @@ cmd_capture "migrate plain" "$BIN" install --harness claude-code --dir "$PROJ" -
 MIGRATE_RC="$CMD_RC"
 [ "$MIGRATE_RC" -eq 0 ] && ok "Plain reinstall exits 0" || fail "Plain reinstall exited $MIGRATE_RC (expected 0)"
 assert_contains "left untouched" "$CMD_OUT" "Plain reinstall warns about legacy file"
-assert_contains "24 files written" "$CMD_OUT" "Plain reinstall reports 24 files (1 skipped)"
+assert_contains "25 files written" "$CMD_OUT" "Plain reinstall reports 25 files (1 skipped)"
 # Legacy file should be preserved (not overwritten)
 if grep -q "legacy architect" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
   ok "Legacy file preserved (not overwritten)"
@@ -304,7 +304,7 @@ echo "legacy architect" > "$PROJ/.claude/agents/architect.md"
 cmd_capture "migrate force" "$BIN" install --harness claude-code --dir "$PROJ" --force --with-tools none
 FORCE_RC="$CMD_RC"
 [ "$FORCE_RC" -eq 0 ] && ok "--force install exits 0" || fail "--force install exited $FORCE_RC (expected 0)"
-assert_contains "25 files written" "$CMD_OUT" "--force reports 25 files (overwrote legacy)"
+assert_contains "26 files written" "$CMD_OUT" "--force reports 26 files (overwrote legacy)"
 # Force-overwritten file should match shipmates version
 if ! grep -q "legacy architect" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
   ok "Force migration overwrites legacy"
@@ -323,7 +323,7 @@ cmd_capture "collision" "$BIN" install --harness claude-code --dir "$PROJ" --wit
 COLLIDE_RC="$CMD_RC"
 [ "$COLLIDE_RC" -eq 0 ] && ok "Collision install exits 0 (preserved)" || fail "Collision exited $COLLIDE_RC (expected 0)"
 assert_contains "left untouched" "$CMD_OUT" "Collision produces warning"
-assert_contains "24 files written" "$CMD_OUT" "Collision reports 24 files (1 skipped)"
+assert_contains "25 files written" "$CMD_OUT" "Collision reports 25 files (1 skipped)"
 # Legacy file should be preserved
 if grep -q "intruder" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
   ok "Collision preserves intruder file"
