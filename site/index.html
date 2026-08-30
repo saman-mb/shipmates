@@ -221,6 +221,11 @@
             <span class="order-card__more" aria-hidden="true">Read the stages →</span>
           </li>
           <li class="order-card">
+            <h3 class="order-card__cmd"><a class="order-card__link" href="commands/ship-epic/"><code>/ship-epic</code></a></h3>
+            <p class="order-card__desc">Loops /ship-issue over an epic's stories in dependency order — gates pause, failures pause with state.</p>
+            <span class="order-card__more" aria-hidden="true">Read the stages →</span>
+          </li>
+          <li class="order-card">
             <h3 class="order-card__cmd"><a class="order-card__link" href="commands/fix-bug/"><code>/fix-bug</code></a></h3>
             <p class="order-card__desc">Reproduce as a failing test first, root-cause, minimal fix, red→green proof.</p>
             <span class="order-card__more" aria-hidden="true">Read the stages →</span>
@@ -428,15 +433,15 @@
             <ul>
               <li><strong>Runtime-verified</strong>
                 <ul>
-                  <li>Claude Code — the full crew and all 13 commands, and the only harness Shipmates has actually been run on.</li>
+                  <li>Claude Code — the full crew and all 14 commands, and the only harness Shipmates has actually been run on.</li>
                 </ul>
               </li>
               <li><strong>Builds, not runtime-verified</strong> — <code>shipmates install --harness &lt;name&gt;</code> produces a payload, and every format was verified against the harness's own parsing source and first-party docs.
                 <ul>
-                  <li>opencode — full crew + all 13 commands as <code>.opencode/</code>; live verification tracked in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
-                  <li>antigravity (the Antigravity CLI, <code>agy</code> — successor to the retired Gemini CLI) — full crew + all 13 commands as <code>.agents/</code>.</li>
-                  <li>codex, github-copilot — the full crew and all 13 commands. Codex is the one target whose agents are TOML rather than Markdown, and it documents no per-agent tool allowlist, so its crew inherit the session's tools rather than a restricted set.</li>
-                  <li>cursor, windsurf — the 13 skills only. Cursor's is reported but its schema is undocumented, so we do not guess at it; Windsurf is under review since the Devin Desktop rename.</li>
+                  <li>opencode — full crew + all 14 commands as <code>.opencode/</code>; live verification tracked in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
+                  <li>antigravity (the Antigravity CLI, <code>agy</code> — successor to the retired Gemini CLI) — full crew + all 14 commands as <code>.agents/</code>.</li>
+                  <li>codex, github-copilot — the full crew and all 14 commands. Codex is the one target whose agents are TOML rather than Markdown, and it documents no per-agent tool allowlist, so its crew inherit the session's tools rather than a restricted set.</li>
+                  <li>cursor, windsurf — the 14 skills only. Cursor's is reported but its schema is undocumented, so we do not guess at it; Windsurf is under review since the Devin Desktop rename.</li>
                 </ul>
               </li>
               <li><strong>Next</strong>
@@ -445,7 +450,7 @@
                 </ul>
               </li>
             </ul>
-            <p>Why that's credible: the crew's system prompts name no harness, and the thirteen commands ship in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape rather than a Claude-specific one — so most of a port is mapping frontmatter fields, not rewriting the crew. opencode is the first test of that: every persona and workflow body carried over unchanged, and what remained was path mapping and translating an allowlist into a permission map. Details on the <a href="docs/harnesses/">harness matrix</a>.</p>
+            <p>Why that's credible: the crew's system prompts name no harness, and the fourteen commands ship in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape rather than a Claude-specific one — so most of a port is mapping frontmatter fields, not rewriting the crew. opencode is the first test of that: every persona and workflow body carried over unchanged, and what remained was path mapping and translating an allowlist into a permission map. Details on the <a href="docs/harnesses/">harness matrix</a>.</p>
           </div>
         </div>
       </div>
@@ -474,7 +479,7 @@
                 <span class="faq__marker" aria-hidden="true"></span>
               </summary>
               <div class="faq__a">
-                <p>Subagents are focused AI agents defined in .claude/agents/*.md; skills are reusable workflows defined in .claude/skills/&lt;name&gt;/SKILL.md and invoked as commands, like /ship-issue. Shipmates ships 12 agents and 13 commands you drop into a repo's .claude/ with <code>shipmates install</code> (or .opencode/ for opencode, .codex/ for codex, and so on).</p>
+                <p>Subagents are focused AI agents defined in .claude/agents/*.md; skills are reusable workflows defined in .claude/skills/&lt;name&gt;/SKILL.md and invoked as commands, like /ship-issue. Shipmates ships 12 agents and 14 commands you drop into a repo's .claude/ with <code>shipmates install</code> (or .opencode/ for opencode, .codex/ for codex, and so on).</p>
               </div>
             </details>
             <details class="faq__item">

@@ -3,7 +3,7 @@ use super::render::{emit_shared_skills, emit_shared_tool_skills};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
-/// Cursor ships no subagents, so only the thirteen commands ship (as skills) and
+/// Cursor ships no subagents, so only the fourteen commands ship (as skills) and
 /// `roles` is not emitted. Cursor reads the open Agent Skills tree
 /// `.agents/skills/<name>/SKILL.md` natively (a first-party peer of
 /// `.cursor/skills/`, since Cursor 2.4), so its skills come from the shared

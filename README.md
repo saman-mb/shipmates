@@ -65,6 +65,7 @@ from anything hardcoded into the role.
 | Command | What it does |
 |---|---|
 | `/ship-issue <n>...` | Drives GitHub issue `#n` — or several at once, bundled into one PR — from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
+| `/ship-epic <n>` | Loops `/ship-issue` over an epic's unchecked stories in dependency order — gate stories pause for sign-off; failures pause with state |
 | `/fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
 | `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
 | `/consolidate-issues [filter] [apply]` | Reviews every open issue against git history — closes what's done or stale, migrates legacy ones, bundles the rest by theme so they ship together |
@@ -178,7 +179,7 @@ windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
 Every harness compiles the same canonical crew and commands. Five have a native subagent directory
-and receive the twelve specialists as agents; the other two ship the thirteen commands as skills only.
+and receive the twelve specialists as agents; the other two ship the fourteen commands as skills only.
 Four harnesses (codex, antigravity, cursor, github-copilot) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
 one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of four colliding
@@ -447,7 +448,8 @@ tagged commit, and the `site-reliability-engineer` checks rollback + migration s
 **Chain them — scope the work, ship a story, polish its UI:**
 ```
 /plan-epics "settings redesign"     # → creates the epic + stories
-/ship-issue 148                     # → builds & reviews one story to a PR
+/ship-epic 42                       # → ships every story in epic #42 (or pauses at gates)
+/ship-issue next epic 42            # → ships the next unchecked story in epic #42 only
 /polish the settings screen         # → iterates the visuals to sign-off
 ```
 Run that third step **from the worktree `/ship-issue` left behind** (`../<repo>--issue-148`), so the
@@ -490,18 +492,18 @@ universal one.
 **Where each harness stands.** Every target's payload is compiled and digest-checked in CI; the
 question is whether it's been *run*.
 
-- **Runtime-verified** — Claude Code: the full crew and all 13 commands, and the only harness
+- **Runtime-verified** — Claude Code: the full crew and all 14 commands, and the only harness
   Shipmates has actually been run on.
 - **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot
   and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
   verified against that harness's parsing source and first-party docs. opencode, Antigravity, Codex CLI and
-  GitHub Copilot get the full crew + all 13 commands; the other two — Cursor and Windsurf — have no native
+  GitHub Copilot get the full crew + all 14 commands; the other two — Cursor and Windsurf — have no native
   subagent directory, so they ship the 13 skills only. A live run has not been done on any of them; opencode's open questions are tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
   CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates builds for.
 
-Why that's credible: the crew's system prompts name no harness, and the thirteen commands ship in the
+Why that's credible: the crew's system prompts name no harness, and the fourteen commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
 of a port is mapping frontmatter fields and rendering dialect tokens, not rewriting the crew. The
 opencode adapter is the first test of that claim: it reused every persona and workflow body unchanged,
@@ -523,7 +525,7 @@ see [on the horizon](#-on-the-horizon) for where each harness stands.
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
 in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/ship-issue`. Shipmates ships 12 agents
-and 13 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
+and 14 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
 `.codex/` for codex, and so on). See [install](#-come-aboard-install).
 
 **Is this an official Anthropic project?**
