@@ -143,6 +143,22 @@ class SiteGenerationTests(unittest.TestCase):
         flat = generator.load_skills(ROOT / "commands", tuple(a.name for a in agents))
         self.assertEqual({c.slug for c in commands}, {c.slug for c in flat})
 
+    def test_redirect_stubs_emitted_and_excluded_from_sitemap(self) -> None:
+        """Legacy renamed command paths serve a meta-refresh stub and are not indexed."""
+        from tools.gen_command_pages import REDIRECTS, SITE_URL
+        import xml.etree.ElementTree as ET
+
+        for old_slug, target_slug in REDIRECTS.items():
+            stub = ROOT / f"site/commands/{old_slug}/index.html"
+            self.assertTrue(stub.is_file(), f"missing redirect stub {stub}")
+            text = stub.read_text(encoding="utf-8")
+            self.assertIn(f'url=../{target_slug}/"', text)
+            self.assertIn(f'rel="canonical" href="{SITE_URL}commands/{target_slug}/"', text)
+            self.assertIn('name="robots" content="noindex"', text)
+
+            sitemap_text = (ROOT / "site/sitemap.xml").read_text(encoding="utf-8")
+            self.assertNotIn(f"{SITE_URL}commands/{old_slug}/", sitemap_text)
+
 
 if __name__ == "__main__":
     unittest.main()
