@@ -382,8 +382,9 @@ fn diagnose_built(
     let mut installed: Vec<String> = Vec::new();
     let mut tool_missing: Vec<String> = Vec::new();
     let mut tool_drift: Vec<String> = Vec::new();
-    let mut tool_unreadable: Vec<String> = Vec::new();
+   let mut tool_unreadable: Vec<String> = Vec::new();
     let mut tool_unfixable: Vec<String> = Vec::new();
+    let mut tool_orphaned: Vec<String> = Vec::new();
     for t in tools {
  let files: Vec<(&String, &String)> = tool_expected
             .iter()
@@ -406,6 +407,13 @@ fn diagnose_built(
                 .is_some()
         };
         if !any_on_disk && !files.iter().any(|(k, _)| claimed(k)) {
+            continue;
+        }
+        if any_on_disk
+            && receipt.is_some()
+            && !files.iter().any(|(k, _)| claimed(k))
+        {
+            tool_orphaned.push(t.name.clone());
             continue;
         }
         let mut complete = true;
@@ -455,7 +463,9 @@ fn diagnose_built(
     tool_unreadable.dedup();
     tool_unfixable.sort();
     tool_unfixable.dedup();
-    let (severity, detail) = if !tool_missing.is_empty() || !tool_unreadable.is_empty() {
+    tool_orphaned.sort();
+    tool_orphaned.dedup();
+    let (severity, detail) = if !tool_missing.is_empty() || !tool_unreadable.is_empty() || !tool_orphaned.is_empty() {
         let mut detail = format!(
             "installed: {}; missing: {}",
             installed.join(", "),
@@ -471,6 +481,12 @@ fn diagnose_built(
             detail.push_str(&format!(
                 "; cannot repair without receipt ownership: {}",
                 tool_unfixable.join(", ")
+            ));
+        }
+        if !tool_orphaned.is_empty() {
+            detail.push_str(&format!(
+                "; orphaned: {}",
+                tool_orphaned.join(", ")
             ));
         }
         (Severity::Problem, detail)
@@ -1199,7 +1215,6 @@ mod tests {
         assert!(error.to_string().contains("symlink component"));
         assert!(outside_file.exists());
     }
-
     #[test]
     fn test_fix_corrupted_receipt_does_not_bail() {
         // Corrupted receipt must degrade gracefully — restore missing files,
@@ -1287,6 +1302,58 @@ mod tests {
         assert!(
             tools_check.detail.contains("badge"),
             "doctor must detect opencode tool by file stem: {}",
+            tools_check.detail
+        );
+    }
+
+    #[test]
+    fn test_diagnose_orphaned_tool_not_marked_ok() {
+        // Tools with files on disk but no receipt ownership must not be
+        // reported as "installed and current" (#270).
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        let tools = [tool("badge"), tool("scrub")];
+
+        install_healthy(target, &roles, &cmds);
+        install_tools(target, &tools);
+
+        let adapter = adapters::select("claude-code").unwrap();
+        let tool_built = adapter.build_tools(&tools);
+        let all_keys: Vec<String> = tool_built.keys().cloned().collect();
+        let badge_keys: Vec<PathBuf> = all_keys
+            .iter()
+            .filter(|k| k.contains("badge"))
+            .map(|k| PathBuf::from(k))
+            .collect();
+        let install =
+            crate::installer::plan::InstallPlan::from_payload(
+                adapter.as_ref(),
+                "claude-code",
+                adapter.build(&roles, &cmds).unwrap(),
+                tool_built,
+            )
+            .unwrap();
+        let receipt = install.receipt_for(badge_keys).unwrap();
+        crate::installer::plan::save_receipt(target, &receipt).unwrap();
+
+        let report = diagnose(target, "claude-code", &roles, &cmds, &tools).unwrap();
+        let tools_check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "Tools")
+            .unwrap();
+        // Scrub is on disk but unclaimed — must not be OK.
+        assert_ne!(
+            tools_check.severity,
+            Severity::Ok,
+            "orphaned tool must not be reported as OK: {}",
+            tools_check.detail
+        );
+        assert!(
+            tools_check.detail.contains("orphaned"),
+            "doctor must report orphaned tool: {}",
             tools_check.detail
         );
     }
