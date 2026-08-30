@@ -180,13 +180,29 @@ pub fn apply_with_preserved_paths(
             if install.files.contains_key(Path::new(&old_file.path)) {
                 continue;
             }
+            if sibling_claims.contains(&old_file.path) {
+                report.warnings.push(format!(
+                    "Warning: shared-managed file preserved (no longer in payload): {}",
+                    old_file.path
+                ));
+                continue;
+            }
             let path = crate::installer::manifest_db::resolve_target_relative(
                 target_dir,
                 Path::new(&old_file.path),
             )?;
             if fs::symlink_metadata(&path).is_ok() {
+                let current = fs::read(&path).with_context(|| {
+                    format!("reading dropped file {}", path.display())
+                })?;
+                if let Some(backup) = backup_existing(&path, &current)? {
+                    report.backups.push(backup.clone());
+                }
+                fs::remove_file(&path).with_context(|| {
+                    format!("removing dropped file {}", path.display())
+                })?;
                 report.warnings.push(format!(
-                    "Warning: previous managed file left untouched (no longer in payload): {}",
+                    "Removed dropped file: {}",
                     old_file.path
                 ));
             }

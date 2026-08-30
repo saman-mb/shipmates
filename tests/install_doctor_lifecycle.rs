@@ -367,7 +367,7 @@ fn unmanaged_file_survives_reinstall_with_warning() {
 }
 
 #[test]
-fn removed_receipt_files_remain_with_warning() {
+fn removed_receipt_files_are_removed_with_backup() {
     let dir = tempdir().unwrap();
     let first = run(
         dir.path(),
@@ -390,10 +390,13 @@ fn removed_receipt_files_remain_with_warning() {
         "tool removal install failed: {}",
         output_text(&second)
     );
-    assert!(tool.is_file(), "removed tool file must remain untouched");
+    assert!(
+        !tool.is_file(),
+        "removed tool file should be deleted, not left orphaned"
+    );
     let stdout = String::from_utf8_lossy(&second.stdout).to_ascii_lowercase();
     assert!(
-        stdout.contains("no longer in payload") || stdout.contains("previous managed"),
+        stdout.contains("removed dropped file"),
         "removed receipt file should be reported: {stdout}"
     );
 }
