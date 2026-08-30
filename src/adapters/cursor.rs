@@ -25,6 +25,15 @@ impl Adapter for CursorAdapter {
         Some(&super::render::AGENT_SKILLS)
     }
 
+    fn steering_target(&self) -> Option<super::render::SteeringTarget> {
+        Some(super::render::SteeringTarget {
+            rel_path: ".cursor/rules/shipmates-contributor.mdc",
+            format: super::render::SteeringFormat::CursorMdc {
+                description: "Shipmates contributor checklists for crew, commands, tools, and site assets",
+            },
+        })
+    }
+
     fn build(
         &self,
         _roles: &[CanonicalRole],
