@@ -428,6 +428,89 @@ fn uninstall_removes_receipt_owned_files_but_preserves_unmanaged_files() {
 }
 
 #[test]
+fn uninstall_removes_empty_directories() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    // Verify some expected directories exist after install.
+    assert!(
+        dir.path().join(".claude").is_dir(),
+        ".claude/ should exist after install"
+    );
+    assert!(
+        dir.path().join(".claude/agents").is_dir(),
+        ".claude/agents/ should exist after install"
+    );
+    assert!(
+        dir.path().join(".shipmates").is_dir(),
+        ".shipmates/ should exist after install"
+    );
+
+    let output = run(dir.path(), &["uninstall"]);
+    assert!(
+        output.status.success(),
+        "uninstall failed: {}",
+        output_text(&output)
+    );
+
+    // Receipt and managed file must be gone.
+    assert!(
+        !managed_file(dir.path()).exists(),
+        "managed file must be removed"
+    );
+    assert!(
+        !receipt_path(dir.path()).exists(),
+        "receipt must be removed"
+    );
+
+    // Empty directories left behind by file removal should be cleaned up.
+    assert!(
+        !dir.path().join(".claude/agents").is_dir(),
+        "empty .claude/agents/ should be removed"
+    );
+    assert!(
+        !dir.path().join(".shipmates/receipts").is_dir(),
+        "empty .shipmates/receipts/ should be removed"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+    assert!(
+        !stdout.contains("empty dir"),
+        "should not warn about removing empty dirs: {stdout}"
+    );
+}
+
+#[test]
+fn uninstall_warns_about_shipmates_backup() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    // Simulate a prior `doctor --fix` creating a backup directory.
+    let backup = dir.path().join(".shipmates-backup");
+    fs::create_dir_all(&backup).unwrap();
+    fs::write(backup.join("some-backup.md"), "backed up\n").unwrap();
+
+    let output = run(dir.path(), &["uninstall"]);
+    assert!(
+        output.status.success(),
+        "uninstall failed: {}",
+        output_text(&output)
+    );
+
+    // Backup should survive (it contains user files).
+    assert!(
+        backup.is_dir(),
+        ".shipmates-backup/ should survive uninstall"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+    assert!(
+        stdout.contains("backup directory preserved"),
+        "uninstall should warn about backup dir: {stdout}"
+    );
+}
+
+#[test]
 fn uninstall_preserves_modified_managed_file() {
     let dir = tempdir().unwrap();
     install_ok(dir.path());
