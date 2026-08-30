@@ -95,8 +95,9 @@ While Shipmates is runtime-verified on **Claude Code** today, the CLI compiles n
 
 ## Built-in Developer Toolbox
 
-Shipmates also includes an opt-in suite of 9 self-contained developer tools that subagents can reach for automatically:
+Shipmates also includes an opt-in suite of 10 self-contained developer tools that subagents can reach for automatically:
 - `scrub`: Redacts API keys, credentials, and tokens from logs before committing.
+- `domaincheck`: Checks domain availability via RDAP (registry-authoritative, not DNS guesswork).
 - `badge`: Generates SVG status badges for READMEs.
 - `diagram`: Generates clean architectural diagrams and flowcharts.
 - `fixtures`: Creates deterministic mock data.
