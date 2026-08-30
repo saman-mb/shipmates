@@ -1,5 +1,6 @@
 payload_digest_version=1
 target=windsurf
+.shipmates/contributor-steering.md 56a3e40f661e95b15c39baa506ea7c57f863538a93562e6aa5321e1a3f54b8e2
 .windsurf/skills/consolidate-issues/SKILL.md 7ad6c9982e22300da3db529ceb17ac4810fcc594284c6eea57ad9e7bc9ce8369
 .windsurf/skills/document/SKILL.md 010b5f8bed31ee4713b24554c1ab236c7ffb0b02575a12c21b7ed0d9f9eb1e60
 .windsurf/skills/fix-bug/SKILL.md ee08bffa9731b2af5bf89e2082c598ee45d3636d5d555ca81fb4e9380df283aa
@@ -12,6 +13,5 @@ target=windsurf
 .windsurf/skills/refactor/SKILL.md 795ce528b509057d6e689e7ea66512721f49a79f989f8465c88e275c6746a225
 .windsurf/skills/release/SKILL.md a7aa435b8ca38718fea3c42bab37ae2638ed09441773473f8af355824ff067f8
 .windsurf/skills/ship-epic/SKILL.md f8d2b655cb107518fd2ce16bc3c95205b36fca824d60007759572ceaa4770738
-.windsurf/skills/ship-issue/SKILL.md 9339ef1698ed9d8a7ef1e9cacddde8a8d29ad155105419577feb2cca8de13d72
+.windsurf/skills/ship-issue/SKILL.md 88a530d76ebe30dd3e376d15e79c7dd667a07a03540687ff7b33ca3a4979ef30
 .windsurf/skills/spike/SKILL.md 4a7e4172541b8ec19f96f52a0e5f784866cfede722157a5e9781ae319c11e523
-AGENTS.md 14603e679a884a536aef3273d17ea556c2e14196c814335a1e260439e813b1a1

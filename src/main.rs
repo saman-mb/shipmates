@@ -231,21 +231,12 @@ fn main() -> Result<()> {
 
             for harness in &harnesses {
                 let adapter = adapters::select(harness)?;
-                let mut built = adapters::build_payload(
+                let built = adapters::build_payload(
                     adapter.as_ref(),
                     &roles,
                     &cmds,
                     install_steering.as_deref(),
                 )?;
-                if install_steering.is_some() {
-                    steering::adjust_payload_map(
-                        &target_dir,
-                        harness,
-                        &mut built,
-                        adapter.container(),
-                    )
-                    .map_err(|e| anyhow::anyhow!(e))?;
-                }
                 let payload_prefix = format!("{}/", adapter.container());
                 for key in built.keys() {
                     if let Some(rel) = key.strip_prefix(&payload_prefix) {
@@ -401,6 +392,15 @@ fn main() -> Result<()> {
             }
             if !provision_scripts.is_empty() {
                 provision_tool_deps(&provision_scripts);
+            }
+            if install_steering.is_some() {
+                if let Some((path, stripped)) = steering::migrate_legacy_agents_md(&target_dir)? {
+                    std::fs::write(&path, stripped)?;
+                    println!(
+                        "Removed legacy contributor steering section from {}",
+                        path.display()
+                    );
+                }
             }
         }
         Command::Uninstall {
