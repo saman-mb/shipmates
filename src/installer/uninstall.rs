@@ -194,27 +194,88 @@ pub fn uninstall_with_payload(
     }
 
     let removed = remove_files_transaction(&removals, |path| fs::remove_file(path))?;
+
     match repository.remove(&selected.receipt.harness) {
         Ok(true) => {
             report.removed = removed;
             report.receipt_removed = true;
-            Ok(report)
         }
         Ok(false) => {
             let rollback = rollback_transaction(&removals);
-            Err(combine_rollback_error(
+            return Err(combine_rollback_error(
                 anyhow::anyhow!("install receipt disappeared during uninstall"),
                 rollback,
-            ))
+            ));
         }
         Err(error) => {
             let rollback = rollback_transaction(&removals);
-            Err(combine_rollback_error(
+            return Err(combine_rollback_error(
                 error.context("removing install receipt"),
                 rollback,
-            ))
+            ));
         }
     }
+
+    // Clean up empty directories left behind by file removal and receipt removal.
+    // Walk up from each removed path's parent, removing directories only when
+    // they are empty. Best-effort: errors are warnings, not failures.
+    let mut all_removed_paths: Vec<PathBuf> = removals.iter().map(|r| r.path.clone()).collect();
+    if let Ok(receipt_path) = repository.receipt_path(&selected.receipt.harness) {
+        all_removed_paths.push(receipt_path);
+    }
+    for path in all_removed_paths {
+        let mut dir = path
+            .parent()
+            .unwrap_or(target_dir)
+            .to_path_buf();
+        while dir != *target_dir {
+            match fs::read_dir(&dir) {
+                Ok(mut entries) => {
+                    if entries.next().is_none() {
+                        // Directory is empty — remove it.
+                        if let Err(error) = fs::remove_dir(&dir) {
+                            report.warnings.push(format!(
+                                "Warning: cannot remove empty dir {}: {}",
+                                dir.strip_prefix(target_dir)
+                                    .unwrap_or(&dir)
+                                    .display(),
+                                error
+                            ));
+                        }
+                        dir = dir
+                            .parent()
+                            .map(|p| p.to_path_buf())
+                            .unwrap_or_else(|| target_dir.to_path_buf());
+                    } else {
+                        break;
+                    }
+                }
+                Err(error) => {
+                    report.warnings.push(format!(
+                        "Warning: cannot read dir {}: {}",
+                        dir.strip_prefix(target_dir)
+                            .unwrap_or(&dir)
+                            .display(),
+                        error
+                    ));
+                    break;
+                }
+            }
+        }
+    }
+
+    // Warn about `.shipmates-backup/` if it still exists — it is owned by a prior
+    // `doctor --fix` and uninstall does not remove user files, but the user
+    // should know it survives.
+    let backup_dir = target_dir.join(crate::installer::migrate::BACKUP_DIR);
+    if backup_dir.is_dir() {
+        report.warnings.push(format!(
+            "Warning: backup directory preserved: {}",
+            backup_dir.strip_prefix(target_dir).unwrap_or(&backup_dir).display()
+        ));
+    }
+
+    Ok(report)
 }
 
 /// Build complete current payload knowledge for receipt validation. All tools
