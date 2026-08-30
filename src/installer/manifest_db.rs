@@ -107,7 +107,7 @@ impl InstallReceipt {
         let mut previous: Option<&str> = None;
         for root in &self.roots {
             validate_relative_path(root, "receipt root")?;
-            if !allowed_roots.contains(&root.as_str()) {
+            if !allowed_roots.contains(&root.as_str()) && !is_legacy_instructions_root(root) {
                 bail!(
                     "receipt root {:?} is not part of harness {} install layout",
                     root,
@@ -125,7 +125,8 @@ impl InstallReceipt {
         let mut previous: Option<&str> = None;
         for file in &self.files {
             file.validate()?;
-            if !allowed_receipt_path(&self.harness, &file.path)
+            if (!allowed_receipt_path(&self.harness, &file.path)
+                && !is_legacy_steering_receipt_path(&self.harness, &file.path))
                 || !self
                     .roots
                     .iter()
@@ -556,7 +557,7 @@ fn validate_relative_path(path: &str, field: &str) -> Result<()> {
     for component in Path::new(path).components() {
         match component {
             Component::Normal(segment) => {
-                if segment == ".shipmates" {
+                if segment == ".shipmates" && !is_allowed_shipmates_path(path) {
                     bail!("{field} may not address .shipmates: {:?}", path);
                 }
             }
@@ -564,6 +565,26 @@ fn validate_relative_path(path: &str, field: &str) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Paths under `.shipmates/` that install may own (not the receipt store).
+fn is_allowed_shipmates_path(path: &str) -> bool {
+    path == ".shipmates" || path == ".shipmates/contributor-steering.md"
+}
+
+/// #295 installed steering at root instructions files; tolerate in old receipts.
+fn is_legacy_instructions_root(root: &str) -> bool {
+    root == "CLAUDE.md" || root == "AGENTS.md"
+}
+
+fn is_legacy_steering_receipt_path(harness: &str, path: &str) -> bool {
+    match harness {
+        "claude-code" => path == "CLAUDE.md",
+        "opencode" | "codex" | "cursor" | "github-copilot" | "antigravity" | "windsurf" => {
+            path == "AGENTS.md"
+        }
+        _ => false,
+    }
 }
 
 #[cfg(test)]
