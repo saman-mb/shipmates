@@ -1,7 +1,7 @@
 ---
 name: consolidate-issues
 description: Review every open issue against git history, close what's already done or stale, migrate the legacy ones, slim the backlog, and bundle the survivors into themed groups so similar work ships together efficiently. Read-only by default — it reports; changes happen only on an explicit apply.
-argument-hint: [scope filters such as label/area] [apply]
+argument-hint: [scope filter such as label/area] [apply] — no args: the whole open backlog, report-only
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -124,10 +124,11 @@ tree ready to hand to `/ship-issue` — one bundle at a time.
 
 ## Runtime input
 
-`$ARGUMENTS` is the complete invocation text. The first word is usually a scope filter (a label or
-area) or the word `apply`; parse it in prose and treat anything unstated as `MODE=report` over the
-whole tracker. When in doubt, report only — closing other people's issues is a decision the captain
-makes, not the default.
+`$ARGUMENTS` is the complete invocation text. **Empty means the whole open-issue set**: run in
+`MODE=report` over the repo's entire backlog — every open issue, no scope filter. Otherwise the
+first word is usually a scope filter (a label or area) or the word `apply`; parse it in prose and
+treat anything unstated as `MODE=report`. When in doubt, report only — closing other people's issues
+is a decision the captain makes, not the default.
 
 ### Guardrails
 - **Evidence or nothing.** An issue is `DONE` only with a merged PR/commit to point at; it is `STALE`
