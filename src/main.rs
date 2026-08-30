@@ -6,6 +6,7 @@ mod doctor;
 mod embedded;
 mod installer;
 mod manifest;
+mod steering;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -230,12 +231,21 @@ fn main() -> Result<()> {
 
             for harness in &harnesses {
                 let adapter = adapters::select(harness)?;
-                let built = adapters::build_payload(
+                let mut built = adapters::build_payload(
                     adapter.as_ref(),
                     &roles,
                     &cmds,
                     install_steering.as_deref(),
                 )?;
+                if install_steering.is_some() {
+                    steering::adjust_payload_map(
+                        &target_dir,
+                        harness,
+                        &mut built,
+                        adapter.container(),
+                    )
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                }
                 let payload_prefix = format!("{}/", adapter.container());
                 for key in built.keys() {
                     if let Some(rel) = key.strip_prefix(&payload_prefix) {

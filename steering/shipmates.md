@@ -1,6 +1,6 @@
 # Shipmates contributor steering
 
-Agent-facing conventions for changing **this repository's** canonical resources — crew, commands, tools, and the generated site. This file is installed at `{{project-instructions}}` (fallback: `{{project-instructions-fallback}}`) so every harness reads the same checklists. Human-oriented detail also lives in `AGENTS.md` and `CONTRIBUTING.md`.
+Agent-facing conventions for changing **this repository's** canonical resources — crew, commands, tools, and the generated site. This file is installed at `{{project-instructions}}` (fallback: `{{project-instructions-fallback}}`) so every harness reads the same checklists. On Claude Code that is usually a new `CLAUDE.md`; on other harnesses, when root `AGENTS.md` already exists in this repo, install **merges** this content into a marked section instead of replacing the file. Human-oriented detail also lives in `AGENTS.md` and `CONTRIBUTING.md`.
 
 When you touch canonical sources, extend the model in `tools/gen_command_pages.py` (or the Rust installer) and **regenerate** — never hand-edit generated pages under `site/commands/`, `site/agents/`, or `site/tools/`.
 
