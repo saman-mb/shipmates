@@ -61,6 +61,12 @@ SLUGS = (
     "refactor",
 )
 
+# Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
+# as static HTML meta-refresh stubs with canonical links; excluded from sitemap.
+REDIRECTS = {
+    "review": "pr-review",
+}
+
 # Hand-authored docs pages under site/docs/. The generator discovers them on
 # disk and includes them in the sitemap — it never generates them.
 DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture", "github-copilot")
@@ -3854,6 +3860,26 @@ def tool_page_path(slug: str) -> str:
 SITEMAP_PATH = f"{SITE_DIR}/sitemap.xml"
 
 
+def render_redirect_page(old_slug: str, target_slug: str, ctx: PageContext) -> str:
+    """Render a lightweight HTML meta-refresh stub for a renamed command."""
+    target_url = canonical_url(target_slug, ctx)
+    return (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '  <meta charset="utf-8">\n'
+        f"  <title>Redirecting to /commands/{target_slug}/ · Shipmates</title>\n"
+        f'  <meta http-equiv="refresh" content="0; url=../{target_slug}/">\n'
+        f'  <link rel="canonical" href="{target_url}">\n'
+        '  <meta name="robots" content="noindex">\n'
+        "</head>\n"
+        "<body>\n"
+        f'  <p>Redirecting to <a href="../{target_slug}/">/commands/{target_slug}/</a>...</p>\n'
+        "</body>\n"
+        "</html>\n"
+    )
+
+
 def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), tools: tuple = ()) -> dict:
     """Repo-relative posix path -> full file text. PURE: no I/O, no clock, no cwd.
 
@@ -3861,6 +3887,12 @@ def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), t
     failure in any command, agent, or tool leaves the tree completely untouched.
     """
     files = {page_path(cmd.slug): render_page(cmd, cmds, ctx) for cmd in cmds}
+    files.update(
+        {
+            page_path(old_slug): render_redirect_page(old_slug, target_slug, ctx)
+            for old_slug, target_slug in REDIRECTS.items()
+        }
+    )
     files.update(
         {agent_page_path(agent.slug): render_agent_page(agent, agents, ctx) for agent in agents}
     )
@@ -3874,6 +3906,7 @@ def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), t
 def expected_paths(cmds: tuple, agents: tuple, tools: tuple = ()) -> frozenset:
     return frozenset(
         [page_path(cmd.slug) for cmd in cmds]
+        + [page_path(old_slug) for old_slug in REDIRECTS]
         + [agent_page_path(agent.slug) for agent in agents]
         + [tool_page_path(tool.slug) for tool in tools]
     )
