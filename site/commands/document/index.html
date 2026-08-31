@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/document — draft from the code → fresh-reader test → fix drift · Shipmates</title>
-  <meta name="description" content="Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against…">
+  <meta name="description" content="Write docs from the code, then make a new reader complete them.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/document/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/document — draft from the code → fresh-reader test → fix drift">
-  <meta property="og:description" content="Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against…">
+  <meta property="og:description" content="Write docs from the code, then make a new reader complete them.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/document/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/document — draft from the code → fresh-reader test → fix drift">
-  <meta name="twitter:description" content="Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against…">
+  <meta name="twitter:description" content="Write docs from the code, then make a new reader complete them.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,50 +29,36 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/document",
-    "description": "Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against the repo and must reach the stated result. Loops until the docs are drift-free and completable.",
+    "description": "Write docs from the code, then make a new reader complete them.",
     "url": "https://saman-mb.github.io/shipmates/commands/document/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
-        "name": "Stage 0 — Scope: audience + doc type",
-        "text": "Decide who reads this and what they're trying to do, then the right Diátaxis type — tutorial (first success), how-to (accomplish one task), reference (accurate/exhaustive), or explanation (the why). Don't blend them. State the concrete \"reader can now do X\" success condition the fresh-reader test…",
-        "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-0"
+        "name": "Audience",
+        "text": "Who is this for, and what kind of doc is it — tutorial, how-to, reference, or explanation?. No specialist — you pick audience and type.",
+        "url": "https://saman-mb.github.io/shipmates/commands/document/#step-1"
       },
       {
         "@type": "HowToStep",
         "position": 2,
-        "name": "Stage 0.5 — Isolate",
-        "text": "The worktree exists before anything writes. First check git -C <repo> status --porcelain; if the caller's tree is dirty, stop and say so — a worktree cut from HEAD holds committed work only, so a draft written against it would silently miss whatever the caller hasn't committed yet; tell them to…",
-        "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-0-5"
+        "name": "Draft",
+        "text": "The writer works from the real signatures, flags, and outputs — not from memory. Always: technical-writer.",
+        "url": "https://saman-mb.github.io/shipmates/commands/document/#step-2"
       },
       {
         "@type": "HowToStep",
         "position": 3,
-        "name": "Stage 1 — Draft from the actual code",
-        "text": "Spawn the technical-writer to write/refresh the doc from the real source — read the actual signatures, flags, paths, config, and outputs first; every command, parameter, and result must match what the repo does today. Minimal (least that gets to done), scannable, consistent terminology, runnable…",
-        "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-1"
+        "name": "Test",
+        "text": "A fresh agent that did not draft the doc follows the steps against the repo and must reach the stated result. A fresh agent — not the writer, and not a named specialist.",
+        "url": "https://saman-mb.github.io/shipmates/commands/document/#step-3"
       },
       {
         "@type": "HowToStep",
         "position": 4,
-        "name": "Stage 2 — Fresh-reader test",
-        "text": "Spawn a fresh agent that gets ONLY the doc and the repo (not the writer's context). It plays the newcomer: follows the steps literally, runs the commands/examples as written, and reports where it got stuck, what didn't match reality, what was assumed-but-unstated, and whether it reached the Stage…",
-        "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-2"
-      },
-      {
-        "@type": "HowToStep",
-        "position": 5,
-        "name": "Stage 3 — Fix drift & loop",
-        "text": "Feed the reader's failures back to the technical-writer; fix the drift, the broken example, the missing prerequisite, the undefined jargon. Re-run the fresh-reader test (Stage 2) on the revised doc. Loop up to MAX_ROUNDS. If it still can't be completed after that, STOP and hand the user the doc…",
-        "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-3"
-      },
-      {
-        "@type": "HowToStep",
-        "position": 6,
-        "name": "Stage 4 — Deliver",
-        "text": "pr (the default): commit on the worktree branch — staging only the paths this run produced, never git add -A — push, and open the PR against BASE_BRANCH. Then gate on CI: poll gh pr checks until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling —…",
-        "url": "https://saman-mb.github.io/shipmates/commands/document/#stage-4"
+        "name": "Fix",
+        "text": "The writer repairs whatever the reader could not complete. Loop until they can finish without help. Always: technical-writer.",
+        "url": "https://saman-mb.github.io/shipmates/commands/document/#step-4"
       }
     ]
   }
@@ -115,7 +101,7 @@
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <h1 class="order-detail__title" id="order-title"><code>/document</code></h1>
           <p class="order-detail__tagline">draft from the code → fresh-reader test → fix drift</p>
-          <p class="order-detail__desc">Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against the repo and must reach the stated result. Loops until the docs are drift-free and completable.</p>
+          <p class="order-detail__desc">Write docs from the code, then make a new reader complete them.</p>
         </div>
       </div>
     </section>
@@ -148,189 +134,41 @@
       </div>
     </section>
 
-    <section class="section order-crew" id="crew-involved" aria-labelledby="crew-involved-title">
+    <section class="section order-process" id="process" aria-labelledby="process-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="crew-involved-title">Who&rsquo;s involved</h2>
-          <p class="section__lead">Roles referenced across the stages below.</p>
+          <h2 class="section__title" id="process-title">How it works</h2>
         </div>
-        <div class="order-crew__strip" role="list">
-          <a class="chip order-crew__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="stages" aria-labelledby="stages-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <p class="section__eyebrow">Step by step</p>
-          <h2 class="section__title" id="stages-title">The stages</h2>
-          <p class="section__lead">Six stages, in order. One is a hard gate — the run stops there until it passes.</p>
-        </div>
-        <ol class="order-stages" role="list">
-          <li class="order-stage" id="stage-0">
-            <span class="order-stage__num" aria-hidden="true">0</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Scope: audience + doc type</h3>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p>Decide <strong>who reads this and what they&#x27;re trying to do</strong>, then the right <strong>Diátaxis</strong> type — tutorial (first success), how-to (accomplish one task), reference (accurate/exhaustive), or explanation (the why). Don&#x27;t blend them. State the concrete &quot;reader can now do X&quot; success condition the fresh-reader test will check.</p>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-0-5">
-            <span class="order-stage__num" aria-hidden="true">0.5</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 0.5 — </span>Isolate</h3>
-                <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p>The worktree exists before anything writes. First check <code>git -C &lt;repo&gt; status --porcelain</code>; if the caller&#x27;s tree is dirty, <strong>stop and say so</strong> — a worktree cut from <code>HEAD</code> holds committed work only, so a draft written against it would silently miss whatever the caller hasn&#x27;t committed yet; tell them to commit or stash first. Otherwise, exactly as <code>/ship-issue</code>&#x27;s isolate stage, but cut from current <code>HEAD</code> rather than <code>origin/&lt;BASE_BRANCH&gt;</code>, so it contains the work being documented. Resolve <code>&lt;WORKTREE_DIR&gt;</code>, gitignore <code>.shipmates/worktrees/</code> when nested (once, idempotently), then:</p>
-                  <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
-git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
-                  <p>Drafting, the fresh-reader run and every fix round happen inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, skip this stage and work in the repo as it stands.</p>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-1">
-            <span class="order-stage__num" aria-hidden="true">1</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Draft from the actual code</h3>
-                <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>technical-writer</code></span></p>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p>Spawn the <code>technical-writer</code> to write/refresh the doc <strong>from the real source</strong> — read the actual signatures, flags, paths, config, and outputs first; every command, parameter, and result must match what the repo does <em>today</em>. Minimal (least that gets to done), scannable, consistent terminology, runnable examples, prerequisites stated up front. Writes in the repo&#x27;s format.</p>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-2">
-            <span class="order-stage__num" aria-hidden="true">2</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Fresh-reader test</h3>
-                <p class="order-stage__gate"><span class="visually-hidden">Gate: </span><span aria-hidden="true">⛔</span> HARD GATE</p>
-                <p class="order-stage__crew">Crew: (agent: fresh <code>READER</code>)</p>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p>Spawn a <strong>fresh</strong> agent that gets ONLY the doc and the repo (not the writer&#x27;s context). It plays the newcomer: follows the steps <strong>literally</strong>, runs the commands/examples as written, and reports where it got stuck, what didn&#x27;t match reality, what was assumed-but-unstated, and whether it reached the Stage 0 success condition. This is the real gate — a doc the reader can&#x27;t complete has failed, however polished.</p>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-3">
-            <span class="order-stage__num" aria-hidden="true">3</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Fix drift &amp; loop</h3>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p>Feed the reader&#x27;s failures back to the <code>technical-writer</code>; fix the drift, the broken example, the missing prerequisite, the undefined jargon. <strong>Re-run the fresh-reader test</strong> (Stage 2) on the revised doc. Loop up to <code>MAX_ROUNDS</code>. If it still can&#x27;t be completed after that, <strong>STOP</strong> and hand the user the doc plus the reader&#x27;s outstanding blockers — don&#x27;t ship docs that don&#x27;t work.</p>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-4">
-            <span class="order-stage__num" aria-hidden="true">4</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Deliver</h3>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p><code>pr</code> (the default): commit on the worktree branch — staging only the paths this run produced, never <code>git add -A</code> — push, and open the PR against <code>BASE_BRANCH</code>. Then gate on CI: poll <code>gh pr checks</code> until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling — bounded by <code>MAX_FIX_ROUNDS</code>, after which you stop and escalate to the user with the failing log rather than looping. Never advance a red PR. Stop there unless <code>MERGE_MODE=auto</code>, in which case merge the PR and remove <code>&lt;WORKTREE_DIR&gt;</code>; the manual default leaves the worktree in place with the PR open. <code>edit-in-place</code>: leave the finished docs in the working tree and report. Report: what was documented, the doc type, the fresh-reader&#x27;s final result (in its words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).</p>
-                </div>
-              </div>
-            </details>
-          </li>
+        <ol class="order-process__list" role="list">
+          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Audience</h3><p class="order-process__line">Who is this for, and what kind of doc is it — tutorial, how-to, reference, or explanation?</p><p class="order-process__crew order-process__crew--solo">No specialist — you pick audience and type.</p></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Draft</h3><p class="order-process__line">The writer works from the real signatures, flags, and outputs — not from memory.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Test</h3><p class="order-process__line">A fresh agent that did not draft the doc follows the steps against the repo and must reach the stated result.</p><p class="order-process__crew order-process__crew--solo">A fresh agent — not the writer, and not a named specialist.</p></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">Fix</h3><p class="order-process__line">The writer repairs whatever the reader could not complete. Loop until they can finish without help.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a></p></div></div></div></li>
         </ol>
-        <details class="order-advanced" id="advanced">
-          <summary class="order-advanced__summary">
-            <span class="order-advanced__title">Advanced</span>
-            <span class="order-advanced__hint">Cost discipline, bundling, model selection, shell safety, and other preamble</span>
-          </summary>
-          <div class="order-advanced__body">
-        <h3 id="cost-discipline">Cost discipline</h3>
-        <div class="order-prose">
-          <ul>
-            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
-            <li><strong>Complexity-Based Tiered Execution</strong>: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
-              <ul>
-                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but <strong>must still convene the mandatory PE+PO acceptance board</strong> on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.</li>
-                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. <strong>Must convene PE+PO</strong> (and SDET on the board when validation is non-trivial) — not main-agent review.</li>
-                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.</li>
-              </ul>
-            </li>
-            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
-            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
-          </ul>
-          <p>Produce docs that get a reader to <em>done</em>, gated on the one check that catches bad docs: a <strong>fresh agent with no prior context follows the instructions against the real repo and must reach the stated result</strong>. Docs that drift from the code or can&#x27;t be completed are rejected and fixed. The gate is &quot;a newcomer can actually follow this,&quot; not &quot;it reads well.&quot;</p>
-          <p>Input: what to document — a module, a feature, a public API/CLI, the README/getting-started, a migration guide, or the whole repo. If empty, ask what to document and for whom.</p>
-        </div>
-          </div>
-        </details>
-        <h3 id="runtime-input">Runtime input</h3>
-        <div class="order-prose">
-          <p><code>$ARGUMENTS</code> is the complete invocation text. Use it as the documentation target and audience hint; if empty, ask what to document and for whom.</p>
-        </div>
       </div>
     </section>
 
-    <section class="section" id="config" aria-labelledby="config-title">
+    <section class="section order-when" id="when-to-use" aria-labelledby="when-to-use-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="config-title">Config</h2>
+          <h2 class="section__title" id="when-to-use-title">When to use</h2>
         </div>
-        <div class="order-prose">
-          <ul>
-            <li><code>WRITER</code> = <code>technical-writer</code>. <code>READER</code> = a <strong>fresh</strong> <code>general-purpose</code> (or <code>technical-writer</code>) agent that has NOT seen the drafting — it only gets the doc + the repo, like a real newcomer.</li>
-            <li><code>MAX_ROUNDS</code> = <code>3</code> — the fresh-reader fix loop cap (Stage 3). <code>MODE</code> = <code>pr</code> (default) — a worktree, a branch and a CI-gated PR, reusing <code>/ship-issue</code>&#x27;s isolate stage and its commit-push-PR stage; your checkout is left exactly as you left it. <code>edit-in-place</code> writes the docs straight into the working tree — still available, but ask for it.</li>
-            <li>Under <code>MODE=pr</code>: <code>BASE_BRANCH</code> = the repo&#x27;s default branch — the PR&#x27;s target, not what the worktree is cut from (that&#x27;s current <code>HEAD</code>, so the draft has your latest work in it). <code>WORKTREE_LAYOUT</code> = <code>nested</code> (default) — <code>&lt;repo&gt;/.shipmates/worktrees/</code>; runtime guidance <strong><code>worktree-root=sibling</code></strong> selects legacy <code>../&lt;repo&gt;--…</code> paths. <code>WORKTREE_DIR</code> — <strong>nested:</strong> <code>&lt;repo&gt;/.shipmates/worktrees/docs-&lt;slug&gt;</code>; <strong>sibling:</strong> <code>../&lt;repo&gt;--docs-&lt;slug&gt;</code>. Re-runs reuse the same path. <code>BRANCH</code> = <code>docs/&lt;slug&gt;</code>. Default worktree cut is from local <strong><code>HEAD</code></strong>. Runtime guidance <strong><code>sync-base</code></strong> fetches and cuts from <code>origin/&lt;BASE_BRANCH&gt;</code> when remote-latest is required. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). <code>MAX_FIX_ROUNDS</code> = <code>2</code> — a separate cap, on CI-fix rounds at Stage 4, so a permanently-red check escalates to the user instead of looping. The orchestrator owns all git/gh; agents never push. If there is no remote for <code>gh</code> to open a PR against, stop at the branch and say so — never silently downgrade to writing in the tree.</li>
-            <li><strong>Audience, voice &amp; format</strong> = the repo&#x27;s own (README tone, docs framework, terminology). Match it; don&#x27;t invent a competing style.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="guardrails" aria-labelledby="guardrails-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <h2 class="section__title" id="guardrails-title">Guardrails</h2>
-        </div>
-        <div class="order-prose">
-          <ul>
-            <li><strong>The fresh-reader test is the gate</strong> — accuracy is proven by someone completing the task, not by the writer asserting it&#x27;s right. The reader must be a genuinely fresh agent, not the writer re-reading.</li>
-            <li><strong>Zero drift:</strong> every command/flag/path/output matches the current code — verified against source, not memory.</li>
-            <li>Right doc for the reader&#x27;s job (Diátaxis) — don&#x27;t turn a how-to into a history lesson.</li>
-            <li>Minimal and honest: cut filler; call out breaking changes and their upgrade path in changelogs/migration guides.</li>
-            <li>Bounded loop; escalate with the reader&#x27;s blockers rather than shipping docs that don&#x27;t work.</li>
-            <li><strong>Docs are source, so they get a branch.</strong> A doc rewrite lands as a diff a human can read, not as a surprise in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request, never an assumption.</li>
-            <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work.</li>
-            <li>If a role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the brief inlined and note it.</li>
-          </ul>
-        </div>
+        <ul class="order-when__list">
+          <li>User-facing docs drifted from what the repo actually does.</li>
+          <li>Agent-facing map of the repo? /onboard.</li>
+        </ul>
       </div>
     </section>
 
     <section class="section order-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="source-title">Where this lives</h2>
+          <h2 class="section__title" id="source-title">The skill</h2>
         </div>
-        <p>This page is generated from <code>commands/document.md</code>. The installer copies it to <code>~/.claude/skills/document/SKILL.md</code> for every project, or <code>.claude/skills/document/SKILL.md</code> inside a single repo.</p>
+        <p>The installer ships the full skill — stages, gates, config — from <code>commands/document.md</code>.</p>
         <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/document.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View commands/document.md on GitHub</span>
+          <span>Read the skill on GitHub</span>
         </a>
       </div>
     </section>
