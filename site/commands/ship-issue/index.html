@@ -238,6 +238,7 @@
             <li><strong><code>epic-base=&lt;branch&gt;</code></strong> — branch name must match <code>^[a-zA-Z0-9._/-]+$</code>; anything else, stop and ask. Set <code>BASE_BRANCH</code> to that branch. Worktree isolation (Stage 1) cuts from <code>origin/&lt;BASE_BRANCH&gt;</code>.</li>
             <li><strong><code>MERGE_MODE=auto</code></strong> — honour when present (typical for <code>/ship-epic</code> units). Still overridden to <code>manual</code> when <code>IS_SECURITY_SENSITIVE</code> is set at classification time.</li>
             <li><strong><code>epic-run</code></strong> — with <code>epic-base</code>, do not widen the bundle or scan the backlog (see Stage 0 step 3).</li>
+            <li><strong><code>epic-id=&lt;n&gt;</code></strong> — parent epic issue number when delegated from <code>/ship-epic</code>; required with <code>epic-run</code> so Stage 8 / final report can emit the <strong>Epic unit record</strong> for the orchestrator&#x27;s progress log.</li>
           </ul>
         </div>
         <ol class="order-stages" role="list">
@@ -485,7 +486,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
               <div class="order-prose">
                 <ul>
                   <li><strong>If <code>MERGE_MODE=manual</code></strong> (default): stop here. Post a completion comment on the PR (what shipped, how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge into <strong><code>BASE_BRANCH</code></strong>. Leave the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes the issues on this path: the repeated <code>Closes</code> keywords in the PR body do that when a human merges, so name every issue the PR will close in the completion comment. <strong>Tick the epic checklist</strong> when any shipped story belongs to an epic: for each issue in <code>&lt;issues&gt;</code>, if its body contains <code>Part of #&lt;epic&gt;</code>, edit the epic body — replace <code>- [ ] #&lt;story&gt;</code> with <code>- [x] #&lt;story&gt;</code> for that story (via <code>--body-file</code>; see <strong>Shell safety</strong>). This keeps <code>/ship-epic</code> and manual <code>/ship-issue next epic</code> runs consistent without requiring <code>MERGE_MODE=auto</code>.</li>
-                  <li><strong>If <code>MERGE_MODE=auto</code></strong>: immediately before merging into <strong><code>BASE_BRANCH</code></strong>, capture current PR head and bind merge to it: <code>HEAD_SHA=$(gh pr view &lt;PR#&gt; --json headRefOid -q .headRefOid)</code> followed by <code>(cd &lt;WORKTREE_DIR&gt; &amp;&amp; gh pr merge &lt;BRANCH&gt; --squash --delete-branch --match-head-commit &quot;$HEAD_SHA&quot;)</code>, then confirm all issues auto-closed (for each issue in <code>&lt;issues&gt;</code>: <code>gh issue close &lt;N&gt;</code> if not already closed), tick the epic checklist box if any, remove the worktree (<code>git -C &lt;repo&gt; worktree remove &lt;WORKTREE_DIR&gt;</code>), and post the completion comment.</li>
+                  <li><strong>If <code>MERGE_MODE=auto</code></strong>: immediately before merging into <strong><code>BASE_BRANCH</code></strong>, capture current PR head and bind merge to it: <code>HEAD_SHA=$(gh pr view &lt;PR#&gt; --json headRefOid -q .headRefOid)</code> followed by <code>(cd &lt;WORKTREE_DIR&gt; &amp;&amp; gh pr merge &lt;BRANCH&gt; --squash --delete-branch --match-head-commit &quot;$HEAD_SHA&quot;)</code>, then confirm all issues auto-closed (for each issue in <code>&lt;issues&gt;</code>: <code>gh issue close &lt;N&gt;</code> if not already closed), tick the epic checklist box if any, remove the worktree (<code>git -C &lt;repo&gt; worktree remove &lt;WORKTREE_DIR&gt;</code>), and post the completion comment. When runtime guidance includes <strong><code>epic-run</code></strong> and <strong><code>epic-id=&lt;epic&gt;</code></strong>, the completion comment must also carry a one-line <strong>delivered</strong> summary and <strong>reviews</strong> line (PO/PE/scaled verdicts from Stage 5) so the parent epic progress log stays current if the unit merged manually.</li>
                 </ul>
               </div>
             </div>
@@ -494,6 +495,18 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         <h3 id="final-report-to-the-user">Final report to the user</h3>
         <div class="order-prose">
           <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now.</p>
+          <p><strong>Epic unit record</strong> — when runtime guidance includes <strong><code>epic-run</code></strong> and <strong><code>epic-id=&lt;epic&gt;</code></strong>, end the final report with this machine-readable block (orchestrator parses it into the epic progress log):</p>
+          <pre class="order-code" tabindex="0"><code>EPIC_UNIT_RECORD:
+EPIC_ID: &lt;epic&gt;
+STORIES: &lt;space-separated issue numbers from &lt;issues&gt;&gt;
+PR: &lt;PR URL&gt;
+MERGE: auto|manual
+HEAD: &lt;merge commit SHA when auto; PR head SHA when manual&gt;
+DELIVERED: &lt;one plain sentence — what this unit shipped, no jargon&gt;
+REVIEWS: &lt;PO verdict&gt;; &lt;PE verdict&gt;; &lt;scaled seats with verdicts or &quot;gated: role (reason)&quot;&gt;
+CI: &lt;green checks URL&gt;
+FIX_ROUNDS: &lt;n&gt;</code></pre>
+          <p>Keep <strong>DELIVERED</strong> and <strong>REVIEWS</strong> scannable — the captain reads them on the epic issue, not this transcript.</p>
         </div>
         <h3 id="runtime-input">Runtime input</h3>
         <div class="order-prose">

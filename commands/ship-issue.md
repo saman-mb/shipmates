@@ -149,6 +149,8 @@ list) for:
 - **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Still overridden to
   `manual` when `IS_SECURITY_SENSITIVE` is set at classification time.
 - **`epic-run`** — with `epic-base`, do not widen the bundle or scan the backlog (see Stage 0 step 3).
+- **`epic-id=<n>`** — parent epic issue number when delegated from `/ship-epic`; required with `epic-run`
+  so Stage 8 / final report can emit the **Epic unit record** for the orchestrator's progress log.
 
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
@@ -421,7 +423,9 @@ Decision:
   `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch --match-head-commit "$HEAD_SHA")`, then confirm all issues
   auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
   epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
-  and post the completion comment.
+  and post the completion comment. When runtime guidance includes **`epic-run`** and **`epic-id=<epic>`**,
+  the completion comment must also carry a one-line **delivered** summary and **reviews** line (PO/PE/scaled
+  verdicts from Stage 5) so the parent epic progress log stays current if the unit merged manually.
 
 ## Final report to the user
 
@@ -429,6 +433,24 @@ One concise summary: PR link (and merge state), commit(s), which specialists rev
 verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now.
+
+**Epic unit record** — when runtime guidance includes **`epic-run`** and **`epic-id=<epic>`**, end the
+final report with this machine-readable block (orchestrator parses it into the epic progress log):
+
+```
+EPIC_UNIT_RECORD:
+EPIC_ID: <epic>
+STORIES: <space-separated issue numbers from <issues>>
+PR: <PR URL>
+MERGE: auto|manual
+HEAD: <merge commit SHA when auto; PR head SHA when manual>
+DELIVERED: <one plain sentence — what this unit shipped, no jargon>
+REVIEWS: <PO verdict>; <PE verdict>; <scaled seats with verdicts or "gated: role (reason)">
+CI: <green checks URL>
+FIX_ROUNDS: <n>
+```
+
+Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the epic issue, not this transcript.
 
 ---
 
