@@ -117,16 +117,16 @@ shipmates install --harness all --dir /path/to/project</code></pre>
     <section class="section" id="install-tools" aria-labelledby="install-tools-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="install-tools-title">3. Add a tool (optional)</h2>
-          <p class="section__lead">Tools are off by default. Run <code>install</code> in a terminal and it asks which you&#x27;d like; name them up front with <code>--with-tools</code> to skip the prompt.</p>
+          <h2 class="section__title" id="install-tools-title">3. Tools</h2>
+          <p class="section__lead">A plain <code>install</code> ships the full toolbox. Pass <code>--with-tools none</code> for crew + commands only, or name a subset.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code              # prompts: pick tools, or Enter for none
-shipmates install --harness claude-code --with-tools termgif
-shipmates install --harness opencode --with-tools all
-shipmates install --harness codex --with-tools none  # explicit opt-out, no prompt</code></pre>
+          <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code              # crew + commands + all tools
+shipmates install --harness claude-code --with-tools termgif,scrub
+shipmates install --harness opencode --with-tools all   # same as omitting the flag
+shipmates install --harness codex --with-tools none     # explicit crew-only</code></pre>
           <p>A <strong>tool</strong> is the third kind of shipmates resource, alongside the crew and the commands. Unlike a command, a tool is never invoked with a slash — the crew reach for it on their own when the intent of your prompt calls for it. <code>termgif</code>, the first tool, renders a polished animated terminal demo GIF of a workflow run from a small JSON spec — see its <a href="../../tools/termgif/">tool page</a>.</p>
-          <p>When you run <code>install</code> interactively without <code>--with-tools</code>, it lists the available tools and lets you pick; a non-interactive run (CI, a pipe, a script) installs none. Pass the flag to be explicit: one or more tool names comma-separated, <code>all</code>, or <code>none</code>. Each tool maps to the harness&#x27;s own native tool surface: a native code tool on opencode (<code>.opencode/tools/&lt;name&gt;.ts</code>), and an agent-invoked Agent Skill in the shared <code>.agents/skills/</code> tree everywhere else — on Claude Code pinned agent-only with <code>user-invocable: false</code>, so it never shows up as a slash command.</p>
+          <p>Omitting <code>--with-tools</code> installs every bundled tool. Pass <code>none</code> for a minimal crew-only install, <code>all</code> explicitly (same as the default), or a comma-separated list for a subset. Each tool maps to the harness&#x27;s own native tool surface: a native code tool on opencode (<code>.opencode/tools/&lt;name&gt;.ts</code>), and an agent-invoked Agent Skill in the shared <code>.agents/skills/</code> tree everywhere else — on Claude Code pinned agent-only with <code>user-invocable: false</code>, so it never shows up as a slash command.</p>
         </div>
       </div>
     </section>
@@ -177,7 +177,7 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
               <tr><td><code>--global</code></td><td>yes</td><td>Install into the global home directory.</td></tr>
               <tr><td><code>--local</code></td><td>no</td><td>Install into the current directory.</td></tr>
               <tr><td><code>--dir PATH</code></td><td>none</td><td>Install into an explicit target directory. Cannot be combined with <code>--global</code> or <code>--local</code>.</td></tr>
-              <tr><td><code>--with-tools NAMES</code></td><td>prompt / none</td><td>Which agent-invoked tools to install: names (comma-separated), <code>all</code>, or <code>none</code>. Omit it and a terminal prompts you to pick; omit it non-interactively and none are installed.</td></tr>
+              <tr><td><code>--with-tools NAMES</code></td><td>all bundled tools</td><td>Which agent-invoked tools to install: names (comma-separated), <code>all</code> (same as omitting the flag), or <code>none</code> for crew-only.</td></tr>
               <tr><td><code>--no-migrate</code></td><td>no</td><td>Leave superseded legacy command files in place during install.</td></tr>
               <tr><td><code>--force</code></td><td>no</td><td>Explicitly replace an existing colliding file, including one not claimed by a receipt.</td></tr>
             </tbody>

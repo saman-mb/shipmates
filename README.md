@@ -119,7 +119,7 @@ implicitly, when the intent of your prompt calls for it — never typed, never a
 | [`domaincheck`](https://saman-mb.github.io/shipmates/tools/domaincheck/) | Checks domain availability via RDAP — registry-authoritative verdicts, TLD batch sweeps, optional registrar detail |
 | [`gh`](https://saman-mb.github.io/shipmates/tools/gh/) | Structured GitHub CLI wrapper — validated issue/PR ops, body-file hygiene, JSON results (requires `gh` installed and authenticated) |
 
-Tools are **opt-in** — a plain install ships only the crew and the commands. Add them with
+Tools ship with a plain **`shipmates install`**. Use `--with-tools none` for crew + commands only, or `--with-tools <name>` for a subset. Add them with
 `--with-tools` (below), or run `install` in a terminal and pick from the list. Each tool maps to its
 harness's own native tool surface: a genuine code tool on opencode (`.opencode/tools/<name>.ts`), and
 an agent-invoked Agent Skill everywhere else — on Claude Code pinned agent-only with
@@ -160,13 +160,14 @@ shipmates install --harness claude-code --local
 shipmates install --harness claude-code --dir /path/to/project
 ```
 
-Tools are off by default. Run `install` in a terminal and it asks which you'd like; name them
-up front with `--with-tools` to skip the prompt (or `none` to opt out non-interactively):
+Tools ship with a plain install. Pass `--with-tools none` for crew + commands only,
+or name specific tools to install a subset:
 
 ```bash
-shipmates install --harness claude-code              # prompts: pick tools, or Enter for none
-shipmates install --harness claude-code --with-tools termgif
-shipmates install --harness opencode --with-tools all
+shipmates install --harness claude-code              # crew + commands + all tools
+shipmates install --harness claude-code --with-tools termgif,scrub  # subset
+shipmates install --harness claude-code --with-tools none  # crew-only
+shipmates install --harness opencode --with-tools all      # same as omitting the flag
 ```
 
 Which harnesses can you install? `shipmates targets` lists them — today all of:

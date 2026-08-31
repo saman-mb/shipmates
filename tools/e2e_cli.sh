@@ -216,6 +216,11 @@ mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none >/dev/null 2>&1
 assert_file_count "$PROJ" 29 "claude-code no-tools: 28 files + receipt"
 
+PROJ="$TMPDIR/proj-counts-default"
+mkdir -p "$PROJ"
+cmd_run "$BIN" install --harness claude-code --dir "$PROJ" >/dev/null 2>&1
+assert_file_count "$PROJ" 51 "claude-code default: all tools (51 files)"
+
 PROJ="$TMPDIR/proj-counts-tools"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools all >/dev/null 2>&1

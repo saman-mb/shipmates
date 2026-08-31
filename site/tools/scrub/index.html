@@ -136,7 +136,7 @@ AFTER  (summary on stderr)
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools scrub</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
+          <p>Tools ship with a plain install; refresh one with shipmates install --harness &lt;name&gt; --with-tools scrub. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
           <p>Run it on a file with <code>python3 scrub.py --in log.txt --out clean.txt</code>, or pipe text through it stdin-to-stdout with <code>cat log.txt | python3 scrub.py</code>. The cleaned text goes to <code>--out</code> or stdout; a per-category redaction summary goes to stderr so it never pollutes the output. Exit code is <code>0</code> on success and <code>2</code> on a usage error.</p>
         </div>
       </div>
