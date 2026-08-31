@@ -26,6 +26,6 @@ target=claude-code
 .claude/skills/refactor/SKILL.md 741abe6ccab38ae7f43c29415da695c572b1cd8825e22249ea2890796055867c
 .claude/skills/release/SKILL.md d3189db27e71e0d2a82909449f0dbda44c5777b332de1d52cfb23f9220f61d87
 .claude/skills/report-bug/SKILL.md edbb025edf262d443c00fd850f4fe1a17029d0d839fe96f2452cf44c3412aa35
-.claude/skills/ship-epic/SKILL.md 8aa4072f8bcac0e8f21b2f6260bb0541c285d407763aea6632de86d3b1d5ab96
+.claude/skills/ship-epic/SKILL.md cf59ebcd9ca2834d68a644052137fff5711679f4e8f25a0635fcfa4e9fd4c901
 .claude/skills/ship-issue/SKILL.md b7f42ed2ffa798a3146cc7fb00cfc575c4384705b8fc735f4fd6689c7f552bc8
 .claude/skills/spike/SKILL.md 641cf38bcd5133be96edd94c40dc43c7ac34f339f54eef2d76b16ab91724a281

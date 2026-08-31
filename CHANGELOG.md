@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-08-31
+
+### Changed
+
+- `/ship-epic` always opens a captain-reviewable epic PR; removes `epic merge auto`;
+  reconstructs integration when units mis-targeted the default branch; crew-complete
+  still leaves the epic PR open for human merge (#318).
+
 ## [0.1.8] - 2026-08-31
 
 ### Changed

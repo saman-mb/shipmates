@@ -36,35 +36,35 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Stage 0 — Intake (orchestrator)",
-        "text": "Parse runtime input: the first numeric token (or URL) is <epic>; remaining tokens are <guidance> (resume, dry run, epic close auto, epic merge auto, batch off, unit merge manual, retry-story <n>, etc.). Guidance batch off sets EPIC_BATCH=off; epic close auto sets EPIC_CLOSE_MODE=auto; epic merge…",
+        "text": "Parse runtime input: the first numeric token (or URL) is <epic>; remaining tokens are <guidance> (resume, dry run, epic close auto, batch off, unit merge manual, retry-story <n>, etc.). Guidance batch off sets EPIC_BATCH=off; epic close auto sets EPIC_CLOSE_MODE=auto; unit merge manual sets…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-0"
       },
       {
         "@type": "HowToStep",
         "position": 2,
         "name": "Stage 0.5 — Epic integration branch (orchestrator)",
-        "text": "Create or resume the integration line every unit lands on. Skip branch/PR mutation in DRY_RUN (print the planned names in the dry-run summary).",
+        "text": "Create or resume the integration line every unit lands on. Always run after Stage 0 (even when <pending> is empty or every story is <landed>) — the captain must always get epic PR <EPIC_PR>. Skip branch/PR mutation in DRY_RUN (print the planned names in the dry-run summary).",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-0-5"
       },
       {
         "@type": "HowToStep",
         "position": 3,
         "name": "Stage 1 — Story graph (orchestrator)",
-        "text": "For each story still in <pending> (after Stage 0 reconciliation):",
+        "text": "Skip when Stage 0.5 step 7 sent the run to Stage 4.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-1"
       },
       {
         "@type": "HowToStep",
         "position": 4,
         "name": "Stage 1.5 — Epic shipping plan",
-        "text": "Spawn one architect with: the epic title/body, every pending story's title + body + labels (truncate bodies to acceptance-criteria sections when huge), Stage 1 dependency order, repo README / CLAUDE.md, and <done>. Ask for structured data only:",
+        "text": "Skip when Stage 0.5 step 7 sent the run to Stage 4.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-1-5"
       },
       {
         "@type": "HowToStep",
         "position": 5,
         "name": "Stage 2 — Loop (orchestrator)",
-        "text": "Walk <units> in order — one /ship-issue delegation per unit (not one per story unless the unit is a singleton).",
+        "text": "Skip when Stage 0.5 step 7 sent the run to Stage 4.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-2"
       },
       {
@@ -155,7 +155,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/ship-epic &lt;epic-issue-number&gt; [resume | dry-run | epic close auto | epic merge auto | batch off | unit merge manual | retry-story &lt;n&gt;]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/ship-epic &lt;epic-issue-number&gt; [resume | dry-run | epic close auto | batch off | unit merge manual | retry-story &lt;n&gt;]</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -195,6 +195,7 @@
             <li><strong>Value-gated batching</strong> — never batch to save tokens alone. Gate stories, <code>complex</code> stories, <code>IS_ARCH_SIGNIFICANT</code> / <code>IS_SECURITY_SENSITIVE</code> stories, and unrelated areas always ship as <strong>singleton units</strong>. CI and acceptance still run <strong>per unit</strong>; nothing ships without green checks.</li>
             <li><strong>Captain-facing digest</strong> — maintain one living <strong>Epic progress</strong> comment on epic <code>&lt;epic&gt;</code> (what shipped, board verdicts, unit PR links) and keep epic PR <code>&lt;EPIC_PR&gt;</code> notes current with <strong>what the epic delivers</strong> and a <strong>quick review guide</strong> — so the captain reviews one integration artifact without hunting scattered unit threads.</li>
             <li><strong>Land-state skip gates</strong> — treat checklist ticks, closed stories, <code>&lt;epic-log&gt;</code> / progress-comment merged units, and merged PRs into <code>&lt;EPIC_BRANCH&gt;</code> as <strong>done</strong> before re-delegating. Reconcile drift (unchecked box but already landed) by backfilling ticks — never pay for duplicate unit PRs.</li>
+            <li><strong>Captain always reviews the epic PR</strong> — a human <strong>always</strong> merges epic PR <code>&lt;EPIC_PR&gt;</code> into <code>MAIN_BRANCH</code>. This command never auto-merges the epic PR. Standalone <code>/ship-issue</code> may still use <code>MERGE_MODE=auto</code> for smaller, single-issue PRs.</li>
           </ol>
           <p>Hard limits that <strong>pause the epic loop</strong> (end the turn; post <code>/ship-epic &lt;epic&gt; resume</code>):</p>
           <div class="order-table" tabindex="0">
@@ -228,13 +229,12 @@
             <div class="order-stage__body">
               <div class="order-prose">
                 <ol>
-                  <li>Parse runtime input: the <strong>first numeric token</strong> (or URL) is <code>&lt;epic&gt;</code>; remaining tokens are <code>&lt;guidance&gt;</code> (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, <code>epic merge auto</code>, <code>batch off</code>, <code>unit merge manual</code>, <code>retry-story &lt;n&gt;</code>, etc.). Guidance <code>batch off</code> sets <code>EPIC_BATCH=off</code>; <code>epic close auto</code> sets <code>EPIC_CLOSE_MODE=auto</code>; <code>epic merge auto</code> sets <code>EPIC_MERGE_MODE=auto</code>; <code>unit merge manual</code> sets <code>UNIT_MERGE_MODE=manual</code>.</li>
+                  <li>Parse runtime input: the <strong>first numeric token</strong> (or URL) is <code>&lt;epic&gt;</code>; remaining tokens are <code>&lt;guidance&gt;</code> (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, <code>batch off</code>, <code>unit merge manual</code>, <code>retry-story &lt;n&gt;</code>, etc.). Guidance <code>batch off</code> sets <code>EPIC_BATCH=off</code>; <code>epic close auto</code> sets <code>EPIC_CLOSE_MODE=auto</code>; <code>unit merge manual</code> sets <code>UNIT_MERGE_MODE=manual</code>. If guidance includes <code>epic merge auto</code>, <strong>stop</strong> — epic PRs always require captain review (see Config).</li>
                   <li>Fetch the epic: <code>gh issue view &lt;epic&gt; --json number,title,body,labels,state,url</code>. Confirm it is open and labelled <code>epic</code> (or has a story checklist in its body — if neither, stop and ask).</li>
-                  <li>Parse the epic body for checklist lines matching <code>- [ ] #&lt;n&gt;</code> (unchecked) and <code>- [x] #&lt;n&gt;</code> (done). Let <code>&lt;pending&gt;</code> = unchecked story numbers in checklist order; let <code>&lt;done&gt;</code> = already ticked.</li>
+                  <li>Parse the epic body for checklist lines matching <code>- [ ] #&lt;n&gt;</code> (unchecked) and <code>- [x] #&lt;n&gt;</code> (done). Let <code>&lt;pending&gt;</code> = unchecked story numbers in checklist order; let <code>&lt;done&gt;</code> = already ticked. Let <code>&lt;all-stories&gt;</code> = every checklist story number (done + pending).</li>
                   <li><strong>Load progress state</strong> — scan epic <code>&lt;epic&gt;</code> comments for <code>&lt;!-- shipmates-epic-progress --&gt;</code> (<strong>always</strong>, not only when guidance includes <code>resume</code>). When found, parse machine-readable lines <code>EPIC_BRANCH:</code>, <code>EPIC_PR:</code>, <code>MAIN_BRANCH:</code>, and optional <code>SHIPPED_STORIES:</code> (space-separated issue numbers). Reload <code>&lt;epic-log&gt;</code> from the <strong>Shipped units</strong> section. Initialize <code>&lt;epic-capsule&gt;</code> from the same comment when present — otherwise empty. Guidance <code>resume</code> is a captain hint; idempotent re-entry must work on a bare <code>/ship-epic &lt;epic&gt;</code> whenever this comment exists.</li>
-                  <li><strong>Reconcile landed stories</strong> — build <code>&lt;landed&gt;</code> = stories already in <code>&lt;done&gt;</code>, plus every number in <code>SHIPPED_STORIES:</code> and every <code>#&lt;n&gt;</code> referenced in <code>&lt;epic-log&gt;</code> unit bullets marked merged. Also scan merged PRs into <code>&lt;EPIC_BRANCH&gt;</code> when <code>EPIC_BRANCH</code> is known (<code>gh pr list --base &lt;EPIC_BRANCH&gt; --state merged --json number,title,body</code>) and add any story whose <code>Closes #&lt;n&gt;</code> appears in the PR body. Remove <code>&lt;landed&gt;</code> from <code>&lt;pending&gt;</code>. For each story still <code>- [ ]</code> on the epic body but in <code>&lt;landed&gt;</code>, <strong>backfill now</strong> (Stage 3 tick) and note <strong>checklist recovery</strong> in the report — do not wait for a successful unit. Stories in <code>&lt;landed&gt;</code> are <strong>never</strong> re-delegated unless guidance includes <code>retry-story &lt;n&gt;</code> for that number.</li>
-                  <li>If <code>&lt;pending&gt;</code> is empty after reconciliation, go to <strong>Stage 4 — Epic closure</strong>.</li>
-                  <li>If <code>DRY_RUN</code>, print <code>&lt;epic&gt;</code> title, <code>&lt;done&gt;</code>, <code>&lt;landed&gt;</code>, <code>&lt;pending&gt;</code>, and continue through Stage 1.5 for the unit plan — then stop before Stage 2 (Stage 0.5 prints the planned <code>&lt;EPIC_BRANCH&gt;</code> only; no branch or PR is created).</li>
+                  <li><strong>Reconcile landed stories</strong> — build <code>&lt;landed&gt;</code> = stories already in <code>&lt;done&gt;</code>, plus every number in <code>SHIPPED_STORIES:</code> and every <code>#&lt;n&gt;</code> referenced in <code>&lt;epic-log&gt;</code> unit bullets marked merged. Also scan merged PRs into <code>&lt;EPIC_BRANCH&gt;</code> when <code>EPIC_BRANCH</code> is known (<code>gh pr list --base &lt;EPIC_BRANCH&gt; --state merged --json number,title,body</code>) and add any story whose <code>Closes #&lt;n&gt;</code> appears in the PR body. <strong>Mis-targeted units</strong> — also scan merged PRs with base <code>MAIN_BRANCH</code> whose body contains <code>Closes #&lt;n&gt;</code> for any <code>&lt;n&gt;</code> in <code>&lt;all-stories&gt;</code> (or <code>Part of #&lt;epic&gt;</code>). Record each in <code>&lt;mis-merged-to-main&gt;</code> with PR URL and merge SHA — these landed on the default branch instead of <code>&lt;EPIC_BRANCH&gt;</code> and trigger reconstruction in Stage 0.5. Add their story numbers to <code>&lt;landed&gt;</code>. Remove <code>&lt;landed&gt;</code> from <code>&lt;pending&gt;</code>. For each story still <code>- [ ]</code> on the epic body but in <code>&lt;landed&gt;</code>, <strong>backfill now</strong> (Stage 3 tick) and note <strong>checklist recovery</strong> in the report — do not wait for a successful unit. Stories in <code>&lt;landed&gt;</code> are <strong>never</strong> re-delegated unless guidance includes <code>retry-story &lt;n&gt;</code> for that number.</li>
+                  <li>If <code>DRY_RUN</code>, print <code>&lt;epic&gt;</code> title, <code>&lt;done&gt;</code>, <code>&lt;landed&gt;</code>, <code>&lt;pending&gt;</code>, <code>&lt;mis-merged-to-main&gt;</code>, and continue through Stage 1.5 for the unit plan — then stop before Stage 2 (Stage 0.5 prints the planned <code>&lt;EPIC_BRANCH&gt;</code> only; no branch or PR is created).</li>
                 </ol>
               </div>
             </div>
@@ -244,26 +244,33 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 0.5 — </span>Epic integration branch (orchestrator)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Create or resume the <strong>integration line</strong> every unit lands on. Skip branch/PR mutation in <code>DRY_RUN</code> (print the planned names in the dry-run summary).</p>
+                <p>Create or resume the <strong>integration line</strong> every unit lands on. <strong>Always run</strong> after Stage 0 (even when <code>&lt;pending&gt;</code> is empty or every story is <code>&lt;landed&gt;</code>) — the captain must always get epic PR <code>&lt;EPIC_PR&gt;</code>. Skip branch/PR mutation in <code>DRY_RUN</code> (print the planned names in the dry-run summary).</p>
                 <ol>
                   <li>Set <code>MAIN_BRANCH</code> from the repo default (see Config).</li>
                   <li><strong>Reuse integration state</strong> — when Stage 0 loaded <code>EPIC_BRANCH:</code> and <code>EPIC_PR:</code> from the progress comment, reuse them when <code>git ls-remote origin &lt;EPIC_BRANCH&gt;</code> succeeds. If the branch is missing, recreate per step 3 and note recovery in the report. Do <strong>not</strong> open a second epic PR when <code>&lt;EPIC_PR&gt;</code> is already set — refresh its body in Stage 3.5 instead.</li>
+                  <li><strong>Reconstruct mis-targeted work</strong> — when <code>&lt;mis-merged-to-main&gt;</code> is non-empty and <code>&lt;EPIC_BRANCH&gt;</code> is unset or equals a fresh branch with no unit commits:
+                    <p>a. Create or reset <code>&lt;EPIC_BRANCH&gt;</code> from <code>MAIN_BRANCH</code> at the merge-base before the first mis-merge.</p>
+                    <p>b. Cherry-pick (or merge) each mis-merged unit&#x27;s commits onto <code>&lt;EPIC_BRANCH&gt;</code> in checklist order. Prefer the recorded merge SHAs from <code>&lt;mis-merged-to-main&gt;</code>.</p>
+                    <p>c. Push <code>&lt;EPIC_BRANCH&gt;</code> and note <strong>integration recovery</strong> in the report — the epic PR will show the combined in-repo diff the captain should have reviewed.</p>
+                    <p>When <code>&lt;landed&gt;</code> is non-empty but <code>&lt;mis-merged-to-main&gt;</code> is empty and <code>&lt;EPIC_BRANCH&gt;</code> already contains those commits, skip reconstruction.</p>
+                  </li>
                   <li><strong>Create</strong> (when <code>&lt;EPIC_BRANCH&gt;</code> is unset and branch does not already exist on the remote):
                     <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
 git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_BRANCH&gt;</code></pre>
-                    <p>(Or branch locally and push — same result: <code>&lt;EPIC_BRANCH&gt;</code> tracks current <code>MAIN_BRANCH</code>.)</p>
+                    <p>(Or branch locally and push — same result: <code>&lt;EPIC_BRANCH&gt;</code> tracks current <code>MAIN_BRANCH</code> when no in-repo work has landed yet.)</p>
                   </li>
-                  <li><strong>Open epic PR</strong> — if <code>&lt;EPIC_PR&gt;</code> is unset, open one PR with base <code>MAIN_BRANCH</code>, head <code>&lt;EPIC_BRANCH&gt;</code>. Title/body via <code>--body-file</code> (see <strong>Shell safety</strong>). Structure the body for fast captain review:
+                  <li><strong>Open epic PR</strong> — if <code>&lt;EPIC_PR&gt;</code> is unset, open one PR with base <code>MAIN_BRANCH</code>, head <code>&lt;EPIC_BRANCH&gt;</code>. <strong>Never skip</strong> because <code>&lt;pending&gt;</code> is empty or work is already on <code>MAIN_BRANCH</code> — reconstruction (step 3) ensures the epic PR head reflects landed in-repo slices. Title/body via <code>--body-file</code> (see <strong>Shell safety</strong>). Structure the body for fast captain review:
                     <ul>
                       <li><strong>What this epic delivers</strong> — one plain-language paragraph: epic goal plus which story numbers land here (from the epic issue title/body; no jargon).</li>
-                      <li><strong>Quick review guide</strong> — bullets: review once at epic completion (each unit already passed mandatory PE+PO on its PR head); start with the story checklist; scan the combined diff for cross-story interactions; trust green CI on this head; do not merge until every story is ticked.</li>
+                      <li><strong>Quick review guide</strong> — bullets: review once at epic completion (each unit already passed mandatory PE+PO on its PR head); start with the story checklist; scan the combined diff for cross-story interactions; trust green CI on this head; <strong>the captain merges this PR</strong> — it is never auto-merged.</li>
                       <li><strong>Stories</strong> — copy unchecked checklist lines from the epic body; refresh after each unit in Stage 3.5.</li>
-                      <li><strong>Shipped so far</strong> — placeholder until the first unit lands; then copy from <code>&lt;epic-log&gt;</code>.</li>
-                      <li><strong>Integration</strong> — epic issue link, integration branch name, and explicit note: merge only when the epic is complete.</li>
+                      <li><strong>Shipped so far</strong> — placeholder until the first unit lands; then copy from <code>&lt;epic-log&gt;</code>. When <code>&lt;mis-merged-to-main&gt;</code> was reconstructed, note which unit PRs were recovered from <code>MAIN_BRANCH</code>.</li>
+                      <li><strong>Integration</strong> — epic issue link, integration branch name, and explicit note: <strong>human review required</strong> — merge only when satisfied with the epic scope.</li>
                     </ul>
                     <p>Record <code>&lt;EPIC_PR&gt;</code>.</p>
                   </li>
                   <li><strong>Persist state</strong> — post or <strong>edit</strong> the single <code>&lt;!-- shipmates-epic-progress --&gt;</code> comment on epic <code>&lt;epic&gt;</code> (see <strong>Stage 3.5</strong>). Include machine-readable lines <code>EPIC_BRANCH:</code>, <code>EPIC_PR:</code>, <code>MAIN_BRANCH:</code>, and <code>SHIPPED_STORIES:</code> (space-separated numbers from <code>&lt;landed&gt;</code>) so any re-run reloads idempotently. Update after every unit and every pause — one living comment, not a new thread per unit.</li>
+                  <li><strong>Empty pending shortcut</strong> — when <code>&lt;pending&gt;</code> is empty after Stage 0 reconciliation, skip Stages 1–2 and go directly to <strong>Stage 4</strong> (full closure or crew-complete). <code>&lt;EPIC_PR&gt;</code> must already be set from steps above.</li>
                 </ol>
               </div>
             </div>
@@ -273,6 +280,7 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Story graph (orchestrator)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
+                <p>Skip when Stage 0.5 step 7 sent the run to Stage 4.</p>
                 <p>For each story still in <code>&lt;pending&gt;</code> (after Stage 0 reconciliation):</p>
                 <ol>
                   <li>Fetch <code>gh issue view &lt;n&gt; --json number,title,body,labels,state,url</code>.</li>
@@ -292,6 +300,7 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
             <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>architect</code></span> (once)</p>
             <div class="order-stage__body">
               <div class="order-prose">
+                <p>Skip when Stage 0.5 step 7 sent the run to Stage 4.</p>
                 <p>Spawn <strong>one</strong> <code>architect</code> with: the epic title/body, every pending story&#x27;s title + body + labels (truncate bodies to acceptance-criteria sections when huge), Stage 1 dependency order, repo <code>README</code> / CLAUDE.md, and <code>&lt;done&gt;</code>. Ask for <strong>structured data only</strong>:</p>
                 <ul>
                   <li>Per story: <code>complexity</code> (<code>trivial</code>, <code>standard</code>, or <code>complex</code>), domain flags (same vocabulary as <code>/ship-issue</code> Stage 0), <code>blocker_class</code> (<code>none</code>, <code>full</code>, or <code>partial</code> when externally blocked), and one-line rationale.</li>
@@ -312,11 +321,12 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Loop (orchestrator)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
+                <p>Skip when Stage 0.5 step 7 sent the run to Stage 4.</p>
                 <p>Walk <code>&lt;units&gt;</code> in order — one <code>/ship-issue</code> delegation per unit (not one per story unless the unit is a singleton).</p>
                 <p>For each <code>&lt;unit&gt;</code>:</p>
                 <ol>
                   <li><strong>Stories already landed</strong> — skip the whole unit when every story in the unit is in <code>&lt;landed&gt;</code>, ticked, or closed. When the unit is <strong>mixed</strong> (some landed, some not), drop landed stories from the unit scope and delegate only the remainder — never re-open a merged unit PR for an already-landed story. If guidance includes <code>retry-story &lt;n&gt;</code>, remove <code>&lt;n&gt;</code> from <code>&lt;landed&gt;</code> for this run only before evaluating skip rules.</li>
-                  <li><strong>Pre-delegate guard</strong> — immediately before step 5, assert <strong>no</strong> story in the unit scope appears in <code>&lt;landed&gt;</code> or <code>&lt;epic-log&gt;</code> as merged (unless <code>retry-story &lt;n&gt;</code>). Violation means reconcile failed — stop and report; do not open a duplicate unit PR.</li>
+                  <li><strong>Pre-delegate guard</strong> — immediately before step 6, assert <strong>no</strong> story in the unit scope appears in <code>&lt;landed&gt;</code> or <code>&lt;epic-log&gt;</code> as merged (unless <code>retry-story &lt;n&gt;</code>). Violation means reconcile failed — stop and report; do not open a duplicate unit PR. Assert delegated runs will use <code>epic-base=&lt;EPIC_BRANCH&gt;</code> — unit PR base <strong>must not</strong> be <code>MAIN_BRANCH</code>.</li>
                   <li><strong>Gate unit</strong> — if any story in the unit is in <code>&lt;gates&gt;</code> and still open: <strong>pause</strong> with <strong>awaiting sign-off</strong>. Do <strong>not</strong> invoke <code>/ship-issue</code>. <strong>Stop</strong> — this is the only deliberate human gate in the loop.</li>
                   <li><strong>External / mixed blocker</strong> — for each story in the unit blocked by an open external issue:
                     <p>a. <strong>Shippable slice</strong> — if the story body (or Stage 1.5 <code>blocker_class: partial</code>) names work that does <strong>not</strong> require the blocker to close, treat that slice as the <strong>unit scope</strong>. Invoke <code>/ship-issue</code> on that slice; in the PR body note the residual owner action and link the blocker. <strong>Do not pause the epic.</strong></p>
@@ -327,7 +337,7 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
                     <ul>
                       <li><code>epic-run</code> — story numbers in this unit belong to epic <code>&lt;epic&gt;</code>; do <strong>not</strong> scan the wider backlog or propose bundle widening beyond this unit&#x27;s story list.</li>
                       <li><code>epic-id=&lt;epic&gt;</code> — parent epic issue number; <code>/ship-issue</code> must return an <strong>Epic unit record</strong> block in its final report (see that command) so this orchestrator can append to <code>&lt;epic-log&gt;</code>.</li>
-                      <li><code>epic-base=&lt;EPIC_BRANCH&gt;</code> — unit PR base and worktree cut from <code>origin/&lt;EPIC_BRANCH&gt;</code>, <strong>not</strong> <code>MAIN_BRANCH</code>.</li>
+                      <li><code>epic-base=&lt;EPIC_BRANCH&gt;</code> — unit PR base and worktree cut from <code>origin/&lt;EPIC_BRANCH&gt;</code>, <strong>not</strong> <code>MAIN_BRANCH</code>. <strong>Mandatory</strong> — a unit PR targeting <code>MAIN_BRANCH</code> is a spec violation.</li>
                       <li><code>epic-plan</code> — paste the unit&#x27;s pre-classification (complexity + flags per story); the story-level Planner should treat this as the starting plan and amend only on contradiction.</li>
                       <li><code>epic-capsule</code> — paste <code>&lt;epic-capsule&gt;</code> when non-empty (validation commands, paths, conventions from prior units in this run).</li>
                       <li><code>MERGE_MODE=&lt;UNIT_MERGE_MODE&gt;</code> — merge the green unit PR into <code>&lt;EPIC_BRANCH&gt;</code> via <code>/ship-issue</code> Stage 8 when <code>UNIT_MERGE_MODE=auto</code> (default). When <code>manual</code>, or when any story in the unit is flagged <code>IS_SECURITY_SENSITIVE</code>, pass <code>MERGE_MODE=manual</code> and <strong>pause after the unit</strong> per the <strong>Manual unit merge</strong> hard limit — do not advance to the next unit until the captain merges into <code>&lt;EPIC_BRANCH&gt;</code> and the orchestrator resumes. <strong>Never ask the captain to merge a green epic unit when <code>UNIT_MERGE_MODE=auto</code>.</strong></li>
@@ -396,15 +406,15 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
                 <ol>
                   <li><strong>Epic PR gate</strong> — poll <code>gh pr checks &lt;EPIC_PR&gt;</code> on the integration PR head until green or <code>MAX_FIX_ROUNDS</code>-bounded fix loop exhausted (fix on <code>&lt;EPIC_BRANCH&gt;</code>, not on <code>MAIN_BRANCH</code>).</li>
                   <li><strong>Finalize epic PR notes</strong> — edit <code>&lt;EPIC_PR&gt;</code> body: confirm <strong>Quick review guide</strong> still accurate; set <strong>Shipped so far</strong> to the full <code>&lt;epic-log&gt;</code>; add <strong>Ready to merge</strong> checklist (all stories ticked, CI green, board summary: &quot;Every unit passed mandatory PE+PO; see epic issue progress log for per-unit verdicts.&quot;). Post the same summary on epic <code>&lt;epic&gt;</code> progress comment under <code>### Ready for captain</code>.</li>
-                  <li><strong><code>EPIC_MERGE_MODE=manual</code></strong> (default): post completion summary with <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> link, green CI link, pointer to epic progress comment, checklist state. <strong>Stop</strong> — the captain merges the epic PR into <code>MAIN_BRANCH</code> once satisfied. Do <strong>not</strong> ask the captain to merge individual unit PRs.</li>
-                  <li><strong><code>EPIC_MERGE_MODE=auto</code></strong> (guidance <code>epic merge auto</code>): squash-merge epic PR into <code>MAIN_BRANCH</code> with <code>match-head-commit</code>, then run epic close per <code>EPIC_CLOSE_MODE</code>.</li>
+                  <li>Post completion summary with <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> link, green CI link, pointer to epic progress comment, checklist state. <strong>Stop</strong> — the captain merges the epic PR into <code>MAIN_BRANCH</code> once satisfied. Do <strong>not</strong> auto-merge the epic PR. Do <strong>not</strong> ask the captain to merge individual unit PRs.</li>
                   <li><strong><code>EPIC_CLOSE_MODE</code></strong> — <code>manual</code>: propose closing epic <code>&lt;epic&gt;</code>; <code>auto</code>: <code>gh issue close &lt;epic&gt;</code>.</li>
                 </ol>
                 <p><strong>Crew-complete (owner residuals remain)</strong> — when <code>- [ ] #n</code> lines still exist but <strong>every</strong> pending story is owner-only with zero in-repo remainder (the crew has nothing left to delegate):</p>
                 <ol>
+                  <li><strong>Epic PR must exist</strong> — if <code>&lt;EPIC_PR&gt;</code> is unset, Stage 0.5 was skipped or failed; stop and report. Crew-complete without a reviewable epic PR is invalid.</li>
                   <li>Refresh epic progress comment: <strong>Shipped units</strong> (<code>&lt;epic-log&gt;</code>), <strong>Owner residuals</strong> (checklist per pending story — what prep landed, what the captain must do), <strong>Pending stories</strong> (unchecked lines).</li>
-                  <li>Refresh epic PR <code>&lt;EPIC_PR&gt;</code> notes with the same split — crew work complete; owner checklist explicit.</li>
-                  <li>Post a <strong>completion-style final report</strong> on the epic issue (not a pause block — <strong>no</strong> <code>/ship-epic &lt;epic&gt; resume</code>). State that the crew loop is <strong>finished</strong>; the captain is not the next actor <em>of this command</em>.</li>
+                  <li>Refresh epic PR <code>&lt;EPIC_PR&gt;</code> notes with the same split — crew work complete; owner checklist explicit; <strong>human review required</strong> before merge to <code>MAIN_BRANCH</code>.</li>
+                  <li>Post a <strong>completion-style final report</strong> on the epic issue (not a pause block — <strong>no</strong> <code>/ship-epic &lt;epic&gt; resume</code>). State that the crew loop is <strong>finished</strong>; the captain reviews and merges epic PR <code>&lt;EPIC_PR&gt;</code> when ready — not auto-merged.</li>
                   <li><strong>Stop</strong> — this is a normal terminal turn, not a hard-limit pause. Do <strong>not</strong> ask the captain to poke the command again for owner DNS / registrar work.</li>
                 </ol>
               </div>
@@ -413,11 +423,11 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
         </ol>
         <h3 id="final-report">Final report</h3>
         <div class="order-prose">
-          <p>One concise summary: epic link, <strong>epic progress comment</strong> link on the epic issue, <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> link (integration vs <code>MAIN_BRANCH</code>), units shipped (<code>U</code> invocations for <code>N</code> stories), <code>&lt;epic-log&gt;</code> highlights, gate pauses, <strong>owner residuals</strong> (distinct from pauses), capsule highlights, epic close or crew-complete state, and resume command <strong>only if</strong> a hard-limit pause occurred. For each pause, state <strong>which hard-limit row fired</strong> — &quot;waiting for captain&quot; without a limit name is a spec violation. Owner-only remainder must <strong>not</strong> appear as a pause reason. Include <strong>economy line</strong>: &quot;<code>N</code> stories in <code>U</code> <code>/ship-issue</code> runs&quot; so the captain sees what batching saved.</p>
+          <p>One concise summary: epic link, <strong>epic progress comment</strong> link on the epic issue, <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> link (integration vs <code>MAIN_BRANCH</code>), units shipped (<code>U</code> invocations for <code>N</code> stories), <code>&lt;epic-log&gt;</code> highlights, gate pauses, <strong>owner residuals</strong> (distinct from pauses), integration recovery notes when <code>&lt;mis-merged-to-main&gt;</code> was reconstructed, capsule highlights, epic close or crew-complete state, and resume command <strong>only if</strong> a hard-limit pause occurred. For each pause, state <strong>which hard-limit row fired</strong> — &quot;waiting for captain&quot; without a limit name is a spec violation. Owner-only remainder must <strong>not</strong> appear as a pause reason. Include <strong>economy line</strong>: &quot;<code>N</code> stories in <code>U</code> <code>/ship-issue</code> runs&quot; so the captain sees what batching saved. <strong>Never</strong> report <code>EPIC_PR: n/a</code> or <code>EPIC_BRANCH: n/a</code>.</p>
         </div>
         <h3 id="runtime-input">Runtime input</h3>
         <div class="order-prose">
-          <p><code>$ARGUMENTS</code> contains the epic issue number and optional guidance. The first token is <code>&lt;epic&gt;</code>; the rest is guidance (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, <code>epic merge auto</code>, <code>batch off</code>, <code>unit merge manual</code>, <code>retry-story &lt;n&gt;</code>, etc.).</p>
+          <p><code>$ARGUMENTS</code> contains the epic issue number and optional guidance. The first token is <code>&lt;epic&gt;</code>; the rest is guidance (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, <code>batch off</code>, <code>unit merge manual</code>, <code>retry-story &lt;n&gt;</code>, etc.).</p>
         </div>
       </div>
     </section>
@@ -436,9 +446,9 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
             <li><code>MAX_UNIT_SIZE</code> = <code>4</code> — cap stories per <code>/ship-issue</code> invocation (matches <code>/ship-issue</code> cohesion guidance: one reviewable PR).</li>
             <li><code>MAIN_BRANCH</code> = the repo&#x27;s default branch (<code>gh repo view --json defaultBranchRef -q .defaultBranchRef.name</code>). Epic PR <code>&lt;EPIC_PR&gt;</code> targets this; unit PRs do <strong>not</strong>.</li>
             <li><code>EPIC_BRANCH</code> = <code>feat/epic-&lt;epic&gt;-&lt;short-slug&gt;</code> — integration branch for the whole run (created in Stage 0.5). <code>&lt;short-slug&gt;</code> from the epic title, sanitized.</li>
-            <li><code>EPIC_PR</code> = the open integration PR number once Stage 0.5 creates or resumes it.</li>
+            <li><code>EPIC_PR</code> = the open integration PR number once Stage 0.5 creates or resumes it. <strong>Required</strong> — a terminal report with <code>EPIC_PR: n/a</code> or <code>EPIC_BRANCH: n/a</code> is a spec violation.</li>
             <li><code>UNIT_MERGE_MODE</code> = <code>auto</code> — delegated <code>/ship-issue</code> runs merge green unit PRs into <code>&lt;EPIC_BRANCH&gt;</code> without captain action. Override with guidance <code>unit merge manual</code> (discouraged mid-epic). Still forced to <code>manual</code> when the unit contains a <code>gate</code> story or any story flagged <code>IS_SECURITY_SENSITIVE</code>.</li>
-            <li><code>EPIC_MERGE_MODE</code> = <code>manual</code> — when the checklist is complete, stop with epic PR <code>&lt;EPIC_PR&gt;</code> open for the captain to merge into <code>MAIN_BRANCH</code>. Override with guidance <code>epic merge auto</code> for fully hands-off epic delivery.</li>
+            <li><code>EPIC_MERGE_MODE</code> = <code>manual</code> — <strong>fixed</strong>. When the checklist is complete (or crew-complete with owner residuals), stop with epic PR <code>&lt;EPIC_PR&gt;</code> open for the captain to merge into <code>MAIN_BRANCH</code>. There is <strong>no</strong> auto-merge path for epic PRs. Guidance <code>epic merge auto</code> is <strong>hard-rejected</strong> at Stage 0 — stop and tell the captain that epic PRs always require human review; use standalone <code>/ship-issue</code> with <code>MERGE_MODE=auto</code> for hands-off single-issue delivery instead.</li>
             <li><code>MAX_FIX_ROUNDS</code> = passthrough from <code>/ship-issue</code> (default <code>3</code>). An acceptance failure that exhausts fix rounds on one unit <strong>pauses the epic loop</strong> — it does not advance to the next unit.</li>
             <li><code>DRY_RUN</code> = on if the caller says &quot;dry run&quot; / &quot;preview&quot;: print the story order, <code>&lt;units&gt;</code>, gates, external blockers, and <strong>estimated <code>/ship-issue</code> invocations</strong> (units count vs raw story count); invoke nothing.</li>
           </ul>
@@ -463,7 +473,10 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
             <li><strong>Failure-aware</strong> — never advance after <code>MAX_FIX_ROUNDS</code> exhaustion on a unit.</li>
             <li><strong>No silent stops</strong> — before ending a <code>/ship-epic</code> turn on a <strong>pause</strong>, name which hard-limit row fired. If none fired, you are <strong>not allowed</strong> to stop on a pause/resume handshake. Owner-only remainder uses <strong>crew-complete</strong> (Stage 4) — a normal terminal report, not a pause.</li>
             <li><strong>Owner-only remainder is not a pause</strong> — DNS, registrar, deploy-console attach, or any AC only the captain can satisfy with zero in-repo slice left: record residual, continue or crew-complete; never post <code>/ship-epic &lt;epic&gt; resume</code> for it.</li>
-            <li><strong>No captain merge per unit</strong> — green accepted units merge into <code>&lt;EPIC_BRANCH&gt;</code> via delegated <code>MERGE_MODE=auto</code>. Never hand the captain a unit PR link and wait. The only default human merge gate is the <strong>epic PR</strong> into <code>MAIN_BRANCH</code> at Stage 4.</li>
+            <li><strong>Epic PR always open</strong> — every terminal turn (full closure, crew-complete, or pause) must name a real <code>EPIC_PR</code> and <code>EPIC_BRANCH</code>. Skipping the epic PR because in-repo work is done or already on <code>MAIN_BRANCH</code> is forbidden — reconstruct the integration line instead.</li>
+            <li><strong>Never auto-merge epic PRs</strong> — <code>EPIC_MERGE_MODE</code> is fixed at <code>manual</code>. Reject <code>epic merge auto</code> guidance. Standalone <code>/ship-issue</code> <code>MERGE_MODE=auto</code> is unchanged.</li>
+            <li><strong>Unit PRs never target <code>MAIN_BRANCH</code></strong> — delegated runs must pass <code>epic-base=&lt;EPIC_BRANCH&gt;</code>. Mis-targeted unit PRs are recovered via Stage 0.5 reconstruction, not accepted as the terminal state.</li>
+            <li><strong>No captain merge per unit</strong> — green accepted units merge into <code>&lt;EPIC_BRANCH&gt;</code> via delegated <code>MERGE_MODE=auto</code>. Never hand the captain a unit PR link and wait. The only human merge gate for shipped code is the <strong>epic PR</strong> into <code>MAIN_BRANCH</code> at Stage 4.</li>
             <li><strong>CI every unit</strong> — economy comes from fewer Planner/board <strong>invocations</strong>, not from skipping validation or acceptance on shipped code.</li>
             <li><strong>Orchestrator owns <code>gh</code></strong> — epic edits and loop control only; builders/reviewers live in <code>/ship-issue</code>.</li>
             <li><strong>Captain digest</strong> — <code>&lt;epic-log&gt;</code> and the <code>&lt;!-- shipmates-epic-progress --&gt;</code> comment are the source of truth for human review; epic PR notes stay in sync. Never leave the captain to reconstruct unit work from scattered PR threads alone.</li>
