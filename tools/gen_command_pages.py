@@ -78,6 +78,7 @@ FLAGSHIP_SLUG = "ship-issue"
 AGENT_ROLES = (
     "architect",
     "senior-engineer",
+    "principal-engineer",
     "sdet",
     "security-engineer",
     "site-reliability-engineer",
@@ -486,7 +487,65 @@ AGENT_COPY = {
                 "verified diff and a precise report, which the sdet then re-verifies "
                 "independently.",
             ),
-            related=("architect", "sdet", "product-manager"),
+            related=("architect", "sdet", "product-manager", "principal-engineer"),
+        ),
+    ),
+    "principal-engineer": AgentCopy(
+        tagline="Principal diff review — quality, tests, repo ship checklist.",
+        what=(
+            "The principal engineer reviews a finished change on the pushed PR head at principal "
+            "bar: correctness, maintainability, meaningful tests, scope discipline, and whether the "
+            "repo's mandatory ship process was actually followed for this change class.",
+            "Distinct from the architect's structural pass and the product manager's acceptance call — "
+            "PE owns line-level quality and contributor checklist compliance, with every REJECT grounded "
+            "in specific file evidence.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A PR needs principal review",
+                "Before merge, PE reads the diff and verifies tests, naming, and edge-case handling "
+                "match the codebase's standard — not just that CI went green.",
+            ),
+            AgentScenario(
+                "Contributor process must hold",
+                "When a change touches generated pages, digests, version fields, or site gates, PE "
+                "confirms those mandatory steps ran — a missing digest is a REJECT even when the code looks fine.",
+            ),
+            AgentScenario(
+                "Scope and test quality",
+                "PE catches coverage theatre, scope creep, and fixes that fight local conventions — "
+                "the kinds of issues a mechanical lint pass will not surface.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Correctness.",
+                "Logic errors, missing edge cases, and weak error handling flagged with file evidence.",
+            ),
+            AgentCheck(
+                "Maintainability.",
+                "Naming, structure, and diff scope read like the surrounding codebase.",
+            ),
+            AgentCheck(
+                "Test quality.",
+                "Tests cover meaningful failure paths, not just happy-path theatre.",
+            ),
+            AgentCheck(
+                "Ship checklist.",
+                "Generated pages, digests, version bumps, and validation gates required by the repo.",
+            ),
+            AgentCheck(
+                "Scope discipline.",
+                "Unrequested expansion and gold-plating rejected with concrete alternatives.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The principal engineer sits on every acceptance board alongside the product manager — "
+                "the mandatory core every shipping command convenes on the pushed PR head. Optional "
+                "specialists scale in by flag; PE+PO never skip.",
+            ),
+            related=("product-manager", "senior-engineer", "architect", "sdet"),
         ),
     ),
     "sdet": AgentCopy(
@@ -913,11 +972,11 @@ AGENT_COPY = {
         crew_fit=CrewFit(
             paragraphs=(
                 "The product manager books the ends of a run: clarifying requirements with the "
-                "`architect` during planning, then accepting or rejecting the finished PR after "
-                "the `sdet` has verified it. A REJECT lists the specific unmet criteria and "
-                "routes the work back to the `senior-engineer`.",
+                "`architect` during planning, then accepting or rejecting the finished PR alongside "
+                "the mandatory `principal-engineer` after the `sdet` has verified it. A REJECT lists "
+                "the specific unmet criteria and routes the work back to the `senior-engineer`.",
             ),
-            related=("sdet", "architect", "senior-engineer"),
+            related=("sdet", "architect", "senior-engineer", "principal-engineer"),
         ),
     ),
     "ux-ui-designer": AgentCopy(

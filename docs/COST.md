@@ -34,9 +34,9 @@ authors reference it instead of copying cost rules into each workflow.
   section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated
   output through this prefix.
 - **Complexity-Based Tiered Execution**: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
-  - **Simple**: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting <= 2 files and <= 15 lines of code, no specialist flags). Bypasses spawning all subagents entirely; the main agent (you) executes, validates, and delivers the PR directly.
-  - **Medium**: Moderate changes (<= 5 files, no major module boundaries, no architectural/security/delivery flags). Bypasses parallel design specs and the large acceptance board. Spawn a Planner and a single Builder and single SDET. The main agent reviews and delivers.
-  - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command.
+  - **Simple**: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting <= 2 files and <= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but **must still convene the mandatory PE+PO acceptance board** on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.
+  - **Medium**: Moderate changes (<= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. **Must convene PE+PO** (and SDET on the board when validation is non-trivial) — not main-agent review.
+  - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.
 - Spend subagent seats only where their decision can change the outcome. Route model and effort at
   spawn by work difficulty; never hardcode a model in canonical content.
 - Ask every subagent for a compact structured return: decision/status first, criterion findings and
@@ -44,6 +44,50 @@ authors reference it instead of copying cost rules into each workflow.
   Return decisions, not transcripts or raw logs.
 
 <!-- command-preamble:end -->
+
+## Reusable acceptance board
+
+The marker below is expanded into every command that convenes an acceptance review on a pushed PR
+head. Command authors reference it instead of copying board rules into each workflow.
+
+<!-- acceptance-board:start -->
+Spawn reviewers **in parallel** against the PR head commit — they review exactly what will merge.
+
+**Mandatory seats (never skip)**
+
+- **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / {{project-instructions}} / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
+- **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
+
+Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** once a PR head exists.
+
+**Scaled optional seats**
+
+Convene only when the change can plausibly trip the concern. A gated-out seat is **named in the report with its flag or reason** — never silently skipped.
+
+| Seat | Join when |
+|------|-----------|
+| `sdet` | Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran. |
+| `architect` | `IS_ARCH_SIGNIFICANT` |
+| `devops-engineer` | `IS_DELIVERY_SENSITIVE` |
+| `technical-writer` | `IS_DOCS_AFFECTING` — doc copy/staleness (PE covers process compliance; both may run) |
+| `ux-ui-designer` | `IS_UI_STORY` |
+| `art-director` | `IS_VISUAL_STORY` |
+| `security-engineer` | `/pr-review` only when `IS_SECURITY_SENSITIVE` |
+| `performance-engineer` | `/pr-review` when the PR claims a perf win or touches a hot path; `/refactor` when the stated motivation was performance |
+| `site-reliability-engineer` | `/pr-review` when runtime behaviour, failure handling, or rollout changes |
+| `data-scientist` | `/pr-review` when the deliverable is an analysis or model |
+
+The `IS_*` flag vocabulary is shared by `/ship-issue` Stage 0 and `/pr-review` Stage 0 — a new flag must be added to both classifiers.
+
+**Decision**
+
+- **All spawned reviewers ACCEPT/PASS (nits allowed)** → proceed to deliver / the command's next stage.
+- **Any REJECT / FAIL** → remediation loop (where the command defines one), then re-convene the board on the new head.
+
+**Harness fallback**
+
+If `principal-engineer` or any role does not resolve to an `{{agents-glob}}` file (skill-only harnesses until crew agents ship), fall back to `{{general-purpose}}` with the role brief inlined and note the fallback — never silently skip a mandatory seat.
+<!-- acceptance-board:end -->
 
 ## Reusable subagent preamble
 

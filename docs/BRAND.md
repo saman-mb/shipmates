@@ -33,7 +33,7 @@ were distinguished. Recorded on issue #72; do not reopen it here.
 ## What Shipmates is
 
 Shipmates is an open-source (MIT) crew of specialist AI agents on
-[Claude Code](https://code.claude.com/docs) today: **12 domain-neutral subagents** and
+[Claude Code](https://code.claude.com/docs) today: **13 domain-neutral subagents** and
 **12 reusable commands**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a
 reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git
 worktree, waits for CI to go green, convenes an adversarial review board, loops on fixes within
@@ -50,7 +50,7 @@ delegation) land in one read.
 | Term | Maps to | Where it appears today |
 |---|---|---|
 | **captain** | the user — you decide, you approve, you merge | README: "You stay the captain." |
-| **crew** / **shipmates** | the 12 subagents, authored in `crew/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
+| **crew** / **shipmates** | the 13 subagents, authored in `crew/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
 | **shipmate** | a single subagent role | README crew table column header |
 | **command** | one of the 12 workflows, authored in `commands/*.md`, as the captain issues it | README "The commands"; site `#commands`; `order-card` components |
 | **order** | what one subagent is told to do *inside* a command | Nowhere yet — reserved for per-subagent copy; see [The narrow sense of "order"](#the-narrow-sense-of-order) |

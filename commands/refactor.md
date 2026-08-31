@@ -92,6 +92,10 @@ Then the full suite green, and the **CI gate**: poll `gh pr checks` until done; 
 
 ## Stage 5 — Review  (agents, on the pushed PR head)
 
+<!-- shipmates:acceptance-board -->
+
+**Command-specific seats** (in addition to the mandatory PE+PO core):
+
 - `architect` (always): did the structure genuinely improve against the Stage 0 motivation, or is this
   churn that moved the problem? A refactor that doesn't pay for its diff is a `REJECT`.
 - `sdet` (fresh — not the one who wrote the tests): audits the test diff against the reviewed rule
