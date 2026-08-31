@@ -148,7 +148,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/ship-epic &lt;epic-issue-number&gt; [resume | dry-run | epic close auto | batch off]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/ship-epic &lt;epic-issue-number&gt; [resume | dry-run | epic close auto | epic merge auto | batch off | unit merge manual]</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -195,6 +195,7 @@
                 <tr><td><strong>Gate story</strong></td><td>Unit contains a <code>gate</code>-labelled (or sign-off) story still awaiting human sign-off</td></tr>
                 <tr><td><strong>External blocker, no shippable slice</strong></td><td>Every AC in the unit requires an owner action with no prep work the crew can land now</td></tr>
                 <tr><td><strong><code>MAX_FIX_ROUNDS</code> exhausted</strong></td><td>Stage 4.5 or Stage 6 on this unit could not get CI green / acceptance pass</td></tr>
+                <tr><td><strong>Manual unit merge</strong></td><td>Unit used <code>MERGE_MODE=manual</code> (<code>IS_SECURITY_SENSITIVE</code>, <code>UNIT_MERGE_MODE=manual</code>, or other forced manual path) — green PR awaits captain merge into <code>&lt;EPIC_BRANCH&gt;</code> before the next unit</td></tr>
                 <tr><td><strong>Shell safety abort</strong></td><td>Untrusted input, cycle in dependency graph, invalid epic token</td></tr>
               </tbody>
             </table>
@@ -310,14 +311,15 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
                       <li><code>epic-base=&lt;EPIC_BRANCH&gt;</code> — unit PR base and worktree cut from <code>origin/&lt;EPIC_BRANCH&gt;</code>, <strong>not</strong> <code>MAIN_BRANCH</code>.</li>
                       <li><code>epic-plan</code> — paste the unit&#x27;s pre-classification (complexity + flags per story); the story-level Planner should treat this as the starting plan and amend only on contradiction.</li>
                       <li><code>epic-capsule</code> — paste <code>&lt;epic-capsule&gt;</code> when non-empty (validation commands, paths, conventions from prior units in this run).</li>
-                      <li><code>MERGE_MODE=&lt;UNIT_MERGE_MODE&gt;</code> — merge the green unit PR into <code>&lt;EPIC_BRANCH&gt;</code> via <code>/ship-issue</code> Stage 8 when <code>UNIT_MERGE_MODE=auto</code> (default). When <code>manual</code>, or when this unit contains a <code>gate</code> story or any story with <code>IS_SECURITY_SENSITIVE</code>, pass <code>MERGE_MODE=manual</code> and pause after the unit per hard limits. <strong>Never ask the captain to merge a green epic unit when <code>UNIT_MERGE_MODE=auto</code>.</strong></li>
+                      <li><code>MERGE_MODE=&lt;UNIT_MERGE_MODE&gt;</code> — merge the green unit PR into <code>&lt;EPIC_BRANCH&gt;</code> via <code>/ship-issue</code> Stage 8 when <code>UNIT_MERGE_MODE=auto</code> (default). When <code>manual</code>, or when any story in the unit is flagged <code>IS_SECURITY_SENSITIVE</code>, pass <code>MERGE_MODE=manual</code> and <strong>pause after the unit</strong> per the <strong>Manual unit merge</strong> hard limit — do not advance to the next unit until the captain merges into <code>&lt;EPIC_BRANCH&gt;</code> and the orchestrator resumes. <strong>Never ask the captain to merge a green epic unit when <code>UNIT_MERGE_MODE=auto</code>.</strong></li>
                       <li>Tier hint — when <strong>every</strong> story in the unit is <code>trivial</code> and no specialist flags are set, include <code>complexity tier: simple</code> so <code>/ship-issue</code> takes the Simple path. When all are <code>trivial</code> or <code>standard</code> with no arch/security/delivery flags, include <code>complexity tier: medium</code>. Otherwise omit (full High path).</li>
                     </ul>
                   </li>
                   <li><strong>Delegate</strong> — invoke <code>/ship-issue</code> with <strong>all story numbers in the unit</strong> as the leading numeric tokens, then the guidance from step 4. Example shape: <code>/ship-issue 101 102 epic-run …</code> for a two-story unit. Singleton: <code>/ship-issue 103 epic-run …</code>. Do <strong>not</strong> set <code>BUNDLE=off</code> — explicit multi-story tokens <strong>are</strong> the bundle; singletons behave as today.</li>
                   <li><strong>Outcome:</strong>
                     <ul>
-                      <li><strong>Success</strong> → Stage 3 for <strong>each</strong> story in the unit (tick every checklist line the unit closed), extend <code>&lt;epic-capsule&gt;</code> with validation commands used, key paths touched, and any convention the board enforced — keep the capsule <strong>short</strong> (bullet list, not a narrative). Continue to the next unit.</li>
+                      <li><strong>Success (auto-merged)</strong> — unit used <code>MERGE_MODE=auto</code> and landed on <code>&lt;EPIC_BRANCH&gt;</code> → Stage 3 for <strong>each</strong> story in the unit (tick every checklist line the unit closed), extend <code>&lt;epic-capsule&gt;</code> with validation commands used, key paths touched, and any convention the board enforced — keep the capsule <strong>short</strong> (bullet list, not a narrative). Continue to the next unit.</li>
+                      <li><strong>Success (manual merge required)</strong> — unit finished with <code>MERGE_MODE=manual</code> and a green PR open → <strong>pause the epic loop</strong> (hard limit <strong>Manual unit merge</strong>): post state (<code>EPIC_BRANCH</code>, <code>EPIC_PR</code>, unit PR link, <code>/ship-epic &lt;epic&gt; resume</code>). <strong>Stop</strong> — captain merges the unit PR into <code>&lt;EPIC_BRANCH&gt;</code>, then resume.</li>
                       <li><strong><code>/ship-issue</code> escalated after <code>MAX_FIX_ROUNDS</code></strong> → <strong>pause the epic loop</strong> with state report (epic, <code>EPIC_BRANCH</code>, <code>EPIC_PR</code>, completed units, current unit, PR link, failure summary, <code>/ship-epic &lt;epic&gt; resume</code>). <strong>Stop.</strong></li>
                       <li><strong>Red CI / fix in progress</strong> → <strong>not</strong> an epic pause. The delegation must finish Stage 4.5 inside <code>/ship-issue</code> before returning. If it returned early, <strong>re-delegate</strong> with explicit guidance <code>finish-ci-gate</code> — do not end the epic turn.</li>
                       <li><strong>Gate mid-run</strong> → pause and stop (same as step 2).</li>
