@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/plan-epics — briefs → GitHub epics + user stories · Shipmates</title>
-  <meta name="description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a context-selected planning panel authoring and…">
+  <meta name="description" content="Turn a brief into GitHub epics and linked, labelled stories.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/plan-epics/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/plan-epics — briefs → GitHub epics + user stories">
-  <meta property="og:description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a context-selected planning panel authoring and…">
+  <meta property="og:description" content="Turn a brief into GitHub epics and linked, labelled stories.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/plan-epics/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/plan-epics — briefs → GitHub epics + user stories">
-  <meta name="twitter:description" content="Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a context-selected planning panel authoring and…">
+  <meta name="twitter:description" content="Turn a brief into GitHub epics and linked, labelled stories.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,43 +29,36 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/plan-epics",
-    "description": "Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a context-selected planning panel authoring and reviewing in parallel.",
+    "description": "Turn a brief into GitHub epics and linked, labelled stories.",
     "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
-        "name": "Stage 0 — Intake & context (orchestrator)",
-        "text": "Parse $ARGUMENTS into one or more briefs; read any referenced files/dirs.",
-        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#stage-0"
+        "name": "Read",
+        "text": "Take the brief, the repo's labels, and what is already open, then pick the panel. No specialist yet — intake and panel selection are the run.",
+        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#step-1"
       },
       {
         "@type": "HowToStep",
         "position": 2,
-        "name": "Stage 1 — Scope into epics",
-        "text": "Spawn product-manager (always) with all briefs + Stage 0 context. It returns the epic set (writes no issues) — for each epic: a crisp title, the why/goal (the outcome, not the output), high-level scope and non-goals, dependencies/build-order between epics, and suggested area label(s). One brief…",
-        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#stage-1"
+        "name": "Slice",
+        "text": "Split the work into epics with clear edges. The panel is product-manager plus at most two of the roles below. Always: product-manager. Also sit when: architect (new subsystems, schema, or platform boundaries); ux-ui-designer (screens, flows, design system, accessibility); art-director (rendered art in an art-producing domain); data-scientist (data, ML, metrics, or experimentation); performance-engineer (latency, throughput, or resource limits); devops-engineer (build, CI, packaging, or toolchain pins); security-engineer (auth, secrets, crypto, or untrusted input); site-reliability-engineer (reliability, incidents, rollback, or SLOs); technical-writer (documented behaviour or public API/CLI).",
+        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#step-2"
       },
       {
         "@type": "HowToStep",
         "position": 3,
-        "name": "Stage 2 — Author each epic's stories",
-        "text": "Author (parallel). Spawn one product-manager subagent per epic, in a single message so they run concurrently. Give each: its epic (title/why/scope), the full repo context, the OTHER epics' titles (for cross-epic dependencies), the existing-issues list (to dedupe), and <panel> so it knows which…",
-        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#stage-2"
+        "name": "Write",
+        "text": "One product-manager per epic authors the stories. The same panel then reviews slices in their domain. Always: product-manager. Also sit when: architect (new subsystems, schema, or platform boundaries); ux-ui-designer (screens, flows, design system, accessibility); art-director (rendered art in an art-producing domain); data-scientist (data, ML, metrics, or experimentation); performance-engineer (latency, throughput, or resource limits); devops-engineer (build, CI, packaging, or toolchain pins); security-engineer (auth, secrets, crypto, or untrusted input); site-reliability-engineer (reliability, incidents, rollback, or SLOs); technical-writer (documented behaviour or public API/CLI).",
+        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#step-3"
       },
       {
         "@type": "HowToStep",
         "position": 4,
-        "name": "Stage 3 — Create the issues (orchestrator, deterministic)",
-        "text": "If DRY_RUN: print <panel> and <panel-reasons>, then the epic→story tree (titles, criteria, labels, order) and STOP.",
-        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#stage-3"
-      },
-      {
-        "@type": "HowToStep",
-        "position": 5,
-        "name": "Stage 4 — Verify & report",
-        "text": "Verify every story carries Part of #<epic> matching its epic, and every epic's checklist lists all its stories (re-fetch and grep; don't assume).",
-        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#stage-4"
+        "name": "Create",
+        "text": "Open the issues on GitHub and verify they connect. No extra spawn — the run creates what the panel wrote.",
+        "url": "https://saman-mb.github.io/shipmates/commands/plan-epics/#step-4"
       }
     ]
   }
@@ -108,7 +101,7 @@
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <h1 class="order-detail__title" id="order-title"><code>/plan-epics</code></h1>
           <p class="order-detail__tagline">briefs → GitHub epics + user stories</p>
-          <p class="order-detail__desc">Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a context-selected planning panel authoring and reviewing in parallel.</p>
+          <p class="order-detail__desc">Turn a brief into GitHub epics and linked, labelled stories.</p>
         </div>
       </div>
     </section>
@@ -141,219 +134,42 @@
       </div>
     </section>
 
-    <section class="section order-crew" id="crew-involved" aria-labelledby="crew-involved-title">
+    <section class="section order-process" id="process" aria-labelledby="process-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="crew-involved-title">Who&rsquo;s involved</h2>
-          <p class="section__lead">Roles referenced across the stages below.</p>
+          <h2 class="section__title" id="process-title">How it works</h2>
         </div>
-        <div class="order-crew__strip" role="list">
-          <a class="chip order-crew__chip" href="../../agents/product-manager/"><code>product-manager</code></a>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="stages" aria-labelledby="stages-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <p class="section__eyebrow">Step by step</p>
-          <h2 class="section__title" id="stages-title">The stages</h2>
-          <p class="section__lead">Five stages, in order.</p>
-        </div>
-        <ol class="order-stages" role="list">
-          <li class="order-stage" id="stage-0">
-            <span class="order-stage__num" aria-hidden="true">0</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Intake &amp; context (orchestrator)</h3>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <ol>
-                    <li>Parse <code>$ARGUMENTS</code> into one or more briefs; read any referenced files/dirs.</li>
-                    <li>Gather repo context so the backlog fits the project: <code>README</code> / <code>CLAUDE.md</code> (domain, conventions, quality bar), <code>gh label list</code>, and the <strong>existing open issues</strong> (<code>gh issue list --state open --limit 300 --json number,title,labels</code>) so you can dedupe against work already tracked.</li>
-                    <li>Decide the shape: does the brief map to <strong>one</strong> cohesive epic, or <strong>several</strong> independent ones? (A brief naming multiple distinct capabilities → multiple epics.)</li>
-                    <li>If a brief is too vague to scope responsibly, ask the user ONE round of clarifying questions before creating anything — don&#x27;t invent a backlog from thin air.</li>
-                    <li><strong>Select the planning panel</strong> (see below). Record <code>&lt;panel&gt;</code> and <code>&lt;panel-reasons&gt;</code> before Stage 1. If <code>DRY_RUN</code>, print the panel and reasons here — they appear again in the Stage 3 dry-run output.
-                      <p><strong>Panel selection.</strong> Always include <strong><code>product-manager</code></strong> — backlog authorship is still the core job.</p>
-                    </li>
-                  </ol>
-                  <p><strong>Explicit overrides win.</strong> If the caller names roles in the brief or runtime guidance (e.g. &quot;also involve architect and UX designer&quot;), use those roles — resolve each via the crew roster / fuzzy-match rules below; do not drop a named role because of the cap.</p>
-                  <p>Otherwise, derive additions from the <strong>brief + repo context</strong> using the same domain signals <code>/ship-issue</code> and <code>/pr-review</code> use (but read from the brief, not a diff). Each signal is independent; a brief can trip more than one. Add a role only when the brief <strong>genuinely implicates</strong> that specialty — a neutral backlog-grooming brief (label hygiene, duplicate cleanup, pure bookkeeping) stays <strong>PM-only</strong>, same as today. Cap auto-selected non-PM additions at <code>MAX_PANEL_ADDITIONS</code>; if more signals fire, keep the two with the highest planning impact and note the rest as out-of-panel.</p>
-                  <div class="order-table" tabindex="0">
-                    <table>
-                      <thead><tr><th scope="col">Signal (brief implicates…)</th><th scope="col">Role</th></tr></thead>
-                      <tbody>
-                        <tr><td>New subsystems, persisted schema, cross-cutting platform boundaries</td><td><code>architect</code></td></tr>
-                        <tr><td>On-screen UI — screens, flows, design system, a11y</td><td><code>ux-ui-designer</code></td></tr>
-                        <tr><td>Rendered visual <strong>art</strong> in an art-producing domain (game sprites, brand/motion assets — not app chrome)</td><td><code>art-director</code></td></tr>
-                        <tr><td>Data, ML, metrics, analytics, experimentation</td><td><code>data-scientist</code></td></tr>
-                        <tr><td>Latency, throughput, profiling, resource limits</td><td><code>performance-engineer</code></td></tr>
-                        <tr><td>Build, CI, packaging, shipping, toolchain pins</td><td><code>devops-engineer</code></td></tr>
-                        <tr><td>Authn/authz, secrets, crypto, untrusted input</td><td><code>security-engineer</code></td></tr>
-                        <tr><td>Reliability, incidents, rollback, SLOs</td><td><code>site-reliability-engineer</code></td></tr>
-                        <tr><td>Documented behaviour, public API/CLI surface, user-facing docs</td><td><code>technical-writer</code></td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <p>Resolve every role name against <code>.claude/agents/*.md</code>; on miss, fall back to <code>general-purpose</code> with that role&#x27;s brief inlined and note the fallback. Set <code>&lt;panel-reasons&gt;</code> to one line per non-PM role (<code>role: why the brief needs them</code>).</p>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-1">
-            <span class="order-stage__num" aria-hidden="true">1</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Scope into epics</h3>
-                <p class="order-stage__crew">Crew: (agents: panel)</p>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p>Spawn <strong><code>product-manager</code></strong> (always) with all briefs + Stage 0 context. It returns the <strong>epic set</strong> (writes no issues) — for each epic: a crisp <code>title</code>, the <code>why</code>/goal (the outcome, not the output), high-level <code>scope</code> and non-goals, <code>dependencies</code>/build-order between epics, and suggested <code>area</code> label(s). One brief may yield one epic; that&#x27;s fine.</p>
-                  <p>If <strong><code>architect</code></strong> is on <code>&lt;panel&gt;</code>, spawn it <strong>in the same message</strong> so it runs in parallel: given the PM&#x27;s epic set (or the briefs when the PM returns first — prefer parallel spawn with the same inputs; the architect validates boundaries, coupling, and cross-epic ordering). Merge architect amendments into the epic set before Stage 2 — drop or reshape epics the architect flags as ill-scoped, and carry its notes forward.</p>
-                  <p>Other non-PM panel members whose expertise is story-level (UX, art, data, perf, etc.) defer to Stage 2 — they do not scope epics.</p>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-2">
-            <span class="order-stage__num" aria-hidden="true">2</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Author each epic&#x27;s stories</h3>
-                <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> (× N, then panel review)</p>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p><strong>Author (parallel).</strong> Spawn <strong>one <code>product-manager</code> subagent per epic, in a single message</strong> so they run concurrently. Give each: its epic (title/why/scope), the full repo context, the OTHER epics&#x27; titles (for cross-epic dependencies), the existing-issues list (to dedupe), and <code>&lt;panel&gt;</code> so it knows which specialists will review. Each returns its epic&#x27;s <strong>user stories</strong> as structured data (no <code>gh</code> calls) — per story:</p>
-                  <ul>
-                    <li><code>title</code> (short, outcome-shaped),</li>
-                    <li><code>description</code> (the user value: &quot;As a … I want … so that …&quot; where it fits),</li>
-                    <li><strong>acceptance criteria</strong> — explicit and checkable, Given/When/Then where natural,</li>
-                    <li><code>area</code> label(s), and dependency order (<code>blocked_by</code> other stories where real).</li>
-                  </ul>
-                  <p>Tell each PM: stories should be <strong>INVEST</strong> (independent, negotiable, valuable, estimable, small, testable) — one shippable slice each, vertically sliced over horizontal layers, dependency-ordered, and NOT duplicating an existing open issue. Prefer a handful of well-formed stories over a long shallow list. To avoid clobbering, each PM returns its data <strong>inline</strong> (no shared temp filenames).</p>
-                  <p><strong>Panel review (parallel, only when <code>&lt;panel&gt;</code> has non-PM members).</strong> After all PMs return, spawn <strong>each non-PM panel member once, in a single message</strong>, with every epic&#x27;s draft stories + <code>&lt;panel-reasons&gt;</code>. Each returns review notes and concrete amendments for its domain (UX coherence, art gates, data validity, perf measurability, etc.). The orchestrator merges amendments into the story set before Stage 3 — prefer specialist fixes that sharpen acceptance criteria over PM rewrites.</p>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-3">
-            <span class="order-stage__num" aria-hidden="true">3</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Create the issues (orchestrator, deterministic)</h3>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <p>If <code>DRY_RUN</code>: print <strong><code>&lt;panel&gt;</code> and <code>&lt;panel-reasons&gt;</code></strong>, then the epic→story tree (titles, criteria, labels, order) and STOP.</p>
-                  <p>Otherwise, in this order (numbers must exist before they&#x27;re referenced):</p>
-                  <ol>
-                    <li><strong>Labels</strong> — ensure <code>epic</code>, <code>user-story</code>, and any needed <code>area:*</code> exist (<code>gh label create</code> the missing ones; note which you created). Don&#x27;t spam the namespace — only labels you&#x27;ll actually use.</li>
-                    <li><strong>Epics first</strong> — <code>gh issue create</code> each epic: body = the why/goal + scope/non-goals + a <strong>story checklist placeholder</strong> + cross-epic dependency notes + the trailer + <code>epic</code> label. Capture each epic&#x27;s issue number.</li>
-                    <li><strong>Stories</strong> — <code>gh issue create</code> each story: body = description + acceptance criteria + <strong><code>Part of #&lt;epic&gt;</code></strong> + <code>Blocked by #&lt;n&gt;</code> where known + the trailer + <code>user-story</code> and area labels. Capture each story number.</li>
-                    <li><strong>Backfill the epic checklists</strong> — edit each epic body, replacing the placeholder with <code>- [ ] #&lt;story&gt;</code> lines for its stories, so the epic tracks its children and GitHub cross-links them.</li>
-                  </ol>
-                </div>
-              </div>
-            </details>
-          </li>
-          <li class="order-stage" id="stage-4">
-            <span class="order-stage__num" aria-hidden="true">4</span>
-            <details class="order-stage__details">
-              <summary class="order-stage__summary">
-                <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Verify &amp; report</h3>
-              </summary>
-              <div class="order-stage__body">
-                <div class="order-prose">
-                  <ul>
-                    <li>Verify every story carries <code>Part of #&lt;epic&gt;</code> matching its epic, and every epic&#x27;s checklist lists all its stories (re-fetch and grep; don&#x27;t assume).</li>
-                    <li>Report <strong><code>&lt;panel&gt;</code> and <code>&lt;panel-reasons&gt;</code></strong> first, then a tree: each <strong>epic</strong> (title + link) → its <strong>stories</strong> (title + link), with counts, any labels created, a recommended <strong>build order</strong>, and anything skipped as an existing duplicate.</li>
-                  </ul>
-                </div>
-              </div>
-            </details>
-          </li>
+        <p class="order-process__lead">Product-manager always authors the backlog. Up to two more specialists join when the brief implicates their domain — or when you name them. A bookkeeping brief stays PM-only.</p>
+        <ol class="order-process__list" role="list">
+          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Read</h3><p class="order-process__line">Take the brief, the repo&#x27;s labels, and what is already open, then pick the panel.</p><p class="order-process__crew order-process__crew--solo">No specialist yet — intake and panel selection are the run.</p></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Slice</h3><p class="order-process__line">Split the work into epics with clear edges. The panel is product-manager plus at most two of the roles below.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a><span class="order-process__when-text">new subsystems, schema, or platform boundaries</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/ux-ui-designer/"><code>ux-ui-designer</code></a><span class="order-process__when-text">screens, flows, design system, accessibility</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/art-director/"><code>art-director</code></a><span class="order-process__when-text">rendered art in an art-producing domain</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/data-scientist/"><code>data-scientist</code></a><span class="order-process__when-text">data, ML, metrics, or experimentation</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/performance-engineer/"><code>performance-engineer</code></a><span class="order-process__when-text">latency, throughput, or resource limits</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/devops-engineer/"><code>devops-engineer</code></a><span class="order-process__when-text">build, CI, packaging, or toolchain pins</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/security-engineer/"><code>security-engineer</code></a><span class="order-process__when-text">auth, secrets, crypto, or untrusted input</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/site-reliability-engineer/"><code>site-reliability-engineer</code></a><span class="order-process__when-text">reliability, incidents, rollback, or SLOs</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a><span class="order-process__when-text">documented behaviour or public API/CLI</span></li></ul></div></div></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Write</h3><p class="order-process__line">One product-manager per epic authors the stories. The same panel then reviews slices in their domain.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a><span class="order-process__when-text">new subsystems, schema, or platform boundaries</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/ux-ui-designer/"><code>ux-ui-designer</code></a><span class="order-process__when-text">screens, flows, design system, accessibility</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/art-director/"><code>art-director</code></a><span class="order-process__when-text">rendered art in an art-producing domain</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/data-scientist/"><code>data-scientist</code></a><span class="order-process__when-text">data, ML, metrics, or experimentation</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/performance-engineer/"><code>performance-engineer</code></a><span class="order-process__when-text">latency, throughput, or resource limits</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/devops-engineer/"><code>devops-engineer</code></a><span class="order-process__when-text">build, CI, packaging, or toolchain pins</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/security-engineer/"><code>security-engineer</code></a><span class="order-process__when-text">auth, secrets, crypto, or untrusted input</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/site-reliability-engineer/"><code>site-reliability-engineer</code></a><span class="order-process__when-text">reliability, incidents, rollback, or SLOs</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a><span class="order-process__when-text">documented behaviour or public API/CLI</span></li></ul></div></div></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">Create</h3><p class="order-process__line">Open the issues on GitHub and verify they connect.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — the run creates what the panel wrote.</p></div></li>
         </ol>
-        <details class="order-advanced" id="advanced">
-          <summary class="order-advanced__summary">
-            <span class="order-advanced__title">Advanced</span>
-            <span class="order-advanced__hint">Cost discipline, bundling, model selection, shell safety, and other preamble</span>
-          </summary>
-          <div class="order-advanced__body">
-        <h3 id="cost-discipline">Cost discipline</h3>
-        <div class="order-prose">
-          <ul>
-            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
-            <li><strong>Complexity-Based Tiered Execution</strong>: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
-              <ul>
-                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but <strong>must still convene the mandatory PE+PO acceptance board</strong> on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.</li>
-                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. <strong>Must convene PE+PO</strong> (and SDET on the board when validation is non-trivial) — not main-agent review.</li>
-                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.</li>
-              </ul>
-            </li>
-            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
-            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
-          </ul>
-          <p>Turn the supplied brief(s) into a tracked backlog: one or more <strong>epics</strong> (labelled <code>epic</code>), each broken into <strong>user stories</strong> (labelled <code>user-story</code> + area tags), created as GitHub issues and cross-linked. A <strong>planning panel</strong> — always including <code>product-manager</code>, plus up to two context-derived specialists when the brief implicates them — scopes epics, authors stories, and reviews slices for domain fit. When the work spans <strong>multiple epics, one <code>product-manager</code> subagent authors each epic&#x27;s stories in parallel</strong> — one PM per epic.</p>
-          <p>The briefs come from the Runtime input section at the end of this workflow.</p>
-        </div>
-          </div>
-        </details>
-        <h3 id="runtime-input">Runtime input</h3>
-        <div class="order-prose">
-          <p><code>$ARGUMENTS</code> contains one or more briefs. A brief may be inline text, a path to a file or directory, or several briefs separated by <code>---</code> or numbering. Optional role hints (&quot;also involve …&quot;) are part of the brief text — they override auto panel selection. If empty, ask for the brief before doing anything.</p>
-        </div>
       </div>
     </section>
 
-    <section class="section" id="config" aria-labelledby="config-title">
+    <section class="section order-when" id="when-to-use" aria-labelledby="when-to-use-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="config-title">Config (defaults — override only if the repo clearly needs it)</h2>
+          <h2 class="section__title" id="when-to-use-title">When to use</h2>
         </div>
-        <div class="order-prose">
-          <ul>
-            <li><code>REPO</code> = current repo (<code>gh repo view --json nameWithOwner -q .nameWithOwner</code>).</li>
-            <li><code>EPIC_LABEL</code> = <code>epic</code>; <code>STORY_LABEL</code> = <code>user-story</code> (create if missing).</li>
-            <li><code>AREA_LABELS</code> = derived from the repo&#x27;s existing <code>gh label list</code> (prefer the <code>area:*</code> family). Create a new area label only when a story clearly needs one that doesn&#x27;t exist — and say which you created.</li>
-            <li>Issue-body trailer: <code>Claude-Session: ...</code> on every epic and story (read from the harness/session context; do not invent).</li>
-            <li><code>DRY_RUN</code> = on if the caller says &quot;dry run&quot; / &quot;preview&quot;: print the full plan and create NOTHING.</li>
-            <li><code>MAX_PANEL_ADDITIONS</code> = <code>2</code> — non-PM specialists added beyond the always-present PM; cost discipline says spend seats only where their decision can change the backlog shape.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="guardrails" aria-labelledby="guardrails-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <h2 class="section__title" id="guardrails-title">Guardrails</h2>
-        </div>
-        <div class="order-prose">
-          <ul>
-            <li>The orchestrator owns all <code>gh</code> calls; subagents only return structured data — they never create issues themselves.</li>
-            <li><strong>Dedupe.</strong> Never re-file work already tracked in an open issue; note what you skipped and why.</li>
-            <li><strong>Don&#x27;t over-scope.</strong> A brief becomes the smallest coherent set of epics/stories that delivers it — no speculative epics the brief didn&#x27;t ask for.</li>
-            <li><strong>Panel cost.</strong> Respect <code>MAX_PANEL_ADDITIONS</code> for auto-selection; never spawn a specialist whose domain the brief does not implicate. Explicit user-named roles override the cap.</li>
-            <li>Respect <code>DRY_RUN</code> — when set, create nothing; still print the selected panel.</li>
-            <li>Every epic and story must be individually valuable and traceable (<code>Part of #</code>), so the backlog is ready to hand to <code>/ship-epic &lt;epic#&gt;</code> or <code>/ship-issue</code> one story at a time.</li>
-            <li>If a role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role brief inlined, and note the fallback.</li>
-          </ul>
-        </div>
+        <ul class="order-when__list">
+          <li>You know the work, but GitHub has no epics or stories yet.</li>
+          <li>Ready to build? /ship-epic. Messy existing backlog? /consolidate-issues.</li>
+        </ul>
       </div>
     </section>
 
     <section class="section order-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="source-title">Where this lives</h2>
+          <h2 class="section__title" id="source-title">The skill</h2>
         </div>
-        <p>This page is generated from <code>commands/plan-epics.md</code>. The installer copies it to <code>~/.claude/skills/plan-epics/SKILL.md</code> for every project, or <code>.claude/skills/plan-epics/SKILL.md</code> inside a single repo.</p>
+        <p>The installer ships the full skill — stages, gates, config — from <code>commands/plan-epics.md</code>.</p>
         <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/plan-epics.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View commands/plan-epics.md on GitHub</span>
+          <span>Read the skill on GitHub</span>
         </a>
       </div>
     </section>
