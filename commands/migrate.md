@@ -19,7 +19,10 @@ The migration comes from the Runtime input section at the end of this workflow.
 
 ## Config
 
-- `BASE_BRANCH` = default branch. `WORKTREE_DIR` = `../<repo>--migrate-<slug>`. `BRANCH` = `chore/migrate-<slug>`.
+- `BASE_BRANCH` = default branch. `WORKTREE_LAYOUT` = `nested` (default) —
+  `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
+  `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/migrate-<slug>`;
+  **sibling:** `../<repo>--migrate-<slug>`. Re-runs reuse the same path. `BRANCH` = `chore/migrate-<slug>`.
 - `TRANSFORMER` = `senior-engineer`. `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (`auto` opt-in).
 - `BATCH` = group call sites by module/ownership so parallel transformers don't touch the same files.
 - **Correctness bar / test commands** = the repo's own. Read them first. Orchestrator owns all git/gh.
@@ -39,7 +42,15 @@ them for careful individual handling rather than a blind sweep. Batch the invent
 
 ## Stage 2 — Isolate
 
+1. **Resolve `<WORKTREE_DIR>`** from Config. Parse **`worktree-root=sibling`** from runtime guidance
+   before resolving.
+2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — idempotently ensure
+   `.shipmates/worktrees/` is in `<repo>/.gitignore` (append only when missing; create with a one-line
+   Shipmates comment if absent). Never rewrite unrelated rules.
+3. **Create the worktree:**
+
 ```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> fetch origin
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```

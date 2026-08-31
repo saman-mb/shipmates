@@ -29,7 +29,10 @@ The hardening surface comes from the Runtime input section at the end of this wo
   Infer from the request; when ambiguous, default to `report`, and state which mode you ran.
 - Under `MODE=pr` only: `BASE_BRANCH` = the branch the PR targets (the repo's default branch) — the
   worktree itself is cut from the caller's current `HEAD`, not `BASE_BRANCH` (see Stage 2.5).
-  `WORKTREE_DIR` = `../<repo>--harden-<slug>`. `BRANCH` = `chore/harden-<slug>`.
+  `WORKTREE_LAYOUT` = `nested` (default) — `<repo>/.shipmates/worktrees/`; runtime guidance
+  **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
+  `<repo>/.shipmates/worktrees/harden-<slug>`; **sibling:** `../<repo>--harden-<slug>`. Re-runs reuse
+  the same path. `BRANCH` = `chore/harden-<slug>`.
   `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). The orchestrator owns all git/gh;
   agents never push. If there is no remote for `gh` to open a PR against, stop at the branch and say
   so — never silently downgrade to writing in the tree.
@@ -64,9 +67,11 @@ caller's tree is dirty, **stop and say so** — tell them to commit or stash fir
 cut from `HEAD` holds committed work only, and remediating a tree that doesn't match the findings'
 `file:line` locations would fix the wrong thing. Otherwise, unlike `/ship-issue`'s isolate stage, cut
 the worktree from the caller's current `HEAD`, not `origin/<BASE_BRANCH>` — on a clean tree, this is
-precisely so the findings located in Stages 0–2 still exist in the branch being remediated:
+precisely so the findings located in Stages 0–2 still exist in the branch being remediated. Resolve
+`<WORKTREE_DIR>`, gitignore `.shipmates/worktrees/` when nested (once, idempotently), then:
 
 ```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
 ```
 
