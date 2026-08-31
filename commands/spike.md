@@ -36,7 +36,9 @@ The open question comes from the Runtime input section at the end of this workfl
   (the ADR) ends up, and defaults to a reviewed PR. Under `MODE=pr`: `BASE_BRANCH` = the repo's
   default branch — the PR's target, not what the worktree is cut from (that's current `HEAD`).
   `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/adr-<slug>`; **sibling:**
-  `../<repo>--adr-<slug>`. Re-runs reuse the same path. `BRANCH` = `docs/adr-<slug>`. `MERGE_MODE` = `manual`
+  `../<repo>--adr-<slug>`. Re-runs reuse the same path. `BRANCH` = `docs/adr-<slug>`.
+  Default ADR worktree cut is from local **`HEAD`**. Runtime guidance **`sync-base`** fetches and cuts
+  from `origin/<BASE_BRANCH>` when remote-latest is required. `MERGE_MODE` = `manual`
   (stop at a reviewed PR; `auto` opt-in). `MAX_FIX_ROUNDS` = `2` — the cap on CI-fix rounds at
   Stage 3.5, so a permanently-red check escalates to the user instead of looping. A repo with no
   remote to open a PR against is the one fallback: build the branch, stop there, and report the

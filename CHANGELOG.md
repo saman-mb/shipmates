@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2026-08-31
+
+### Changed
+
+- Mutating commands document explicit fetch + `origin/<BASE>` sync and resume rebase behaviour (#325).
+- `/ship-epic` convenes an integration acceptance board on the epic PR before captain merge (#324).
+
 ## [0.1.11] - 2026-08-31
 
 ### Changed
