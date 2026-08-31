@@ -64,11 +64,17 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
 ## Config (defaults — override only if the repo clearly needs it)
 
 - `BASE_BRANCH` = the repo's default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
+  When runtime guidance includes **`epic-base=<branch>`** from a `/ship-epic` delegation, set
+  `BASE_BRANCH` to that branch instead — unit PRs and the worktree target the epic integration line,
+  not the repo default.
 - `MERGE_STRATEGY` = `--squash --delete-branch`
 - `MERGE_MODE` = `manual` — `manual`: stop after the acceptance board with a green, reviewed PR
   open for a human to merge. `auto`: squash-merge automatically once every gate passes. Start with
   `manual`; opt into `auto` only in a repo where unattended merges to the base branch are acceptable.
-  If Stage 0 set `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
+  **`/ship-epic` delegations pass `MERGE_MODE=auto`** so units merge into `epic-base` without captain
+  action; standalone `/ship-issue` keeps this default. Stage 8 `auto` always merges into **`BASE_BRANCH`**
+  (the epic branch when `epic-base` is set, otherwise the repo default). If Stage 0 set
+  `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
   of the configured default — a security-sensitive change must not auto-merge past the `/harden`
   recommendation.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
@@ -134,6 +140,15 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 
 `ISSUES_CLOSES` (Stage 4) is built from the validated `<issues>` list, not raw runtime input tokens.
 
+**Epic delegation — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
+list) for:
+
+- **`epic-base=<branch>`** — branch name must match `^[a-zA-Z0-9._/-]+$`; anything else, stop and ask.
+  Set `BASE_BRANCH` to that branch. Worktree isolation (Stage 1) cuts from `origin/<BASE_BRANCH>`.
+- **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Still overridden to
+  `manual` when `IS_SECURITY_SENSITIVE` is set at classification time.
+- **`epic-run`** — with `epic-base`, do not widen the bundle or scan the backlog (see Stage 0 step 3).
+
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
 **Selection mode — `next`.** If the leading token is `next` (in place of issue numbers), first pick the
@@ -194,8 +209,10 @@ the cohesion bundle widening in step 2.5.
    delegation, treat that classification and unit grouping as the **starting plan** — amend only where
    an issue body contradicts it; do not re-derive the epic shape from scratch. When guidance includes
    **`epic-run`**, do not scan the wider backlog or propose bundle widening beyond the passed issue
-   numbers. When guidance includes **`complexity tier: simple`** or **`medium`**, honour the command
-   preamble's tiered execution path for this run. Ask it to return, as structured data:
+   numbers. When guidance includes **`epic-base=<branch>`**, the worktree and PR target that branch —
+   do not reset `BASE_BRANCH` to the repo default. When guidance includes **`MERGE_MODE=auto`**, Stage 8
+   merges into `BASE_BRANCH` after green CI and board pass. When guidance includes
+   **`complexity tier: simple`** or **`medium`**, honour the command preamble's tiered execution path for this run. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
    - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
@@ -389,7 +406,8 @@ Decision:
 ## Stage 8 — Deliver  (orchestrator)
 
 - **If `MERGE_MODE=manual`** (default): stop here. Post a completion comment on the PR (what shipped,
-  how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave
+  how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge into
+  **`BASE_BRANCH`**. Leave
   the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
   the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
   so name every issue the PR will close in the completion comment. **Tick the epic checklist** when
@@ -397,7 +415,7 @@ Decision:
   `Part of #<epic>`, edit the epic body — replace `- [ ] #<story>` with `- [x] #<story>` for that
   story (via `--body-file`; see **Shell safety**). This keeps `/ship-epic` and manual `/ship-issue next
   epic` runs consistent without requiring `MERGE_MODE=auto`.
-- **If `MERGE_MODE=auto`**: immediately before merging, capture current PR head and bind merge to it:
+- **If `MERGE_MODE=auto`**: immediately before merging into **`BASE_BRANCH`**, capture current PR head and bind merge to it:
   `HEAD_SHA=$(gh pr view <PR#> --json headRefOid -q .headRefOid)` followed by
   `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch --match-head-commit "$HEAD_SHA")`, then confirm all issues
   auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
