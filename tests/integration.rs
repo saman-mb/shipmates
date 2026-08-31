@@ -269,6 +269,10 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
             assert!(content.contains("## Cost discipline"), "{target} {path} missed command preamble");
             assert!(!content.contains("shipmates:command-preamble"), "{target} {path} leaked command marker");
             assert!(!content.contains("shipmates:acceptance-board"), "{target} {path} leaked board marker");
+            assert!(
+                !content.contains("shipmates:epic-integration-board"),
+                "{target} {path} leaked epic integration board marker"
+            );
         }
 
         let role_outputs: Vec<_> = files

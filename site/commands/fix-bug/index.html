@@ -198,10 +198,11 @@
                 <ol>
                   <li><strong>Resolve <code>&lt;WORKTREE_DIR&gt;</code></strong> from Config. Parse <strong><code>worktree-root=sibling</code></strong> from runtime guidance before resolving.</li>
                   <li><strong>Gitignore the worktree root</strong> when <code>WORKTREE_LAYOUT=nested</code> — from <code>&lt;repo&gt;</code>, idempotently ensure <code>.shipmates/worktrees/</code> is ignored (append only when no line already ignores it; create <code>.gitignore</code> with <code># Shipmates isolated command worktrees (auto-managed)</code> if missing). Never rewrite unrelated rules.</li>
-                  <li><strong>Create the worktree:</strong></li>
+                  <li><strong>Sync base ref</strong> — <code>BASE_REF=origin/&lt;BASE_BRANCH&gt;</code>. <strong><code>git -C &lt;repo&gt; fetch origin</code></strong> is required; stop with a clear error if fetch fails. Fresh <code>worktree add … origin/&lt;BASE_BRANCH&gt;</code> <strong>is</strong> pull-latest — no separate <code>git pull</code>.</li>
+                  <li><strong>Resume / reuse</strong> — when worktree/branch exist, re-run fetch; rebase onto <code>BASE_REF</code> when behind (merge when repo docs prefer merge). Sync conflicts count toward <code>MAX_FIX_ROUNDS</code>.</li>
+                  <li><strong>Create the worktree</strong> (when branch/worktree do not yet exist):</li>
                 </ol>
                 <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
-git -C &lt;repo&gt; fetch origin
 git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
                 <p>All work happens in the worktree; the base branch stays clean. Commit the failing test first so the red→green history is visible.</p>
               </div>

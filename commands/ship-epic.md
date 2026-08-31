@@ -302,7 +302,9 @@ For each `<unit>`:
    - `epic-id=<epic>` — parent epic issue number; `/ship-issue` must return an **Epic unit record**
      block in its final report (see that command) so this orchestrator can append to `<epic-log>`.
    - `epic-base=<EPIC_BRANCH>` — unit PR base and worktree cut from `origin/<EPIC_BRANCH>`, **not**
-     `MAIN_BRANCH`. **Mandatory** — a unit PR targeting `MAIN_BRANCH` is a spec violation.
+     `MAIN_BRANCH`. **Mandatory** — a unit PR targeting `MAIN_BRANCH` is a spec violation. When
+     resuming after another unit merged, include **`sync-base`** so `/ship-issue` Stage 1 re-fetches
+     and rebases onto the current integration tip before build work.
    - `epic-plan` — paste the unit's pre-classification (complexity + flags per story); the
      story-level Planner should treat this as the starting plan and amend only on contradiction.
    - `epic-capsule` — paste `<epic-capsule>` when non-empty (validation commands, paths, conventions
@@ -398,14 +400,23 @@ On pause, include `<epic-log>` and a link to the progress comment in the pause r
 
 1. **Epic PR gate** — poll `gh pr checks <EPIC_PR>` on the integration PR head until green or
    `MAX_FIX_ROUNDS`-bounded fix loop exhausted (fix on `<EPIC_BRANCH>`, not on `MAIN_BRANCH`).
-2. **Finalize epic PR notes** — edit `<EPIC_PR>` body: confirm **Quick review guide** still accurate;
+2. **Epic integration board** — **never skip on full closure** (not crew-complete with owner
+   residuals). After step 1 is green, convene specialists on epic PR `<EPIC_PR>` head:
+
+<!-- shipmates:epic-integration-board -->
+
+   Fix any REJECT on `<EPIC_BRANCH>`, push, re-poll step 1, re-convene the board — bounded by
+   `MAX_FIX_ROUNDS`. Exhaustion **pauses the epic** with integration blockers (distinct from unit pause).
+   Record integration verdicts separately from per-unit `<epic-log>` reviews.
+3. **Finalize epic PR notes** — edit `<EPIC_PR>` body: confirm **Quick review guide** still accurate;
    set **Shipped so far** to the full `<epic-log>`; add **Ready to merge** checklist (all stories ticked,
-   CI green, board summary: "Every unit passed mandatory PE+PO; see epic issue progress log for per-unit
-   verdicts."). Post the same summary on epic `<epic>` progress comment under `### Ready for captain`.
-3. Post completion summary with **epic PR `<EPIC_PR>`** link, green CI link, pointer to epic progress
-   comment, checklist state. **Stop** — the captain merges the epic PR into `MAIN_BRANCH` once satisfied.
-   Do **not** auto-merge the epic PR. Do **not** ask the captain to merge individual unit PRs.
-4. **`EPIC_CLOSE_MODE`** — `manual`: propose closing epic `<epic>`; `auto`: `gh issue close <epic>`.
+   CI green, **integration board** summary plus per-unit PE+PO in progress log). Post the same summary on
+   epic `<epic>` progress comment under `### Ready for captain`.
+4. Post completion summary with **epic PR `<EPIC_PR>`** link, green CI link, **integration board
+   verdicts**, pointer to epic progress comment, checklist state. **Stop** — the captain merges the
+   epic PR into `MAIN_BRANCH` once satisfied. Do **not** auto-merge the epic PR. Do **not** ask the
+   captain to merge individual unit PRs.
+5. **`EPIC_CLOSE_MODE`** — `manual`: propose closing epic `<epic>`; `auto`: `gh issue close <epic>`.
 
 **Crew-complete (owner residuals remain)** — when `- [ ] #n` lines still exist but **every** pending
 story is owner-only with zero in-repo remainder (the crew has nothing left to delegate):
@@ -426,7 +437,7 @@ story is owner-only with zero in-repo remainder (the crew has nothing left to de
 
 One concise summary: epic link, **epic progress comment** link on the epic issue, **epic PR `<EPIC_PR>`**
 link (integration vs `MAIN_BRANCH`), units shipped (`U` invocations for `N` stories), `<epic-log>`
-highlights, gate pauses, **owner residuals** (distinct from pauses), integration recovery notes when
+highlights, **integration board verdicts** (when full closure ran), gate pauses, **owner residuals** (distinct from pauses), integration recovery notes when
 `<mis-merged-to-main>` was reconstructed, capsule highlights, epic close or crew-complete state, and
 resume command **only if** a hard-limit pause occurred. For each pause, state **which hard-limit row
 fired** — "waiting for captain" without a limit name is a spec violation. Owner-only remainder must
@@ -468,7 +479,8 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   `MERGE_MODE=auto`. Never hand the captain a unit PR link and wait. The only human merge gate for
   shipped code is the **epic PR** into `MAIN_BRANCH` at Stage 4.
 - **CI every unit** — economy comes from fewer Planner/board **invocations**, not from skipping
-  validation or acceptance on shipped code.
+  validation or acceptance on shipped code. **Integration board** at epic closure is never skipped on
+  full closure — it is the holistic review of the combined epic PR.
 - **Orchestrator owns `gh`** — epic edits and loop control only; builders/reviewers live in
   `/ship-issue`.
 - **Captain digest** — `<epic-log>` and the `<!-- shipmates-epic-progress -->` comment are the source of

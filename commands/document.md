@@ -32,6 +32,8 @@ a migration guide, or the whole repo. If empty, ask what to document and for who
   **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
   `<repo>/.shipmates/worktrees/docs-<slug>`; **sibling:** `../<repo>--docs-<slug>`. Re-runs reuse the
   same path. `BRANCH` = `docs/<slug>`.
+  Default worktree cut is from local **`HEAD`**. Runtime guidance **`sync-base`** fetches and cuts
+  from `origin/<BASE_BRANCH>` when remote-latest is required.
   `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). `MAX_FIX_ROUNDS` = `2` — a
   separate cap, on CI-fix rounds at Stage 4, so a permanently-red check escalates to the user
   instead of looping. The orchestrator owns all git/gh; agents never push. If there is no remote for

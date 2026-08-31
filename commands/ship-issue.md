@@ -166,6 +166,8 @@ list) for:
   so Stage 8 / final report can emit the **Epic unit record** for the orchestrator's progress log.
 - **`worktree-root=sibling`** — set `WORKTREE_LAYOUT=sibling` (legacy `../<repo>--…` paths; skips nested
   gitignore append).
+- **`sync-base`** — on resume when `BASE_REF` may have advanced (typical for `/ship-epic` units after
+  another unit merged); Stage 1 step 4 applies with `BASE_REF=origin/<BASE_BRANCH>`.
 
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
@@ -312,11 +314,18 @@ its work governs. Skip this stage entirely when none of the flags are set.
    `.shipmates/worktrees/` as a path prefix. If `.gitignore` is missing, create it with the comment
    `# Shipmates isolated command worktrees (auto-managed)` and the entry `.shipmates/worktrees/`.
    Never rewrite unrelated ignore rules.
-3. **Create the worktree:**
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required
+   before any worktree create or resume work; **stop with a clear error if fetch fails**. A **new**
+   branch cut from `BASE_REF` via `worktree add` **is** the pull-latest mechanism — no separate
+   `git pull` in a fresh worktree.
+4. **Resume / reuse** — when `<WORKTREE_DIR>` and `<BRANCH>` already exist, re-run fetch, then if the
+   branch is behind `BASE_REF`, rebase onto `BASE_REF` inside the worktree (merge `BASE_REF` instead
+   when the repo's contributing docs prefer merge). Sync conflicts count toward `MAX_FIX_ROUNDS`; stop
+   and report if sync cannot complete cleanly.
+5. **Create the worktree** (when branch/worktree do not yet exist):
 
 ```bash
 mkdir -p "$(dirname "<WORKTREE_DIR>")"
-git -C <repo> fetch origin
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```
 
@@ -500,7 +509,8 @@ Decision:
 ## Final report to the user
 
 One concise summary: PR link (and merge state), commit(s), the absolute **worktree path**
-(`<WORKTREE_DIR>`), which specialists reviewed it and their
+(`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), fetch outcome, and whether a resume
+sync/rebase ran, which specialists reviewed it and their
 verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now. When

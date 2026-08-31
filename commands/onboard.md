@@ -38,6 +38,8 @@ want is a README or a tutorial, stop and run `/document`.
   **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
   `<repo>/.shipmates/worktrees/onboard-<SURVEY>`; **sibling:** `../<repo>--onboard-<SURVEY>`. Re-runs
   reuse the same path. `BRANCH` = `docs/onboard-context-file-<SURVEY>` —
+  Default worktree cut is from local **`HEAD`**. Runtime guidance **`sync-base`** fetches and cuts
+  from `origin/<BASE_BRANCH>` when remote-latest is required.
   onboard has no topic slug to build a name from (it always produces the one context file), so the
   identifier is `SURVEY` instead: a still-open `create` PR then can't collide with a later `refresh`
   run, which is the failure this suffix exists to prevent. `MERGE_MODE` = `manual` (stop at a

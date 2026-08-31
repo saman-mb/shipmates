@@ -43,6 +43,9 @@ The artifact and optional reviewer come from the Runtime input section at the en
   **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
   `<repo>/.shipmates/worktrees/polish-<slug>`; **sibling:** `../<repo>--polish-<slug>`. Re-runs reuse
   the same path. `BRANCH` = `polish/<slug>`.
+  Default worktree cut is from local **`HEAD`** (includes unpushed commits the captain is viewing).
+  Runtime guidance **`sync-base`** fetches and cuts from `origin/<BASE_BRANCH>` instead when
+  remote-latest is required.
   `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). The orchestrator owns all git/gh;
   agents never push. If there is no remote for `gh` to open a PR against, stop at the branch and say
   so — never silently downgrade to writing in the tree.

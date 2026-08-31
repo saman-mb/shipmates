@@ -89,6 +89,61 @@ The `IS_*` flag vocabulary is shared by `/ship-issue` Stage 0 and `/pr-review` S
 If `principal-engineer` or any role does not resolve to an `{{agents-glob}}` file (skill-only harnesses until crew agents ship), fall back to `{{general-purpose}}` with the role brief inlined and note the fallback — never silently skip a mandatory seat.
 <!-- acceptance-board:end -->
 
+## Reusable epic integration board
+
+The marker below is expanded into `/ship-epic` Stage 4.5 when every checklist story has landed.
+It reviews the **combined** epic PR head — not a re-litigation of each unit PR.
+
+<!-- epic-integration-board:start -->
+Spawn reviewers **in parallel** against epic PR `<EPIC_PR>` head — the integration artifact that
+would merge into `MAIN_BRANCH`. Pass each reviewer: the epic issue title/body, `<epic-log>`,
+Stage 1.5 plan (when present), `<epic-capsule>`, and the full integration diff.
+
+**Integration questions (mandatory lens — answer explicitly)**
+
+1. **Coherence** — APIs, data model, copy, UX flows, error handling consistent across units?
+2. **Continuity** — integrated head reads as one deliberate change, not independent PRs stacked?
+3. **Epic value** — combined deliverable satisfies the epic goal, not only individual story boxes?
+4. **Architecture** — module boundaries, dependency direction, public surfaces sane at epic scale?
+5. **Engineering quality** — regressions, checklist compliance, cross-unit scope discipline on the
+   integration head (not a line-by-line re-review of every unit unless integration introduced new risk)?
+6. **Product / brand vision** — outcome and quality bar; does this epic ship something worth merging?
+7. **Design continuity** — cross-unit visual/UX consistency when any unit touched UI or visual art?
+
+**Mandatory seats (never skip on full closure)**
+
+- **`product-manager`** (PO): epic-level `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` against epic goal
+  and quality bar — criteria above, especially value and continuity.
+- **`principal-engineer`** (PE): integration diff review + mandatory ship checklist at epic scope.
+- **`architect`**: join when Stage 1.5 flagged arch significance for any unit, **or** the epic has
+  **≥2 code units** (units that merged non-doc-only changes), **or** integration review finds
+  boundary/coupling concerns.
+
+**Scaled optional seats**
+
+Convene when the integrated epic plausibly trips the concern; name gated-out seats in the report.
+
+| Seat | Join when |
+|------|-----------|
+| `ux-ui-designer` | Any unit was `IS_UI_STORY` or integration touches UI |
+| `art-director` | Any unit was `IS_VISUAL_STORY` or brand/visual continuity matters |
+| `sdet` | Re-run validation on epic head; confirm green CI matches integration reality |
+| `technical-writer` | Epic materially changed docs across units — combined doc set coherent? |
+| `security-engineer` | Any unit was `IS_SECURITY_SENSITIVE` or integration expands attack surface |
+| `devops-engineer` | Any unit was `IS_DELIVERY_SENSITIVE` |
+| Others | Same scaled rules as the unit acceptance board where relevant |
+
+**Decision**
+
+- **All spawned reviewers ACCEPT/PASS (nits allowed)** → proceed to Stage 4 finalize and captain handoff.
+- **Any REJECT / FAIL** → fix on `<EPIC_BRANCH>`, push, re-poll epic PR CI, re-convene this board —
+  bounded by `MAX_FIX_ROUNDS`; exhaustion pauses the epic with integration blockers.
+
+**Harness fallback**
+
+Same as the unit acceptance board — never silently skip a mandatory seat.
+<!-- epic-integration-board:end -->
+
 ## Reusable subagent preamble
 
 Adapters expand this marker before each role's instructions, giving every subagent a stable common
