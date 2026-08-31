@@ -394,12 +394,25 @@ fn main() -> Result<()> {
                 provision_tool_deps(&provision_scripts);
             }
             if install_steering.is_some() {
-                if let Some((path, stripped)) = steering::migrate_legacy_agents_md(&target_dir)? {
-                    std::fs::write(&path, stripped)?;
-                    println!(
-                        "Removed legacy contributor steering section from {}",
-                        path.display()
-                    );
+                for action in steering::plan_legacy_migration(&target_dir)? {
+                    match action {
+                        steering::LegacyMigration::Write { path, content } => {
+                            crate::installer::atomic_write(&path, &content)?;
+                            println!(
+                                "Removed legacy contributor steering section from {}",
+                                path.display()
+                            );
+                        }
+                        steering::LegacyMigration::Remove { path } => {
+                            if path.is_file() {
+                                std::fs::remove_file(&path)?;
+                                println!(
+                                    "Removed legacy contributor steering file {}",
+                                    path.display()
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }
