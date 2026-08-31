@@ -63,48 +63,55 @@
       {
         "@type": "HowToStep",
         "position": 5,
+        "name": "Stage 2.5 — Release version bump (same PR — orchestrator or builder; only if IS_RELEASE_AFFECTING)",
+        "text": "When the Planner set IS_RELEASE_AFFECTING = yes, the version bump and changelog entry for this PR's changes are part of the delivery — in this PR, before Stage 4 — never a follow-up PR and never deferred to /release or captain memory.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-2-5"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 6,
         "name": "Stage 3 — Self-check before PR",
         "text": "Spawn the SDET (subagent_type: sdet) to run the test/validation plan against the worktree (running --help on unfamiliar test runners/tools to discover flags if needed): unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. npm…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-3"
       },
       {
         "@type": "HowToStep",
-        "position": 6,
+        "position": 7,
         "name": "Stage 4 — Commit, push, open PR (orchestrator)",
         "text": "The PR body must include: summary, the acceptance criteria as a checklist, how it was validated (and any validation that could NOT be run locally), and a Closes #<issue> keyword repeated for every issue in <issues> — GitHub only auto-closes the ones it's told individually, so a single…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-4"
       },
       {
         "@type": "HowToStep",
-        "position": 7,
+        "position": 8,
         "name": "Stage 4.5 — CI gate: wait for green, fix if red (orchestrator + Fixer)",
         "text": "When there is no local toolchain to fully validate, CI is the ONLY real runtime gate — the Stage 3 SDET pass is static and WILL miss things (parse errors, lint-as-error, dependency/version drift). You MUST confirm CI is green on the pushed head before the acceptance board runs. Never assume a push…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-4-5"
       },
       {
         "@type": "HowToStep",
-        "position": 8,
+        "position": 9,
         "name": "Stage 5 — Acceptance board",
         "text": "Spawn reviewers in parallel against the PR head commit — they review exactly what will merge.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-5"
       },
       {
         "@type": "HowToStep",
-        "position": 9,
+        "position": 10,
         "name": "Stage 6 — Remediation loop",
         "text": "Spawn a Fixer (subagent_type: senior-engineer) to address every blocking item (REJECT reasons from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then re-run Stage 5 on the new head.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-6"
       },
       {
         "@type": "HowToStep",
-        "position": 10,
+        "position": 11,
         "name": "Stage 7 — Follow-up issues (orchestrator)",
         "text": "Take every non-blocking nit (from any \"WITH-NITS\" verdict and low-severity SDET findings) and file each as its own GitHub issue: capture title and body into quoted variables / a body file per Shell safety above (titles may quote text from the source issues — untrusted), then gh issue create…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-7"
       },
       {
         "@type": "HowToStep",
-        "position": 11,
+        "position": 12,
         "name": "Stage 8 — Deliver (orchestrator)",
         "text": "If MERGE_MODE=manual (default): stop here. Post a completion comment on the PR (what shipped, how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge into BASE_BRANCH. Leave the worktree in place, or remove it and keep the branch — your choice, state which.…",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-8"
@@ -189,7 +196,7 @@
         <div class="section__head">
           <p class="section__eyebrow">Step by step</p>
           <h2 class="section__title" id="stages-title">The stages</h2>
-          <p class="section__lead">Eleven stages, in order. One is a hard gate — the run stops there until it passes.</p>
+          <p class="section__lead">Twelve stages, in order. One is a hard gate — the run stops there until it passes.</p>
         </div>
         <h3 id="cost-discipline">Cost discipline</h3>
         <div class="order-prose">
@@ -272,6 +279,7 @@
                       <li><strong>single issue or <code>next</code>, <code>BUNDLE=recommend</code></strong> (default) — if the lead issue is small/low-risk, run ONE cheap <code>gh issue list --state open --label &lt;its-labels&gt; --json number,title,labels</code> for cohesive candidates. If any pass the test, <strong>recommend the bundle and ask</strong> — list the candidates and the token rationale — folding in only what the user oks. <strong>A recommended bundle never proceeds without consent</strong>; if the user declines (or the run is non-interactive), ship the single lead ticket.</li>
                       <li><strong><code>BUNDLE=off</code></strong> — ship exactly the issues passed.</li>
                     </ul>
+                    <p><strong>Parallel release-affecting PRs:</strong> when several open stories each touch <code>VERSION_FILES</code>, payload digests, or install-count fixtures, warn that merging them in parallel to <code>RELEASE_BRANCH</code> often conflicts — prefer bundling cohesive release-affecting work in one <code>/ship-issue</code> run or merging serially.</p>
                     <p>Add any accepted issues to <code>&lt;issues&gt;</code> (re-sort so <code>&lt;first-issue&gt;</code> is unchanged). Whatever the bundle, Stage 4 already repeats <code>Closes #&lt;N&gt;</code> for every issue, so if the board later rejects one, it can be dropped from the bundle — revert its files and omit its <code>Closes</code> — rather than sinking the rest.</p>
                   </li>
                   <li>Spawn ONE <strong>Planner</strong> (<code>subagent_type: Plan</code>). Give it all issue bodies + repo README + CLAUDE.md. When runtime guidance includes <strong><code>epic-plan</code></strong> from a <code>/ship-epic</code> delegation, treat that classification and unit grouping as the <strong>starting plan</strong> — amend only where an issue body contradicts it; do not re-derive the epic shape from scratch. When guidance includes <strong><code>epic-run</code></strong>, do not scan the wider backlog or propose bundle widening beyond the passed issue numbers. When guidance includes <strong><code>epic-base=&lt;branch&gt;</code></strong>, the worktree and PR target that branch — do not reset <code>BASE_BRANCH</code> to the repo default. When guidance includes <strong><code>MERGE_MODE=auto</code></strong>, Stage 8 merges into <code>BASE_BRANCH</code> after green CI and board pass. When guidance includes <strong><code>complexity tier: simple</code></strong> or <strong><code>medium</code></strong>, honour the command preamble&#x27;s tiered execution path for this run. Ask it to return, as structured data:
@@ -288,7 +296,8 @@
                           <li><code>IS_ARCH_SIGNIFICANT = yes/no</code> — does it add a new subsystem, change a persisted data/schema format, or cross-cut many modules in a way a narrow code review would miss? Gates <code>architect</code>.</li>
                           <li><code>IS_SECURITY_SENSITIVE = yes/no</code> — does it touch authn/authz, untrusted input, secrets, crypto, file/network/OS access, or dependencies? Does <strong>not</strong> gate a reviewer seat — security review lives in <code>/harden</code>, which this command doesn&#x27;t run. It gates two things instead: the final report must carry the <code>/harden</code> recommendation (mechanical, not a judgment call made while writing the summary), and it forces <code>MERGE_MODE=manual</code> for this run (see Config).</li>
                           <li><code>IS_DELIVERY_SENSITIVE = yes/no</code> — does it change how the project is built, packaged, configured or shipped (pipeline/CI definitions, build scripts, image or environment definitions, infrastructure-as-code, dependency or toolchain pins)? Gates <code>devops-engineer</code>.</li>
-                          <li><code>IS_DOCS_AFFECTING = yes/no</code> — does the change touch documented behaviour, flags, commands, config, or public API/CLI surface that user- or agent-facing docs describe? Gates <code>technical-writer</code>. This flag vocabulary is shared with <code>/pr-review</code>, which classifies a PR diff the same way — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: here it gates the <code>/harden</code> recommendation and <code>MERGE_MODE</code> above, never a reviewer seat, because this command owns the branch and can just run <code>/harden</code> itself. <code>/pr-review</code> keeps the same flag wired to a <code>security-engineer</code> seat, because it reviews a PR the crew didn&#x27;t author, where <code>/harden</code> isn&#x27;t available — you don&#x27;t own that branch.</li>
+                          <li><code>IS_DOCS_AFFECTING = yes/no</code> — does the change touch documented behaviour, flags, commands, config, or public API/CLI surface that user- or agent-facing docs describe? Gates <code>technical-writer</code>.</li>
+                          <li><code>IS_RELEASE_AFFECTING = yes/no</code> — will this PR&#x27;s merge to <strong><code>RELEASE_BRANCH</code></strong> require a new published version for users to receive the change (new/changed commands, tools, crew roles, install payload, CLI/API behaviour, or other release-artifact surface)? Internal refactors, test-only changes, and work that does not change what installs or publishes → <code>no</code>. When <code>epic-base=&lt;branch&gt;</code> targets an integration branch that is not <code>RELEASE_BRANCH</code>, force <code>no</code> — the epic&#x27;s landing PR on <code>RELEASE_BRANCH</code> owns the bump. When <code>yes</code>, also return <strong><code>RELEASE_BUMP</code></strong>: one of <code>patch</code>, <code>minor</code>, or <code>major</code> (SemVer unless the repo says otherwise) and the list of <code>VERSION_FILES</code> + changelog path to update. Does <strong>not</strong> gate an extra reviewer seat — <code>principal-engineer</code> and <code>technical-writer</code> (when gated) verify the bump landed. This flag vocabulary is shared with <code>/pr-review</code>, which classifies a PR diff the same way — a new flag must be added to both files. <code>IS_SECURITY_SENSITIVE</code> is the deliberate exception: here it gates the <code>/harden</code> recommendation and <code>MERGE_MODE</code> above, never a reviewer seat, because this command owns the branch and can just run <code>/harden</code> itself. <code>/pr-review</code> keeps the same flag wired to a <code>security-engineer</code> seat, because it reviews a PR the crew didn&#x27;t author, where <code>/harden</code> isn&#x27;t available — you don&#x27;t own that branch.</li>
                         </ul>
                       </li>
                     </ul>
@@ -342,6 +351,22 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
               </div>
             </div>
           </li>
+          <li class="order-stage" id="stage-2-5">
+            <span class="order-stage__num" aria-hidden="true">2.5</span>
+            <h3 class="order-stage__title"><span class="visually-hidden">Stage 2.5 — </span>Release version bump (same PR — orchestrator or builder; only if <code>IS_RELEASE_AFFECTING</code>)</h3>
+            <div class="order-stage__body">
+              <div class="order-prose">
+                <p>When the Planner set <strong><code>IS_RELEASE_AFFECTING = yes</code></strong>, the version bump and changelog entry for <strong>this PR&#x27;s changes</strong> are part of the delivery — <strong>in this PR, before Stage 4</strong> — never a follow-up PR and never deferred to <code>/release</code> or captain memory.</p>
+                <ol>
+                  <li>Read current version from every discovered <strong><code>VERSION_FILES</code></strong> entry; derive the next version from <strong><code>RELEASE_BUMP</code></strong> (breaking/API removals → <code>major</code>; new user-visible capability → <code>minor</code> or <code>patch</code> per repo convention; default <code>patch</code> when unsure).</li>
+                  <li>Update every <code>VERSION_FILES</code> entry consistently (and lockfiles the repo pins to that version, if any). Add a changelog / release-notes entry covering <strong>only what this PR ships</strong> — use the repo&#x27;s changelog format (Keep a Changelog, <code>CHANGELOG.md</code>, GitHub release notes stub, etc.); spawn <code>technical-writer</code> when the format is non-trivial.</li>
+                  <li>Include <code>VERSION_FILES</code> + changelog paths in the build plan&#x27;s file ownership (orchestrator-owned is fine — they must not collide with feature builders).</li>
+                  <li><strong>Blocking gate:</strong> if <code>IS_RELEASE_AFFECTING=yes</code> and the diff reaching Stage 3 lacks a version bump or changelog entry, treat it as a failed self-check — fix before opening the PR. Merging user-visible work without bumping the version the release pipeline reads is a process defect, not an optional polish step.</li>
+                </ol>
+                <p><code>/release</code> remains for <strong>batch</strong> release ceremony (everything since the last tag, SRE pre-flight, tag/publish opt-in) — it does not replace per-PR bumps when a single story ships release-affecting work straight to <code>RELEASE_BRANCH</code>.</p>
+              </div>
+            </div>
+          </li>
           <li class="order-stage" id="stage-3">
             <span class="order-stage__num" aria-hidden="true">3</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Self-check before PR</h3>
@@ -350,7 +375,9 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
               <div class="order-prose">
                 <ul>
                   <li>Spawn the <strong>SDET</strong> (<code>subagent_type: sdet</code>) to run the test/validation plan against the worktree (running <code>--help</code> on unfamiliar test runners/tools to discover flags if needed): unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step (whatever this repo uses: e.g. <code>npm test &amp;&amp; npm run build</code>, <code>cargo test</code>, <code>pytest -q</code>, <code>go build ./...</code>, <code>make check</code>). If the toolchain is absent, it does a rigorous <strong>static</strong> pass and says so explicitly in the PR.</li>
+                  <li>When the diff touches <code>toolbox/</code>, <code>TOOLS</code> in <code>tools/gen_command_pages.py</code>, <code>build.rs</code>, <code>src/catalog.rs</code>, or other install/embed paths, also run <strong><code>cargo run -- install --harness codex --dir &lt;tmpdir&gt; --with-tools none</code></strong> from the worktree (add <code>--with-tools all</code> or specific tools when the story adds/changes tools). A green <code>cargo test</code> alone does not catch dev-loop install failures (e.g. non-UTF-8 files under <code>toolbox/</code>).</li>
                   <li>When the diff touches <code>toolbox/</code> or <code>TOOLS</code> in <code>tools/gen_command_pages.py</code>, also run the contributor checklists in the installed steering file (<code>.claude/rules/shipmates-contributor.md</code>, <code>.cursor/rules/shipmates-contributor.mdc</code>, <code>.github/instructions/shipmates.instructions.md</code>, or <code>.shipmates/contributor-steering.md</code> on harnesses without a documented rules path): terminal tools need an <strong>Examples</strong> termgif gallery like <code>scrub</code> / <code>fixtures</code>; the homepage <code>#tools</code> grid must list every <code>TOOLS</code> entry in canonical order.</li>
+                  <li>When <strong><code>IS_RELEASE_AFFECTING=yes</code></strong>, confirm every <code>VERSION_FILES</code> entry matches the planned next version and a changelog entry for this PR exists — flag missing bumps as <strong>blocking</strong>.</li>
                   <li>If self-check fails, loop a <strong>Fixer</strong> (<code>subagent_type: senior-engineer</code>) until green (counts toward <code>MAX_FIX_ROUNDS</code>). Only open a PR once self-check passes — never open a known-red PR.</li>
                 </ul>
               </div>
@@ -494,7 +521,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         </ol>
         <h3 id="final-report-to-the-user">Final report to the user</h3>
         <div class="order-prose">
-          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now.</p>
+          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now. When <strong><code>IS_RELEASE_AFFECTING=yes</code></strong>, state the <strong>new version</strong> and that merge to <strong><code>RELEASE_BRANCH</code></strong> will publish it (or name the repo&#x27;s publish step if manual) — never imply the feature is released without the version bump that landed in the PR.</p>
           <p><strong>Epic unit record</strong> — when runtime guidance includes <strong><code>epic-run</code></strong> and <strong><code>epic-id=&lt;epic&gt;</code></strong>, end the final report with this machine-readable block (orchestrator parses it into the epic progress log):</p>
           <pre class="order-code" tabindex="0"><code>EPIC_UNIT_RECORD:
 EPIC_ID: &lt;epic&gt;
@@ -530,6 +557,8 @@ FIX_ROUNDS: &lt;n&gt;</code></pre>
             <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-&lt;first-issue&gt;</code> (single issue) or <code>../&lt;repo&gt;--bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple issues)</li>
             <li><code>BRANCH</code> = <code>feat/issue-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (single) or <code>feat/bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple)</li>
             <li><strong>Quality bar</strong> = whatever the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it at the start and pass it to every reviewer — the <code>product-manager</code> (and the visual specialists) enforce THAT bar, not just &quot;it runs.&quot;</li>
+            <li><strong><code>VERSION_FILES</code></strong> = wherever the repo records its published version (<code>Cargo.toml</code>, <code>package.json</code>, <code>pyproject.toml</code>, <code>VERSION</code>, etc.) — discover from README / CONTRIBUTING / CLAUDE.md; same discovery rules as <code>/release</code>. Only used when <code>IS_RELEASE_AFFECTING</code> is set (see Stage 0).</li>
+            <li><strong><code>RELEASE_BRANCH</code></strong> = the branch whose merges trigger publication — usually the repo default branch, unless contributing docs name a different release line. When <code>epic-base=&lt;branch&gt;</code> is set and that branch is <strong>not</strong> <code>RELEASE_BRANCH</code>, release bumps are deferred to the epic&#x27;s merge into <code>RELEASE_BRANCH</code> (integration-branch units do not bump on every story).</li>
           </ul>
           <p>Required commit trailers (append to every commit and the PR body — read them from the harness / session context; do not invent them). At minimum a <code>Co-Authored-By:</code> line for the agent.</p>
           <h3>The reviewer/builder pool</h3>
@@ -571,6 +600,7 @@ FIX_ROUNDS: &lt;n&gt;</code></pre>
             <li>If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan requires), stop and surface it — autonomy does not mean forcing a bad merge.</li>
             <li><strong>Secrets &amp; security hygiene.</strong> Never write secrets, tokens, or credentials into commits, PR/issue bodies, or logs — assume the repo is public. The <code>sdet</code> flags secret leakage as a defect; a real leak is blocking. Deeper security work is not this command&#x27;s job — see the next bullet.</li>
             <li><strong>Security review lives in <code>/harden</code>, not here.</strong> This command does not threat-model. When <code>IS_SECURITY_SENSITIVE</code> is set, the final report must carry the <code>/harden</code> recommendation and the run stays on <code>MERGE_MODE=manual</code> (Stage 0, Config) — the flag is the trigger, not a judgment call made while writing the summary.</li>
+            <li><strong>Release bump in the PR.</strong> When <code>IS_RELEASE_AFFECTING=yes</code>, a missing version or changelog update is <strong>blocking</strong> — same severity as a missing digest or unstaged generated page. Never tell the captain to run <code>/release</code> or open a follow-up PR instead; that is how features merge without publishing.</li>
             <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR already exists — reuse them rather than erroring or duplicating work. Every stage should be safe to repeat.</li>
             <li>Static review cannot verify pixels, and no reviewer can verify what it didn&#x27;t examine. When neither the <code>ux-ui-designer</code> (UI) nor the <code>art-director</code> (visual-art) could actually render and inspect the result, surface their <strong>&quot;needs human visual pass&quot;</strong> flag in the final report rather than implying the visuals are confirmed. The same holds for any Stage 5 reviewer that names a gap in what it covered — carry it into the final report; never let an ACCEPT/PASS silently stand in for ground it didn&#x27;t see. Both visual roles are auto-gated by the Planner&#x27;s <code>IS_UI_STORY</code> / <code>IS_VISUAL_STORY</code> flags, as <code>architect</code> is by <code>IS_ARCH_SIGNIFICANT</code>.</li>
           </ul>

@@ -92,6 +92,13 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
 - **Quality bar** = whatever the repo's `README` / `{{project-instructions}}` / contributing docs state. Read it at
   the start and pass it to every reviewer — the `product-manager` (and the visual specialists)
   enforce THAT bar, not just "it runs."
+- **`VERSION_FILES`** = wherever the repo records its published version (`Cargo.toml`, `package.json`,
+  `pyproject.toml`, `VERSION`, etc.) — discover from README / CONTRIBUTING / {{project-instructions}};
+  same discovery rules as `/release`. Only used when `IS_RELEASE_AFFECTING` is set (see Stage 0).
+- **`RELEASE_BRANCH`** = the branch whose merges trigger publication — usually the repo default branch,
+  unless contributing docs name a different release line. When `epic-base=<branch>` is set and that
+  branch is **not** `RELEASE_BRANCH`, release bumps are deferred to the epic's merge into
+  `RELEASE_BRANCH` (integration-branch units do not bump on every story).
 
 Required commit trailers (append to every commit and the PR body — read them from the harness /
 session context; do not invent them). At minimum a `Co-Authored-By:` line for the agent.
@@ -204,6 +211,11 @@ the cohesion bundle widening in step 2.5.
      consent**; if the user declines (or the run is non-interactive), ship the single lead ticket.
    - **`BUNDLE=off`** — ship exactly the issues passed.
 
+   **Parallel release-affecting PRs:** when several open stories each touch `VERSION_FILES`, payload
+   digests, or install-count fixtures, warn that merging them in parallel to `RELEASE_BRANCH` often
+   conflicts — prefer bundling cohesive release-affecting work in one `/ship-issue` run or merging
+   serially.
+
    Add any accepted issues to `<issues>` (re-sort so `<first-issue>` is unchanged). Whatever the
    bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
    can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
@@ -250,6 +262,15 @@ the cohesion bundle widening in step 2.5.
      - `IS_DOCS_AFFECTING = yes/no` — does the change touch documented behaviour, flags, commands,
        config, or public API/CLI surface that user- or agent-facing docs describe? Gates
        `technical-writer`.
+     - `IS_RELEASE_AFFECTING = yes/no` — will this PR's merge to **`RELEASE_BRANCH`** require a new
+       published version for users to receive the change (new/changed commands, tools, crew roles,
+       install payload, CLI/API behaviour, or other release-artifact surface)? Internal refactors,
+       test-only changes, and work that does not change what installs or publishes → `no`. When
+       `epic-base=<branch>` targets an integration branch that is not `RELEASE_BRANCH`, force `no`
+       — the epic's landing PR on `RELEASE_BRANCH` owns the bump. When `yes`, also return
+       **`RELEASE_BUMP`**: one of `patch`, `minor`, or `major` (SemVer unless the repo says otherwise) and
+       the list of `VERSION_FILES` + changelog path to update. Does **not** gate an extra reviewer
+       seat — `principal-engineer` and `technical-writer` (when gated) verify the bump landed.
    This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
    must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
    `/harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
@@ -302,6 +323,30 @@ shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 
 For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUNDS`.
 
+## Stage 2.5 — Release version bump  (same PR — orchestrator or builder; only if `IS_RELEASE_AFFECTING`)
+
+When the Planner set **`IS_RELEASE_AFFECTING = yes`**, the version bump and changelog entry for **this
+PR's changes** are part of the delivery — **in this PR, before Stage 4** — never a follow-up PR and
+never deferred to `/release` or captain memory.
+
+1. Read current version from every discovered **`VERSION_FILES`** entry; derive the next version from
+   **`RELEASE_BUMP`** (breaking/API removals → `major`; new user-visible capability → `minor` or
+   `patch` per repo convention; default `patch` when unsure).
+2. Update every `VERSION_FILES` entry consistently (and lockfiles the repo pins to that version, if
+   any). Add a changelog / release-notes entry covering **only what this PR ships** — use the repo's
+   changelog format (Keep a Changelog, `CHANGELOG.md`, GitHub release notes stub, etc.); spawn
+   `technical-writer` when the format is non-trivial.
+3. Include `VERSION_FILES` + changelog paths in the build plan's file ownership (orchestrator-owned is
+   fine — they must not collide with feature builders).
+4. **Blocking gate:** if `IS_RELEASE_AFFECTING=yes` and the diff reaching Stage 3 lacks a version
+   bump or changelog entry, treat it as a failed self-check — fix before opening the PR. Merging
+   user-visible work without bumping the version the release pipeline reads is a process defect, not
+   an optional polish step.
+
+`/release` remains for **batch** release ceremony (everything since the last tag, SRE pre-flight,
+tag/publish opt-in) — it does not replace per-PR bumps when a single story ships release-affecting
+work straight to `RELEASE_BRANCH`.
+
 ## Stage 3 — Self-check before PR  (agent: `sdet`)
 
 - Spawn the **SDET** (`{{role:sdet}}`) to run the test/validation plan against the worktree (running
@@ -310,12 +355,18 @@ For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUN
   (whatever this repo uses: e.g. `npm test && npm run build`, `cargo test`, `pytest -q`,
   `go build ./...`, `make check`). If the toolchain is absent, it does a rigorous **static** pass
   and says so explicitly in the PR.
+- When the diff touches `toolbox/`, `TOOLS` in `tools/gen_command_pages.py`, `build.rs`, `src/catalog.rs`,
+  or other install/embed paths, also run **`cargo run -- install --harness codex --dir <tmpdir> --with-tools none`**
+  from the worktree (add `--with-tools all` or specific tools when the story adds/changes tools). A green
+  `cargo test` alone does not catch dev-loop install failures (e.g. non-UTF-8 files under `toolbox/`).
 - When the diff touches `toolbox/` or `TOOLS` in `tools/gen_command_pages.py`, also run the
   contributor checklists in the installed steering file (`.claude/rules/shipmates-contributor.md`,
   `.cursor/rules/shipmates-contributor.mdc`, `.github/instructions/shipmates.instructions.md`, or
   `.shipmates/contributor-steering.md` on harnesses without a documented rules path):
   terminal tools need an **Examples** termgif gallery like `scrub` / `fixtures`; the homepage `#tools`
   grid must list every `TOOLS` entry in canonical order.
+- When **`IS_RELEASE_AFFECTING=yes`**, confirm every `VERSION_FILES` entry matches the planned next
+  version and a changelog entry for this PR exists — flag missing bumps as **blocking**.
 - If self-check fails, loop a **Fixer** (`{{role:senior-engineer}}`) until green (counts
   toward `MAX_FIX_ROUNDS`). Only open a PR once self-check passes — never open a known-red PR.
 
@@ -432,7 +483,10 @@ Decision:
 One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their
 verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
-Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now.
+Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now. When
+**`IS_RELEASE_AFFECTING=yes`**, state the **new version** and that merge to **`RELEASE_BRANCH`**
+will publish it (or name the repo's publish step if manual) — never imply the feature is released
+without the version bump that landed in the PR.
 
 **Epic unit record** — when runtime guidance includes **`epic-run`** and **`epic-id=<epic>`**, end the
 final report with this machine-readable block (orchestrator parses it into the epic progress log):
@@ -472,6 +526,10 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
   `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/harden` recommendation and the
   run stays on `MERGE_MODE=manual` (Stage 0, Config) — the flag is the trigger, not a judgment call
   made while writing the summary.
+- **Release bump in the PR.** When `IS_RELEASE_AFFECTING=yes`, a missing version or changelog update
+  is **blocking** — same severity as a missing digest or unstaged generated page. Never tell the
+  captain to run `/release` or open a follow-up PR instead; that is how features merge without
+  publishing.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work. Every stage should be safe to repeat.
 - Static review cannot verify pixels, and no reviewer can verify what it didn't examine. When neither
