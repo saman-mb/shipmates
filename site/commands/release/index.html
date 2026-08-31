@@ -177,6 +177,7 @@
             <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
           </ul>
           <p>Turn &quot;what&#x27;s merged since the last release&quot; into a clean, reversible release. The <code>technical-writer</code> builds the changelog from the real merge history (every user-visible change covered), the version is bumped consistently, and it&#x27;s gated on <strong>green CI at the exact commit being tagged</strong> plus an SRE pre-flight for rollback and migration safety. Publishing is opt-in.</p>
+          <p><strong>Scope vs <code>/ship-issue</code>.</strong> <code>/ship-issue</code> bumps version and adds a changelog entry <strong>in the same PR</strong> when a story ships release-affecting work to the release branch (<code>IS_RELEASE_AFFECTING</code>). Use <strong><code>/release</code></strong> when you need a <strong>batch</strong> cut (assemble everything since the last tag), SRE pre-flight, or explicit tag/publish ceremony — not as a substitute for per-story bumps the crew forgot in the PR.</p>
           <p>The requested version comes from the Runtime input section at the end of this workflow.</p>
         </div>
         <ol class="order-stages" role="list">
