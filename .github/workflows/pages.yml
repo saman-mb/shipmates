@@ -150,12 +150,16 @@ jobs:
           test ! -d "$RUNNER_TEMP/install-all/.cursor/skills"
           test ! -d "$RUNNER_TEMP/install-all/.codex/skills"
           test ! -d "$RUNNER_TEMP/install-all/.github/skills"
-      # Tools are opt-in (--with-tools) and map per harness: an agent-only skill
-      # on Claude Code (user-invocable: false), a native code tool on opencode.
-      - name: Install an opt-in tool end to end (--with-tools)
+      # Tools ship by default; --with-tools selects subsets or opts out.
+      - name: Install tools end to end (--with-tools)
         run: |
-          # a plain install ships NO tool
-          test ! -e "$RUNNER_TEMP/install/.claude/skills/termgif"
+          # a plain install ships every bundled tool
+          test -f "$RUNNER_TEMP/install/.claude/skills/termgif/SKILL.md"
+          test -f "$RUNNER_TEMP/install/.claude/skills/termgif/termgif.py"
+          grep -q "user-invocable: false" "$RUNNER_TEMP/install/.claude/skills/termgif/SKILL.md"
+          # crew-only escape hatch
+          cargo run -- install --harness claude-code --with-tools none --dir "$RUNNER_TEMP/install-crew-only"
+          test ! -e "$RUNNER_TEMP/install-crew-only/.claude/skills/termgif"
           cargo run -- install --harness claude-code --with-tools termgif --dir "$RUNNER_TEMP/install-tool"
           test -f "$RUNNER_TEMP/install-tool/.claude/skills/termgif/SKILL.md"
           test -f "$RUNNER_TEMP/install-tool/.claude/skills/termgif/termgif.py"
