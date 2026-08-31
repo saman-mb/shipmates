@@ -88,6 +88,9 @@ are correct; which one belongs in a given sentence is set by the
 9. Add a matching card to the `#commands` grid in `site/index.html`, linking to `commands/<name>/`.
 10. Both validators must exit 0 before you open the PR: `cargo run -- check --target <target>` and
     `python3 .github/scripts/validate_site.py`.
+11. **Release-affecting changes** (new/changed commands, tools, crew, or install payload) must bump
+    `Cargo.toml` and add a `CHANGELOG.md` entry in the **same PR** — not a follow-up. Without the
+    bump, merge to `main` does not publish a new release.
 
 ## Testing your change
 
