@@ -506,7 +506,7 @@ question is whether it's been *run*.
   [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
   CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates builds for.
 
-Why that's credible: the crew's system prompts name no harness, and the fourteen commands ship in the
+Why that's credible: the crew's system prompts name no harness, and the fifteen commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
 of a port is mapping frontmatter fields and rendering dialect tokens, not rewriting the crew. The
 opencode adapter is the first test of that claim: it reused every persona and workflow body unchanged,
