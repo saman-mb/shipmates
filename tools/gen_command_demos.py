@@ -64,6 +64,18 @@ COMMANDS = {
         ],
         "closer": "Bug fixed — proven by a test, reviewed, CI-green. ⚓",
     },
+    "report-bug": {
+        "arg": "ship-epic re-shipped merged stories",
+        "stages": [
+            ("INTAKE", "symptom + report vs apply"),
+            ("HARVEST", "harness, version, repo, command"),
+            ("DEDUPE", "search upstream open issues"),
+            ("DRAFT", "Shipmates triage shape"),
+            ("PREVIEW", "title + body for captain"),
+            ("FILE", "apply -> saman-mb/shipmates"),
+        ],
+        "closer": "Upstream bug filed — structured for maintainer triage. ⚓",
+    },
     "plan-epics": {
         "arg": "briefs/q3.md",
         "stages": [
