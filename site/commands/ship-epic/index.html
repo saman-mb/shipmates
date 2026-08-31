@@ -85,7 +85,7 @@
         "@type": "HowToStep",
         "position": 8,
         "name": "Stage 4 — Epic closure (orchestrator)",
-        "text": "When no - [ ] #n lines remain:",
+        "text": "Full closure — when no - [ ] #n lines remain on the epic checklist:",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-4"
       }
     ]
@@ -202,14 +202,13 @@
               <thead><tr><th scope="col">Limit</th><th scope="col">When it fires</th></tr></thead>
               <tbody>
                 <tr><td><strong>Gate story</strong></td><td>Unit contains a <code>gate</code>-labelled (or sign-off) story still awaiting human sign-off</td></tr>
-                <tr><td><strong>External blocker, no shippable slice</strong></td><td>Every AC in the unit requires an owner action with no prep work the crew can land now</td></tr>
                 <tr><td><strong><code>MAX_FIX_ROUNDS</code> exhausted</strong></td><td>Stage 4.5 or Stage 6 on this unit could not get CI green / acceptance pass</td></tr>
                 <tr><td><strong>Manual unit merge</strong></td><td>Unit used <code>MERGE_MODE=manual</code> (<code>IS_SECURITY_SENSITIVE</code>, <code>UNIT_MERGE_MODE=manual</code>, or other forced manual path) — green PR awaits captain merge into <code>&lt;EPIC_BRANCH&gt;</code> before the next unit</td></tr>
                 <tr><td><strong>Shell safety abort</strong></td><td>Untrusted input, cycle in dependency graph, invalid epic token</td></tr>
               </tbody>
             </table>
           </div>
-          <p>Everything else — including <strong>red CI on the unit PR</strong>, <strong>red CI already on <code>&lt;EPIC_BRANCH&gt;</code></strong>, and <strong>partly blocked stories</strong> — stays in the <strong>fix / defer / next-unit</strong> loop. Do <strong>not</strong> pause the epic.</p>
+          <p>Everything else — including <strong>red CI on the unit PR</strong>, <strong>red CI already on <code>&lt;EPIC_BRANCH&gt;</code></strong>, <strong>partly blocked stories</strong>, and <strong>owner-only remainders</strong> (DNS, registrar, deploy-console attach, or any AC that only the captain can flip with zero in-repo prep left) — stays in the <strong>fix / defer / next-unit / crew-complete</strong> loop. <strong>Do not pause the epic</strong> for owner-only work. Naming an external dependency is not a license to end the turn.</p>
           <p><strong>Confirmed-green CI</strong> is a per-unit requirement inside <code>/ship-issue</code> Stage 4.5; remediate there, not by stopping <code>/ship-epic</code> early. Pause is <strong>not</strong> a substitute for the Fixer loop.</p>
           <p>The epic issue number and optional guidance come from the Runtime input section at the end of this workflow.</p>
         </div>
@@ -321,9 +320,8 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
                   <li><strong>Gate unit</strong> — if any story in the unit is in <code>&lt;gates&gt;</code> and still open: <strong>pause</strong> with <strong>awaiting sign-off</strong>. Do <strong>not</strong> invoke <code>/ship-issue</code>. <strong>Stop</strong> — this is the only deliberate human gate in the loop.</li>
                   <li><strong>External / mixed blocker</strong> — for each story in the unit blocked by an open external issue:
                     <p>a. <strong>Shippable slice</strong> — if the story body (or Stage 1.5 <code>blocker_class: partial</code>) names work that does <strong>not</strong> require the blocker to close, treat that slice as the <strong>unit scope</strong>. Invoke <code>/ship-issue</code> on that slice; in the PR body note the residual owner action and link the blocker. <strong>Do not pause the epic.</strong></p>
-                    <p>b. <strong>Residual only</strong> — file or update a follow-up issue for the blocked flip / owner action. Tick or comment on the story that prep shipped; leave the flip open.</p>
-                    <p>c. <strong>Pause only when</strong> every remaining AC for the unit truly requires the external blocker and there is <strong>zero</strong> shippable remainder (<code>blocker_class: full</code>). Then <strong>pause</strong> with blocker details and <strong>Stop</strong>.</p>
-                    <p>Do <strong>not</strong> pause the whole epic because one story is <em>partly</em> blocked.</p>
+                    <p>b. <strong>Owner-only remainder</strong> — when every remaining AC for the unit truly requires the external blocker and there is <strong>zero</strong> shippable remainder (<code>blocker_class: full</code>): record the owner action in <code>&lt;epic-log&gt;</code> (residual, not a pause), file or update a follow-up if useful, tick or comment on the story that prep shipped, leave the flip open, and <strong>continue to the next unit</strong> without pausing. <strong>Do not</strong> post <code>/ship-epic &lt;epic&gt; resume</code> for owner DNS / registrar / deploy console work.</p>
+                    <p>Do <strong>not</strong> pause the whole epic because one story is <em>partly</em> blocked or <em>fully</em> owner-only.</p>
                   </li>
                   <li><strong>Build delegation guidance</strong> (compact prose, not a transcript). Include:
                     <ul>
@@ -353,7 +351,7 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
                   <li>Fix what makes <strong>this PR head</strong> green: format only touched files if that suffices; otherwise fix the minimal set the log requires; gate or skip tests that cannot run under the repo&#x27;s build flags when that matches project convention.</li>
                   <li>Document extra commits in the PR (note the job was already red on <code>&lt;EPIC_BRANCH&gt;</code>). Escalate to the captain <strong>only</strong> after <code>MAX_FIX_ROUNDS</code>, or when the fix is a one-way product decision — not because the integration branch is dirty.</li>
                 </ul>
-                <p>When every unit has succeeded, go to Stage 4.</p>
+                <p>When every unit has succeeded <strong>or</strong> every remaining unit was handled as <strong>owner-only remainder</strong> (step 4b) with nothing left to delegate, go to Stage 4.</p>
               </div>
             </div>
           </li>
@@ -394,7 +392,7 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Epic closure (orchestrator)</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>When no <code>- [ ] #n</code> lines remain:</p>
+                <p><strong>Full closure</strong> — when no <code>- [ ] #n</code> lines remain on the epic checklist:</p>
                 <ol>
                   <li><strong>Epic PR gate</strong> — poll <code>gh pr checks &lt;EPIC_PR&gt;</code> on the integration PR head until green or <code>MAX_FIX_ROUNDS</code>-bounded fix loop exhausted (fix on <code>&lt;EPIC_BRANCH&gt;</code>, not on <code>MAIN_BRANCH</code>).</li>
                   <li><strong>Finalize epic PR notes</strong> — edit <code>&lt;EPIC_PR&gt;</code> body: confirm <strong>Quick review guide</strong> still accurate; set <strong>Shipped so far</strong> to the full <code>&lt;epic-log&gt;</code>; add <strong>Ready to merge</strong> checklist (all stories ticked, CI green, board summary: &quot;Every unit passed mandatory PE+PO; see epic issue progress log for per-unit verdicts.&quot;). Post the same summary on epic <code>&lt;epic&gt;</code> progress comment under <code>### Ready for captain</code>.</li>
@@ -402,13 +400,20 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
                   <li><strong><code>EPIC_MERGE_MODE=auto</code></strong> (guidance <code>epic merge auto</code>): squash-merge epic PR into <code>MAIN_BRANCH</code> with <code>match-head-commit</code>, then run epic close per <code>EPIC_CLOSE_MODE</code>.</li>
                   <li><strong><code>EPIC_CLOSE_MODE</code></strong> — <code>manual</code>: propose closing epic <code>&lt;epic&gt;</code>; <code>auto</code>: <code>gh issue close &lt;epic&gt;</code>.</li>
                 </ol>
+                <p><strong>Crew-complete (owner residuals remain)</strong> — when <code>- [ ] #n</code> lines still exist but <strong>every</strong> pending story is owner-only with zero in-repo remainder (the crew has nothing left to delegate):</p>
+                <ol>
+                  <li>Refresh epic progress comment: <strong>Shipped units</strong> (<code>&lt;epic-log&gt;</code>), <strong>Owner residuals</strong> (checklist per pending story — what prep landed, what the captain must do), <strong>Pending stories</strong> (unchecked lines).</li>
+                  <li>Refresh epic PR <code>&lt;EPIC_PR&gt;</code> notes with the same split — crew work complete; owner checklist explicit.</li>
+                  <li>Post a <strong>completion-style final report</strong> on the epic issue (not a pause block — <strong>no</strong> <code>/ship-epic &lt;epic&gt; resume</code>). State that the crew loop is <strong>finished</strong>; the captain is not the next actor <em>of this command</em>.</li>
+                  <li><strong>Stop</strong> — this is a normal terminal turn, not a hard-limit pause. Do <strong>not</strong> ask the captain to poke the command again for owner DNS / registrar work.</li>
+                </ol>
               </div>
             </div>
           </li>
         </ol>
         <h3 id="final-report">Final report</h3>
         <div class="order-prose">
-          <p>One concise summary: epic link, <strong>epic progress comment</strong> link on the epic issue, <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> link (integration vs <code>MAIN_BRANCH</code>), units shipped (<code>U</code> invocations for <code>N</code> stories), <code>&lt;epic-log&gt;</code> highlights, gate pauses, external blockers, capsule highlights, epic close state, and resume command if paused. For each pause, state <strong>which hard-limit row fired</strong> — &quot;waiting for captain&quot; without a limit name is a spec violation. Include <strong>economy line</strong>: &quot;<code>N</code> stories in <code>U</code> <code>/ship-issue</code> runs&quot; so the captain sees what batching saved.</p>
+          <p>One concise summary: epic link, <strong>epic progress comment</strong> link on the epic issue, <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> link (integration vs <code>MAIN_BRANCH</code>), units shipped (<code>U</code> invocations for <code>N</code> stories), <code>&lt;epic-log&gt;</code> highlights, gate pauses, <strong>owner residuals</strong> (distinct from pauses), capsule highlights, epic close or crew-complete state, and resume command <strong>only if</strong> a hard-limit pause occurred. For each pause, state <strong>which hard-limit row fired</strong> — &quot;waiting for captain&quot; without a limit name is a spec violation. Owner-only remainder must <strong>not</strong> appear as a pause reason. Include <strong>economy line</strong>: &quot;<code>N</code> stories in <code>U</code> <code>/ship-issue</code> runs&quot; so the captain sees what batching saved.</p>
         </div>
         <h3 id="runtime-input">Runtime input</h3>
         <div class="order-prose">
@@ -456,7 +461,8 @@ git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_B
             <li><strong>No duplicate unit PRs</strong> — never delegate a story in <code>&lt;landed&gt;</code> / <code>&lt;epic-log&gt;</code> unless <code>retry-story &lt;n&gt;</code> is explicit.</li>
             <li><strong>Gate-aware</strong> — never auto-ship a gate-labelled story.</li>
             <li><strong>Failure-aware</strong> — never advance after <code>MAX_FIX_ROUNDS</code> exhaustion on a unit.</li>
-            <li><strong>No silent stops</strong> — before ending a <code>/ship-epic</code> turn, name which hard-limit row fired. If none fired, you are <strong>not allowed</strong> to stop; continue the loop or re-delegate the current unit.</li>
+            <li><strong>No silent stops</strong> — before ending a <code>/ship-epic</code> turn on a <strong>pause</strong>, name which hard-limit row fired. If none fired, you are <strong>not allowed</strong> to stop on a pause/resume handshake. Owner-only remainder uses <strong>crew-complete</strong> (Stage 4) — a normal terminal report, not a pause.</li>
+            <li><strong>Owner-only remainder is not a pause</strong> — DNS, registrar, deploy-console attach, or any AC only the captain can satisfy with zero in-repo slice left: record residual, continue or crew-complete; never post <code>/ship-epic &lt;epic&gt; resume</code> for it.</li>
             <li><strong>No captain merge per unit</strong> — green accepted units merge into <code>&lt;EPIC_BRANCH&gt;</code> via delegated <code>MERGE_MODE=auto</code>. Never hand the captain a unit PR link and wait. The only default human merge gate is the <strong>epic PR</strong> into <code>MAIN_BRANCH</code> at Stage 4.</li>
             <li><strong>CI every unit</strong> — economy comes from fewer Planner/board <strong>invocations</strong>, not from skipping validation or acceptance on shipped code.</li>
             <li><strong>Orchestrator owns <code>gh</code></strong> — epic edits and loop control only; builders/reviewers live in <code>/ship-issue</code>.</li>
