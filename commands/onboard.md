@@ -34,7 +34,10 @@ want is a README or a tutorial, stop and run `/document`.
   overwrites `MODE`.
 - Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
   worktree is cut from (that's current `HEAD`, so Stage 0's survey sees your actual checkout).
-  `WORKTREE_DIR` = `../<repo>--onboard-<SURVEY>`. `BRANCH` = `docs/onboard-context-file-<SURVEY>` —
+  `WORKTREE_LAYOUT` = `nested` (default) — `<repo>/.shipmates/worktrees/`; runtime guidance
+  **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
+  `<repo>/.shipmates/worktrees/onboard-<SURVEY>`; **sibling:** `../<repo>--onboard-<SURVEY>`. Re-runs
+  reuse the same path. `BRANCH` = `docs/onboard-context-file-<SURVEY>` —
   onboard has no topic slug to build a name from (it always produces the one context file), so the
   identifier is `SURVEY` instead: a still-open `create` PR then can't collide with a later `refresh`
   run, which is the failure this suffix exists to prevent. `MERGE_MODE` = `manual` (stop at a
@@ -70,9 +73,11 @@ the caller's tree is dirty, **warn loudly** — a worktree cut from `HEAD` holds
 so an uncommitted rule Stage 0's survey just saw won't carry into the draft — then proceed. Exactly
 as `/ship-issue`'s isolate stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>` — so
 an unpushed `{{project-instructions}}`/`{{project-instructions-fallback}}` that Stage 0's survey already saw is actually present in the
-worktree the draft and refresh work against:
+worktree the draft and refresh work against. Resolve `<WORKTREE_DIR>`, gitignore
+`.shipmates/worktrees/` when nested (once, idempotently), then:
 
 ```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
 ```
 
@@ -100,6 +105,8 @@ principles here. Brief it that the reader is **an agent about to change code**, 
 browsing, so the file must be dense and decision-shaped: stack and layout, the commands to run,
 architectural non-negotiables, testing expectations, what's generated and must never be hand-edited,
 what's off-limits, and the quality bar a change is held to. Short, checkable statements beat prose.
+When the repo uses Shipmates mutating commands, note that isolated worktrees default under
+`.shipmates/worktrees/` (gitignored; legacy sibling layout via `worktree-root=sibling` guidance).
 
 Record what could not be verified as unverified. An honest gap is safe; a confident wrong instruction
 is not — every later run inherits it.

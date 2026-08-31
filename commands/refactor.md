@@ -25,8 +25,10 @@ no such grep, which is exactly why it needs behaviour pinned first.
 
 ## Config (override only if the repo needs it)
 
-- `BASE_BRANCH` = the repo's default branch. `WORKTREE_DIR` = `../<repo>--refactor-<slug>`.
-  `BRANCH` = `refactor/<slug>`.
+- `BASE_BRANCH` = the repo's default branch. `WORKTREE_LAYOUT` = `nested` (default) —
+  `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
+  `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/refactor-<slug>`;
+  **sibling:** `../<repo>--refactor-<slug>`. Re-runs reuse the same path. `BRANCH` = `refactor/<slug>`.
 - `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in).
 - **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states.
 - The orchestrator owns all git/gh; agents never push.
@@ -58,7 +60,15 @@ and which seam to cut first — so the transform implements a decision instead o
 
 ## Stage 2 — Isolate
 
+1. **Resolve `<WORKTREE_DIR>`** from Config. Parse **`worktree-root=sibling`** from runtime guidance
+   before resolving.
+2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — idempotently ensure
+   `.shipmates/worktrees/` is in `<repo>/.gitignore` (append only when missing; create with a one-line
+   Shipmates comment if absent). Never rewrite unrelated rules.
+3. **Create the worktree:**
+
 ```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> fetch origin
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```

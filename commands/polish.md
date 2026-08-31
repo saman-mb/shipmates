@@ -39,7 +39,10 @@ The artifact and optional reviewer come from the Runtime input section at the en
   working tree directly — still available, but ask for it.
 - Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
   worktree is cut from (that's current `HEAD`; see Stage 0).
-  `WORKTREE_DIR` = `../<repo>--polish-<slug>`. `BRANCH` = `polish/<slug>`.
+  `WORKTREE_LAYOUT` = `nested` (default) — `<repo>/.shipmates/worktrees/`; runtime guidance
+  **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
+  `<repo>/.shipmates/worktrees/polish-<slug>`; **sibling:** `../<repo>--polish-<slug>`. Re-runs reuse
+  the same path. `BRANCH` = `polish/<slug>`.
   `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). The orchestrator owns all git/gh;
   agents never push. If there is no remote for `gh` to open a PR against, stop at the branch and say
   so — never silently downgrade to writing in the tree.
@@ -81,15 +84,19 @@ happen to be standing:
    gh pr list --head <branch> --state open --json number
    ```
    - **A PR exists:** cut a **detached** worktree at `HEAD`, so the caller's checkout is never
-     written to, and run the rounds there:
+     written to, and run the rounds there. Resolve `<WORKTREE_DIR>`, gitignore `.shipmates/worktrees/`
+     when nested (once, idempotently), then:
      ```bash
+     mkdir -p "$(dirname "<WORKTREE_DIR>")"
      git -C <repo> worktree add --detach <WORKTREE_DIR> HEAD
      ```
      At Stage 4, push back onto `<branch>` and its existing PR — never open a second one.
      `DESTINATION` = `existing-pr`.
    - **No PR:** cut `<BRANCH>` = `polish/<slug>` from your current `HEAD`, not
-     `origin/<BASE_BRANCH>` — precisely so it contains the work you were asked to polish:
+     `origin/<BASE_BRANCH>` — precisely so it contains the work you were asked to polish. Resolve
+     `<WORKTREE_DIR>`, gitignore `.shipmates/worktrees/` when nested (once, idempotently), then:
      ```bash
+     mkdir -p "$(dirname "<WORKTREE_DIR>")"
      git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
      ```
      At Stage 4, open a new PR for it. `DESTINATION` = `new-branch`.

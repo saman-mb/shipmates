@@ -57,7 +57,7 @@
         "@type": "HowToStep",
         "position": 4,
         "name": "Stage 2 — Isolate",
-        "text": "git -C <repo> fetch origin\ngit -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>",
+        "text": "Resolve <WORKTREE_DIR> from Config. Parse worktree-root=sibling from runtime guidance before resolving.",
         "url": "https://saman-mb.github.io/shipmates/commands/refactor/#stage-2"
       },
       {
@@ -225,7 +225,13 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Isolate</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
+                <ol>
+                  <li><strong>Resolve <code>&lt;WORKTREE_DIR&gt;</code></strong> from Config. Parse <strong><code>worktree-root=sibling</code></strong> from runtime guidance before resolving.</li>
+                  <li><strong>Gitignore the worktree root</strong> when <code>WORKTREE_LAYOUT=nested</code> — idempotently ensure <code>.shipmates/worktrees/</code> is in <code>&lt;repo&gt;/.gitignore</code> (append only when missing; create with a one-line Shipmates comment if absent). Never rewrite unrelated rules.</li>
+                  <li><strong>Create the worktree:</strong></li>
+                </ol>
+                <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
+git -C &lt;repo&gt; fetch origin
 git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
               </div>
             </div>
@@ -328,7 +334,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
         </div>
         <div class="order-prose">
           <ul>
-            <li><code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--refactor-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>refactor/&lt;slug&gt;</code>.</li>
+            <li><code>BASE_BRANCH</code> = the repo&#x27;s default branch. <code>WORKTREE_LAYOUT</code> = <code>nested</code> (default) — <code>&lt;repo&gt;/.shipmates/worktrees/</code>; runtime guidance <strong><code>worktree-root=sibling</code></strong> selects legacy <code>../&lt;repo&gt;--…</code> paths. <code>WORKTREE_DIR</code> — <strong>nested:</strong> <code>&lt;repo&gt;/.shipmates/worktrees/refactor-&lt;slug&gt;</code>; <strong>sibling:</strong> <code>../&lt;repo&gt;--refactor-&lt;slug&gt;</code>. Re-runs reuse the same path. <code>BRANCH</code> = <code>refactor/&lt;slug&gt;</code>.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in).</li>
             <li><strong>Quality bar / test commands</strong> = whatever the repo&#x27;s README / CLAUDE.md / test config states.</li>
             <li>The orchestrator owns all git/gh; agents never push.</li>
