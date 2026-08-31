@@ -65,11 +65,13 @@ nothing). Then push and run the **CI gate**: poll `gh pr checks` until done; if 
 
 ## Stage 5 — Review  (agents, on the pushed PR head)
 
+<!-- shipmates:acceptance-board -->
+
+**Command-specific seats** (in addition to the mandatory PE+PO core):
+
 - `sdet` (always): re-runs the suite on the PR head; confirms the regression test is present and green.
 - `senior-engineer` or `site-reliability-engineer` (fresh — not the one who fixed it): confirms the fix
   addresses the root cause, not the symptom, and adds no regression risk.
-- `product-manager` (only if the bug had user-facing behaviour): confirms the observed behaviour now
-  matches the expectation.
 
 Any `REJECT`/`FAIL` → loop a `senior-engineer` fixer, re-push, re-run the CI gate and this stage,
 bounded by `MAX_FIX_ROUNDS`, then escalate.

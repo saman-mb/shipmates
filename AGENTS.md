@@ -4,15 +4,15 @@ A crew of specialist AI agents and command workflows that drive a GitHub issue f
 
 ## What it is
 
-Shipmates is an open-source (MIT) crew of specialist AI agents: **12 domain-neutral subagents** and **14 command workflows**. It runs on [Claude Code](https://claude.com/product/claude-code) today, and installs for six more harnesses — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot and Windsurf — see [Scope & honesty](#scope--honesty) for what each has and has not been verified against. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git worktree, waits for CI to go green, convenes an adversarial review board, loops on the fixes within bounds, and hands you a PR to merge.
+Shipmates is an open-source (MIT) crew of specialist AI agents: **13 domain-neutral subagents** and **14 command workflows**. It runs on [Claude Code](https://claude.com/product/claude-code) today, and installs for six more harnesses — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot and Windsurf — see [Scope & honesty](#scope--honesty) for what each has and has not been verified against. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git worktree, waits for CI to go green, convenes an adversarial review board, loops on the fixes within bounds, and hands you a PR to merge.
 
 ## Who it's for
 
 Developers who want to hand off whole *tickets* — not just single prompts — to a crew of specialist agents. The agents are domain-neutral: they hold the work to the standard in **your** repo's `README` / `AGENTS.md` (or `CLAUDE.md` on Claude Code), so the same crew works on a game engine, a web app, or a CLI, in any language.
 
-## The crew (12)
+## The crew (13)
 
-`architect` · `senior-engineer` · `sdet` · `security-engineer` · `site-reliability-engineer` · `performance-engineer` · `devops-engineer` · `product-manager` · `ux-ui-designer` · `art-director` · `technical-writer` · `data-scientist` — each defined in `crew/<role>.md`.
+`architect` · `senior-engineer` · `principal-engineer` · `sdet` · `security-engineer` · `site-reliability-engineer` · `performance-engineer` · `devops-engineer` · `product-manager` · `ux-ui-designer` · `art-director` · `technical-writer` · `data-scientist` — each defined in `crew/<role>.md`.
 
 ## The commands (13)
 

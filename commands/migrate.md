@@ -64,6 +64,10 @@ non-mechanical sites individually** — never blind-replace where semantics diff
 
 ## Stage 5 — Review & deliver  (agents, on the pushed PR head)
 
+<!-- shipmates:acceptance-board -->
+
+**Command-specific seats** (in addition to the mandatory PE+PO core):
+
 - `sdet` (always): suite green on the PR head; sweep confirmed clean.
 - `senior-engineer` or `architect` (fresh): spot-checks a sample of transformed sites for correctness and
   the non-mechanical sites in full — confirms behaviour is preserved, not just that it compiles.

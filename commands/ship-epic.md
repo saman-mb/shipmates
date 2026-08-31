@@ -28,7 +28,10 @@ cost of one run for little extra diff. This command **amortizes** that overhead 
 4. **Epic context capsule** — after each successful unit, append a compact `<epic-capsule>`:
    validation commands that worked, touched paths, conventions established. Pass only the capsule
    plus the current unit's issue text to the next delegation — not a full epic re-brief every time.
-5. **Value-gated batching** — never batch to save tokens alone. Gate stories, `complex` stories,
+5. **Mandatory board inheritance** — each delegated `/ship-issue` run convenes the **mandatory PE+PO
+   acceptance board** on the pushed PR head. Tiered execution may lean the build path but never skips
+   that core; scaled optional seats follow the shared board contract.
+6. **Value-gated batching** — never batch to save tokens alone. Gate stories, `complex` stories,
    `IS_ARCH_SIGNIFICANT` / `IS_SECURITY_SENSITIVE` stories, and unrelated areas always ship as
    **singleton units**. CI and acceptance still run **per unit**; nothing ships without green checks.
 

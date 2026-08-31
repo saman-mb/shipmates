@@ -141,6 +141,7 @@ fn test_opencode_embedded_install_fidelity() {
         "data-scientist",
         "devops-engineer",
         "performance-engineer",
+        "principal-engineer",
         "product-manager",
         "sdet",
         "security-engineer",
@@ -241,7 +242,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
         }
     }
 
-    assert_eq!(roles.len(), 12);
+    assert_eq!(roles.len(), 13);
     for role in &roles {
         assert_eq!(
             role.body.matches("<!-- shipmates:subagent-preamble -->").count(),
@@ -267,6 +268,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
             let (path, content) = matches[0];
             assert!(content.contains("## Cost discipline"), "{target} {path} missed command preamble");
             assert!(!content.contains("shipmates:command-preamble"), "{target} {path} leaked command marker");
+            assert!(!content.contains("shipmates:acceptance-board"), "{target} {path} leaked board marker");
         }
 
         let role_outputs: Vec<_> = files

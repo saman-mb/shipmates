@@ -95,26 +95,21 @@ runtime signal is unconfirmed.
 
 ## Stage 2 — The board  (specialist agents, in parallel, against `headRefOid`)
 
-Spawn these in a single message so they run concurrently, each pinned to the **head commit** so they
-review exactly what would merge. Two always run; the rest only when their flag is set:
+<!-- shipmates:acceptance-board -->
+
+Spawn in a single message so they run concurrently, each pinned to the **head commit**. Use the Stage 0
+flags for scaled optional seats. **`/pr-review`-specific additions** on top of the shared board:
 
 | `{{role-reference}}` | Runs |
 |---|---|
-| `product-manager` | always — does it solve the stated problem, and does it clear the repo's bar? |
-| `sdet` | always — test coverage and quality of the change (see `RUN_TESTS` before executing anything) |
-| `architect` | only if `IS_ARCH_SIGNIFICANT` |
 | `security-engineer` | only if `IS_SECURITY_SENSITIVE` |
-| `devops-engineer` | only if `IS_DELIVERY_SENSITIVE` |
-| `ux-ui-designer` | only if `IS_UI_STORY` |
-| `art-director` | only if `IS_VISUAL_STORY` |
-| `technical-writer` | only if `IS_DOCS_AFFECTING` |
 | `performance-engineer` | if the PR claims a performance win, or touches a known hot path |
 | `site-reliability-engineer` | if it changes runtime behaviour, failure handling, or rollout |
 | `data-scientist` | if the deliverable is an analysis or a model |
 
 **Don't restate what each reviewer checks.** Their remit lives in `agents/*.md` — that is the single
-source of truth, and duplicating it here is how the two boards drift apart. Pass each agent the PR
-head, the repo's bar, and the caller's focus hint; let the role do the rest.
+source of truth. Pass each agent the PR head, the repo's bar, and the caller's focus hint; let the
+role do the rest. See `RUN_TESTS` before the `sdet` executes anything.
 
 ## Stage 3 — Consolidate
 

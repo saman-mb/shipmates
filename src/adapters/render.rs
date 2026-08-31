@@ -25,6 +25,7 @@ pub struct Dialect {
 
 const SENTINEL: &str = "\u{00A7}agents-instructions";
 const COMMAND_PREAMBLE_MARKER: &str = "<!-- shipmates:command-preamble -->";
+const ACCEPTANCE_BOARD_MARKER: &str = "<!-- shipmates:acceptance-board -->";
 const SUBAGENT_PREAMBLE_MARKER: &str = "<!-- shipmates:subagent-preamble -->";
 const COST_DOCTRINE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/COST.md"));
 
@@ -48,6 +49,10 @@ fn command_preamble() -> &'static str {
     doctrine_section("<!-- command-preamble:start -->", "<!-- command-preamble:end -->")
 }
 
+fn acceptance_board() -> &'static str {
+    doctrine_section("<!-- acceptance-board:start -->", "<!-- acceptance-board:end -->")
+}
+
 fn subagent_preamble() -> &'static str {
     doctrine_section("<!-- subagent-preamble:start -->", "<!-- subagent-preamble:end -->")
 }
@@ -65,6 +70,7 @@ fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
 /// Render a harness-neutral command body into a harness's dialect.
 pub fn render_body(text: &str, d: &Dialect) -> String {
     let mut out = text.replace(COMMAND_PREAMBLE_MARKER, command_preamble());
+    out = out.replace(ACCEPTANCE_BOARD_MARKER, acceptance_board());
     out = out.replace(SUBAGENT_PREAMBLE_MARKER, subagent_preamble());
     out = render_instructions(&out, d.instructions_primary, d.instructions_fallback);
     out = render_token(&out, "{{agents-glob}}", &format!("{}/*.md", d.agents_glob));
@@ -490,12 +496,17 @@ mod tests {
 
     #[test]
     fn test_shared_preambles_expand_and_leave_no_markers() {
-        let command = render_body("<!-- shipmates:command-preamble -->\nbody", &CLAUDE_CODE);
+        let command = render_body(
+            "<!-- shipmates:command-preamble -->\n<!-- shipmates:acceptance-board -->\nbody",
+            &CLAUDE_CODE,
+        );
         let role = render_role_body("<!-- shipmates:subagent-preamble -->\nrole", &CLAUDE_CODE);
 
         assert!(command.contains("## Cost discipline"));
+        assert!(command.contains("Mandatory seats"));
         assert!(role.contains("## Return discipline"));
         assert!(!command.contains("shipmates:command-preamble"));
+        assert!(!command.contains("shipmates:acceptance-board"));
         assert!(!role.contains("shipmates:subagent-preamble"));
     }
 }
