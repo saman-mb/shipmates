@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-08-31
+
+### Changed
+
+- `/ship-epic` no longer pauses on owner-only remainders (DNS, registrar, deploy
+  console); crew-complete terminal report instead of `/ship-epic resume` (#315).
+
 ## [0.1.7] - 2026-08-31
 
 ### Added
