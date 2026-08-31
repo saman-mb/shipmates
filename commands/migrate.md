@@ -47,11 +47,13 @@ them for careful individual handling rather than a blind sweep. Batch the invent
 2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — idempotently ensure
    `.shipmates/worktrees/` is in `<repo>/.gitignore` (append only when missing; create with a one-line
    Shipmates comment if absent). Never rewrite unrelated rules.
-3. **Create the worktree:**
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required;
+   stop if fetch fails. Fresh `worktree add … origin/<BASE_BRANCH>` is pull-latest.
+4. **Resume / reuse** — re-fetch; rebase onto `BASE_REF` when behind (sync conflicts → `MAX_FIX_ROUNDS`).
+5. **Create the worktree** (when branch/worktree do not yet exist):
 
 ```bash
 mkdir -p "$(dirname "<WORKTREE_DIR>")"
-git -C <repo> fetch origin
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```
 All transforms land in the worktree; the base branch stays clean.

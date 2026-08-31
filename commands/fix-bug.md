@@ -43,11 +43,15 @@ what was tried — never "fix" an unconfirmed bug. This failing test is the cont
 2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — from `<repo>`, idempotently ensure
    `.shipmates/worktrees/` is ignored (append only when no line already ignores it; create `.gitignore`
    with `# Shipmates isolated command worktrees (auto-managed)` if missing). Never rewrite unrelated rules.
-3. **Create the worktree:**
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required;
+   stop with a clear error if fetch fails. Fresh `worktree add … origin/<BASE_BRANCH>` **is**
+   pull-latest — no separate `git pull`.
+4. **Resume / reuse** — when worktree/branch exist, re-run fetch; rebase onto `BASE_REF` when behind
+   (merge when repo docs prefer merge). Sync conflicts count toward `MAX_FIX_ROUNDS`.
+5. **Create the worktree** (when branch/worktree do not yet exist):
 
 ```bash
 mkdir -p "$(dirname "<WORKTREE_DIR>")"
-git -C <repo> fetch origin
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```
 All work happens in the worktree; the base branch stays clean. Commit the failing test first so the
