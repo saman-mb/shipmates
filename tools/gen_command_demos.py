@@ -46,6 +46,7 @@ COMMANDS = {
             ("PLAN", "one architect -> shipping units"),
             ("LOOP", "delegate /ship-issue per unit"),
             ("TICK", "checklist after each unit"),
+            ("LOG", "epic progress + PR review notes"),
             ("CLOSE", "epic PR green — captain merge"),
         ],
         "closer": "Epic delivered — N stories in U runs, one epic PR. ⚓",
