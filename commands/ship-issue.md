@@ -330,6 +330,10 @@ MUST confirm CI is green on the pushed head before the acceptance board runs. Ne
 green.** (If the repo has no CI, say so and treat the SDET pass as the gate, explicitly noting the
 reduced assurance.)
 
+**Epic runs (`/ship-epic` delegation):** red CI — including checks already red on the base branch —
+is remediated **here** on this unit's branch. Do **not** return to the epic orchestrator to pause;
+exhaust `MAX_FIX_ROUNDS` first, then escalate from `/ship-issue` so the epic can pause with cause.
+
 1. **Wait for the checks to finish** on the PR head (poll, don't guess):
    ```bash
    until s=$(gh pr checks <PR#> 2>&1 | head -1); st=$(echo "$s" | cut -f2); \

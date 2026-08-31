@@ -24,6 +24,6 @@ target=claude-code
 .claude/skills/pr-review/SKILL.md 13d574a121df2412703152f452d92453c98ac11f549e76f14d13d49a1344842c
 .claude/skills/refactor/SKILL.md 05d3b7b3c871c5b7f939fda3888048dddcd84c823ce8b1187454ef37eae859bf
 .claude/skills/release/SKILL.md f045796740c93148ad5570c7c8ba798c885af16c1aa769543588b524498c0bf1
-.claude/skills/ship-epic/SKILL.md 5fc6b7df0170814c84763b2f2e35bf06a504143d3d3aaa0ad0ea74ad4ae704d7
-.claude/skills/ship-issue/SKILL.md ba3c9283b619b700d24258aae08e921b164df88c9deef11ad5e6381a7d7bff19
+.claude/skills/ship-epic/SKILL.md 7b0afa832e34516af273617dbb3de1d2be145689978597705ca8d1bb247720d5
+.claude/skills/ship-issue/SKILL.md c8aadd71430d152f1faff210949d7ebabb9c6978b3771f4ba0e9eceef7e663ae
 .claude/skills/spike/SKILL.md 134ec9369760cd9127d5aef2b443f90977fcd9d98f82717b694f71e2a6d258ee
