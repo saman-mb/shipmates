@@ -41,13 +41,14 @@ COMMANDS = {
         "arg": "42",
         "stages": [
             ("INTAKE", "parse epic checklist"),
+            ("BRANCH", "epic integration line + PR"),
             ("GRAPH", "dependency order + gate map"),
             ("PLAN", "one architect -> shipping units"),
             ("LOOP", "delegate /ship-issue per unit"),
             ("TICK", "checklist after each unit"),
-            ("CLOSE", "propose or auto-close epic"),
+            ("CLOSE", "epic PR green — captain merge"),
         ],
-        "closer": "Epic delivered — N stories in U runs, gates respected. ⚓",
+        "closer": "Epic delivered — N stories in U runs, one epic PR. ⚓",
     },
     "fix-bug": {
         "arg": "142",
