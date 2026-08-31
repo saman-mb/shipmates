@@ -1297,10 +1297,7 @@ TOOL_COPY = {
             "docs page, a release note, or a social preview — instead of static text.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> "
-            "--with-tools termgif`, or omit the flag and pick it from the interactive list. Once "
-            "installed it sits alongside the crew as a capability they invoke implicitly; there "
-            "is no slash command to type.",
+            "Tools ship with a plain install (`shipmates install --harness <name>`). Use `--with-tools none` for crew-only or `--with-tools <name>` to refresh one tool. "
             "The renderer and its instructions are bundled together, so wherever the tool lands "
             "the agent has both the `termgif.py` script and the spec format it needs to drive it.",
         ),
@@ -1331,7 +1328,7 @@ TOOL_COPY = {
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is *a share image* — a repo or product launch, a release, a docs or guide page — instead of a described one. Long titles wrap and the type auto-fits, so copy of any length stays inside the frame.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools social-card`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install. Use `--with-tools none` for crew-only or `--with-tools <name>` to refresh one tool. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `social_card.py` script and the spec format it needs to drive it — `python3 social_card.py --spec spec.json --out card.png`.",
         ),
         examples=(
@@ -1359,7 +1356,7 @@ TOOL_COPY = {
             "It reproduces the technique behind the shipmates logo, which is a 48×48 grid on ~39 colours scaled up ×14 with nearest-neighbour and no smoothing. Every upscale here is `Image.NEAREST`, so each logical pixel becomes a solid block — hard-edged and aliased on purpose, never a gradient. It is a tool, not a command: the crew reach for it on their own when the natural artifact is an icon, sprite, favicon, or badge in that style.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools pixelart`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools pixelart. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions travel together, so wherever the tool lands the agent has both the `pixelart.py` script and the spec format it needs to drive it — a `grid` and `palette` for a still, or `frames` and `durations` for an animation, with `--poster` to drop a reduced-motion still beside a GIF.",
         ),
         examples=(
@@ -1405,7 +1402,7 @@ TOOL_COPY = {
             "It is the evolution of the older `svgflow` tool (now a deprecated alias that forwards here). A `flow` diagram — the default — lays nodes out in a column (`\"direction\": \"down\"`) or row (`\"direction\": \"right\"`), each box sized to its label, with straight spine arrows and side-bowed skips, back-edges, and self-loops. A `sequence` diagram draws actors across the top with dashed lifelines and directional message arrows. The builder is chosen by an explicit `kind`, or routed from a `prompt`/`intent` string through a plain keyword map — no model call. It is a *tool*, not a command: the crew reach for it on their own when the natural artifact of a task is a diagram of how the pieces connect or talk — a CI pipeline, a request path, a state machine, a service interaction — instead of a paragraph of prose or a mermaid block something else has to render. It draws a curated set of hand-laid types — there is no automatic graph layout — and the PNG is a faithful re-render of the same spec, not a pixel copy of the SVG.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools diagram`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools diagram. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `diagram.py` script and the spec format it needs to drive it — `python3 diagram.py --spec spec.json --out flow.svg` for SVG, or `--out flow.png` / `--out flow.gif` for a deterministic raster. The format is inferred from the extension, or set with `--format`; `--provision` places the raster dependency ahead of time.",
         ),
         examples=(
@@ -1466,7 +1463,7 @@ TOOL_COPY = {
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is a small status badge — build `passing`, a `version` tag, a `coverage` number, a licence — for a README, a docs page, or a release note, and that badge should live in the repo rather than hot-linking an external service. Colours are a named palette (`green`, `blue`, `red`, `brightgreen`, `orange`, `yellow`, ...) or any `#rrggbb` hex value, and segment widths are sized from a baked DejaVu Sans width table and locked with SVG `textLength` so text is never clipped.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools badge`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools badge. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `badge.py` script and the CLI it needs to drive it: `python3 badge.py --label build --message passing --color green --out badge.svg` (or omit `--out` to write the SVG to stdout).",
         ),
         examples=(
@@ -1494,7 +1491,7 @@ TOOL_COPY = {
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when a task hands over a run of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — and the honest artifact is the shape of the curve rather than a wall of digits. It has no dependencies beyond `python3` and the standard library, so a run is deterministic and offline.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools sparkline`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools sparkline. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `sparkline.py` script and the CLI it needs to drive it: `python3 sparkline.py --data \"…\" --out spark.svg`.",
         ),
         examples=(
@@ -1522,7 +1519,7 @@ TOOL_COPY = {
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own whenever text is about to leave the repo — pasted into an issue, a bug report, a chat message, or a PR body — and might carry a credential or someone's personal data. The detectors are deliberately conservative, leaving ordinary prose and code identifiers like `token = response.data.token` alone, which makes it a strong first pass rather than a guarantee — read the cleaned text before sharing.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools scrub`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools scrub. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "Run it on a file with `python3 scrub.py --in log.txt --out clean.txt`, or pipe text through it stdin-to-stdout with `cat log.txt | python3 scrub.py`. The cleaned text goes to `--out` or stdout; a per-category redaction summary goes to stderr so it never pollutes the output. Exit code is `0` on success and `2` on a usage error.",
         ),
         examples=(
@@ -1542,7 +1539,7 @@ TOOL_COPY = {
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when a task needs seed rows or example records — unit-test data, a demo database, an API sample payload — instead of hand-typing objects or pulling in a heavyweight faker dependency. The data is fake and drawn independently per field, meant to exercise code paths rather than model any real-world distribution.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools fixtures`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools fixtures. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The script and its instructions are bundled together, so wherever the tool lands the agent has both the `fixtures.py` generator and the schema format it needs to drive it. Run it as `python3 fixtures.py --schema schema.json --count 5 --seed 7 --out data.json`, or omit `--out` to write the array to stdout.",
         ),
         examples=(
@@ -1562,7 +1559,7 @@ TOOL_COPY = {
             "It is a *tool*, not a command: you never type it. The crew reach for it when naming a product, sweeping a shortlist across TLDs, or verifying a domain claim — especially alongside `social-card` and `pixelart` in a launch-branding workflow. RDAP *available* does not mean cheap: premium and aftermarket names only surface at the registrar cart.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools domaincheck`, or pick it from the interactive list. Once installed the crew invokes it implicitly; there is no slash command.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools domaincheck. Use --with-tools none for crew-only. Once installed the crew invokes it implicitly; there is no slash command.",
             "Run `python3 domaincheck.py github.com`, pass several domains, or sweep TLDs with `python3 domaincheck.py --tld com,app,io shipmates`. Add `--detail` for registrar and date fields from RDAP JSON; `--whois` optionally prints human-readable whois output when the binary exists. Use `--delay` on large sweeps — public bootstrap rate-limits rapid queries.",
         ),
         examples=(
@@ -1589,8 +1586,8 @@ TOOL_COPY = {
             "Python side is stdlib-only.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools gh`, "
-            "or pick it from the interactive list. Pass one JSON spec on stdin: "
+            "Tools ship with a plain install; refresh one with `shipmates install --harness <name> --with-tools gh`, "
+            "or `--with-tools none` for crew-only. Pass one JSON spec on stdin: "
             "`echo '{\"op\":\"repo.view\"}' | python3 gh.py`. List operations with `python3 gh.py --list-ops`. "
             "Multi-line bodies must use `body_file` — inline `body` is capped at 200 chars.",
         ),
@@ -4154,7 +4151,7 @@ def main(argv=None) -> int:
         agents = load_agents(rendered / "agents", rendered / "skills")
         cmds = load_skills(rendered / "skills", tuple(agent.name for agent in agents))
         # Tools come from the repo `toolbox/` source, not the rendered payload —
-        # a plain `build` excludes opt-in tools, so they aren't in `rendered`.
+        # a plain `build` excludes tools unless selected, so they aren't in `rendered`.
         tools = load_tools(root / "toolbox")
         # Discover hand-authored docs pages for the sitemap.
         docs = tuple(

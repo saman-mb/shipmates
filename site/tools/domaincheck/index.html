@@ -131,7 +131,7 @@ shipmates-test-name-xyzzy.io	available</code></pre>
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools domaincheck</code>, or pick it from the interactive list. Once installed the crew invokes it implicitly; there is no slash command.</p>
+          <p>Tools ship with a plain install; refresh one with shipmates install --harness &lt;name&gt; --with-tools domaincheck. Use --with-tools none for crew-only. Once installed the crew invokes it implicitly; there is no slash command.</p>
           <p>Run <code>python3 domaincheck.py github.com</code>, pass several domains, or sweep TLDs with <code>python3 domaincheck.py --tld com,app,io shipmates</code>. Add <code>--detail</code> for registrar and date fields from RDAP JSON; <code>--whois</code> optionally prints human-readable whois output when the binary exists. Use <code>--delay</code> on large sweeps — public bootstrap rate-limits rapid queries.</p>
         </div>
       </div>

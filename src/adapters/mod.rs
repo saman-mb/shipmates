@@ -24,7 +24,7 @@ pub trait Adapter {
     /// closest native fit is a model-invoked Agent Skill (Claude Code can pin it
     /// agent-only with `user-invocable: false`; the rest cannot hide it from
     /// manual mention, which is recorded, not faked). The default is empty —
-    /// tools are opt-in and only ever written when `--with-tools` selects them.
+    /// tools install with a plain `install` unless `--with-tools none` opts out.
     fn build_tools(&self, _tools: &[CanonicalTool]) -> HashMap<String, String> {
         HashMap::new()
     }

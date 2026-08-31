@@ -148,7 +148,7 @@ $ python3 fixtures.py --schema schema.json --count 2 --seed 7
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools fixtures</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
+          <p>Tools ship with a plain install; refresh one with shipmates install --harness &lt;name&gt; --with-tools fixtures. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
           <p>The script and its instructions are bundled together, so wherever the tool lands the agent has both the <code>fixtures.py</code> generator and the schema format it needs to drive it. Run it as <code>python3 fixtures.py --schema schema.json --count 5 --seed 7 --out data.json</code>, or omit <code>--out</code> to write the array to stdout.</p>
         </div>
       </div>

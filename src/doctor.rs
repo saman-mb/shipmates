@@ -500,7 +500,7 @@ fn diagnose_built(
     } else if installed.is_empty() && tool_drift.is_empty() {
         (
             Severity::Ok,
-            "no optional tools installed — tools are opt-in".to_string(),
+            "no optional tools installed — use `--with-tools none` for crew-only".to_string(),
         )
     } else if tool_drift.is_empty() {
         (
