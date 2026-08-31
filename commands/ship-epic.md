@@ -1,7 +1,7 @@
 ---
 name: ship-epic
 description: Loop /ship-issue over an epic's stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause for sign-off.
-argument-hint: <epic-issue-number> [resume | dry-run | epic close auto | batch off]
+argument-hint: <epic-issue-number> [resume | dry-run | epic close auto | epic merge auto | batch off | unit merge manual]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -47,6 +47,7 @@ Hard limits that **pause the epic loop** (end the turn; post `/ship-epic <epic> 
 | **Gate story** | Unit contains a `gate`-labelled (or sign-off) story still awaiting human sign-off |
 | **External blocker, no shippable slice** | Every AC in the unit requires an owner action with no prep work the crew can land now |
 | **`MAX_FIX_ROUNDS` exhausted** | Stage 4.5 or Stage 6 on this unit could not get CI green / acceptance pass |
+| **Manual unit merge** | Unit used `MERGE_MODE=manual` (`IS_SECURITY_SENSITIVE`, `UNIT_MERGE_MODE=manual`, or other forced manual path) — green PR awaits captain merge into `<EPIC_BRANCH>` before the next unit |
 | **Shell safety abort** | Untrusted input, cycle in dependency graph, invalid epic token |
 
 Everything else — including **red CI on the unit PR**, **red CI already on `<EPIC_BRANCH>`**, and
@@ -225,9 +226,11 @@ For each `<unit>`:
    - `epic-capsule` — paste `<epic-capsule>` when non-empty (validation commands, paths, conventions
      from prior units in this run).
    - `MERGE_MODE=<UNIT_MERGE_MODE>` — merge the green unit PR into `<EPIC_BRANCH>` via `/ship-issue`
-     Stage 8 when `UNIT_MERGE_MODE=auto` (default). When `manual`, or when this unit contains a `gate`
-     story or any story with `IS_SECURITY_SENSITIVE`, pass `MERGE_MODE=manual` and pause after the unit
-     per hard limits. **Never ask the captain to merge a green epic unit when `UNIT_MERGE_MODE=auto`.**
+     Stage 8 when `UNIT_MERGE_MODE=auto` (default). When `manual`, or when any story in the unit is
+     flagged `IS_SECURITY_SENSITIVE`, pass `MERGE_MODE=manual` and **pause after the unit** per the
+     **Manual unit merge** hard limit — do not advance to the next unit until the captain merges into
+     `<EPIC_BRANCH>` and the orchestrator resumes. **Never ask the captain to merge a green epic unit when
+     `UNIT_MERGE_MODE=auto`.**
    - Tier hint — when **every** story in the unit is `trivial` and no specialist flags are set,
      include `complexity tier: simple` so `/ship-issue` takes the Simple path. When all are
      `trivial` or `standard` with no arch/security/delivery flags, include `complexity tier: medium`.
@@ -237,10 +240,14 @@ For each `<unit>`:
    two-story unit. Singleton: `/ship-issue 103 epic-run …`. Do **not** set `BUNDLE=off` — explicit
    multi-story tokens **are** the bundle; singletons behave as today.
 6. **Outcome:**
-   - **Success** → Stage 3 for **each** story in the unit (tick every checklist line the unit
-     closed), extend `<epic-capsule>` with validation commands used, key paths touched, and any
-     convention the board enforced — keep the capsule **short** (bullet list, not a narrative).
-     Continue to the next unit.
+   - **Success (auto-merged)** — unit used `MERGE_MODE=auto` and landed on `<EPIC_BRANCH>` → Stage 3 for
+     **each** story in the unit (tick every checklist line the unit closed), extend `<epic-capsule>` with
+     validation commands used, key paths touched, and any convention the board enforced — keep the
+     capsule **short** (bullet list, not a narrative). Continue to the next unit.
+   - **Success (manual merge required)** — unit finished with `MERGE_MODE=manual` and a green PR open →
+     **pause the epic loop** (hard limit **Manual unit merge**): post state (`EPIC_BRANCH`, `EPIC_PR`,
+     unit PR link, `/ship-epic <epic> resume`). **Stop** — captain merges the unit PR into
+     `<EPIC_BRANCH>`, then resume.
    - **`/ship-issue` escalated after `MAX_FIX_ROUNDS`** → **pause the epic loop** with state report
      (epic, `EPIC_BRANCH`, `EPIC_PR`, completed units, current unit, PR link, failure summary,
      `/ship-epic <epic> resume`). **Stop.**

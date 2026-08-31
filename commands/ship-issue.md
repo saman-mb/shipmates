@@ -71,8 +71,9 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
 - `MERGE_MODE` = `manual` — `manual`: stop after the acceptance board with a green, reviewed PR
   open for a human to merge. `auto`: squash-merge automatically once every gate passes. Start with
   `manual`; opt into `auto` only in a repo where unattended merges to the base branch are acceptable.
-  **`/ship-epic` delegations pass `MERGE_MODE=auto`** so units merge into `epic-base` without captain
-  action; standalone `/ship-issue` keeps this default. Stage 8 `auto` always merges into **`BASE_BRANCH`**
+  **`/ship-epic` delegations pass `MERGE_MODE=auto`** so units merge into **`BASE_BRANCH`** (the epic
+  integration branch when `epic-base` is set) without captain action; standalone `/ship-issue` keeps this
+  default. Stage 8 `auto` always merges into **`BASE_BRANCH`**
   (the epic branch when `epic-base` is set, otherwise the repo default). If Stage 0 set
   `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
   of the configured default — a security-sensitive change must not auto-merge past the `/harden`
