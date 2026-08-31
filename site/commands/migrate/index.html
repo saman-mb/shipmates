@@ -50,7 +50,7 @@
         "@type": "HowToStep",
         "position": 3,
         "name": "Stage 2 — Isolate",
-        "text": "All transforms land in the worktree; the base branch stays clean.",
+        "text": "Resolve <WORKTREE_DIR> from Config. Parse worktree-root=sibling from runtime guidance before resolving.",
         "url": "https://saman-mb.github.io/shipmates/commands/migrate/#stage-2"
       },
       {
@@ -204,7 +204,13 @@
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Isolate</h3>
             <div class="order-stage__body">
               <div class="order-prose">
-                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
+                <ol>
+                  <li><strong>Resolve <code>&lt;WORKTREE_DIR&gt;</code></strong> from Config. Parse <strong><code>worktree-root=sibling</code></strong> from runtime guidance before resolving.</li>
+                  <li><strong>Gitignore the worktree root</strong> when <code>WORKTREE_LAYOUT=nested</code> — idempotently ensure <code>.shipmates/worktrees/</code> is in <code>&lt;repo&gt;/.gitignore</code> (append only when missing; create with a one-line Shipmates comment if absent). Never rewrite unrelated rules.</li>
+                  <li><strong>Create the worktree:</strong></li>
+                </ol>
+                <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
+git -C &lt;repo&gt; fetch origin
 git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
                 <p>All transforms land in the worktree; the base branch stays clean.</p>
               </div>
@@ -311,7 +317,7 @@ git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&
         </div>
         <div class="order-prose">
           <ul>
-            <li><code>BASE_BRANCH</code> = default branch. <code>WORKTREE_DIR</code> = <code>../&lt;repo&gt;--migrate-&lt;slug&gt;</code>. <code>BRANCH</code> = <code>chore/migrate-&lt;slug&gt;</code>.</li>
+            <li><code>BASE_BRANCH</code> = default branch. <code>WORKTREE_LAYOUT</code> = <code>nested</code> (default) — <code>&lt;repo&gt;/.shipmates/worktrees/</code>; runtime guidance <strong><code>worktree-root=sibling</code></strong> selects legacy <code>../&lt;repo&gt;--…</code> paths. <code>WORKTREE_DIR</code> — <strong>nested:</strong> <code>&lt;repo&gt;/.shipmates/worktrees/migrate-&lt;slug&gt;</code>; <strong>sibling:</strong> <code>../&lt;repo&gt;--migrate-&lt;slug&gt;</code>. Re-runs reuse the same path. <code>BRANCH</code> = <code>chore/migrate-&lt;slug&gt;</code>.</li>
             <li><code>TRANSFORMER</code> = <code>senior-engineer</code>. <code>MAX_FIX_ROUNDS</code> = <code>3</code>. <code>MERGE_MODE</code> = <code>manual</code> (<code>auto</code> opt-in).</li>
             <li><code>BATCH</code> = group call sites by module/ownership so parallel transformers don&#x27;t touch the same files.</li>
             <li><strong>Correctness bar / test commands</strong> = the repo&#x27;s own. Read them first. Orchestrator owns all git/gh.</li>

@@ -86,8 +86,14 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   auto-bundle**: bundling from a recommendation (a single ticket, or a `next` pick) always requires
   consent. An explicitly-passed multi-issue invocation (`/ship-issue 1 2 3`) is already that consent — it
   proceeds as a bundle (with the cohesion warning if it is a poor fit).
-- `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<first-issue>` (single issue)
-  or `../<repo>--bundle-<first-issue>-<short-slug>` (multiple issues)
+- `WORKTREE_LAYOUT` = `nested` (default) — isolated checkouts live under `<repo>/.shipmates/worktrees/`.
+  Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…` next to
+  the repo).
+- `WORKTREE_DIR` — resolve before Stage 1 from `<repo>` basename + slug (re-runs reuse the same path):
+  - **nested, single issue:** `<repo>/.shipmates/worktrees/issue-<first-issue>`
+  - **nested, bundle:** `<repo>/.shipmates/worktrees/bundle-<first-issue>-<short-slug>`
+  - **sibling, single:** `../<repo>--issue-<first-issue>`
+  - **sibling, bundle:** `../<repo>--bundle-<first-issue>-<short-slug>`
 - `BRANCH` = `feat/issue-<first-issue>-<short-slug>` (single) or `feat/bundle-<first-issue>-<short-slug>` (multiple)
 - **Quality bar** = whatever the repo's `README` / `{{project-instructions}}` / contributing docs state. Read it at
   the start and pass it to every reviewer — the `product-manager` (and the visual specialists)
@@ -158,6 +164,8 @@ list) for:
 - **`epic-run`** — with `epic-base`, do not widen the bundle or scan the backlog (see Stage 0 step 3).
 - **`epic-id=<n>`** — parent epic issue number when delegated from `/ship-epic`; required with `epic-run`
   so Stage 8 / final report can emit the **Epic unit record** for the orchestrator's progress log.
+- **`worktree-root=sibling`** — set `WORKTREE_LAYOUT=sibling` (legacy `../<repo>--…` paths; skips nested
+  gitignore append).
 
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
@@ -297,10 +305,21 @@ its work governs. Skip this stage entirely when none of the flags are set.
 
 ## Stage 1 — Isolate  (orchestrator, deterministic — no agent)
 
+1. **Resolve `<WORKTREE_DIR>`** from Config (`WORKTREE_LAYOUT` + single vs bundle). Parse
+   **`worktree-root=sibling`** from runtime guidance before resolving.
+2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — from `<repo>`, idempotently ensure
+   `.shipmates/worktrees/` is ignored. If `.gitignore` exists, append only when no line already ignores
+   `.shipmates/worktrees/` as a path prefix. If `.gitignore` is missing, create it with the comment
+   `# Shipmates isolated command worktrees (auto-managed)` and the entry `.shipmates/worktrees/`.
+   Never rewrite unrelated ignore rules.
+3. **Create the worktree:**
+
 ```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> fetch origin
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```
+
 All build/fix work happens **inside `<WORKTREE_DIR>`** so the base branch and the user's checkout
 stay clean. Pass the absolute worktree path to every agent.
 
@@ -480,7 +499,8 @@ Decision:
 
 ## Final report to the user
 
-One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their
+One concise summary: PR link (and merge state), commit(s), the absolute **worktree path**
+(`<WORKTREE_DIR>`), which specialists reviewed it and their
 verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now. When
@@ -516,6 +536,8 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
   re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.
 - Keep the base branch and the user's working tree untouched throughout (all work in the worktree).
+  Default nested layout lives under `.shipmates/worktrees/` (gitignored); `worktree-root=sibling`
+  restores legacy `../<repo>--…` paths.
 - Respect `MERGE_MODE` — do not auto-merge unless it is explicitly set to `auto`.
 - If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan
   requires), stop and surface it — autonomy does not mean forcing a bad merge.

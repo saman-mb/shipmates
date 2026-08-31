@@ -43,7 +43,7 @@
         "@type": "HowToStep",
         "position": 2,
         "name": "Stage 1 — Isolate",
-        "text": "All build/fix work happens inside <WORKTREE_DIR> so the base branch and the user's checkout stay clean. Pass the absolute worktree path to every agent.",
+        "text": "Resolve <WORKTREE_DIR> from Config (WORKTREE_LAYOUT + single vs bundle). Parse worktree-root=sibling from runtime guidance before resolving.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-1"
       },
       {
@@ -246,6 +246,7 @@
             <li><strong><code>MERGE_MODE=auto</code></strong> — honour when present (typical for <code>/ship-epic</code> units). Still overridden to <code>manual</code> when <code>IS_SECURITY_SENSITIVE</code> is set at classification time.</li>
             <li><strong><code>epic-run</code></strong> — with <code>epic-base</code>, do not widen the bundle or scan the backlog (see Stage 0 step 3).</li>
             <li><strong><code>epic-id=&lt;n&gt;</code></strong> — parent epic issue number when delegated from <code>/ship-epic</code>; required with <code>epic-run</code> so Stage 8 / final report can emit the <strong>Epic unit record</strong> for the orchestrator&#x27;s progress log.</li>
+            <li><strong><code>worktree-root=sibling</code></strong> — set <code>WORKTREE_LAYOUT=sibling</code> (legacy <code>../&lt;repo&gt;--…</code> paths; skips nested gitignore append).</li>
           </ul>
         </div>
         <ol class="order-stages" role="list">
@@ -313,7 +314,13 @@
             <p class="order-stage__crew">Crew: (orchestrator, deterministic — no agent)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
+                <ol>
+                  <li><strong>Resolve <code>&lt;WORKTREE_DIR&gt;</code></strong> from Config (<code>WORKTREE_LAYOUT</code> + single vs bundle). Parse <strong><code>worktree-root=sibling</code></strong> from runtime guidance before resolving.</li>
+                  <li><strong>Gitignore the worktree root</strong> when <code>WORKTREE_LAYOUT=nested</code> — from <code>&lt;repo&gt;</code>, idempotently ensure <code>.shipmates/worktrees/</code> is ignored. If <code>.gitignore</code> exists, append only when no line already ignores <code>.shipmates/worktrees/</code> as a path prefix. If <code>.gitignore</code> is missing, create it with the comment <code># Shipmates isolated command worktrees (auto-managed)</code> and the entry <code>.shipmates/worktrees/</code>. Never rewrite unrelated ignore rules.</li>
+                  <li><strong>Create the worktree:</strong></li>
+                </ol>
+                <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
+git -C &lt;repo&gt; fetch origin
 git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
                 <p>All build/fix work happens <strong>inside <code>&lt;WORKTREE_DIR&gt;</code></strong> so the base branch and the user&#x27;s checkout stay clean. Pass the absolute worktree path to every agent.</p>
                 <p>Immediately after creating the worktree, install selected harness payload there:</p>
@@ -521,7 +528,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
         </ol>
         <h3 id="final-report-to-the-user">Final report to the user</h3>
         <div class="order-prose">
-          <p>One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now. When <strong><code>IS_RELEASE_AFFECTING=yes</code></strong>, state the <strong>new version</strong> and that merge to <strong><code>RELEASE_BRANCH</code></strong> will publish it (or name the repo&#x27;s publish step if manual) — never imply the feature is released without the version bump that landed in the PR.</p>
+          <p>One concise summary: PR link (and merge state), commit(s), the absolute <strong>worktree path</strong> (<code>&lt;WORKTREE_DIR&gt;</code>), which specialists reviewed it and their verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link, anything that could only be validated statically, and — when <code>IS_SECURITY_SENSITIVE</code> was set at Stage 0 — the <code>/harden</code> recommendation, carried here mechanically rather than decided now. When <strong><code>IS_RELEASE_AFFECTING=yes</code></strong>, state the <strong>new version</strong> and that merge to <strong><code>RELEASE_BRANCH</code></strong> will publish it (or name the repo&#x27;s publish step if manual) — never imply the feature is released without the version bump that landed in the PR.</p>
           <p><strong>Epic unit record</strong> — when runtime guidance includes <strong><code>epic-run</code></strong> and <strong><code>epic-id=&lt;epic&gt;</code></strong>, end the final report with this machine-readable block (orchestrator parses it into the epic progress log):</p>
           <pre class="order-code" tabindex="0"><code>EPIC_UNIT_RECORD:
 EPIC_ID: &lt;epic&gt;
@@ -554,7 +561,15 @@ FIX_ROUNDS: &lt;n&gt;</code></pre>
             <li><code>MERGE_MODE</code> = <code>manual</code> — <code>manual</code>: stop after the acceptance board with a green, reviewed PR open for a human to merge. <code>auto</code>: squash-merge automatically once every gate passes. Start with <code>manual</code>; opt into <code>auto</code> only in a repo where unattended merges to the base branch are acceptable. <strong><code>/ship-epic</code> delegations pass <code>MERGE_MODE=auto</code></strong> so units merge into <strong><code>BASE_BRANCH</code></strong> (the epic integration branch when <code>epic-base</code> is set) without captain action; standalone <code>/ship-issue</code> keeps this default. Stage 8 <code>auto</code> always merges into <strong><code>BASE_BRANCH</code></strong> (the epic branch when <code>epic-base</code> is set, otherwise the repo default). If Stage 0 set <code>IS_SECURITY_SENSITIVE</code>, <code>MERGE_MODE</code> is forced to <code>manual</code> for this run regardless of the configured default — a security-sensitive change must not auto-merge past the <code>/harden</code> recommendation.</li>
             <li><code>MAX_FIX_ROUNDS</code> = <code>3</code>  (acceptance→fix→re-acceptance loops before escalating to the user)</li>
             <li><code>BUNDLE</code> = <code>recommend</code> — the token-efficient default (see <strong>Bundling</strong> above). <code>recommend</code>: when the leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, <strong>proposes</strong> a bundle, and <strong>always asks before widening the run</strong> — a recommended bundle never proceeds without the user&#x27;s explicit ok. <code>off</code>: ship exactly the issues passed, never suggest more. There is <strong>no silent auto-bundle</strong>: bundling from a recommendation (a single ticket, or a <code>next</code> pick) always requires consent. An explicitly-passed multi-issue invocation (<code>/ship-issue 1 2 3</code>) is already that consent — it proceeds as a bundle (with the cohesion warning if it is a poor fit).</li>
-            <li><code>WORKTREE_DIR</code> = a sibling of the repo root: <code>../&lt;repo&gt;--issue-&lt;first-issue&gt;</code> (single issue) or <code>../&lt;repo&gt;--bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple issues)</li>
+            <li><code>WORKTREE_LAYOUT</code> = <code>nested</code> (default) — isolated checkouts live under <code>&lt;repo&gt;/.shipmates/worktrees/</code>. Runtime guidance <strong><code>worktree-root=sibling</code></strong> selects the legacy sibling layout (<code>../&lt;repo&gt;--…</code> next to the repo).</li>
+            <li><code>WORKTREE_DIR</code> — resolve before Stage 1 from <code>&lt;repo&gt;</code> basename + slug (re-runs reuse the same path):
+              <ul>
+                <li><strong>nested, single issue:</strong> <code>&lt;repo&gt;/.shipmates/worktrees/issue-&lt;first-issue&gt;</code></li>
+                <li><strong>nested, bundle:</strong> <code>&lt;repo&gt;/.shipmates/worktrees/bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code></li>
+                <li><strong>sibling, single:</strong> <code>../&lt;repo&gt;--issue-&lt;first-issue&gt;</code></li>
+                <li><strong>sibling, bundle:</strong> <code>../&lt;repo&gt;--bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code></li>
+              </ul>
+            </li>
             <li><code>BRANCH</code> = <code>feat/issue-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (single) or <code>feat/bundle-&lt;first-issue&gt;-&lt;short-slug&gt;</code> (multiple)</li>
             <li><strong>Quality bar</strong> = whatever the repo&#x27;s <code>README</code> / <code>CLAUDE.md</code> / contributing docs state. Read it at the start and pass it to every reviewer — the <code>product-manager</code> (and the visual specialists) enforce THAT bar, not just &quot;it runs.&quot;</li>
             <li><strong><code>VERSION_FILES</code></strong> = wherever the repo records its published version (<code>Cargo.toml</code>, <code>package.json</code>, <code>pyproject.toml</code>, <code>VERSION</code>, etc.) — discover from README / CONTRIBUTING / CLAUDE.md; same discovery rules as <code>/release</code>. Only used when <code>IS_RELEASE_AFFECTING</code> is set (see Stage 0).</li>
@@ -595,7 +610,7 @@ FIX_ROUNDS: &lt;n&gt;</code></pre>
             <li>Reviewers always evaluate the <strong>pushed PR head</strong>, so &quot;accepted&quot; == &quot;what merges&quot;.</li>
             <li>Never open or advance a red PR. Never skip the mandatory PE+PO board once a PR head exists. Never silently drop a nit — file it.</li>
             <li><strong>Never assume a push is green.</strong> After every push (Stage 4 and every Stage 6 fix), run the Stage 4.5 CI gate: poll <code>gh pr checks</code> until done, and if red pull <code>gh run view --log-failed</code>, fix, re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.</li>
-            <li>Keep the base branch and the user&#x27;s working tree untouched throughout (all work in the worktree).</li>
+            <li>Keep the base branch and the user&#x27;s working tree untouched throughout (all work in the worktree). Default nested layout lives under <code>.shipmates/worktrees/</code> (gitignored); <code>worktree-root=sibling</code> restores legacy <code>../&lt;repo&gt;--…</code> paths.</li>
             <li>Respect <code>MERGE_MODE</code> — do not auto-merge unless it is explicitly set to <code>auto</code>.</li>
             <li>If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan requires), stop and surface it — autonomy does not mean forcing a bad merge.</li>
             <li><strong>Secrets &amp; security hygiene.</strong> Never write secrets, tokens, or credentials into commits, PR/issue bodies, or logs — assume the repo is public. The <code>sdet</code> flags secret leakage as a defect; a real leak is blocking. Deeper security work is not this command&#x27;s job — see the next bullet.</li>

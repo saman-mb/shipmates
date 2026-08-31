@@ -28,7 +28,10 @@ a migration guide, or the whole repo. If empty, ask what to document and for who
   working tree — still available, but ask for it.
 - Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
   worktree is cut from (that's current `HEAD`, so the draft has your latest work in it).
-  `WORKTREE_DIR` = `../<repo>--docs-<slug>`. `BRANCH` = `docs/<slug>`.
+  `WORKTREE_LAYOUT` = `nested` (default) — `<repo>/.shipmates/worktrees/`; runtime guidance
+  **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
+  `<repo>/.shipmates/worktrees/docs-<slug>`; **sibling:** `../<repo>--docs-<slug>`. Re-runs reuse the
+  same path. `BRANCH` = `docs/<slug>`.
   `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in). `MAX_FIX_ROUNDS` = `2` — a
   separate cap, on CI-fix rounds at Stage 4, so a permanently-red check escalates to the user
   instead of looping. The orchestrator owns all git/gh; agents never push. If there is no remote for
@@ -49,9 +52,11 @@ The worktree exists before anything writes. First check `git -C <repo> status --
 caller's tree is dirty, **stop and say so** — a worktree cut from `HEAD` holds committed work only,
 so a draft written against it would silently miss whatever the caller hasn't committed yet; tell them
 to commit or stash first. Otherwise, exactly as `/ship-issue`'s isolate stage, but cut from current
-`HEAD` rather than `origin/<BASE_BRANCH>`, so it contains the work being documented:
+`HEAD` rather than `origin/<BASE_BRANCH>`, so it contains the work being documented. Resolve
+`<WORKTREE_DIR>`, gitignore `.shipmates/worktrees/` when nested (once, idempotently), then:
 
 ```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
 ```
 

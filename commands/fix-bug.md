@@ -18,7 +18,10 @@ The bug description and reproduction hints come from the Runtime input section a
 
 ## Config (override only if the repo needs it)
 
-- `BASE_BRANCH` = the repo's default branch. `WORKTREE_DIR` = `../<repo>--bug-<slug>`. `BRANCH` = `fix/<slug>`.
+- `BASE_BRANCH` = the repo's default branch. `WORKTREE_LAYOUT` = `nested` (default) —
+  `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
+  `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/bug-<slug>`;
+  **sibling:** `../<repo>--bug-<slug>`. Re-runs reuse the same path. `BRANCH` = `fix/<slug>`.
 - `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in).
 - **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states. Read it first.
 - Reuse required trailers from the session context (a `Co-Authored-By:` line at minimum); the
@@ -35,7 +38,15 @@ what was tried — never "fix" an unconfirmed bug. This failing test is the cont
 
 ## Stage 1 — Isolate
 
+1. **Resolve `<WORKTREE_DIR>`** from Config. Parse **`worktree-root=sibling`** from runtime guidance
+   before resolving.
+2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — from `<repo>`, idempotently ensure
+   `.shipmates/worktrees/` is ignored (append only when no line already ignores it; create `.gitignore`
+   with `# Shipmates isolated command worktrees (auto-managed)` if missing). Never rewrite unrelated rules.
+3. **Create the worktree:**
+
 ```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> fetch origin
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```
@@ -80,7 +91,8 @@ bounded by `MAX_FIX_ROUNDS`, then escalate.
 
 Open (or, if `MERGE_MODE=auto`, merge) the PR. Body: the root cause in one paragraph, the fix, the
 regression test, `Closes #<issue>`, and the green-CI link. File sibling bugs / deferred cleanups as
-follow-up issues. Report: root cause, the red→green proof, review verdicts, fix rounds, PR link.
+follow-up issues. Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, and
+the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
 
 ---
 

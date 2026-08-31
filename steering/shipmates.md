@@ -11,6 +11,16 @@ Agent-facing conventions for changing **this repository's** canonical resources 
 
 When you touch canonical sources, extend the model in `tools/gen_command_pages.py` (or the Rust installer) and **regenerate** — never hand-edit generated pages under `site/commands/`, `site/agents/`, or `site/tools/`.
 
+## Worktree layout (mutating commands)
+
+Shipmates commands that isolate work in a git worktree default to **nested** paths under
+`<repo>/.shipmates/worktrees/<slug>` — same namespace as `.shipmates/receipts/`. Stage 1 (or the
+command's isolate stage) idempotently appends `.shipmates/worktrees/` to `.gitignore` on first use.
+Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…`).
+When you change one command's isolate stage, keep all nine mutating commands in sync:
+`/ship-issue`, `/fix-bug`, `/polish`, `/harden`, `/migrate`, `/document`, `/onboard`, `/refactor`,
+`/spike`.
+
 ## New command
 
 - Add `commands/<name>.md` (harness-neutral prose; `$ARGUMENTS` only).

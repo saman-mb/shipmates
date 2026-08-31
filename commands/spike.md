@@ -24,7 +24,10 @@ The open question comes from the Runtime input section at the end of this workfl
   `performance-engineer`, or `data-scientist` as extra judges when the decision hinges on their axis.
 - `PROTOTYPER` = `senior-engineer`. `TIME_BOX` = keep each spike minimal — just enough to answer the
   question, thrown away after. `ISOLATION` = each prototype in its own throwaway worktree/branch so they
-  don't collide and nothing lands on the base branch.
+  don't collide and nothing lands on the base branch. `WORKTREE_LAYOUT` = `nested` (default) —
+  `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
+  `../<repo>--…` paths. Per-prototype path — **nested:**
+  `<repo>/.shipmates/worktrees/spike-<slug>-<approach>`; **sibling:** `../<repo>--spike-<slug>-<approach>`.
 - **Constraints & priorities** = from the repo (quality attributes that matter here — performance,
   simplicity, reversibility, team familiarity, cost) plus anything in the validated runtime input.
 - **ADR delivery** — `MODE` = `pr` (default) or `edit-in-place`: where the **ADR** lands. This is a
@@ -32,7 +35,8 @@ The open question comes from the Runtime input section at the end of this workfl
   Stage 1, which always exist and are always torn down; `MODE` governs only where the *deliverable*
   (the ADR) ends up, and defaults to a reviewed PR. Under `MODE=pr`: `BASE_BRANCH` = the repo's
   default branch — the PR's target, not what the worktree is cut from (that's current `HEAD`).
-  `WORKTREE_DIR` = `../<repo>--adr-<slug>`. `BRANCH` = `docs/adr-<slug>`. `MERGE_MODE` = `manual`
+  `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/adr-<slug>`; **sibling:**
+  `../<repo>--adr-<slug>`. Re-runs reuse the same path. `BRANCH` = `docs/adr-<slug>`. `MERGE_MODE` = `manual`
   (stop at a reviewed PR; `auto` opt-in). `MAX_FIX_ROUNDS` = `2` — the cap on CI-fix rounds at
   Stage 3.5, so a permanently-red check escalates to the user instead of looping. A repo with no
   remote to open a PR against is the one fallback: build the branch, stop there, and report the
@@ -48,7 +52,9 @@ named options. A good frame makes the eventual recommendation obvious in hindsig
 ## Stage 1 — Prototype in parallel  (agents: `senior-engineer` × N, one per approach)
 
 Spawn one `senior-engineer` per approach **in a single message** (concurrent), each in its own isolated
-worktree, to build the **smallest prototype that answers the question** — a spike, not a feature: enough
+worktree (resolve the per-prototype path from Config; gitignore `.shipmates/worktrees/` when nested,
+once idempotently before the first prototype), to build the **smallest prototype that answers the
+question** — a spike, not a feature: enough
 to measure the criteria (does it work, how complex, how fast, how much migration). Each returns: what
 they built, what they learned, evidence against the criteria (numbers where measurable), and the sharp
 edges they hit. Explicitly disposable — no polish, no tests-for-keeps.
@@ -66,9 +72,11 @@ best ideas worth grafting onto the winner.
 The branch exists before the ADR does. First check `git -C <repo> status --porcelain`; if the
 caller's tree is dirty, **warn loudly** that a worktree cut from `HEAD` holds committed work only, so
 any uncommitted context won't carry into the ADR — then proceed. Exactly as `/ship-issue`'s isolate
-stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>`:
+stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>`. Resolve `<WORKTREE_DIR>`,
+gitignore `.shipmates/worktrees/` when nested (once, idempotently), then:
 
 ```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
 ```
 
