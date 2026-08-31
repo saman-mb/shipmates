@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/polish — iterate to a specialist&#x27;s sign-off · Shipmates</title>
-  <meta name="description" content="Iterate a visual / UI / output artifact to a specialist&#x27;s sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or…">
+  <meta name="description" content="Show the artifact, take critique, fix, repeat until a specialist signs off.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/polish/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/polish — iterate to a specialist&#x27;s sign-off">
-  <meta property="og:description" content="Iterate a visual / UI / output artifact to a specialist&#x27;s sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or…">
+  <meta property="og:description" content="Show the artifact, take critique, fix, repeat until a specialist signs off.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/polish/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/polish — iterate to a specialist&#x27;s sign-off">
-  <meta name="twitter:description" content="Iterate a visual / UI / output artifact to a specialist&#x27;s sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or…">
+  <meta name="twitter:description" content="Show the artifact, take critique, fix, repeat until a specialist signs off.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,43 +29,36 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/polish",
-    "description": "Iterate a visual / UI / output artifact to a specialist's sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or product-manager is genuinely happy (or a round cap).",
+    "description": "Show the artifact, take critique, fix, repeat until a specialist signs off.",
     "url": "https://saman-mb.github.io/shipmates/commands/polish/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
-        "name": "Stage 0 — Isolate",
-        "text": "Resolve MODE and the guard above first — decide the destination, don't infer it from where you happen to be standing:",
-        "url": "https://saman-mb.github.io/shipmates/commands/polish/#stage-0"
+        "name": "See it",
+        "text": "Put the real output in front of the reviewer — not the source that made it. Always: senior-engineer.",
+        "url": "https://saman-mb.github.io/shipmates/commands/polish/#step-1"
       },
       {
         "@type": "HowToStep",
         "position": 2,
-        "name": "Stage 1 — Secure a way for the REVIEWER to SEE the output (the loop can't converge without it)",
-        "text": "The REVIEWER must be able to open and inspect the ACTUAL produced artifact itself — not a description of it relayed by the orchestrator, and not the code. Find the project's way to produce it headlessly — a render / screenshot / build / export / preview harness (check its tools/scripts/docs). If…",
-        "url": "https://saman-mb.github.io/shipmates/commands/polish/#stage-1"
+        "name": "Baseline",
+        "text": "Capture round zero so later rounds have something to diff against. No spawn — produce the first version.",
+        "url": "https://saman-mb.github.io/shipmates/commands/polish/#step-2"
       },
       {
         "@type": "HowToStep",
         "position": 3,
-        "name": "Stage 2 — Baseline",
-        "text": "Produce the artifact once (run the harness) and capture it (PNG / output file). Call this round 0 and keep it, so the final report can show a before → after.",
-        "url": "https://saman-mb.github.io/shipmates/commands/polish/#stage-2"
+        "name": "Loop",
+        "text": "Critique, fix, recapture. One reviewer by domain; the engineer applies that reviewer's list. Bounded rounds. Always: senior-engineer. Also sit when: ux-ui-designer (the artifact is on-screen UI); art-director (the artifact is rendered art); product-manager (the artifact is other output — copy, a chart, a data view).",
+        "url": "https://saman-mb.github.io/shipmates/commands/polish/#step-3"
       },
       {
         "@type": "HowToStep",
         "position": 4,
-        "name": "Stage 3 — The loop (repeat up to MAX_ROUNDS)",
-        "text": "Each round:",
-        "url": "https://saman-mb.github.io/shipmates/commands/polish/#stage-3"
-      },
-      {
-        "@type": "HowToStep",
-        "position": 5,
-        "name": "Stage 4 — Report",
-        "text": "Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the number of rounds, and a short before → after of what changed. Optionally file any allowed nits as follow-up issues. Under MODE=pr, commit the rounds — staging only the paths the rounds actually…",
-        "url": "https://saman-mb.github.io/shipmates/commands/polish/#stage-4"
+        "name": "Sign-off",
+        "text": "Stop when that specialist accepts — not when the round cap is merely tiring. No extra spawn — report their verdict.",
+        "url": "https://saman-mb.github.io/shipmates/commands/polish/#step-4"
       }
     ]
   }
@@ -108,7 +101,7 @@
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <h1 class="order-detail__title" id="order-title"><code>/polish</code></h1>
           <p class="order-detail__tagline">iterate to a specialist&#x27;s sign-off</p>
-          <p class="order-detail__desc">Iterate a visual / UI / output artifact to a specialist&#x27;s sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or product-manager is genuinely happy (or a round cap).</p>
+          <p class="order-detail__desc">Show the artifact, take critique, fix, repeat until a specialist signs off.</p>
         </div>
       </div>
     </section>
@@ -141,186 +134,42 @@
       </div>
     </section>
 
-    <section class="section" id="stages" aria-labelledby="stages-title">
+    <section class="section order-process" id="process" aria-labelledby="process-title">
       <div class="container container--prose">
         <div class="section__head">
-          <p class="section__eyebrow">Step by step</p>
-          <h2 class="section__title" id="stages-title">The stages</h2>
-          <p class="section__lead">Five stages, in order.</p>
+          <h2 class="section__title" id="process-title">How it works</h2>
         </div>
-        <h3 id="cost-discipline">Cost discipline</h3>
-        <div class="order-prose">
-          <ul>
-            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
-            <li><strong>Complexity-Based Tiered Execution</strong>: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
-              <ul>
-                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but <strong>must still convene the mandatory PE+PO acceptance board</strong> on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.</li>
-                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. <strong>Must convene PE+PO</strong> (and SDET on the board when validation is non-trivial) — not main-agent review.</li>
-                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.</li>
-              </ul>
-            </li>
-            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
-            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
-          </ul>
-          <p>Take a visual / UI / output artifact and refine it in a <strong>loop</strong>: produce it, have the right specialist critique what they actually SEE (not the source that made it), apply the concrete fixes, re-produce, re-review — until that specialist <strong>genuinely signs off</strong> or a round cap is hit. This is the render → critique → refine loop, formalised.</p>
-          <p>The artifact and optional reviewer come from the Runtime input section at the end of this workflow.</p>
-        </div>
-        <ol class="order-stages" role="list">
-          <li class="order-stage" id="stage-0">
-            <span class="order-stage__num" aria-hidden="true">0</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Isolate</h3>
-            <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Resolve <code>MODE</code> and the guard above first — decide the destination, don&#x27;t infer it from where you happen to be standing:</p>
-                <ol>
-                  <li><strong>Already inside a linked worktree</strong> (the guard above). Confirm <em>that worktree</em> — not <code>&lt;repo&gt;</code>, the primary checkout — is clean before touching it: run <code>git status --porcelain</code> with no <code>-C</code>, so it targets the tree you&#x27;re already standing in. If it&#x27;s dirty, stop and say so; round 0 must not fold someone else&#x27;s unrelated, uncommitted work into the polish commit. Otherwise stay put and reuse it — do not cut a second one. <code>DESTINATION</code> = <code>reused-worktree</code>.</li>
-                  <li><strong>Otherwise:</strong> first check <code>git -C &lt;repo&gt; status --porcelain</code>; if the caller&#x27;s tree is dirty, <strong>stop and say so</strong> — a worktree cut from <code>HEAD</code> holds committed work only, so round 0 would render and critique a version of the artifact the caller isn&#x27;t looking at. Otherwise resolve whether the current branch already has an open PR:
-                    <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; rev-parse --abbrev-ref HEAD                  # the branch you are on
-gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
-                    <ul>
-                      <li><strong>A PR exists:</strong> cut a <strong>detached</strong> worktree at <code>HEAD</code>, so the caller&#x27;s checkout is never written to, and run the rounds there. Resolve <code>&lt;WORKTREE_DIR&gt;</code>, gitignore <code>.shipmates/worktrees/</code> when nested (once, idempotently), then:
-                        <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
-git -C &lt;repo&gt; worktree add --detach &lt;WORKTREE_DIR&gt; HEAD</code></pre>
-                        <p>At Stage 4, push back onto <code>&lt;branch&gt;</code> and its existing PR — never open a second one. <code>DESTINATION</code> = <code>existing-pr</code>.</p>
-                      </li>
-                      <li><strong>No PR:</strong> cut <code>&lt;BRANCH&gt;</code> = <code>polish/&lt;slug&gt;</code> from your current <code>HEAD</code>, not <code>origin/&lt;BASE_BRANCH&gt;</code> — precisely so it contains the work you were asked to polish. Resolve <code>&lt;WORKTREE_DIR&gt;</code>, gitignore <code>.shipmates/worktrees/</code> when nested (once, idempotently), then:
-                        <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
-git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
-                        <p>At Stage 4, open a new PR for it. <code>DESTINATION</code> = <code>new-branch</code>.</p>
-                      </li>
-                    </ul>
-                  </li>
-                </ol>
-                <p>Every round — the harness, the renders, the fixes — happens inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, or when the guard keeps you inside an existing worktree, work where you are. Either way, name <code>DESTINATION</code> and why it was chosen in the report <strong>before</strong> the first round runs, so nobody discovers after five rounds where the edits went.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-1">
-            <span class="order-stage__num" aria-hidden="true">1</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Secure a way for the REVIEWER to SEE the output (the loop can&#x27;t converge without it)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>The <code>REVIEWER</code> must be able to open and inspect the ACTUAL produced artifact itself — not a description of it relayed by the orchestrator, and not the code. Find the project&#x27;s way to produce it headlessly — a render / screenshot / build / export / preview harness (check its tools/scripts/docs). If none exists and one is feasible, have a <code>senior-engineer</code> build a <strong>minimal</strong> one (e.g. a headless script that writes a PNG, or a preview export) that hands the reviewer a file it can open directly. If it is genuinely impossible to produce the artifact or to give the reviewer direct access to it, say so plainly, fall back to a single static review flagged <strong>&quot;needs a human visual pass,&quot;</strong> name exactly what the reviewer could not see, and tell the user the loop cannot truly converge blind — don&#x27;t fake iterations.</p>
-                <p>Resolve a <strong>capture matrix</strong> before round 0: every section × the chosen breakpoints — a narrow and a desktop viewport at minimum, 375 / 768 / 1280 a common ladder — plus every distinct page template (N generated pages sharing one template need one capture; zero is not acceptable). <strong>Settle animation before capturing</strong> — wait it out or force a stable frame; unsettled motion is the leading cause of a flaky review (two captures of a 38-frame GIF both landing on frame 0 read as a capture artifact once — it was a real defect).</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-2">
-            <span class="order-stage__num" aria-hidden="true">2</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Baseline</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Produce the artifact once (run the harness) and capture it (PNG / output file). Call this round 0 and keep it, so the final report can show a before → after.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-3">
-            <span class="order-stage__num" aria-hidden="true">3</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>The loop (repeat up to <code>MAX_ROUNDS</code>)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Each round:</p>
-                <ol>
-                  <li><strong>Critique</strong> — spawn the <code>REVIEWER</code> against the CURRENT produced artifact (the actual image/output file, which it opens and inspects — not the source). It returns a decisive verdict — <code>ACCEPT</code> (sign-off) / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> — with SPECIFIC, plug-in fixes (values, not &quot;make it nicer&quot;), blockers separated from nits, and a statement of which capture-matrix cells it actually reviewed this round — the verdict covers only those. Instruct it explicitly not to rubber-stamp to end the loop.</li>
-                  <li><strong>Signed off?</strong> <code>ACCEPT</code> → leave the loop. <code>ACCEPT-WITH-NITS</code> → leave the loop too (the nits become follow-ups) unless the caller asked to resolve nits as well. <code>REJECT</code> → continue.</li>
-                  <li><strong>Fix</strong> — spawn a <code>senior-engineer</code> with the reviewer&#x27;s exact blocker list; apply the changes where Stage 0 put you — the worktree branch under <code>MODE=pr</code>, the working tree under <code>MODE=edit-in-place</code>. Keep the change scoped to the notes — no unrelated drift.</li>
-                  <li><strong>Re-produce</strong> — re-run the harness and capture the new artifact.</li>
-                  <li>Keep a one-line changelog per round, naming that round&#x27;s capture-matrix coverage, so the trajectory and the coverage are both visible.</li>
-                </ol>
-                <p>If <code>MAX_ROUNDS</code> is reached without a sign-off, <strong>STOP</strong> and hand the user the current artifact plus the reviewer&#x27;s remaining notes. Escalate; don&#x27;t spin.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-4">
-            <span class="order-stage__num" aria-hidden="true">4</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Report</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Show the user the final artifact (path / screenshot), the reviewer&#x27;s verdict in its own words, the number of rounds, and a short before → after of what changed. Optionally file any allowed nits as follow-up issues. Under <code>MODE=pr</code>, commit the rounds — staging only the paths the rounds actually touched, never <code>git add -A</code>, since the tree may hold unrelated uncommitted work — then push per <code>DESTINATION</code>:</p>
-                <ul>
-                  <li><code>reused-worktree</code> / <code>existing-pr</code>: push onto that branch and add a comment on its existing PR with the before → after renders cited by path. Never run <code>gh pr create</code> here — that would open a second PR against work that already has one.
-                    <pre class="order-code" tabindex="0"><code>git -C &lt;WORKTREE_DIR&gt; push origin HEAD:&lt;branch&gt;</code></pre>
-                    <p><code>MERGE_MODE=auto</code> does not apply here — the PR belongs to the caller&#x27;s feature work, not to this run. Push, comment, and stop regardless; say so in the report. Leave <code>&lt;WORKTREE_DIR&gt;</code> in place either way — it isn&#x27;t polish&#x27;s PR to merge or clean up.</p>
-                  </li>
-                  <li><code>new-branch</code>: push <code>&lt;BRANCH&gt;</code> and open a new PR with the same renders cited by path.</li>
-                </ul>
-                <p>Either way, then run the CI gate: poll <code>gh pr checks</code> until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling — bounded by <code>MAX_FIX_ROUNDS</code>, after which you stop and escalate to the user with the failing log rather than looping. Never advance a red PR. Under <code>new-branch</code>, stop there unless <code>MERGE_MODE=auto</code>, in which case merge the PR and remove <code>&lt;WORKTREE_DIR&gt;</code>; the manual default leaves the worktree in place with the PR open.</p>
-              </div>
-            </div>
-          </li>
+        <p class="order-process__lead">One reviewer sits, chosen by the artifact: designer for UI, art-director for pictures judged as art, product-manager for other output. An engineer applies each round of fixes.</p>
+        <ol class="order-process__list" role="list">
+          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">See it</h3><p class="order-process__line">Put the real output in front of the reviewer — not the source that made it.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Baseline</h3><p class="order-process__line">Capture round zero so later rounds have something to diff against.</p><p class="order-process__crew order-process__crew--solo">No spawn — produce the first version.</p></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Loop</h3><p class="order-process__line">Critique, fix, recapture. One reviewer by domain; the engineer applies that reviewer&#x27;s list. Bounded rounds.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/ux-ui-designer/"><code>ux-ui-designer</code></a><span class="order-process__when-text">the artifact is on-screen UI</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/art-director/"><code>art-director</code></a><span class="order-process__when-text">the artifact is rendered art</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a><span class="order-process__when-text">the artifact is other output — copy, a chart, a data view</span></li></ul></div></div></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">Sign-off</h3><p class="order-process__line">Stop when that specialist accepts — not when the round cap is merely tiring.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — report their verdict.</p></div></li>
         </ol>
-        <h3 id="runtime-input">Runtime input</h3>
-        <div class="order-prose">
-          <p><code>$ARGUMENTS</code> names the artifact to polish (screen/panel, generated art, rendered view, chart, or other output) and may name a reviewer. If empty, ask what to polish.</p>
-        </div>
       </div>
     </section>
 
-    <section class="section" id="config" aria-labelledby="config-title">
+    <section class="section order-when" id="when-to-use" aria-labelledby="when-to-use-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="config-title">Config</h2>
+          <h2 class="section__title" id="when-to-use-title">When to use</h2>
         </div>
-        <div class="order-prose">
-          <ul>
-            <li><code>REVIEWER</code> — chosen by the artifact&#x27;s domain (or named in the validated runtime input):
-              <ul>
-                <li>rendered visual <strong>art</strong> (game world, sprites, shaders, generative imagery, brand/motion) → <code>art-director</code></li>
-                <li>on-screen application <strong>UI</strong> (screens, HUD, panels, components) → <code>ux-ui-designer</code></li>
-                <li>general <strong>output quality</strong> / does-it-meet-the-goal (copy, a data view, a non-visual deliverable) → <code>product-manager</code></li>
-              </ul>
-              <p>Infer from the repo&#x27;s README/CLAUDE.md domain; when genuinely ambiguous, ask the user which reviewer.</p>
-            </li>
-            <li><code>MAX_ROUNDS</code> = 5 — loop cap before escalating to the user with the current state and the reviewer&#x27;s outstanding notes. Never loop forever; never declare a sign-off the reviewer didn&#x27;t give.</li>
-            <li><code>MAX_FIX_ROUNDS</code> = <code>2</code> — bounds the Stage 4 CI-fix loop only; separate from <code>MAX_ROUNDS</code>, which bounds the Stage 3 critique loop.</li>
-            <li><code>BUILDER</code> = <code>senior-engineer</code> — applies the reviewer&#x27;s fixes each round.</li>
-            <li><code>DESTINATION</code> = <code>reused-worktree</code>, <code>existing-pr</code>, or <code>new-branch</code> — resolved once by Stage 0, named in the report before round 0 runs, and consumed by Stage 4 to pick the push target and whether <code>MERGE_MODE</code> applies.</li>
-            <li><code>MODE</code> = <code>pr</code> (default) — run the loop in a worktree on its own branch and hand back a CI-gated PR, reusing <code>/ship-issue</code>&#x27;s CI gate; the isolate and commit-push-PR stages diverge on purpose (see Stage 0 and Stage 4) — the caller&#x27;s checkout is never written to. <code>edit-in-place</code> refines the working tree directly — still available, but ask for it.</li>
-            <li>Under <code>MODE=pr</code>: <code>BASE_BRANCH</code> = the repo&#x27;s default branch — the PR&#x27;s target, not what the worktree is cut from (that&#x27;s current <code>HEAD</code>; see Stage 0). <code>WORKTREE_LAYOUT</code> = <code>nested</code> (default) — <code>&lt;repo&gt;/.shipmates/worktrees/</code>; runtime guidance <strong><code>worktree-root=sibling</code></strong> selects legacy <code>../&lt;repo&gt;--…</code> paths. <code>WORKTREE_DIR</code> — <strong>nested:</strong> <code>&lt;repo&gt;/.shipmates/worktrees/polish-&lt;slug&gt;</code>; <strong>sibling:</strong> <code>../&lt;repo&gt;--polish-&lt;slug&gt;</code>. Re-runs reuse the same path. <code>BRANCH</code> = <code>polish/&lt;slug&gt;</code>. Default worktree cut is from local <strong><code>HEAD</code></strong> (includes unpushed commits the captain is viewing). Runtime guidance <strong><code>sync-base</code></strong> fetches and cuts from <code>origin/&lt;BASE_BRANCH&gt;</code> instead when remote-latest is required. <code>MERGE_MODE</code> = <code>manual</code> (stop at a reviewed PR; <code>auto</code> opt-in). The orchestrator owns all git/gh; agents never push. If there is no remote for <code>gh</code> to open a PR against, stop at the branch and say so — never silently downgrade to writing in the tree. <strong>The guard:</strong> the real question isn&#x27;t which branch you&#x27;re on, it&#x27;s where the polish should land — resolve it by destination, not by standing position. Being inside a linked worktree left behind by <code>/ship-issue</code> resolves to <code>DESTINATION</code> = <code>reused-worktree</code>; the caller&#x27;s own feature branch with an open PR resolves to <code>existing-pr</code>; a fresh branch is the <code>new-branch</code> fallback. Don&#x27;t infer any of it from a branch name — Stage 0 spells out the order:
-              <pre class="order-code" tabindex="0"><code># --path-format needs git &gt;= 2.31 — without it, a primary checkout entered from a
-# subdirectory reports an absolute --git-dir vs a relative --git-common-dir and false-positives
-[ &quot;$(git rev-parse --path-format=absolute --git-dir)&quot; != &quot;$(git rev-parse --path-format=absolute --git-common-dir)&quot; ]   # true inside a linked worktree</code></pre>
-              <p>Inside a linked worktree: stay put, do not cut a second one. Otherwise Stage 0 decides between the caller&#x27;s own branch (if it already has an open PR) and a fresh <code>polish/&lt;slug&gt;</code> branch.</p>
-            </li>
-            <li>The renders are <strong>evidence, not deliverables.</strong> The fixes land in tracked source; the captured artifact is often gitignored build output. Never force-add an ignored render to the branch — cite its path in the report and the PR body instead.</li>
-            <li><strong>Quality bar</strong> = the project&#x27;s stated visual/UX bar (README/CLAUDE.md), passed to the reviewer.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="guardrails" aria-labelledby="guardrails-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <h2 class="section__title" id="guardrails-title">Guardrails</h2>
-        </div>
-        <div class="order-prose">
-          <ul>
-            <li>The reviewer judges the PRODUCED OUTPUT every round — never the source. Code that looks right can render wrong; that&#x27;s the whole point of the loop.</li>
-            <li>A reviewer that <code>ACCEPT</code>s round 0 with zero changes gets a sanity check — make sure it actually inspected the artifact and isn&#x27;t rubber-stamping.</li>
-            <li>Bounded by <code>MAX_ROUNDS</code> — escalate rather than loop forever.</li>
-            <li><strong>Be resumable.</strong> A re-run may find the worktree, branch, or PR for this slug already exists — reuse them rather than erroring or duplicating work.</li>
-            <li>Scope each fix round to the reviewer&#x27;s notes; the <code>senior-engineer</code> doesn&#x27;t refactor or wander.</li>
-            <li>The sign-off is the REVIEWER&#x27;s to give, and the final report states what the reviewer actually said — not an optimistic paraphrase. A &quot;needs a human visual pass&quot; fallback is a real outcome, not a fail.</li>
-            <li>Reviewer choice follows the project&#x27;s domain: <code>art-director</code> for art, <code>ux-ui-designer</code> for UI, <code>product-manager</code> for general output. When ambiguous, ask.</li>
-            <li>Runs standalone, or as the visual pass inside/after <code>/ship-issue</code> on a UI/visual story.</li>
-            <li><strong>The loop runs on its own branch by default.</strong> Five rounds of edits belong in a diff a human can read, not in someone&#x27;s checkout. <code>MODE=edit-in-place</code> is an explicit request — except when you&#x27;re already inside an isolated worktree, where staying put <em>is</em> the isolation.</li>
-            <li>If a role doesn&#x27;t resolve to an <code>.claude/agents/*.md</code>, fall back to <code>general-purpose</code> with the role&#x27;s brief inlined, and note the fallback.</li>
-          </ul>
-        </div>
+        <ul class="order-when__list">
+          <li>A screen, chart, or render needs to look right — behaviour already exists.</li>
+          <li>Prose docs? /document. New feature? /ship-issue.</li>
+        </ul>
       </div>
     </section>
 
     <section class="section order-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="source-title">Where this lives</h2>
+          <h2 class="section__title" id="source-title">The skill</h2>
         </div>
-        <p>This page is generated from <code>commands/polish.md</code>. The installer copies it to <code>~/.claude/skills/polish/SKILL.md</code> for every project, or <code>.claude/skills/polish/SKILL.md</code> inside a single repo.</p>
+        <p>The installer ships the full skill — stages, gates, config — from <code>commands/polish.md</code>.</p>
         <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/polish.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View commands/polish.md on GitHub</span>
+          <span>Read the skill on GitHub</span>
         </a>
       </div>
     </section>
