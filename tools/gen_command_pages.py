@@ -49,6 +49,7 @@ SLUGS = (
     "ship-issue",
     "ship-epic",
     "fix-bug",
+    "report-bug",
     "plan-epics",
     "consolidate-issues",
     "harden",
