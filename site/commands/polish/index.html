@@ -148,6 +148,117 @@
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Five stages, in order.</p>
         </div>
+        <ol class="order-stages" role="list">
+          <li class="order-stage" id="stage-0">
+            <span class="order-stage__num" aria-hidden="true">0</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Isolate</h3>
+                <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Resolve <code>MODE</code> and the guard above first — decide the destination, don&#x27;t infer it from where you happen to be standing:</p>
+                  <ol>
+                    <li><strong>Already inside a linked worktree</strong> (the guard above). Confirm <em>that worktree</em> — not <code>&lt;repo&gt;</code>, the primary checkout — is clean before touching it: run <code>git status --porcelain</code> with no <code>-C</code>, so it targets the tree you&#x27;re already standing in. If it&#x27;s dirty, stop and say so; round 0 must not fold someone else&#x27;s unrelated, uncommitted work into the polish commit. Otherwise stay put and reuse it — do not cut a second one. <code>DESTINATION</code> = <code>reused-worktree</code>.</li>
+                    <li><strong>Otherwise:</strong> first check <code>git -C &lt;repo&gt; status --porcelain</code>; if the caller&#x27;s tree is dirty, <strong>stop and say so</strong> — a worktree cut from <code>HEAD</code> holds committed work only, so round 0 would render and critique a version of the artifact the caller isn&#x27;t looking at. Otherwise resolve whether the current branch already has an open PR:
+                      <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; rev-parse --abbrev-ref HEAD                  # the branch you are on
+gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
+                      <ul>
+                        <li><strong>A PR exists:</strong> cut a <strong>detached</strong> worktree at <code>HEAD</code>, so the caller&#x27;s checkout is never written to, and run the rounds there. Resolve <code>&lt;WORKTREE_DIR&gt;</code>, gitignore <code>.shipmates/worktrees/</code> when nested (once, idempotently), then:
+                          <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
+git -C &lt;repo&gt; worktree add --detach &lt;WORKTREE_DIR&gt; HEAD</code></pre>
+                          <p>At Stage 4, push back onto <code>&lt;branch&gt;</code> and its existing PR — never open a second one. <code>DESTINATION</code> = <code>existing-pr</code>.</p>
+                        </li>
+                        <li><strong>No PR:</strong> cut <code>&lt;BRANCH&gt;</code> = <code>polish/&lt;slug&gt;</code> from your current <code>HEAD</code>, not <code>origin/&lt;BASE_BRANCH&gt;</code> — precisely so it contains the work you were asked to polish. Resolve <code>&lt;WORKTREE_DIR&gt;</code>, gitignore <code>.shipmates/worktrees/</code> when nested (once, idempotently), then:
+                          <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
+git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
+                          <p>At Stage 4, open a new PR for it. <code>DESTINATION</code> = <code>new-branch</code>.</p>
+                        </li>
+                      </ul>
+                    </li>
+                  </ol>
+                  <p>Every round — the harness, the renders, the fixes — happens inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, or when the guard keeps you inside an existing worktree, work where you are. Either way, name <code>DESTINATION</code> and why it was chosen in the report <strong>before</strong> the first round runs, so nobody discovers after five rounds where the edits went.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-1">
+            <span class="order-stage__num" aria-hidden="true">1</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Secure a way for the REVIEWER to SEE the output (the loop can&#x27;t converge without it)</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>The <code>REVIEWER</code> must be able to open and inspect the ACTUAL produced artifact itself — not a description of it relayed by the orchestrator, and not the code. Find the project&#x27;s way to produce it headlessly — a render / screenshot / build / export / preview harness (check its tools/scripts/docs). If none exists and one is feasible, have a <code>senior-engineer</code> build a <strong>minimal</strong> one (e.g. a headless script that writes a PNG, or a preview export) that hands the reviewer a file it can open directly. If it is genuinely impossible to produce the artifact or to give the reviewer direct access to it, say so plainly, fall back to a single static review flagged <strong>&quot;needs a human visual pass,&quot;</strong> name exactly what the reviewer could not see, and tell the user the loop cannot truly converge blind — don&#x27;t fake iterations.</p>
+                  <p>Resolve a <strong>capture matrix</strong> before round 0: every section × the chosen breakpoints — a narrow and a desktop viewport at minimum, 375 / 768 / 1280 a common ladder — plus every distinct page template (N generated pages sharing one template need one capture; zero is not acceptable). <strong>Settle animation before capturing</strong> — wait it out or force a stable frame; unsettled motion is the leading cause of a flaky review (two captures of a 38-frame GIF both landing on frame 0 read as a capture artifact once — it was a real defect).</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-2">
+            <span class="order-stage__num" aria-hidden="true">2</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Baseline</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Produce the artifact once (run the harness) and capture it (PNG / output file). Call this round 0 and keep it, so the final report can show a before → after.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-3">
+            <span class="order-stage__num" aria-hidden="true">3</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>The loop (repeat up to <code>MAX_ROUNDS</code>)</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Each round:</p>
+                  <ol>
+                    <li><strong>Critique</strong> — spawn the <code>REVIEWER</code> against the CURRENT produced artifact (the actual image/output file, which it opens and inspects — not the source). It returns a decisive verdict — <code>ACCEPT</code> (sign-off) / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> — with SPECIFIC, plug-in fixes (values, not &quot;make it nicer&quot;), blockers separated from nits, and a statement of which capture-matrix cells it actually reviewed this round — the verdict covers only those. Instruct it explicitly not to rubber-stamp to end the loop.</li>
+                    <li><strong>Signed off?</strong> <code>ACCEPT</code> → leave the loop. <code>ACCEPT-WITH-NITS</code> → leave the loop too (the nits become follow-ups) unless the caller asked to resolve nits as well. <code>REJECT</code> → continue.</li>
+                    <li><strong>Fix</strong> — spawn a <code>senior-engineer</code> with the reviewer&#x27;s exact blocker list; apply the changes where Stage 0 put you — the worktree branch under <code>MODE=pr</code>, the working tree under <code>MODE=edit-in-place</code>. Keep the change scoped to the notes — no unrelated drift.</li>
+                    <li><strong>Re-produce</strong> — re-run the harness and capture the new artifact.</li>
+                    <li>Keep a one-line changelog per round, naming that round&#x27;s capture-matrix coverage, so the trajectory and the coverage are both visible.</li>
+                  </ol>
+                  <p>If <code>MAX_ROUNDS</code> is reached without a sign-off, <strong>STOP</strong> and hand the user the current artifact plus the reviewer&#x27;s remaining notes. Escalate; don&#x27;t spin.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-4">
+            <span class="order-stage__num" aria-hidden="true">4</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Report</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Show the user the final artifact (path / screenshot), the reviewer&#x27;s verdict in its own words, the number of rounds, and a short before → after of what changed. Optionally file any allowed nits as follow-up issues. Under <code>MODE=pr</code>, commit the rounds — staging only the paths the rounds actually touched, never <code>git add -A</code>, since the tree may hold unrelated uncommitted work — then push per <code>DESTINATION</code>:</p>
+                  <ul>
+                    <li><code>reused-worktree</code> / <code>existing-pr</code>: push onto that branch and add a comment on its existing PR with the before → after renders cited by path. Never run <code>gh pr create</code> here — that would open a second PR against work that already has one.
+                      <pre class="order-code" tabindex="0"><code>git -C &lt;WORKTREE_DIR&gt; push origin HEAD:&lt;branch&gt;</code></pre>
+                      <p><code>MERGE_MODE=auto</code> does not apply here — the PR belongs to the caller&#x27;s feature work, not to this run. Push, comment, and stop regardless; say so in the report. Leave <code>&lt;WORKTREE_DIR&gt;</code> in place either way — it isn&#x27;t polish&#x27;s PR to merge or clean up.</p>
+                    </li>
+                    <li><code>new-branch</code>: push <code>&lt;BRANCH&gt;</code> and open a new PR with the same renders cited by path.</li>
+                  </ul>
+                  <p>Either way, then run the CI gate: poll <code>gh pr checks</code> until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling — bounded by <code>MAX_FIX_ROUNDS</code>, after which you stop and escalate to the user with the failing log rather than looping. Never advance a red PR. Under <code>new-branch</code>, stop there unless <code>MERGE_MODE=auto</code>, in which case merge the PR and remove <code>&lt;WORKTREE_DIR&gt;</code>; the manual default leaves the worktree in place with the PR open.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+        </ol>
+        <details class="order-advanced" id="advanced">
+          <summary class="order-advanced__summary">
+            <span class="order-advanced__title">Advanced</span>
+            <span class="order-advanced__hint">Cost discipline, bundling, model selection, shell safety, and other preamble</span>
+          </summary>
+          <div class="order-advanced__body">
         <h3 id="cost-discipline">Cost discipline</h3>
         <div class="order-prose">
           <ul>
@@ -165,91 +276,8 @@
           <p>Take a visual / UI / output artifact and refine it in a <strong>loop</strong>: produce it, have the right specialist critique what they actually SEE (not the source that made it), apply the concrete fixes, re-produce, re-review — until that specialist <strong>genuinely signs off</strong> or a round cap is hit. This is the render → critique → refine loop, formalised.</p>
           <p>The artifact and optional reviewer come from the Runtime input section at the end of this workflow.</p>
         </div>
-        <ol class="order-stages" role="list">
-          <li class="order-stage" id="stage-0">
-            <span class="order-stage__num" aria-hidden="true">0</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Isolate</h3>
-            <p class="order-stage__crew">Crew: (<code>MODE=pr</code> only — orchestrator, deterministic, no agent)</p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Resolve <code>MODE</code> and the guard above first — decide the destination, don&#x27;t infer it from where you happen to be standing:</p>
-                <ol>
-                  <li><strong>Already inside a linked worktree</strong> (the guard above). Confirm <em>that worktree</em> — not <code>&lt;repo&gt;</code>, the primary checkout — is clean before touching it: run <code>git status --porcelain</code> with no <code>-C</code>, so it targets the tree you&#x27;re already standing in. If it&#x27;s dirty, stop and say so; round 0 must not fold someone else&#x27;s unrelated, uncommitted work into the polish commit. Otherwise stay put and reuse it — do not cut a second one. <code>DESTINATION</code> = <code>reused-worktree</code>.</li>
-                  <li><strong>Otherwise:</strong> first check <code>git -C &lt;repo&gt; status --porcelain</code>; if the caller&#x27;s tree is dirty, <strong>stop and say so</strong> — a worktree cut from <code>HEAD</code> holds committed work only, so round 0 would render and critique a version of the artifact the caller isn&#x27;t looking at. Otherwise resolve whether the current branch already has an open PR:
-                    <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; rev-parse --abbrev-ref HEAD                  # the branch you are on
-gh pr list --head &lt;branch&gt; --state open --json number</code></pre>
-                    <ul>
-                      <li><strong>A PR exists:</strong> cut a <strong>detached</strong> worktree at <code>HEAD</code>, so the caller&#x27;s checkout is never written to, and run the rounds there. Resolve <code>&lt;WORKTREE_DIR&gt;</code>, gitignore <code>.shipmates/worktrees/</code> when nested (once, idempotently), then:
-                        <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
-git -C &lt;repo&gt; worktree add --detach &lt;WORKTREE_DIR&gt; HEAD</code></pre>
-                        <p>At Stage 4, push back onto <code>&lt;branch&gt;</code> and its existing PR — never open a second one. <code>DESTINATION</code> = <code>existing-pr</code>.</p>
-                      </li>
-                      <li><strong>No PR:</strong> cut <code>&lt;BRANCH&gt;</code> = <code>polish/&lt;slug&gt;</code> from your current <code>HEAD</code>, not <code>origin/&lt;BASE_BRANCH&gt;</code> — precisely so it contains the work you were asked to polish. Resolve <code>&lt;WORKTREE_DIR&gt;</code>, gitignore <code>.shipmates/worktrees/</code> when nested (once, idempotently), then:
-                        <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
-git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; HEAD</code></pre>
-                        <p>At Stage 4, open a new PR for it. <code>DESTINATION</code> = <code>new-branch</code>.</p>
-                      </li>
-                    </ul>
-                  </li>
-                </ol>
-                <p>Every round — the harness, the renders, the fixes — happens inside <code>&lt;WORKTREE_DIR&gt;</code>. Under <code>MODE=edit-in-place</code>, or when the guard keeps you inside an existing worktree, work where you are. Either way, name <code>DESTINATION</code> and why it was chosen in the report <strong>before</strong> the first round runs, so nobody discovers after five rounds where the edits went.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-1">
-            <span class="order-stage__num" aria-hidden="true">1</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Secure a way for the REVIEWER to SEE the output (the loop can&#x27;t converge without it)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>The <code>REVIEWER</code> must be able to open and inspect the ACTUAL produced artifact itself — not a description of it relayed by the orchestrator, and not the code. Find the project&#x27;s way to produce it headlessly — a render / screenshot / build / export / preview harness (check its tools/scripts/docs). If none exists and one is feasible, have a <code>senior-engineer</code> build a <strong>minimal</strong> one (e.g. a headless script that writes a PNG, or a preview export) that hands the reviewer a file it can open directly. If it is genuinely impossible to produce the artifact or to give the reviewer direct access to it, say so plainly, fall back to a single static review flagged <strong>&quot;needs a human visual pass,&quot;</strong> name exactly what the reviewer could not see, and tell the user the loop cannot truly converge blind — don&#x27;t fake iterations.</p>
-                <p>Resolve a <strong>capture matrix</strong> before round 0: every section × the chosen breakpoints — a narrow and a desktop viewport at minimum, 375 / 768 / 1280 a common ladder — plus every distinct page template (N generated pages sharing one template need one capture; zero is not acceptable). <strong>Settle animation before capturing</strong> — wait it out or force a stable frame; unsettled motion is the leading cause of a flaky review (two captures of a 38-frame GIF both landing on frame 0 read as a capture artifact once — it was a real defect).</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-2">
-            <span class="order-stage__num" aria-hidden="true">2</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Baseline</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Produce the artifact once (run the harness) and capture it (PNG / output file). Call this round 0 and keep it, so the final report can show a before → after.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-3">
-            <span class="order-stage__num" aria-hidden="true">3</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>The loop (repeat up to <code>MAX_ROUNDS</code>)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Each round:</p>
-                <ol>
-                  <li><strong>Critique</strong> — spawn the <code>REVIEWER</code> against the CURRENT produced artifact (the actual image/output file, which it opens and inspects — not the source). It returns a decisive verdict — <code>ACCEPT</code> (sign-off) / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> — with SPECIFIC, plug-in fixes (values, not &quot;make it nicer&quot;), blockers separated from nits, and a statement of which capture-matrix cells it actually reviewed this round — the verdict covers only those. Instruct it explicitly not to rubber-stamp to end the loop.</li>
-                  <li><strong>Signed off?</strong> <code>ACCEPT</code> → leave the loop. <code>ACCEPT-WITH-NITS</code> → leave the loop too (the nits become follow-ups) unless the caller asked to resolve nits as well. <code>REJECT</code> → continue.</li>
-                  <li><strong>Fix</strong> — spawn a <code>senior-engineer</code> with the reviewer&#x27;s exact blocker list; apply the changes where Stage 0 put you — the worktree branch under <code>MODE=pr</code>, the working tree under <code>MODE=edit-in-place</code>. Keep the change scoped to the notes — no unrelated drift.</li>
-                  <li><strong>Re-produce</strong> — re-run the harness and capture the new artifact.</li>
-                  <li>Keep a one-line changelog per round, naming that round&#x27;s capture-matrix coverage, so the trajectory and the coverage are both visible.</li>
-                </ol>
-                <p>If <code>MAX_ROUNDS</code> is reached without a sign-off, <strong>STOP</strong> and hand the user the current artifact plus the reviewer&#x27;s remaining notes. Escalate; don&#x27;t spin.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-4">
-            <span class="order-stage__num" aria-hidden="true">4</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Report</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Show the user the final artifact (path / screenshot), the reviewer&#x27;s verdict in its own words, the number of rounds, and a short before → after of what changed. Optionally file any allowed nits as follow-up issues. Under <code>MODE=pr</code>, commit the rounds — staging only the paths the rounds actually touched, never <code>git add -A</code>, since the tree may hold unrelated uncommitted work — then push per <code>DESTINATION</code>:</p>
-                <ul>
-                  <li><code>reused-worktree</code> / <code>existing-pr</code>: push onto that branch and add a comment on its existing PR with the before → after renders cited by path. Never run <code>gh pr create</code> here — that would open a second PR against work that already has one.
-                    <pre class="order-code" tabindex="0"><code>git -C &lt;WORKTREE_DIR&gt; push origin HEAD:&lt;branch&gt;</code></pre>
-                    <p><code>MERGE_MODE=auto</code> does not apply here — the PR belongs to the caller&#x27;s feature work, not to this run. Push, comment, and stop regardless; say so in the report. Leave <code>&lt;WORKTREE_DIR&gt;</code> in place either way — it isn&#x27;t polish&#x27;s PR to merge or clean up.</p>
-                  </li>
-                  <li><code>new-branch</code>: push <code>&lt;BRANCH&gt;</code> and open a new PR with the same renders cited by path.</li>
-                </ul>
-                <p>Either way, then run the CI gate: poll <code>gh pr checks</code> until nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling — bounded by <code>MAX_FIX_ROUNDS</code>, after which you stop and escalate to the user with the failing log rather than looping. Never advance a red PR. Under <code>new-branch</code>, stop there unless <code>MERGE_MODE=auto</code>, in which case merge the PR and remove <code>&lt;WORKTREE_DIR&gt;</code>; the manual default leaves the worktree in place with the PR open.</p>
-              </div>
-            </div>
-          </li>
-        </ol>
+          </div>
+        </details>
         <h3 id="runtime-input">Runtime input</h3>
         <div class="order-prose">
           <p><code>$ARGUMENTS</code> names the artifact to polish (screen/panel, generated art, rendered view, chart, or other output) and may name a reviewer. If empty, ask what to polish.</p>
