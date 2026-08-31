@@ -135,7 +135,7 @@ class SiteGenerationTests(unittest.TestCase):
 
         nested = rendered / "skills"
         agents = generator.load_agents(rendered / "agents", nested)
-        self.assertEqual(12, len(agents))
+        self.assertEqual(13, len(agents))
         commands = generator.load_skills(nested, tuple(a.name for a in agents))
         self.assertEqual(14, len(commands))
         self.assertIn("ship-issue", {c.slug for c in commands})

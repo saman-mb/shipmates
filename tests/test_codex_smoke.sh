@@ -38,7 +38,7 @@ test -f "$PROJECT/.agents/skills/ship-issue/SKILL.md"
 test -f "$PROJECT/.codex/agents/sdet.toml"
 test ! -d "$PROJECT/.codex/skills"
 test "$(ls -1 "$PROJECT/.agents/skills" | wc -l | tr -d ' ')" -eq 14
-test "$(ls -1 "$PROJECT/.codex/agents"/*.toml | wc -l | tr -d ' ')" -eq 12
+test "$(ls -1 "$PROJECT/.codex/agents"/*.toml | wc -l | tr -d ' ')" -eq 13
 
 for role in \
   architect art-director data-scientist devops-engineer performance-engineer \

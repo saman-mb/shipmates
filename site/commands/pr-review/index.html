@@ -50,7 +50,7 @@
         "@type": "HowToStep",
         "position": 3,
         "name": "Stage 2 — The board",
-        "text": "Spawn these in a single message so they run concurrently, each pinned to the head commit so they review exactly what would merge. Two always run; the rest only when their flag is set:",
+        "text": "Spawn reviewers in parallel against the PR head commit — they review exactly what will merge.",
         "url": "https://saman-mb.github.io/shipmates/commands/pr-review/#stage-2"
       },
       {
@@ -154,9 +154,9 @@
             <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
             <li><strong>Complexity-Based Tiered Execution</strong>: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
               <ul>
-                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). Bypasses spawning all subagents entirely; the main agent (you) executes, validates, and delivers the PR directly.</li>
-                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Bypasses parallel design specs and the large acceptance board. Spawn a Planner and a single Builder and single SDET. The main agent reviews and delivers.</li>
-                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command.</li>
+                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but <strong>must still convene the mandatory PE+PO acceptance board</strong> on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.</li>
+                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. <strong>Must convene PE+PO</strong> (and SDET on the board when validation is non-trivial) — not main-agent review.</li>
+                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.</li>
               </ul>
             </li>
             <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
@@ -209,29 +209,56 @@ gh pr diff &lt;PR#&gt;</code></pre>
           <li class="order-stage" id="stage-2">
             <span class="order-stage__num" aria-hidden="true">2</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>The board</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>security-engineer</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> <span class="chip order-stage__crew-item"><code>performance-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> <span class="chip order-stage__crew-item"><code>data-scientist</code></span> (specialist agents, in parallel, against <code>headRefOid</code>)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>principal-engineer</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>security-engineer</code></span> <span class="chip order-stage__crew-item"><code>performance-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> <span class="chip order-stage__crew-item"><code>data-scientist</code></span> (specialist agents, in parallel, against <code>headRefOid</code>)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Spawn these in a single message so they run concurrently, each pinned to the <strong>head commit</strong> so they review exactly what would merge. Two always run; the rest only when their flag is set:</p>
+                <p>Spawn reviewers <strong>in parallel</strong> against the PR head commit — they review exactly what will merge.</p>
+                <p><strong>Mandatory seats (never skip)</strong></p>
+                <ul>
+                  <li><strong><code>product-manager</code></strong> (PO): checks every acceptance criterion AND the quality bar (README / CLAUDE.md / contributing). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
+                  <li><strong><code>principal-engineer</code></strong> (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a <code>/harden</code> pass). Verifies the PR satisfied the repo&#x27;s <strong>mandatory ship checklist</strong> for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with <code>file:line</code> evidence.</li>
+                </ul>
+                <p>Tiered execution may lean the build path on Simple/Medium, but <strong>must not skip PE+PO</strong> once a PR head exists.</p>
+                <p><strong>Scaled optional seats</strong></p>
+                <p>Convene only when the change can plausibly trip the concern. A gated-out seat is <strong>named in the report with its flag or reason</strong> — never silently skipped.</p>
+                <div class="order-table" tabindex="0">
+                  <table>
+                    <thead><tr><th scope="col">Seat</th><th scope="col">Join when</th></tr></thead>
+                    <tbody>
+                      <tr><td><code>sdet</code></td><td>Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran.</td></tr>
+                      <tr><td><code>architect</code></td><td><code>IS_ARCH_SIGNIFICANT</code></td></tr>
+                      <tr><td><code>devops-engineer</code></td><td><code>IS_DELIVERY_SENSITIVE</code></td></tr>
+                      <tr><td><code>technical-writer</code></td><td><code>IS_DOCS_AFFECTING</code> — doc copy/staleness (PE covers process compliance; both may run)</td></tr>
+                      <tr><td><code>ux-ui-designer</code></td><td><code>IS_UI_STORY</code></td></tr>
+                      <tr><td><code>art-director</code></td><td><code>IS_VISUAL_STORY</code></td></tr>
+                      <tr><td><code>security-engineer</code></td><td><code>/pr-review</code> only when <code>IS_SECURITY_SENSITIVE</code></td></tr>
+                      <tr><td><code>performance-engineer</code></td><td><code>/pr-review</code> when the PR claims a perf win or touches a hot path; <code>/refactor</code> when the stated motivation was performance</td></tr>
+                      <tr><td><code>site-reliability-engineer</code></td><td><code>/pr-review</code> when runtime behaviour, failure handling, or rollout changes</td></tr>
+                      <tr><td><code>data-scientist</code></td><td><code>/pr-review</code> when the deliverable is an analysis or model</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p>The <code>IS_*</code> flag vocabulary is shared by <code>/ship-issue</code> Stage 0 and <code>/pr-review</code> Stage 0 — a new flag must be added to both classifiers.</p>
+                <p><strong>Decision</strong></p>
+                <ul>
+                  <li><strong>All spawned reviewers ACCEPT/PASS (nits allowed)</strong> → proceed to deliver / the command&#x27;s next stage.</li>
+                  <li><strong>Any REJECT / FAIL</strong> → remediation loop (where the command defines one), then re-convene the board on the new head.</li>
+                </ul>
+                <p><strong>Harness fallback</strong></p>
+                <p>If <code>principal-engineer</code> or any role does not resolve to an <code>.claude/agents/*.md</code> file (skill-only harnesses until crew agents ship), fall back to <code>general-purpose</code> with the role brief inlined and note the fallback — never silently skip a mandatory seat.</p>
+                <p>Spawn in a single message so they run concurrently, each pinned to the <strong>head commit</strong>. Use the Stage 0 flags for scaled optional seats. <strong><code>/pr-review</code>-specific additions</strong> on top of the shared board:</p>
                 <div class="order-table" tabindex="0">
                   <table>
                     <thead><tr><th scope="col"><code>subagent_type</code></th><th scope="col">Runs</th></tr></thead>
                     <tbody>
-                      <tr><td><code>product-manager</code></td><td>always — does it solve the stated problem, and does it clear the repo&#x27;s bar?</td></tr>
-                      <tr><td><code>sdet</code></td><td>always — test coverage and quality of the change (see <code>RUN_TESTS</code> before executing anything)</td></tr>
-                      <tr><td><code>architect</code></td><td>only if <code>IS_ARCH_SIGNIFICANT</code></td></tr>
                       <tr><td><code>security-engineer</code></td><td>only if <code>IS_SECURITY_SENSITIVE</code></td></tr>
-                      <tr><td><code>devops-engineer</code></td><td>only if <code>IS_DELIVERY_SENSITIVE</code></td></tr>
-                      <tr><td><code>ux-ui-designer</code></td><td>only if <code>IS_UI_STORY</code></td></tr>
-                      <tr><td><code>art-director</code></td><td>only if <code>IS_VISUAL_STORY</code></td></tr>
-                      <tr><td><code>technical-writer</code></td><td>only if <code>IS_DOCS_AFFECTING</code></td></tr>
                       <tr><td><code>performance-engineer</code></td><td>if the PR claims a performance win, or touches a known hot path</td></tr>
                       <tr><td><code>site-reliability-engineer</code></td><td>if it changes runtime behaviour, failure handling, or rollout</td></tr>
                       <tr><td><code>data-scientist</code></td><td>if the deliverable is an analysis or a model</td></tr>
                     </tbody>
                   </table>
                 </div>
-                <p><strong>Don&#x27;t restate what each reviewer checks.</strong> Their remit lives in <code>agents/*.md</code> — that is the single source of truth, and duplicating it here is how the two boards drift apart. Pass each agent the PR head, the repo&#x27;s bar, and the caller&#x27;s focus hint; let the role do the rest.</p>
+                <p><strong>Don&#x27;t restate what each reviewer checks.</strong> Their remit lives in <code>agents/*.md</code> — that is the single source of truth. Pass each agent the PR head, the repo&#x27;s bar, and the caller&#x27;s focus hint; let the role do the rest. See <code>RUN_TESTS</code> before the <code>sdet</code> executes anything.</p>
               </div>
             </div>
           </li>

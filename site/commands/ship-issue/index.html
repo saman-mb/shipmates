@@ -85,7 +85,7 @@
         "@type": "HowToStep",
         "position": 8,
         "name": "Stage 5 — Acceptance board",
-        "text": "Spawn these in parallel against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist only when the change can plausibly trip its concern surface; a role gated out is named in the…",
+        "text": "Spawn reviewers in parallel against the PR head commit — they review exactly what will merge.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-issue/#stage-5"
       },
       {
@@ -197,9 +197,9 @@
             <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
             <li><strong>Complexity-Based Tiered Execution</strong>: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
               <ul>
-                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). Bypasses spawning all subagents entirely; the main agent (you) executes, validates, and delivers the PR directly.</li>
-                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Bypasses parallel design specs and the large acceptance board. Spawn a Planner and a single Builder and single SDET. The main agent reviews and delivers.</li>
-                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command.</li>
+                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but <strong>must still convene the mandatory PE+PO acceptance board</strong> on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.</li>
+                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. <strong>Must convene PE+PO</strong> (and SDET on the board when validation is non-trivial) — not main-agent review.</li>
+                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.</li>
               </ul>
             </li>
             <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
@@ -211,14 +211,14 @@
         </div>
         <h3 id="bundling-the-token-efficient-default">Bundling — the token-efficient default</h3>
         <div class="order-prose">
-          <p>Most of a run&#x27;s token cost is <strong>fixed overhead paid once per invocation</strong>: the Planner pass, the acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup. That overhead barely grows with diff size, so shipping several <strong>small, cohesive</strong> issues in one run is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole board N times. <strong>So bundling cohesive issues is the recommended default</strong> (<code>BUNDLE=recommend</code>, see Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before building. Bundling is right only when the issues are <em>cohesive and cheap</em> — it is wrong when combining them would muddy the review or let one failure sink the rest, so the Stage 0 <strong>cohesion test</strong> is the gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.</p>
+          <p>Most of a run&#x27;s token cost is <strong>fixed overhead paid once per invocation</strong>: the Planner pass, the acceptance board (mandatory PE+PO core + any scaled specialists), the CI poll loop, and worktree setup. That overhead barely grows with diff size, so shipping several <strong>small, cohesive</strong> issues in one run is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole board N times. <strong>So bundling cohesive issues is the recommended default</strong> (<code>BUNDLE=recommend</code>, see Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before building. Bundling is right only when the issues are <em>cohesive and cheap</em> — it is wrong when combining them would muddy the review or let one failure sink the rest, so the Stage 0 <strong>cohesion test</strong> is the gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.</p>
         </div>
         <h3 id="model-selection-dynamic-never-baked">Model selection — dynamic, never baked</h3>
         <div class="order-prose">
           <p>Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have different access, so the right model is chosen <strong>at spawn, by task complexity, from what is available</strong> — not written into any crew file:</p>
           <ul>
             <li><strong>Mechanical work</strong> (Builders, the SDET&#x27;s test/validation runs, straightforward Fixers) → the cheapest capable model, low reasoning effort.</li>
-            <li><strong>Hard judgment</strong> (the Planner, <code>architect</code>, <code>security-engineer</code>, and the <code>product-manager</code> acceptance call) → the top model available, higher effort.</li>
+            <li><strong>Hard judgment</strong> (the Planner, <code>architect</code>, <code>principal-engineer</code>, <code>security-engineer</code>, and the <code>product-manager</code> acceptance call) → the top model available, higher effort.</li>
             <li><strong>Unsure</strong> → inherit the session model; never guess a model name.</li>
           </ul>
           <p>The role sets the <strong>baseline</strong> tier above; then <strong>scale it by the work unit&#x27;s complexity</strong> (the Planner&#x27;s signal): a <code>complex</code> unit bumps the model to the top tier and the effort up; a <code>trivial</code> unit drops toward the cheapest model and lowest effort; <code>standard</code> holds the baseline — so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.</p>
@@ -401,20 +401,45 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
           <li class="order-stage" id="stage-5">
             <span class="order-stage__num" aria-hidden="true">5</span>
             <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Acceptance board</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> (specialist agents, reviewing the PUSHED PR head)</p>
+            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>principal-engineer</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>security-engineer</code></span> <span class="chip order-stage__crew-item"><code>performance-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> <span class="chip order-stage__crew-item"><code>data-scientist</code></span> (specialist agents, reviewing the PUSHED PR head)</p>
             <div class="order-stage__body">
               <div class="order-prose">
-                <p>Spawn these <strong>in parallel</strong> against the PR head commit (they review exactly what will merge). The two core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist only when the change can plausibly trip its concern surface; a role gated out is named in the run report together with the flag that gated it — never silently skipped.</p>
+                <p>Spawn reviewers <strong>in parallel</strong> against the PR head commit — they review exactly what will merge.</p>
+                <p><strong>Mandatory seats (never skip)</strong></p>
                 <ul>
-                  <li><strong><code>product-manager</code></strong> (always): checks every acceptance criterion AND the quality bar (from the repo&#x27;s README/CLAUDE.md). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
-                  <li><strong><code>sdet</code></strong> (always): re-runs the validation plan against the PR branch; returns <code>PASS</code> / <code>FAIL</code> with a severity-tagged defect list.</li>
-                  <li><strong><code>ux-ui-designer</code></strong> (only if <code>IS_UI_STORY</code>): reviews the pushed head against the Stage 1.5 spec and the UI bar — shared-token/theme usage (not per-component override sprawl), responsive layout, focus navigation, interaction states, contrast/readability. If it cannot actually render the UI, it reviews statically and MUST flag the PR <strong>&quot;needs a human visual pass&quot;</strong> — carry that into the report.</li>
-                  <li><strong><code>art-director</code></strong> (only if <code>IS_VISUAL_STORY</code>): renders the actual change via the project&#x27;s render/preview harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the visual bar — the render, not the source. If it cannot render, it says so and flags <strong>&quot;needs a human visual pass&quot;</strong>.</li>
-                  <li><strong><code>architect</code></strong> (only if <code>IS_ARCH_SIGNIFICANT</code>): reviews structural fit, coupling/blast radius, and schema/migration safety.</li>
-                  <li><strong><code>devops-engineer</code></strong> (only if <code>IS_DELIVERY_SENSITIVE</code>): reviews the delivery definitions for reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety to <code>site-reliability-engineer</code>.</li>
-                  <li><strong><code>technical-writer</code></strong> (only if <code>IS_DOCS_AFFECTING</code>): reviews the shipped change against the docs that describe it — stale flags/commands/behaviour, missing changelog/README/site updates. Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code>.</li>
+                  <li><strong><code>product-manager</code></strong> (PO): checks every acceptance criterion AND the quality bar (README / CLAUDE.md / contributing). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
+                  <li><strong><code>principal-engineer</code></strong> (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a <code>/harden</code> pass). Verifies the PR satisfied the repo&#x27;s <strong>mandatory ship checklist</strong> for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with <code>file:line</code> evidence.</li>
                 </ul>
-                <p>Decision (each specialist participates only when its flag is set):</p>
+                <p>Tiered execution may lean the build path on Simple/Medium, but <strong>must not skip PE+PO</strong> once a PR head exists.</p>
+                <p><strong>Scaled optional seats</strong></p>
+                <p>Convene only when the change can plausibly trip the concern. A gated-out seat is <strong>named in the report with its flag or reason</strong> — never silently skipped.</p>
+                <div class="order-table" tabindex="0">
+                  <table>
+                    <thead><tr><th scope="col">Seat</th><th scope="col">Join when</th></tr></thead>
+                    <tbody>
+                      <tr><td><code>sdet</code></td><td>Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran.</td></tr>
+                      <tr><td><code>architect</code></td><td><code>IS_ARCH_SIGNIFICANT</code></td></tr>
+                      <tr><td><code>devops-engineer</code></td><td><code>IS_DELIVERY_SENSITIVE</code></td></tr>
+                      <tr><td><code>technical-writer</code></td><td><code>IS_DOCS_AFFECTING</code> — doc copy/staleness (PE covers process compliance; both may run)</td></tr>
+                      <tr><td><code>ux-ui-designer</code></td><td><code>IS_UI_STORY</code></td></tr>
+                      <tr><td><code>art-director</code></td><td><code>IS_VISUAL_STORY</code></td></tr>
+                      <tr><td><code>security-engineer</code></td><td><code>/pr-review</code> only when <code>IS_SECURITY_SENSITIVE</code></td></tr>
+                      <tr><td><code>performance-engineer</code></td><td><code>/pr-review</code> when the PR claims a perf win or touches a hot path; <code>/refactor</code> when the stated motivation was performance</td></tr>
+                      <tr><td><code>site-reliability-engineer</code></td><td><code>/pr-review</code> when runtime behaviour, failure handling, or rollout changes</td></tr>
+                      <tr><td><code>data-scientist</code></td><td><code>/pr-review</code> when the deliverable is an analysis or model</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p>The <code>IS_*</code> flag vocabulary is shared by <code>/ship-issue</code> Stage 0 and <code>/pr-review</code> Stage 0 — a new flag must be added to both classifiers.</p>
+                <p><strong>Decision</strong></p>
+                <ul>
+                  <li><strong>All spawned reviewers ACCEPT/PASS (nits allowed)</strong> → proceed to deliver / the command&#x27;s next stage.</li>
+                  <li><strong>Any REJECT / FAIL</strong> → remediation loop (where the command defines one), then re-convene the board on the new head.</li>
+                </ul>
+                <p><strong>Harness fallback</strong></p>
+                <p>If <code>principal-engineer</code> or any role does not resolve to an <code>.claude/agents/*.md</code> file (skill-only harnesses until crew agents ship), fall back to <code>general-purpose</code> with the role brief inlined and note the fallback — never silently skip a mandatory seat.</p>
+                <p>Use the Stage 0 classification flags to decide which <strong>scaled optional seats</strong> join the mandatory PE+PO core. Pass each reviewer the acceptance criteria, quality bar, and (for visual roles) any Stage 1.5 spec.</p>
+                <p>Decision:</p>
                 <ul>
                   <li><strong>All spawned reviewers ACCEPT/PASS (nits allowed)</strong> → go to Stage 7.</li>
                   <li><strong>Any REJECT / FAIL</strong> → Stage 6.</li>
@@ -495,8 +520,9 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
               <thead><tr><th scope="col"><code>subagent_type</code></th><th scope="col">Used for</th></tr></thead>
               <tbody>
                 <tr><td><code>senior-engineer</code></td><td>Building, fixing, remediation (Stages 2, 3, 4.5, 6)</td></tr>
-                <tr><td><code>sdet</code></td><td>Test / build / validation runs (Stages 3, 5)</td></tr>
-                <tr><td><code>product-manager</code></td><td>Acceptance vs. criteria + the quality bar (Stage 5)</td></tr>
+                <tr><td><code>sdet</code></td><td>Test / build / validation runs (Stages 3, 5 when scaled in)</td></tr>
+                <tr><td><code>product-manager</code></td><td>Acceptance vs. criteria + the quality bar (Stage 5 — mandatory)</td></tr>
+                <tr><td><code>principal-engineer</code></td><td>Principal diff review + repo mandatory ship checklist (Stage 5 — mandatory)</td></tr>
                 <tr><td><code>architect</code></td><td>Structural / schema review — gated by <code>IS_ARCH_SIGNIFICANT</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>ux-ui-designer</code></td><td>On-screen UI design + review — gated by <code>IS_UI_STORY</code> (Stages 1.5, 5)</td></tr>
                 <tr><td><code>art-director</code></td><td>Visual-art direction + review — <strong>art-producing domains only</strong>, gated by <code>IS_VISUAL_STORY</code> (Stages 1.5, 5)</td></tr>
@@ -519,7 +545,7 @@ gh pr create --base &lt;BASE_BRANCH&gt; --head &lt;BRANCH&gt; \
           <ul>
             <li>The orchestrator owns <strong>all</strong> git/gh actions; agents never push or merge.</li>
             <li>Reviewers always evaluate the <strong>pushed PR head</strong>, so &quot;accepted&quot; == &quot;what merges&quot;.</li>
-            <li>Never open or advance a red PR. Never skip the SDET run. Never silently drop a nit — file it.</li>
+            <li>Never open or advance a red PR. Never skip the mandatory PE+PO board once a PR head exists. Never silently drop a nit — file it.</li>
             <li><strong>Never assume a push is green.</strong> After every push (Stage 4 and every Stage 6 fix), run the Stage 4.5 CI gate: poll <code>gh pr checks</code> until done, and if red pull <code>gh run view --log-failed</code>, fix, re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.</li>
             <li>Keep the base branch and the user&#x27;s working tree untouched throughout (all work in the worktree).</li>
             <li>Respect <code>MERGE_MODE</code> — do not auto-merge unless it is explicitly set to <code>auto</code>.</li>
