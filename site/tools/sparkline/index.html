@@ -121,7 +121,7 @@
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools sparkline</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
+          <p>Tools ship with a plain install; refresh one with shipmates install --harness &lt;name&gt; --with-tools sparkline. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
           <p>The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the <code>sparkline.py</code> script and the CLI it needs to drive it: <code>python3 sparkline.py --data &quot;…&quot; --out spark.svg</code>.</p>
         </div>
       </div>

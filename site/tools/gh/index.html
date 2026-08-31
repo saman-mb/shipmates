@@ -119,7 +119,7 @@ $ echo &#x27;{&quot;op&quot;:&quot;pr.checks_poll&quot;,&quot;number&quot;:306}&
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools gh</code>, or pick it from the interactive list. Pass one JSON spec on stdin: <code>echo &#x27;{&quot;op&quot;:&quot;repo.view&quot;}&#x27; | python3 gh.py</code>. List operations with <code>python3 gh.py --list-ops</code>. Multi-line bodies must use <code>body_file</code> — inline <code>body</code> is capped at 200 chars.</p>
+          <p>Tools ship with a plain install; refresh one with <code>shipmates install --harness &lt;name&gt; --with-tools gh</code>, or <code>--with-tools none</code> for crew-only. Pass one JSON spec on stdin: <code>echo &#x27;{&quot;op&quot;:&quot;repo.view&quot;}&#x27; | python3 gh.py</code>. List operations with <code>python3 gh.py --list-ops</code>. Multi-line bodies must use <code>body_file</code> — inline <code>body</code> is capped at 200 chars.</p>
         </div>
       </div>
     </section>

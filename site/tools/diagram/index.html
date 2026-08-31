@@ -128,7 +128,7 @@
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools diagram</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
+          <p>Tools ship with a plain install; refresh one with shipmates install --harness &lt;name&gt; --with-tools diagram. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
           <p>The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the <code>diagram.py</code> script and the spec format it needs to drive it — <code>python3 diagram.py --spec spec.json --out flow.svg</code> for SVG, or <code>--out flow.png</code> / <code>--out flow.gif</code> for a deterministic raster. The format is inferred from the extension, or set with <code>--format</code>; <code>--provision</code> places the raster dependency ahead of time.</p>
         </div>
       </div>

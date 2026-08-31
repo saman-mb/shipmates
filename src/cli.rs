@@ -26,9 +26,8 @@ pub enum Command {
         dir: Option<String>,
 
         /// Which agent-invoked tools to install (comma-separated names, `all`,
-        /// or `none`). Omit the flag and an interactive terminal will let you
-        /// pick from the available tools; omit it in a non-interactive run and
-        /// no tools are installed (a plain install ships only crew + commands).
+        /// or `none`). Omit the flag to install every bundled tool; pass `none`
+        /// for crew + commands only, or name a subset.
         #[arg(long = "with-tools", value_delimiter = ',')]
         with_tools: Option<Vec<String>>,
 

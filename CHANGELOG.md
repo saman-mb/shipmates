@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-08-31
+
+### Changed
+
+- Plain `shipmates install` now includes all bundled tools by default; use
+  `--with-tools none` for crew-only installs (#320).
+
 ## [0.1.9] - 2026-08-31
 
 ### Changed

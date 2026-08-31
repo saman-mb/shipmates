@@ -183,7 +183,7 @@ opencode run --command harden --format json \
         <div class="order-prose">
           <p>A <strong>tool</strong> is the model-invoked sibling of a command: the crew reach for it implicitly, never by typing a slash. Where a command targets each harness&#x27;s user-invoked surface, a tool targets its agent-invoked one — grounded, like everything else here, in each harness&#x27;s own first-party docs.</p>
           <p><strong>opencode is the one harness with a genuine tool primitive</strong> — a code tool at <code>.opencode/tools/&lt;name&gt;.ts</code> the model calls directly, never a slash command. Everywhere else the closest native fit is a model-invoked Agent Skill. Claude Code can pin one agent-only with <code>user-invocable: false</code> — model-invoked, hidden from the <code>/</code> menu — which is exactly &#x201C;never a command.&#x201D; The other five auto-select a skill by its description as intended, but their docs offer no way to hide it from a manual <code>@</code>/<code>/</code> mention, so on those a tool is agent-invoked yet still technically typeable. That is recorded here rather than papered over.</p>
-          <p>Tools are opt-in — a plain install ships only the crew and the commands. See <a href="../install/#install-tools">Add a tool</a> on the install reference.</p>
+          <p>Tools ship with a plain install. Use `--with-tools none` for crew-only — see <a href="../install/#install-tools">Tools</a> on the install reference.</p>
         </div>
       </div>
     </section>
