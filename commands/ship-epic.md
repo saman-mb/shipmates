@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Deliver a whole **epic** by driving the `/ship-issue` pipeline over its unchecked story checklist —
 in **shipping units** (one story or a small cohesive bundle), dependency order preserved — until
-every non-gate story ships or the loop pauses for human action.
+every non-gate story ships or a **hard limit** in the table below pauses the loop.
 
 **Epic cost discipline.** A naïve loop pays `/ship-issue`'s full fixed overhead **once per story**
 (Planner, worktree, CI poll, acceptance board). On a five-story epic that is roughly five times the
@@ -32,8 +32,20 @@ cost of one run for little extra diff. This command **amortizes** that overhead 
    `IS_ARCH_SIGNIFICANT` / `IS_SECURITY_SENSITIVE` stories, and unrelated areas always ship as
    **singleton units**. CI and acceptance still run **per unit**; nothing ships without green checks.
 
-Hard limits that **never** bend for economy: gate pauses, external-blocker pauses,
-`MAX_FIX_ROUNDS` escape hatch, shell safety, and **confirmed-green CI** on every unit.
+Hard limits that **pause the epic loop** (end the turn; post `/ship-epic <epic> resume`):
+
+| Limit | When it fires |
+|-------|----------------|
+| **Gate story** | Unit contains a `gate`-labelled (or sign-off) story still awaiting human sign-off |
+| **External blocker, no shippable slice** | Every AC in the unit requires an owner action with no prep work the crew can land now |
+| **`MAX_FIX_ROUNDS` exhausted** | Stage 4.5 or Stage 6 on this unit could not get CI green / acceptance pass |
+| **Shell safety abort** | Untrusted input, cycle in dependency graph, invalid epic token |
+
+Everything else — including **red CI on the unit PR**, **red CI already on the base branch**, and
+**partly blocked stories** — stays in the **fix / defer / next-unit** loop. Do **not** pause the epic.
+
+**Confirmed-green CI** is a per-unit requirement inside `/ship-issue` Stage 4.5; remediate there, not
+by stopping `/ship-epic` early. Pause is **not** a substitute for the Fixer loop.
 
 The epic issue number and optional guidance come from the Runtime input section at the end of this
 workflow.
@@ -105,9 +117,11 @@ For each story in `<pending>`:
 5. **Topological sort** `<pending>` respecting dependencies. If a cycle is detected, stop and report
    the cycle — do not ship out of order.
 6. Flag **external blockers**: any dependency on an open issue outside the epic (or outside `<done>`).
-   Record `<blocked-externally>` with story → blocker mapping.
+   Record `<blocked-externally>` with story → blocker mapping. For each, note **full block** (zero
+   shippable AC without the blocker closing) vs **partial block** (story body names prep, config,
+   or other work that can ship before the owner action).
 
-Print (always, not only dry-run): ordered story list, gate stories, external blockers.
+Print (always, not only dry-run): ordered story list, gate stories, external blockers (full vs partial).
 
 ## Stage 1.5 — Epic shipping plan  (agent: `architect`, once)
 
@@ -116,7 +130,8 @@ Spawn **one** `architect` with: the epic title/body, every pending story's title
 `README` / {{project-instructions}}, and `<done>`. Ask for **structured data only**:
 
 - Per story: `complexity` (`trivial`, `standard`, or `complex`), domain flags (same vocabulary as
-  `/ship-issue` Stage 0), and one-line rationale.
+  `/ship-issue` Stage 0), `blocker_class` (`none`, `full`, or `partial` when externally blocked),
+  and one-line rationale.
 - `<units>`: an **ordered** list of shipping units covering every non-gate pending story exactly
   once. Each unit: `stories` (issue numbers), `batch_rationale` (why together or alone),
   `expected_files` (non-overlapping ownership across stories in the unit).
@@ -141,10 +156,24 @@ is a singleton).
 For each `<unit>`:
 
 1. **Stories already ticked or closed** — skip the whole unit.
-2. **Gate unit** — if any story in the unit is in `<gates>` and still open: **pause** with **awaiting
-   sign-off** (same as before). Do **not** invoke `/ship-issue`. Stop.
-3. **External blocker** — if any story in the unit is blocked externally and the blocker is open:
-   **pause** with blocker details. Stop.
+2. **Gate unit** — if any story in the unit is in `<gates>` and still open: **pause** with
+   **awaiting sign-off**. Do **not** invoke `/ship-issue`. **Stop** — this is the only deliberate
+   human gate in the loop.
+3. **External / mixed blocker** — for each story in the unit blocked by an open external issue:
+
+   a. **Shippable slice** — if the story body (or Stage 1.5 `blocker_class: partial`) names work that
+      does **not** require the blocker to close, treat that slice as the **unit scope**. Invoke
+      `/ship-issue` on that slice; in the PR body note the residual owner action and link the blocker.
+      **Do not pause the epic.**
+
+   b. **Residual only** — file or update a follow-up issue for the blocked flip / owner action.
+      Tick or comment on the story that prep shipped; leave the flip open.
+
+   c. **Pause only when** every remaining AC for the unit truly requires the external blocker and
+      there is **zero** shippable remainder (`blocker_class: full`). Then **pause** with blocker
+      details and **Stop**.
+
+   Do **not** pause the whole epic because one story is *partly* blocked.
 4. **Build delegation guidance** (compact prose, not a transcript). Include:
    - `epic-run` — story numbers in this unit belong to epic `<epic>`; do **not** scan the wider
      backlog or propose bundle widening beyond this unit's story list.
@@ -165,9 +194,24 @@ For each `<unit>`:
      closed), extend `<epic-capsule>` with validation commands used, key paths touched, and any
      convention the board enforced — keep the capsule **short** (bullet list, not a narrative).
      Continue to the next unit.
-   - **Paused / escalated** → **pause the epic loop** with state report (epic, completed units,
-     current unit, PR link, failure summary, `/ship-epic <epic> resume`). Stop.
-   - **Gate mid-run** → pause and stop.
+   - **`/ship-issue` escalated after `MAX_FIX_ROUNDS`** → **pause the epic loop** with state report
+     (epic, completed units, current unit, PR link, failure summary, `/ship-epic <epic> resume`).
+     **Stop.**
+   - **Red CI / fix in progress** → **not** an epic pause. The delegation must finish Stage 4.5
+     inside `/ship-issue` before returning. If it returned early, **re-delegate** with explicit
+     guidance `finish-ci-gate` — do not end the epic turn.
+   - **Gate mid-run** → pause and stop (same as step 2).
+
+**Pre-existing CI on the base branch** — when a failing check **already fails on the merge base**
+(same job red on the default branch) and the unit PR touches unrelated files:
+
+- **Not an epic pause.** Remediation belongs in **this unit's** `/ship-issue` run (Stage 4.5).
+- Fix what makes **this PR head** green: format only touched files if that suffices; otherwise fix
+  the minimal set the log requires; gate or skip tests that cannot run under the repo's build flags
+  when that matches project convention.
+- Document extra commits in the PR (note the job was already red on the base branch). Escalate to
+  the captain **only** after `MAX_FIX_ROUNDS`, or when the fix is a one-way product decision — not
+  because the base branch is dirty.
 
 When every unit has succeeded, go to Stage 4.
 
@@ -195,8 +239,9 @@ When no `- [ ] #n` lines remain:
 
 One concise summary: epic link, units shipped (`U` invocations for `N` stories), PR links per story,
 gate pauses, external blockers, capsule highlights, epic close state, and resume command if paused.
-Include **economy line**: "`N` stories in `U` `/ship-issue` runs" so the captain sees what batching
-saved.
+For each pause, state **which hard-limit row fired** — "waiting for captain" without a limit name is
+a spec violation. Include **economy line**: "`N` stories in `U` `/ship-issue` runs" so the captain
+sees what batching saved.
 
 ---
 
@@ -212,6 +257,8 @@ saved.
 - **Resumable** — re-running skips `- [x]` lines; paused loops resume with `/ship-epic <epic> resume`.
 - **Gate-aware** — never auto-ship a gate-labelled story.
 - **Failure-aware** — never advance after `MAX_FIX_ROUNDS` exhaustion on a unit.
+- **No silent stops** — before ending a `/ship-epic` turn, name which hard-limit row fired. If none
+  fired, you are **not allowed** to stop; continue the loop or re-delegate the current unit.
 - **CI every unit** — economy comes from fewer Planner/board **invocations**, not from skipping
   validation or acceptance on shipped code.
 - **Orchestrator owns `gh`** — epic edits and loop control only; builders/reviewers live in
