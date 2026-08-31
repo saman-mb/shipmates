@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>scrub — Strips credentials and personal data out of text before it leaves the repo. · Shipmates</title>
-  <meta name="description" content="Redact secrets and PII from a log, paste, or bug report before it leaves the repo — emails, AWS access keys, api_key/token/secret assignments, Bearer…">
-  <link rel="canonical" href="https://saman-mb.github.io/shipmates/tools/scrub/">
+  <title>gh — Structured GitHub CLI wrapper — the gh patterns shipmates commands use every day. · Shipmates</title>
+  <meta name="description" content="Structured GitHub CLI wrapper for shipmates workflows — issues, PRs, CI checks, labels, releases, and run logs with validated inputs and JSON results. Reach…">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/tools/gh/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
-  <meta property="og:title" content="scrub — Strips credentials and personal data out of text before it leaves the repo.">
-  <meta property="og:description" content="Redact secrets and PII from a log, paste, or bug report before it leaves the repo — emails, AWS access keys, api_key/token/secret assignments, Bearer…">
-  <meta property="og:url" content="https://saman-mb.github.io/shipmates/tools/scrub/">
+  <meta property="og:title" content="gh — Structured GitHub CLI wrapper — the gh patterns shipmates commands use every day.">
+  <meta property="og:description" content="Structured GitHub CLI wrapper for shipmates workflows — issues, PRs, CI checks, labels, releases, and run logs with validated inputs and JSON results. Reach…">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/tools/gh/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="scrub — Strips credentials and personal data out of text before it leaves the repo.">
-  <meta name="twitter:description" content="Redact secrets and PII from a log, paste, or bug report before it leaves the repo — emails, AWS access keys, api_key/token/secret assignments, Bearer…">
+  <meta name="twitter:title" content="gh — Structured GitHub CLI wrapper — the gh patterns shipmates commands use every day.">
+  <meta name="twitter:description" content="Structured GitHub CLI wrapper for shipmates workflows — issues, PRs, CI checks, labels, releases, and run logs with validated inputs and JSON results. Reach…">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -28,9 +28,9 @@
   {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    "name": "scrub",
-    "description": "Redact secrets and PII from a log, paste, or bug report before it leaves the repo — emails, AWS access keys, api_key/token/secret assignments, Bearer tokens, JWTs, IPv4 addresses, and PEM private-key blocks, each swapped for a typed placeholder like [REDACTED_AWS_KEY]. Reach for this whenever text you're about to share externally — an issue, a comment, a paste, a PR body, an error dump — might carry a credential or personal data. Never a slash command; use it implicitly when the intent calls for one.",
-    "url": "https://saman-mb.github.io/shipmates/tools/scrub/",
+    "name": "gh",
+    "description": "Structured GitHub CLI wrapper for shipmates workflows — issues, PRs, CI checks, labels, releases, and run logs with validated inputs and JSON results. Reach for this instead of hand-rolling gh shell when fetching issues, opening PRs, polling CI, posting body-file comments, merging with match-head-commit, or searching for duplicate bugs. Requires the GitHub CLI (gh) installed and authenticated. Never a slash command; use it implicitly when the intent calls for one.",
+    "url": "https://saman-mb.github.io/shipmates/tools/gh/",
     "isPartOf": {
       "@type": "CollectionPage",
       "url": "https://saman-mb.github.io/shipmates/#tools"
@@ -73,9 +73,9 @@
         <a class="order-back" href="../../#tools"><span aria-hidden="true">←</span> All tools</a>
         <div class="order-detail">
           <p class="section__eyebrow"><span aria-hidden="true">🧰</span> Tool</p>
-          <h1 class="order-detail__title" id="order-title"><code>scrub</code></h1>
-          <p class="order-detail__tagline">Strips credentials and personal data out of text before it leaves the repo.</p>
-          <p class="order-detail__desc">Redact secrets and PII from a log, paste, or bug report before it leaves the repo — emails, AWS access keys, api_key/token/secret assignments, Bearer tokens, JWTs, IPv4 addresses, and PEM private-key blocks, each swapped for a typed placeholder like [REDACTED_AWS_KEY]. Reach for this whenever text you&#x27;re about to share externally — an issue, a comment, a paste, a PR body, an error dump — might carry a credential or personal data. Never a slash command; use it implicitly when the intent calls for one.</p>
+          <h1 class="order-detail__title" id="order-title"><code>gh</code></h1>
+          <p class="order-detail__tagline">Structured GitHub CLI wrapper — the gh patterns shipmates commands use every day.</p>
+          <p class="order-detail__desc">Structured GitHub CLI wrapper for shipmates workflows — issues, PRs, CI checks, labels, releases, and run logs with validated inputs and JSON results. Reach for this instead of hand-rolling gh shell when fetching issues, opening PRs, polling CI, posting body-file comments, merging with match-head-commit, or searching for duplicate bugs. Requires the GitHub CLI (gh) installed and authenticated. Never a slash command; use it implicitly when the intent calls for one.</p>
         </div>
       </div>
     </section>
@@ -86,26 +86,8 @@
           <h2 class="section__title" id="what-title">What it does</h2>
         </div>
         <div class="order-prose">
-          <p><code>scrub</code> redacts secrets and PII from a log, paste, or bug report before it&#x27;s shared. It swaps each match for a typed placeholder — emails become <code>[REDACTED_EMAIL]</code>, AWS access keys <code>[REDACTED_AWS_KEY]</code>, <code>api_key=</code>/<code>token=</code>/<code>secret=</code> assignments and Bearer tokens <code>[REDACTED_TOKEN]</code>, JWTs <code>[REDACTED_JWT]</code>, IPv4 addresses <code>[REDACTED_IP]</code>, and PEM private-key blocks <code>[REDACTED_PRIVATE_KEY]</code> — so the shape of the redaction stays visible. It is pure standard library: no dependencies, no network, and the same input always produces the same cleaned output.</p>
-          <p>It is a <em>tool</em>, not a command: you never type it. The crew reach for it on their own whenever text is about to leave the repo — pasted into an issue, a bug report, a chat message, or a PR body — and might carry a credential or someone&#x27;s personal data. The detectors are deliberately conservative, leaving ordinary prose and code identifiers like <code>token = response.data.token</code> alone, which makes it a strong first pass rather than a guarantee — read the cleaned text before sharing.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="examples" aria-labelledby="examples-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <h2 class="section__title" id="examples-title">Examples</h2>
-        </div>
-        <p>A few things <code>scrub</code> can produce, each from a small spec of its own. If you&#x27;ve set <code>prefers-reduced-motion</code>, any animation shows its final frame instead.</p>
-        <div class="tool-gallery">
-          <figure class="tool-example">
-            <picture>
-              <source media="(prefers-reduced-motion: reduce)" srcset="examples/scrub_poster.png">
-              <img class="tool-example__img" src="examples/scrub.gif" width="860" height="340" alt="Terminal recording of scrub redacting a log: an email, AWS key, bearer token, JWT and IP each replaced with a typed [REDACTED_*] placeholder, ending &#x27;redacted 9 items across 7 categories&#x27;." loading="lazy" decoding="async">
-            </picture>
-            <figcaption class="tool-example__caption">scrub cleaning a log — each secret class swapped for a typed placeholder, counted at the end.</figcaption>
-          </figure>
+          <p><code>gh</code> wraps the GitHub CLI with a JSON spec: validated repo slugs and issue numbers, <code>body_file</code> hygiene for create/edit/comment/review, and structured JSON results instead of scraped shell output. It covers repo default branch lookup, issue fetch/list/search/create/edit/comment/close, PR view/diff/create/checks/poll/comment/review/merge/list, labels, releases, and failed workflow logs — the same operations repeated across <code>/ship-issue</code>, <code>/ship-epic</code>, <code>/pr-review</code>, <code>/consolidate-issues</code>, <code>/plan-epics</code>, and <code>/release</code>.</p>
+          <p>It is a <em>tool</em>, not a command. The crew reach for it when orchestrating GitHub instead of hand-rolling <code>gh</code> bash. Requires the GitHub CLI installed and authenticated (<code>gh auth login</code>); Python side is stdlib-only.</p>
         </div>
       </div>
     </section>
@@ -116,17 +98,18 @@
           <h2 class="section__title" id="sample-title">In practice</h2>
         </div>
         <p>What it does to a real input:</p>
-        <pre class="order-code" tabindex="0"><code>$ python3 scrub.py --in app.log
+        <pre class="order-code" tabindex="0"><code>$ echo &#x27;{&quot;op&quot;:&quot;repo.view&quot;}&#x27; | python3 gh.py
+{
+  &quot;ok&quot;: true,
+  &quot;op&quot;: &quot;repo.view&quot;,
+  &quot;result&quot;: {
+    &quot;nameWithOwner&quot;: &quot;owner/repo&quot;,
+    &quot;defaultBranch&quot;: &quot;main&quot;,
+    &quot;url&quot;: &quot;https://github.com/owner/repo&quot;
+  }
+}
 
-BEFORE
-  env AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-  operator jane.doe@example.com from 203.0.113.42
-  Authorization: Bearer abcDEF0123456789xyzABCDEF
-
-AFTER  (summary on stderr)
-  env AWS_ACCESS_KEY_ID=[REDACTED_AWS_KEY]
-  operator [REDACTED_EMAIL] from [REDACTED_IP]
-  Authorization: Bearer [REDACTED_TOKEN]</code></pre>
+$ echo &#x27;{&quot;op&quot;:&quot;pr.checks_poll&quot;,&quot;number&quot;:306}&#x27; | python3 gh.py</code></pre>
       </div>
     </section>
 
@@ -136,8 +119,7 @@ AFTER  (summary on stderr)
           <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
         </div>
         <div class="order-prose">
-          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools scrub</code>, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.</p>
-          <p>Run it on a file with <code>python3 scrub.py --in log.txt --out clean.txt</code>, or pipe text through it stdin-to-stdout with <code>cat log.txt | python3 scrub.py</code>. The cleaned text goes to <code>--out</code> or stdout; a per-category redaction summary goes to stderr so it never pollutes the output. Exit code is <code>0</code> on success and <code>2</code> on a usage error.</p>
+          <p>Tools are opt-in. Add it at install time with <code>shipmates install --harness &lt;name&gt; --with-tools gh</code>, or pick it from the interactive list. Pass one JSON spec on stdin: <code>echo &#x27;{&quot;op&quot;:&quot;repo.view&quot;}&#x27; | python3 gh.py</code>. List operations with <code>python3 gh.py --list-ops</code>. Multi-line bodies must use <code>body_file</code> — inline <code>body</code> is capped at 200 chars.</p>
         </div>
       </div>
     </section>
@@ -149,13 +131,13 @@ AFTER  (summary on stderr)
         </div>
         <dl class="agent-ref">
           <dt>Name</dt>
-          <dd><code>scrub</code></dd>
+          <dd><code>gh</code></dd>
           <dt>Description</dt>
-          <dd>Redact secrets and PII from a log, paste, or bug report before it leaves the repo — emails, AWS access keys, api_key/token/secret assignments, Bearer tokens, JWTs, IPv4 addresses, and PEM private-key blocks, each swapped for a typed placeholder like [REDACTED_AWS_KEY]. Reach for this whenever text you&#x27;re about to share externally — an issue, a comment, a paste, a PR body, an error dump — might carry a credential or personal data. Never a slash command; use it implicitly when the intent calls for one.</dd>
+          <dd>Structured GitHub CLI wrapper for shipmates workflows — issues, PRs, CI checks, labels, releases, and run logs with validated inputs and JSON results. Reach for this instead of hand-rolling gh shell when fetching issues, opening PRs, polling CI, posting body-file comments, merging with match-head-commit, or searching for duplicate bugs. Requires the GitHub CLI (gh) installed and authenticated. Never a slash command; use it implicitly when the intent calls for one.</dd>
           <dt>Bundled files</dt>
-          <dd><code>scrub.py</code></dd>
+          <dd><code>gh.py</code></dd>
           <dt>Install</dt>
-          <dd><code>shipmates install --harness &lt;name&gt; --with-tools scrub</code></dd>
+          <dd><code>shipmates install --harness &lt;name&gt; --with-tools gh</code></dd>
         </dl>
       </div>
     </section>
@@ -165,10 +147,10 @@ AFTER  (summary on stderr)
         <div class="section__head">
           <h2 class="section__title" id="source-title">Where this lives</h2>
         </div>
-        <p>This page is generated from <code>toolbox/scrub/tool.md</code>. Opt in at install with <code>--with-tools scrub</code> and the installer copies the tool — instructions and bundled files — into the harness's skills tree.</p>
-        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/toolbox/scrub/tool.md">
+        <p>This page is generated from <code>toolbox/gh/tool.md</code>. Opt in at install with <code>--with-tools gh</code> and the installer copies the tool — instructions and bundled files — into the harness's skills tree.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/toolbox/gh/tool.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View toolbox/scrub/tool.md on GitHub</span>
+          <span>View toolbox/gh/tool.md on GitHub</span>
         </a>
       </div>
     </section>
@@ -187,10 +169,10 @@ AFTER  (summary on stderr)
             <li class="order-siblings__item"><a class="order-siblings__link" href="../svgflow/"><code>svgflow</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../badge/"><code>badge</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../sparkline/"><code>sparkline</code></a></li>
-            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>scrub</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../scrub/"><code>scrub</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../fixtures/"><code>fixtures</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../domaincheck/"><code>domaincheck</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../gh/"><code>gh</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>gh</code><span class="visually-hidden"> (current page)</span></span></li>
           </ul>
         </nav>
         <a class="order-back" href="../../#tools"><span aria-hidden="true">←</span> All tools</a>

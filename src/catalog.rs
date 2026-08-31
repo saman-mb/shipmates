@@ -349,6 +349,10 @@ pub fn load_tools(path: &Path) -> anyhow::Result<Vec<CanonicalTool>> {
         for entry in walkdir::WalkDir::new(&dir)
             .sort_by_file_name()
             .into_iter()
+            .filter_entry(|e| {
+                let name = e.file_name();
+                name != "__pycache__" && !name.to_string_lossy().ends_with(".pyc")
+            })
             .filter_map(|e| e.ok())
         {
             let p = entry.path();

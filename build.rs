@@ -74,7 +74,12 @@ fn collect_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
     for entry in fs::read_dir(dir).expect("read embed dir").filter_map(|e| e.ok()) {
         let path = entry.path();
         if path.is_dir() {
+            if path.file_name().is_some_and(|n| n == "__pycache__") {
+                continue;
+            }
             collect_files(&path, out);
+        } else if path.extension().is_some_and(|ext| ext == "pyc") {
+            continue;
         } else {
             out.push(path);
         }
