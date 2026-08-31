@@ -155,6 +155,30 @@
       </div>
     </section>
 
+    <section class="section order-crew" id="crew-involved" aria-labelledby="crew-involved-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="crew-involved-title">Who&rsquo;s involved</h2>
+          <p class="section__lead">Roles referenced across the stages below.</p>
+        </div>
+        <div class="order-crew__strip" role="list">
+          <a class="chip order-crew__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a>
+          <a class="chip order-crew__chip" href="../../agents/site-reliability-engineer/"><code>site-reliability-engineer</code></a>
+          <a class="chip order-crew__chip" href="../../agents/sdet/"><code>sdet</code></a>
+          <a class="chip order-crew__chip" href="../../agents/product-manager/"><code>product-manager</code></a>
+          <a class="chip order-crew__chip" href="../../agents/principal-engineer/"><code>principal-engineer</code></a>
+          <a class="chip order-crew__chip" href="../../agents/architect/"><code>architect</code></a>
+          <a class="chip order-crew__chip" href="../../agents/devops-engineer/"><code>devops-engineer</code></a>
+          <a class="chip order-crew__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a>
+          <a class="chip order-crew__chip" href="../../agents/ux-ui-designer/"><code>ux-ui-designer</code></a>
+          <a class="chip order-crew__chip" href="../../agents/art-director/"><code>art-director</code></a>
+          <a class="chip order-crew__chip" href="../../agents/security-engineer/"><code>security-engineer</code></a>
+          <a class="chip order-crew__chip" href="../../agents/performance-engineer/"><code>performance-engineer</code></a>
+          <a class="chip order-crew__chip" href="../../agents/data-scientist/"><code>data-scientist</code></a>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="stages" aria-labelledby="stages-title">
       <div class="container container--prose">
         <div class="section__head">
@@ -162,6 +186,159 @@
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Seven stages, in order. Two are hard gates — the run stops there until they pass.</p>
         </div>
+        <ol class="order-stages" role="list">
+          <li class="order-stage" id="stage-0">
+            <span class="order-stage__num" aria-hidden="true">0</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Reproduce as a FAILING test</h3>
+                <p class="order-stage__gate"><span class="visually-hidden">Gate: </span><span aria-hidden="true">⛔</span> HARD GATE</p>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Spawn the <code>sdet</code> (with <code>site-reliability-engineer</code> if the bug is a runtime/reliability failure) to find the <strong>smallest deterministic reproduction</strong> and encode it as a test in the repo&#x27;s existing test suite — asserting the <em>correct</em> behaviour, so it <strong>fails now</strong> for the real reason (not a typo). Check CLAUDE.md for test runner invocations; if the test runner flags are unknown, run <code>--help</code> to discover them. Run it and confirm it&#x27;s red. <strong>If the bug genuinely cannot be reproduced, STOP</strong> and report that with what was tried — never &quot;fix&quot; an unconfirmed bug. This failing test is the contract for the whole run.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-1">
+            <span class="order-stage__num" aria-hidden="true">1</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Isolate</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <ol>
+                    <li><strong>Resolve <code>&lt;WORKTREE_DIR&gt;</code></strong> from Config. Parse <strong><code>worktree-root=sibling</code></strong> from runtime guidance before resolving.</li>
+                    <li><strong>Gitignore the worktree root</strong> when <code>WORKTREE_LAYOUT=nested</code> — from <code>&lt;repo&gt;</code>, idempotently ensure <code>.shipmates/worktrees/</code> is ignored (append only when no line already ignores it; create <code>.gitignore</code> with <code># Shipmates isolated command worktrees (auto-managed)</code> if missing). Never rewrite unrelated rules.</li>
+                    <li><strong>Sync base ref</strong> — <code>BASE_REF=origin/&lt;BASE_BRANCH&gt;</code>. <strong><code>git -C &lt;repo&gt; fetch origin</code></strong> is required; stop with a clear error if fetch fails. Fresh <code>worktree add … origin/&lt;BASE_BRANCH&gt;</code> <strong>is</strong> pull-latest — no separate <code>git pull</code>.</li>
+                    <li><strong>Resume / reuse</strong> — when worktree/branch exist, re-run fetch; rebase onto <code>BASE_REF</code> when behind (merge when repo docs prefer merge). Sync conflicts count toward <code>MAX_FIX_ROUNDS</code>.</li>
+                    <li><strong>Create the worktree</strong> (when branch/worktree do not yet exist):</li>
+                  </ol>
+                  <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
+git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
+                  <p>All work happens in the worktree; the base branch stays clean. Commit the failing test first so the red→green history is visible.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-2">
+            <span class="order-stage__num" aria-hidden="true">2</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Root-cause</h3>
+                <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>senior-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> (for runtime/ops bugs)</p>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Diagnose the <strong>actual mechanism</strong> — work backwards from the failure (logs, stack, bisect, diff vs last-known-good, and <code>git log</code> / <code>git blame</code> on the affected lines to understand past intent) to the defect itself, not the place it surfaced. The agent returns: the root cause named, why it produces the symptom, and the minimal change that addresses it. Reject &quot;add a null check where it crashed&quot; when the real cause is upstream.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-3">
+            <span class="order-stage__num" aria-hidden="true">3</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Fix (minimal &amp; scoped)</h3>
+                <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>senior-engineer</code></span></p>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Apply the smallest change that fixes the named root cause. <strong>No unrelated refactors or scope creep</strong> — this is a bug fix, not a redesign (file anything else as a follow-up). Then check for <strong>sibling bugs</strong>: grep the codebase for the same defect class elsewhere and fix those in the same pass if trivial, or file them.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-4">
+            <span class="order-stage__num" aria-hidden="true">4</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Prove it</h3>
+                <p class="order-stage__gate"><span class="visually-hidden">Gate: </span><span aria-hidden="true">⛔</span> HARD GATE</p>
+                <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>sdet</code></span></p>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>The regression test must now <strong>pass</strong>, and the <strong>entire suite must still be green</strong> (the fix broke nothing). Then push and run the <strong>CI gate</strong>: poll <code>gh pr checks</code> until done; if red, pull <code>gh run view &lt;run-id&gt; --log-failed</code>, dispatch a <code>senior-engineer</code> fixer, re-push, re-poll — bounded by <code>MAX_FIX_ROUNDS</code>. Never advance a red PR. (Long polls: run as a background/until-loop, not chained sleeps.)</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-5">
+            <span class="order-stage__num" aria-hidden="true">5</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Review</h3>
+                <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>principal-engineer</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>security-engineer</code></span> <span class="chip order-stage__crew-item"><code>performance-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> <span class="chip order-stage__crew-item"><code>data-scientist</code></span> <span class="chip order-stage__crew-item"><code>senior-engineer</code></span> (agents, on the pushed PR head)</p>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Spawn reviewers <strong>in parallel</strong> against the PR head commit — they review exactly what will merge.</p>
+                  <p><strong>Mandatory seats (never skip)</strong></p>
+                  <ul>
+                    <li><strong><code>product-manager</code></strong> (PO): checks every acceptance criterion AND the quality bar (README / CLAUDE.md / contributing). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
+                    <li><strong><code>principal-engineer</code></strong> (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a <code>/harden</code> pass). Verifies the PR satisfied the repo&#x27;s <strong>mandatory ship checklist</strong> for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with <code>file:line</code> evidence.</li>
+                  </ul>
+                  <p>Tiered execution may lean the build path on Simple/Medium, but <strong>must not skip PE+PO</strong> once a PR head exists.</p>
+                  <p><strong>Scaled optional seats</strong></p>
+                  <p>Convene only when the change can plausibly trip the concern. A gated-out seat is <strong>named in the report with its flag or reason</strong> — never silently skipped.</p>
+                  <div class="order-table" tabindex="0">
+                    <table>
+                      <thead><tr><th scope="col">Seat</th><th scope="col">Join when</th></tr></thead>
+                      <tbody>
+                        <tr><td><code>sdet</code></td><td>Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran.</td></tr>
+                        <tr><td><code>architect</code></td><td><code>IS_ARCH_SIGNIFICANT</code></td></tr>
+                        <tr><td><code>devops-engineer</code></td><td><code>IS_DELIVERY_SENSITIVE</code></td></tr>
+                        <tr><td><code>technical-writer</code></td><td><code>IS_DOCS_AFFECTING</code> — doc copy/staleness (PE covers process compliance; both may run)</td></tr>
+                        <tr><td><code>ux-ui-designer</code></td><td><code>IS_UI_STORY</code></td></tr>
+                        <tr><td><code>art-director</code></td><td><code>IS_VISUAL_STORY</code></td></tr>
+                        <tr><td><code>security-engineer</code></td><td><code>/pr-review</code> only when <code>IS_SECURITY_SENSITIVE</code></td></tr>
+                        <tr><td><code>performance-engineer</code></td><td><code>/pr-review</code> when the PR claims a perf win or touches a hot path; <code>/refactor</code> when the stated motivation was performance</td></tr>
+                        <tr><td><code>site-reliability-engineer</code></td><td><code>/pr-review</code> when runtime behaviour, failure handling, or rollout changes</td></tr>
+                        <tr><td><code>data-scientist</code></td><td><code>/pr-review</code> when the deliverable is an analysis or model</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p>The <code>IS_*</code> flag vocabulary is shared by <code>/ship-issue</code> Stage 0 and <code>/pr-review</code> Stage 0 — a new flag must be added to both classifiers.</p>
+                  <p><strong>Decision</strong></p>
+                  <ul>
+                    <li><strong>All spawned reviewers ACCEPT/PASS (nits allowed)</strong> → proceed to deliver / the command&#x27;s next stage.</li>
+                    <li><strong>Any REJECT / FAIL</strong> → remediation loop (where the command defines one), then re-convene the board on the new head.</li>
+                  </ul>
+                  <p><strong>Harness fallback</strong></p>
+                  <p>If <code>principal-engineer</code> or any role does not resolve to an <code>.claude/agents/*.md</code> file (skill-only harnesses until crew agents ship), fall back to <code>general-purpose</code> with the role brief inlined and note the fallback — never silently skip a mandatory seat.</p>
+                  <p><strong>Command-specific seats</strong> (in addition to the mandatory PE+PO core):</p>
+                  <ul>
+                    <li><code>sdet</code> (always): re-runs the suite on the PR head; confirms the regression test is present and green.</li>
+                    <li><code>senior-engineer</code> or <code>site-reliability-engineer</code> (fresh — not the one who fixed it): confirms the fix addresses the root cause, not the symptom, and adds no regression risk.</li>
+                  </ul>
+                  <p>Any <code>REJECT</code>/<code>FAIL</code> → loop a <code>senior-engineer</code> fixer, re-push, re-run the CI gate and this stage, bounded by <code>MAX_FIX_ROUNDS</code>, then escalate.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-6">
+            <span class="order-stage__num" aria-hidden="true">6</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 6 — </span>Deliver</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Open (or, if <code>MERGE_MODE=auto</code>, merge) the PR. Body: the root cause in one paragraph, the fix, the regression test, <code>Closes #&lt;issue&gt;</code>, and the green-CI link. File sibling bugs / deferred cleanups as follow-up issues. Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, and the absolute <code>&lt;WORKTREE_DIR&gt;</code> path (for cleanup or resume).</p>
+                </div>
+              </div>
+            </details>
+          </li>
+        </ol>
+        <details class="order-advanced" id="advanced">
+          <summary class="order-advanced__summary">
+            <span class="order-advanced__title">Advanced</span>
+            <span class="order-advanced__hint">Cost discipline, bundling, model selection, shell safety, and other preamble</span>
+          </summary>
+          <div class="order-advanced__body">
         <h3 id="cost-discipline">Cost discipline</h3>
         <div class="order-prose">
           <ul>
@@ -179,125 +356,8 @@
           <p>Take a bug from report to a <strong>reviewed, CI-green PR</strong> — but gated on the one signal that actually proves a bug is fixed: a <strong>regression test that fails before the change and passes after</strong>. No repro, no fix. Symptom-patching without a root cause is rejected.</p>
           <p>The bug description and reproduction hints come from the Runtime input section at the end of this workflow.</p>
         </div>
-        <ol class="order-stages" role="list">
-          <li class="order-stage" id="stage-0">
-            <span class="order-stage__num" aria-hidden="true">0</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Reproduce as a FAILING test</h3>
-            <p class="order-stage__gate"><span class="visually-hidden">Gate: </span><span aria-hidden="true">⛔</span> HARD GATE</p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Spawn the <code>sdet</code> (with <code>site-reliability-engineer</code> if the bug is a runtime/reliability failure) to find the <strong>smallest deterministic reproduction</strong> and encode it as a test in the repo&#x27;s existing test suite — asserting the <em>correct</em> behaviour, so it <strong>fails now</strong> for the real reason (not a typo). Check CLAUDE.md for test runner invocations; if the test runner flags are unknown, run <code>--help</code> to discover them. Run it and confirm it&#x27;s red. <strong>If the bug genuinely cannot be reproduced, STOP</strong> and report that with what was tried — never &quot;fix&quot; an unconfirmed bug. This failing test is the contract for the whole run.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-1">
-            <span class="order-stage__num" aria-hidden="true">1</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Isolate</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <ol>
-                  <li><strong>Resolve <code>&lt;WORKTREE_DIR&gt;</code></strong> from Config. Parse <strong><code>worktree-root=sibling</code></strong> from runtime guidance before resolving.</li>
-                  <li><strong>Gitignore the worktree root</strong> when <code>WORKTREE_LAYOUT=nested</code> — from <code>&lt;repo&gt;</code>, idempotently ensure <code>.shipmates/worktrees/</code> is ignored (append only when no line already ignores it; create <code>.gitignore</code> with <code># Shipmates isolated command worktrees (auto-managed)</code> if missing). Never rewrite unrelated rules.</li>
-                  <li><strong>Sync base ref</strong> — <code>BASE_REF=origin/&lt;BASE_BRANCH&gt;</code>. <strong><code>git -C &lt;repo&gt; fetch origin</code></strong> is required; stop with a clear error if fetch fails. Fresh <code>worktree add … origin/&lt;BASE_BRANCH&gt;</code> <strong>is</strong> pull-latest — no separate <code>git pull</code>.</li>
-                  <li><strong>Resume / reuse</strong> — when worktree/branch exist, re-run fetch; rebase onto <code>BASE_REF</code> when behind (merge when repo docs prefer merge). Sync conflicts count toward <code>MAX_FIX_ROUNDS</code>.</li>
-                  <li><strong>Create the worktree</strong> (when branch/worktree do not yet exist):</li>
-                </ol>
-                <pre class="order-code" tabindex="0"><code>mkdir -p &quot;$(dirname &quot;&lt;WORKTREE_DIR&gt;&quot;)&quot;
-git -C &lt;repo&gt; worktree add &lt;WORKTREE_DIR&gt; -b &lt;BRANCH&gt; origin/&lt;BASE_BRANCH&gt;</code></pre>
-                <p>All work happens in the worktree; the base branch stays clean. Commit the failing test first so the red→green history is visible.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-2">
-            <span class="order-stage__num" aria-hidden="true">2</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Root-cause</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>senior-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> (for runtime/ops bugs)</p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Diagnose the <strong>actual mechanism</strong> — work backwards from the failure (logs, stack, bisect, diff vs last-known-good, and <code>git log</code> / <code>git blame</code> on the affected lines to understand past intent) to the defect itself, not the place it surfaced. The agent returns: the root cause named, why it produces the symptom, and the minimal change that addresses it. Reject &quot;add a null check where it crashed&quot; when the real cause is upstream.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-3">
-            <span class="order-stage__num" aria-hidden="true">3</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Fix (minimal &amp; scoped)</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>senior-engineer</code></span></p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Apply the smallest change that fixes the named root cause. <strong>No unrelated refactors or scope creep</strong> — this is a bug fix, not a redesign (file anything else as a follow-up). Then check for <strong>sibling bugs</strong>: grep the codebase for the same defect class elsewhere and fix those in the same pass if trivial, or file them.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-4">
-            <span class="order-stage__num" aria-hidden="true">4</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Prove it</h3>
-            <p class="order-stage__gate"><span class="visually-hidden">Gate: </span><span aria-hidden="true">⛔</span> HARD GATE</p>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>sdet</code></span></p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>The regression test must now <strong>pass</strong>, and the <strong>entire suite must still be green</strong> (the fix broke nothing). Then push and run the <strong>CI gate</strong>: poll <code>gh pr checks</code> until done; if red, pull <code>gh run view &lt;run-id&gt; --log-failed</code>, dispatch a <code>senior-engineer</code> fixer, re-push, re-poll — bounded by <code>MAX_FIX_ROUNDS</code>. Never advance a red PR. (Long polls: run as a background/until-loop, not chained sleeps.)</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-5">
-            <span class="order-stage__num" aria-hidden="true">5</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Review</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>principal-engineer</code></span> <span class="chip order-stage__crew-item"><code>sdet</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span> <span class="chip order-stage__crew-item"><code>devops-engineer</code></span> <span class="chip order-stage__crew-item"><code>technical-writer</code></span> <span class="chip order-stage__crew-item"><code>ux-ui-designer</code></span> <span class="chip order-stage__crew-item"><code>art-director</code></span> <span class="chip order-stage__crew-item"><code>security-engineer</code></span> <span class="chip order-stage__crew-item"><code>performance-engineer</code></span> <span class="chip order-stage__crew-item"><code>site-reliability-engineer</code></span> <span class="chip order-stage__crew-item"><code>data-scientist</code></span> <span class="chip order-stage__crew-item"><code>senior-engineer</code></span> (agents, on the pushed PR head)</p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Spawn reviewers <strong>in parallel</strong> against the PR head commit — they review exactly what will merge.</p>
-                <p><strong>Mandatory seats (never skip)</strong></p>
-                <ul>
-                  <li><strong><code>product-manager</code></strong> (PO): checks every acceptance criterion AND the quality bar (README / CLAUDE.md / contributing). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with specifics per criterion.</li>
-                  <li><strong><code>principal-engineer</code></strong> (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a <code>/harden</code> pass). Verifies the PR satisfied the repo&#x27;s <strong>mandatory ship checklist</strong> for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> with <code>file:line</code> evidence.</li>
-                </ul>
-                <p>Tiered execution may lean the build path on Simple/Medium, but <strong>must not skip PE+PO</strong> once a PR head exists.</p>
-                <p><strong>Scaled optional seats</strong></p>
-                <p>Convene only when the change can plausibly trip the concern. A gated-out seat is <strong>named in the report with its flag or reason</strong> — never silently skipped.</p>
-                <div class="order-table" tabindex="0">
-                  <table>
-                    <thead><tr><th scope="col">Seat</th><th scope="col">Join when</th></tr></thead>
-                    <tbody>
-                      <tr><td><code>sdet</code></td><td>Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran.</td></tr>
-                      <tr><td><code>architect</code></td><td><code>IS_ARCH_SIGNIFICANT</code></td></tr>
-                      <tr><td><code>devops-engineer</code></td><td><code>IS_DELIVERY_SENSITIVE</code></td></tr>
-                      <tr><td><code>technical-writer</code></td><td><code>IS_DOCS_AFFECTING</code> — doc copy/staleness (PE covers process compliance; both may run)</td></tr>
-                      <tr><td><code>ux-ui-designer</code></td><td><code>IS_UI_STORY</code></td></tr>
-                      <tr><td><code>art-director</code></td><td><code>IS_VISUAL_STORY</code></td></tr>
-                      <tr><td><code>security-engineer</code></td><td><code>/pr-review</code> only when <code>IS_SECURITY_SENSITIVE</code></td></tr>
-                      <tr><td><code>performance-engineer</code></td><td><code>/pr-review</code> when the PR claims a perf win or touches a hot path; <code>/refactor</code> when the stated motivation was performance</td></tr>
-                      <tr><td><code>site-reliability-engineer</code></td><td><code>/pr-review</code> when runtime behaviour, failure handling, or rollout changes</td></tr>
-                      <tr><td><code>data-scientist</code></td><td><code>/pr-review</code> when the deliverable is an analysis or model</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p>The <code>IS_*</code> flag vocabulary is shared by <code>/ship-issue</code> Stage 0 and <code>/pr-review</code> Stage 0 — a new flag must be added to both classifiers.</p>
-                <p><strong>Decision</strong></p>
-                <ul>
-                  <li><strong>All spawned reviewers ACCEPT/PASS (nits allowed)</strong> → proceed to deliver / the command&#x27;s next stage.</li>
-                  <li><strong>Any REJECT / FAIL</strong> → remediation loop (where the command defines one), then re-convene the board on the new head.</li>
-                </ul>
-                <p><strong>Harness fallback</strong></p>
-                <p>If <code>principal-engineer</code> or any role does not resolve to an <code>.claude/agents/*.md</code> file (skill-only harnesses until crew agents ship), fall back to <code>general-purpose</code> with the role brief inlined and note the fallback — never silently skip a mandatory seat.</p>
-                <p><strong>Command-specific seats</strong> (in addition to the mandatory PE+PO core):</p>
-                <ul>
-                  <li><code>sdet</code> (always): re-runs the suite on the PR head; confirms the regression test is present and green.</li>
-                  <li><code>senior-engineer</code> or <code>site-reliability-engineer</code> (fresh — not the one who fixed it): confirms the fix addresses the root cause, not the symptom, and adds no regression risk.</li>
-                </ul>
-                <p>Any <code>REJECT</code>/<code>FAIL</code> → loop a <code>senior-engineer</code> fixer, re-push, re-run the CI gate and this stage, bounded by <code>MAX_FIX_ROUNDS</code>, then escalate.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-6">
-            <span class="order-stage__num" aria-hidden="true">6</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 6 — </span>Deliver</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Open (or, if <code>MERGE_MODE=auto</code>, merge) the PR. Body: the root cause in one paragraph, the fix, the regression test, <code>Closes #&lt;issue&gt;</code>, and the green-CI link. File sibling bugs / deferred cleanups as follow-up issues. Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, and the absolute <code>&lt;WORKTREE_DIR&gt;</code> path (for cleanup or resume).</p>
-              </div>
-            </div>
-          </li>
-        </ol>
+          </div>
+        </details>
         <h3 id="runtime-input">Runtime input</h3>
         <div class="order-prose">
           <p><code>$ARGUMENTS</code> is the complete invocation text: a GitHub issue number or plain-text bug description, plus optional reproduction hints. If it is a number, pull it with <code>gh issue view</code>; if empty, ask what is broken.</p>

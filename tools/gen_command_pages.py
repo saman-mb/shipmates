@@ -100,7 +100,18 @@ LASTMOD = "2026-07-25"
 
 # Section ids reserved by the page skeleton; a source heading may not claim one.
 RESERVED_ANCHORS = frozenset(
-    {"invoke", "stages", "config", "guardrails", "source", "other-commands", "main", "top"}
+    {
+        "invoke",
+        "stages",
+        "crew-involved",
+        "advanced",
+        "config",
+        "guardrails",
+        "source",
+        "other-commands",
+        "main",
+        "top",
+    }
 )
 
 # Spelled out so the stages lead reads as prose; derived, never hand-typed.
@@ -3258,47 +3269,51 @@ def annotation_residue(st: Stage) -> str:
     return re.sub(r"\s+", " ", inner).strip(" ,")
 
 
-def render_stage(st: Stage, src: str) -> str:
-    """DOM order is visual order: num, title, gate, crew, body. No `order:` shuffling."""
+def _render_stage_crew(st: Stage, src: str) -> str:
+    """Crew chips + qualifier for a stage header (visible when accordion is collapsed)."""
+    if not (st.crew or st.annotation):
+        return ""
+    bits = ["Crew:"]
+    bits.extend(
+        f'<span class="chip order-stage__crew-item"><code>{esc(name)}</code></span>'
+        for name in st.crew
+    )
+    if st.annotation:
+        if st.crew:
+            residue = annotation_residue(st)
+            if residue:
+                bits.append(render_inline(f"({residue})", src, st.lineno))
+        else:
+            bits.append(render_inline(st.annotation, src, st.lineno))
+    return '  <p class="order-stage__crew">' + " ".join(bits) + "</p>"
+
+
+def render_stage(st: Stage, src: str, *, open_body: bool = False) -> str:
+    """Stage card: num + collapsible details (title, gate, crew in summary; body inside)."""
+    open_attr = " open" if open_body else ""
     parts = [
         f'<li class="order-stage" id="{esc(st.anchor)}">',
         f'  <span class="order-stage__num" aria-hidden="true">{esc(st.label)}</span>',
-        '  <h3 class="order-stage__title"><span class="visually-hidden">Stage '
+        f'  <details class="order-stage__details"{open_attr}>',
+        '    <summary class="order-stage__summary">',
+        '      <h3 class="order-stage__title"><span class="visually-hidden">Stage '
         f'{esc(st.label)} — </span>{render_inline(st.title, src, st.lineno)}</h3>',
     ]
     if st.gate:
         parts.append(
-            '  <p class="order-stage__gate"><span class="visually-hidden">Gate: </span>'
+            '      <p class="order-stage__gate"><span class="visually-hidden">Gate: </span>'
             f'<span aria-hidden="true">{GATE_MARK}</span> '
             f"{render_inline(st.gate, src, st.lineno)}</p>"
         )
-    if st.crew or st.annotation:
-        # [C-2] Names live in the chips now, so the source's parenthetical only
-        # earns a place beside them when it says something the chips can't — a
-        # qualifier ("fresh pass", "x N, parallel", "for runtime/ops bugs"). An
-        # annotation that reduces to nothing but the names and the agent:/
-        # agents: scaffolding is dropped instead of repeating the chips in
-        # prose (#136). Annotations with no recognised crew (MODE=pr notes,
-        # "specialist agents, in parallel") have nothing to de-duplicate
-        # against and still render verbatim.
-        bits = ["Crew:"]
-        bits.extend(
-            f'<span class="chip order-stage__crew-item"><code>{esc(name)}</code></span>'
-            for name in st.crew
-        )
-        if st.annotation:
-            if st.crew:
-                residue = annotation_residue(st)
-                if residue:
-                    bits.append(render_inline(f"({residue})", src, st.lineno))
-            else:
-                bits.append(render_inline(st.annotation, src, st.lineno))
-        parts.append('  <p class="order-stage__crew">' + " ".join(bits) + "</p>")
+    crew = _render_stage_crew(st, src)
+    if crew:
+        parts.append(crew.replace("  <p", "      <p", 1))
+    parts.append("    </summary>")
     if st.blocks:
-        parts.append('  <div class="order-stage__body">')
-        parts.append(render_prose(st.blocks, src, "    "))
-        parts.append("  </div>")
-    parts.append("</li>")
+        parts.append('    <div class="order-stage__body">')
+        parts.append(render_prose(st.blocks, src, "      "))
+        parts.append("    </div>")
+    parts.extend(["  </details>", "</li>"])
     return indent_html("\n".join(parts), "          ")
 
 
@@ -3334,10 +3349,66 @@ def render_extra_sections(sections: tuple, src: str) -> str:
     return "\n".join(out)
 
 
+def _command_crew(cmd: Command) -> tuple:
+    """Ordered, de-duplicated crew names across all stages (first appearance wins)."""
+    seen: dict[str, None] = {}
+    for stage in cmd.stages:
+        for name in stage.crew:
+            seen.setdefault(name, None)
+    return tuple(seen)
+
+
+def render_crew_involved(cmd: Command) -> str:
+    """At-a-glance strip linking to agent pages for every role named in stages."""
+    crew = _command_crew(cmd)
+    if not crew:
+        return ""
+    chips = []
+    for name in crew:
+        href = link(f"../../agents/{name}/")
+        chips.append(
+            f'<a class="chip order-crew__chip" href="{href}"><code>{esc(name)}</code></a>'
+        )
+    listing = "\n".join(f"          {chip}" for chip in chips)
+    return f"""    <section class="section order-crew" id="crew-involved" aria-labelledby="crew-involved-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="crew-involved-title">Who&rsquo;s involved</h2>
+          <p class="section__lead">Roles referenced across the stages below.</p>
+        </div>
+        <div class="order-crew__strip" role="list">
+{listing}
+        </div>
+      </div>
+    </section>"""
+
+
+def render_advanced(before: str) -> str:
+    """Collapsible home for preamble sections (cost discipline, shell safety, …)."""
+    if not before:
+        return ""
+    return f"""        <details class="order-advanced" id="advanced">
+          <summary class="order-advanced__summary">
+            <span class="order-advanced__title">Advanced</span>
+            <span class="order-advanced__hint">Cost discipline, bundling, model selection, shell safety, and other preamble</span>
+          </summary>
+          <div class="order-advanced__body">
+{before}
+          </div>
+        </details>"""
+
+
 def render_stages(cmd: Command, src: str) -> str:
     before = render_extra_sections(cmd.sections_before_stages, src)
     after = render_extra_sections(cmd.sections_after_stages, src)
-    body = "\n".join(render_stage(stage, src) for stage in cmd.stages)
+    body = "\n".join(
+        render_stage(
+            stage,
+            src,
+            open_body=(cmd.slug == FLAGSHIP_SLUG and stage.label == "0"),
+        )
+        for stage in cmd.stages
+    )
     parts = [
         '    <section class="section" id="stages" aria-labelledby="stages-title">',
         '      <div class="container container--prose">',
@@ -3346,12 +3417,13 @@ def render_stages(cmd: Command, src: str) -> str:
         '          <h2 class="section__title" id="stages-title">The stages</h2>',
         f'          <p class="section__lead">{esc(_stages_lead(cmd))}</p>',
         "        </div>",
+        '        <ol class="order-stages" role="list">',
+        body,
+        "        </ol>",
     ]
-    if before:
-        parts.append(before)
-    parts.append('        <ol class="order-stages" role="list">')
-    parts.append(body)
-    parts.append("        </ol>")
+    advanced = render_advanced(before)
+    if advanced:
+        parts.append(advanced)
     if after:
         parts.append(after)
     parts.append("      </div>")
@@ -3426,6 +3498,7 @@ def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
         render_hero(cmd, src),
         render_demo(cmd),
         render_invoke(cmd),
+        render_crew_involved(cmd),
         render_stages(cmd, src),
         render_section(cmd.config, "config", src),
         render_section(cmd.guardrails, "guardrails", src),

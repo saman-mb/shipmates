@@ -148,6 +148,18 @@
       </div>
     </section>
 
+    <section class="section order-crew" id="crew-involved" aria-labelledby="crew-involved-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="crew-involved-title">Who&rsquo;s involved</h2>
+          <p class="section__lead">Roles referenced across the stages below.</p>
+        </div>
+        <div class="order-crew__strip" role="list">
+          <a class="chip order-crew__chip" href="../../agents/product-manager/"><code>product-manager</code></a>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="stages" aria-labelledby="stages-title">
       <div class="container container--prose">
         <div class="section__head">
@@ -155,6 +167,125 @@
           <h2 class="section__title" id="stages-title">The stages</h2>
           <p class="section__lead">Six stages, in order.</p>
         </div>
+        <ol class="order-stages" role="list">
+          <li class="order-stage" id="stage-0">
+            <span class="order-stage__num" aria-hidden="true">0</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Inventory (orchestrator)</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <ol>
+                    <li>Pull the <strong>entire open-issue set</strong>: <code>gh issue list --state open --limit 1000</code> with <code>number,title,labels,milestone,assignees,createdAt,updatedAt</code> and the body for each. Also pull <code>gh label list</code> and the project&#x27;s <code>README</code> / <code>AGENTS.md</code> (conventions, quality bar, where work is tracked) so triage uses the project&#x27;s own standards.</li>
+                    <li>Apply <code>SCOPE</code> if set; otherwise take the full set.</li>
+                    <li>Snapshot the baseline count and, per issue, its age, last activity, labels, and milestone. These numbers feed the report; record them before anything is touched.</li>
+                  </ol>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-1">
+            <span class="order-stage__num" aria-hidden="true">1</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Cross-check against git history (orchestrator, evidence first)</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>For <strong>every</strong> issue in scope, gather the evidence before any verdict:</p>
+                  <ul>
+                    <li><strong>Merged work</strong>: <code>git log &lt;base&gt; --oneline</code> plus <code>gh pr list --state merged</code> and <code>gh pr list --state closed</code> — search titles, descriptions, and linked references for the issue&#x27;s subject and keywords. A merged PR whose body references the issue is the strongest signal.</li>
+                    <li><strong>Open work</strong>: is an open PR or a live branch already addressing it? <code>gh pr list --state open</code> plus <code>git branch -a</code> — inspect branch names and PR titles/descriptions for the subject.</li>
+                    <li><strong>Freshness</strong>: last-comment and last-update dates, plus the issue&#x27;s label/milestone state.</li>
+                  </ul>
+                  <p>Record, per issue, the <strong>evidence string</strong> (the refs, PRs, commits, or activity you found). Nothing is judged on title-matching alone; every verdict names its evidence.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-2">
+            <span class="order-stage__num" aria-hidden="true">2</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Triage verdicts</h3>
+                <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> (orchestrator deterministic + ONE pass)</p>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>First the orchestrator applies the <strong>hard, mechanical rules</strong> (no judgment needed):</p>
+                  <ul>
+                    <li><code>DONE</code> — evidence shows the change shipped (a merged PR/commit implements it). Close with a comment naming the implementing PR/commit.</li>
+                    <li><code>STALE</code> — no activity and no signal it&#x27;s still wanted: older than the project&#x27;s stale horizon, no assignee, no linked PR/branch, and the subject is fully superseded by something that shipped. Don&#x27;t guess at these alone — send them to the <code>product-manager</code> review pass.</li>
+                  </ul>
+                  <p>Then spawn ONE <code>product-manager</code> with the remaining borderline set: the <code>DONE</code>-adjacent, the <code>STALE</code>-candidates, and the clearly duplicate-looking pairs. It returns <strong>structured verdicts only</strong> (no <code>gh</code> calls): per issue a verdict of <code>close</code> / <code>keep</code> / <code>migrate</code> with a one-line reason, plus a dedupe map (issue → canonical issue) only where the overlap is unmistakable. It never closes anything itself.</p>
+                  <p>The orchestrator merges the two: mechanical rules are final; the subagent&#x27;s judgment calls are adopted as its recommendation, and every recommendation the user would want to veto is surfaced prominently in the report.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-3">
+            <span class="order-stage__num" aria-hidden="true">3</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Migrate the legacy (orchestrator)</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p><code>MIGRATE</code> applies to issues whose <strong>shape</strong> is obsolete even though the work is still wanted:</p>
+                  <ul>
+                    <li>wrong tracker conventions (missing labels/structure the project now requires, body not in the current template, no acceptance criteria where the project mandates them),</li>
+                    <li>issues that should be an epic with stories, or a story inside an existing epic (<code>Part of #…</code>),</li>
+                    <li>issues blocked by a fixed/unneeded parent (remove the stale <code>Blocked by</code> or dependency note).</li>
+                  </ul>
+                  <p>Migrating means rewriting to the project&#x27;s current shape — never inventing new scope. If a migration would silently change the meaning, keep it and flag it for the user instead.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-4">
+            <span class="order-stage__num" aria-hidden="true">4</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Bundle the survivors</h3>
+                <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> (ONE , parallel by area)</p>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>Group every <code>keep</code> issue into <strong>bundles</strong>: coherent themes, each sized for a single <code>/ship-issue</code> run. Spawn one <code>product-manager</code> per <strong>area</strong> (from the project&#x27;s existing area labels) so the theming runs in parallel; give each its area&#x27;s issues, the repo context, and the rule that bundles are <strong>thematic + dependency-ordered + individually shippable</strong> — never a grab-bag of unrelated tickets. Each returns structured bundle proposals: <code>name</code>, <code>theme</code> (one line), <code>issues</code> (numbers), <code>order</code> (build sequence within the bundle), and a suggested label. Orphan issues that fit no theme stay as singletons — don&#x27;t force them in.</p>
+                  <p>The orchestrator dedupes the proposals, resolves cross-area overlaps (an issue can belong to only one bundle), and assigns each bundle a <code>bundle:&lt;name&gt;</code> label.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+          <li class="order-stage" id="stage-5">
+            <span class="order-stage__num" aria-hidden="true">5</span>
+            <details class="order-stage__details">
+              <summary class="order-stage__summary">
+                <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Apply (only in <code>apply</code> mode) and report</h3>
+              </summary>
+              <div class="order-stage__body">
+                <div class="order-prose">
+                  <p>If <code>MODE=report</code>: print the full plan and STOP — the verdict table, the dedupe map, the bundle tree with its labels, and the proposed closes/migrations. <strong>Change nothing.</strong></p>
+                  <p>If <code>MODE=apply</code>, execute in this order, re-verifying each before acting:</p>
+                  <ol>
+                    <li><strong>Labels</strong> — create any missing <code>bundle:&lt;name&gt;</code> labels.</li>
+                    <li><strong>Migrate</strong> — rewrite the flagged legacy issues to the current shape (with the <code>TRAILER</code>).</li>
+                    <li><strong>Close</strong> — close each <code>DONE</code> and <code>STALE</code> issue with a comment naming its evidence; on a dedupe, comment the canonical issue and cross-link the pair.</li>
+                    <li><strong>Tag bundles</strong> — apply each bundle&#x27;s label to its issues and note the bundle in a comment, so <code>/ship-issue</code> can be run per bundle.</li>
+                  </ol>
+                  <p>Then verify (re-fetch and grep; don&#x27;t assume): every planned close happened, every migration landed, every bundle label is on exactly its issue set. Report the before/after: how many issues were in scope, how many closed (with the count that were already done), how many migrated, and the bundle tree ready to hand to <code>/ship-issue</code> — one bundle at a time.</p>
+                </div>
+              </div>
+            </details>
+          </li>
+        </ol>
+        <details class="order-advanced" id="advanced">
+          <summary class="order-advanced__summary">
+            <span class="order-advanced__title">Advanced</span>
+            <span class="order-advanced__hint">Cost discipline, bundling, model selection, shell safety, and other preamble</span>
+          </summary>
+          <div class="order-advanced__body">
         <h3 id="cost-discipline">Cost discipline</h3>
         <div class="order-prose">
           <ul>
@@ -172,95 +303,8 @@
           <p>Turn a drifting issue tracker back into a plan. The whole open-issue set is pulled, every issue is checked against the project&#x27;s git history and merged PRs to see what is <strong>already done</strong>, the done and stale ones are closed, legacy-shaped issues are migrated to the tracker&#x27;s current conventions, and the survivors are <strong>bundled by theme</strong> into groups each big enough to hand to <code>/ship-issue</code> in one pass — so the backlog shrinks and the work that remains ships in coherent chunks instead of as an endless one-issue-at-a-time trickle.</p>
           <p>The scope and the go-ahead to change anything come from the Runtime input section at the end of this workflow.</p>
         </div>
-        <ol class="order-stages" role="list">
-          <li class="order-stage" id="stage-0">
-            <span class="order-stage__num" aria-hidden="true">0</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Inventory (orchestrator)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <ol>
-                  <li>Pull the <strong>entire open-issue set</strong>: <code>gh issue list --state open --limit 1000</code> with <code>number,title,labels,milestone,assignees,createdAt,updatedAt</code> and the body for each. Also pull <code>gh label list</code> and the project&#x27;s <code>README</code> / <code>AGENTS.md</code> (conventions, quality bar, where work is tracked) so triage uses the project&#x27;s own standards.</li>
-                  <li>Apply <code>SCOPE</code> if set; otherwise take the full set.</li>
-                  <li>Snapshot the baseline count and, per issue, its age, last activity, labels, and milestone. These numbers feed the report; record them before anything is touched.</li>
-                </ol>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-1">
-            <span class="order-stage__num" aria-hidden="true">1</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Cross-check against git history (orchestrator, evidence first)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>For <strong>every</strong> issue in scope, gather the evidence before any verdict:</p>
-                <ul>
-                  <li><strong>Merged work</strong>: <code>git log &lt;base&gt; --oneline</code> plus <code>gh pr list --state merged</code> and <code>gh pr list --state closed</code> — search titles, descriptions, and linked references for the issue&#x27;s subject and keywords. A merged PR whose body references the issue is the strongest signal.</li>
-                  <li><strong>Open work</strong>: is an open PR or a live branch already addressing it? <code>gh pr list --state open</code> plus <code>git branch -a</code> — inspect branch names and PR titles/descriptions for the subject.</li>
-                  <li><strong>Freshness</strong>: last-comment and last-update dates, plus the issue&#x27;s label/milestone state.</li>
-                </ul>
-                <p>Record, per issue, the <strong>evidence string</strong> (the refs, PRs, commits, or activity you found). Nothing is judged on title-matching alone; every verdict names its evidence.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-2">
-            <span class="order-stage__num" aria-hidden="true">2</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Triage verdicts</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> (orchestrator deterministic + ONE pass)</p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>First the orchestrator applies the <strong>hard, mechanical rules</strong> (no judgment needed):</p>
-                <ul>
-                  <li><code>DONE</code> — evidence shows the change shipped (a merged PR/commit implements it). Close with a comment naming the implementing PR/commit.</li>
-                  <li><code>STALE</code> — no activity and no signal it&#x27;s still wanted: older than the project&#x27;s stale horizon, no assignee, no linked PR/branch, and the subject is fully superseded by something that shipped. Don&#x27;t guess at these alone — send them to the <code>product-manager</code> review pass.</li>
-                </ul>
-                <p>Then spawn ONE <code>product-manager</code> with the remaining borderline set: the <code>DONE</code>-adjacent, the <code>STALE</code>-candidates, and the clearly duplicate-looking pairs. It returns <strong>structured verdicts only</strong> (no <code>gh</code> calls): per issue a verdict of <code>close</code> / <code>keep</code> / <code>migrate</code> with a one-line reason, plus a dedupe map (issue → canonical issue) only where the overlap is unmistakable. It never closes anything itself.</p>
-                <p>The orchestrator merges the two: mechanical rules are final; the subagent&#x27;s judgment calls are adopted as its recommendation, and every recommendation the user would want to veto is surfaced prominently in the report.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-3">
-            <span class="order-stage__num" aria-hidden="true">3</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Migrate the legacy (orchestrator)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p><code>MIGRATE</code> applies to issues whose <strong>shape</strong> is obsolete even though the work is still wanted:</p>
-                <ul>
-                  <li>wrong tracker conventions (missing labels/structure the project now requires, body not in the current template, no acceptance criteria where the project mandates them),</li>
-                  <li>issues that should be an epic with stories, or a story inside an existing epic (<code>Part of #…</code>),</li>
-                  <li>issues blocked by a fixed/unneeded parent (remove the stale <code>Blocked by</code> or dependency note).</li>
-                </ul>
-                <p>Migrating means rewriting to the project&#x27;s current shape — never inventing new scope. If a migration would silently change the meaning, keep it and flag it for the user instead.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-4">
-            <span class="order-stage__num" aria-hidden="true">4</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Bundle the survivors</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> (ONE , parallel by area)</p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Group every <code>keep</code> issue into <strong>bundles</strong>: coherent themes, each sized for a single <code>/ship-issue</code> run. Spawn one <code>product-manager</code> per <strong>area</strong> (from the project&#x27;s existing area labels) so the theming runs in parallel; give each its area&#x27;s issues, the repo context, and the rule that bundles are <strong>thematic + dependency-ordered + individually shippable</strong> — never a grab-bag of unrelated tickets. Each returns structured bundle proposals: <code>name</code>, <code>theme</code> (one line), <code>issues</code> (numbers), <code>order</code> (build sequence within the bundle), and a suggested label. Orphan issues that fit no theme stay as singletons — don&#x27;t force them in.</p>
-                <p>The orchestrator dedupes the proposals, resolves cross-area overlaps (an issue can belong to only one bundle), and assigns each bundle a <code>bundle:&lt;name&gt;</code> label.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-5">
-            <span class="order-stage__num" aria-hidden="true">5</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 5 — </span>Apply (only in <code>apply</code> mode) and report</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>If <code>MODE=report</code>: print the full plan and STOP — the verdict table, the dedupe map, the bundle tree with its labels, and the proposed closes/migrations. <strong>Change nothing.</strong></p>
-                <p>If <code>MODE=apply</code>, execute in this order, re-verifying each before acting:</p>
-                <ol>
-                  <li><strong>Labels</strong> — create any missing <code>bundle:&lt;name&gt;</code> labels.</li>
-                  <li><strong>Migrate</strong> — rewrite the flagged legacy issues to the current shape (with the <code>TRAILER</code>).</li>
-                  <li><strong>Close</strong> — close each <code>DONE</code> and <code>STALE</code> issue with a comment naming its evidence; on a dedupe, comment the canonical issue and cross-link the pair.</li>
-                  <li><strong>Tag bundles</strong> — apply each bundle&#x27;s label to its issues and note the bundle in a comment, so <code>/ship-issue</code> can be run per bundle.</li>
-                </ol>
-                <p>Then verify (re-fetch and grep; don&#x27;t assume): every planned close happened, every migration landed, every bundle label is on exactly its issue set. Report the before/after: how many issues were in scope, how many closed (with the count that were already done), how many migrated, and the bundle tree ready to hand to <code>/ship-issue</code> — one bundle at a time.</p>
-              </div>
-            </div>
-          </li>
-        </ol>
+          </div>
+        </details>
         <h3 id="runtime-input">Runtime input</h3>
         <div class="order-prose">
           <p><code>$ARGUMENTS</code> is the complete invocation text. <strong>Empty means the whole open-issue set</strong>: run in <code>MODE=report</code> over the repo&#x27;s entire backlog — every open issue, no scope filter. Otherwise the first word is usually a scope filter (a label or area) or the word <code>apply</code>; parse it in prose and treat anything unstated as <code>MODE=report</code>. When in doubt, report only — closing other people&#x27;s issues is a decision the captain makes, not the default.</p>
