@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/github/license/saman-mb/shipmates?color=blue)](LICENSE)
 [![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/product/claude-code)
 [![Website](https://img.shields.io/badge/website-saman--mb.github.io%2Fshipmates-D97757?logo=github)](https://saman-mb.github.io/shipmates/)
-[![Crew aboard](https://img.shields.io/badge/crew-12%20specialists-orange)](#-meet-the-crew)
+[![Crew aboard](https://img.shields.io/badge/crew-13%20specialists-orange)](#-meet-the-crew)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Stars](https://img.shields.io/github/stars/saman-mb/shipmates?style=flat&logo=github)](https://github.com/saman-mb/shipmates/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/saman-mb/shipmates)](https://github.com/saman-mb/shipmates/commits/main)
@@ -41,7 +41,7 @@ You stay the captain. The shipmates do the twenty steps in between. 🫡
 
 ## 🧭 Meet the crew
 
-Twelve **domain-neutral** specialists. They'll work on *anything* — a game engine, a web app, a CLI —
+Thirteen **domain-neutral** specialists. They'll work on *anything* — a game engine, a web app, a CLI —
 because the standard they hold your work to comes from **your** repo's `README` / `CLAUDE.md`, not
 from anything hardcoded into the role.
 
@@ -179,7 +179,7 @@ windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
 Every harness compiles the same canonical crew and commands. Five have a native subagent directory
-and receive the twelve specialists as agents; the other two ship the fourteen commands as skills only.
+and receive the thirteen specialists as agents; the other two ship the fourteen commands as skills only.
 Four harnesses (codex, antigravity, cursor, github-copilot) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
 one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of four colliding
@@ -200,8 +200,8 @@ opencode run --command harden --format json \
   "Review this project in report mode. Do not modify files."
 ```
 
-The agent list should include all twelve Shipmates roles. The report-mode command is a narrow manual
-probe; keep `--auto` disabled. Deterministic CI install-fidelity tests check all twelve installed agents
+The agent list should include all thirteen Shipmates roles. The report-mode command is a narrow manual
+probe; keep `--auto` disabled. Deterministic CI install-fidelity tests check all thirteen installed agents
 and commands, the exact opencode golden payload, and the translated report-only `/harden` order. They do
 not use model credentials and do not claim that opencode runtime behavior is verified. Full crew resolution,
 argument passing, permission enforcement,
@@ -524,7 +524,7 @@ see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
-in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/ship-issue`. Shipmates ships 12 agents
+in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/ship-issue`. Shipmates ships 13 agents
 and 14 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
 `.codex/` for codex, and so on). See [install](#-come-aboard-install).
 

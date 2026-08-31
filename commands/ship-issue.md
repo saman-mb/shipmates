@@ -29,7 +29,7 @@ selection to epic `<n>`'s unchecked story checklist only (see *Selection mode*).
 ## Bundling — the token-efficient default
 
 Most of a run's token cost is **fixed overhead paid once per invocation**: the Planner pass, the
-acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup.
+acceptance board (mandatory PE+PO core + any scaled specialists), the CI poll loop, and worktree setup.
 That overhead barely grows with diff size, so shipping several **small, cohesive** issues in one run
 is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole
 board N times. **So bundling cohesive issues is the recommended default** (`BUNDLE=recommend`, see
@@ -45,7 +45,7 @@ different access, so the right model is chosen **at spawn, by task complexity, f
 not written into any crew file:
 - **Mechanical work** (Builders, the SDET's test/validation runs, straightforward Fixers) → the
   cheapest capable model, low reasoning effort.
-- **Hard judgment** (the Planner, `architect`, `security-engineer`, and the `product-manager`
+- **Hard judgment** (the Planner, `architect`, `principal-engineer`, `security-engineer`, and the `product-manager`
   acceptance call) → the top model available, higher effort.
 - **Unsure** → inherit the session model; never guess a model name.
 
@@ -98,8 +98,9 @@ agent with a persona pasted inline. The pool:
 | `{{role-reference}}`           | Used for |
 |--------------------|----------|
 | `senior-engineer`  | Building, fixing, remediation (Stages 2, 3, 4.5, 6) |
-| `sdet`             | Test / build / validation runs (Stages 3, 5) |
-| `product-manager`  | Acceptance vs. criteria + the quality bar (Stage 5) |
+| `sdet`             | Test / build / validation runs (Stages 3, 5 when scaled in) |
+| `product-manager`  | Acceptance vs. criteria + the quality bar (Stage 5 — mandatory) |
+| `principal-engineer` | Principal diff review + repo mandatory ship checklist (Stage 5 — mandatory) |
 | `architect`        | Structural / schema review — gated by `IS_ARCH_SIGNIFICANT` (Stages 1.5, 5) |
 | `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
 | `art-director`     | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
@@ -358,34 +359,13 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/ship-issue` so the epic can
 
 ## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
 
-Spawn these **in parallel** against the PR head commit (they review exactly what will merge). The two
-core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist
-only when the change can plausibly trip its concern surface; a role gated out is named in the run report
-together with the flag that gated it — never silently skipped.
+<!-- shipmates:acceptance-board -->
 
-- **`product-manager`** (always): checks every acceptance criterion AND the quality bar (from the
-  repo's README/{{project-instructions}}). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
-- **`sdet`** (always): re-runs the validation plan against the PR branch; returns `PASS` / `FAIL`
-  with a severity-tagged defect list.
-- **`ux-ui-designer`** (only if `IS_UI_STORY`): reviews the pushed head against the Stage 1.5 spec and
-  the UI bar — shared-token/theme usage (not per-component override sprawl), responsive layout, focus
-  navigation, interaction states, contrast/readability. If it cannot actually render the UI, it
-  reviews statically and MUST flag the PR **"needs a human visual pass"** — carry that into the report.
-- **`art-director`** (only if `IS_VISUAL_STORY`): renders the actual change via the project's render/preview
-  harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the
-  visual bar — the render, not the source. If it cannot render, it says so and flags **"needs a human
-  visual pass"**.
-- **`architect`** (only if `IS_ARCH_SIGNIFICANT`): reviews structural fit, coupling/blast radius, and
-  schema/migration safety.
-- **`devops-engineer`** (only if `IS_DELIVERY_SENSITIVE`): reviews the delivery definitions for
-  reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and
-  secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety
-  to `site-reliability-engineer`.
-- **`technical-writer`** (only if `IS_DOCS_AFFECTING`): reviews the shipped change against the docs that
-  describe it — stale flags/commands/behaviour, missing changelog/README/site updates. Returns
-  `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT`.
+Use the Stage 0 classification flags to decide which **scaled optional seats** join the mandatory
+PE+PO core. Pass each reviewer the acceptance criteria, quality bar, and (for visual roles) any
+Stage 1.5 spec.
 
-Decision (each specialist participates only when its flag is set):
+Decision:
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → go to Stage 7.
 - **Any REJECT / FAIL** → Stage 6.
 
@@ -436,7 +416,7 @@ Stage 0 — the `/harden` recommendation, carried here mechanically rather than 
 ### Guardrails
 - The orchestrator owns **all** git/gh actions; agents never push or merge.
 - Reviewers always evaluate the **pushed PR head**, so "accepted" == "what merges".
-- Never open or advance a red PR. Never skip the SDET run. Never silently drop a nit — file it.
+- Never open or advance a red PR. Never skip the mandatory PE+PO board once a PR head exists. Never silently drop a nit — file it.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
   re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.
