@@ -1281,7 +1281,7 @@ AGENT_COPY = {
 TOOL_COPY_SRC = "tools/gen_command_pages.py"
 
 # Canonical tool order — matches the homepage `#tools` grid.
-TOOLS = ("termgif", "social-card", "pixelart", "diagram", "svgflow", "badge", "sparkline", "scrub", "fixtures", "domaincheck")
+TOOLS = ("termgif", "social-card", "pixelart", "diagram", "svgflow", "badge", "sparkline", "scrub", "fixtures", "domaincheck", "gh")
 
 TOOL_COPY = {
     "termgif": ToolCopy(
@@ -1573,6 +1573,39 @@ TOOL_COPY = {
             ),
         ),
         sample="$ python3 domaincheck.py github.com\n$ python3 domaincheck.py --tld com,io shipmates-test-name-xyzzy\n\ngithub.com\tregistered\nshipmates-test-name-xyzzy.com\tavailable\nshipmates-test-name-xyzzy.io\tavailable",
+    ),
+    "gh": ToolCopy(
+        tagline="Structured GitHub CLI wrapper — the gh patterns shipmates commands use every day.",
+        what=(
+            "`gh` wraps the GitHub CLI with a JSON spec: validated repo slugs and issue numbers, "
+            "`body_file` hygiene for create/edit/comment/review, and structured JSON results instead "
+            "of scraped shell output. It covers repo default branch lookup, issue fetch/list/search/create/"
+            "edit/comment/close, PR view/diff/create/checks/poll/comment/review/merge/list, labels, "
+            "releases, and failed workflow logs — the same operations repeated across `/ship-issue`, "
+            "`/ship-epic`, `/pr-review`, `/consolidate-issues`, `/plan-epics`, and `/release`.",
+            "It is a *tool*, not a command. The crew reach for it when orchestrating GitHub instead of "
+            "hand-rolling `gh` bash. Requires the GitHub CLI installed and authenticated (`gh auth login`); "
+            "Python side is stdlib-only.",
+        ),
+        usage=(
+            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools gh`, "
+            "or pick it from the interactive list. Pass one JSON spec on stdin: "
+            "`echo '{\"op\":\"repo.view\"}' | python3 gh.py`. List operations with `python3 gh.py --list-ops`. "
+            "Multi-line bodies must use `body_file` — inline `body` is capped at 200 chars.",
+        ),
+        sample=(
+            '$ echo \'{"op":"repo.view"}\' | python3 gh.py\n'
+            '{\n'
+            '  "ok": true,\n'
+            '  "op": "repo.view",\n'
+            '  "result": {\n'
+            '    "nameWithOwner": "owner/repo",\n'
+            '    "defaultBranch": "main",\n'
+            '    "url": "https://github.com/owner/repo"\n'
+            '  }\n'
+            '}\n\n'
+            '$ echo \'{"op":"pr.checks_poll","number":306}\' | python3 gh.py'
+        ),
     ),
 }
 

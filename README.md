@@ -115,6 +115,7 @@ implicitly, when the intent of your prompt calls for it — never typed, never a
 | [`scrub`](https://saman-mb.github.io/shipmates/tools/scrub/) | Redacts secrets and PII from a log or paste before it's shared |
 | [`fixtures`](https://saman-mb.github.io/shipmates/tools/fixtures/) | Generates deterministic fake test data from a small JSON schema |
 | [`domaincheck`](https://saman-mb.github.io/shipmates/tools/domaincheck/) | Checks domain availability via RDAP — registry-authoritative verdicts, TLD batch sweeps, optional registrar detail |
+| [`gh`](https://saman-mb.github.io/shipmates/tools/gh/) | Structured GitHub CLI wrapper — validated issue/PR ops, body-file hygiene, JSON results (requires `gh` installed and authenticated) |
 
 Tools are **opt-in** — a plain install ships only the crew and the commands. Add them with
 `--with-tools` (below), or run `install` in a terminal and pick from the list. Each tool maps to its
