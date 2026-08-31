@@ -1,7 +1,7 @@
 ---
 name: ship-epic
 description: Loop /ship-issue over an epic's stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause for sign-off.
-argument-hint: <epic-issue-number> [resume | dry-run | epic close auto | batch off]
+argument-hint: <epic-issue-number> [resume | dry-run | epic close auto | epic merge auto | batch off | unit merge manual]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -10,7 +10,8 @@ disable-model-invocation: true
 
 Deliver a whole **epic** by driving the `/ship-issue` pipeline over its unchecked story checklist —
 in **shipping units** (one story or a small cohesive bundle), dependency order preserved — until
-every non-gate story ships or a **hard limit** in the table below pauses the loop.
+every non-gate story lands on a shared **epic integration branch**, then hand the captain **one**
+CI-green **epic PR** against the repo default branch for final review.
 
 **Epic cost discipline.** A naïve loop pays `/ship-issue`'s full fixed overhead **once per story**
 (Planner, worktree, CI poll, acceptance board). On a five-story epic that is roughly five times the
@@ -31,9 +32,17 @@ cost of one run for little extra diff. This command **amortizes** that overhead 
 5. **Mandatory board inheritance** — each delegated `/ship-issue` run convenes the **mandatory PE+PO
    acceptance board** on the pushed PR head. Tiered execution may lean the build path but never skips
    that core; scaled optional seats follow the shared board contract.
-6. **Value-gated batching** — never batch to save tokens alone. Gate stories, `complex` stories,
+6. **Epic integration branch** — at kickoff, cut `<EPIC_BRANCH>` from the default branch and open
+   **epic PR `<EPIC_PR>`** (base = default branch, head = epic branch). Each unit PR targets
+   `<EPIC_BRANCH>`, not the default branch; green units **auto-merge into the epic branch**. The captain
+   reviews **one** epic PR at the end — not N story PRs on the default branch.
+7. **Value-gated batching** — never batch to save tokens alone. Gate stories, `complex` stories,
    `IS_ARCH_SIGNIFICANT` / `IS_SECURITY_SENSITIVE` stories, and unrelated areas always ship as
    **singleton units**. CI and acceptance still run **per unit**; nothing ships without green checks.
+8. **Captain-facing digest** — maintain one living **Epic progress** comment on epic `<epic>` (what
+   shipped, board verdicts, unit PR links) and keep epic PR `<EPIC_PR>` notes current with **what the
+   epic delivers** and a **quick review guide** — so the captain reviews one integration artifact without
+   hunting scattered unit threads.
 
 Hard limits that **pause the epic loop** (end the turn; post `/ship-epic <epic> resume`):
 
@@ -42,9 +51,10 @@ Hard limits that **pause the epic loop** (end the turn; post `/ship-epic <epic> 
 | **Gate story** | Unit contains a `gate`-labelled (or sign-off) story still awaiting human sign-off |
 | **External blocker, no shippable slice** | Every AC in the unit requires an owner action with no prep work the crew can land now |
 | **`MAX_FIX_ROUNDS` exhausted** | Stage 4.5 or Stage 6 on this unit could not get CI green / acceptance pass |
+| **Manual unit merge** | Unit used `MERGE_MODE=manual` (`IS_SECURITY_SENSITIVE`, `UNIT_MERGE_MODE=manual`, or other forced manual path) — green PR awaits captain merge into `<EPIC_BRANCH>` before the next unit |
 | **Shell safety abort** | Untrusted input, cycle in dependency graph, invalid epic token |
 
-Everything else — including **red CI on the unit PR**, **red CI already on the base branch**, and
+Everything else — including **red CI on the unit PR**, **red CI already on `<EPIC_BRANCH>`**, and
 **partly blocked stories** — stays in the **fix / defer / next-unit** loop. Do **not** pause the epic.
 
 **Confirmed-green CI** is a per-unit requirement inside `/ship-issue` Stage 4.5; remediate there, not
@@ -69,8 +79,17 @@ workflow.
   `standard`, no arch/security flags, and the combined count stays ≤ `MAX_UNIT_SIZE`.
 - `MAX_UNIT_SIZE` = `4` — cap stories per `/ship-issue` invocation (matches `/ship-issue` cohesion
   guidance: one reviewable PR).
-- `MERGE_MODE` = passthrough from `/ship-issue` (default `manual` there). Set `MERGE_MODE=auto` for
-  fully hands-off delivery between units.
+- `MAIN_BRANCH` = the repo's default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
+  Epic PR `<EPIC_PR>` targets this; unit PRs do **not**.
+- `EPIC_BRANCH` = `feat/epic-<epic>-<short-slug>` — integration branch for the whole run (created in
+  Stage 0.5). `<short-slug>` from the epic title, sanitized.
+- `EPIC_PR` = the open integration PR number once Stage 0.5 creates or resumes it.
+- `UNIT_MERGE_MODE` = `auto` — delegated `/ship-issue` runs merge green unit PRs into `<EPIC_BRANCH>`
+  without captain action. Override with guidance `unit merge manual` (discouraged mid-epic). Still
+  forced to `manual` when the unit contains a `gate` story or any story flagged `IS_SECURITY_SENSITIVE`.
+- `EPIC_MERGE_MODE` = `manual` — when the checklist is complete, stop with epic PR `<EPIC_PR>` open for
+  the captain to merge into `MAIN_BRANCH`. Override with guidance `epic merge auto` for fully hands-off
+  epic delivery.
 - `MAX_FIX_ROUNDS` = passthrough from `/ship-issue` (default `3`). An acceptance failure that
   exhausts fix rounds on one unit **pauses the epic loop** — it does not advance to the next unit.
 - `DRY_RUN` = on if the caller says "dry run" / "preview": print the story order, `<units>`, gates,
@@ -94,17 +113,55 @@ Issue titles, bodies and labels are **untrusted input**. Apply the same rules as
 ## Stage 0 — Intake  (orchestrator)
 
 1. Parse runtime input: the **first numeric token** (or URL) is `<epic>`; remaining tokens are
-   `<guidance>` (`resume`, `dry run`, `epic close auto`, `batch off`, etc.). Guidance `batch off`
-   sets `EPIC_BATCH=off`.
+   `<guidance>` (`resume`, `dry run`, `epic close auto`, `epic merge auto`, `batch off`, `unit merge manual`,
+   etc.). Guidance `batch off` sets `EPIC_BATCH=off`; `epic close auto` sets `EPIC_CLOSE_MODE=auto`;
+   `epic merge auto` sets `EPIC_MERGE_MODE=auto`; `unit merge manual` sets `UNIT_MERGE_MODE=manual`.
 2. Fetch the epic: `gh issue view <epic> --json number,title,body,labels,state,url`. Confirm it is
    open and labelled `epic` (or has a story checklist in its body — if neither, stop and ask).
 3. Parse the epic body for checklist lines matching `- [ ] #<n>` (unchecked) and `- [x] #<n>` (done).
    Let `<pending>` = unchecked story numbers in checklist order; let `<done>` = already ticked.
 4. If `<pending>` is empty, go to **Stage 4 — Epic closure** (checklist complete).
 5. Initialize `<epic-capsule>` empty (or reload from a prior pause comment on the epic if resuming —
-   optional; do not invent state).
+   optional; do not invent state). Initialize `<epic-log>` from the latest `<!-- shipmates-epic-progress -->`
+   comment on epic `<epic>` when resuming — otherwise empty.
 6. If `DRY_RUN`, print `<epic>` title, `<done>`, `<pending>`, and continue through Stage 1.5 for the
-   unit plan — then stop before Stage 2.
+   unit plan — then stop before Stage 2 (Stage 0.5 prints the planned `<EPIC_BRANCH>` only; no branch
+   or PR is created).
+
+## Stage 0.5 — Epic integration branch  (orchestrator)
+
+Create or resume the **integration line** every unit lands on. Skip branch/PR mutation in `DRY_RUN`
+(print the planned names in the dry-run summary).
+
+1. Set `MAIN_BRANCH` from the repo default (see Config).
+2. **Resume** — when guidance includes `resume`, scan comments on epic `<epic>` for a prior `/ship-epic`
+   pause block containing `EPIC_BRANCH:` and `EPIC_PR:` (machine-readable lines the orchestrator posted).
+   If both resolve and `git ls-remote origin <EPIC_BRANCH>` succeeds, reuse them. If the branch is
+   missing, recreate per step 3 and note the recovery in the report.
+3. **Create** (when not resuming and branch does not already exist):
+   ```bash
+   git -C <repo> fetch origin
+   git -C <repo> push origin origin/<MAIN_BRANCH>:refs/heads/<EPIC_BRANCH>
+   ```
+   (Or branch locally and push — same result: `<EPIC_BRANCH>` tracks current `MAIN_BRANCH`.)
+4. **Open epic PR** — if `<EPIC_PR>` is unset, open one PR with base `MAIN_BRANCH`, head `<EPIC_BRANCH>`.
+   Title/body via `--body-file` (see **Shell safety**). Structure the body for fast captain review:
+
+   - **What this epic delivers** — one plain-language paragraph: epic goal plus which story numbers land
+     here (from the epic issue title/body; no jargon).
+   - **Quick review guide** — bullets: review once at epic completion (each unit already passed mandatory
+     PE+PO on its PR head); start with the story checklist; scan the combined diff for cross-story
+     interactions; trust green CI on this head; do not merge until every story is ticked.
+   - **Stories** — copy unchecked checklist lines from the epic body; refresh after each unit in Stage 3.5.
+   - **Shipped so far** — placeholder until the first unit lands; then copy from `<epic-log>`.
+   - **Integration** — epic issue link, integration branch name, and explicit note: merge only when the
+     epic is complete.
+
+   Record `<EPIC_PR>`.
+5. **Persist state** — post or **edit** the single `<!-- shipmates-epic-progress -->` comment on epic
+   `<epic>` (see **Stage 3.5**). Include machine-readable lines `EPIC_BRANCH:`, `EPIC_PR:`, `MAIN_BRANCH:`
+   so `/ship-epic <epic> resume` can reload. Update after every unit and every pause — one living
+   comment, not a new thread per unit.
 
 ## Stage 1 — Story graph  (orchestrator)
 
@@ -180,10 +237,20 @@ For each `<unit>`:
 4. **Build delegation guidance** (compact prose, not a transcript). Include:
    - `epic-run` — story numbers in this unit belong to epic `<epic>`; do **not** scan the wider
      backlog or propose bundle widening beyond this unit's story list.
+   - `epic-id=<epic>` — parent epic issue number; `/ship-issue` must return an **Epic unit record**
+     block in its final report (see that command) so this orchestrator can append to `<epic-log>`.
+   - `epic-base=<EPIC_BRANCH>` — unit PR base and worktree cut from `origin/<EPIC_BRANCH>`, **not**
+     `MAIN_BRANCH`.
    - `epic-plan` — paste the unit's pre-classification (complexity + flags per story); the
      story-level Planner should treat this as the starting plan and amend only on contradiction.
    - `epic-capsule` — paste `<epic-capsule>` when non-empty (validation commands, paths, conventions
      from prior units in this run).
+   - `MERGE_MODE=<UNIT_MERGE_MODE>` — merge the green unit PR into `<EPIC_BRANCH>` via `/ship-issue`
+     Stage 8 when `UNIT_MERGE_MODE=auto` (default). When `manual`, or when any story in the unit is
+     flagged `IS_SECURITY_SENSITIVE`, pass `MERGE_MODE=manual` and **pause after the unit** per the
+     **Manual unit merge** hard limit — do not advance to the next unit until the captain merges into
+     `<EPIC_BRANCH>` and the orchestrator resumes. **Never ask the captain to merge a green epic unit when
+     `UNIT_MERGE_MODE=auto`.**
    - Tier hint — when **every** story in the unit is `trivial` and no specialist flags are set,
      include `complexity tier: simple` so `/ship-issue` takes the Simple path. When all are
      `trivial` or `standard` with no arch/security/delivery flags, include `complexity tier: medium`.
@@ -193,28 +260,33 @@ For each `<unit>`:
    two-story unit. Singleton: `/ship-issue 103 epic-run …`. Do **not** set `BUNDLE=off` — explicit
    multi-story tokens **are** the bundle; singletons behave as today.
 6. **Outcome:**
-   - **Success** → Stage 3 for **each** story in the unit (tick every checklist line the unit
-     closed), extend `<epic-capsule>` with validation commands used, key paths touched, and any
-     convention the board enforced — keep the capsule **short** (bullet list, not a narrative).
-     Continue to the next unit.
+   - **Success (auto-merged)** — unit used `MERGE_MODE=auto` and landed on `<EPIC_BRANCH>` → Stage 3 for
+     **each** story in the unit (tick every checklist line the unit closed), **Stage 3.5** (append unit
+     delivery + review summary to `<epic-log>` and refresh epic PR notes), extend `<epic-capsule>` with
+     validation commands used, key paths touched, and any convention the board enforced — keep the
+     capsule **short** (bullet list, not a narrative). Continue to the next unit.
+   - **Success (manual merge required)** — unit finished with `MERGE_MODE=manual` and a green PR open →
+     **pause the epic loop** (hard limit **Manual unit merge**): post state (`EPIC_BRANCH`, `EPIC_PR`,
+     unit PR link, `/ship-epic <epic> resume`). **Stop** — captain merges the unit PR into
+     `<EPIC_BRANCH>`, then resume.
    - **`/ship-issue` escalated after `MAX_FIX_ROUNDS`** → **pause the epic loop** with state report
-     (epic, completed units, current unit, PR link, failure summary, `/ship-epic <epic> resume`).
-     **Stop.**
+     (epic, `EPIC_BRANCH`, `EPIC_PR`, completed units, current unit, PR link, failure summary,
+     `/ship-epic <epic> resume`). **Stop.**
    - **Red CI / fix in progress** → **not** an epic pause. The delegation must finish Stage 4.5
      inside `/ship-issue` before returning. If it returned early, **re-delegate** with explicit
      guidance `finish-ci-gate` — do not end the epic turn.
    - **Gate mid-run** → pause and stop (same as step 2).
 
-**Pre-existing CI on the base branch** — when a failing check **already fails on the merge base**
-(same job red on the default branch) and the unit PR touches unrelated files:
+**Pre-existing CI on the merge base** — when a failing check **already fails on `<EPIC_BRANCH>`**
+(same job red on the epic integration line) and the unit PR touches unrelated files:
 
 - **Not an epic pause.** Remediation belongs in **this unit's** `/ship-issue` run (Stage 4.5).
 - Fix what makes **this PR head** green: format only touched files if that suffices; otherwise fix
   the minimal set the log requires; gate or skip tests that cannot run under the repo's build flags
   when that matches project convention.
-- Document extra commits in the PR (note the job was already red on the base branch). Escalate to
+- Document extra commits in the PR (note the job was already red on `<EPIC_BRANCH>`). Escalate to
   the captain **only** after `MAX_FIX_ROUNDS`, or when the fix is a one-way product decision — not
-  because the base branch is dirty.
+  because the integration branch is dirty.
 
 When every unit has succeeded, go to Stage 4.
 
@@ -228,22 +300,58 @@ After each successful unit, for **each story** in that unit:
 
 Backfill ticks for stories closed before this run but still unchecked in the epic body.
 
-`/ship-issue` may tick the epic when `MERGE_MODE=auto`; this stage ensures ticks on the **manual**
-path too.
+`/ship-issue` ticks the epic when `MERGE_MODE=auto`; this stage ensures ticks when a unit used
+`MERGE_MODE=manual` (gate / security-sensitive units).
+
+## Stage 3.5 — Epic progress log & PR notes  (orchestrator)
+
+After each auto-merged unit (and after a manual unit once the captain has merged it and the orchestrator
+resumes), ingest the delegated `/ship-issue` **Epic unit record** and update captain-facing artifacts.
+
+1. **Parse the unit record** from the delegation's final report (`EPIC_UNIT_RECORD:` block — stories,
+   PR link, merge SHA, one-line **delivered** summary per story, **reviews** one-liner, green CI link,
+   fix-round count).
+2. **Append to `<epic-log>`** — one bullet per unit, newest last. Shape: unit index, story numbers, PR
+   URL, merge SHA, one-line delivered summary, reviews one-liner, green CI link. Keep `<epic-log>`
+   scannable — no transcripts, no raw board dumps.
+3. **Edit the epic progress comment** on epic `<epic>` — single comment anchored
+   `<!-- shipmates-epic-progress -->`. Include: machine-readable `EPIC_BRANCH` / `EPIC_PR` / `MAIN_BRANCH`
+   lines; a **Shipped units** section (paste `<epic-log>` bullets); **Pending stories** (remaining
+   checklist lines); **Latest reviews** (one line from the most recent unit record); and an updated
+   timestamp. One living comment — edit in place, do not open a new thread per unit.
+
+4. **Refresh epic PR `<EPIC_PR>` body** via `--body-file` — keep **What this epic delivers** and **Quick
+   review guide** intact; update **Stories** checklist ticks, **Shipped so far** (copy `<epic-log>`), and
+   add a **Review status** line: "`U` of `N` stories landed; all units passed PE+PO board before merge
+   into `<EPIC_BRANCH>`." Goal: the captain opens epic PR or epic issue and knows what shipped and what
+   was already reviewed without opening every unit PR.
+
+On pause, include `<epic-log>` and a link to the progress comment in the pause report.
 
 ## Stage 4 — Epic closure  (orchestrator)
 
 When no `- [ ] #n` lines remain:
 
-- **`EPIC_CLOSE_MODE=manual`** (default): propose closing the epic.
-- **`EPIC_CLOSE_MODE=auto`**: `gh issue close <epic>` with shipped stories and PR links.
+1. **Epic PR gate** — poll `gh pr checks <EPIC_PR>` on the integration PR head until green or
+   `MAX_FIX_ROUNDS`-bounded fix loop exhausted (fix on `<EPIC_BRANCH>`, not on `MAIN_BRANCH`).
+2. **Finalize epic PR notes** — edit `<EPIC_PR>` body: confirm **Quick review guide** still accurate;
+   set **Shipped so far** to the full `<epic-log>`; add **Ready to merge** checklist (all stories ticked,
+   CI green, board summary: "Every unit passed mandatory PE+PO; see epic issue progress log for per-unit
+   verdicts."). Post the same summary on epic `<epic>` progress comment under `### Ready for captain`.
+3. **`EPIC_MERGE_MODE=manual`** (default): post completion summary with **epic PR `<EPIC_PR>`** link,
+   green CI link, pointer to epic progress comment, checklist state. **Stop** — the captain merges the
+   epic PR into `MAIN_BRANCH` once satisfied. Do **not** ask the captain to merge individual unit PRs.
+4. **`EPIC_MERGE_MODE=auto`** (guidance `epic merge auto`): squash-merge epic PR into `MAIN_BRANCH`
+   with `match-head-commit`, then run epic close per `EPIC_CLOSE_MODE`.
+5. **`EPIC_CLOSE_MODE`** — `manual`: propose closing epic `<epic>`; `auto`: `gh issue close <epic>`.
 
 ## Final report
 
-One concise summary: epic link, units shipped (`U` invocations for `N` stories), PR links per story,
-gate pauses, external blockers, capsule highlights, epic close state, and resume command if paused.
-For each pause, state **which hard-limit row fired** — "waiting for captain" without a limit name is
-a spec violation. Include **economy line**: "`N` stories in `U` `/ship-issue` runs" so the captain
+One concise summary: epic link, **epic progress comment** link on the epic issue, **epic PR `<EPIC_PR>`**
+link (integration vs `MAIN_BRANCH`), units shipped (`U` invocations for `N` stories), `<epic-log>`
+highlights, gate pauses, external blockers, capsule highlights, epic close state, and resume command if
+paused. For each pause, state **which hard-limit row fired** — "waiting for captain" without a limit name
+is a spec violation. Include **economy line**: "`N` stories in `U` `/ship-issue` runs" so the captain
 sees what batching saved.
 
 ---
@@ -262,13 +370,18 @@ sees what batching saved.
 - **Failure-aware** — never advance after `MAX_FIX_ROUNDS` exhaustion on a unit.
 - **No silent stops** — before ending a `/ship-epic` turn, name which hard-limit row fired. If none
   fired, you are **not allowed** to stop; continue the loop or re-delegate the current unit.
+- **No captain merge per unit** — green accepted units merge into `<EPIC_BRANCH>` via delegated
+  `MERGE_MODE=auto`. Never hand the captain a unit PR link and wait. The only default human merge gate
+  is the **epic PR** into `MAIN_BRANCH` at Stage 4.
 - **CI every unit** — economy comes from fewer Planner/board **invocations**, not from skipping
   validation or acceptance on shipped code.
 - **Orchestrator owns `gh`** — epic edits and loop control only; builders/reviewers live in
   `/ship-issue`.
-- **Domain-neutral** — read {{project-instructions}} at intake; pass the quality bar into Stage 1.5.
+- **Captain digest** — `<epic-log>` and the `<!-- shipmates-epic-progress -->` comment are the source of
+  truth for human review; epic PR notes stay in sync. Never leave the captain to reconstruct unit work
+  from scattered PR threads alone.
 
 ## Runtime input
 
 `$ARGUMENTS` contains the epic issue number and optional guidance. The first token is `<epic>`; the
-rest is guidance (`resume`, `dry run`, `epic close auto`, `batch off`, etc.).
+rest is guidance (`resume`, `dry run`, `epic close auto`, `epic merge auto`, `batch off`, `unit merge manual`, etc.).
