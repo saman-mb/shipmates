@@ -52,13 +52,15 @@ Hard limits that **pause the epic loop** (end the turn; post `/ship-epic <epic> 
 | Limit | When it fires |
 |-------|----------------|
 | **Gate story** | Unit contains a `gate`-labelled (or sign-off) story still awaiting human sign-off |
-| **External blocker, no shippable slice** | Every AC in the unit requires an owner action with no prep work the crew can land now |
 | **`MAX_FIX_ROUNDS` exhausted** | Stage 4.5 or Stage 6 on this unit could not get CI green / acceptance pass |
 | **Manual unit merge** | Unit used `MERGE_MODE=manual` (`IS_SECURITY_SENSITIVE`, `UNIT_MERGE_MODE=manual`, or other forced manual path) — green PR awaits captain merge into `<EPIC_BRANCH>` before the next unit |
 | **Shell safety abort** | Untrusted input, cycle in dependency graph, invalid epic token |
 
-Everything else — including **red CI on the unit PR**, **red CI already on `<EPIC_BRANCH>`**, and
-**partly blocked stories** — stays in the **fix / defer / next-unit** loop. Do **not** pause the epic.
+Everything else — including **red CI on the unit PR**, **red CI already on `<EPIC_BRANCH>`**,
+**partly blocked stories**, and **owner-only remainders** (DNS, registrar, deploy-console attach,
+or any AC that only the captain can flip with zero in-repo prep left) — stays in the **fix / defer /
+next-unit / crew-complete** loop. **Do not pause the epic** for owner-only work. Naming an external
+dependency is not a license to end the turn.
 
 **Confirmed-green CI** is a per-unit requirement inside `/ship-issue` Stage 4.5; remediate there, not
 by stopping `/ship-epic` early. Pause is **not** a substitute for the Fixer loop.
@@ -247,14 +249,14 @@ For each `<unit>`:
       `/ship-issue` on that slice; in the PR body note the residual owner action and link the blocker.
       **Do not pause the epic.**
 
-   b. **Residual only** — file or update a follow-up issue for the blocked flip / owner action.
-      Tick or comment on the story that prep shipped; leave the flip open.
+   b. **Owner-only remainder** — when every remaining AC for the unit truly requires the external
+      blocker and there is **zero** shippable remainder (`blocker_class: full`): record the owner
+      action in `<epic-log>` (residual, not a pause), file or update a follow-up if useful, tick or
+      comment on the story that prep shipped, leave the flip open, and **continue to the next unit**
+      without pausing. **Do not** post `/ship-epic <epic> resume` for owner DNS / registrar / deploy
+      console work.
 
-   c. **Pause only when** every remaining AC for the unit truly requires the external blocker and
-      there is **zero** shippable remainder (`blocker_class: full`). Then **pause** with blocker
-      details and **Stop**.
-
-   Do **not** pause the whole epic because one story is *partly* blocked.
+   Do **not** pause the whole epic because one story is *partly* blocked or *fully* owner-only.
 5. **Build delegation guidance** (compact prose, not a transcript). Include:
    - `epic-run` — story numbers in this unit belong to epic `<epic>`; do **not** scan the wider
      backlog or propose bundle widening beyond this unit's story list.
@@ -309,7 +311,8 @@ For each `<unit>`:
   the captain **only** after `MAX_FIX_ROUNDS`, or when the fix is a one-way product decision — not
   because the integration branch is dirty.
 
-When every unit has succeeded, go to Stage 4.
+When every unit has succeeded **or** every remaining unit was handled as **owner-only remainder**
+(step 4b) with nothing left to delegate, go to Stage 4.
 
 ## Stage 3 — Tick epic checklist  (orchestrator)
 
@@ -352,7 +355,7 @@ On pause, include `<epic-log>` and a link to the progress comment in the pause r
 
 ## Stage 4 — Epic closure  (orchestrator)
 
-When no `- [ ] #n` lines remain:
+**Full closure** — when no `- [ ] #n` lines remain on the epic checklist:
 
 1. **Epic PR gate** — poll `gh pr checks <EPIC_PR>` on the integration PR head until green or
    `MAX_FIX_ROUNDS`-bounded fix loop exhausted (fix on `<EPIC_BRANCH>`, not on `MAIN_BRANCH`).
@@ -367,14 +370,27 @@ When no `- [ ] #n` lines remain:
    with `match-head-commit`, then run epic close per `EPIC_CLOSE_MODE`.
 5. **`EPIC_CLOSE_MODE`** — `manual`: propose closing epic `<epic>`; `auto`: `gh issue close <epic>`.
 
+**Crew-complete (owner residuals remain)** — when `- [ ] #n` lines still exist but **every** pending
+story is owner-only with zero in-repo remainder (the crew has nothing left to delegate):
+
+1. Refresh epic progress comment: **Shipped units** (`<epic-log>`), **Owner residuals** (checklist per
+   pending story — what prep landed, what the captain must do), **Pending stories** (unchecked lines).
+2. Refresh epic PR `<EPIC_PR>` notes with the same split — crew work complete; owner checklist explicit.
+3. Post a **completion-style final report** on the epic issue (not a pause block — **no**
+   `/ship-epic <epic> resume`). State that the crew loop is **finished**; the captain is not the next
+   actor *of this command*.
+4. **Stop** — this is a normal terminal turn, not a hard-limit pause. Do **not** ask the captain to
+   poke the command again for owner DNS / registrar work.
+
 ## Final report
 
 One concise summary: epic link, **epic progress comment** link on the epic issue, **epic PR `<EPIC_PR>`**
 link (integration vs `MAIN_BRANCH`), units shipped (`U` invocations for `N` stories), `<epic-log>`
-highlights, gate pauses, external blockers, capsule highlights, epic close state, and resume command if
-paused. For each pause, state **which hard-limit row fired** — "waiting for captain" without a limit name
-is a spec violation. Include **economy line**: "`N` stories in `U` `/ship-issue` runs" so the captain
-sees what batching saved.
+highlights, gate pauses, **owner residuals** (distinct from pauses), capsule highlights, epic close or
+crew-complete state, and resume command **only if** a hard-limit pause occurred. For each pause, state
+**which hard-limit row fired** — "waiting for captain" without a limit name is a spec violation.
+Owner-only remainder must **not** appear as a pause reason. Include **economy line**: "`N` stories in
+`U` `/ship-issue` runs" so the captain sees what batching saved.
 
 ---
 
@@ -394,8 +410,12 @@ sees what batching saved.
   `retry-story <n>` is explicit.
 - **Gate-aware** — never auto-ship a gate-labelled story.
 - **Failure-aware** — never advance after `MAX_FIX_ROUNDS` exhaustion on a unit.
-- **No silent stops** — before ending a `/ship-epic` turn, name which hard-limit row fired. If none
-  fired, you are **not allowed** to stop; continue the loop or re-delegate the current unit.
+- **No silent stops** — before ending a `/ship-epic` turn on a **pause**, name which hard-limit row
+  fired. If none fired, you are **not allowed** to stop on a pause/resume handshake. Owner-only
+  remainder uses **crew-complete** (Stage 4) — a normal terminal report, not a pause.
+- **Owner-only remainder is not a pause** — DNS, registrar, deploy-console attach, or any AC only the
+  captain can satisfy with zero in-repo slice left: record residual, continue or crew-complete; never
+  post `/ship-epic <epic> resume` for it.
 - **No captain merge per unit** — green accepted units merge into `<EPIC_BRANCH>` via delegated
   `MERGE_MODE=auto`. Never hand the captain a unit PR link and wait. The only default human merge gate
   is the **epic PR** into `MAIN_BRANCH` at Stage 4.
