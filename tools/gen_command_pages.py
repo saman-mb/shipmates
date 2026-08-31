@@ -2,14 +2,11 @@
 """Generate site/commands/<slug>/index.html and site/agents/<role>/index.html —
 one detail page per command, one per agent.
 
-Honest by construction: every command-specific sentence on a command page is a
-markdown-rendered projection of skills/<slug>/SKILL.md — no invented stage names,
-gates, crew, counts, durations or file names. Only command-agnostic chrome
-("How to run it", "The stages", "Other commands") is authored here. Anything the
-parser does not recognise raises with a file:line and a remedy rather than being
-silently dropped or passed through, and every non-blank source line must be
-claimed by a block. Deterministic and committed, matching the repo's other
-generators. Regenerate with:  python3 tools/gen_command_pages.py
+Command pages are a **human guide layer**: what the command is, when to use it,
+and the process it encodes — authored in COMMAND_PAGE_COPY, including which
+crew roles sit on each step. They do **not** dump the install skill
+(`commands/*.md`) onto the site. The skill stays the agent-facing spec; the
+page links to it on GitHub. Regenerate with:  python3 tools/gen_command_pages.py
 
 Agent pages project the agents/<role>.md frontmatter (name/description/tools)
 verbatim; their editorial copy (tagline, what/scenarios/checks/crew-fit) is
@@ -39,6 +36,11 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+_TOOLS = Path(__file__).resolve().parent
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
+from command_page_copy import COMMAND_PAGE_COPY, CommandPageCopy, ProcessStep
 
 # ---------------------------------------------------------------------------
 # Constants (the generator's whole non-source input; see the drift invariant)
@@ -100,7 +102,15 @@ LASTMOD = "2026-07-25"
 
 # Section ids reserved by the page skeleton; a source heading may not claim one.
 RESERVED_ANCHORS = frozenset(
-    {"invoke", "stages", "config", "guardrails", "source", "other-commands", "main", "top"}
+    {
+        "invoke",
+        "process",
+        "when-to-use",
+        "source",
+        "other-commands",
+        "main",
+        "top",
+    }
 )
 
 # Spelled out so the stages lead reads as prose; derived, never hand-typed.
@@ -1817,6 +1827,88 @@ def check_agent_copy(role: str, copy: AgentCopy) -> None:
             bad(f"related role {rel!r} is not a known agent", f"use one of: {', '.join(AGENT_ROLES)}")
 
 
+COMMAND_PAGE_COPY_SRC = "tools/command_page_copy.py"
+
+
+def check_command_page_copy(slug: str, copy: CommandPageCopy, cmd: Command) -> None:
+    """Shape rules on the site guide layer — enforced at build time."""
+    src = COMMAND_PAGE_COPY_SRC
+
+    def bad(what: str, remedy: str) -> None:
+        raise SourceError(src, 1, f"COMMAND_PAGE_COPY['{slug}']: {what}", "", remedy)
+
+    if not copy.guide_blurb.strip():
+        bad("empty guide_blurb", "write one plain sentence (≤120 chars)")
+    if len(copy.guide_blurb) > 120:
+        bad(f"guide_blurb is {len(copy.guide_blurb)} chars", "keep guide_blurb to 120 characters")
+    if not 2 <= len(copy.when_to_use) <= 3:
+        bad(f"{len(copy.when_to_use)} when_to_use bullets", "allow 2-3 bullets")
+    if not 4 <= len(copy.process) <= 6:
+        bad(f"{len(copy.process)} process steps", "allow 4-6 journey steps")
+    if copy.process_lead and len(copy.process_lead) > 280:
+        bad(f"process_lead is {len(copy.process_lead)} chars", "keep process_lead under 280 characters")
+    for i, step in enumerate(copy.process):
+        words = len(step.label.split())
+        if not 1 <= words <= 4:
+            bad(f"process[{i}] label {step.label!r} is {words} words", "labels are 1-4 words")
+        line_words = len(step.line.split())
+        if not step.line.strip():
+            bad(f"process[{i}] line is empty", "write one or two short sentences per step")
+        if line_words > 32:
+            bad(f"process[{i}] line is {line_words} words", "keep each line to ~24 words")
+        seen = set()
+        for role in step.always:
+            if role not in AGENT_ROLES:
+                bad(f"process[{i}] always {role!r} is not a known role", f"use one of: {', '.join(AGENT_ROLES)}")
+            if role in seen:
+                bad(f"process[{i}] repeats {role!r}", "a role is always or also, not both")
+            seen.add(role)
+        for seat in step.also:
+            if seat.role not in AGENT_ROLES:
+                bad(f"process[{i}] also {seat.role!r} is not a known role", f"use one of: {', '.join(AGENT_ROLES)}")
+            if not seat.when.strip():
+                bad(f"process[{i}] also {seat.role!r} has no criterion", "say when that role sits")
+            when_words = len(seat.when.split())
+            if when_words > 16:
+                bad(f"process[{i}] also {seat.role!r} when is {when_words} words", "keep the criterion to ~12 words")
+            if seat.role in seen:
+                bad(f"process[{i}] repeats {seat.role!r}", "a role is always or also, not both")
+            seen.add(seat.role)
+        if not step.always and not step.also and not step.solo.strip():
+            bad(f"process[{i}] has no crew and no solo note", "name who sits, or say the run does it with no spawn")
+        if (step.always or step.also) and step.solo.strip():
+            bad(f"process[{i}] has seats and a solo note", "solo is for steps with no specialist")
+
+
+def validate_command_page_copy(cmds: tuple) -> None:
+    """Every SLUGS entry has COMMAND_PAGE_COPY and vice versa; shape-check each."""
+    on_slugs = {cmd.slug for cmd in cmds}
+    for slug in SLUGS:
+        if slug not in COMMAND_PAGE_COPY:
+            raise SourceError(
+                COMMAND_PAGE_COPY_SRC,
+                1,
+                "command has no COMMAND_PAGE_COPY entry",
+                "",
+                f"add a COMMAND_PAGE_COPY entry for {slug!r} in tools/command_page_copy.py",
+            )
+    for slug in sorted(COMMAND_PAGE_COPY):
+        if slug not in SLUGS:
+            raise SourceError(
+                COMMAND_PAGE_COPY_SRC,
+                1,
+                "COMMAND_PAGE_COPY entry has no command",
+                "",
+                f"remove {slug!r} from COMMAND_PAGE_COPY or add it to SLUGS",
+            )
+    for cmd in cmds:
+        check_command_page_copy(cmd.slug, COMMAND_PAGE_COPY[cmd.slug], cmd)
+
+
+def command_page_copy(cmd: Command) -> CommandPageCopy:
+    return COMMAND_PAGE_COPY[cmd.slug]
+
+
 def derive_called_by(skills_dir: Path, roles: tuple) -> dict:
     """role -> slugs of the commands mentioning the role."""
     called = {role: [] for role in roles}
@@ -3014,12 +3106,14 @@ def _head(
 
 
 def render_head(cmd: Command, ctx: PageContext) -> str:
+    copy = command_page_copy(cmd)
+    desc = copy.guide_blurb if copy else cmd.frontmatter.description
     return _head(
         full_title=page_title(cmd) + " · Shipmates",
         social_title=page_title(cmd),
-        description=truncate_words(cmd.frontmatter.description, MAX_META_DESCRIPTION),
+        description=truncate_words(desc, MAX_META_DESCRIPTION),
         url=canonical_url(cmd.slug, ctx),
-        jsonld=render_jsonld(cmd, ctx),
+        jsonld=render_jsonld(cmd, ctx, copy),
         ctx=ctx,
     )
 
@@ -3033,35 +3127,38 @@ def _jsonld_script(payload: dict) -> str:
     return '<script type="application/ld+json">\n' + body + "\n</script>"
 
 
-def _step_text(cmd: Command, stage: Stage) -> str:
-    for text in block_texts(stage.blocks):
-        summary = plain_inline(text)
-        if summary:
-            return truncate_words(summary, MAX_JSONLD_TEXT)
-    for block in stage.blocks:
-        if isinstance(block, Code) and block.lines:
-            return truncate_words("\n".join(block.lines).strip(), MAX_JSONLD_TEXT)
-    return stage.title
+def _howto_step_text(step: ProcessStep) -> str:
+    """Plain-text HowToStep: what happens, then who sits and when."""
+    parts = [step.line.rstrip(".")]
+    if step.always:
+        parts.append("Always: " + ", ".join(step.always))
+    if step.also:
+        extras = "; ".join(f"{seat.role} ({seat.when})" for seat in step.also)
+        parts.append("Also sit when: " + extras)
+    if step.solo:
+        parts.append(step.solo.rstrip("."))
+    return ". ".join(parts) + "."
 
 
-def render_jsonld(cmd: Command, ctx: PageContext) -> str:
-    """Exactly one ld+json block per page — the site validator concatenates them."""
+def render_jsonld(cmd: Command, ctx: PageContext, copy: CommandPageCopy | None = None) -> str:
+    """HowTo from the human guide process — not every skill stage."""
     url = canonical_url(cmd.slug, ctx)
+    steps = copy.process if copy else tuple()
     payload = {
         "@context": "https://schema.org",
         "@type": "HowTo",
         "name": f"/{cmd.slug}",
-        "description": cmd.frontmatter.description,
+        "description": copy.guide_blurb if copy else cmd.frontmatter.description,
         "url": url,
         "step": [
             {
                 "@type": "HowToStep",
                 "position": position,
-                "name": f"Stage {stage.label} — {plain_inline(stage.title)}",
-                "text": _step_text(cmd, stage),
-                "url": f"{url}#{stage.anchor}",
+                "name": step.label,
+                "text": _howto_step_text(step),
+                "url": f"{url}#step-{position}",
             }
-            for position, stage in enumerate(cmd.stages, start=1)
+            for position, step in enumerate(steps, start=1)
         ],
     }
     return _jsonld_script(payload)
@@ -3133,15 +3230,16 @@ def render_agent_back_link() -> str:
     return _back_link("../../#crew", "All crew")
 
 
-def render_hero(cmd: Command, src: str) -> str:
+def render_hero(cmd: Command, src: str, copy: CommandPageCopy | None = None) -> str:
     flag = ""
     if cmd.slug == FLAGSHIP_SLUG:
         flag = '\n          <span class="order-detail__flag">Flagship</span>'
-    # The frontmatter description is the one-line summary (it is also the meta
-    # description); the intro blocks are the skill file's own lede and follow it.
-    intro = render_prose(cmd.intro, src, "          ")
-    if intro:
-        intro = "\n" + intro
+    desc = copy.guide_blurb if copy else cmd.frontmatter.description
+    intro = ""
+    if not copy:
+        intro = render_prose(cmd.intro, src, "          ")
+        if intro:
+            intro = "\n" + intro
     return f"""    <section class="section" aria-labelledby="order-title">
       <div class="container container--prose">
         {render_back_link()}
@@ -3149,7 +3247,7 @@ def render_hero(cmd: Command, src: str) -> str:
           <p class="section__eyebrow"><span aria-hidden="true">\U0001f4dc</span> Command</p>{flag}
           <h1 class="order-detail__title" id="order-title"><code>/{esc(cmd.slug)}</code></h1>
           <p class="order-detail__tagline">{esc(cmd.tagline)}</p>
-          <p class="order-detail__desc">{esc(cmd.frontmatter.description)}</p>{intro}
+          <p class="order-detail__desc">{esc(desc)}</p>{intro}
         </div>
       </div>
     </section>"""
@@ -3258,47 +3356,42 @@ def annotation_residue(st: Stage) -> str:
     return re.sub(r"\s+", " ", inner).strip(" ,")
 
 
-def render_stage(st: Stage, src: str) -> str:
-    """DOM order is visual order: num, title, gate, crew, body. No `order:` shuffling."""
+def _render_stage_crew(st: Stage, src: str) -> str:
+    """Crew chips + qualifier for a stage header (visible when accordion is collapsed)."""
+    if not (st.crew or st.annotation):
+        return ""
+    bits = ["Crew:"]
+    bits.extend(
+        f'<span class="chip order-stage__crew-item"><code>{esc(name)}</code></span>'
+        for name in st.crew
+    )
+    if st.annotation:
+        if st.crew:
+            residue = annotation_residue(st)
+            if residue:
+                bits.append(render_inline(f"({residue})", src, st.lineno))
+        else:
+            bits.append(render_inline(st.annotation, src, st.lineno))
+    return '  <p class="order-stage__crew">' + " ".join(bits) + "</p>"
+
+
+def render_stage(st: Stage, src: str, *, summary: str = "") -> str:
+    """One-line process step — no skill body, no accordion."""
+    line = summary or plain_inline(st.title)
     parts = [
         f'<li class="order-stage" id="{esc(st.anchor)}">',
         f'  <span class="order-stage__num" aria-hidden="true">{esc(st.label)}</span>',
-        '  <h3 class="order-stage__title"><span class="visually-hidden">Stage '
-        f'{esc(st.label)} — </span>{render_inline(st.title, src, st.lineno)}</h3>',
+        '  <div class="order-stage__main">',
+        f'    <h3 class="order-stage__title"><span class="visually-hidden">Stage '
+        f'{esc(st.label)} — {render_inline(st.title, src, st.lineno)}</span>'
+        f'<span class="order-stage__summary-text">{esc(line)}</span></h3>',
     ]
     if st.gate:
         parts.append(
-            '  <p class="order-stage__gate"><span class="visually-hidden">Gate: </span>'
-            f'<span aria-hidden="true">{GATE_MARK}</span> '
-            f"{render_inline(st.gate, src, st.lineno)}</p>"
+            '    <p class="order-stage__gate"><span class="visually-hidden">Gate. </span>'
+            "Hard gate — the run stops here until this step passes.</p>"
         )
-    if st.crew or st.annotation:
-        # [C-2] Names live in the chips now, so the source's parenthetical only
-        # earns a place beside them when it says something the chips can't — a
-        # qualifier ("fresh pass", "x N, parallel", "for runtime/ops bugs"). An
-        # annotation that reduces to nothing but the names and the agent:/
-        # agents: scaffolding is dropped instead of repeating the chips in
-        # prose (#136). Annotations with no recognised crew (MODE=pr notes,
-        # "specialist agents, in parallel") have nothing to de-duplicate
-        # against and still render verbatim.
-        bits = ["Crew:"]
-        bits.extend(
-            f'<span class="chip order-stage__crew-item"><code>{esc(name)}</code></span>'
-            for name in st.crew
-        )
-        if st.annotation:
-            if st.crew:
-                residue = annotation_residue(st)
-                if residue:
-                    bits.append(render_inline(f"({residue})", src, st.lineno))
-            else:
-                bits.append(render_inline(st.annotation, src, st.lineno))
-        parts.append('  <p class="order-stage__crew">' + " ".join(bits) + "</p>")
-    if st.blocks:
-        parts.append('  <div class="order-stage__body">')
-        parts.append(render_prose(st.blocks, src, "    "))
-        parts.append("  </div>")
-    parts.append("</li>")
+    parts.extend(["  </div>", "</li>"])
     return indent_html("\n".join(parts), "          ")
 
 
@@ -3334,29 +3427,126 @@ def render_extra_sections(sections: tuple, src: str) -> str:
     return "\n".join(out)
 
 
-def render_stages(cmd: Command, src: str) -> str:
-    before = render_extra_sections(cmd.sections_before_stages, src)
-    after = render_extra_sections(cmd.sections_after_stages, src)
-    body = "\n".join(render_stage(stage, src) for stage in cmd.stages)
-    parts = [
-        '    <section class="section" id="stages" aria-labelledby="stages-title">',
-        '      <div class="container container--prose">',
-        '        <div class="section__head">',
-        '          <p class="section__eyebrow">Step by step</p>',
-        '          <h2 class="section__title" id="stages-title">The stages</h2>',
-        f'          <p class="section__lead">{esc(_stages_lead(cmd))}</p>',
-        "        </div>",
-    ]
-    if before:
-        parts.append(before)
-    parts.append('        <ol class="order-stages" role="list">')
-    parts.append(body)
-    parts.append("        </ol>")
-    if after:
-        parts.append(after)
-    parts.append("      </div>")
-    parts.append("    </section>")
-    return "\n".join(parts)
+def _command_crew(cmd: Command) -> tuple:
+    """Ordered, de-duplicated crew names across all stages (first appearance wins)."""
+    seen: dict[str, None] = {}
+    for stage in cmd.stages:
+        for name in stage.crew:
+            seen.setdefault(name, None)
+    return tuple(seen)
+
+
+def render_crew_involved(cmd: Command) -> str:
+    """At-a-glance strip linking to agent pages for every role named in stages."""
+    crew = _command_crew(cmd)
+    if not crew:
+        return ""
+    chips = []
+    for name in crew:
+        href = link(f"../../agents/{name}/")
+        chips.append(
+            f'<a class="chip order-crew__chip" href="{href}"><code>{esc(name)}</code></a>'
+        )
+    listing = "\n".join(f"          {chip}" for chip in chips)
+    return f"""    <section class="section order-crew" id="crew-involved" aria-labelledby="crew-involved-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="crew-involved-title">Who&rsquo;s involved</h2>
+          <p class="section__lead">Roles referenced across the stages below.</p>
+        </div>
+        <div class="order-crew__strip" role="list">
+{listing}
+        </div>
+      </div>
+    </section>"""
+
+
+def render_when_to_use(copy: CommandPageCopy) -> str:
+    bullets = "\n".join(f"          <li>{esc(line)}</li>" for line in copy.when_to_use)
+    return f"""    <section class="section order-when" id="when-to-use" aria-labelledby="when-to-use-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="when-to-use-title">When to use</h2>
+        </div>
+        <ul class="order-when__list">
+{bullets}
+        </ul>
+      </div>
+    </section>"""
+
+
+def _crew_chip(name: str) -> str:
+    href = link(f"../../agents/{name}/")
+    return (
+        f'<a class="chip order-stage__crew-item order-process__chip" href="{href}">'
+        f"<code>{esc(name)}</code></a>"
+    )
+
+
+def _process_crew_html(step: ProcessStep) -> str:
+    """Who sits — always chips, then optional seats with the criterion that pulls them."""
+    if not step.always and not step.also:
+        if step.solo:
+            return f'<p class="order-process__crew order-process__crew--solo">{esc(step.solo)}</p>'
+        return ""
+    bands = []
+    if step.always:
+        label = "Always" if step.also else "Crew"
+        chips = " ".join(_crew_chip(name) for name in step.always)
+        bands.append(
+            f'<div class="order-process__band">'
+            f'<p class="order-process__crew-label">{label}</p>'
+            f'<p class="order-process__chips">{chips}</p>'
+            f"</div>"
+        )
+    if step.also:
+        label = "Also sit when" if step.always else "Sit when"
+        items = []
+        for seat in step.also:
+            items.append(
+                f'<li class="order-process__when-item">'
+                f"{_crew_chip(seat.role)}"
+                f'<span class="order-process__when-text">{esc(seat.when)}</span>'
+                f"</li>"
+            )
+        bands.append(
+            f'<div class="order-process__also">'
+            f'<p class="order-process__crew-label">{label}</p>'
+            f'<ul class="order-process__when">{"".join(items)}</ul>'
+            f"</div>"
+        )
+    return f'<div class="order-process__crew">{"".join(bands)}</div>'
+
+
+def render_process(copy: CommandPageCopy) -> str:
+    items = []
+    for i, step in enumerate(copy.process, start=1):
+        crew = _process_crew_html(step)
+        items.append(
+            f'          <li class="order-process__item" id="step-{i}">'
+            f'<span class="order-process__num" aria-hidden="true">{i}</span>'
+            f'<div class="order-process__body">'
+            f'<h3 class="order-process__label">{esc(step.label)}</h3>'
+            f'<p class="order-process__line">{esc(step.line)}</p>'
+            f"{crew}"
+            f"</div></li>"
+        )
+    listing = "\n".join(items)
+    lead = (
+        f'\n        <p class="order-process__lead">{esc(copy.process_lead)}</p>'
+        if copy.process_lead
+        else ""
+    )
+    return f"""    <section class="section order-process" id="process" aria-labelledby="process-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="process-title">How it works</h2>
+        </div>{lead}
+        <ol class="order-process__list" role="list">
+{listing}
+        </ol>
+      </div>
+    </section>"""
 
 
 def render_section(section, section_id: str, src: str):
@@ -3377,12 +3567,12 @@ def render_source(cmd: Command, ctx: PageContext) -> str:
     return f"""    <section class="section order-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="source-title">Where this lives</h2>
+          <h2 class="section__title" id="source-title">The skill</h2>
         </div>
-        <p>This page is generated from <code>{esc(cmd.source_path)}</code>. The installer copies it to <code>~/.claude/skills/{esc(cmd.slug)}/SKILL.md</code> for every project, or <code>.claude/skills/{esc(cmd.slug)}/SKILL.md</code> inside a single repo.</p>
+        <p>The installer ships the full skill — stages, gates, config — from <code>{esc(cmd.source_path)}</code>.</p>
         <a class="btn btn--secondary" href="{link(blob)}">
           {GITHUB_ICON}
-          <span>View {esc(cmd.source_path)} on GitHub</span>
+          <span>Read the skill on GitHub</span>
         </a>
       </div>
     </section>"""
@@ -3422,13 +3612,13 @@ def render_siblings(cmd: Command, all_cmds: tuple) -> str:
 
 def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
     src = cmd.source_path
+    copy = command_page_copy(cmd)
     sections = [
-        render_hero(cmd, src),
+        render_hero(cmd, src, copy),
         render_demo(cmd),
         render_invoke(cmd),
-        render_stages(cmd, src),
-        render_section(cmd.config, "config", src),
-        render_section(cmd.guardrails, "guardrails", src),
+        render_process(copy),
+        render_when_to_use(copy),
         render_source(cmd, ctx),
         render_siblings(cmd, all_cmds),
     ]
@@ -4150,6 +4340,7 @@ def main(argv=None) -> int:
         rendered = Path(payload) / "harnesses" / SITE_TARGET / ".claude"
         agents = load_agents(rendered / "agents", rendered / "skills")
         cmds = load_skills(rendered / "skills", tuple(agent.name for agent in agents))
+        validate_command_page_copy(cmds)
         # Tools come from the repo `toolbox/` source, not the rendered payload —
         # a plain `build` excludes tools unless selected, so they aren't in `rendered`.
         tools = load_tools(root / "toolbox")

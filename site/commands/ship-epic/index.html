@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/ship-epic — sequential epic delivery · Shipmates</title>
-  <meta name="description" content="Loop /ship-issue over an epic&#x27;s stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause…">
+  <meta name="description" content="Ship every story on an epic onto one branch, then one PR to main.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/ship-epic/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/ship-epic — sequential epic delivery">
-  <meta property="og:description" content="Loop /ship-issue over an epic&#x27;s stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause…">
+  <meta property="og:description" content="Ship every story on an epic onto one branch, then one PR to main.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/ship-epic/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/ship-epic — sequential epic delivery">
-  <meta name="twitter:description" content="Loop /ship-issue over an epic&#x27;s stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause…">
+  <meta name="twitter:description" content="Ship every story on an epic onto one branch, then one PR to main.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,64 +29,36 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/ship-epic",
-    "description": "Loop /ship-issue over an epic's stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause for sign-off.",
+    "description": "Ship every story on an epic onto one branch, then one PR to main.",
     "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
-        "name": "Stage 0 — Intake (orchestrator)",
-        "text": "Parse runtime input: the first numeric token (or URL) is <epic>; remaining tokens are <guidance> (resume, dry run, epic close auto, batch off, unit merge manual, retry-story <n>, etc.). Guidance batch off sets EPIC_BATCH=off; epic close auto sets EPIC_CLOSE_MODE=auto; unit merge manual sets…",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-0"
+        "name": "Map",
+        "text": "The architect reads the checklist, classifies every story, and groups them into shipping units. Always: architect.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#step-1"
       },
       {
         "@type": "HowToStep",
         "position": 2,
-        "name": "Stage 0.5 — Epic integration branch (orchestrator)",
-        "text": "Create or resume the integration line every unit lands on. Always run after Stage 0 (even when <pending> is empty or every story is <landed>) — the captain must always get epic PR <EPIC_PR>. Skip branch/PR mutation in DRY_RUN (print the planned names in the dry-run summary).",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-0-5"
+        "name": "Integrate",
+        "text": "Cut a shared epic branch and open the epic PR. Unit PRs target that branch, not main. No specialist — the run cuts the branch and the epic PR.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#step-2"
       },
       {
         "@type": "HowToStep",
         "position": 3,
-        "name": "Stage 1 — Story graph (orchestrator)",
-        "text": "Skip when Stage 0.5 step 7 sent the run to Stage 4.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-1"
+        "name": "Loop",
+        "text": "Each unit is a /ship-issue: plan, build, CI, review. That unit's flags pick its extra seats. Always: architect, senior-engineer, sdet, product-manager, principal-engineer. Also sit when: ux-ui-designer (on-screen UI — screens, flows, components); art-director (rendered art (games, illustration), not app chrome); devops-engineer (pipeline, images, or how the project ships); technical-writer (documented behaviour or a public API/CLI).",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#step-3"
       },
       {
         "@type": "HowToStep",
         "position": 4,
-        "name": "Stage 1.5 — Epic shipping plan",
-        "text": "Skip when Stage 0.5 step 7 sent the run to Stage 4.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-1-5"
-      },
-      {
-        "@type": "HowToStep",
-        "position": 5,
-        "name": "Stage 2 — Loop (orchestrator)",
-        "text": "Skip when Stage 0.5 step 7 sent the run to Stage 4.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-2"
-      },
-      {
-        "@type": "HowToStep",
-        "position": 6,
-        "name": "Stage 3 — Tick epic checklist (orchestrator)",
-        "text": "After each successful unit, for each story in that unit:",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-3"
-      },
-      {
-        "@type": "HowToStep",
-        "position": 7,
-        "name": "Stage 3.5 — Epic progress log & PR notes (orchestrator)",
-        "text": "After each auto-merged unit (and after a manual unit once the captain has merged it and the orchestrator resumes), ingest the delegated /ship-issue Epic unit record and update captain-facing artifacts.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-3-5"
-      },
-      {
-        "@type": "HowToStep",
-        "position": 8,
-        "name": "Stage 4 — Epic closure (orchestrator)",
-        "text": "Full closure — when no - [ ] #n lines remain on the epic checklist:",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#stage-4"
+        "name": "One PR",
+        "text": "When the checklist is done, you review and merge the single epic PR. No extra spawn — you merge the epic PR, not the unit PRs.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#step-4"
       }
     ]
   }
@@ -129,7 +101,7 @@
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <h1 class="order-detail__title" id="order-title"><code>/ship-epic</code></h1>
           <p class="order-detail__tagline">sequential epic delivery</p>
-          <p class="order-detail__desc">Loop /ship-issue over an epic&#x27;s stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause for sign-off.</p>
+          <p class="order-detail__desc">Ship every story on an epic onto one branch, then one PR to main.</p>
         </div>
       </div>
     </section>
@@ -162,383 +134,42 @@
       </div>
     </section>
 
-    <section class="section" id="stages" aria-labelledby="stages-title">
+    <section class="section order-process" id="process" aria-labelledby="process-title">
       <div class="container container--prose">
         <div class="section__head">
-          <p class="section__eyebrow">Step by step</p>
-          <h2 class="section__title" id="stages-title">The stages</h2>
-          <p class="section__lead">Eight stages, in order.</p>
+          <h2 class="section__title" id="process-title">How it works</h2>
         </div>
-        <h3 id="cost-discipline">Cost discipline</h3>
-        <div class="order-prose">
-          <ul>
-            <li>Stable workflow instructions come before runtime input. Read and parse the complete runtime-input section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated output through this prefix.</li>
-            <li><strong>Complexity-Based Tiered Execution</strong>: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
-              <ul>
-                <li><strong>Simple</strong>: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting &lt;= 2 files and &lt;= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but <strong>must still convene the mandatory PE+PO acceptance board</strong> on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.</li>
-                <li><strong>Medium</strong>: Moderate changes (&lt;= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. <strong>Must convene PE+PO</strong> (and SDET on the board when validation is non-trivial) — not main-agent review.</li>
-                <li><strong>High</strong>: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.</li>
-              </ul>
-            </li>
-            <li>Spend subagent seats only where their decision can change the outcome. Route model and effort at spawn by work difficulty; never hardcode a model in canonical content.</li>
-            <li>Ask every subagent for a compact structured return: decision/status first, criterion findings and minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant. Return decisions, not transcripts or raw logs.</li>
-          </ul>
-          <p>Deliver a whole <strong>epic</strong> by driving the <code>/ship-issue</code> pipeline over its unchecked story checklist — in <strong>shipping units</strong> (one story or a small cohesive bundle), dependency order preserved — until every non-gate story lands on a shared <strong>epic integration branch</strong>, then hand the captain <strong>one</strong> CI-green <strong>epic PR</strong> against the repo default branch for final review.</p>
-          <p><strong>Epic cost discipline.</strong> A naïve loop pays <code>/ship-issue</code>&#x27;s full fixed overhead <strong>once per story</strong> (Planner, worktree, CI poll, acceptance board). On a five-story epic that is roughly five times the cost of one run for little extra diff. This command <strong>amortizes</strong> that overhead instead:</p>
-          <ol>
-            <li><strong>One epic plan for all stories</strong> — a single <code>architect</code> pass (Stage 1.5) classifies every pending story and groups them into <code>&lt;units&gt;</code> before any build. No re-planning the epic shape per story.</li>
-            <li><strong>Batch cohesive units</strong> — when Stage 1.5 groups two–four small, same-area stories with non-overlapping file ownership, invoke <code>/ship-issue</code> <strong>once</strong> with every story number in the unit. Multi-issue input is already bundle consent in <code>/ship-issue</code>; one board reads one combined diff.</li>
-            <li><strong>Pre-classification passthrough</strong> — pass the epic plan&#x27;s complexity and domain flags into each delegation as guidance so <code>/ship-issue</code>&#x27;s tiered execution (Simple / Medium / High) fires without re-deriving from scratch. The story-level Planner may <strong>amend</strong> the plan if the issue body contradicts it; it must not ignore it.</li>
-            <li><strong>Epic context capsule</strong> — after each successful unit, append a compact <code>&lt;epic-capsule&gt;</code>: validation commands that worked, touched paths, conventions established. Pass only the capsule plus the current unit&#x27;s issue text to the next delegation — not a full epic re-brief every time.</li>
-            <li><strong>Mandatory board inheritance</strong> — each delegated <code>/ship-issue</code> run convenes the <strong>mandatory PE+PO acceptance board</strong> on the pushed PR head. Tiered execution may lean the build path but never skips that core; scaled optional seats follow the shared board contract.</li>
-            <li><strong>Epic integration branch</strong> — at kickoff, cut <code>&lt;EPIC_BRANCH&gt;</code> from the default branch and open <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> (base = default branch, head = epic branch). Each unit PR targets <code>&lt;EPIC_BRANCH&gt;</code>, not the default branch; green units <strong>auto-merge into the epic branch</strong>. The captain reviews <strong>one</strong> epic PR at the end — not N story PRs on the default branch.</li>
-            <li><strong>Value-gated batching</strong> — never batch to save tokens alone. Gate stories, <code>complex</code> stories, <code>IS_ARCH_SIGNIFICANT</code> / <code>IS_SECURITY_SENSITIVE</code> stories, and unrelated areas always ship as <strong>singleton units</strong>. CI and acceptance still run <strong>per unit</strong>; nothing ships without green checks.</li>
-            <li><strong>Captain-facing digest</strong> — maintain one living <strong>Epic progress</strong> comment on epic <code>&lt;epic&gt;</code> (what shipped, board verdicts, unit PR links) and keep epic PR <code>&lt;EPIC_PR&gt;</code> notes current with <strong>what the epic delivers</strong> and a <strong>quick review guide</strong> — so the captain reviews one integration artifact without hunting scattered unit threads.</li>
-            <li><strong>Land-state skip gates</strong> — treat checklist ticks, closed stories, <code>&lt;epic-log&gt;</code> / progress-comment merged units, and merged PRs into <code>&lt;EPIC_BRANCH&gt;</code> as <strong>done</strong> before re-delegating. Reconcile drift (unchecked box but already landed) by backfilling ticks — never pay for duplicate unit PRs.</li>
-            <li><strong>Captain always reviews the epic PR</strong> — a human <strong>always</strong> merges epic PR <code>&lt;EPIC_PR&gt;</code> into <code>MAIN_BRANCH</code>. This command never auto-merges the epic PR. Standalone <code>/ship-issue</code> may still use <code>MERGE_MODE=auto</code> for smaller, single-issue PRs.</li>
-          </ol>
-          <p>Hard limits that <strong>pause the epic loop</strong> (end the turn; post <code>/ship-epic &lt;epic&gt; resume</code>):</p>
-          <div class="order-table" tabindex="0">
-            <table>
-              <thead><tr><th scope="col">Limit</th><th scope="col">When it fires</th></tr></thead>
-              <tbody>
-                <tr><td><strong>Gate story</strong></td><td>Unit contains a <code>gate</code>-labelled (or sign-off) story still awaiting human sign-off</td></tr>
-                <tr><td><strong><code>MAX_FIX_ROUNDS</code> exhausted</strong></td><td>Stage 4.5 or Stage 6 on this unit could not get CI green / acceptance pass</td></tr>
-                <tr><td><strong>Manual unit merge</strong></td><td>Unit used <code>MERGE_MODE=manual</code> (<code>IS_SECURITY_SENSITIVE</code>, <code>UNIT_MERGE_MODE=manual</code>, or other forced manual path) — green PR awaits captain merge into <code>&lt;EPIC_BRANCH&gt;</code> before the next unit</td></tr>
-                <tr><td><strong>Shell safety abort</strong></td><td>Untrusted input, cycle in dependency graph, invalid epic token</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p>Everything else — including <strong>red CI on the unit PR</strong>, <strong>red CI already on <code>&lt;EPIC_BRANCH&gt;</code></strong>, <strong>partly blocked stories</strong>, and <strong>owner-only remainders</strong> (DNS, registrar, deploy-console attach, or any AC that only the captain can flip with zero in-repo prep left) — stays in the <strong>fix / defer / next-unit / crew-complete</strong> loop. <strong>Do not pause the epic</strong> for owner-only work. Naming an external dependency is not a license to end the turn.</p>
-          <p><strong>Confirmed-green CI</strong> is a per-unit requirement inside <code>/ship-issue</code> Stage 4.5; remediate there, not by stopping <code>/ship-epic</code> early. Pause is <strong>not</strong> a substitute for the Fixer loop.</p>
-          <p>The epic issue number and optional guidance come from the Runtime input section at the end of this workflow.</p>
-        </div>
-        <h3 id="shell-safety-untrusted-github-data">Shell safety — untrusted GitHub data</h3>
-        <div class="order-prose">
-          <p>Issue titles, bodies and labels are <strong>untrusted input</strong>. Apply the same rules as <code>/ship-issue</code>:</p>
-          <ol>
-            <li><strong>Validate the epic token first.</strong> It must match <code>^[0-9]+$</code> or be a full GitHub issue URL — anything else, stop and ask the user; never pass a raw token to <code>gh</code> or <code>git</code>.</li>
-            <li><strong>Never inline untrusted fields.</strong> Capture GitHub-sourced fields into variables with command substitution, then quote at point of use.</li>
-            <li><strong>Multi-line bodies go through a file</strong> for any <code>gh issue edit</code> / comment you write.</li>
-          </ol>
-        </div>
-        <ol class="order-stages" role="list">
-          <li class="order-stage" id="stage-0">
-            <span class="order-stage__num" aria-hidden="true">0</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 0 — </span>Intake (orchestrator)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <ol>
-                  <li>Parse runtime input: the <strong>first numeric token</strong> (or URL) is <code>&lt;epic&gt;</code>; remaining tokens are <code>&lt;guidance&gt;</code> (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, <code>batch off</code>, <code>unit merge manual</code>, <code>retry-story &lt;n&gt;</code>, etc.). Guidance <code>batch off</code> sets <code>EPIC_BATCH=off</code>; <code>epic close auto</code> sets <code>EPIC_CLOSE_MODE=auto</code>; <code>unit merge manual</code> sets <code>UNIT_MERGE_MODE=manual</code>. If guidance includes <code>epic merge auto</code>, <strong>stop</strong> — epic PRs always require captain review (see Config).</li>
-                  <li>Fetch the epic: <code>gh issue view &lt;epic&gt; --json number,title,body,labels,state,url</code>. Confirm it is open and labelled <code>epic</code> (or has a story checklist in its body — if neither, stop and ask).</li>
-                  <li>Parse the epic body for checklist lines matching <code>- [ ] #&lt;n&gt;</code> (unchecked) and <code>- [x] #&lt;n&gt;</code> (done). Let <code>&lt;pending&gt;</code> = unchecked story numbers in checklist order; let <code>&lt;done&gt;</code> = already ticked. Let <code>&lt;all-stories&gt;</code> = every checklist story number (done + pending).</li>
-                  <li><strong>Load progress state</strong> — scan epic <code>&lt;epic&gt;</code> comments for <code>&lt;!-- shipmates-epic-progress --&gt;</code> (<strong>always</strong>, not only when guidance includes <code>resume</code>). When found, parse machine-readable lines <code>EPIC_BRANCH:</code>, <code>EPIC_PR:</code>, <code>MAIN_BRANCH:</code>, and optional <code>SHIPPED_STORIES:</code> (space-separated issue numbers). Reload <code>&lt;epic-log&gt;</code> from the <strong>Shipped units</strong> section. Initialize <code>&lt;epic-capsule&gt;</code> from the same comment when present — otherwise empty. Guidance <code>resume</code> is a captain hint; idempotent re-entry must work on a bare <code>/ship-epic &lt;epic&gt;</code> whenever this comment exists.</li>
-                  <li><strong>Reconcile landed stories</strong> — build <code>&lt;landed&gt;</code> = stories already in <code>&lt;done&gt;</code>, plus every number in <code>SHIPPED_STORIES:</code> and every <code>#&lt;n&gt;</code> referenced in <code>&lt;epic-log&gt;</code> unit bullets marked merged. Also scan merged PRs into <code>&lt;EPIC_BRANCH&gt;</code> when <code>EPIC_BRANCH</code> is known (<code>gh pr list --base &lt;EPIC_BRANCH&gt; --state merged --json number,title,body</code>) and add any story whose <code>Closes #&lt;n&gt;</code> appears in the PR body. <strong>Mis-targeted units</strong> — also scan merged PRs with base <code>MAIN_BRANCH</code> whose body contains <code>Closes #&lt;n&gt;</code> for any <code>&lt;n&gt;</code> in <code>&lt;all-stories&gt;</code> (or <code>Part of #&lt;epic&gt;</code>). Record each in <code>&lt;mis-merged-to-main&gt;</code> with PR URL and merge SHA — these landed on the default branch instead of <code>&lt;EPIC_BRANCH&gt;</code> and trigger reconstruction in Stage 0.5. Add their story numbers to <code>&lt;landed&gt;</code>. Remove <code>&lt;landed&gt;</code> from <code>&lt;pending&gt;</code>. For each story still <code>- [ ]</code> on the epic body but in <code>&lt;landed&gt;</code>, <strong>backfill now</strong> (Stage 3 tick) and note <strong>checklist recovery</strong> in the report — do not wait for a successful unit. Stories in <code>&lt;landed&gt;</code> are <strong>never</strong> re-delegated unless guidance includes <code>retry-story &lt;n&gt;</code> for that number.</li>
-                  <li>If <code>DRY_RUN</code>, print <code>&lt;epic&gt;</code> title, <code>&lt;done&gt;</code>, <code>&lt;landed&gt;</code>, <code>&lt;pending&gt;</code>, <code>&lt;mis-merged-to-main&gt;</code>, and continue through Stage 1.5 for the unit plan — then stop before Stage 2 (Stage 0.5 prints the planned <code>&lt;EPIC_BRANCH&gt;</code> only; no branch or PR is created).</li>
-                </ol>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-0-5">
-            <span class="order-stage__num" aria-hidden="true">0.5</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 0.5 — </span>Epic integration branch (orchestrator)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Create or resume the <strong>integration line</strong> every unit lands on. <strong>Always run</strong> after Stage 0 (even when <code>&lt;pending&gt;</code> is empty or every story is <code>&lt;landed&gt;</code>) — the captain must always get epic PR <code>&lt;EPIC_PR&gt;</code>. Skip branch/PR mutation in <code>DRY_RUN</code> (print the planned names in the dry-run summary).</p>
-                <ol>
-                  <li>Set <code>MAIN_BRANCH</code> from the repo default (see Config).</li>
-                  <li><strong>Reuse integration state</strong> — when Stage 0 loaded <code>EPIC_BRANCH:</code> and <code>EPIC_PR:</code> from the progress comment, reuse them when <code>git ls-remote origin &lt;EPIC_BRANCH&gt;</code> succeeds. If the branch is missing, recreate per step 3 and note recovery in the report. Do <strong>not</strong> open a second epic PR when <code>&lt;EPIC_PR&gt;</code> is already set — refresh its body in Stage 3.5 instead.</li>
-                  <li><strong>Reconstruct mis-targeted work</strong> — when <code>&lt;mis-merged-to-main&gt;</code> is non-empty and <code>&lt;EPIC_BRANCH&gt;</code> is unset or equals a fresh branch with no unit commits:
-                    <p>a. Create or reset <code>&lt;EPIC_BRANCH&gt;</code> from <code>MAIN_BRANCH</code> at the merge-base before the first mis-merge.</p>
-                    <p>b. Cherry-pick (or merge) each mis-merged unit&#x27;s commits onto <code>&lt;EPIC_BRANCH&gt;</code> in checklist order. Prefer the recorded merge SHAs from <code>&lt;mis-merged-to-main&gt;</code>.</p>
-                    <p>c. Push <code>&lt;EPIC_BRANCH&gt;</code> and note <strong>integration recovery</strong> in the report — the epic PR will show the combined in-repo diff the captain should have reviewed.</p>
-                    <p>When <code>&lt;landed&gt;</code> is non-empty but <code>&lt;mis-merged-to-main&gt;</code> is empty and <code>&lt;EPIC_BRANCH&gt;</code> already contains those commits, skip reconstruction.</p>
-                  </li>
-                  <li><strong>Create</strong> (when <code>&lt;EPIC_BRANCH&gt;</code> is unset and branch does not already exist on the remote):
-                    <pre class="order-code" tabindex="0"><code>git -C &lt;repo&gt; fetch origin
-git -C &lt;repo&gt; push origin origin/&lt;MAIN_BRANCH&gt;:refs/heads/&lt;EPIC_BRANCH&gt;</code></pre>
-                    <p>(Or branch locally and push — same result: <code>&lt;EPIC_BRANCH&gt;</code> tracks current <code>MAIN_BRANCH</code> when no in-repo work has landed yet.)</p>
-                  </li>
-                  <li><strong>Open epic PR</strong> — if <code>&lt;EPIC_PR&gt;</code> is unset, open one PR with base <code>MAIN_BRANCH</code>, head <code>&lt;EPIC_BRANCH&gt;</code>. <strong>Never skip</strong> because <code>&lt;pending&gt;</code> is empty or work is already on <code>MAIN_BRANCH</code> — reconstruction (step 3) ensures the epic PR head reflects landed in-repo slices. Title/body via <code>--body-file</code> (see <strong>Shell safety</strong>). Structure the body for fast captain review:
-                    <ul>
-                      <li><strong>What this epic delivers</strong> — one plain-language paragraph: epic goal plus which story numbers land here (from the epic issue title/body; no jargon).</li>
-                      <li><strong>Quick review guide</strong> — bullets: review once at epic completion (each unit already passed mandatory PE+PO on its PR head); start with the story checklist; scan the combined diff for cross-story interactions; trust green CI on this head; <strong>the captain merges this PR</strong> — it is never auto-merged.</li>
-                      <li><strong>Stories</strong> — copy unchecked checklist lines from the epic body; refresh after each unit in Stage 3.5.</li>
-                      <li><strong>Shipped so far</strong> — placeholder until the first unit lands; then copy from <code>&lt;epic-log&gt;</code>. When <code>&lt;mis-merged-to-main&gt;</code> was reconstructed, note which unit PRs were recovered from <code>MAIN_BRANCH</code>.</li>
-                      <li><strong>Integration</strong> — epic issue link, integration branch name, and explicit note: <strong>human review required</strong> — merge only when satisfied with the epic scope.</li>
-                    </ul>
-                    <p>Record <code>&lt;EPIC_PR&gt;</code>.</p>
-                  </li>
-                  <li><strong>Persist state</strong> — post or <strong>edit</strong> the single <code>&lt;!-- shipmates-epic-progress --&gt;</code> comment on epic <code>&lt;epic&gt;</code> (see <strong>Stage 3.5</strong>). Include machine-readable lines <code>EPIC_BRANCH:</code>, <code>EPIC_PR:</code>, <code>MAIN_BRANCH:</code>, and <code>SHIPPED_STORIES:</code> (space-separated numbers from <code>&lt;landed&gt;</code>) so any re-run reloads idempotently. Update after every unit and every pause — one living comment, not a new thread per unit.</li>
-                  <li><strong>Empty pending shortcut</strong> — when <code>&lt;pending&gt;</code> is empty after Stage 0 reconciliation, skip Stages 1–2 and go directly to <strong>Stage 4</strong> (full closure or crew-complete). <code>&lt;EPIC_PR&gt;</code> must already be set from steps above.</li>
-                </ol>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-1">
-            <span class="order-stage__num" aria-hidden="true">1</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 1 — </span>Story graph (orchestrator)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Skip when Stage 0.5 step 7 sent the run to Stage 4.</p>
-                <p>For each story still in <code>&lt;pending&gt;</code> (after Stage 0 reconciliation):</p>
-                <ol>
-                  <li>Fetch <code>gh issue view &lt;n&gt; --json number,title,body,labels,state,url</code>.</li>
-                  <li>Skip closed stories — treat as already done; add to <code>&lt;landed&gt;</code> and backfill checklist ticks in Stage 3.</li>
-                  <li>Detect <strong>gate stories</strong>: <code>gate</code> label present, or the body contains an explicit sign-off section (e.g. a heading like &quot;Sign-off&quot; / &quot;Gate&quot; with criteria the story says must pass before merge). Record <code>&lt;gates&gt;</code>. Gate stories are always <strong>singleton units</strong> — never batched.</li>
-                  <li>Parse <strong>dependencies</strong> from the story body: <code>Blocked by #&lt;n&gt;</code>, <code>blocked_by #&lt;n&gt;</code>, or checklist cross-refs. Build a directed graph over <code>&lt;pending&gt;</code> plus any <strong>external</strong> blockers outside the epic.</li>
-                  <li><strong>Topological sort</strong> <code>&lt;pending&gt;</code> respecting dependencies. If a cycle is detected, stop and report the cycle — do not ship out of order.</li>
-                  <li>Flag <strong>external blockers</strong>: any dependency on an open issue outside the epic (or outside <code>&lt;done&gt;</code>). Record <code>&lt;blocked-externally&gt;</code> with story → blocker mapping. For each, note <strong>full block</strong> (zero shippable AC without the blocker closing) vs <strong>partial block</strong> (story body names prep, config, or other work that can ship before the owner action).</li>
-                </ol>
-                <p>Print (always, not only dry-run): ordered story list, gate stories, external blockers (full vs partial).</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-1-5">
-            <span class="order-stage__num" aria-hidden="true">1.5</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 1.5 — </span>Epic shipping plan</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>architect</code></span> (once)</p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Skip when Stage 0.5 step 7 sent the run to Stage 4.</p>
-                <p>Spawn <strong>one</strong> <code>architect</code> with: the epic title/body, every pending story&#x27;s title + body + labels (truncate bodies to acceptance-criteria sections when huge), Stage 1 dependency order, repo <code>README</code> / CLAUDE.md, and <code>&lt;done&gt;</code>. Ask for <strong>structured data only</strong>:</p>
-                <ul>
-                  <li>Per story: <code>complexity</code> (<code>trivial</code>, <code>standard</code>, or <code>complex</code>), domain flags (same vocabulary as <code>/ship-issue</code> Stage 0), <code>blocker_class</code> (<code>none</code>, <code>full</code>, or <code>partial</code> when externally blocked), and one-line rationale.</li>
-                  <li><code>&lt;units&gt;</code>: an <strong>ordered</strong> list of shipping units covering every non-gate pending story exactly once. Each unit: <code>stories</code> (issue numbers), <code>batch_rationale</code> (why together or alone), <code>expected_files</code> (non-overlapping ownership across stories in the unit).</li>
-                  <li><strong>Batching rules the planner must enforce:</strong> gate stories → singleton; <code>complex</code> or <code>IS_ARCH_SIGNIFICANT</code> or <code>IS_SECURITY_SENSITIVE</code> → singleton; different <code>area:*</code> labels → separate units unless each story is <code>trivial</code> and file-disjoint; max <code>MAX_UNIT_SIZE</code> stories per multi-story unit; dependencies satisfied within unit ordering.</li>
-                </ul>
-                <p>Apply <code>EPIC_BATCH</code>:</p>
-                <ul>
-                  <li><code>off</code> → split every multi-story unit into singletons (keep order).</li>
-                  <li><code>max</code> → merge adjacent units only when the architect&#x27;s rules still hold and combined size ≤ <code>MAX_UNIT_SIZE</code>.</li>
-                </ul>
-                <p>Record <code>&lt;units&gt;</code> and <code>&lt;story-classification&gt;</code>. In <code>DRY_RUN</code>, print <code>&lt;units&gt;</code> with story titles, unit sizes, and <strong>token rationale</strong>: &quot;<code>N</code> stories → <code>U</code> <code>/ship-issue</code> invocations&quot;.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-2">
-            <span class="order-stage__num" aria-hidden="true">2</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 2 — </span>Loop (orchestrator)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>Skip when Stage 0.5 step 7 sent the run to Stage 4.</p>
-                <p>Walk <code>&lt;units&gt;</code> in order — one <code>/ship-issue</code> delegation per unit (not one per story unless the unit is a singleton).</p>
-                <p>For each <code>&lt;unit&gt;</code>:</p>
-                <ol>
-                  <li><strong>Stories already landed</strong> — skip the whole unit when every story in the unit is in <code>&lt;landed&gt;</code>, ticked, or closed. When the unit is <strong>mixed</strong> (some landed, some not), drop landed stories from the unit scope and delegate only the remainder — never re-open a merged unit PR for an already-landed story. If guidance includes <code>retry-story &lt;n&gt;</code>, remove <code>&lt;n&gt;</code> from <code>&lt;landed&gt;</code> for this run only before evaluating skip rules.</li>
-                  <li><strong>Pre-delegate guard</strong> — immediately before step 6, assert <strong>no</strong> story in the unit scope appears in <code>&lt;landed&gt;</code> or <code>&lt;epic-log&gt;</code> as merged (unless <code>retry-story &lt;n&gt;</code>). Violation means reconcile failed — stop and report; do not open a duplicate unit PR. Assert delegated runs will use <code>epic-base=&lt;EPIC_BRANCH&gt;</code> — unit PR base <strong>must not</strong> be <code>MAIN_BRANCH</code>.</li>
-                  <li><strong>Gate unit</strong> — if any story in the unit is in <code>&lt;gates&gt;</code> and still open: <strong>pause</strong> with <strong>awaiting sign-off</strong>. Do <strong>not</strong> invoke <code>/ship-issue</code>. <strong>Stop</strong> — this is the only deliberate human gate in the loop.</li>
-                  <li><strong>External / mixed blocker</strong> — for each story in the unit blocked by an open external issue:
-                    <p>a. <strong>Shippable slice</strong> — if the story body (or Stage 1.5 <code>blocker_class: partial</code>) names work that does <strong>not</strong> require the blocker to close, treat that slice as the <strong>unit scope</strong>. Invoke <code>/ship-issue</code> on that slice; in the PR body note the residual owner action and link the blocker. <strong>Do not pause the epic.</strong></p>
-                    <p>b. <strong>Owner-only remainder</strong> — when every remaining AC for the unit truly requires the external blocker and there is <strong>zero</strong> shippable remainder (<code>blocker_class: full</code>): record the owner action in <code>&lt;epic-log&gt;</code> (residual, not a pause), file or update a follow-up if useful, tick or comment on the story that prep shipped, leave the flip open, and <strong>continue to the next unit</strong> without pausing. <strong>Do not</strong> post <code>/ship-epic &lt;epic&gt; resume</code> for owner DNS / registrar / deploy console work.</p>
-                    <p>Do <strong>not</strong> pause the whole epic because one story is <em>partly</em> blocked or <em>fully</em> owner-only.</p>
-                  </li>
-                  <li><strong>Build delegation guidance</strong> (compact prose, not a transcript). Include:
-                    <ul>
-                      <li><code>epic-run</code> — story numbers in this unit belong to epic <code>&lt;epic&gt;</code>; do <strong>not</strong> scan the wider backlog or propose bundle widening beyond this unit&#x27;s story list.</li>
-                      <li><code>epic-id=&lt;epic&gt;</code> — parent epic issue number; <code>/ship-issue</code> must return an <strong>Epic unit record</strong> block in its final report (see that command) so this orchestrator can append to <code>&lt;epic-log&gt;</code>.</li>
-                      <li><code>epic-base=&lt;EPIC_BRANCH&gt;</code> — unit PR base and worktree cut from <code>origin/&lt;EPIC_BRANCH&gt;</code>, <strong>not</strong> <code>MAIN_BRANCH</code>. <strong>Mandatory</strong> — a unit PR targeting <code>MAIN_BRANCH</code> is a spec violation. When resuming after another unit merged, include <strong><code>sync-base</code></strong> so <code>/ship-issue</code> Stage 1 re-fetches and rebases onto the current integration tip before build work.</li>
-                      <li><code>epic-plan</code> — paste the unit&#x27;s pre-classification (complexity + flags per story); the story-level Planner should treat this as the starting plan and amend only on contradiction.</li>
-                      <li><code>epic-capsule</code> — paste <code>&lt;epic-capsule&gt;</code> when non-empty (validation commands, paths, conventions from prior units in this run).</li>
-                      <li><code>MERGE_MODE=&lt;UNIT_MERGE_MODE&gt;</code> — merge the green unit PR into <code>&lt;EPIC_BRANCH&gt;</code> via <code>/ship-issue</code> Stage 8 when <code>UNIT_MERGE_MODE=auto</code> (default). When <code>manual</code>, or when any story in the unit is flagged <code>IS_SECURITY_SENSITIVE</code>, pass <code>MERGE_MODE=manual</code> and <strong>pause after the unit</strong> per the <strong>Manual unit merge</strong> hard limit — do not advance to the next unit until the captain merges into <code>&lt;EPIC_BRANCH&gt;</code> and the orchestrator resumes. <strong>Never ask the captain to merge a green epic unit when <code>UNIT_MERGE_MODE=auto</code>.</strong></li>
-                      <li>Tier hint — when <strong>every</strong> story in the unit is <code>trivial</code> and no specialist flags are set, include <code>complexity tier: simple</code> so <code>/ship-issue</code> takes the Simple path. When all are <code>trivial</code> or <code>standard</code> with no arch/security/delivery flags, include <code>complexity tier: medium</code>. Otherwise omit (full High path).</li>
-                    </ul>
-                  </li>
-                  <li><strong>Delegate</strong> — invoke <code>/ship-issue</code> with <strong>all story numbers in the unit scope</strong> (after step 1 trimming) as the leading numeric tokens, then the guidance from step 5. Example shape: <code>/ship-issue 101 102 epic-run …</code> for a two-story unit. Singleton: <code>/ship-issue 103 epic-run …</code>. Do <strong>not</strong> set <code>BUNDLE=off</code> — explicit multi-story tokens <strong>are</strong> the bundle; singletons behave as today.</li>
-                  <li><strong>Outcome:</strong>
-                    <ul>
-                      <li><strong>Success (auto-merged)</strong> — unit used <code>MERGE_MODE=auto</code> and landed on <code>&lt;EPIC_BRANCH&gt;</code> → Stage 3 for <strong>each</strong> story in the unit (tick every checklist line the unit closed), <strong>Stage 3.5</strong> (append unit delivery + review summary to <code>&lt;epic-log&gt;</code> and refresh epic PR notes), extend <code>&lt;epic-capsule&gt;</code> with validation commands used, key paths touched, and any convention the board enforced — keep the capsule <strong>short</strong> (bullet list, not a narrative). Continue to the next unit.</li>
-                      <li><strong>Success (manual merge required)</strong> — unit finished with <code>MERGE_MODE=manual</code> and a green PR open → <strong>pause the epic loop</strong> (hard limit <strong>Manual unit merge</strong>): post state (<code>EPIC_BRANCH</code>, <code>EPIC_PR</code>, unit PR link, <code>/ship-epic &lt;epic&gt; resume</code>). <strong>Stop</strong> — captain merges the unit PR into <code>&lt;EPIC_BRANCH&gt;</code>, then resume.</li>
-                      <li><strong><code>/ship-issue</code> escalated after <code>MAX_FIX_ROUNDS</code></strong> → <strong>pause the epic loop</strong> with state report (epic, <code>EPIC_BRANCH</code>, <code>EPIC_PR</code>, completed units, current unit, PR link, failure summary, <code>/ship-epic &lt;epic&gt; resume</code>). <strong>Stop.</strong></li>
-                      <li><strong>Red CI / fix in progress</strong> → <strong>not</strong> an epic pause. The delegation must finish Stage 4.5 inside <code>/ship-issue</code> before returning. If it returned early, <strong>re-delegate</strong> with explicit guidance <code>finish-ci-gate</code> — do not end the epic turn.</li>
-                      <li><strong>Gate mid-run</strong> → pause and stop (same as step 3).</li>
-                    </ul>
-                  </li>
-                </ol>
-                <p><strong>Pre-existing CI on the merge base</strong> — when a failing check <strong>already fails on <code>&lt;EPIC_BRANCH&gt;</code></strong> (same job red on the epic integration line) and the unit PR touches unrelated files:</p>
-                <ul>
-                  <li><strong>Not an epic pause.</strong> Remediation belongs in <strong>this unit&#x27;s</strong> <code>/ship-issue</code> run (Stage 4.5).</li>
-                  <li>Fix what makes <strong>this PR head</strong> green: format only touched files if that suffices; otherwise fix the minimal set the log requires; gate or skip tests that cannot run under the repo&#x27;s build flags when that matches project convention.</li>
-                  <li>Document extra commits in the PR (note the job was already red on <code>&lt;EPIC_BRANCH&gt;</code>). Escalate to the captain <strong>only</strong> after <code>MAX_FIX_ROUNDS</code>, or when the fix is a one-way product decision — not because the integration branch is dirty.</li>
-                </ul>
-                <p>When every unit has succeeded <strong>or</strong> every remaining unit was handled as <strong>owner-only remainder</strong> (step 4b) with nothing left to delegate, go to Stage 4.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-3">
-            <span class="order-stage__num" aria-hidden="true">3</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 3 — </span>Tick epic checklist (orchestrator)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>After each successful unit, for <strong>each story</strong> in that unit:</p>
-                <ol>
-                  <li>Re-fetch the epic body.</li>
-                  <li>Replace <code>- [ ] #&lt;story&gt;</code> with <code>- [x] #&lt;story&gt;</code>.</li>
-                  <li>Write via <code>--body-file</code>; verify the tick landed.</li>
-                </ol>
-                <p>Backfill ticks for stories closed before this run but still unchecked in the epic body.</p>
-                <p><code>/ship-issue</code> ticks the epic when <code>MERGE_MODE=auto</code>; this stage ensures ticks when a unit used <code>MERGE_MODE=manual</code> (gate / security-sensitive units).</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-3-5">
-            <span class="order-stage__num" aria-hidden="true">3.5</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 3.5 — </span>Epic progress log &amp; PR notes (orchestrator)</h3>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p>After each auto-merged unit (and after a manual unit once the captain has merged it and the orchestrator resumes), ingest the delegated <code>/ship-issue</code> <strong>Epic unit record</strong> and update captain-facing artifacts.</p>
-                <ol>
-                  <li><strong>Parse the unit record</strong> from the delegation&#x27;s final report (<code>EPIC_UNIT_RECORD:</code> block — stories, PR link, merge SHA, one-line <strong>delivered</strong> summary per story, <strong>reviews</strong> one-liner, green CI link, fix-round count).</li>
-                  <li><strong>Append to <code>&lt;epic-log&gt;</code></strong> — one bullet per unit, newest last. Shape: unit index, story numbers, PR URL, merge SHA, one-line delivered summary, reviews one-liner, green CI link. Keep <code>&lt;epic-log&gt;</code> scannable — no transcripts, no raw board dumps.</li>
-                  <li><strong>Edit the epic progress comment</strong> on epic <code>&lt;epic&gt;</code> — single comment anchored <code>&lt;!-- shipmates-epic-progress --&gt;</code>. Include: machine-readable <code>EPIC_BRANCH</code> / <code>EPIC_PR</code> / <code>MAIN_BRANCH</code> lines; <strong><code>SHIPPED_STORIES:</code></strong> (all numbers in <code>&lt;landed&gt;</code> after this unit); a <strong>Shipped units</strong> section (paste <code>&lt;epic-log&gt;</code> bullets); <strong>Pending stories</strong> (remaining checklist lines); <strong>Latest reviews</strong> (one line from the most recent unit record); and an updated timestamp. One living comment — edit in place, do not open a new thread per unit.</li>
-                  <li><strong>Refresh epic PR <code>&lt;EPIC_PR&gt;</code> body</strong> via <code>--body-file</code> — keep <strong>What this epic delivers</strong> and <strong>Quick review guide</strong> intact; update <strong>Stories</strong> checklist ticks, <strong>Shipped so far</strong> (copy <code>&lt;epic-log&gt;</code>), and add a <strong>Review status</strong> line: &quot;<code>U</code> of <code>N</code> stories landed; all units passed PE+PO board before merge into <code>&lt;EPIC_BRANCH&gt;</code>.&quot; Goal: the captain opens epic PR or epic issue and knows what shipped and what was already reviewed without opening every unit PR.</li>
-                </ol>
-                <p>On pause, include <code>&lt;epic-log&gt;</code> and a link to the progress comment in the pause report.</p>
-              </div>
-            </div>
-          </li>
-          <li class="order-stage" id="stage-4">
-            <span class="order-stage__num" aria-hidden="true">4</span>
-            <h3 class="order-stage__title"><span class="visually-hidden">Stage 4 — </span>Epic closure (orchestrator)</h3>
-            <p class="order-stage__crew">Crew: <span class="chip order-stage__crew-item"><code>product-manager</code></span> <span class="chip order-stage__crew-item"><code>principal-engineer</code></span> <span class="chip order-stage__crew-item"><code>architect</code></span></p>
-            <div class="order-stage__body">
-              <div class="order-prose">
-                <p><strong>Full closure</strong> — when no <code>- [ ] #n</code> lines remain on the epic checklist:</p>
-                <ol>
-                  <li><strong>Epic PR gate</strong> — poll <code>gh pr checks &lt;EPIC_PR&gt;</code> on the integration PR head until green or <code>MAX_FIX_ROUNDS</code>-bounded fix loop exhausted (fix on <code>&lt;EPIC_BRANCH&gt;</code>, not on <code>MAIN_BRANCH</code>).</li>
-                  <li><strong>Epic integration board</strong> — <strong>never skip on full closure</strong> (not crew-complete with owner residuals). After step 1 is green, convene specialists on epic PR <code>&lt;EPIC_PR&gt;</code> head:</li>
-                </ol>
-                <p>Spawn reviewers <strong>in parallel</strong> against epic PR <code>&lt;EPIC_PR&gt;</code> head — the integration artifact that would merge into <code>MAIN_BRANCH</code>. Pass each reviewer: the epic issue title/body, <code>&lt;epic-log&gt;</code>, Stage 1.5 plan (when present), <code>&lt;epic-capsule&gt;</code>, and the full integration diff.</p>
-                <p><strong>Integration questions (mandatory lens — answer explicitly)</strong></p>
-                <ol>
-                  <li><strong>Coherence</strong> — APIs, data model, copy, UX flows, error handling consistent across units?</li>
-                  <li><strong>Continuity</strong> — integrated head reads as one deliberate change, not independent PRs stacked?</li>
-                  <li><strong>Epic value</strong> — combined deliverable satisfies the epic goal, not only individual story boxes?</li>
-                  <li><strong>Architecture</strong> — module boundaries, dependency direction, public surfaces sane at epic scale?</li>
-                  <li><strong>Engineering quality</strong> — regressions, checklist compliance, cross-unit scope discipline on the integration head (not a line-by-line re-review of every unit unless integration introduced new risk)?</li>
-                  <li><strong>Product / brand vision</strong> — outcome and quality bar; does this epic ship something worth merging?</li>
-                  <li><strong>Design continuity</strong> — cross-unit visual/UX consistency when any unit touched UI or visual art?</li>
-                </ol>
-                <p><strong>Mandatory seats (never skip on full closure)</strong></p>
-                <ul>
-                  <li><strong><code>product-manager</code></strong> (PO): epic-level <code>ACCEPT</code> / <code>ACCEPT-WITH-NITS</code> / <code>REJECT</code> against epic goal and quality bar — criteria above, especially value and continuity.</li>
-                  <li><strong><code>principal-engineer</code></strong> (PE): integration diff review + mandatory ship checklist at epic scope.</li>
-                  <li><strong><code>architect</code></strong>: join when Stage 1.5 flagged arch significance for any unit, <strong>or</strong> the epic has <strong>≥2 code units</strong> (units that merged non-doc-only changes), <strong>or</strong> integration review finds boundary/coupling concerns.</li>
-                </ul>
-                <p><strong>Scaled optional seats</strong></p>
-                <p>Convene when the integrated epic plausibly trips the concern; name gated-out seats in the report.</p>
-                <div class="order-table" tabindex="0">
-                  <table>
-                    <thead><tr><th scope="col">Seat</th><th scope="col">Join when</th></tr></thead>
-                    <tbody>
-                      <tr><td><code>ux-ui-designer</code></td><td>Any unit was <code>IS_UI_STORY</code> or integration touches UI</td></tr>
-                      <tr><td><code>art-director</code></td><td>Any unit was <code>IS_VISUAL_STORY</code> or brand/visual continuity matters</td></tr>
-                      <tr><td><code>sdet</code></td><td>Re-run validation on epic head; confirm green CI matches integration reality</td></tr>
-                      <tr><td><code>technical-writer</code></td><td>Epic materially changed docs across units — combined doc set coherent?</td></tr>
-                      <tr><td><code>security-engineer</code></td><td>Any unit was <code>IS_SECURITY_SENSITIVE</code> or integration expands attack surface</td></tr>
-                      <tr><td><code>devops-engineer</code></td><td>Any unit was <code>IS_DELIVERY_SENSITIVE</code></td></tr>
-                      <tr><td>Others</td><td>Same scaled rules as the unit acceptance board where relevant</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p><strong>Decision</strong></p>
-                <ul>
-                  <li><strong>All spawned reviewers ACCEPT/PASS (nits allowed)</strong> → proceed to Stage 4 finalize and captain handoff.</li>
-                  <li><strong>Any REJECT / FAIL</strong> → fix on <code>&lt;EPIC_BRANCH&gt;</code>, push, re-poll epic PR CI, re-convene this board — bounded by <code>MAX_FIX_ROUNDS</code>; exhaustion pauses the epic with integration blockers.</li>
-                </ul>
-                <p><strong>Harness fallback</strong></p>
-                <p>Same as the unit acceptance board — never silently skip a mandatory seat.</p>
-                <p>Fix any REJECT on <code>&lt;EPIC_BRANCH&gt;</code>, push, re-poll step 1, re-convene the board — bounded by <code>MAX_FIX_ROUNDS</code>. Exhaustion <strong>pauses the epic</strong> with integration blockers (distinct from unit pause). Record integration verdicts separately from per-unit <code>&lt;epic-log&gt;</code> reviews.</p>
-                <ol>
-                  <li><strong>Finalize epic PR notes</strong> — edit <code>&lt;EPIC_PR&gt;</code> body: confirm <strong>Quick review guide</strong> still accurate; set <strong>Shipped so far</strong> to the full <code>&lt;epic-log&gt;</code>; add <strong>Ready to merge</strong> checklist (all stories ticked, CI green, <strong>integration board</strong> summary plus per-unit PE+PO in progress log). Post the same summary on epic <code>&lt;epic&gt;</code> progress comment under <code>### Ready for captain</code>.</li>
-                  <li>Post completion summary with <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> link, green CI link, <strong>integration board verdicts</strong>, pointer to epic progress comment, checklist state. <strong>Stop</strong> — the captain merges the epic PR into <code>MAIN_BRANCH</code> once satisfied. Do <strong>not</strong> auto-merge the epic PR. Do <strong>not</strong> ask the captain to merge individual unit PRs.</li>
-                  <li><strong><code>EPIC_CLOSE_MODE</code></strong> — <code>manual</code>: propose closing epic <code>&lt;epic&gt;</code>; <code>auto</code>: <code>gh issue close &lt;epic&gt;</code>.</li>
-                </ol>
-                <p><strong>Crew-complete (owner residuals remain)</strong> — when <code>- [ ] #n</code> lines still exist but <strong>every</strong> pending story is owner-only with zero in-repo remainder (the crew has nothing left to delegate):</p>
-                <ol>
-                  <li><strong>Epic PR must exist</strong> — if <code>&lt;EPIC_PR&gt;</code> is unset, Stage 0.5 was skipped or failed; stop and report. Crew-complete without a reviewable epic PR is invalid.</li>
-                  <li>Refresh epic progress comment: <strong>Shipped units</strong> (<code>&lt;epic-log&gt;</code>), <strong>Owner residuals</strong> (checklist per pending story — what prep landed, what the captain must do), <strong>Pending stories</strong> (unchecked lines).</li>
-                  <li>Refresh epic PR <code>&lt;EPIC_PR&gt;</code> notes with the same split — crew work complete; owner checklist explicit; <strong>human review required</strong> before merge to <code>MAIN_BRANCH</code>.</li>
-                  <li>Post a <strong>completion-style final report</strong> on the epic issue (not a pause block — <strong>no</strong> <code>/ship-epic &lt;epic&gt; resume</code>). State that the crew loop is <strong>finished</strong>; the captain reviews and merges epic PR <code>&lt;EPIC_PR&gt;</code> when ready — not auto-merged.</li>
-                  <li><strong>Stop</strong> — this is a normal terminal turn, not a hard-limit pause. Do <strong>not</strong> ask the captain to poke the command again for owner DNS / registrar work.</li>
-                </ol>
-              </div>
-            </div>
-          </li>
+        <p class="order-process__lead">One architect pass groups the epic. Each unit is then a full /ship-issue run, so that unit&#x27;s flags pick its specialists. You merge one epic PR at the end.</p>
+        <ol class="order-process__list" role="list">
+          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Map</h3><p class="order-process__line">The architect reads the checklist, classifies every story, and groups them into shipping units.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Integrate</h3><p class="order-process__line">Cut a shared epic branch and open the epic PR. Unit PRs target that branch, not main.</p><p class="order-process__crew order-process__crew--solo">No specialist — the run cuts the branch and the epic PR.</p></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Loop</h3><p class="order-process__line">Each unit is a /ship-issue: plan, build, CI, review. That unit&#x27;s flags pick its extra seats.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/sdet/"><code>sdet</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/principal-engineer/"><code>principal-engineer</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/ux-ui-designer/"><code>ux-ui-designer</code></a><span class="order-process__when-text">on-screen UI — screens, flows, components</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/art-director/"><code>art-director</code></a><span class="order-process__when-text">rendered art (games, illustration), not app chrome</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/devops-engineer/"><code>devops-engineer</code></a><span class="order-process__when-text">pipeline, images, or how the project ships</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a><span class="order-process__when-text">documented behaviour or a public API/CLI</span></li></ul></div></div></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">One PR</h3><p class="order-process__line">When the checklist is done, you review and merge the single epic PR.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — you merge the epic PR, not the unit PRs.</p></div></li>
         </ol>
-        <h3 id="final-report">Final report</h3>
-        <div class="order-prose">
-          <p>One concise summary: epic link, <strong>epic progress comment</strong> link on the epic issue, <strong>epic PR <code>&lt;EPIC_PR&gt;</code></strong> link (integration vs <code>MAIN_BRANCH</code>), units shipped (<code>U</code> invocations for <code>N</code> stories), <code>&lt;epic-log&gt;</code> highlights, <strong>integration board verdicts</strong> (when full closure ran), gate pauses, <strong>owner residuals</strong> (distinct from pauses), integration recovery notes when <code>&lt;mis-merged-to-main&gt;</code> was reconstructed, capsule highlights, epic close or crew-complete state, and resume command <strong>only if</strong> a hard-limit pause occurred. For each pause, state <strong>which hard-limit row fired</strong> — &quot;waiting for captain&quot; without a limit name is a spec violation. Owner-only remainder must <strong>not</strong> appear as a pause reason. Include <strong>economy line</strong>: &quot;<code>N</code> stories in <code>U</code> <code>/ship-issue</code> runs&quot; so the captain sees what batching saved. <strong>Never</strong> report <code>EPIC_PR: n/a</code> or <code>EPIC_BRANCH: n/a</code>.</p>
-        </div>
-        <h3 id="runtime-input">Runtime input</h3>
-        <div class="order-prose">
-          <p><code>$ARGUMENTS</code> contains the epic issue number and optional guidance. The first token is <code>&lt;epic&gt;</code>; the rest is guidance (<code>resume</code>, <code>dry run</code>, <code>epic close auto</code>, <code>batch off</code>, <code>unit merge manual</code>, <code>retry-story &lt;n&gt;</code>, etc.).</p>
-        </div>
       </div>
     </section>
 
-    <section class="section" id="config" aria-labelledby="config-title">
+    <section class="section order-when" id="when-to-use" aria-labelledby="when-to-use-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="config-title">Config (defaults — override only if the repo clearly needs it)</h2>
+          <h2 class="section__title" id="when-to-use-title">When to use</h2>
         </div>
-        <div class="order-prose">
-          <ul>
-            <li><code>EPIC_LABEL</code> = <code>epic</code> — the epic must carry this label (or be clearly an epic by checklist shape).</li>
-            <li><code>GATE_LABEL</code> = <code>gate</code> — stories with this label pause the loop for human sign-off before shipping.</li>
-            <li><code>EPIC_CLOSE_MODE</code> = <code>manual</code> — when every checklist box is ticked: <code>manual</code> proposes closing the epic; <code>auto</code> runs <code>gh issue close</code> on the epic. Override with guidance <code>epic close auto</code>.</li>
-            <li><code>EPIC_BATCH</code> = <code>smart</code> — how Stage 1.5 units map to <code>/ship-issue</code> invocations. <code>smart</code> (default): one run per unit; multi-story units pass every story number on one <code>/ship-issue</code> line when the unit has more than one story. <code>off</code> (guidance <code>batch off</code>): force <strong>singleton</strong> units only — one story per <code>/ship-issue</code> even when the planner grouped them (safest, most expensive). <code>max</code>: allow the planner to merge <strong>adjacent</strong> same-area units when every story in the merge is <code>trivial</code> or <code>standard</code>, no arch/security flags, and the combined count stays ≤ <code>MAX_UNIT_SIZE</code>.</li>
-            <li><code>MAX_UNIT_SIZE</code> = <code>4</code> — cap stories per <code>/ship-issue</code> invocation (matches <code>/ship-issue</code> cohesion guidance: one reviewable PR).</li>
-            <li><code>MAIN_BRANCH</code> = the repo&#x27;s default branch (<code>gh repo view --json defaultBranchRef -q .defaultBranchRef.name</code>). Epic PR <code>&lt;EPIC_PR&gt;</code> targets this; unit PRs do <strong>not</strong>.</li>
-            <li><code>EPIC_BRANCH</code> = <code>feat/epic-&lt;epic&gt;-&lt;short-slug&gt;</code> — integration branch for the whole run (created in Stage 0.5). <code>&lt;short-slug&gt;</code> from the epic title, sanitized.</li>
-            <li><code>EPIC_PR</code> = the open integration PR number once Stage 0.5 creates or resumes it. <strong>Required</strong> — a terminal report with <code>EPIC_PR: n/a</code> or <code>EPIC_BRANCH: n/a</code> is a spec violation.</li>
-            <li><code>UNIT_MERGE_MODE</code> = <code>auto</code> — delegated <code>/ship-issue</code> runs merge green unit PRs into <code>&lt;EPIC_BRANCH&gt;</code> without captain action. Override with guidance <code>unit merge manual</code> (discouraged mid-epic). Still forced to <code>manual</code> when the unit contains a <code>gate</code> story or any story flagged <code>IS_SECURITY_SENSITIVE</code>.</li>
-            <li><code>EPIC_MERGE_MODE</code> = <code>manual</code> — <strong>fixed</strong>. When the checklist is complete (or crew-complete with owner residuals), stop with epic PR <code>&lt;EPIC_PR&gt;</code> open for the captain to merge into <code>MAIN_BRANCH</code>. There is <strong>no</strong> auto-merge path for epic PRs. Guidance <code>epic merge auto</code> is <strong>hard-rejected</strong> at Stage 0 — stop and tell the captain that epic PRs always require human review; use standalone <code>/ship-issue</code> with <code>MERGE_MODE=auto</code> for hands-off single-issue delivery instead.</li>
-            <li><code>MAX_FIX_ROUNDS</code> = passthrough from <code>/ship-issue</code> (default <code>3</code>). An acceptance failure that exhausts fix rounds on one unit <strong>pauses the epic loop</strong> — it does not advance to the next unit.</li>
-            <li><code>DRY_RUN</code> = on if the caller says &quot;dry run&quot; / &quot;preview&quot;: print the story order, <code>&lt;units&gt;</code>, gates, external blockers, and <strong>estimated <code>/ship-issue</code> invocations</strong> (units count vs raw story count); invoke nothing.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="guardrails" aria-labelledby="guardrails-title">
-      <div class="container container--prose">
-        <div class="section__head">
-          <h2 class="section__title" id="guardrails-title">Guardrails</h2>
-        </div>
-        <div class="order-prose">
-          <ul>
-            <li><strong>Compose, don&#x27;t duplicate</strong> — each unit is a <code>/ship-issue</code> run; never reimplement its stages inline.</li>
-            <li><strong>One epic planner</strong> — Stage 1.5 runs once per <code>/ship-epic</code> invocation; do not spawn a second epic-wide planner inside the loop.</li>
-            <li><strong>Batch only on merit</strong> — cohesion, file ownership, and flags gate batching; never merge unrelated stories because the epic is long.</li>
-            <li><strong>No backlog widening</strong> — delegated runs stay inside the unit&#x27;s story list; no epic-scoped <code>next</code> picking siblings from outside the checklist.</li>
-            <li><strong>Resumable</strong> — any re-run reloads the progress comment when present (not only with <code>resume</code>); <code>&lt;landed&gt;</code> + checklist backfill prevent redoing merged work. Paused loops continue with <code>/ship-epic &lt;epic&gt; resume</code>.</li>
-            <li><strong>No duplicate unit PRs</strong> — never delegate a story in <code>&lt;landed&gt;</code> / <code>&lt;epic-log&gt;</code> unless <code>retry-story &lt;n&gt;</code> is explicit.</li>
-            <li><strong>Gate-aware</strong> — never auto-ship a gate-labelled story.</li>
-            <li><strong>Failure-aware</strong> — never advance after <code>MAX_FIX_ROUNDS</code> exhaustion on a unit.</li>
-            <li><strong>No silent stops</strong> — before ending a <code>/ship-epic</code> turn on a <strong>pause</strong>, name which hard-limit row fired. If none fired, you are <strong>not allowed</strong> to stop on a pause/resume handshake. Owner-only remainder uses <strong>crew-complete</strong> (Stage 4) — a normal terminal report, not a pause.</li>
-            <li><strong>Owner-only remainder is not a pause</strong> — DNS, registrar, deploy-console attach, or any AC only the captain can satisfy with zero in-repo slice left: record residual, continue or crew-complete; never post <code>/ship-epic &lt;epic&gt; resume</code> for it.</li>
-            <li><strong>Epic PR always open</strong> — every terminal turn (full closure, crew-complete, or pause) must name a real <code>EPIC_PR</code> and <code>EPIC_BRANCH</code>. Skipping the epic PR because in-repo work is done or already on <code>MAIN_BRANCH</code> is forbidden — reconstruct the integration line instead.</li>
-            <li><strong>Never auto-merge epic PRs</strong> — <code>EPIC_MERGE_MODE</code> is fixed at <code>manual</code>. Reject <code>epic merge auto</code> guidance. Standalone <code>/ship-issue</code> <code>MERGE_MODE=auto</code> is unchanged.</li>
-            <li><strong>Unit PRs never target <code>MAIN_BRANCH</code></strong> — delegated runs must pass <code>epic-base=&lt;EPIC_BRANCH&gt;</code>. Mis-targeted unit PRs are recovered via Stage 0.5 reconstruction, not accepted as the terminal state.</li>
-            <li><strong>No captain merge per unit</strong> — green accepted units merge into <code>&lt;EPIC_BRANCH&gt;</code> via delegated <code>MERGE_MODE=auto</code>. Never hand the captain a unit PR link and wait. The only human merge gate for shipped code is the <strong>epic PR</strong> into <code>MAIN_BRANCH</code> at Stage 4.</li>
-            <li><strong>CI every unit</strong> — economy comes from fewer Planner/board <strong>invocations</strong>, not from skipping validation or acceptance on shipped code. <strong>Integration board</strong> at epic closure is never skipped on full closure — it is the holistic review of the combined epic PR.</li>
-            <li><strong>Orchestrator owns <code>gh</code></strong> — epic edits and loop control only; builders/reviewers live in <code>/ship-issue</code>.</li>
-            <li><strong>Captain digest</strong> — <code>&lt;epic-log&gt;</code> and the <code>&lt;!-- shipmates-epic-progress --&gt;</code> comment are the source of truth for human review; epic PR notes stay in sync. Never leave the captain to reconstruct unit work from scattered PR threads alone.</li>
-          </ul>
-        </div>
+        <ul class="order-when__list">
+          <li>An epic issue already has a story checklist on GitHub.</li>
+          <li>One ticket? /ship-issue. No backlog yet? /plan-epics first.</li>
+        </ul>
       </div>
     </section>
 
     <section class="section order-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="source-title">Where this lives</h2>
+          <h2 class="section__title" id="source-title">The skill</h2>
         </div>
-        <p>This page is generated from <code>commands/ship-epic.md</code>. The installer copies it to <code>~/.claude/skills/ship-epic/SKILL.md</code> for every project, or <code>.claude/skills/ship-epic/SKILL.md</code> inside a single repo.</p>
+        <p>The installer ships the full skill — stages, gates, config — from <code>commands/ship-epic.md</code>.</p>
         <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/ship-epic.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>View commands/ship-epic.md on GitHub</span>
+          <span>Read the skill on GitHub</span>
         </a>
       </div>
     </section>
