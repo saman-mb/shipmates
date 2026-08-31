@@ -6,8 +6,9 @@ so it gates *staleness*, not *correctness* — it stayed green throughout the
 period the site published harness-neutral exporter tokens (#158). Reverting the
 fix and regenerating would make it green again with wrong content.
 
-These tests assert the property `--check` cannot: that the published pages carry
-the dialect a user actually installs.
+These tests assert the property `--check` cannot: that published command
+pages are a human guide (not a dump of the install skill), and that agent
+pages still carry the dialect a user actually installs.
 """
 
 from __future__ import annotations
@@ -90,11 +91,15 @@ class SiteGenerationTests(unittest.TestCase):
                     f"{page.relative_to(ROOT)} contains an unresolved exporter token",
                 )
 
-    def test_command_pages_carry_the_rendered_dialect(self) -> None:
-        """Positive control: absence of neutral tokens must not mean absence of content."""
+    def test_command_pages_are_a_guide_not_the_skill(self) -> None:
+        """Positive control: the page names the process and crew, and links the skill."""
         migrate = (ROOT / "site/commands/migrate/index.html").read_text(encoding="utf-8")
-        self.assertIn("ARGUMENTS", migrate)
-        self.assertIn(".claude/agents/*.md", migrate)
+        self.assertIn('id="process"', migrate)
+        self.assertIn("How it works", migrate)
+        self.assertIn("senior-engineer", migrate)
+        self.assertIn("Also sit when", migrate)
+        self.assertIn("commands/migrate.md", migrate)
+        self.assertNotIn("ARGUMENTS", migrate)
 
     def test_agent_pages_list_harness_tool_names(self) -> None:
         """Crew pages must show the harness's tool names, not semantic capabilities.
