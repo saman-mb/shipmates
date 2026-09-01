@@ -56,7 +56,7 @@ Hard limits that **pause the epic loop** (end the turn; post `/ship-epic <epic> 
 |-------|----------------|
 | **Gate story** | Unit contains a `gate`-labelled (or sign-off) story still awaiting human sign-off |
 | **`MAX_FIX_ROUNDS` exhausted** | Stage 4.5 or Stage 6 on this unit could not get CI green / acceptance pass |
-| **Manual unit merge** | Unit used `MERGE_MODE=manual` (`IS_SECURITY_SENSITIVE`, `UNIT_MERGE_MODE=manual`, or other forced manual path) — green PR awaits captain merge into `<EPIC_BRANCH>` before the next unit |
+| **Manual unit merge** | Unit used `MERGE_MODE=manual` (`UNIT_MERGE_MODE=manual`, a `gate` story, or other explicit forced-manual path) — green PR awaits captain merge into `<EPIC_BRANCH>` before the next unit |
 | **Shell safety abort** | Untrusted input, cycle in dependency graph, invalid epic token |
 
 Everything else — including **red CI on the unit PR**, **red CI already on `<EPIC_BRANCH>`**,
@@ -100,8 +100,11 @@ workflow.
 - `EPIC_PR` = the open integration PR number once Stage 0.5 creates or resumes it. **Required** — a
   terminal report with `EPIC_PR: n/a` or `EPIC_BRANCH: n/a` is a spec violation.
 - `UNIT_MERGE_MODE` = `auto` — delegated `/ship-issue` runs merge green unit PRs into `<EPIC_BRANCH>`
-  without captain action. Override with guidance `unit merge manual` (discouraged mid-epic). Still
-  forced to `manual` when the unit contains a `gate` story or any story flagged `IS_SECURITY_SENSITIVE`.
+  without captain action. Override with guidance `unit merge manual` (discouraged mid-epic). Forced
+  to `manual` when the unit contains a `gate` story. `IS_SECURITY_SENSITIVE` does **not** force
+  `manual` here: those units still auto-merge into `<EPIC_BRANCH>` under `auto`, still carry the
+  `/shipmates-harden` recommendation in the unit report, and still wait for the captain at the
+  **epic PR** (`EPIC_MERGE_MODE=manual`). Security-sensitive stories stay **singleton units** (Stage 1.5).
 - `EPIC_MERGE_MODE` = `manual` — **fixed**. When the checklist is complete (or crew-complete with owner
   residuals), stop with epic PR `<EPIC_PR>` open for the captain to merge into `MAIN_BRANCH`. There is
   **no** auto-merge path for epic PRs. Guidance `epic merge auto` is **hard-rejected** at Stage 0 — stop
@@ -170,7 +173,8 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
 1. Set `MAIN_BRANCH` from the repo default (see Config).
 2. **Reuse integration state** — when Stage 0 loaded `EPIC_BRANCH:` and `EPIC_PR:` from the progress
    comment, reuse them when `git ls-remote origin <EPIC_BRANCH>` succeeds. If the branch is missing,
-   recreate per step 3 and note recovery in the report. Do **not** open a second epic PR when `<EPIC_PR>`
+   recreate per step 4 (including the identical-tip kickoff) and note recovery in the report. Do **not**
+   open a second epic PR when `<EPIC_PR>`
    is already set — refresh its body in Stage 3.5 instead.
 3. **Reconstruct mis-targeted work** — when `<mis-merged-to-main>` is non-empty and `<EPIC_BRANCH>` is
    unset or equals a fresh branch with no unit commits:
@@ -190,8 +194,13 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
    git -C <repo> fetch origin
    git -C <repo> push origin origin/<MAIN_BRANCH>:refs/heads/<EPIC_BRANCH>
    ```
-   (Or branch locally and push — same result: `<EPIC_BRANCH>` tracks current `MAIN_BRANCH` when no
-   in-repo work has landed yet.)
+   Hosts refuse a pull request when head and base tips are identical (no commits between the refs).
+   After the push — and after any recreate of a missing branch whose tip still matches
+   `origin/<MAIN_BRANCH>` — check those two tips. If they match, check out `<EPIC_BRANCH>`, create
+   **one** empty commit with the fixed message `chore: epic kickoff`, and push it **before** step 5.
+   That is the normal kickoff path, not an error-recovery footnote. Skip when the tips already
+   differ (reconstruction or landed work). Never stack a second kickoff commit. Skip the whole
+   create **and** the kickoff in `DRY_RUN` (print that a kickoff commit would be made).
 5. **Open epic PR** — if `<EPIC_PR>` is unset, open one PR with base `MAIN_BRANCH`, head `<EPIC_BRANCH>`.
    **Never skip** because `<pending>` is empty or work is already on `MAIN_BRANCH` — reconstruction
    (step 3) ensures the epic PR head reflects landed in-repo slices. Title/body via `--body-file` (see
@@ -316,10 +325,11 @@ For each `<unit>`:
    - `epic-capsule` — paste `<epic-capsule>` when non-empty (validation commands, paths, conventions
      from prior units in this run).
    - `MERGE_MODE=<UNIT_MERGE_MODE>` — merge the green unit PR into `<EPIC_BRANCH>` via `/ship-issue`
-     Stage 8 when `UNIT_MERGE_MODE=auto` (default). When `manual`, or when any story in the unit is
-     flagged `IS_SECURITY_SENSITIVE`, pass `MERGE_MODE=manual` and **pause after the unit** per the
-     **Manual unit merge** hard limit — do not advance to the next unit until the captain merges into
-     `<EPIC_BRANCH>` and the orchestrator resumes. **Never ask the captain to merge a green epic unit when
+     Stage 8 when `UNIT_MERGE_MODE=auto` (default). When `manual` (guidance `unit merge manual`, a
+     `gate` story, or other explicit forced-manual path), pass `MERGE_MODE=manual` and **pause after
+     the unit** per the **Manual unit merge** hard limit — do not advance to the next unit until the
+     captain merges into `<EPIC_BRANCH>` and the orchestrator resumes. `IS_SECURITY_SENSITIVE` does
+     **not** force `manual` on an epic unit. **Never ask the captain to merge a green epic unit when
      `UNIT_MERGE_MODE=auto`.**
    - Tier hint — when **every** story in the unit is `trivial` and no specialist flags are set,
      include `complexity tier: simple` so `/ship-issue` takes the Simple path. When all are
@@ -372,7 +382,7 @@ After each successful unit, for **each story** in that unit:
 Backfill ticks for stories closed before this run but still unchecked in the epic body.
 
 `/ship-issue` ticks the epic when `MERGE_MODE=auto`; this stage ensures ticks when a unit used
-`MERGE_MODE=manual` (gate / security-sensitive units).
+`MERGE_MODE=manual` (gate stories and other explicit manual units).
 
 ## Stage 3.5 — Epic progress log & PR notes  (orchestrator)
 
@@ -485,8 +495,10 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
 - **Unit PRs never target `MAIN_BRANCH`** — delegated runs must pass `epic-base=<EPIC_BRANCH>`. Mis-targeted
   unit PRs are recovered via Stage 0.5 reconstruction, not accepted as the terminal state.
 - **No captain merge per unit** — green accepted units merge into `<EPIC_BRANCH>` via delegated
-  `MERGE_MODE=auto`. Never hand the captain a unit PR link and wait. The only human merge gate for
-  shipped code is the **epic PR** into `MAIN_BRANCH` at Stage 4.
+  `MERGE_MODE=auto`, **including** `IS_SECURITY_SENSITIVE` units. Never hand the captain a unit PR
+  link and wait unless a hard-limit row actually fired (`gate`, `unit merge manual`). The only human
+  merge gate for shipped code is the **epic PR** into `MAIN_BRANCH` at Stage 4; security still
+  surfaces as the `/shipmates-harden` recommendation plus the integration board, not a per-unit pause.
 - **CI every unit** — economy comes from fewer Planner/board **invocations**, not from skipping
   validation or acceptance on shipped code. **Integration board** at epic closure is never skipped on
   full closure — it is the holistic review of the combined epic PR.
