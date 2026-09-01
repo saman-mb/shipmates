@@ -42,6 +42,12 @@ pub enum Command {
         /// a receipt. Without this flag, existing files are preserved.
         #[arg(long)]
         force: bool,
+
+        /// Build the payload from the `crew/`, `commands/` and `toolbox/` trees
+        /// in the current directory instead of the one compiled into this
+        /// binary. `SHIPMATES_SRC=<dir>` does the same for another checkout.
+        #[arg(long = "from-cwd")]
+        from_cwd: bool,
     },
     /// Remove files recorded by a valid install receipt.
     Uninstall {
@@ -60,6 +66,11 @@ pub enum Command {
         /// Uninstall from a specific directory
         #[arg(long, conflicts_with = "global", conflicts_with = "local")]
         dir: Option<String>,
+
+        /// Recognize the payload from the current directory's source trees
+        /// rather than the one compiled into this binary.
+        #[arg(long = "from-cwd")]
+        from_cwd: bool,
     },
     Build {
         #[arg(long, default_value = "claude-code")]
@@ -117,6 +128,11 @@ pub enum Command {
         /// is left in place.
         #[arg(long, requires = "fix")]
         no_migrate: bool,
+
+        /// Diagnose against the payload built from the current directory's
+        /// source trees rather than the one compiled into this binary.
+        #[arg(long = "from-cwd")]
+        from_cwd: bool,
     },
     Targets,
 }

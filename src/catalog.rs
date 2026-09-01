@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -475,25 +476,138 @@ pub fn load_steering(root: &Path) -> Result<String, String> {
     }
 }
 
+/// Where a run's crew / commands / toolbox payload comes from.
+///
+/// A released binary must install the payload it was built with. Reading
+/// whatever `./crew` and `./commands` happen to sit in the current directory
+/// makes a stale checkout silently downgrade the payload while the binary
+/// reports its own version (#385), so on-disk sources are now opt-in or
+/// unambiguous rather than implicit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CatalogSource {
+    /// An on-disk checkout — the contributor dev loop, `--from-cwd`, or
+    /// `SHIPMATES_SRC`.
+    Disk(PathBuf),
+    /// The payload `build.rs` compiled into this binary.
+    Embedded,
+}
+
+impl CatalogSource {
+    pub fn load_roles(&self) -> anyhow::Result<Vec<CanonicalRole>> {
+        match self {
+            Self::Disk(root) => load_roles(&root.join("crew")).context("Failed to load roles"),
+            Self::Embedded => load_roles_embedded().context("Failed to load embedded roles"),
+        }
+    }
+
+    pub fn load_commands(&self) -> anyhow::Result<Vec<CanonicalCommand>> {
+        match self {
+            Self::Disk(root) => {
+                load_commands(&root.join("commands")).context("Failed to load commands")
+            }
+            Self::Embedded => load_commands_embedded().context("Failed to load embedded commands"),
+        }
+    }
+
+    pub fn load_tools(&self) -> anyhow::Result<Vec<CanonicalTool>> {
+        match self {
+            Self::Disk(root) => load_tools(&root.join("toolbox")).context("Failed to load tools"),
+            Self::Embedded => load_tools_embedded().context("Failed to load embedded tools"),
+        }
+    }
+
+    /// Contributor steering text for this source. A disk source without a
+    /// `steering/` tree still falls back to the embedded copy.
+    pub fn load_steering(&self) -> anyhow::Result<String> {
+        match self {
+            Self::Disk(root) => load_steering(root),
+            Self::Embedded => load_steering_embedded(),
+        }
+        .map_err(|error| anyhow::anyhow!(error))
+    }
+
+    /// Contributor steering, but only when the install target is the Shipmates
+    /// source tree itself.
+    pub fn steering_for_target(&self, target_dir: &Path) -> anyhow::Result<Option<String>> {
+        if is_shipmates_contributor_tree(target_dir) {
+            self.load_steering().map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+fn has_catalog(root: &Path) -> bool {
+    root.join("crew").is_dir() && root.join("commands").is_dir()
+}
+
+/// Resolve which payload a run installs, in strict precedence order:
+///
+/// 1. An explicit source — `--from-cwd` or `SHIPMATES_SRC=<dir>` — which is a
+///    hard error when that directory is not a catalog. An explicit request must
+///    never quietly become an embedded install.
+/// 2. A run from this crate's own manifest directory (`cargo run -- install` in
+///    the checkout), the documented contributor loop. Both sides are
+///    canonicalized so a symlinked checkout still matches.
+/// 3. Otherwise the embedded payload, with one loud warning when the current
+///    directory holds a `crew/` or `commands/` tree that is now being ignored.
+pub fn resolve_source(
+    from_cwd: bool,
+    env_src: Option<&str>,
+    cwd: &Path,
+) -> anyhow::Result<CatalogSource> {
+    if from_cwd || env_src.is_some() {
+        let (root, origin) = if from_cwd {
+            (cwd.to_path_buf(), "--from-cwd".to_string())
+        } else {
+            let raw = env_src.unwrap_or_default();
+            (PathBuf::from(raw), format!("SHIPMATES_SRC={raw}"))
+        };
+        if !has_catalog(&root) {
+            anyhow::bail!(
+                "{origin} points at {}, which is not a shipmates source tree (needs crew/ and commands/)",
+                root.display()
+            );
+        }
+        return Ok(CatalogSource::Disk(root));
+    }
+
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let in_checkout = match (cwd.canonicalize(), manifest_dir.canonicalize()) {
+        (Ok(cwd), Ok(manifest)) => cwd == manifest,
+        _ => cwd == manifest_dir,
+    };
+    if in_checkout && has_catalog(cwd) {
+        return Ok(CatalogSource::Disk(cwd.to_path_buf()));
+    }
+
+    if cwd.join("crew").is_dir() || cwd.join("commands").is_dir() {
+        eprintln!(
+            "Warning: ignoring the crew/ and commands/ trees in {} — shipmates v{} installs the \
+             payload compiled into this binary. Pass --from-cwd (or set SHIPMATES_SRC=<dir>) to \
+             install from a checkout instead.",
+            cwd.display(),
+            env!("CARGO_PKG_VERSION")
+        );
+    }
+    Ok(CatalogSource::Embedded)
+}
+
+/// `resolve_source` against the real process environment.
+pub fn resolve_source_from_env(from_cwd: bool) -> anyhow::Result<CatalogSource> {
+    let env_src = std::env::var("SHIPMATES_SRC")
+        .ok()
+        .filter(|value| !value.trim().is_empty());
+    let cwd = std::env::current_dir().context("Failed to determine current directory")?;
+    resolve_source(from_cwd, env_src.as_deref(), &cwd)
+}
+
 /// True when `dir` looks like the Shipmates source tree (not a random project
 /// that merely ran `shipmates install` for the crew).
 pub fn is_shipmates_contributor_tree(dir: &Path) -> bool {
     dir.join("commands").join("ship-issue.md").is_file()
         && dir.join("toolbox").is_dir()
         && dir.join("tools").join("gen_command_pages.py").is_file()
-}
-
-/// Contributor steering is installed only when the target directory is the
-/// Shipmates source tree; digest/build paths always include it.
-pub fn steering_for_target(
-    target_dir: &Path,
-    source_root: &Path,
-) -> Result<Option<String>, String> {
-    if is_shipmates_contributor_tree(target_dir) {
-        load_steering(source_root).map(Some)
-    } else {
-        Ok(None)
-    }
 }
 
 #[cfg(test)]
@@ -574,11 +688,9 @@ mod tests {
     #[test]
     fn test_steering_for_target_only_on_contributor_tree() {
         let dir = tempfile::tempdir().unwrap();
+        let source = CatalogSource::Disk(dir.path().to_path_buf());
         assert!(!is_shipmates_contributor_tree(dir.path()));
-        assert_eq!(
-            steering_for_target(dir.path(), dir.path()).unwrap(),
-            None
-        );
+        assert_eq!(source.steering_for_target(dir.path()).unwrap(), None);
 
         fs::create_dir_all(dir.path().join("commands")).unwrap();
         fs::write(dir.path().join("commands/ship-issue.md"), "---\n---\n").unwrap();
@@ -589,8 +701,58 @@ mod tests {
         fs::write(dir.path().join("steering/shipmates.md"), "checklists").unwrap();
         assert!(is_shipmates_contributor_tree(dir.path()));
         assert_eq!(
-            steering_for_target(dir.path(), dir.path()).unwrap().as_deref(),
+            source.steering_for_target(dir.path()).unwrap().as_deref(),
             Some("checklists")
+        );
+    }
+
+    #[test]
+    fn test_resolve_source_prefers_explicit_disk_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("crew")).unwrap();
+        fs::create_dir_all(root.join("commands")).unwrap();
+
+        assert_eq!(
+            resolve_source(true, None, root).unwrap(),
+            CatalogSource::Disk(root.to_path_buf())
+        );
+        assert_eq!(
+            resolve_source(false, root.to_str(), Path::new("/")).unwrap(),
+            CatalogSource::Disk(root.to_path_buf())
+        );
+    }
+
+    #[test]
+    fn test_resolve_source_explicit_missing_catalog_is_an_error_not_a_fallback() {
+        let dir = tempfile::tempdir().unwrap();
+        let error = resolve_source(true, None, dir.path()).unwrap_err();
+        assert!(error.to_string().contains("--from-cwd"), "{error}");
+        assert!(error.to_string().contains("crew/"), "{error}");
+
+        let error = resolve_source(false, dir.path().to_str(), Path::new("/")).unwrap_err();
+        assert!(error.to_string().contains("SHIPMATES_SRC"), "{error}");
+    }
+
+    #[test]
+    fn test_resolve_source_uses_embed_from_a_stale_checkout() {
+        // A checkout that is not this binary's own manifest dir must not shadow
+        // the embedded payload (#385).
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("crew")).unwrap();
+        fs::create_dir_all(dir.path().join("commands")).unwrap();
+        assert_eq!(
+            resolve_source(false, None, dir.path()).unwrap(),
+            CatalogSource::Embedded
+        );
+    }
+
+    #[test]
+    fn test_resolve_source_uses_disk_in_the_contributor_dev_loop() {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        assert_eq!(
+            resolve_source(false, None, manifest).unwrap(),
+            CatalogSource::Disk(manifest.to_path_buf())
         );
     }
 
