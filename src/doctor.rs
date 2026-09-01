@@ -7,9 +7,9 @@
 //! re-diagnoses and hands back the fresh report.
 
 use crate::adapters::{self, Adapter};
-use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
+use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool, CatalogSource};
 use crate::digest;
-use crate::installer::{manifest_db, migrate, plan, rename};
+use crate::installer::{adopt, manifest_db, migrate, plan, rename};
 use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -113,12 +113,6 @@ fn backup_matches_payload(bak: &Path, want: &[u8]) -> bool {
         .unwrap_or(false)
 }
 
-fn relative_to_target(target_dir: &Path, path: &Path) -> String {
-    path.strip_prefix(target_dir)
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|_| path.display().to_string())
-}
-
 /// The files a healthy install must contain, keyed by their on-disk path relative
 /// to the target directory (the `<container>/` prefix stripped, exactly as the
 /// installer writes them). Only the test harness materialises a healthy tree from
@@ -150,10 +144,10 @@ pub fn diagnose(
     roles: &[CanonicalRole],
     cmds: &[CanonicalCommand],
     tools: &[CanonicalTool],
+    source: &CatalogSource,
 ) -> Result<Report> {
     let adapter = adapters::select(harness)?;
-    let steering = crate::catalog::steering_for_target(target_dir, Path::new("."))
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let steering = source.steering_for_target(target_dir)?;
     let built = adapters::build_payload(adapter.as_ref(), roles, cmds, steering.as_deref())?;
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
 }
@@ -508,6 +502,77 @@ fn diagnose_built(
         });
     }
 
+    // 4b. Payload paths held by files the receipt does not claim. One that
+    // declares itself to be the artifact installed there is a Shipmates file
+    // that fell out of ownership: `--fix` adopts it. Anything else is somebody
+    // else's and only `install --force` may replace it (#386). Assessed only
+    // against a valid receipt — without one, ownership of everything is unknown
+    // and the Ownership check already says so.
+    let mut adoptable: Vec<String> = Vec::new();
+    let mut foreign: Vec<String> = Vec::new();
+    if let (plan::ReceiptState::Valid, Some(current)) = (receipt_state, receipt.as_ref()) {
+        for (rel, want) in &expected {
+            if current.file(rel).is_some() || repository.is_claimed(Path::new(rel)).unwrap_or(false)
+            {
+                continue;
+            }
+            let Ok(on_disk) = std::fs::read(target_dir.join(rel)) else {
+                continue;
+            };
+            if digest::hash_bytes(&on_disk) == digest::hash_bytes(want.as_bytes()) {
+                continue;
+            }
+            match adopt::classify(Path::new(rel), &on_disk) {
+                adopt::Collision::Adoptable => adoptable.push(rel.clone()),
+                adopt::Collision::ThirdParty => foreign.push(rel.clone()),
+            }
+        }
+    }
+    adoptable.sort();
+    foreign.sort();
+    if adoptable.is_empty() && foreign.is_empty() {
+        checks.push(Check {
+            name: "Collisions".into(),
+            severity: Severity::Ok,
+            detail: if receipt_state == plan::ReceiptState::Valid {
+                "no unclaimed files hold a payload path".into()
+            } else {
+                "ownership is unknown without a valid receipt; payload paths are left as found"
+                    .into()
+            },
+            fixable: false,
+        });
+    }
+    if !adoptable.is_empty() {
+        checks.push(Check {
+            name: "Collisions".into(),
+            severity: Severity::Problem,
+            detail: format!(
+                "{} shipmates file(s) at payload paths are not receipt-owned and stale: {}. \
+                 `shipmates doctor --fix` backs each up, restores v{} and claims it",
+                adoptable.len(),
+                adoptable.join(", "),
+                version
+            ),
+            fixable: true,
+        });
+    }
+    if !foreign.is_empty() {
+        checks.push(Check {
+            name: "Foreign collisions".into(),
+            severity: Severity::Problem,
+            detail: format!(
+                "{} file(s) shipmates does not own hold payload path(s): {}. They are left \
+                 untouched — run `shipmates install --force` to back each up and install v{} \
+                 over it, or move them aside",
+                foreign.len(),
+                foreign.join(", "),
+                version
+            ),
+            fixable: false,
+        });
+    }
+
     // 5. Tool status — optional tools are healthy only when every selected
     // file is present and its raw bytes match. A partially present tool is not
     // the same as no tool installed.
@@ -697,10 +762,10 @@ pub fn fix(
     cmds: &[CanonicalCommand],
     tools: &[CanonicalTool],
     no_migrate: bool,
+    source: &CatalogSource,
 ) -> Result<Report> {
     let adapter = adapters::select(harness)?;
-    let steering = crate::catalog::steering_for_target(target_dir, Path::new("."))
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let steering = source.steering_for_target(target_dir)?;
     let built = adapters::build_payload(adapter.as_ref(), roles, cmds, steering.as_deref())?;
     let expected = strip_container(&built, adapter.container());
     let repository = manifest_db::ReceiptRepository::new(target_dir);
@@ -825,7 +890,8 @@ pub fn fix(
     let mut restored = 0usize;
     let mut backed_up = 0usize;
     let mut skipped: Vec<String> = Vec::new();
-    let mut skip_mv: Vec<(String, String)> = Vec::new();
+    let mut force_needed: Vec<String> = Vec::new();
+    let mut adopted: BTreeSet<String> = BTreeSet::new();
     let mut repaired: BTreeSet<String> = BTreeSet::new();
     let mut changed: Vec<(String, PathBuf, Option<Vec<u8>>)> = Vec::new();
     let mut repair_backups = Vec::new();
@@ -847,9 +913,23 @@ pub fn fix(
                         skipped.push(rel.clone());
                         continue;
                     }
-                    if receipt_state != plan::ReceiptState::Valid || !owned {
+                    if receipt_state != plan::ReceiptState::Valid {
                         skipped.push(rel.clone());
                         continue;
+                    }
+                    if !owned {
+                        // Unowned but at a payload path: adopt it when it
+                        // declares itself to be this artifact, otherwise leave
+                        // it and name the flag that can replace it (#386).
+                        match adopt::classify(Path::new(rel), &on_disk) {
+                            adopt::Collision::Adoptable => {
+                                adopted.insert(rel.clone());
+                            }
+                            adopt::Collision::ThirdParty => {
+                                force_needed.push(rel.clone());
+                                continue;
+                            }
+                        }
                     }
                     // Preserve arbitrary bytes before replacing drift, then verify
                     // the backup byte-for-byte. This is required for --fix too:
@@ -883,17 +963,13 @@ pub fn fix(
                     // rewrite: restore even when the receipt does not list the
                     // path (the receipt may predate the file, or the update
                     // died before rewriting it).
-                    if matching {
-                        None
-                    } else if receipt_state == plan::ReceiptState::Valid && !owned {
-                        skipped.push(rel.clone());
-                        if let Some(bak) = siblings.first() {
-                            skip_mv.push((relative_to_target(target_dir, bak), rel.clone()));
-                        }
-                        continue;
-                    } else {
-                        None
+                    if !matching && receipt_state == plan::ReceiptState::Valid && !owned {
+                        // Nothing on disk to protect: write the payload and
+                        // claim the path rather than leaving a flagship absent
+                        // because an old receipt never listed it (#386).
+                        adopted.insert(rel.clone());
                     }
+                    None
                 }
                 Err(_) => {
                     // Present but unreadable: no verified byte backup is possible.
@@ -946,23 +1022,21 @@ pub fn fix(
         }
     }
     if !skipped.is_empty() {
-        if skip_mv.is_empty() {
-            println!(
-                "Skipped {} file(s) shipmates could not safely repair (no verified backup, \
-                 or present but unreadable) — left them untouched: {}",
-                skipped.len(),
-                skipped.join(", ")
-            );
-        } else {
-            println!(
-                "Skipped {} file(s) shipmates could not safely repair — left them untouched: {}",
-                skipped.len(),
-                skipped.join(", ")
-            );
-            for (bak, dest) in &skip_mv {
-                println!("  interrupted-update: restore with `mv {bak} {dest}`");
-            }
-        }
+        println!(
+            "Skipped {} file(s) shipmates could not safely repair (no verified backup, \
+             or present but unreadable) — left them untouched: {}",
+            skipped.len(),
+            skipped.join(", ")
+        );
+    }
+    if !force_needed.is_empty() {
+        println!(
+            "Left {} file(s) shipmates does not own untouched at payload path(s): {} — run \
+             `shipmates install --force` to back each up and install v{} over it.",
+            force_needed.len(),
+            force_needed.join(", "),
+            env!("CARGO_PKG_VERSION")
+        );
     }
 
     let publication_result: Result<()> = (|| {
@@ -981,6 +1055,30 @@ pub fn fix(
                 file.sha256 = digest::compute_sha256(&path)?;
             }
         }
+        // Adopted paths join the receipt, with the root they sit under, so the
+        // next upgrade owns them instead of warning about them forever.
+        for rel in &adopted {
+            if current.file(rel).is_some() {
+                continue;
+            }
+            let path = manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+            if let Some(root) = Path::new(rel)
+                .components()
+                .next()
+                .and_then(|component| component.as_os_str().to_str())
+                && !current.roots.iter().any(|known| known == root)
+            {
+                current.roots.push(root.to_string());
+                current.roots.sort();
+            }
+            current.files.push(manifest_db::ReceiptFile {
+                path: rel.clone(),
+                sha256: digest::compute_sha256(&path)?,
+            });
+        }
+        current
+            .files
+            .sort_by(|left, right| left.path.cmp(&right.path));
         current.version = env!("CARGO_PKG_VERSION").into();
         current.validate()?;
         let receipt_path = repository.receipt_path(harness)?;
@@ -1086,6 +1184,45 @@ mod tests {
     use crate::installer::atomic_write;
     use std::path::PathBuf;
     use tempfile::tempdir;
+
+    // Source-agnostic shims: these tests build every payload from the passed-in
+    // catalogs, so the source only decides steering, which a tempdir target
+    // never receives.
+    fn diagnose(
+        target_dir: &Path,
+        harness: &str,
+        roles: &[CanonicalRole],
+        cmds: &[CanonicalCommand],
+        tools: &[CanonicalTool],
+    ) -> Result<Report> {
+        super::diagnose(
+            target_dir,
+            harness,
+            roles,
+            cmds,
+            tools,
+            &CatalogSource::Embedded,
+        )
+    }
+
+    fn fix(
+        target_dir: &Path,
+        harness: &str,
+        roles: &[CanonicalRole],
+        cmds: &[CanonicalCommand],
+        tools: &[CanonicalTool],
+        no_migrate: bool,
+    ) -> Result<Report> {
+        super::fix(
+            target_dir,
+            harness,
+            roles,
+            cmds,
+            tools,
+            no_migrate,
+            &CatalogSource::Embedded,
+        )
+    }
 
     fn role(name: &str) -> CanonicalRole {
         CanonicalRole {
@@ -1254,7 +1391,10 @@ mod tests {
     }
 
     #[test]
-    fn test_fix_leaves_unowned_missing_without_matching_backup() {
+    fn test_fix_adopts_missing_unowned_payload_path_from_the_payload() {
+        // A payload path that is absent and unclaimed has nothing to protect:
+        // --fix writes the payload bytes and claims it, and never trusts a
+        // sibling backup whose contents are not the payload (#386).
         let dir = tempdir().unwrap();
         let target = dir.path();
         let roles = [role("architect")];
@@ -1269,6 +1409,7 @@ mod tests {
             .cloned()
             .expect("ship-issue skill in payload");
         let skill_path = target.join(&skill_rel);
+        let want = files.get(&skill_rel).unwrap().clone();
         let bak_path = skill_path.with_file_name("SKILL.md.bak-1788191317-3827013-0");
         std::fs::write(&bak_path, "not the payload").unwrap();
         std::fs::remove_file(&skill_path).unwrap();
@@ -1289,11 +1430,97 @@ mod tests {
         let receipt = install.receipt_for(agent_keys).unwrap();
         crate::installer::plan::save_receipt(target, &receipt).unwrap();
 
-        let _after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
-        assert!(
-            !skill_path.exists(),
-            "must not overwrite from a non-matching sibling backup"
+        let after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(&skill_path).unwrap(),
+            want,
+            "restore must come from the payload, not the non-matching backup"
         );
+        assert_eq!(sev(&after, "Content"), Severity::Ok);
+        let receipt = crate::installer::plan::read_receipt(target, "claude-code")
+            .1
+            .unwrap();
+        assert!(
+            receipt.file(&skill_rel).is_some(),
+            "an adopted path must be claimed"
+        );
+    }
+
+    #[test]
+    fn test_fix_adopts_stale_unowned_shipmates_file_but_not_a_foreign_one() {
+        let adapter = adapters::select("claude-code").unwrap();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        let files = expected_files(adapter.as_ref(), &roles, &cmds).unwrap();
+        let skill_rel = files
+            .keys()
+            .find(|k| k.ends_with("SKILL.md") && k.contains("ship-issue"))
+            .cloned()
+            .expect("ship-issue skill in payload");
+        let want = files.get(&skill_rel).unwrap().clone();
+
+        for (planted, adoptable) in [
+            ("---\nname: ship-issue\n---\nstale shipmates copy\n", true),
+            ("---\nname: someone-elses\n---\nmine\n", false),
+        ] {
+            let dir = tempdir().unwrap();
+            let target = dir.path();
+            install_healthy(target, &roles, &cmds);
+            atomic_write(&target.join(&skill_rel), planted).unwrap();
+
+            // Receipt claims the crew only — the skill is a live payload path
+            // nobody owns.
+            let install = crate::installer::plan::InstallPlan::from_payload(
+                adapter.as_ref(),
+                "claude-code",
+                adapter.build(&roles, &cmds).unwrap(),
+                adapter.build_tools(&[]),
+            )
+            .unwrap();
+            let agent_keys: Vec<PathBuf> = install
+                .files
+                .keys()
+                .filter(|p| p.to_string_lossy().contains("/agents/"))
+                .cloned()
+                .collect();
+            crate::installer::plan::save_receipt(target, &install.receipt_for(agent_keys).unwrap())
+                .unwrap();
+
+            let before = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
+            let check_name = if adoptable {
+                "Collisions"
+            } else {
+                "Foreign collisions"
+            };
+            assert_eq!(sev(&before, check_name), Severity::Problem);
+            if !adoptable {
+                let detail = &before
+                    .checks
+                    .iter()
+                    .find(|check| check.name == check_name)
+                    .unwrap()
+                    .detail;
+                assert!(
+                    detail.contains("shipmates install --force"),
+                    "a foreign collision must name the flag that can replace it: {detail}"
+                );
+            }
+
+            fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+
+            let on_disk = std::fs::read_to_string(target.join(&skill_rel)).unwrap();
+            let receipt = crate::installer::plan::read_receipt(target, "claude-code")
+                .1
+                .unwrap();
+            if adoptable {
+                assert_eq!(on_disk, want, "a stale shipmates file must be adopted");
+                assert!(receipt.file(&skill_rel).is_some());
+            } else {
+                assert_eq!(on_disk, planted, "a foreign file must be untouched");
+                assert!(receipt.file(&skill_rel).is_none());
+            }
+        }
     }
 
     #[test]

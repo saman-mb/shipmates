@@ -60,6 +60,220 @@ fn provision_tool_deps(scripts: &[PathBuf]) {
     }
 }
 
+/// What one harness's install produced, for the cross-harness summary.
+struct HarnessInstall {
+    version: String,
+    provision_scripts: Vec<PathBuf>,
+}
+
+/// Install one harness. Every failure mode returns `Err` rather than exiting, so
+/// `--harness all` can report a failed target and carry on with the rest (#384).
+#[allow(clippy::too_many_arguments)]
+fn install_harness(
+    harness: &str,
+    target_dir: &Path,
+    roles: &[catalog::CanonicalRole],
+    cmds: &[catalog::CanonicalCommand],
+    selected_tools: &[catalog::CanonicalTool],
+    install_steering: Option<&str>,
+    provision_filenames: &std::collections::HashSet<String>,
+    no_migrate: bool,
+    force: bool,
+) -> Result<HarnessInstall> {
+    let mut provision_scripts: Vec<PathBuf> = Vec::new();
+    let adapter = adapters::select(harness)?;
+    let built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
+    let payload_prefix = format!("{}/", adapter.container());
+    for key in built.keys() {
+        if let Some(rel) = key.strip_prefix(&payload_prefix) {
+            installer::manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+        }
+    }
+    let plan = installer::plan::InstallPlan::from_payload(
+        adapter.as_ref(),
+        harness,
+        built.clone(),
+        adapter.build_tools(selected_tools),
+    )?;
+    let migration_candidates = if force {
+        installer::migrate::plan(target_dir, &built, adapter.container())?
+    } else {
+        let (_, previous, _) = installer::plan::read_receipt(target_dir, harness);
+        if let Some(owned) = previous.as_ref() {
+            installer::migrate::plan(target_dir, &built, adapter.container())?
+                .into_iter()
+                .filter(|item| owned.file(&item.legacy_path.to_string_lossy()).is_some())
+                .collect()
+        } else {
+            Vec::new()
+        }
+    };
+    let migration_items = if no_migrate {
+        Vec::new()
+    } else {
+        migration_candidates.clone()
+    };
+    for item in &migration_candidates {
+        installer::manifest_db::resolve_target_relative(target_dir, &item.legacy_path)?;
+        installer::manifest_db::resolve_target_relative(target_dir, &item.superseded_by)?;
+    }
+
+    let rename_payload: std::collections::HashMap<String, String> = plan
+        .files
+        .iter()
+        .map(|(path, content)| (path.to_string_lossy().into_owned(), content.clone()))
+        .collect();
+    let rename_candidates =
+        installer::rename::plan(target_dir, &rename_payload, adapter.container())?;
+    let rename_items = if no_migrate {
+        Vec::new()
+    } else {
+        rename_candidates.clone()
+    };
+    for item in &rename_candidates {
+        installer::manifest_db::resolve_target_relative(target_dir, &item.old_path)?;
+        installer::manifest_db::resolve_target_relative(target_dir, &item.new_path)?;
+    }
+
+    // Identity rename, then layout migration, then receipt
+    // publication. If a later step fails, earlier steps roll back
+    // so a rename never becomes an irreversible side effect of an
+    // unsuccessful install. Paths deliberately left in place remain
+    // claimed so a later install can retry.
+    let mut preserved_paths = std::collections::BTreeSet::new();
+    let mut rename_report = None;
+    let mut migration_report = None;
+    if no_migrate {
+        preserved_paths.extend(installer::rename::preserved_old_paths(&rename_candidates));
+        preserved_paths.extend(
+            migration_candidates
+                .iter()
+                .map(|item| item.legacy_path.to_string_lossy().into_owned()),
+        );
+    } else {
+        let needs_backup = !rename_items.is_empty() || !migration_items.is_empty();
+        let backup_root = needs_backup.then(|| installer::migrate::new_backup_root(target_dir));
+        if !rename_items.is_empty() {
+            let backup_root = backup_root.as_ref().expect("backup root");
+            let report = installer::rename::apply(
+                target_dir,
+                &rename_items,
+                &rename_payload,
+                adapter.container(),
+                backup_root,
+            )?;
+            for item in &rename_items {
+                if !report
+                    .renamed
+                    .iter()
+                    .any(|renamed| renamed.old_path == item.old_path)
+                {
+                    preserved_paths.insert(item.old_path.to_string_lossy().into_owned());
+                }
+            }
+            if !report.renamed.is_empty() {
+                installer::rename::print_map(&report);
+            }
+            rename_report = Some(report);
+        }
+        if !migration_items.is_empty() {
+            let backup_root = backup_root.as_ref().expect("backup root");
+            let report = installer::migrate::apply(target_dir, &migration_items, backup_root)?;
+            for item in &migration_items {
+                if !report.migrated.contains(&item.legacy_path) {
+                    preserved_paths.insert(item.legacy_path.to_string_lossy().into_owned());
+                }
+            }
+            migration_report = Some(report);
+            if let Some(report) = migration_report.as_ref()
+                && !report.migrated.is_empty()
+            {
+                println!(
+                    "Migrated {} superseded command(s) → skills (backup: {})",
+                    report.migrated.len(),
+                    backup_root.display()
+                );
+                for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
+                    println!("  moved {} → {}", legacy.display(), backup.display());
+                }
+            }
+        }
+    }
+
+    let apply_result = if preserved_paths.is_empty() {
+        installer::apply::apply(target_dir, &plan, force)
+    } else {
+        installer::apply::apply_with_preserved_paths(target_dir, &plan, force, &preserved_paths)
+    };
+    let result = match apply_result {
+        Ok(result) => result,
+        Err(error) => {
+            let migrate_rollback = match migration_report.as_ref() {
+                Some(report) => installer::migrate::rollback(target_dir, report),
+                None => Ok(()),
+            };
+            let rename_rollback = match rename_report.as_ref() {
+                Some(report) => installer::rename::rollback(target_dir, report),
+                None => Ok(()),
+            };
+            return Err(combine_rollback_error(
+                combine_rollback_error(error, migrate_rollback),
+                rename_rollback,
+            ));
+        }
+    };
+    if let Some(receipt) = &result.receipt {
+        for file in &receipt.files {
+            let rel = PathBuf::from(&file.path);
+            if let Some(fname) = rel.file_name().and_then(|name| name.to_str())
+                && provision_filenames.contains(fname)
+                && !provision_scripts
+                    .iter()
+                    .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
+            {
+                provision_scripts.push(installer::manifest_db::resolve_target_relative(
+                    target_dir, &rel,
+                )?);
+            }
+        }
+    }
+
+    if let Some(previous) = &result.previous_version
+        && previous != &plan.version
+    {
+        println!("Upgrading shipmates v{} → v{}", previous, plan.version);
+        println!(
+            "{} files changed, {} new, {} removed",
+            result.summary.changed, result.summary.new, result.summary.removed
+        );
+    }
+    for warning in &result.warnings {
+        println!("{}", warning);
+    }
+
+    if selected_tools.is_empty() {
+        println!(
+            "Installed harness: {} ({} files written)",
+            harness, result.written
+        );
+    } else {
+        let names: Vec<&str> = selected_tools
+            .iter()
+            .map(|tool| tool.name.as_str())
+            .collect();
+        println!(
+            "Installed harness: {} ({} files written, tools: {})",
+            harness,
+            result.written,
+            names.join(", ")
+        );
+    }
+    Ok(HarnessInstall {
+        version: plan.version,
+        provision_scripts,
+    })
+}
+
 fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
     if let Some(dir) = dir {
         Ok(PathBuf::from(dir))
@@ -81,28 +295,12 @@ fn main() -> Result<()> {
             with_tools,
             no_migrate,
             force,
+            from_cwd,
         } => {
-            let root = Path::new(".");
-            let roles_path = root.join("crew");
-            let commands_path = root.join("commands");
-            let tools_path = root.join("toolbox");
-
-            let roles = if roles_path.is_dir() {
-                catalog::load_roles(&roles_path).context("Failed to load roles")?
-            } else {
-                catalog::load_roles_embedded().context("Failed to load embedded roles")?
-            };
-            let cmds = if commands_path.is_dir() {
-                catalog::load_commands(&commands_path).context("Failed to load commands")?
-            } else {
-                catalog::load_commands_embedded().context("Failed to load embedded commands")?
-            };
-
-            let available = if tools_path.is_dir() {
-                catalog::load_tools(&tools_path).context("Failed to load tools")?
-            } else {
-                catalog::load_tools_embedded().context("Failed to load embedded tools")?
-            };
+            let source = catalog::resolve_source_from_env(from_cwd)?;
+            let roles = source.load_roles()?;
+            let cmds = source.load_commands()?;
+            let available = source.load_tools()?;
             let selected_tools = match with_tools {
                 Some(want) => {
                     let want: Vec<String> = want.into_iter().filter(|w| !w.is_empty()).collect();
@@ -136,8 +334,7 @@ fn main() -> Result<()> {
             };
 
             let target_dir = resolve_target_dir(local, dir)?;
-            let install_steering =
-                catalog::steering_for_target(&target_dir, root).map_err(|e| anyhow::anyhow!(e))?;
+            let install_steering = source.steering_for_target(&target_dir)?;
             let harnesses: Vec<String> = if harness == "all" {
                 adapters::targets().iter().map(|s| s.to_string()).collect()
             } else {
@@ -156,227 +353,66 @@ fn main() -> Result<()> {
                 .collect();
             let mut provision_scripts: Vec<PathBuf> = Vec::new();
 
+            // `--harness all` is not transactional and must not pretend to be:
+            // one harness failing leaves the others correctly installed, so the
+            // loop continues, prints a per-harness summary, and exits non-zero
+            // (#384). A single named harness still fails fast.
+            let fail_fast = harnesses.len() == 1;
+            let mut installed: Vec<(String, String)> = Vec::new();
+            let mut failures: Vec<(String, String)> = Vec::new();
             for harness in &harnesses {
-                let adapter = adapters::select(harness)?;
-                let built = adapters::build_payload(
-                    adapter.as_ref(),
+                match install_harness(
+                    harness,
+                    &target_dir,
                     &roles,
                     &cmds,
+                    &selected_tools,
                     install_steering.as_deref(),
-                )?;
-                let payload_prefix = format!("{}/", adapter.container());
-                for key in built.keys() {
-                    if let Some(rel) = key.strip_prefix(&payload_prefix) {
-                        installer::manifest_db::resolve_target_relative(
-                            &target_dir,
-                            Path::new(rel),
-                        )?;
-                    }
-                }
-                let plan = installer::plan::InstallPlan::from_payload(
-                    adapter.as_ref(),
-                    harness,
-                    built.clone(),
-                    adapter.build_tools(&selected_tools),
-                )?;
-                let migration_candidates = if force {
-                    installer::migrate::plan(&target_dir, &built, adapter.container())?
-                } else {
-                    let (_, previous, _) = installer::plan::read_receipt(&target_dir, harness);
-                    if let Some(owned) = previous.as_ref() {
-                        installer::migrate::plan(&target_dir, &built, adapter.container())?
-                            .into_iter()
-                            .filter(|item| {
-                                owned.file(&item.legacy_path.to_string_lossy()).is_some()
-                            })
-                            .collect()
-                    } else {
-                        Vec::new()
-                    }
-                };
-                let migration_items = if no_migrate {
-                    Vec::new()
-                } else {
-                    migration_candidates.clone()
-                };
-                for item in &migration_candidates {
-                    installer::manifest_db::resolve_target_relative(
-                        &target_dir,
-                        &item.legacy_path,
-                    )?;
-                    installer::manifest_db::resolve_target_relative(
-                        &target_dir,
-                        &item.superseded_by,
-                    )?;
-                }
-
-                let rename_payload: std::collections::HashMap<String, String> = plan
-                    .files
-                    .iter()
-                    .map(|(path, content)| (path.to_string_lossy().into_owned(), content.clone()))
-                    .collect();
-                let rename_candidates =
-                    installer::rename::plan(&target_dir, &rename_payload, adapter.container())?;
-                let rename_items = if no_migrate {
-                    Vec::new()
-                } else {
-                    rename_candidates.clone()
-                };
-                for item in &rename_candidates {
-                    installer::manifest_db::resolve_target_relative(&target_dir, &item.old_path)?;
-                    installer::manifest_db::resolve_target_relative(&target_dir, &item.new_path)?;
-                }
-
-                // Identity rename, then layout migration, then receipt
-                // publication. If a later step fails, earlier steps roll back
-                // so a rename never becomes an irreversible side effect of an
-                // unsuccessful install. Paths deliberately left in place remain
-                // claimed so a later install can retry.
-                let mut preserved_paths = std::collections::BTreeSet::new();
-                let mut rename_report = None;
-                let mut migration_report = None;
-                if no_migrate {
-                    preserved_paths
-                        .extend(installer::rename::preserved_old_paths(&rename_candidates));
-                    preserved_paths.extend(
-                        migration_candidates
-                            .iter()
-                            .map(|item| item.legacy_path.to_string_lossy().into_owned()),
-                    );
-                } else {
-                    let needs_backup = !rename_items.is_empty() || !migration_items.is_empty();
-                    let backup_root =
-                        needs_backup.then(|| installer::migrate::new_backup_root(&target_dir));
-                    if !rename_items.is_empty() {
-                        let backup_root = backup_root.as_ref().expect("backup root");
-                        let report = installer::rename::apply(
-                            &target_dir,
-                            &rename_items,
-                            &rename_payload,
-                            adapter.container(),
-                            backup_root,
-                        )?;
-                        for item in &rename_items {
-                            if !report
-                                .renamed
+                    &provision_filenames,
+                    no_migrate,
+                    force,
+                ) {
+                    Ok(outcome) => {
+                        for script in outcome.provision_scripts {
+                            if !provision_scripts
                                 .iter()
-                                .any(|renamed| renamed.old_path == item.old_path)
+                                .any(|known| known.file_name() == script.file_name())
                             {
-                                preserved_paths
-                                    .insert(item.old_path.to_string_lossy().into_owned());
+                                provision_scripts.push(script);
                             }
                         }
-                        if !report.renamed.is_empty() {
-                            installer::rename::print_map(&report);
-                        }
-                        rename_report = Some(report);
+                        installed.push((harness.clone(), outcome.version));
                     }
-                    if !migration_items.is_empty() {
-                        let backup_root = backup_root.as_ref().expect("backup root");
-                        let report =
-                            installer::migrate::apply(&target_dir, &migration_items, backup_root)?;
-                        for item in &migration_items {
-                            if !report.migrated.contains(&item.legacy_path) {
-                                preserved_paths
-                                    .insert(item.legacy_path.to_string_lossy().into_owned());
-                            }
-                        }
-                        migration_report = Some(report);
-                        if let Some(report) = migration_report.as_ref()
-                            && !report.migrated.is_empty()
-                        {
-                            println!(
-                                "Migrated {} superseded command(s) → skills (backup: {})",
-                                report.migrated.len(),
-                                backup_root.display()
-                            );
-                            for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
-                                println!("  moved {} → {}", legacy.display(), backup.display());
-                            }
-                        }
-                    }
-                }
-
-                let apply_result = if preserved_paths.is_empty() {
-                    installer::apply::apply(&target_dir, &plan, force)
-                } else {
-                    installer::apply::apply_with_preserved_paths(
-                        &target_dir,
-                        &plan,
-                        force,
-                        &preserved_paths,
-                    )
-                };
-                let result = match apply_result {
-                    Ok(result) => result,
+                    Err(error) if fail_fast => return Err(error),
                     Err(error) => {
-                        let migrate_rollback = match migration_report.as_ref() {
-                            Some(report) => installer::migrate::rollback(&target_dir, report),
-                            None => Ok(()),
-                        };
-                        let rename_rollback = match rename_report.as_ref() {
-                            Some(report) => installer::rename::rollback(&target_dir, report),
-                            None => Ok(()),
-                        };
-                        return Err(combine_rollback_error(
-                            combine_rollback_error(error, migrate_rollback),
-                            rename_rollback,
-                        ));
+                        println!("Failed harness: {} — {:#}", harness, error);
+                        failures.push((harness.clone(), format!("{:#}", error)));
                     }
-                };
-                if let Some(receipt) = &result.receipt {
-                    for file in &receipt.files {
-                        let rel = PathBuf::from(&file.path);
-                        if let Some(fname) = rel.file_name().and_then(|name| name.to_str()) {
-                            if provision_filenames.contains(fname)
-                                && !provision_scripts
-                                    .iter()
-                                    .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
-                            {
-                                provision_scripts.push(
-                                    installer::manifest_db::resolve_target_relative(
-                                        &target_dir,
-                                        &rel,
-                                    )?,
-                                );
-                            }
-                        }
-                    }
-                }
-
-                if let Some(previous) = &result.previous_version {
-                    if previous != &plan.version {
-                        println!("Upgrading shipmates v{} → v{}", previous, plan.version);
-                        println!(
-                            "{} files changed, {} new, {} removed",
-                            result.summary.changed, result.summary.new, result.summary.removed
-                        );
-                    }
-                }
-                for warning in &result.warnings {
-                    println!("{}", warning);
-                }
-
-                if selected_tools.is_empty() {
-                    println!(
-                        "Installed harness: {} ({} files written)",
-                        harness, result.written
-                    );
-                } else {
-                    let names: Vec<&str> = selected_tools
-                        .iter()
-                        .map(|tool| tool.name.as_str())
-                        .collect();
-                    println!(
-                        "Installed harness: {} ({} files written, tools: {})",
-                        harness,
-                        result.written,
-                        names.join(", ")
-                    );
                 }
             }
+            if !fail_fast {
+                println!("\nHarness summary:");
+                for (harness, version) in &installed {
+                    println!("  {}: installed v{}", harness, version);
+                }
+                for (harness, error) in &failures {
+                    println!("  {}: failed — {}", harness, error);
+                }
+            }
+            // Provision only what actually landed: a failed harness wrote no
+            // tool scripts to warm.
             if !provision_scripts.is_empty() {
                 provision_tool_deps(&provision_scripts);
+            }
+            if !failures.is_empty() {
+                println!(
+                    "\n{} of {} harnesses failed; the rest are installed at v{}. \
+                     Re-run the failed harness after fixing the cause.",
+                    failures.len(),
+                    harnesses.len(),
+                    env!("CARGO_PKG_VERSION")
+                );
+                std::process::exit(1);
             }
             if install_steering.is_some() {
                 for action in steering::plan_legacy_migration(&target_dir)? {
@@ -406,6 +442,7 @@ fn main() -> Result<()> {
             global: _,
             local,
             dir,
+            from_cwd,
         } => {
             let target_dir = resolve_target_dir(local, dir)?;
             let selected = installer::uninstall::select_receipt(&target_dir, harness.as_deref())?;
@@ -413,30 +450,19 @@ fn main() -> Result<()> {
                 println!("No install receipt found; nothing to uninstall.");
                 return Ok(());
             };
-            let root = Path::new(".");
-            let roles_path = root.join("crew");
-            let commands_path = root.join("commands");
-            let tools_path = root.join("toolbox");
-            let roles = if roles_path.is_dir() {
-                catalog::load_roles(&roles_path).context("Failed to load roles")?
-            } else {
-                catalog::load_roles_embedded().context("Failed to load embedded roles")?
-            };
-            let cmds = if commands_path.is_dir() {
-                catalog::load_commands(&commands_path).context("Failed to load commands")?
-            } else {
-                catalog::load_commands_embedded().context("Failed to load embedded commands")?
-            };
-            let tools = if tools_path.is_dir() {
-                catalog::load_tools(&tools_path).context("Failed to load tools")?
-            } else {
-                catalog::load_tools_embedded().context("Failed to load embedded tools")?
-            };
+            // Uninstall recognizes a receipt entry only when it matches the
+            // payload this binary knows, so it must resolve its source exactly
+            // as install did — otherwise a checkout install cannot be removed.
+            let source = catalog::resolve_source_from_env(from_cwd)?;
+            let roles = source.load_roles()?;
+            let cmds = source.load_commands()?;
+            let tools = source.load_tools()?;
             let known_payload = installer::uninstall::payload_for(
                 &selected.receipt.harness,
                 &roles,
                 &cmds,
                 &tools,
+                &source.load_steering()?,
             )?;
             let report = installer::uninstall::uninstall_with_payload(
                 &target_dir,
@@ -517,44 +543,36 @@ fn main() -> Result<()> {
             dir,
             fix,
             no_migrate,
+            from_cwd,
         } => {
-            let root = Path::new(".");
-            let roles_path = root.join("crew");
-            let commands_path = root.join("commands");
-            let tools_path = root.join("toolbox");
-
-            // Same on-disk-or-embedded fallback as `install`: the repo dev loop
-            // reads `crew/` + `commands/` + `toolbox/`, a brew/cargo binary reads
-            // the payload compiled in by `build.rs`.
-            let roles = if roles_path.is_dir() {
-                catalog::load_roles(&roles_path).context("Failed to load roles")?
-            } else {
-                catalog::load_roles_embedded().context("Failed to load embedded roles")?
-            };
-            let cmds = if commands_path.is_dir() {
-                catalog::load_commands(&commands_path).context("Failed to load commands")?
-            } else {
-                catalog::load_commands_embedded().context("Failed to load embedded commands")?
-            };
-            let tools = if tools_path.is_dir() {
-                catalog::load_tools(&tools_path).context("Failed to load tools")?
-            } else {
-                catalog::load_tools_embedded().context("Failed to load embedded tools")?
-            };
+            // Same source resolution as `install`, so doctor diagnoses against
+            // the payload an install from this binary would actually write.
+            let source = catalog::resolve_source_from_env(from_cwd)?;
+            let roles = source.load_roles()?;
+            let cmds = source.load_commands()?;
+            let tools = source.load_tools()?;
 
             // Honour `--dir`, or default to global home dir unless `--local`
             let target_dir = if let Some(d) = dir {
                 PathBuf::from(d)
             } else if local {
-                root.to_path_buf()
+                Path::new(".").to_path_buf()
             } else {
                 home::home_dir().context("Failed to determine home directory")?
             };
 
             let report = if fix {
-                doctor::fix(&target_dir, &harness, &roles, &cmds, &tools, no_migrate)?
+                doctor::fix(
+                    &target_dir,
+                    &harness,
+                    &roles,
+                    &cmds,
+                    &tools,
+                    no_migrate,
+                    &source,
+                )?
             } else {
-                doctor::diagnose(&target_dir, &harness, &roles, &cmds, &tools)?
+                doctor::diagnose(&target_dir, &harness, &roles, &cmds, &tools, &source)?
             };
             doctor::print_report(&report);
             // Exit 2 on problems via `std::process::exit` — not `bail!`, which
