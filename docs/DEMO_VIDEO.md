@@ -79,7 +79,7 @@ Cost: ≈ $6 (cloud voice) or ≈ $0 (fully local). AI-video b-roll is optional 
 - **Caption:** `1 EPIC → N CHILD PRs · /ship-issue ALL THE WAY DOWN`
 
 ### Beat 6 — Close · 0:38–0:41
-- **Visual:** both screens tile side by side, dimmed, cursor still blinking. Final line types:
+- **Visual:** both screens tile side by side, dimmed, (as-built: 4×3 tile-mock pull-back — see tools/demo-video README, ADR beat 6). Final line types:
   ```
   ✓ You stayed the captain.
   ```
@@ -143,7 +143,7 @@ Practical notes (ComfyUI, Strix Halo):
 ## 7. TODO
 
 - [ ] Record captain's voice sample (1–5 min, quiet room) → clone + approve narration take
-- [x] Scaffold Remotion project (beats 1–5 + end card) — **beats 1–7 scaffolded** (tools/demo-video/)
+- [x] Scaffold Remotion project (beats 1–7) — **scaffolded** (tools/demo-video/)
 - [x] Render beat 3 first; verify legibility at phone-feed scale (≥20 px effective glyph height) before committing to full build — gate: `pnpm legibility` (20.25px terminal / 27px caption / 40.5px gates)
 - [ ] Generate MiniMax H3 transition shot (once ComfyUI model downloads finish)
 - [ ] Assemble, mix audio, export 1080×1080 + 1920×1080
