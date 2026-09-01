@@ -131,6 +131,42 @@
               <p><strong>Cause:</strong> your harness scans its directories at startup, so a first-time install isn&#x27;t visible to an already-running session. <strong>Fix:</strong> restart the harness. If they still don&#x27;t load, verify the files landed where you expected (see <a href="../install/#verify">Verify</a> in the install reference) and that <code>skills/&lt;name&gt;/SKILL.md</code> exists — the skill&#x27;s frontmatter <code>name:</code> must equal its parent directory name.</p>
             </div>
           </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span class="faq__q-text">The upgrade installed old command names</span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p><strong>Cause:</strong> you ran the install from a Shipmates checkout that is behind the binary, so <code>shipmates --version</code> and the payload disagreed. <strong>Fix:</strong> a current binary installs the payload compiled into it from any directory — re-run the install anywhere. To install from a checkout on purpose, ask for it: <code>shipmates install --from-cwd</code> inside the checkout, or <code>SHIPMATES_SRC=/path/to/checkout shipmates install</code>. A directory without <code>crew/</code> and <code>commands/</code> is an error rather than a silent fall back, and an ignored checkout in the current directory prints a warning naming the version it was ignored for.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span class="faq__q-text"><code>refusing to install over N file(s) shipmates does not own</code></span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p><strong>Cause:</strong> a file that is not a Shipmates artifact sits at a path the payload writes, so the install stopped before changing anything. <strong>Fix:</strong> move the named files aside and re-run, or run <code>shipmates install --force</code> to back each one up (a sibling <code>.bak-…</code>) and replace it. A file whose frontmatter <code>name:</code> matches the artifact installed there needs neither: install and <code>shipmates doctor --fix</code> adopt it automatically. Skills of your own that are not payload paths are never touched.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span class="faq__q-text"><code>refusing symlink component in target path …/node_modules/.bin/…</code></span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p><strong>Cause:</strong> shipmates before v0.1.16 scanned the whole harness root for unmanaged files and stopped on a package manager&#x27;s symlink. <strong>Fix:</strong> upgrade. From v0.1.16 the scan is bounded to the payload&#x27;s own subtrees, skips symlinks, and never walks <code>node_modules</code>, so a harness root that doubles as your runtime installs cleanly.</p>
+            </div>
+          </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span class="faq__q-text"><code>--harness all</code> reported a failure</span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p><strong>Cause:</strong> one harness failed; the others installed. The run is not transactional and exits non-zero so the failure is not lost. <strong>Fix:</strong> read the harness summary at the end of the output — every target reports either the version it installed or why it failed — then fix that cause and re-run just that harness with <code>shipmates install --harness &lt;name&gt;</code>.</p>
+            </div>
+          </details>
         </div>
       </div>
     </section>

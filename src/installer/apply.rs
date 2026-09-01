@@ -81,6 +81,7 @@ pub fn apply_with_preserved_paths(
         .collect();
     let mut managed = Vec::new();
     let mut pending = Vec::new();
+    let mut third_party: Vec<PathBuf> = Vec::new();
     for (rel, want) in &install.files {
         let path = crate::installer::manifest_db::resolve_target_relative(target_dir, rel)?;
         let rel_string = rel.to_string_lossy().into_owned();
@@ -117,22 +118,30 @@ pub fn apply_with_preserved_paths(
         }
         match fs::read(&path) {
             Ok(current) if current == want.as_bytes() => {
-                if !owned && !force {
-                    report.warnings.push(format!(
-                        "Warning: existing file left untouched (use --force to replace): {}",
-                        rel.display()
-                    ));
-                    continue;
-                }
+                // The bytes are already ours whoever wrote them. Claim the path
+                // so the receipt stops omitting a file the payload owns; there
+                // is nothing to back up.
                 managed.push(rel.clone());
                 report.skipped += 1;
             }
             Ok(current) => {
                 if !owned && !force {
-                    report.warnings.push(format!(
-                        "Warning: existing file left untouched (use --force to replace): {}",
-                        rel.display()
-                    ));
+                    // Adopt a file that declares itself to be this artifact;
+                    // refuse the whole install for anything else, rather than
+                    // publishing a receipt that quietly omits it (#386).
+                    match crate::installer::adopt::classify(rel, &current) {
+                        crate::installer::adopt::Collision::Adoptable => {
+                            pending.push(PendingWrite {
+                                rel: rel.clone(),
+                                path,
+                                content: want.as_bytes().to_vec(),
+                                previous: Some(current),
+                            });
+                        }
+                        crate::installer::adopt::Collision::ThirdParty => {
+                            third_party.push(rel.clone());
+                        }
+                    }
                     continue;
                 }
                 if std::str::from_utf8(&current).is_err() && !force {
@@ -164,13 +173,29 @@ pub fn apply_with_preserved_paths(
         }
     }
 
+    // Every collision is decided before the first byte moves, so a refusal
+    // leaves the tree exactly as it was found.
+    if !third_party.is_empty() {
+        let paths: Vec<String> = third_party
+            .iter()
+            .map(|rel| rel.display().to_string())
+            .collect();
+        bail!(
+            "refusing to install over {} file(s) shipmates does not own at payload path(s): {}. \
+             Re-run with `shipmates install --force` to back each one up and overwrite it, or \
+             move them aside first.",
+            paths.len(),
+            paths.join(", ")
+        );
+    }
+
     if let Some(old_receipt) = old.as_ref() {
         let old_managed = old_receipt
             .files
             .iter()
             .map(|file| file.path.clone())
             .collect::<BTreeSet<_>>();
-        for path in plan::unmanaged_files(target_dir, &old_receipt.roots, &old_managed)? {
+        for path in plan::unmanaged_files(target_dir, &old_managed) {
             report.warnings.push(format!(
                 "Warning: unmanaged file left untouched: {}",
                 path.strip_prefix(target_dir).unwrap_or(&path).display()

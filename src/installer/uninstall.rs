@@ -5,7 +5,7 @@ use crate::installer::{
     manifest_db::{InstallReceipt, ReceiptRepository},
     plan,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -89,10 +89,7 @@ pub fn select_receipt(target_dir: &Path, harness: Option<&str>) -> Result<Option
 /// still belong to the current harness payload. Other valid receipts claim
 /// shared paths; those paths remain. Receipt entries from an older payload are
 /// preserved with a warning rather than treated as deletion authority.
-pub fn uninstall(
-    target_dir: &Path,
-    selected: LocatedReceipt,
-) -> Result<UninstallReport> {
+pub fn uninstall(target_dir: &Path, selected: LocatedReceipt) -> Result<UninstallReport> {
     let known_payload = current_payload(&selected.receipt.harness)?;
     uninstall_with_payload(target_dir, selected, &known_payload)
 }
@@ -186,7 +183,7 @@ pub fn uninstall_with_payload(
         .iter()
         .map(|file| file.path.clone())
         .collect::<std::collections::BTreeSet<_>>();
-    for path in plan::unmanaged_files(target_dir, &selected.receipt.roots, &managed)? {
+    for path in plan::unmanaged_files(target_dir, &managed) {
         report.warnings.push(format!(
             "Warning: unmanaged file preserved: {}",
             path.strip_prefix(target_dir).unwrap_or(&path).display()
@@ -224,10 +221,7 @@ pub fn uninstall_with_payload(
         all_removed_paths.push(receipt_path);
     }
     for path in all_removed_paths {
-        let mut dir = path
-            .parent()
-            .unwrap_or(target_dir)
-            .to_path_buf();
+        let mut dir = path.parent().unwrap_or(target_dir).to_path_buf();
         while dir != *target_dir {
             match fs::read_dir(&dir) {
                 Ok(mut entries) => {
@@ -236,9 +230,7 @@ pub fn uninstall_with_payload(
                         if let Err(error) = fs::remove_dir(&dir) {
                             report.warnings.push(format!(
                                 "Warning: cannot remove empty dir {}: {}",
-                                dir.strip_prefix(target_dir)
-                                    .unwrap_or(&dir)
-                                    .display(),
+                                dir.strip_prefix(target_dir).unwrap_or(&dir).display(),
                                 error
                             ));
                         }
@@ -253,9 +245,7 @@ pub fn uninstall_with_payload(
                 Err(error) => {
                     report.warnings.push(format!(
                         "Warning: cannot read dir {}: {}",
-                        dir.strip_prefix(target_dir)
-                            .unwrap_or(&dir)
-                            .display(),
+                        dir.strip_prefix(target_dir).unwrap_or(&dir).display(),
                         error
                     ));
                     break;
@@ -271,7 +261,10 @@ pub fn uninstall_with_payload(
     if backup_dir.is_dir() {
         report.warnings.push(format!(
             "Warning: backup directory preserved: {}",
-            backup_dir.strip_prefix(target_dir).unwrap_or(&backup_dir).display()
+            backup_dir
+                .strip_prefix(target_dir)
+                .unwrap_or(&backup_dir)
+                .display()
         ));
     }
 
@@ -283,29 +276,28 @@ pub fn uninstall_with_payload(
 /// old receipt entry must be recognized only when current Shipmates still
 /// knows its exact path and bytes.
 fn current_payload(harness: &str) -> Result<BTreeMap<String, String>> {
-    let roles = crate::catalog::load_roles_embedded()?;
-    let commands = crate::catalog::load_commands_embedded()?;
-    let tools = crate::catalog::load_tools_embedded()?;
-    payload_for(harness, &roles, &commands, &tools)
+    let source = crate::catalog::CatalogSource::Embedded;
+    let roles = source.load_roles()?;
+    let commands = source.load_commands()?;
+    let tools = source.load_tools()?;
+    payload_for(harness, &roles, &commands, &tools, &source.load_steering()?)
 }
 
+/// Build the payload uninstall recognizes. `steering` comes from the same
+/// catalog source the caller installed from, so a checkout install is still
+/// removable by the same command that wrote it.
 pub fn payload_for(
     harness: &str,
     roles: &[crate::catalog::CanonicalRole],
     commands: &[crate::catalog::CanonicalCommand],
     tools: &[crate::catalog::CanonicalTool],
+    steering: &str,
 ) -> Result<BTreeMap<String, String>> {
     let adapter = crate::adapters::select(harness)?;
-    let steering = crate::catalog::load_steering_embedded().map_err(|e| anyhow::anyhow!(e))?;
     let plan = crate::installer::plan::InstallPlan::from_payload(
         adapter.as_ref(),
         harness,
-        crate::adapters::build_payload(
-            adapter.as_ref(),
-            roles,
-            commands,
-            Some(&steering),
-        )?,
+        crate::adapters::build_payload(adapter.as_ref(), roles, commands, Some(steering))?,
         adapter.build_tools(tools),
     )?;
     Ok(plan
@@ -372,13 +364,15 @@ mod tests {
             "1",
             harness,
             LAYOUT_SKILLS,
-            vec![Path::new(path)
-                .components()
-                .next()
-                .unwrap()
-                .as_os_str()
-                .to_string_lossy()
-                .into_owned()],
+            vec![
+                Path::new(path)
+                    .components()
+                    .next()
+                    .unwrap()
+                    .as_os_str()
+                    .to_string_lossy()
+                    .into_owned(),
+            ],
             vec![ReceiptFile {
                 path: path.into(),
                 sha256: digest::hash_bytes(content),
@@ -482,17 +476,22 @@ mod tests {
         let report = uninstall_with_payload(
             dir.path(),
             selected,
-            &BTreeMap::from([(String::from(".claude/agents/current.md"), String::from("current"))]),
+            &BTreeMap::from([(
+                String::from(".claude/agents/current.md"),
+                String::from("current"),
+            )]),
         )
         .unwrap();
 
         assert_eq!(report.removed, 0);
         assert!(!report.receipt_removed);
         assert!(path.exists());
-        assert!(report
-            .warnings
-            .iter()
-            .any(|warning| warning.contains("old or unknown payload entry")));
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("old or unknown payload entry"))
+        );
     }
 
     #[test]
@@ -512,7 +511,10 @@ mod tests {
         let report = uninstall_with_payload(
             dir.path(),
             selected,
-            &BTreeMap::from([(String::from(".claude/agents/current.md"), String::from("current"))]),
+            &BTreeMap::from([(
+                String::from(".claude/agents/current.md"),
+                String::from("current"),
+            )]),
         )
         .unwrap();
 
