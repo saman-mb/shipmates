@@ -281,22 +281,21 @@ assert_file_exists "$PROJ/.github/agents/architect.agent.md" "GitHub agent prese
 assert_file_exists "$PROJ/.agents/skills/ship-issue/SKILL.md" "Shared skill still present"
 
 # ---------------------------------------------------------------------------
-# Segment 13 — Migration: plain reinstall preserves legacy
+# Segment 13 — Unowned Shipmates file at a payload path is adopted
 # ---------------------------------------------------------------------------
-echo "=== Segment 13: Migration — plain reinstall preserves legacy ==="
+echo "=== Segment 13: Adopt unowned matching flagship ==="
 PROJ="$TMPDIR/proj-migrate-plain"
 mkdir -p "$PROJ/.claude/agents"
-echo "legacy architect" > "$PROJ/.claude/agents/architect.md"
+printf '%s\n' '---' 'name: architect' 'description: leftover' '---' 'legacy architect' \
+  > "$PROJ/.claude/agents/architect.md"
 cmd_capture "migrate plain" "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none
 MIGRATE_RC="$CMD_RC"
-[ "$MIGRATE_RC" -eq 0 ] && ok "Plain reinstall exits 0" || fail "Plain reinstall exited $MIGRATE_RC (expected 0)"
-assert_contains "left untouched" "$CMD_OUT" "Plain reinstall warns about legacy file"
-assert_contains "27 files written" "$CMD_OUT" "Plain reinstall reports 27 files (1 skipped)"
-# Legacy file should be preserved (not overwritten)
+[ "$MIGRATE_RC" -eq 0 ] && ok "Adopt install exits 0" || fail "Adopt install exited $MIGRATE_RC (expected 0)"
+assert_contains "28 files written" "$CMD_OUT" "Adopt install writes the full payload"
 if grep -q "legacy architect" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
-  ok "Legacy file preserved (not overwritten)"
+  fail "Matching leftover was not adopted"
 else
-  fail "Legacy file was overwritten"
+  ok "Matching leftover was adopted (rewritten from payload)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -318,7 +317,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Segment 15 — Collision without --force
+# Segment 15 — Third-party collision without --force refuses the install
 # ---------------------------------------------------------------------------
 echo "=== Segment 15: Collision without --force ==="
 PROJ="$TMPDIR/proj-collision"
@@ -326,14 +325,18 @@ mkdir -p "$PROJ/.claude/agents"
 echo "intruder" > "$PROJ/.claude/agents/architect.md"
 cmd_capture "collision" "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none
 COLLIDE_RC="$CMD_RC"
-[ "$COLLIDE_RC" -eq 0 ] && ok "Collision install exits 0 (preserved)" || fail "Collision exited $COLLIDE_RC (expected 0)"
-assert_contains "left untouched" "$CMD_OUT" "Collision produces warning"
-assert_contains "27 files written" "$CMD_OUT" "Collision reports 27 files (1 skipped)"
-# Legacy file should be preserved
+[ "$COLLIDE_RC" -eq 1 ] && ok "Collision install exits 1 (refused)" || fail "Collision exited $COLLIDE_RC (expected 1)"
+assert_contains "does not own" "$CMD_OUT" "Collision names the unowned path"
+assert_contains "install --force" "$CMD_OUT" "Collision names --force as the overwrite path"
 if grep -q "intruder" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
   ok "Collision preserves intruder file"
 else
   fail "Collision overwrote intruder file"
+fi
+if [ -e "$PROJ/.shipmates/receipts/claude-code.json" ]; then
+  fail "Refused collision published a receipt"
+else
+  ok "Refused collision published no receipt"
 fi
 
 # ---------------------------------------------------------------------------
