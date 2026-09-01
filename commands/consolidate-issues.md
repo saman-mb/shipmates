@@ -1,6 +1,6 @@
 ---
 name: consolidate-issues
-description: Review every open issue against git history, close what's already done or stale, migrate the legacy ones, slim the backlog, and bundle the survivors into themed groups so similar work ships together efficiently. Read-only by default — it reports; changes happen only on an explicit apply.
+description: Shipmates: Review every open issue against git history, close what's already done or stale, migrate the legacy ones, slim the backlog, and bundle the survivors into themed groups so similar work ships together efficiently. Read-only by default — it reports; changes happen only on an explicit apply.
 argument-hint: [scope filter such as label/area] [apply] — no args: the whole open backlog, report-only
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true

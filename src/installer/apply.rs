@@ -180,6 +180,9 @@ pub fn apply_with_preserved_paths(
             if install.files.contains_key(Path::new(&old_file.path)) {
                 continue;
             }
+            if preserved_paths.contains(&old_file.path) {
+                continue;
+            }
             if sibling_claims.contains(&old_file.path) {
                 report.warnings.push(format!(
                     "Warning: shared-managed file preserved (no longer in payload): {}",
@@ -192,19 +195,16 @@ pub fn apply_with_preserved_paths(
                 Path::new(&old_file.path),
             )?;
             if fs::symlink_metadata(&path).is_ok() {
-                let current = fs::read(&path).with_context(|| {
-                    format!("reading dropped file {}", path.display())
-                })?;
+                let current = fs::read(&path)
+                    .with_context(|| format!("reading dropped file {}", path.display()))?;
                 if let Some(backup) = backup_existing(&path, &current)? {
                     report.backups.push(backup.clone());
                 }
-                fs::remove_file(&path).with_context(|| {
-                    format!("removing dropped file {}", path.display())
-                })?;
-                report.warnings.push(format!(
-                    "Removed dropped file: {}",
-                    old_file.path
-                ));
+                fs::remove_file(&path)
+                    .with_context(|| format!("removing dropped file {}", path.display()))?;
+                report
+                    .warnings
+                    .push(format!("Removed dropped file: {}", old_file.path));
             }
         }
     }
@@ -402,6 +402,52 @@ mod tests {
         assert_eq!(
             fs::read_to_string(dir.path().join(".claude/agents/a.md")).unwrap(),
             "b"
+        );
+    }
+
+    #[test]
+    fn preserved_path_is_not_deleted_when_dropped_from_payload() {
+        let dir = tempdir().unwrap();
+        let first = install(
+            dir.path(),
+            "one",
+            &[
+                (".claude/agents/a.md", "a"),
+                (".claude/skills/polish/SKILL.md", "old polish"),
+            ],
+        );
+        apply(dir.path(), &first, false).unwrap();
+
+        let second = install(
+            dir.path(),
+            "two",
+            &[
+                (".claude/agents/a.md", "a"),
+                (".claude/skills/shipmates-polish/SKILL.md", "new polish"),
+            ],
+        );
+        let mut preserved = BTreeSet::new();
+        preserved.insert(".claude/skills/polish/SKILL.md".into());
+        apply_with_preserved_paths(dir.path(), &second, false, &preserved).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(dir.path().join(".claude/skills/polish/SKILL.md")).unwrap(),
+            "old polish",
+            "preserved_paths must keep the file on disk, not only the receipt claim"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join(".claude/skills/shipmates-polish/SKILL.md"))
+                .unwrap(),
+            "new polish"
+        );
+        let receipt = crate::installer::plan::read_receipt(dir.path(), "claude-code")
+            .1
+            .unwrap();
+        assert!(receipt.file(".claude/skills/polish/SKILL.md").is_some());
+        assert!(
+            receipt
+                .file(".claude/skills/shipmates-polish/SKILL.md")
+                .is_some()
         );
     }
 }

@@ -19,7 +19,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/fix-bug/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-fix-bug/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -43,37 +43,37 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/harden/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-harden/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/spike/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-spike/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/migrate/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-migrate/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/document/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-document/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/release/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-release/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/polish/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-polish/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -85,13 +85,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/onboard/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-onboard/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/refactor/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-refactor/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -205,67 +205,67 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/termgif/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-termgif/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/social-card/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-social-card/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/pixelart/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-pixelart/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/diagram/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-diagram/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/svgflow/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-svgflow/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/badge/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-badge/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/sparkline/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-sparkline/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/scrub/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-scrub/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/fixtures/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-fixtures/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/domaincheck/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-domaincheck/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/tools/gh/</loc>
+    <loc>https://saman-mb.github.io/shipmates/tools/shipmates-gh/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

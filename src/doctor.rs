@@ -9,7 +9,7 @@
 use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
-use crate::installer::{manifest_db, migrate, plan};
+use crate::installer::{manifest_db, migrate, plan, rename};
 use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -296,6 +296,68 @@ fn diagnose_built(
             detail: format!(
                 "{} of your own command file(s) share a skill name and are shadowed by it — left untouched: {}",
                 unmanaged.len(),
+                names.join(", ")
+            ),
+            fixable: false,
+        });
+    }
+
+    // 2b. Identity — leftover pre-prefix names (`polish` beside `shipmates-polish`)
+    // that a Shipmates receipt still claims. `--fix` runs the rename sweep.
+    let mut rename_payload = built.clone();
+    for (key, content) in adapter.build_tools(tools) {
+        rename_payload.insert(key, content);
+    }
+    let rename_items = rename::plan(target_dir, &rename_payload, adapter.container())?;
+    let repository = manifest_db::ReceiptRepository::new(target_dir);
+    let mut owned_renames = Vec::new();
+    let mut unmanaged_renames = Vec::new();
+    for item in &rename_items {
+        let this_claim = receipt
+            .as_ref()
+            .and_then(|current| current.file(&item.old_path.to_string_lossy()))
+            .is_some();
+        let any_claim = repository.is_claimed(&item.old_path).unwrap_or(false);
+        if this_claim || any_claim {
+            owned_renames.push(item);
+        } else {
+            unmanaged_renames.push(item);
+        }
+    }
+    if owned_renames.is_empty() {
+        checks.push(Check {
+            name: "Identity".into(),
+            severity: Severity::Ok,
+            detail: "no leftover pre-prefix skill or tool names".into(),
+            fixable: false,
+        });
+    } else {
+        let names: Vec<String> = owned_renames
+            .iter()
+            .map(|item| item.old_path.display().to_string())
+            .collect();
+        checks.push(Check {
+            name: "Identity".into(),
+            severity: Severity::Problem,
+            detail: format!(
+                "{} leftover pre-prefix name(s) still installed: {}",
+                owned_renames.len(),
+                names.join(", ")
+            ),
+            fixable: true,
+        });
+    }
+    if !unmanaged_renames.is_empty() {
+        let names: Vec<String> = unmanaged_renames
+            .iter()
+            .map(|item| item.old_path.display().to_string())
+            .collect();
+        checks.push(Check {
+            name: "Foreign names".into(),
+            severity: Severity::Ok,
+            detail: format!(
+                "{} of your own file(s) share a pre-prefix name and were left untouched: {}",
+                unmanaged_renames.len(),
                 names.join(", ")
             ),
             fixable: false,
@@ -620,13 +682,14 @@ fn diagnose_built(
     Ok(Report { checks })
 }
 
-/// Repair an install: migrate superseded commands, then restore any missing or
-/// drifted crew/skill files, backing up everything it touches. Re-diagnoses and
-/// returns the fresh report.
+/// Repair an install: identity-rename leftover pre-prefix names, migrate
+/// superseded commands, then restore any missing or drifted crew/skill files,
+/// backing up everything it touches. Re-diagnoses and returns the fresh report.
 ///
-/// With `no_migrate`, the legacy-command sweep is skipped — parity with
-/// `install --no-migrate`: missing/drifted files are still restored, but a
-/// superseded `commands/<name>.md` is left in place.
+/// With `no_migrate`, the identity-rename and legacy-command sweeps are skipped
+/// — parity with `install --no-migrate`: missing/drifted files are still
+/// restored, but a superseded `commands/<name>.md` or pre-prefix name is left
+/// in place.
 pub fn fix(
     target_dir: &Path,
     harness: &str,
@@ -662,9 +725,42 @@ pub fn fix(
     let backup_root = migrate::new_backup_root(target_dir);
     let mut migrated_paths = BTreeSet::new();
     let mut migration_report = None;
+    let mut rename_report = None;
+    let tool_built = adapter.build_tools(tools);
+    let mut rename_payload = built.clone();
+    for (key, content) in &tool_built {
+        rename_payload.insert(key.clone(), content.clone());
+    }
+
+    // 0. Identity-rename leftover pre-prefix names before layout migrate,
+    // unless the caller opted out with `--no-migrate`. Reload this harness's
+    // receipt afterwards so repair sees the new paths.
+    if !no_migrate {
+        let items = rename::plan(target_dir, &rename_payload, adapter.container())?;
+        if !items.is_empty() {
+            let report = rename::apply(
+                target_dir,
+                &items,
+                &rename_payload,
+                adapter.container(),
+                &backup_root,
+            )?;
+            if !report.renamed.is_empty() {
+                rename::print_map(&report);
+            }
+            rename_report = Some(report);
+            let reloaded = plan::read_receipt(target_dir, harness);
+            receipt_state = reloaded.0;
+            receipt = reloaded.1;
+            if receipt_state == plan::ReceiptState::Invalid {
+                receipt_state = plan::ReceiptState::Missing;
+                receipt = None;
+            }
+        }
+    }
+
     let tool_prefix = format!("{}/", adapter.container());
-    let tool_expected: BTreeMap<String, String> = adapter
-        .build_tools(tools)
+    let tool_expected: BTreeMap<String, String> = tool_built
         .into_iter()
         .filter_map(|(k, v)| k.strip_prefix(&tool_prefix).map(|r| (r.to_string(), v)))
         .collect();
@@ -678,9 +774,9 @@ pub fn fix(
     // When some tools are installed, only their files are included so that
     // uninstalled tools do not appear in the skipped report either.
     if let Some(receipt) = receipt.as_ref() {
-        for (k, v) in tool_expected {
-            if receipt.file(&k).is_some() {
-                repair_expected.insert(k, v);
+        for (k, v) in &tool_expected {
+            if receipt.file(k).is_some() {
+                repair_expected.insert(k.clone(), v.clone());
             }
         }
     }
@@ -819,9 +915,16 @@ pub fn fix(
             Some(report) => migrate::rollback(target_dir, report),
             None => Ok(()),
         };
+        let rename_rollback = match rename_report.as_ref() {
+            Some(report) => rename::rollback(target_dir, report),
+            None => Ok(()),
+        };
         return Err(combine_rollback_error(
-            combine_rollback_error(error, repair_rollback),
-            migration_rollback,
+            combine_rollback_error(
+                combine_rollback_error(error, repair_rollback),
+                migration_rollback,
+            ),
+            rename_rollback,
         ));
     }
     if restored > 0 {
@@ -898,9 +1001,16 @@ pub fn fix(
             Some(report) => migrate::rollback(target_dir, report),
             None => Ok(()),
         };
+        let rename_rollback = match rename_report.as_ref() {
+            Some(report) => rename::rollback(target_dir, report),
+            None => Ok(()),
+        };
         return Err(combine_rollback_error(
-            combine_rollback_error(error, repair_rollback),
-            migration_rollback,
+            combine_rollback_error(
+                combine_rollback_error(error, repair_rollback),
+                migration_rollback,
+            ),
+            rename_rollback,
         ));
     }
 

@@ -17,12 +17,12 @@ Shipmates commands that isolate work in a git worktree default to **nested** pat
 `<repo>/.shipmates/worktrees/<slug>` — same namespace as `.shipmates/receipts/`. Stage 1 (or the
 command's isolate stage) idempotently appends `.shipmates/worktrees/` to `.gitignore` on first use.
 Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…`).
-Remote-base commands (`/ship-issue`, `/fix-bug`, `/refactor`, `/migrate`) require **`git fetch origin`**
+Remote-base commands (`/ship-issue`, `/shipmates-fix-bug`, `/shipmates-refactor`, `/shipmates-migrate`) require **`git fetch origin`**
 then cut from `origin/<BASE>`; resume re-fetches and rebases when behind. `HEAD`-based commands accept
 **`sync-base`** guidance for remote-latest instead of local `HEAD`.
 When you change one command's isolate stage, keep all nine mutating commands in sync:
-`/ship-issue`, `/fix-bug`, `/polish`, `/harden`, `/migrate`, `/document`, `/onboard`, `/refactor`,
-`/spike`.
+`/ship-issue`, `/shipmates-fix-bug`, `/shipmates-polish`, `/shipmates-harden`, `/shipmates-migrate`, `/shipmates-document`, `/shipmates-onboard`, `/shipmates-refactor`,
+`/shipmates-spike`.
 
 ## New command
 

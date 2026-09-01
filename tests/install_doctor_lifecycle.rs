@@ -378,7 +378,7 @@ fn removed_receipt_files_are_removed_with_backup() {
         "tool install failed: {}",
         output_text(&first)
     );
-    let tool = dir.path().join(".claude/skills/termgif/SKILL.md");
+    let tool = dir.path().join(".claude/skills/shipmates-termgif/SKILL.md");
     assert!(tool.is_file(), "selected tool should be installed");
 
     let second = run(
@@ -778,8 +778,8 @@ fn doctor_fix_still_repairs_drifted_installed_tool() {
         "tool install failed: {}",
         output_text(&output)
     );
-    let tool_skill = dir.path().join(".claude/skills/termgif/SKILL.md");
-    assert!(tool_skill.is_file(), "termgif SKILL.md must exist");
+    let tool_skill = dir.path().join(".claude/skills/shipmates-termgif/SKILL.md");
+    assert!(tool_skill.is_file(), "shipmates-termgif SKILL.md must exist");
 
     // Drift the tool file.
     fs::write(&tool_skill, "drifted content\n").unwrap();

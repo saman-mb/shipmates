@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>/shipmates-refactor — pin behaviour → transform → prove equivalence · Shipmates</title>
+  <meta name="description" content="Pin today&#x27;s behaviour, change the shape, prove callers still see the same thing.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/shipmates-refactor/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="/shipmates-refactor — pin behaviour → transform → prove equivalence">
+  <meta property="og:description" content="Pin today&#x27;s behaviour, change the shape, prove callers still see the same thing.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/shipmates-refactor/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="/shipmates-refactor — pin behaviour → transform → prove equivalence">
+  <meta name="twitter:description" content="Pin today&#x27;s behaviour, change the shape, prove callers still see the same thing.">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "/shipmates-refactor",
+    "description": "Pin today's behaviour, change the shape, prove callers still see the same thing.",
+    "url": "https://saman-mb.github.io/shipmates/commands/shipmates-refactor/",
+    "step": [
+      {
+        "@type": "HowToStep",
+        "position": 1,
+        "name": "Pin",
+        "text": "Tests that describe current behaviour — including behaviour you think is wrong — while it is still true. Always: sdet.",
+        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-refactor/#step-1"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 2,
+        "name": "Reshape",
+        "text": "Change structure without changing what callers observe. Architect sits first when the target shape is a real structural change. Always: senior-engineer. Also sit when: architect (the change crosses module boundaries or moves a public surface).",
+        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-refactor/#step-2"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
+        "name": "Prove",
+        "text": "The pinned tests pass unmodified. No existing test is deleted, skipped, or loosened. Always: sdet.",
+        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-refactor/#step-3"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 4,
+        "name": "Land",
+        "text": "Architect always asks whether the structure actually improved. A fresh SDET audits the test diff. PE+PO accept. Always: architect, sdet, product-manager, principal-engineer. Also sit when: performance-engineer (the stated motivation was performance).",
+        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-refactor/#step-4"
+      }
+    ]
+  }
+  </script>
+</head>
+<body class="page--doc">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#tools">Tools</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+        </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="../../#install">Install</a>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
+          <h1 class="order-detail__title" id="order-title"><code>/shipmates-refactor</code></h1>
+          <p class="order-detail__tagline">pin behaviour → transform → prove equivalence</p>
+          <p class="order-detail__desc">Pin today&#x27;s behaviour, change the shape, prove callers still see the same thing.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="demo" aria-labelledby="demo-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="demo-title">See it run</h2>
+        </div>
+        <figure class="demo">
+          <img class="demo__media" id="demo-media" src="../../assets/command-shipmates-refactor-poster.png" width="820" height="462" alt="Illustrative terminal recording of the stages /shipmates-refactor runs, in order." loading="lazy">
+          <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/shipmates-refactor</code> runs, in order.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section order-invoke" id="invoke" aria-labelledby="invoke-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="invoke-title">How to run it</h2>
+        </div>
+        <div class="codeblock">
+          <p class="codeblock__label">Run it in your harness</p>
+          <div class="codeblock__body">
+            <pre class="codeblock__pre"><code class="codeblock__code">/shipmates-refactor &lt;what to refactor + why — e.g. &quot;split the 900-line order service, it&#x27;s untestable&quot;&gt;</code></pre>
+          </div>
+        </div>
+        <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
+      </div>
+    </section>
+
+    <section class="section order-process" id="process" aria-labelledby="process-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="process-title">How it works</h2>
+        </div>
+        <p class="order-process__lead">SDET pins current behaviour first. An engineer reshapes; architect sits when the shape is structural. Review always includes architect and a fresh SDET, plus PE+PO.</p>
+        <ol class="order-process__list" role="list">
+          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Pin</h3><p class="order-process__line">Tests that describe current behaviour — including behaviour you think is wrong — while it is still true.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/sdet/"><code>sdet</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Reshape</h3><p class="order-process__line">Change structure without changing what callers observe. Architect sits first when the target shape is a real structural change.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a><span class="order-process__when-text">the change crosses module boundaries or moves a public surface</span></li></ul></div></div></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Prove</h3><p class="order-process__line">The pinned tests pass unmodified. No existing test is deleted, skipped, or loosened.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/sdet/"><code>sdet</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">Land</h3><p class="order-process__line">Architect always asks whether the structure actually improved. A fresh SDET audits the test diff. PE+PO accept.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/sdet/"><code>sdet</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/principal-engineer/"><code>principal-engineer</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/performance-engineer/"><code>performance-engineer</code></a><span class="order-process__when-text">the stated motivation was performance</span></li></ul></div></div></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section order-when" id="when-to-use" aria-labelledby="when-to-use-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="when-to-use-title">When to use</h2>
+        </div>
+        <ul class="order-when__list">
+          <li>The code is wrong-shaped; the product behaviour is not.</li>
+          <li>The behaviour is wrong? /shipmates-fix-bug. Find-and-replace an API? /shipmates-migrate.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">The skill</h2>
+        </div>
+        <p>The installer ships the full skill — stages, gates, config — from <code>commands/shipmates-refactor.md</code>.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/shipmates-refactor.md">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>Read the skill on GitHub</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="other-commands" aria-labelledby="other-commands-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-commands-title">Other commands</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other commands">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-issue/"><code>/ship-issue</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-epic/"><code>/ship-epic</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-fix-bug/"><code>/shipmates-fix-bug</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../report-bug/"><code>/report-bug</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../plan-epics/"><code>/plan-epics</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../consolidate-issues/"><code>/consolidate-issues</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-harden/"><code>/shipmates-harden</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-spike/"><code>/shipmates-spike</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-migrate/"><code>/shipmates-migrate</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-document/"><code>/shipmates-document</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-release/"><code>/shipmates-release</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-polish/"><code>/shipmates-polish</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../pr-review/"><code>/pr-review</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-onboard/"><code>/shipmates-onboard</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/shipmates-refactor</code><span class="visually-hidden"> (current page)</span></span></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for your AI coding harness.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+  <script>
+  (function () {
+    var img = document.getElementById('demo-media');
+    var toggle = document.getElementById('demo-toggle');
+    if (!img || !toggle) return;
+    var poster = img.getAttribute('src');
+    var gif = '../../assets/command-shipmates-refactor.gif';
+    var playing = false;
+    toggle.addEventListener('click', function () {
+      playing = !playing;
+      img.src = playing ? gif : poster;
+      toggle.setAttribute('aria-pressed', String(playing));
+      toggle.textContent = playing ? 'Pause the run' : 'Play the run';
+    });
+  })();
+  </script>
+</body>
+</html>

@@ -160,7 +160,7 @@ fn test_opencode_embedded_install_fidelity() {
     assert_eq!(file_count(&agents), expected_roles.len());
     assert_eq!(file_count(&commands), 15);
 
-    let report_order = std::fs::read_to_string(commands.join("harden.md")).unwrap();
+    let report_order = std::fs::read_to_string(commands.join("shipmates-harden.md")).unwrap();
     assert!(report_order.contains("report"), "harden order lost report-only mode");
     assert!(report_order.contains("$ARGUMENTS"), "harden order lost argument passing");
     assert!(!report_order.contains("{{"), "neutral argument placeholder leaked");

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>shipmates-domaincheck — RDAP domain availability — registry-authoritative, not DNS guesswork. · Shipmates</title>
+  <meta name="description" content="Shipmates: Check domain name availability via RDAP — registry-authoritative verdicts (available, registered, unknown), batch TLD sweeps, optional registrar…">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/tools/shipmates-domaincheck/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="shipmates-domaincheck — RDAP domain availability — registry-authoritative, not DNS guesswork.">
+  <meta property="og:description" content="Shipmates: Check domain name availability via RDAP — registry-authoritative verdicts (available, registered, unknown), batch TLD sweeps, optional registrar…">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/tools/shipmates-domaincheck/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="shipmates-domaincheck — RDAP domain availability — registry-authoritative, not DNS guesswork.">
+  <meta name="twitter:description" content="Shipmates: Check domain name availability via RDAP — registry-authoritative verdicts (available, registered, unknown), batch TLD sweeps, optional registrar…">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "shipmates-domaincheck",
+    "description": "Shipmates: Check domain name availability via RDAP — registry-authoritative verdicts (available, registered, unknown), batch TLD sweeps, optional registrar detail and whois passthrough. Reach for this when naming a product, verifying a handle's domain, checking a client's domain claim, or sweeping a shortlist across TLDs — RDAP 404 is the registry's own unregistered answer, not a DNS guess. Never a slash command; use it implicitly when the intent calls for one.",
+    "url": "https://saman-mb.github.io/shipmates/tools/shipmates-domaincheck/",
+    "isPartOf": {
+      "@type": "CollectionPage",
+      "url": "https://saman-mb.github.io/shipmates/#tools"
+    }
+  }
+  </script>
+</head>
+<body class="page--doc">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#tools">Tools</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+        </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="../../#install">Install</a>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../../#tools"><span aria-hidden="true">←</span> All tools</a>
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">🧰</span> Tool</p>
+          <h1 class="order-detail__title" id="order-title"><code>shipmates-domaincheck</code></h1>
+          <p class="order-detail__tagline">RDAP domain availability — registry-authoritative, not DNS guesswork.</p>
+          <p class="order-detail__desc">Shipmates: Check domain name availability via RDAP — registry-authoritative verdicts (available, registered, unknown), batch TLD sweeps, optional registrar detail and whois passthrough. Reach for this when naming a product, verifying a handle&#x27;s domain, checking a client&#x27;s domain claim, or sweeping a shortlist across TLDs — RDAP 404 is the registry&#x27;s own unregistered answer, not a DNS guess. Never a slash command; use it implicitly when the intent calls for one.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="what" aria-labelledby="what-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="what-title">What it does</h2>
+        </div>
+        <div class="order-prose">
+          <p><code>domaincheck</code> queries <code>https://rdap.org/domain/&lt;name&gt;</code> and follows redirects to the authoritative registry. A registry <code>404</code> means <strong>available</strong> (unallocated); <code>200</code> means <strong>registered</strong>. Verdicts are <code>available</code>, <code>registered</code>, or <code>unknown</code> when the bootstrap path fails. It is stdlib-only (<code>urllib</code>) — no API keys — and batch mode staggers queries with backoff on HTTP 429.</p>
+          <p>It is a <em>tool</em>, not a command: you never type it. The crew reach for it when naming a product, sweeping a shortlist across TLDs, or verifying a domain claim — especially alongside <code>social-card</code> and <code>pixelart</code> in a launch-branding workflow. RDAP <em>available</em> does not mean cheap: premium and aftermarket names only surface at the registrar cart.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="examples" aria-labelledby="examples-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="examples-title">Examples</h2>
+        </div>
+        <p>A few things <code>shipmates-domaincheck</code> can produce, each from a small spec of its own. If you&#x27;ve set <code>prefers-reduced-motion</code>, any animation shows its final frame instead.</p>
+        <div class="tool-gallery">
+          <figure class="tool-example">
+            <picture>
+              <source media="(prefers-reduced-motion: reduce)" srcset="examples/domaincheck_poster.png">
+              <img class="tool-example__img" src="examples/domaincheck.gif" width="900" height="400" alt="Terminal recording of domaincheck querying github.com as registered, then sweeping shipmates-test-xyzzy across .com and .io as available — ending with a green confirmation that verdicts are registry-authoritative RDAP, not DNS guesswork." loading="lazy" decoding="async">
+            </picture>
+            <figcaption class="tool-example__caption">domaincheck querying a registered name, then sweeping a shortlist across TLDs — available means unallocated in RDAP, not cheap at the registrar.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="sample" aria-labelledby="sample-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="sample-title">In practice</h2>
+        </div>
+        <p>What it does to a real input:</p>
+        <pre class="order-code" tabindex="0"><code>$ python3 domaincheck.py github.com
+$ python3 domaincheck.py --tld com,io shipmates-test-name-xyzzy
+
+github.com	registered
+shipmates-test-name-xyzzy.com	available
+shipmates-test-name-xyzzy.io	available</code></pre>
+      </div>
+    </section>
+
+    <section class="section" id="usage" aria-labelledby="usage-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="usage-title">How the crew reach for it</h2>
+        </div>
+        <div class="order-prose">
+          <p>Tools ship with a plain install; refresh one with shipmates install --harness &lt;name&gt; --with-tools domaincheck. Use --with-tools none for crew-only. Once installed the crew invokes it implicitly; there is no slash command.</p>
+          <p>Run <code>python3 domaincheck.py github.com</code>, pass several domains, or sweep TLDs with <code>python3 domaincheck.py --tld com,app,io shipmates</code>. Add <code>--detail</code> for registrar and date fields from RDAP JSON; <code>--whois</code> optionally prints human-readable whois output when the binary exists. Use <code>--delay</code> on large sweeps — public bootstrap rate-limits rapid queries.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="reference" aria-labelledby="reference-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="reference-title">Reference</h2>
+        </div>
+        <dl class="agent-ref">
+          <dt>Name</dt>
+          <dd><code>shipmates-domaincheck</code></dd>
+          <dt>Description</dt>
+          <dd>Shipmates: Check domain name availability via RDAP — registry-authoritative verdicts (available, registered, unknown), batch TLD sweeps, optional registrar detail and whois passthrough. Reach for this when naming a product, verifying a handle&#x27;s domain, checking a client&#x27;s domain claim, or sweeping a shortlist across TLDs — RDAP 404 is the registry&#x27;s own unregistered answer, not a DNS guess. Never a slash command; use it implicitly when the intent calls for one.</dd>
+          <dt>Bundled files</dt>
+          <dd><code>domaincheck.py</code></dd>
+          <dt>Install</dt>
+          <dd><code>shipmates install --harness &lt;name&gt; --with-tools shipmates-domaincheck</code></dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>toolbox/shipmates-domaincheck/tool.md</code>. Opt in at install with <code>--with-tools shipmates-domaincheck</code> and the installer copies the tool — instructions and bundled files — into the harness's skills tree.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/toolbox/shipmates-domaincheck/tool.md">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>View toolbox/shipmates-domaincheck/tool.md on GitHub</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="other-tools" aria-labelledby="other-tools-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-tools-title">Other tools</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other tools">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-termgif/"><code>shipmates-termgif</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-social-card/"><code>shipmates-social-card</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-pixelart/"><code>shipmates-pixelart</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-diagram/"><code>shipmates-diagram</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-svgflow/"><code>shipmates-svgflow</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-badge/"><code>shipmates-badge</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-sparkline/"><code>shipmates-sparkline</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-scrub/"><code>shipmates-scrub</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-fixtures/"><code>shipmates-fixtures</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>shipmates-domaincheck</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-gh/"><code>shipmates-gh</code></a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../../#tools"><span aria-hidden="true">←</span> All tools</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for your AI coding harness.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>

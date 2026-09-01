@@ -4,7 +4,7 @@
 **Date:** 2026-08-06
 **Deciders:** architect (judge), devops-engineer (delivery-axis judge)
 **Bundles:** #221 (PNG export) + #222 (rename → general `diagram` tool: animation + intent-routed multi-backend)
-**Decided by:** `/spike` — three disposable prototypes, judged against the toolbox doctrine.
+**Decided by:** `/shipmates-spike` — three disposable prototypes, judged against the toolbox doctrine.
 
 ---
 
