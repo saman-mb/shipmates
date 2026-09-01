@@ -123,6 +123,23 @@ Optional 95-word variant for beat 3 adds self-remediation: "…spawns builders a
 2. **Strix Halo/ROCm fits MiniMax H3** (~41 GB total across text-encoder/diffusion/VAE — inside unified memory). LTX-2 also viable (10–13 min per 10s clip). Wan 2.2 is 27–36 min per 5s — not for iteration.
 3. **Voice:** ElevenLabs IVC (Starter $6/mo) = best British-male fidelity; Chatterbox Multilingual v3 (MIT, 4–8 GB VRAM, built-in PerTh watermark) = $0 local path. Needs a 1–5 min clean mono sample from the captain.
 
+## 6b. MiniMax H3 pipeline variants (ComfyUI)
+
+H3 ships three pipelines. They are not interchangeable — pick per shot:
+
+| Pipeline | Input | Control level | Use in this video |
+|----------|-------|---------------|-------------------|
+| **Text-to-Video** | prompt only | Lowest — model invents everything | Hook atmosphere (beat 1 mood plate), one-off exploration |
+| **Image-to-Video** | exact first frame + prompt | High — composition is pinned, AI animates motion/lighting | **Primary b-roll path.** Generate a still plate in ComfyUI (SDXL/Flux) first — e.g. dimmed terminal desk scene with *no readable text* — then let H3 animate camera/lighting only |
+| **Reference-to-Video** | reference image(s) + prompt | Style/subject consistency across clips | Only if b-roll grows beyond ~2 shots and all clips must match visually |
+
+Decision rule: **I2V first.** If a shot's composition matters (it always does next to crisp UI), build the first frame deliberately and animate it — never let T2V invent the frame. Whatever the pipeline: zero legible text in any generated frame; text is stamped in Remotion only.
+
+Practical notes (ComfyUI, Strix Halo):
+- The T2V workflow's model set downloads cover all three variants (same text encoder/diffusion/VAE checkpoints; I2V/R2V differ in conditioning nodes, not weights).
+- I2V first frame: render at the workflow's native aspect (see resolution selector, e.g. 832×480 for 15s) so H3 doesn't crop.
+- Keep clips ≤10s total b-roll (epic budget); regenerate beats of the same shot rather than stacking longer generations.
+
 ## 7. TODO
 
 - [ ] Record captain's voice sample (1–5 min, quiet room) → clone + approve narration take
