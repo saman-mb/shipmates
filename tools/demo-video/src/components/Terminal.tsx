@@ -5,6 +5,7 @@ import {
   FONT_MONO,
   FONT_SIZES,
   TERMINAL_CONTENT_TOP,
+  TERMINAL_GUTTER,
   TERMINAL_TITLEBAR_HEIGHT,
   type ColorKey,
 } from '../theme';
@@ -77,8 +78,8 @@ export const Terminal: React.FC<{
           right: 0,
           bottom: 0,
           paddingTop: TERMINAL_CONTENT_TOP - TERMINAL_TITLEBAR_HEIGHT,
-          paddingLeft: 64,
-          paddingRight: 64,
+          paddingLeft: TERMINAL_GUTTER,
+          paddingRight: TERMINAL_GUTTER,
           paddingBottom: 48,
         }}
       >

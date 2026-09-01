@@ -15,6 +15,7 @@ import {
   FONT_SIZES,
   PROMPT,
   TERMINAL_CONTENT_TOP,
+  TERMINAL_GUTTER,
 } from '../theme';
 
 /** Column width for aligning the child-PR titles before the state label. */
@@ -43,8 +44,11 @@ export const PRTimelapse: React.FC = () => {
   });
 
   // Same clock, no drift: each landed tick spawns the next child in the inset.
-  const spawnChild =
-    BEAT5.childPRs[(Math.max(landed, 1) - 1) % BEAT5.childPRs.length];
+  const spawnTick = Math.max(landed, 1);
+  const spawnChild = BEAT5.childPRs[(spawnTick - 1) % BEAT5.childPRs.length];
+  // Pure function of the tick clock: before the shown child's tick lands the
+  // inset reads dim "…" (spawn state); once it lands, green "merged".
+  const spawnChildMerged = tick >= spawnTick;
 
   return (
     <Terminal lines={[]}>
@@ -52,8 +56,8 @@ export const PRTimelapse: React.FC = () => {
         style={{
           position: 'absolute',
           top: TERMINAL_CONTENT_TOP,
-          left: 64,
-          right: 64,
+          left: TERMINAL_GUTTER,
+          right: TERMINAL_GUTTER,
         }}
       >
         {/* Epic PR header */}
@@ -125,7 +129,10 @@ export const PRTimelapse: React.FC = () => {
             text: `${PROMPT} ${BEAT5.spawnCommand} ${spawnChild.number}`,
             colorKey: 'blue',
           },
-          { text: BEAT5.mergedLabel, colorKey: 'green' },
+          {
+            text: spawnChildMerged ? BEAT5.mergedLabel : BEAT5.pendingLabel,
+            colorKey: spawnChildMerged ? 'green' : 'dim',
+          },
         ]}
       />
     </Terminal>
