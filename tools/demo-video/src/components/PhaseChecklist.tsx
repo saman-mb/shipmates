@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   CHECK,
+  CHECKLIST_TOP,
   COLORS,
   FAIL,
   FONT_MONO,
@@ -51,13 +52,14 @@ export const PhaseChecklist: React.FC<{
     <div
       style={{
         position: 'absolute',
-        top: 96,
+        top: CHECKLIST_TOP,
         right: 64,
         display: 'flex',
         gap: 28,
         fontFamily: FONT_MONO,
         fontSize: FONT_SIZES.checklist,
-        lineHeight: 1.5,
+        // Explicit so the theme.ts band math (row bottom ≤ caption top) holds.
+        lineHeight: 1.2,
       }}
     >
       {items.map((item) => (

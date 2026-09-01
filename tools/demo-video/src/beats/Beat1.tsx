@@ -4,7 +4,7 @@ import { Caption } from '../components/Caption';
 import { Terminal } from '../components/Terminal';
 import { TypeOn } from '../components/TypeOn';
 import { BEAT1 } from '../data/beats';
-import { COLORS, FONT_SIZES } from '../theme';
+import { COLORS, FONT_SIZES, TERMINAL_CONTENT_TOP } from '../theme';
 
 /**
  * Beat 1 — Hook · 0:00–0:03 (docs/DEMO_VIDEO.md §2).
@@ -36,46 +36,52 @@ export const Beat1: React.FC = () => {
 
   return (
     <Terminal lines={[]}>
-      <div style={{ position: 'relative', fontSize: FONT_SIZES.hook, lineHeight: 1.6 }}>
-        <div style={{ whiteSpace: 'pre' }}>
-          <TypeOn
-            text={BEAT1.hookLine}
-            startFrame={typeStartFrame}
-            fontSize={FONT_SIZES.hook}
-            showCaret={!stampVisible}
+      {/* Below the reserved header band — the hook must never enter the
+          titlebar/caption zone (theme.ts band math). */}
+      <div style={{ paddingTop: TERMINAL_CONTENT_TOP }}>
+        <div
+          style={{ position: 'relative', fontSize: FONT_SIZES.hook, lineHeight: 1.6 }}
+        >
+          <div style={{ whiteSpace: 'pre' }}>
+            <TypeOn
+              text={BEAT1.hookLine}
+              startFrame={typeStartFrame}
+              fontSize={FONT_SIZES.hook}
+              showCaret={!stampVisible}
+            />
+          </div>
+          {/* Strike-through overlay */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: 0,
+              width: `${strikeWidth}%`,
+              height: 5,
+              background: COLORS.red,
+              opacity: strikeOpacity,
+            }}
           />
         </div>
-        {/* Strike-through overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: 0,
-            width: `${strikeWidth}%`,
-            height: 5,
-            background: COLORS.red,
-            opacity: strikeOpacity,
-          }}
-        />
+        {stampVisible ? (
+          <div
+            style={{
+              marginTop: 32,
+              fontSize: FONT_SIZES.stamp,
+              fontWeight: 700,
+              color: COLORS.green,
+              whiteSpace: 'pre',
+              transform: `scale(${1 + (1 - stampScale) * 0.4})`,
+              transformOrigin: 'left center',
+              opacity: interpolate(stampScale, [0, 0.3], [0, 1], {
+                extrapolateRight: 'clamp',
+              }),
+            }}
+          >
+            {BEAT1.commandLine}
+          </div>
+        ) : null}
       </div>
-      {stampVisible ? (
-        <div
-          style={{
-            marginTop: 32,
-            fontSize: FONT_SIZES.stamp,
-            fontWeight: 700,
-            color: COLORS.green,
-            whiteSpace: 'pre',
-            transform: `scale(${1 + (1 - stampScale) * 0.4})`,
-            transformOrigin: 'left center',
-            opacity: interpolate(stampScale, [0, 0.3], [0, 1], {
-              extrapolateRight: 'clamp',
-            }),
-          }}
-        >
-          {BEAT1.commandLine}
-        </div>
-      ) : null}
       <Caption
         text={frame < BEAT1.captionFlipFrame ? BEAT1.captionA : BEAT1.captionB}
       />

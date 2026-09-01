@@ -1,6 +1,13 @@
 import React from 'react';
 import { AbsoluteFill } from 'remotion';
-import { COLORS, FONT_MONO, FONT_SIZES, type ColorKey } from '../theme';
+import {
+  COLORS,
+  FONT_MONO,
+  FONT_SIZES,
+  TERMINAL_CONTENT_TOP,
+  TERMINAL_TITLEBAR_HEIGHT,
+  type ColorKey,
+} from '../theme';
 
 /**
  * Dumb terminal chrome: dark full-screen card + window bar with three dots.
@@ -28,7 +35,7 @@ export const Terminal: React.FC<{
           top: 0,
           left: 0,
           right: 0,
-          height: 64,
+          height: TERMINAL_TITLEBAR_HEIGHT,
           display: 'flex',
           alignItems: 'center',
           paddingLeft: 32,
@@ -60,15 +67,19 @@ export const Terminal: React.FC<{
         </div>
       </div>
 
-      {/* Terminal body */}
+      {/* Terminal body — starts at TERMINAL_CONTENT_TOP so the caption and
+          checklist own the header band above it (see theme.ts band math). */}
       <div
         style={{
           position: 'absolute',
-          top: 64,
+          top: TERMINAL_TITLEBAR_HEIGHT,
           left: 0,
           right: 0,
           bottom: 0,
-          padding: '48px 64px',
+          paddingTop: TERMINAL_CONTENT_TOP - TERMINAL_TITLEBAR_HEIGHT,
+          paddingLeft: 64,
+          paddingRight: 64,
+          paddingBottom: 48,
         }}
       >
         {lines.map((line, i) => (

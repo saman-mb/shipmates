@@ -55,6 +55,12 @@ export const MIN_FEED_GLYPH_PX = 20;
 export const FONT_SIZES = {
   /** Terminal body text — the legibility floor. */
   terminal: 36,
+  /**
+   * Beat-4 PR-command line. The gate size (72px) pushes the
+   * `gh pr create … "…/pull/87"` line past the 1920px right edge; 52px keeps
+   * it inside the frame (53 mono chars × 0.6em × 52 ≈ 1654px + margins).
+   */
+  gateUrl: 52,
   /** Phase checklist pinned top-right — same floor as terminal text. */
   checklist: 36,
   /** Top-centre captions on the 40%-black plate. */
@@ -75,3 +81,25 @@ export const effectiveGlyphHeight = (fontSizePx: number): number =>
 
 /** Caption plate backdrop: 40% black (docs/DEMO_VIDEO.md §4). */
 export const CAPTION_PLATE_BG = 'rgba(0, 0, 0, 0.4)';
+
+/* ------------------------------------------------------------------ */
+/* Layout bands (1920-wide render).                                     */
+/*                                                                      */
+/* The band below the titlebar is reserved for the two overlays so      */
+/* neither ever strikes a terminal line. Every overlay renders at an    */
+/* explicit lineHeight of 1.2 so these extents are deterministic:       */
+/*                                                                      */
+/*   titlebar     0      – 64                                           */
+/*   checklist    80     – 123.2   (CHECKLIST_TOP + 36 × 1.2)           */
+/*   caption      132    – 225.6   (CAPTION_TOP + 48 × 1.2 + 36 pad)    */
+/*   body content 236    – …       (TERMINAL_CONTENT_TOP)               */
+/* ------------------------------------------------------------------ */
+
+/** Window titlebar (traffic lights + label) height. */
+export const TERMINAL_TITLEBAR_HEIGHT = 64;
+/** Phase checklist top — first row of the reserved header band, top-right. */
+export const CHECKLIST_TOP = 80;
+/** Caption plate top — second row of the reserved header band, top-centre. */
+export const CAPTION_TOP = 132;
+/** Y where terminal body content begins, below the reserved header band. */
+export const TERMINAL_CONTENT_TOP = 236;

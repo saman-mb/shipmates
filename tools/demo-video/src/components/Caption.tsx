@@ -2,6 +2,7 @@ import React from 'react';
 import { interpolate, useCurrentFrame } from 'remotion';
 import {
   CAPTION_PLATE_BG,
+  CAPTION_TOP,
   COLORS,
   FONT_SANS,
   FONT_SIZES,
@@ -25,7 +26,7 @@ export const Caption: React.FC<{ text: string; appearFrame?: number }> = ({
     <div
       style={{
         position: 'absolute',
-        top: 150,
+        top: CAPTION_TOP,
         left: '50%',
         transform: 'translateX(-50%)',
         opacity,
@@ -35,6 +36,8 @@ export const Caption: React.FC<{ text: string; appearFrame?: number }> = ({
         fontFamily: FONT_SANS,
         fontWeight: 700,
         fontSize: FONT_SIZES.caption,
+        // Explicit so the theme.ts band math (plate bottom ≤ content top) holds.
+        lineHeight: 1.2,
         color: COLORS.text,
         whiteSpace: 'nowrap',
       }}

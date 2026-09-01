@@ -5,7 +5,11 @@ import { PhaseChecklist } from '../components/PhaseChecklist';
 import { Terminal } from '../components/Terminal';
 import { Tick } from '../components/Tick';
 import { BEAT4, CHECKLIST_LABELS } from '../data/beats';
-import { COLORS, FONT_SIZES } from '../theme';
+import {
+  COLORS,
+  FONT_SIZES,
+  TERMINAL_CONTENT_TOP,
+} from '../theme';
 import type { ChecklistItem, ChecklistItemState } from '../components/PhaseChecklist';
 
 /**
@@ -32,17 +36,27 @@ export const Beat4: React.FC = () => {
     text: string,
     from: number,
     colorKey: 'green' | 'blue',
-  ): { text: string; visible: boolean; scale: number; colorKey: 'green' | 'blue' } => ({
+    fontSize: number,
+  ): {
+    text: string;
+    visible: boolean;
+    scale: number;
+    colorKey: 'green' | 'blue';
+    fontSize: number;
+  } => ({
     text,
     visible: frame >= from,
     scale: spring({ frame: frame - from, fps, config: { damping: 14 } }),
     colorKey,
+    fontSize,
   });
 
   const gates = [
-    gateLine(BEAT4.ciLine, BEAT4.ciFrame, 'green'),
-    gateLine(BEAT4.boardLine, BEAT4.boardFrame, 'green'),
-    gateLine(BEAT4.prLine, BEAT4.prFrame, 'blue'),
+    gateLine(BEAT4.ciLine, BEAT4.ciFrame, 'green', FONT_SIZES.gate),
+    gateLine(BEAT4.boardLine, BEAT4.boardFrame, 'green', FONT_SIZES.gate),
+    // The URL line would overflow 1920px at gate size — use the smaller
+    // FONT_SIZES.gateUrl (theme.ts) so it fits inside the frame.
+    gateLine(BEAT4.prLine, BEAT4.prFrame, 'blue', FONT_SIZES.gateUrl),
   ];
 
   const items: ChecklistItem[] = CHECKLIST_LABELS.map((label) => ({
@@ -52,13 +66,20 @@ export const Beat4: React.FC = () => {
 
   return (
     <Terminal lines={[]} fontSize={FONT_SIZES.gate}>
-      <div style={{ padding: '64px 96px' }}>
+      {/* Below the reserved header band (theme.ts band math). */}
+      <div
+        style={{
+          paddingTop: TERMINAL_CONTENT_TOP,
+          paddingLeft: 96,
+          paddingRight: 96,
+        }}
+      >
         {gates.map((g, i) =>
           g.visible ? (
             <div
               key={i}
               style={{
-                fontSize: FONT_SIZES.gate,
+                fontSize: g.fontSize,
                 fontWeight: 700,
                 lineHeight: 1.6,
                 color: g.colorKey === 'green' ? COLORS.green : COLORS.blue,
