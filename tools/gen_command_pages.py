@@ -1613,7 +1613,8 @@ TOOL_COPY = {
             "`gh` wraps the GitHub CLI with a JSON spec: validated repo slugs and issue numbers, "
             "`body_file` hygiene for create/edit/comment/review, and structured JSON results instead "
             "of scraped shell output. It covers repo default branch lookup, issue fetch/list/search/create/"
-            "edit/comment/close, PR view/diff/create/checks/poll/comment/review/merge/list, labels, "
+            "edit/comment/close, parent/child **sub-issue** attach/list/detach, PR view/diff/create/checks/"
+            "poll/comment/review/merge/list, labels, "
             "releases, and failed workflow logs — the same operations repeated across `/ship-issue`, "
             "`/ship-epic`, `/pr-review`, `/consolidate-issues`, `/plan-epics`, and `/shipmates-release`.",
             "It is a *tool*, not a command. The crew reach for it when orchestrating GitHub instead of "
@@ -1624,7 +1625,11 @@ TOOL_COPY = {
             "Tools ship with a plain install; refresh one with `shipmates install --harness <name> --with-tools gh`, "
             "or `--with-tools none` for crew-only. Pass one JSON spec on stdin: "
             "`echo '{\"op\":\"repo.view\"}' | python3 gh.py`. List operations with `python3 gh.py --list-ops`. "
-            "Multi-line bodies must use `body_file` — inline `body` is capped at 200 chars.",
+            "Multi-line bodies must use `body_file` — inline `body` is capped at 200 chars. Sub-issue ops "
+            "take plain issue numbers (`{\"op\":\"issue.sub_issue_add\",\"number\":305,\"sub_issue_number\":306}`) "
+            "and skip the write when the child is already attached (`gh`'s `subIssues` field is a "
+            "connection — the op unwraps `nodes`); they need a host that exposes the "
+            "parent/child graph, which github.com does and an older Enterprise Server may not.",
         ),
         sample=(
             '$ echo \'{"op":"repo.view"}\' | python3 gh.py\n'

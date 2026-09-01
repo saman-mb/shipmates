@@ -117,7 +117,7 @@ implicitly, when the intent of your prompt calls for it — never typed, never a
 | [`shipmates-scrub`](https://saman-mb.github.io/shipmates/tools/shipmates-scrub/) | Redacts secrets and PII from a log or paste before it's shared |
 | [`shipmates-fixtures`](https://saman-mb.github.io/shipmates/tools/shipmates-fixtures/) | Generates deterministic fake test data from a small JSON schema |
 | [`shipmates-domaincheck`](https://saman-mb.github.io/shipmates/tools/shipmates-domaincheck/) | Checks domain availability via RDAP — registry-authoritative verdicts, TLD batch sweeps, optional registrar detail |
-| [`shipmates-gh`](https://saman-mb.github.io/shipmates/tools/shipmates-gh/) | Structured GitHub CLI wrapper — validated issue/PR ops, body-file hygiene, JSON results (requires `gh` installed and authenticated) |
+| [`shipmates-gh`](https://saman-mb.github.io/shipmates/tools/shipmates-gh/) | Structured GitHub CLI wrapper — validated issue/PR/sub-issue ops, body-file hygiene, JSON results (requires `gh` installed and authenticated) |
 
 Tools ship with a plain **`shipmates install`**. Use `--with-tools none` for crew + commands only, or `--with-tools <name>` for a subset. Add them with
 `--with-tools` (below), or run `install` in a terminal and pick from the list. Each tool maps to its
@@ -219,9 +219,23 @@ enforces. Each harness records its evidence, and the date it was checked, in
 `<target>/.shipmates/receipts/<harness>.json`. It records Shipmates version, harness, layout, and every
 file Shipmates owns with its SHA-256 hash. Reinstalling the same payload skips unchanged files and
 creates backups only for changed files. Files outside the receipt are unmanaged: Shipmates warns and
-leaves them alone. A first install also preserves existing colliding files and warns; pass `--force`
-when replacement is intentional. Install preflights one harness and rolls back payload changes if
-payload or receipt publication fails; `--harness all` is not globally atomic.
+leaves them alone — the scan covers the payload's own subtrees, so a harness root that also holds your
+runtime (an opencode `node_modules`, say) is left to you.
+
+A file already sitting at a path the payload writes is decided by what it says it is. One whose
+frontmatter names the artifact installed there is a Shipmates file that fell out of ownership: install
+and `doctor --fix` adopt it — back it up, write the current payload, claim it in the receipt. Anything
+else is yours, so install stops and names `shipmates install --force`, which backs each one up and
+replaces it. Install preflights one harness and rolls back payload changes if payload or receipt
+publication fails; `--harness all` is not globally atomic — a failed harness leaves the others
+installed, prints a per-harness summary, and exits non-zero.
+
+**Which payload gets installed.** A released `shipmates` installs the crew and commands compiled into
+the binary, whatever directory you run it from. Running `cargo run -- install` inside a Shipmates
+checkout uses that checkout — the contributor loop. To install from any other source tree, ask for it
+explicitly with `--from-cwd`, or point `SHIPMATES_SRC=/path/to/checkout` at one; either way a directory
+without `crew/` and `commands/` is an error, never a quiet fall back to the embed. Pass the same flag
+to `uninstall` and `doctor` so they recognise the payload you installed.
 
 `shipmates uninstall` reads that receipt. It defaults to the global home directory; use `--local` or
 `--dir /path/to/project` for another root. With exactly one valid receipt, `--harness` is optional;

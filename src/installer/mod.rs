@@ -1,3 +1,4 @@
+pub mod adopt;
 pub mod apply;
 pub mod manifest_db;
 pub mod migrate;

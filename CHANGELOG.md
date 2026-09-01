@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.16] - 2026-09-01
+## [0.1.18] - 2026-09-01
 
 ### Fixed
 
@@ -13,6 +13,34 @@ All notable changes to this project are documented here. The format follows
   gate. Standalone `/ship-issue` still forces `MERGE_MODE=manual` for that flag (#382).
 - `/ship-epic` Stage 0.5 writes an empty `chore: epic kickoff` commit when the epic
   branch tip still matches main, so the epic PR is always creatable (#383).
+
+## [0.1.17] - 2026-09-01
+
+### Fixed
+
+- `/plan-epics` attaches each story to its epic as a GitHub **sub-issue** (the
+  checklist stays as progress copy), `/ship-epic` reads story membership as the
+  union of the sub-issue graph and the checklist, and `shipmates-gh` gains
+  validated `issue.sub_issue_add` / `issue.sub_issue_list` /
+  `issue.sub_issue_remove` ops (#388).
+
+## [0.1.16] - 2026-09-01
+
+### Fixed
+
+- `install` no longer aborts on a lived-in harness root: the unmanaged-file scan
+  is bounded to the payload's own subtrees, skips symlinks outright, and never
+  walks `node_modules`. `--harness all` continues past a failed harness, prints a
+  per-harness summary and exits non-zero (#384).
+- A released binary installs the payload compiled into it. An on-disk `crew/` +
+  `commands/` source is used only for the in-repo dev loop or when asked for with
+  `--from-cwd` / `SHIPMATES_SRC=<dir>`; a stale checkout in the current directory
+  gets one loud warning instead of silently shadowing the embed (#385).
+- A Shipmates file at a payload path that no receipt claims is adopted — backed
+  up, rewritten from the payload and claimed — by both `install` and
+  `doctor --fix`, so a flagship can no longer stay stale across an upgrade. A
+  file Shipmates does not own is refused instead, naming
+  `shipmates install --force`; third-party skills beside ours are untouched (#386).
 
 ## [0.1.15] - 2026-09-01
 
