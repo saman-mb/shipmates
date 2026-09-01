@@ -75,9 +75,13 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   integration branch when `epic-base` is set) without captain action; standalone `/ship-issue` keeps this
   default. Stage 8 `auto` always merges into **`BASE_BRANCH`**
   (the epic branch when `epic-base` is set, otherwise the repo default). If Stage 0 set
-  `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
-  of the configured default — a security-sensitive change must not auto-merge past the `/shipmates-harden`
-  recommendation.
+  `IS_SECURITY_SENSITIVE` and this run is **standalone** (`epic-base` unset — merge target is the
+  repo default / `RELEASE_BRANCH`), `MERGE_MODE` is forced to `manual` regardless of the configured
+  default: a security-sensitive change must not auto-merge onto the default branch past the
+  `/shipmates-harden` recommendation. When `epic-base` points at an integration branch, honour
+  `MERGE_MODE=auto` even for `IS_SECURITY_SENSITIVE` units — the harden recommendation still ships
+  in the final report, and the parent epic PR into the default branch remains the human gate.
+  Guidance that sets `MERGE_MODE=manual` (`unit merge manual`, a `gate` story) still forces `manual`.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
 - `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
   leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, **proposes** a bundle, and
@@ -159,8 +163,10 @@ list) for:
 
 - **`epic-base=<branch>`** — branch name must match `^[a-zA-Z0-9._/-]+$`; anything else, stop and ask.
   Set `BASE_BRANCH` to that branch. Worktree isolation (Stage 1) cuts from `origin/<BASE_BRANCH>`.
-- **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Still overridden to
-  `manual` when `IS_SECURITY_SENSITIVE` is set at classification time.
+- **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Overridden to
+  `manual` when `IS_SECURITY_SENSITIVE` is set **and** `epic-base` is unset (standalone onto the
+  default branch). When `epic-base` is set, honour `auto` even if the unit is
+  `IS_SECURITY_SENSITIVE`; `unit merge manual` and `gate` stories still force `manual`.
 - **`epic-run`** — with `epic-base`, do not widen the bundle or scan the backlog (see Stage 0 step 3).
 - **`epic-id=<n>`** — parent epic issue number when delegated from `/ship-epic`; required with `epic-run`
   so Stage 8 / final report can emit the **Epic unit record** for the orchestrator's progress log.
@@ -265,7 +271,9 @@ the cohesion bundle widening in step 2.5.
        file/network/OS access, or dependencies? Does **not** gate a reviewer seat — security review
        lives in `/shipmates-harden`, which this command doesn't run. It gates two things instead: the final
        report must carry the `/shipmates-harden` recommendation (mechanical, not a judgment call made while
-       writing the summary), and it forces `MERGE_MODE=manual` for this run (see Config).
+       writing the summary), and — on **standalone** runs only — it forces `MERGE_MODE=manual` (see
+       Config). Epic units (`epic-base`) keep the caller's `MERGE_MODE` so `/ship-epic` can auto-merge
+       into the integration branch; the harden line still ships.
      - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
        or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
        infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
@@ -283,8 +291,9 @@ the cohesion bundle widening in step 2.5.
        seat — `principal-engineer` and `technical-writer` (when gated) verify the bump landed.
    This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
    must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
-   `/shipmates-harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
-   the branch and can just run `/shipmates-harden` itself. `/pr-review` keeps the same flag wired to a
+   `/shipmates-harden` recommendation and, on standalone runs, `MERGE_MODE` above — never a reviewer
+   seat — because this command owns the branch and can just run `/shipmates-harden` itself. Epic units
+   keep the caller's `MERGE_MODE` (see Config). `/pr-review` keeps the same flag wired to a
    `security-engineer` seat, because it reviews a PR the crew didn't author, where `/shipmates-harden` isn't
    available — you don't own that branch.
 4. If the plan reveals any issue is too big/ambiguous to finish autonomously, stop and tell the user
@@ -563,9 +572,10 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
   bodies, or logs — assume the repo is public. The `sdet` flags secret leakage as a defect; a real
   leak is blocking. Deeper security work is not this command's job — see the next bullet.
 - **Security review lives in `/shipmates-harden`, not here.** This command does not threat-model. When
-  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/shipmates-harden` recommendation and the
-  run stays on `MERGE_MODE=manual` (Stage 0, Config) — the flag is the trigger, not a judgment call
-  made while writing the summary.
+  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/shipmates-harden` recommendation —
+  the flag is the trigger, not a judgment call made while writing the summary. Standalone runs (no
+  `epic-base`) stay on `MERGE_MODE=manual` (Stage 0, Config). Epic-delegated units honour the caller's
+  `MERGE_MODE` so the human gate sits on the epic PR, not on every unit.
 - **Release bump in the PR.** When `IS_RELEASE_AFFECTING=yes`, a missing version or changelog update
   is **blocking** — same severity as a missing digest or unstaged generated page. Never tell the
   captain to run `/shipmates-release` or open a follow-up PR instead; that is how features merge without

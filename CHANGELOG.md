@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.18] - 2026-09-01
+
+### Fixed
+
+- `/ship-epic` auto-merges green unit PRs into the epic branch even when a story is
+  `IS_SECURITY_SENSITIVE`; the harden recommendation and the epic PR stay the human
+  gate. Standalone `/ship-issue` still forces `MERGE_MODE=manual` for that flag (#382).
+- `/ship-epic` Stage 0.5 writes an empty `chore: epic kickoff` commit when the epic
+  branch tip still matches main, so the epic PR is always creatable (#383).
+
 ## [0.1.17] - 2026-09-01
 
 ### Fixed

@@ -131,7 +131,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
             ProcessStep(
                 "Integrate",
-                "Cut a shared epic branch and open the epic PR. Unit PRs target that branch, not main.",
+                "Cut a shared epic branch (empty kickoff commit if tips still match main) and open the epic PR. Unit PRs target that branch, not main.",
                 solo="No specialist — the run cuts the branch and the epic PR.",
             ),
             ProcessStep(
