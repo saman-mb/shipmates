@@ -476,8 +476,9 @@ Decision:
 ## Stage 6 — Remediation loop  (agent: `senior-engineer` as Fixer)
 
 - Spawn a **Fixer** (`{{role:senior-engineer}}`) to address every blocking item (REJECT reasons
-  from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then **re-run Stage 5**
-  on the new head.
+  from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then **Retry** the
+  board from the **fixer delta** (shared rule in the acceptance board) — do **not** re-run Stage 5's
+  full first-convene roster.
 - Repeat up to `MAX_FIX_ROUNDS`. If still not green after that, **stop and escalate to the user** with
   the outstanding blockers — do not merge a failing PR.
 
@@ -516,7 +517,8 @@ Decision:
 One concise summary: PR link (and merge state), commit(s), the absolute **worktree path**
 (`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), fetch outcome, and whether a resume
 sync/rebase ran, which specialists reviewed it and their
-verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
+verdicts (`re-run` / `carried ACCEPT` / `newly seated` after any fix round; gated seats named with
+the flag that gated them), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now. When
 **`IS_RELEASE_AFFECTING=yes`**, state the **new version** and that merge to **`RELEASE_BRANCH`**
@@ -534,7 +536,7 @@ PR: <PR URL>
 MERGE: auto|manual
 HEAD: <merge commit SHA when auto; PR head SHA when manual>
 DELIVERED: <one plain sentence — what this unit shipped, no jargon>
-REVIEWS: <PO verdict>; <PE verdict>; <scaled seats with verdicts or "gated: role (reason)">
+REVIEWS: <PO verdict or carried ACCEPT>; <PE verdict or carried ACCEPT>; <scaled: verdict|re-run|carried ACCEPT|newly seated|gated: role (reason)>
 CI: <green checks URL>
 FIX_ROUNDS: <n>
 ```
@@ -546,7 +548,8 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 ### Guardrails
 - The orchestrator owns **all** git/gh actions; agents never push or merge.
 - Reviewers always evaluate the **pushed PR head**, so "accepted" == "what merges".
-- Never open or advance a red PR. Never skip the mandatory PE+PO board once a PR head exists. Never silently drop a nit — file it.
+- Never open or advance a red PR. Never skip PE+PO on the **first** board once a PR head exists
+  (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a nit — file it.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
   re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.

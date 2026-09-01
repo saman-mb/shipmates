@@ -85,7 +85,8 @@ non-mechanical sites individually** — never blind-replace where semantics diff
 - `senior-engineer` or `architect` (fresh): spot-checks a sample of transformed sites for correctness and
   the non-mechanical sites in full — confirms behaviour is preserved, not just that it compiles.
 
-Any `REJECT`/`FAIL` → fixer loop, re-push, re-gate (bounded), then escalate. Open (or, `auto`, merge) the
+Any `REJECT`/`FAIL` → fixer loop, re-push, re-gate (bounded), then **Retry** the board from the
+fixer delta (shared rule), then escalate. Open (or, `auto`, merge) the
 PR: body lists the census counts, sites migrated, sites excluded (with reasons), and the green-CI link.
 
 ## Stage 6 — Report
