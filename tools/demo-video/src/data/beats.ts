@@ -40,7 +40,8 @@ export const BEAT1 = {
   captionFlipFrame: 55,
   strikeStartFrame: 76,
   strikeDurationFrames: 8,
-  stampFrame: 86,
+  /** f80 → 10-frame visible hold (f80–f89) inside the unchanged 90f window. */
+  stampFrame: 80,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -49,7 +50,7 @@ export const BEAT1 = {
 export const BEAT2 = {
   commandLine: `${PROMPT} /ship-issue 42`,
   rosterLine: `⚓ crew: planner · senior-engineer · sdet · architect · product-manager · security`,
-  caption: '12 specialist sub-agents · one CLI',
+  caption: '13 specialist subagents · one CLI',
   rosterTypeStartFrame: 30,
 } as const;
 
@@ -74,8 +75,8 @@ export const BEAT3 = {
   lines: {
     worktree: `${ARROW} git worktree add ../shipmates-42`,
     worktreeDone: `${CHECK} worktree isolated`,
-    planner: `${ARROW} task(sub-agent: planner) … "plan: 4 steps, 2 files touched"`,
-    builder: `${ARROW} task(sub-agent: senior-engineer) … Edit src/auth/session.ts (+38 −6)`,
+    planner: `${ARROW} task(subagent: planner) … "plan: 4 steps, 2 files touched"`,
+    builder: `${ARROW} task(subagent: senior-engineer) … Edit src/auth/session.ts (+38 −6)`,
     testRun: `${ARROW} tool: Bash — npm test`,
     testFail: `${FAIL} 1 test failed — retrying`,
     testPass: `${CHECK} 214 passed`,

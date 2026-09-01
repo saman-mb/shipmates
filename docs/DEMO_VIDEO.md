@@ -38,7 +38,7 @@ Cost: ≈ $6 (cloud voice) or ≈ $0 (fully local). AI-video b-roll is optional 
   ⚓ crew: planner · senior-engineer · sdet · architect · product-manager · security
   ```
 - **Narration:** "Shipmates gives Claude Code a crew of specialists — planners, builders, testers, reviewers."
-- **Caption:** `12 specialist sub-agents · one CLI`
+- **Caption:** `13 specialist subagents · one CLI`
 
 ### Beat 3 — Phases run · 0:09–0:22 (hero beat)
 - **Visual:** realistic git/gh cadence; persistent phase checklist pinned top-right:
@@ -49,8 +49,8 @@ Cost: ≈ $6 (cloud voice) or ≈ $0 (fully local). AI-video b-roll is optional 
   ```
   → git worktree add ../shipmates-42
   ✓ worktree isolated
-  → task(sub-agent: planner) … "plan: 4 steps, 2 files touched"
-  → task(sub-agent: senior-engineer) … Edit src/auth/session.ts (+38 −6)
+  → task(subagent: planner) … "plan: 4 steps, 2 files touched"
+  → task(subagent: senior-engineer) … Edit src/auth/session.ts (+38 −6)
   → tool: Bash — npm test … "✓ 214 passed"
   ```
   One deliberate red fail: `✗ 1 test failed — retrying` → `✓ 214 passed` (imperfection = credibility).
