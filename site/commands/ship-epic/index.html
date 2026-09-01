@@ -36,7 +36,7 @@
         "@type": "HowToStep",
         "position": 1,
         "name": "Map",
-        "text": "The architect reads the checklist, classifies every story, and groups them into shipping units. Always: architect.",
+        "text": "The architect reads the epic's stories (sub-issue graph, union the checklist), classifies every story, and groups them into shipping units. Always: architect.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#step-1"
       },
       {
@@ -57,7 +57,7 @@
         "@type": "HowToStep",
         "position": 4,
         "name": "One PR",
-        "text": "When the checklist is done, you review and merge the single epic PR. No extra spawn — you merge the epic PR, not the unit PRs.",
+        "text": "When every story is done, you review and merge the single epic PR. No extra spawn — you merge the epic PR, not the unit PRs.",
         "url": "https://saman-mb.github.io/shipmates/commands/ship-epic/#step-4"
       }
     ]
@@ -141,10 +141,10 @@
         </div>
         <p class="order-process__lead">One architect pass groups the epic. Each unit is then a full /ship-issue run, so that unit&#x27;s flags pick its specialists. You merge one epic PR at the end.</p>
         <ol class="order-process__list" role="list">
-          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Map</h3><p class="order-process__line">The architect reads the checklist, classifies every story, and groups them into shipping units.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Map</h3><p class="order-process__line">The architect reads the epic&#x27;s stories (sub-issue graph, union the checklist), classifies every story, and groups them into shipping units.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a></p></div></div></div></li>
           <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Integrate</h3><p class="order-process__line">Cut a shared epic branch and open the epic PR. Unit PRs target that branch, not main.</p><p class="order-process__crew order-process__crew--solo">No specialist — the run cuts the branch and the epic PR.</p></div></li>
           <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Loop</h3><p class="order-process__line">Each unit is a /ship-issue: plan, build, CI, review. That unit&#x27;s flags pick its extra seats.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/sdet/"><code>sdet</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/principal-engineer/"><code>principal-engineer</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/ux-ui-designer/"><code>ux-ui-designer</code></a><span class="order-process__when-text">on-screen UI — screens, flows, components</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/art-director/"><code>art-director</code></a><span class="order-process__when-text">rendered art (games, illustration), not app chrome</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/devops-engineer/"><code>devops-engineer</code></a><span class="order-process__when-text">pipeline, images, or how the project ships</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a><span class="order-process__when-text">documented behaviour or a public API/CLI</span></li></ul></div></div></div></li>
-          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">One PR</h3><p class="order-process__line">When the checklist is done, you review and merge the single epic PR.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — you merge the epic PR, not the unit PRs.</p></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">One PR</h3><p class="order-process__line">When every story is done, you review and merge the single epic PR.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — you merge the epic PR, not the unit PRs.</p></div></li>
         </ol>
       </div>
     </section>
@@ -155,7 +155,7 @@
           <h2 class="section__title" id="when-to-use-title">When to use</h2>
         </div>
         <ul class="order-when__list">
-          <li>An epic issue already has a story checklist on GitHub.</li>
+          <li>An epic issue already has stories on GitHub (sub-issues and/or a checklist).</li>
           <li>One ticket? /ship-issue. No backlog yet? /plan-epics first.</li>
         </ul>
       </div>

@@ -1,10 +1,10 @@
 payload_digest_version=1
 target=github-copilot
 .agents/skills/consolidate-issues/SKILL.md f5b4c38981ab57a0738e3458e32b38581bdfa3999bccaac20d8e89d29bf216f6
-.agents/skills/plan-epics/SKILL.md 565b4ccb4a268af678c0b68326ce743fb939d613b3b18f214dd9c776b8d1c6ac
+.agents/skills/plan-epics/SKILL.md e170a7e27a2892e80a3c57d3db49ce07b21d9e58742e5f2b10459a60e959274f
 .agents/skills/pr-review/SKILL.md a5c1c7098145a225a901125c985ba535942e18803146433bfe0b77cabd9df27f
 .agents/skills/report-bug/SKILL.md e1dade170537a2058c550fb5e8424c5f46c44d7f4c0345114d5719a6cad4b6f4
-.agents/skills/ship-epic/SKILL.md 829e4a47d0881cd0a71b566eb006e2642807400a427b62a9b60db5de5ab5b06b
+.agents/skills/ship-epic/SKILL.md a74ce0e1222c217fda0f33ce169635caea0167a4119767767207e02579b30f73
 .agents/skills/ship-issue/SKILL.md 89500518eecb5ba6d126aeade3b7ddaa67459308ab4420fc23da0cc67e1be2a5
 .agents/skills/shipmates-document/SKILL.md ef054d99f408ec72ff3340835f9c532982fb75332396177f8de971dd4c7bef37
 .agents/skills/shipmates-fix-bug/SKILL.md 26e5ee75be190f8a4352e67d33678ac4d810781508ed6cceafbe65f0ce2c20b0
