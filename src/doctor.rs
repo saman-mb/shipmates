@@ -10,7 +10,7 @@ use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use crate::digest;
 use crate::installer::{manifest_db, migrate, plan};
-  use anyhow::{Context, Result};
+use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
@@ -62,6 +62,63 @@ fn strip_container(built: &HashMap<String, String>, container: &str) -> BTreeMap
         .collect()
 }
 
+/// Installer's in-place sibling backups: `{filename}.bak-<secs>-<pid>-<n>`
+/// (see `installer::apply`).
+fn parse_install_backup_name(filename: &str, original: &str) -> Option<(u64, u32, u32)> {
+    let rest = filename.strip_prefix(&format!("{original}.bak-"))?;
+    let mut parts = rest.split('-');
+    let secs: u64 = parts.next()?.parse().ok()?;
+    let pid: u32 = parts.next()?.parse().ok()?;
+    let n: u32 = parts.next()?.parse().ok()?;
+    if parts.next().is_some() {
+        return None;
+    }
+    Some((secs, pid, n))
+}
+
+/// Sibling `{name}.bak-<secs>-<pid>-<n>` files next to `path`, newest first.
+fn sibling_install_backups(path: &Path) -> Vec<PathBuf> {
+    let Some(parent) = path.parent() else {
+        return Vec::new();
+    };
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return Vec::new();
+    };
+    let Ok(entries) = std::fs::read_dir(parent) else {
+        return Vec::new();
+    };
+    let mut found: Vec<(u64, u32, u32, PathBuf)> = Vec::new();
+    for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() {
+            continue;
+        }
+        let fname = entry.file_name();
+        let Some(s) = fname.to_str() else {
+            continue;
+        };
+        if let Some(key) = parse_install_backup_name(s, name) {
+            found.push((key.0, key.1, key.2, entry.path()));
+        }
+    }
+    found.sort_by(|a, b| (b.0, b.1, b.2).cmp(&(a.0, a.1, a.2)));
+    found.into_iter().map(|(_, _, _, p)| p).collect()
+}
+
+fn backup_matches_payload(bak: &Path, want: &[u8]) -> bool {
+    std::fs::read(bak)
+        .map(|bytes| digest::hash_bytes(&bytes) == digest::hash_bytes(want))
+        .unwrap_or(false)
+}
+
+fn relative_to_target(target_dir: &Path, path: &Path) -> String {
+    path.strip_prefix(target_dir)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|_| path.display().to_string())
+}
+
 /// The files a healthy install must contain, keyed by their on-disk path relative
 /// to the target directory (the `<container>/` prefix stripped, exactly as the
 /// installer writes them). Only the test harness materialises a healthy tree from
@@ -97,12 +154,7 @@ pub fn diagnose(
     let adapter = adapters::select(harness)?;
     let steering = crate::catalog::steering_for_target(target_dir, Path::new("."))
         .map_err(|e| anyhow::anyhow!(e))?;
-    let built = adapters::build_payload(
-        adapter.as_ref(),
-        roles,
-        cmds,
-        steering.as_deref(),
-    )?;
+    let built = adapters::build_payload(adapter.as_ref(), roles, cmds, steering.as_deref())?;
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
 }
 
@@ -313,11 +365,31 @@ fn diagnose_built(
         missing.sort();
         drifted.sort();
         unreadable.sort();
-        let mut detail = format!(
-            "{} core file(s) missing: {}",
-            missing.len(),
-            missing.join(", ")
-        );
+        let mut interrupted: Vec<String> = Vec::new();
+        let mut gone: Vec<String> = Vec::new();
+        for rel in &missing {
+            if sibling_install_backups(&target_dir.join(rel)).is_empty() {
+                gone.push(rel.clone());
+            } else {
+                interrupted.push(rel.clone());
+            }
+        }
+        let mut parts: Vec<String> = Vec::new();
+        if !interrupted.is_empty() {
+            parts.push(format!(
+                "{} interrupted-update (backup present, main file missing): {}",
+                interrupted.len(),
+                interrupted.join(", ")
+            ));
+        }
+        if !gone.is_empty() {
+            parts.push(format!(
+                "{} core file(s) missing: {}",
+                gone.len(),
+                gone.join(", ")
+            ));
+        }
+        let mut detail = parts.join("; ");
         if !drifted.is_empty() {
             detail.push_str(&format!("; drifted: {}", drifted.join(", ")));
         }
@@ -389,18 +461,15 @@ fn diagnose_built(
     let mut installed: Vec<String> = Vec::new();
     let mut tool_missing: Vec<String> = Vec::new();
     let mut tool_drift: Vec<String> = Vec::new();
-   let mut tool_unreadable: Vec<String> = Vec::new();
+    let mut tool_unreadable: Vec<String> = Vec::new();
     let mut tool_unfixable: Vec<String> = Vec::new();
     let mut tool_orphaned: Vec<String> = Vec::new();
     for t in tools {
- let files: Vec<(&String, &String)> = tool_expected
+        let files: Vec<(&String, &String)> = tool_expected
             .iter()
             .filter(|(k, _)| {
                 k.split('/').any(|s| s == t.name)
-                    || Path::new(k)
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        == Some(t.name.as_str())
+                    || Path::new(k).file_stem().and_then(|s| s.to_str()) == Some(t.name.as_str())
             })
             .collect();
         if files.is_empty() {
@@ -416,10 +485,7 @@ fn diagnose_built(
         if !any_on_disk && !files.iter().any(|(k, _)| claimed(k)) {
             continue;
         }
-        if any_on_disk
-            && receipt.is_some()
-            && !files.iter().any(|(k, _)| claimed(k))
-        {
+        if any_on_disk && receipt.is_some() && !files.iter().any(|(k, _)| claimed(k)) {
             tool_orphaned.push(t.name.clone());
             continue;
         }
@@ -472,59 +538,57 @@ fn diagnose_built(
     tool_unfixable.dedup();
     tool_orphaned.sort();
     tool_orphaned.dedup();
-    let (severity, detail) = if !tool_missing.is_empty() || !tool_unreadable.is_empty() || !tool_orphaned.is_empty() {
-        let mut detail = format!(
-            "installed: {}; missing: {}",
-            installed.join(", "),
-            tool_missing.join(", ")
-        );
-        if !tool_unreadable.is_empty() {
-            detail.push_str(&format!("; unreadable: {}", tool_unreadable.join(", ")));
-        }
-        if !tool_drift.is_empty() {
-            detail.push_str(&format!("; drifted: {}", tool_drift.join(", ")));
-        }
-        if !tool_unfixable.is_empty() {
-            detail.push_str(&format!(
-                "; cannot repair without receipt ownership: {}",
-                tool_unfixable.join(", ")
-            ));
-        }
-        if !tool_orphaned.is_empty() {
-            detail.push_str(&format!(
-                "; orphaned: {}",
-                tool_orphaned.join(", ")
-            ));
-        }
-        (Severity::Problem, detail)
-    } else if installed.is_empty() && tool_drift.is_empty() {
-        (
-            Severity::Ok,
-            "no optional tools installed — use `--with-tools none` for crew-only".to_string(),
-        )
-    } else if tool_drift.is_empty() {
-        (
-            Severity::Ok,
-            format!("installed and current: {}", installed.join(", ")),
-        )
-    } else {
-        (
-            Severity::Warn,
-            format!(
-                "installed: {}; drifted: {}{}",
+    let (severity, detail) =
+        if !tool_missing.is_empty() || !tool_unreadable.is_empty() || !tool_orphaned.is_empty() {
+            let mut detail = format!(
+                "installed: {}; missing: {}",
                 installed.join(", "),
-                tool_drift.join(", "),
-                if tool_unfixable.is_empty() {
-                    String::new()
-                } else {
-                    format!(
-                        "; cannot repair without receipt ownership: {}",
-                        tool_unfixable.join(", ")
-                    )
-                }
-            ),
-        )
-    };
+                tool_missing.join(", ")
+            );
+            if !tool_unreadable.is_empty() {
+                detail.push_str(&format!("; unreadable: {}", tool_unreadable.join(", ")));
+            }
+            if !tool_drift.is_empty() {
+                detail.push_str(&format!("; drifted: {}", tool_drift.join(", ")));
+            }
+            if !tool_unfixable.is_empty() {
+                detail.push_str(&format!(
+                    "; cannot repair without receipt ownership: {}",
+                    tool_unfixable.join(", ")
+                ));
+            }
+            if !tool_orphaned.is_empty() {
+                detail.push_str(&format!("; orphaned: {}", tool_orphaned.join(", ")));
+            }
+            (Severity::Problem, detail)
+        } else if installed.is_empty() && tool_drift.is_empty() {
+            (
+                Severity::Ok,
+                "no optional tools installed — use `--with-tools none` for crew-only".to_string(),
+            )
+        } else if tool_drift.is_empty() {
+            (
+                Severity::Ok,
+                format!("installed and current: {}", installed.join(", ")),
+            )
+        } else {
+            (
+                Severity::Warn,
+                format!(
+                    "installed: {}; drifted: {}{}",
+                    installed.join(", "),
+                    tool_drift.join(", "),
+                    if tool_unfixable.is_empty() {
+                        String::new()
+                    } else {
+                        format!(
+                            "; cannot repair without receipt ownership: {}",
+                            tool_unfixable.join(", ")
+                        )
+                    }
+                ),
+            )
+        };
     checks.push(Check {
         name: "Tools".into(),
         severity,
@@ -574,12 +638,7 @@ pub fn fix(
     let adapter = adapters::select(harness)?;
     let steering = crate::catalog::steering_for_target(target_dir, Path::new("."))
         .map_err(|e| anyhow::anyhow!(e))?;
-    let built = adapters::build_payload(
-        adapter.as_ref(),
-        roles,
-        cmds,
-        steering.as_deref(),
-    )?;
+    let built = adapters::build_payload(adapter.as_ref(), roles, cmds, steering.as_deref())?;
     let expected = strip_container(&built, adapter.container());
     let repository = manifest_db::ReceiptRepository::new(target_dir);
     repository.load_all()?;
@@ -670,6 +729,7 @@ pub fn fix(
     let mut restored = 0usize;
     let mut backed_up = 0usize;
     let mut skipped: Vec<String> = Vec::new();
+    let mut skip_mv: Vec<(String, String)> = Vec::new();
     let mut repaired: BTreeSet<String> = BTreeSet::new();
     let mut changed: Vec<(String, PathBuf, Option<Vec<u8>>)> = Vec::new();
     let mut repair_backups = Vec::new();
@@ -699,9 +759,10 @@ pub fn fix(
                     // the backup byte-for-byte. This is required for --fix too:
                     // payload files are text, user files need not be.
                     let backup_path = backup_root.join(rel);
-                    let backup_relative = backup_path.strip_prefix(target_dir).map_err(|error| {
-                        anyhow::anyhow!("doctor backup escaped target: {}", error)
-                    })?;
+                    let backup_relative =
+                        backup_path.strip_prefix(target_dir).map_err(|error| {
+                            anyhow::anyhow!("doctor backup escaped target: {}", error)
+                        })?;
                     let backup_path =
                         manifest_db::resolve_target_relative(target_dir, backup_relative)?;
                     let backup_ok = crate::installer::atomic_write_bytes(&backup_path, &on_disk)
@@ -718,11 +779,25 @@ pub fn fix(
                     Some(on_disk)
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    if receipt_state == plan::ReceiptState::Valid && !owned {
+                    let siblings = sibling_install_backups(&path);
+                    let matching = siblings
+                        .iter()
+                        .any(|bak| backup_matches_payload(bak, want.as_bytes()));
+                    // A payload-matching sibling backup is an interrupted install
+                    // rewrite: restore even when the receipt does not list the
+                    // path (the receipt may predate the file, or the update
+                    // died before rewriting it).
+                    if matching {
+                        None
+                    } else if receipt_state == plan::ReceiptState::Valid && !owned {
                         skipped.push(rel.clone());
+                        if let Some(bak) = siblings.first() {
+                            skip_mv.push((relative_to_target(target_dir, bak), rel.clone()));
+                        }
                         continue;
+                    } else {
+                        None
                     }
-                    None
                 }
                 Err(_) => {
                     // Present but unreadable: no verified byte backup is possible.
@@ -768,12 +843,23 @@ pub fn fix(
         }
     }
     if !skipped.is_empty() {
-        println!(
-            "Skipped {} file(s) shipmates could not safely repair (no verified backup, \
-             or present but unreadable) — left them untouched: {}",
-            skipped.len(),
-            skipped.join(", ")
-        );
+        if skip_mv.is_empty() {
+            println!(
+                "Skipped {} file(s) shipmates could not safely repair (no verified backup, \
+                 or present but unreadable) — left them untouched: {}",
+                skipped.len(),
+                skipped.join(", ")
+            );
+        } else {
+            println!(
+                "Skipped {} file(s) shipmates could not safely repair — left them untouched: {}",
+                skipped.len(),
+                skipped.join(", ")
+            );
+            for (bak, dest) in &skip_mv {
+                println!("  interrupted-update: restore with `mv {bak} {dest}`");
+            }
+        }
     }
 
     let publication_result: Result<()> = (|| {
@@ -788,8 +874,7 @@ pub fn fix(
             .retain(|file| !migrated_paths.contains(&file.path));
         for file in &mut current.files {
             if repaired.contains(&file.path) {
-                let path =
-                    manifest_db::resolve_target_relative(target_dir, Path::new(&file.path))?;
+                let path = manifest_db::resolve_target_relative(target_dir, Path::new(&file.path))?;
                 file.sha256 = digest::compute_sha256(&path)?;
             }
         }
@@ -973,6 +1058,132 @@ mod tests {
             .find(|c| c.name == name)
             .unwrap()
             .severity
+    }
+
+    #[test]
+    fn test_fix_restores_missing_skill_from_sibling_install_backup() {
+        // Interrupted install: main file gone, `{name}.bak-<secs>-<pid>-<n>`
+        // sibling still there and matches the current payload. Receipt may not
+        // list the path (update died before rewriting ownership) — --fix must
+        // still restore, and diagnose must name interrupted-update (#352).
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(target, &roles, &cmds);
+
+        let adapter = adapters::select("claude-code").unwrap();
+        let files = expected_files(adapter.as_ref(), &roles, &cmds).unwrap();
+        let skill_rel = files
+            .keys()
+            .find(|k| k.ends_with("SKILL.md") && k.contains("ship-issue"))
+            .cloned()
+            .expect("ship-issue skill in payload");
+        let skill_path = target.join(&skill_rel);
+        let want = files.get(&skill_rel).unwrap().clone();
+        let bak_path = skill_path.with_file_name("SKILL.md.bak-1788191317-3827013-0");
+        std::fs::copy(&skill_path, &bak_path).unwrap();
+        std::fs::remove_file(&skill_path).unwrap();
+
+        // Receipt claims crew agents only — the skill is unowned, matching the
+        // production skip ("valid receipt + missing + not in receipt").
+        let install = crate::installer::plan::InstallPlan::from_payload(
+            adapter.as_ref(),
+            "claude-code",
+            adapter.build(&roles, &cmds).unwrap(),
+            adapter.build_tools(&[]),
+        )
+        .unwrap();
+        let agent_keys: Vec<PathBuf> = install
+            .files
+            .keys()
+            .filter(|p| p.to_string_lossy().contains("/agents/"))
+            .cloned()
+            .collect();
+        let receipt = install.receipt_for(agent_keys).unwrap();
+        crate::installer::plan::save_receipt(target, &receipt).unwrap();
+
+        let before = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
+        let content = before.checks.iter().find(|c| c.name == "Content").unwrap();
+        assert_eq!(content.severity, Severity::Problem);
+        assert!(
+            content.detail.contains("interrupted-update"),
+            "diagnose must name interrupted-update: {}",
+            content.detail
+        );
+        assert!(content.detail.contains(&skill_rel), "{}", content.detail);
+
+        let after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&skill_path).unwrap(),
+            want,
+            "must restore payload bytes so Content matches the running version"
+        );
+        assert_eq!(sev(&after, "Content"), Severity::Ok);
+        assert!(
+            after
+                .checks
+                .iter()
+                .find(|c| c.name == "Content")
+                .unwrap()
+                .detail
+                .contains(&format!("shipmates v{}", env!("CARGO_PKG_VERSION"))),
+            "Content ok must name the running version"
+        );
+    }
+
+    #[test]
+    fn test_parse_install_backup_name() {
+        assert_eq!(
+            parse_install_backup_name("SKILL.md.bak-1788191317-3827013-0", "SKILL.md"),
+            Some((1788191317, 3827013, 0))
+        );
+        assert!(parse_install_backup_name("SKILL.md.bak", "SKILL.md").is_none());
+        assert!(parse_install_backup_name("SKILL.md.bak-1-2", "SKILL.md").is_none());
+        assert!(parse_install_backup_name("other.md.bak-1-2-3", "SKILL.md").is_none());
+    }
+
+    #[test]
+    fn test_fix_leaves_unowned_missing_without_matching_backup() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(target, &roles, &cmds);
+
+        let adapter = adapters::select("claude-code").unwrap();
+        let files = expected_files(adapter.as_ref(), &roles, &cmds).unwrap();
+        let skill_rel = files
+            .keys()
+            .find(|k| k.ends_with("SKILL.md") && k.contains("ship-issue"))
+            .cloned()
+            .expect("ship-issue skill in payload");
+        let skill_path = target.join(&skill_rel);
+        let bak_path = skill_path.with_file_name("SKILL.md.bak-1788191317-3827013-0");
+        std::fs::write(&bak_path, "not the payload").unwrap();
+        std::fs::remove_file(&skill_path).unwrap();
+
+        let install = crate::installer::plan::InstallPlan::from_payload(
+            adapter.as_ref(),
+            "claude-code",
+            adapter.build(&roles, &cmds).unwrap(),
+            adapter.build_tools(&[]),
+        )
+        .unwrap();
+        let agent_keys: Vec<PathBuf> = install
+            .files
+            .keys()
+            .filter(|p| p.to_string_lossy().contains("/agents/"))
+            .cloned()
+            .collect();
+        let receipt = install.receipt_for(agent_keys).unwrap();
+        crate::installer::plan::save_receipt(target, &receipt).unwrap();
+
+        let _after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert!(
+            !skill_path.exists(),
+            "must not overwrite from a non-matching sibling backup"
+        );
     }
 
     #[test]
@@ -1167,10 +1378,7 @@ mod tests {
         write_receipt(target, &roles, &cmds, &tools);
 
         let adapter = adapters::select("claude-code").unwrap();
-        let tool_files = strip_container(
-            &adapter.build_tools(&tools),
-            adapter.container(),
-        );
+        let tool_files = strip_container(&adapter.build_tools(&tools), adapter.container());
         let mut paths = tool_files.keys();
         let drifted = paths.next().unwrap();
         atomic_write(&target.join(drifted), "drifted").unwrap();
@@ -1205,9 +1413,17 @@ mod tests {
         atomic_write(&target.join(path), "user drift").unwrap();
 
         let report = diagnose(target, "claude-code", &roles, &cmds, &tools).unwrap();
-        let tools_check = report.checks.iter().find(|check| check.name == "Tools").unwrap();
+        let tools_check = report
+            .checks
+            .iter()
+            .find(|check| check.name == "Tools")
+            .unwrap();
         assert_eq!(tools_check.severity, Severity::Warn);
-        assert!(tools_check.detail.contains("cannot repair without receipt ownership"));
+        assert!(
+            tools_check
+                .detail
+                .contains("cannot repair without receipt ownership")
+        );
     }
 
     #[cfg(unix)]
@@ -1243,10 +1459,7 @@ mod tests {
         // Corrupt the receipt by overwriting with invalid bytes.
         let adapter = adapters::select("claude-code").unwrap();
         let files = expected_files(adapter.as_ref(), &roles, &cmds).unwrap();
-        let mut receipt_rel = files
-            .keys()
-            .find(|k| k.ends_with(".sha256"))
-            .cloned();
+        let mut receipt_rel = files.keys().find(|k| k.ends_with(".sha256")).cloned();
         if let Some(ref mut rel) = receipt_rel {
             *rel = rel.replace(".sha256", "");
         }
@@ -1295,23 +1508,18 @@ mod tests {
             atomic_write(&target.join(&rel), &content).unwrap();
         }
         // Write a valid receipt that claims the tool file.
-        let install =
-            crate::installer::plan::InstallPlan::from_payload(
-                adapter.as_ref(),
-                "opencode",
-                built,
-                tool_built,
-            )
-            .unwrap();
+        let install = crate::installer::plan::InstallPlan::from_payload(
+            adapter.as_ref(),
+            "opencode",
+            built,
+            tool_built,
+        )
+        .unwrap();
         let receipt = install.receipt_for(install.files.keys().cloned()).unwrap();
         crate::installer::plan::save_receipt(target, &receipt).unwrap();
 
         let report = diagnose(target, "opencode", &roles, &cmds, &tools).unwrap();
-        let tools_check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "Tools")
-            .unwrap();
+        let tools_check = report.checks.iter().find(|c| c.name == "Tools").unwrap();
         assert_eq!(tools_check.severity, Severity::Ok);
         assert!(
             tools_check.detail.contains("badge"),
@@ -1341,23 +1549,18 @@ mod tests {
             .filter(|k| k.contains("badge"))
             .map(|k| PathBuf::from(k))
             .collect();
-        let install =
-            crate::installer::plan::InstallPlan::from_payload(
-                adapter.as_ref(),
-                "claude-code",
-                adapter.build(&roles, &cmds).unwrap(),
-                tool_built,
-            )
-            .unwrap();
+        let install = crate::installer::plan::InstallPlan::from_payload(
+            adapter.as_ref(),
+            "claude-code",
+            adapter.build(&roles, &cmds).unwrap(),
+            tool_built,
+        )
+        .unwrap();
         let receipt = install.receipt_for(badge_keys).unwrap();
         crate::installer::plan::save_receipt(target, &receipt).unwrap();
 
         let report = diagnose(target, "claude-code", &roles, &cmds, &tools).unwrap();
-        let tools_check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "Tools")
-            .unwrap();
+        let tools_check = report.checks.iter().find(|c| c.name == "Tools").unwrap();
         // Scrub is on disk but unclaimed — must not be OK.
         assert_ne!(
             tools_check.severity,

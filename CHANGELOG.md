@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.13] - 2026-09-01
+
+### Fixed
+
+- `/ship-epic` and `/ship-issue` treat harness "end your turn" / backgrounded
+  builders as in-flight work, not a hard-limit pause (#351).
+- `doctor --fix` restores a missing payload file from a sibling
+  `{name}.bak-<secs>-<pid>-<n>` left by an interrupted install (#352).
+
 ## [0.1.12] - 2026-08-31
 
 ### Changed
