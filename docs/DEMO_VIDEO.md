@@ -1,6 +1,6 @@
 # Shipmates 45s LinkedIn Demo — Video Plan
 
-> Status: planning — beats 1–4 scaffold implemented in [`tools/demo-video/`](../tools/demo-video/README.md). Target: 45-second AI-assisted demo clip for LinkedIn showing the
+> Status: planning — beats 1–7 implemented in [`tools/demo-video/`](../tools/demo-video/README.md). Target: 45-second AI-assisted demo clip for LinkedIn showing the
 > `/` commands in action — terminal phases, dynamic crew leverage, tool calls, and an
 > epic PR timelapse with board sign-off. Narrated in the captain's own (cloned) voice.
 
@@ -143,7 +143,7 @@ Practical notes (ComfyUI, Strix Halo):
 ## 7. TODO
 
 - [ ] Record captain's voice sample (1–5 min, quiet room) → clone + approve narration take
-- [ ] Scaffold Remotion project (beats 1–5 + end card) — **beats 1–4 scaffolded** (tools/demo-video/); beats 5–7 pending
+- [x] Scaffold Remotion project (beats 1–5 + end card) — **beats 1–7 scaffolded** (tools/demo-video/)
 - [x] Render beat 3 first; verify legibility at phone-feed scale (≥20 px effective glyph height) before committing to full build — gate: `pnpm legibility` (20.25px terminal / 27px caption / 40.5px gates)
 - [ ] Generate MiniMax H3 transition shot (once ComfyUI model downloads finish)
 - [ ] Assemble, mix audio, export 1080×1080 + 1920×1080
