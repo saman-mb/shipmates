@@ -4,7 +4,7 @@ import { Caption } from '../components/Caption';
 import { Terminal } from '../components/Terminal';
 import { TypeOn } from '../components/TypeOn';
 import { BEAT1 } from '../data/beats';
-import { COLORS, FONT_SIZES, TERMINAL_CONTENT_TOP } from '../theme';
+import { COLORS, FONT_SIZES, TERMINAL_CONTENT_TOP, TERMINAL_GUTTER } from '../theme';
 
 /**
  * Beat 1 — Hook · 0:00–0:03 (docs/DEMO_VIDEO.md §2).
@@ -37,8 +37,15 @@ export const Beat1: React.FC = () => {
   return (
     <Terminal lines={[]}>
       {/* Below the reserved header band — the hook must never enter the
-          titlebar/caption zone (theme.ts band math). */}
-      <div style={{ paddingTop: TERMINAL_CONTENT_TOP }}>
+          titlebar/caption zone (theme.ts band math). Aligned to the same
+          gutter as every other beat's terminal lines. */}
+      <div
+        style={{
+          paddingTop: TERMINAL_CONTENT_TOP,
+          paddingLeft: TERMINAL_GUTTER,
+          paddingRight: TERMINAL_GUTTER,
+        }}
+      >
         <div
           style={{ position: 'relative', fontSize: FONT_SIZES.hook, lineHeight: 1.6 }}
         >
@@ -73,9 +80,6 @@ export const Beat1: React.FC = () => {
               whiteSpace: 'pre',
               transform: `scale(${1 + (1 - stampScale) * 0.4})`,
               transformOrigin: 'left center',
-              opacity: interpolate(stampScale, [0, 0.3], [0, 1], {
-                extrapolateRight: 'clamp',
-              }),
             }}
           >
             {BEAT1.commandLine}

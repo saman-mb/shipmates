@@ -100,6 +100,11 @@ export const CAPTION_PLATE_BG = 'rgba(0, 0, 0, 0.4)';
 
 /** Window titlebar (traffic lights + label) height. */
 export const TERMINAL_TITLEBAR_HEIGHT = 64;
+/**
+ * Horizontal gutter for terminal body content — the left edge every terminal
+ * line, hook line and command stamp aligns to (docs/DEMO_VIDEO.md §4).
+ */
+export const TERMINAL_GUTTER = 64;
 /** Phase checklist top — first row of the reserved header band, top-right. */
 export const CHECKLIST_TOP = 80;
 /** Caption plate top — second row of the reserved header band, top-centre. */
