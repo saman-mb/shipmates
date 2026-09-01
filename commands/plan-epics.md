@@ -1,6 +1,6 @@
 ---
 name: plan-epics
-description: Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a context-selected planning panel authoring and reviewing in parallel.
+description: Shipmates: Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a context-selected planning panel authoring and reviewing in parallel.
 argument-hint: <brief text | path to a brief file | several briefs> [area/label hints] [dry-run] [optional role hints — e.g. "also involve architect and UX"]
 allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true

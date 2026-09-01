@@ -93,12 +93,12 @@ class SiteGenerationTests(unittest.TestCase):
 
     def test_command_pages_are_a_guide_not_the_skill(self) -> None:
         """Positive control: the page names the process and crew, and links the skill."""
-        migrate = (ROOT / "site/commands/migrate/index.html").read_text(encoding="utf-8")
+        migrate = (ROOT / "site/commands/shipmates-migrate/index.html").read_text(encoding="utf-8")
         self.assertIn('id="process"', migrate)
         self.assertIn("How it works", migrate)
         self.assertIn("senior-engineer", migrate)
         self.assertIn("Also sit when", migrate)
-        self.assertIn("commands/migrate.md", migrate)
+        self.assertIn("commands/shipmates-migrate.md", migrate)
         self.assertNotIn("ARGUMENTS", migrate)
 
     def test_agent_pages_list_harness_tool_names(self) -> None:
@@ -149,10 +149,10 @@ class SiteGenerationTests(unittest.TestCase):
         self.assertEqual({c.slug for c in commands}, {c.slug for c in flat})
 
     def test_redirect_stubs_emitted_and_excluded_from_sitemap(self) -> None:
-        """Legacy renamed command paths serve a meta-refresh stub and are not indexed."""
-        from tools.gen_command_pages import REDIRECTS, SITE_URL
-        import xml.etree.ElementTree as ET
+        """Legacy renamed command and tool paths serve a meta-refresh stub and are not indexed."""
+        from tools.gen_command_pages import REDIRECTS, SITE_URL, TOOL_REDIRECTS
 
+        sitemap_text = (ROOT / "site/sitemap.xml").read_text(encoding="utf-8")
         for old_slug, target_slug in REDIRECTS.items():
             stub = ROOT / f"site/commands/{old_slug}/index.html"
             self.assertTrue(stub.is_file(), f"missing redirect stub {stub}")
@@ -160,9 +160,16 @@ class SiteGenerationTests(unittest.TestCase):
             self.assertIn(f'url=../{target_slug}/"', text)
             self.assertIn(f'rel="canonical" href="{SITE_URL}commands/{target_slug}/"', text)
             self.assertIn('name="robots" content="noindex"', text)
-
-            sitemap_text = (ROOT / "site/sitemap.xml").read_text(encoding="utf-8")
             self.assertNotIn(f"{SITE_URL}commands/{old_slug}/", sitemap_text)
+
+        for old_slug, target_slug in TOOL_REDIRECTS.items():
+            stub = ROOT / f"site/tools/{old_slug}/index.html"
+            self.assertTrue(stub.is_file(), f"missing tool redirect stub {stub}")
+            text = stub.read_text(encoding="utf-8")
+            self.assertIn(f'url=../{target_slug}/"', text)
+            self.assertIn(f'rel="canonical" href="{SITE_URL}tools/{target_slug}/"', text)
+            self.assertIn('name="robots" content="noindex"', text)
+            self.assertNotIn(f"{SITE_URL}tools/{old_slug}/", sitemap_text)
 
 
 if __name__ == "__main__":

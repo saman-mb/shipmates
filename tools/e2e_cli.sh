@@ -376,7 +376,7 @@ echo "=== Segment 18: Tools runnable ==="
 PROJ="$TMPDIR/proj-tools"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools scrub >/dev/null 2>&1
-SCRUB_SCRIPT="$PROJ/.claude/skills/scrub/scrub.py"
+SCRUB_SCRIPT="$PROJ/.claude/skills/shipmates-scrub/scrub.py"
 assert_file_exists "$SCRUB_SCRIPT" "scrub.py installed"
 if [ -f "$SCRUB_SCRIPT" ]; then
   set +e

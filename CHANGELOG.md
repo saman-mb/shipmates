@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.15] - 2026-09-01
+
+### Changed
+
+- Generic commands and every tool install as `shipmates-*` (`/shipmates-polish`,
+  `shipmates-gh`, …). Flagships (`/ship-issue`, `/ship-epic`, `/plan-epics`,
+  `/pr-review`, `/report-bug`, `/consolidate-issues`) keep their names. `install`
+  and `doctor --fix` migrate owned old paths; `--no-migrate` skips the sweep
+  (#373).
+
 ## [0.1.14] - 2026-09-01
 
 ### Changed

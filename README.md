@@ -66,25 +66,25 @@ from anything hardcoded into the role.
 |---|---|
 | `/ship-issue <n>...` | Drives GitHub issue `#n` — or several at once, bundled into one PR — from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
 | `/ship-epic <n>` | Loops `/ship-issue` over an epic's unchecked stories in dependency order — gate stories pause for sign-off; failures pause with state |
-| `/fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
+| `/shipmates-fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
 | `/report-bug [symptom] [apply]` | Files a structured bug report on `saman-mb/shipmates` from a live run — preview by default; `apply` creates the issue |
 | `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
 | `/consolidate-issues [filter] [apply]` | Reviews every open issue against git history — closes what's done or stale, migrates legacy ones, bundles the rest by theme so they ship together |
-| `/harden <surface>` | Threat-models a surface and ranks every finding — read-only by default; remediation on a branch, opt-in |
-| `/spike <question>` | De-risks a decision — prototypes the options in parallel, judges them, records the pick as an ADR |
-| `/migrate <from→to>` | Sweeps a mechanical migration across the codebase — every call site, verified, no remnants left |
-| `/document <target>` | Writes docs from the real code, gated on a *fresh reader* actually completing the steps |
-| `/release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
-| `/polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
+| `/shipmates-harden <surface>` | Threat-models a surface and ranks every finding — read-only by default; remediation on a branch, opt-in |
+| `/shipmates-spike <question>` | De-risks a decision — prototypes the options in parallel, judges them, records the pick as an ADR |
+| `/shipmates-migrate <from→to>` | Sweeps a mechanical migration across the codebase — every call site, verified, no remnants left |
+| `/shipmates-document <target>` | Writes docs from the real code, gated on a *fresh reader* actually completing the steps |
+| `/shipmates-release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
+| `/shipmates-polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
 | `/pr-review <pr>` | Runs the board against a PR the crew didn't author — read-only, it reports and never repairs |
-| `/onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
-| `/refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
+| `/shipmates-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
+| `/shipmates-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
 worktree, and hands you a pull request — your checkout is left as you left it. `/report-bug` writes to
-the upstream Shipmates repo (preview by default), not your project. `/release` is the one
+the upstream Shipmates repo (preview by default), not your project. `/shipmates-release` is the one
 exception: the release commit has to land on the branch being tagged, so it commits, pushes and tags
-straight in your checkout instead of an unmerged side branch. `/pr-review` and `/harden`'s default
+straight in your checkout instead of an unmerged side branch. `/pr-review` and `/shipmates-harden`'s default
 `report` mode write nothing at all. Writing straight into the working tree is opt-in
 (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
@@ -107,17 +107,17 @@ implicitly, when the intent of your prompt calls for it — never typed, never a
 
 | Tool | What it does |
 | --- | --- |
-| [`termgif`](https://saman-mb.github.io/shipmates/tools/termgif/) | Renders a polished animated terminal demo GIF of a workflow run from a small JSON spec |
-| [`social-card`](https://saman-mb.github.io/shipmates/tools/social-card/) | Renders a 1280×640 social / Open Graph share card from a small JSON spec |
-| [`pixelart`](https://saman-mb.github.io/shipmates/tools/pixelart/) | Renders pixel-art icons — static PNG or animated GIF — the way the shipmates logo is made |
-| [`diagram`](https://saman-mb.github.io/shipmates/tools/diagram/) | Renders a curated diagram — a flow/pipeline/state machine or a sequence of actors and messages — as a committed SVG, deterministic PNG, or animated GIF |
-| [`svgflow`](https://saman-mb.github.io/shipmates/tools/svgflow/) | Deprecated alias for `diagram` — svgflow's flow diagram is now a kind of it |
-| [`badge`](https://saman-mb.github.io/shipmates/tools/badge/) | Renders a shields-style status badge as an offline, committed SVG |
-| [`sparkline`](https://saman-mb.github.io/shipmates/tools/sparkline/) | Renders a short number series as a tiny inline SVG trend chart |
-| [`scrub`](https://saman-mb.github.io/shipmates/tools/scrub/) | Redacts secrets and PII from a log or paste before it's shared |
-| [`fixtures`](https://saman-mb.github.io/shipmates/tools/fixtures/) | Generates deterministic fake test data from a small JSON schema |
-| [`domaincheck`](https://saman-mb.github.io/shipmates/tools/domaincheck/) | Checks domain availability via RDAP — registry-authoritative verdicts, TLD batch sweeps, optional registrar detail |
-| [`gh`](https://saman-mb.github.io/shipmates/tools/gh/) | Structured GitHub CLI wrapper — validated issue/PR ops, body-file hygiene, JSON results (requires `gh` installed and authenticated) |
+| [`shipmates-termgif`](https://saman-mb.github.io/shipmates/tools/shipmates-termgif/) | Renders a polished animated terminal demo GIF of a workflow run from a small JSON spec |
+| [`shipmates-social-card`](https://saman-mb.github.io/shipmates/tools/shipmates-social-card/) | Renders a 1280×640 social / Open Graph share card from a small JSON spec |
+| [`shipmates-pixelart`](https://saman-mb.github.io/shipmates/tools/shipmates-pixelart/) | Renders pixel-art icons — static PNG or animated GIF — the way the shipmates logo is made |
+| [`shipmates-diagram`](https://saman-mb.github.io/shipmates/tools/shipmates-diagram/) | Renders a curated diagram — a flow/pipeline/state machine or a sequence of actors and messages — as a committed SVG, deterministic PNG, or animated GIF |
+| [`shipmates-svgflow`](https://saman-mb.github.io/shipmates/tools/shipmates-svgflow/) | Deprecated alias for `shipmates-diagram` — svgflow's flow diagram is now a kind of it |
+| [`shipmates-badge`](https://saman-mb.github.io/shipmates/tools/shipmates-badge/) | Renders a shields-style status badge as an offline, committed SVG |
+| [`shipmates-sparkline`](https://saman-mb.github.io/shipmates/tools/shipmates-sparkline/) | Renders a short number series as a tiny inline SVG trend chart |
+| [`shipmates-scrub`](https://saman-mb.github.io/shipmates/tools/shipmates-scrub/) | Redacts secrets and PII from a log or paste before it's shared |
+| [`shipmates-fixtures`](https://saman-mb.github.io/shipmates/tools/shipmates-fixtures/) | Generates deterministic fake test data from a small JSON schema |
+| [`shipmates-domaincheck`](https://saman-mb.github.io/shipmates/tools/shipmates-domaincheck/) | Checks domain availability via RDAP — registry-authoritative verdicts, TLD batch sweeps, optional registrar detail |
+| [`shipmates-gh`](https://saman-mb.github.io/shipmates/tools/shipmates-gh/) | Structured GitHub CLI wrapper — validated issue/PR ops, body-file hygiene, JSON results (requires `gh` installed and authenticated) |
 
 Tools ship with a plain **`shipmates install`**. Use `--with-tools none` for crew + commands only, or `--with-tools <name>` for a subset. Add them with
 `--with-tools` (below), or run `install` in a terminal and pick from the list. Each tool maps to its
@@ -146,7 +146,7 @@ cargo install shipmates
 
 **Binary Installer (cargo-dist):**
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/shipmates-releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
 Then install the crew for a harness. By default it drops into your global home directory. Use
@@ -206,7 +206,7 @@ opencode run --command harden --format json \
 
 The agent list should include all thirteen Shipmates roles. The report-mode command is a narrow manual
 probe; keep `--auto` disabled. Deterministic CI install-fidelity tests check all thirteen installed agents
-and commands, the exact opencode golden payload, and the translated report-only `/harden` order. They do
+and commands, the exact opencode golden payload, and the translated report-only `/shipmates-harden` order. They do
 not use model credentials and do not claim that opencode runtime behavior is verified. Full crew resolution,
 argument passing, permission enforcement,
 parallel board execution, and `/ship-issue` end-to-end remain open for [#31](https://github.com/saman-mb/shipmates/issues/31)
@@ -336,7 +336,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 6. **Acceptance board** ⚖️ — `product-manager` + `sdet` (+ gated `ux-ui-designer` / `art-director` /
    `architect`) review the *pushed PR head*, independently and adversarially.
 7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-reviews. Bounded, then escalates.
-8. **Deliver** 🏁 — files the non-blocking nits as follow-ups, names a `/harden` follow-up if the
+8. **Deliver** 🏁 — files the non-blocking nits as follow-ups, names a `/shipmates-harden` follow-up if the
    change touched a security-relevant surface (this board doesn't threat-model), and opens (or,
    opt-in, merges) the PR.
 
@@ -386,7 +386,7 @@ parallel, then everything is created and cross-linked.
 
 **Polish a UI screen until it's actually right:**
 ```
-/polish the settings screen
+/shipmates-polish the settings screen
 ```
 The `ux-ui-designer` reviews the *rendered* screen (not the code), lists concrete fixes, a
 `senior-engineer` applies them, it re-renders, and the loop repeats until the designer signs off — or
@@ -399,14 +399,14 @@ cuts a `polish/<slug>` branch from `HEAD` and opens a PR of its own.
 
 **Polish rendered art the same way:**
 ```
-/polish the title-screen background — reviewer: art-director
+/shipmates-polish the title-screen background — reviewer: art-director
 ```
 Same loop, but the `art-director` judges the actual render — palette, composition, contrast — round after
 round until it meets the bar.
 
 **Fix a bug — proven, not just patched:**
 ```
-/fix-bug 213
+/shipmates-fix-bug 213
 ```
 A failing regression test is written *first* to reproduce #213; a `senior-engineer` root-causes and fixes
 it; the test flips red→green while the suite stays green; a fresh reviewer confirms it's the root cause,
@@ -414,7 +414,7 @@ not the symptom. You get a PR with the proof attached.
 
 **Threat-model and harden a surface:**
 ```
-/harden the auth + session flow
+/shipmates-harden the auth + session flow
 ```
 The `security-engineer` walks it with STRIDE / OWASP and ranks findings by severity with the exploit path.
 That pass is **read-only** — it reports, it doesn't touch your tree. Ask for the fixes (`MODE=pr`)
@@ -423,28 +423,28 @@ left open, then hands you a CI-gated PR.
 
 **De-risk a decision before committing to it:**
 ```
-/spike "job queue: Redis vs Postgres vs SQS"
+/shipmates-spike "job queue: Redis vs Postgres vs SQS"
 ```
 Engineers prototype each option in parallel as throwaways, an `architect` judges them against your real
 constraints (weighing reversibility), and you get a recommendation recorded as an ADR — not a hunch.
 
 **Sweep a migration across the whole codebase:**
 ```
-/migrate "moment.js → date-fns"
+/shipmates-migrate "moment.js → date-fns"
 ```
 Every call site is inventoried, transformed in isolation, verified, and the run only closes when a re-grep
 for the old pattern comes back empty and the suite is green. Nothing left half-migrated.
 
 **Write docs that actually work:**
 ```
-/document the getting-started guide
+/shipmates-document the getting-started guide
 ```
 The `technical-writer` drafts from the real code, then a *fresh* agent follows the steps against the repo
 like a newcomer — the docs ship only once that reader reaches the result. No drift, no dead ends.
 
 **Cut a release safely:**
 ```
-/release minor
+/shipmates-release minor
 ```
 The changelog is assembled from what actually merged, the version is bumped, CI must be green on the exact
 tagged commit, and the `site-reliability-engineer` checks rollback + migration safety before it's tagged.
@@ -454,10 +454,10 @@ tagged commit, and the `site-reliability-engineer` checks rollback + migration s
 /plan-epics "settings redesign"     # → creates the epic + stories
 /ship-epic 42                       # → ships every story in epic #42 (or pauses at gates)
 /ship-issue next epic 42            # → ships the next unchecked story in epic #42 only
-/polish the settings screen         # → iterates the visuals to sign-off
+/shipmates-polish the settings screen         # → iterates the visuals to sign-off
 ```
 Run that third step **from the worktree `/ship-issue` left behind** (`../<repo>--issue-148`), so the
-polish lands on the same branch. Started from your base branch, `/polish` would begin from a baseline
+polish lands on the same branch. Started from your base branch, `/shipmates-polish` would begin from a baseline
 that doesn't contain the new screen yet.
 
 ## 🗂️ Scopes & precedence
@@ -481,7 +481,7 @@ universal one.
 ## 🎒 What you'll need
 
 - A supported harness (Claude Code is the proven one; the others build and are format-verified)
-- `git` + an authenticated [`gh`](https://cli.github.com/) CLI, for the GitHub flow
+- `git` + an authenticated [`shipmates-gh`](https://cli.github.com/) CLI, for the GitHub flow
 - A repo with CI (strongly recommended — the green-CI gate is what makes autonomy trustworthy)
 
 ## 💡 Why it's built this way

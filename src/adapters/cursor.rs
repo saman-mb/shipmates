@@ -62,7 +62,7 @@ mod tests {
     #[test]
     fn test_cursor_adapter_emits_skills_only() {
         let command = CanonicalCommand {
-            name: "fix-bug".to_string(),
+            name: "shipmates-fix-bug".to_string(),
             description: "desc".to_string(),
             argument_hint: String::new(),
             allowed_tools: String::new(),
@@ -74,7 +74,7 @@ mod tests {
             source: std::path::PathBuf::from(""),
         };
         let files = CursorAdapter.build(&[], &[command]).unwrap();
-        assert!(files.contains_key("harnesses/cursor/.agents/skills/fix-bug/SKILL.md"));
+        assert!(files.contains_key("harnesses/cursor/.agents/skills/shipmates-fix-bug/SKILL.md"));
         // No crew dir or private skills tree.
         assert!(!files.keys().any(|k| k.contains("/agents/")));
         assert!(!files.keys().any(|k| k.contains(".cursor/skills/")));
