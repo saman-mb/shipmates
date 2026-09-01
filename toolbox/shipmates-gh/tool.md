@@ -128,7 +128,9 @@ These mirror what shipmates commands use today.
 
 Both fields are issue **numbers**. The op lists the parent's children first, so a
 re-run on an already-attached story returns `{"attached": false, "reason":
-"already-child"}` without a write.
+"already-child"}` without a write. `gh issue view --json subIssues` is a
+connection (`{nodes, totalCount}`); the op unwraps `nodes` into `subIssues` (a
+list of children) plus `numbers`.
 
 **Read the parent's sub-issue graph (plan-epics Stage 4, ship-epic Stage 0):**
 

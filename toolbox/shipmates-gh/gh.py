@@ -315,6 +315,22 @@ def sub_issue_pair(spec: dict[str, Any]) -> tuple[int, int]:
     return parent, child
 
 
+def sub_issue_children(sub_issues: Any) -> list[dict[str, Any]]:
+    """Unwrap gh's `subIssues` JSON: a connection `{nodes, totalCount}`, not a list.
+
+    `gh issue view --json subIssues` emits GraphQL connection shape. Iterating the
+    object yields its keys and would silently report zero children.
+    """
+    if isinstance(sub_issues, dict):
+        nodes = sub_issues.get("nodes")
+        if isinstance(nodes, list):
+            return [node for node in nodes if isinstance(node, dict)]
+        return []
+    if isinstance(sub_issues, list):
+        return [node for node in sub_issues if isinstance(node, dict)]
+    return []
+
+
 def op_issue_sub_issue_list(spec: dict[str, Any]) -> dict[str, Any]:
     number = validate_number(spec.get("number"))
     data = (
@@ -323,11 +339,11 @@ def op_issue_sub_issue_list(spec: dict[str, Any]) -> dict[str, Any]:
         )
         or {}
     )
-    children = data.get("subIssues") or []
+    children = sub_issue_children(data.get("subIssues"))
     numbers = [
         child["number"]
         for child in children
-        if isinstance(child, dict) and isinstance(child.get("number"), int)
+        if isinstance(child.get("number"), int)
     ]
     return {
         "number": number,

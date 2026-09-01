@@ -137,7 +137,8 @@ Otherwise, in this order (numbers must exist before they're referenced):
    gh issue edit <epic> --add-sub-issue <story>
    ```
    Several children may be attached in one call as a comma-separated list of numbers.
-   **Idempotent** — read the parent's current children first (`gh issue view <epic> --json subIssues`)
+   **Idempotent** — read the parent's current children first (`gh issue view <epic> --json subIssues`;
+   child numbers live at `subIssues.nodes[].number` — `subIssues` is a connection object, not a list)
    and skip any story already attached, so a re-run or a partial earlier run adds nothing twice.
    If the host has no sub-issue graph (the flag is rejected or the field is unknown), note that in the
    report and carry on — steps 3 and 5 still leave the epic traceable.
@@ -147,10 +148,11 @@ Otherwise, in this order (numbers must exist before they're referenced):
 ## Stage 4 — Verify & report
 
 - **Verify the sub-issue graph** — re-fetch each epic (`gh issue view <epic> --json
-  subIssues,subIssuesSummary`) and confirm its children are exactly the stories you created for it:
-  the count matches the story count and every captured story number appears. A missing child means
-  step 4 didn't land — retry it for that story, then re-verify. Report the parent's completion
-  summary (children total and done).
+  subIssues,subIssuesSummary`) and confirm its children (`subIssues.nodes[].number`) are exactly the
+  stories you created for it: the count matches the story count and every captured story number
+  appears. A missing child means step 4 didn't land — retry it **once** for that story, then
+  re-verify. If it is still missing, report that host/graph gap — do not loop. Report the parent's
+  completion summary (children total and done).
 - Verify every story carries `Part of #<epic>` matching its epic, and every epic's checklist lists all
   its stories (re-fetch and grep; don't assume).
 - Report **`<panel>` and `<panel-reasons>`** first, then a tree: each **epic** (title + link) → its

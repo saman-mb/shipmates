@@ -60,6 +60,12 @@ class FakeGh:
         return [call for call in self.calls if call[:2] == ["issue", "edit"]]
 
 
+def connection(*children, total=None):
+    """gh's real `subIssues` JSON: a GraphQL connection, not a flat list."""
+    nodes = list(children)
+    return {"nodes": nodes, "totalCount": len(nodes) if total is None else total}
+
+
 class GhSubIssueTests(unittest.TestCase):
     def fake_gh(self, view_payload=None):
         fake = FakeGh(view_payload)
@@ -91,7 +97,7 @@ class GhSubIssueTests(unittest.TestCase):
             )
 
     def test_sub_issue_add_edits_parent_with_issue_number(self):
-        fake = self.fake_gh({"number": 383, "subIssues": []})
+        fake = self.fake_gh({"number": 383, "subIssues": connection()})
         payload = gh_tool.execute(
             {"op": "issue.sub_issue_add", "number": 383, "sub_issue_number": 384}
         )
@@ -106,7 +112,7 @@ class GhSubIssueTests(unittest.TestCase):
         self.assertNotIn("sub_issue_id", flat)
 
     def test_sub_issue_add_passes_repo_flag(self):
-        fake = self.fake_gh({"number": 383, "subIssues": []})
+        fake = self.fake_gh({"number": 383, "subIssues": connection()})
         gh_tool.execute(
             {
                 "op": "issue.sub_issue_add",
@@ -124,7 +130,9 @@ class GhSubIssueTests(unittest.TestCase):
         fake = self.fake_gh(
             {
                 "number": 383,
-                "subIssues": [{"number": 384, "title": "story", "state": "OPEN"}],
+                "subIssues": connection(
+                    {"number": 384, "title": "story", "state": "OPEN"}
+                ),
                 "subIssuesSummary": {"total": 1, "completed": 0},
             }
         )
@@ -136,7 +144,7 @@ class GhSubIssueTests(unittest.TestCase):
         self.assertEqual(fake.edit_calls(), [])
 
     def test_sub_issue_add_replace_parent_edits_child(self):
-        fake = self.fake_gh({"number": 383, "subIssues": []})
+        fake = self.fake_gh({"number": 383, "subIssues": connection()})
         result = gh_tool.execute(
             {
                 "op": "issue.sub_issue_add",
@@ -151,7 +159,7 @@ class GhSubIssueTests(unittest.TestCase):
         )
 
     def test_sub_issue_add_rejects_non_boolean_replace_parent(self):
-        self.fake_gh({"number": 383, "subIssues": []})
+        self.fake_gh({"number": 383, "subIssues": connection()})
         with self.assertRaises(gh_tool.GhError):
             gh_tool.execute(
                 {
@@ -168,18 +176,44 @@ class GhSubIssueTests(unittest.TestCase):
                 "number": 383,
                 "title": "epic",
                 "state": "OPEN",
-                "subIssues": [{"number": 384}, {"number": 385}],
+                "subIssues": connection({"number": 384}, {"number": 385}),
                 "subIssuesSummary": {"total": 2, "completed": 1},
             }
         )
         result = gh_tool.execute({"op": "issue.sub_issue_list", "number": 383})["result"]
         self.assertEqual(result["numbers"], [384, 385])
+        self.assertEqual(result["subIssues"], [{"number": 384}, {"number": 385}])
         self.assertEqual(result["subIssuesSummary"], {"total": 2, "completed": 1})
         view = fake.calls[0]
         self.assertEqual(view[:3], ["issue", "view", "383"])
         requested = view[view.index("--json") + 1]
         self.assertIn("subIssues", requested)
         self.assertIn("subIssuesSummary", requested)
+
+    def test_sub_issue_list_empty_connection_is_zero_children(self):
+        fake = self.fake_gh(
+            {
+                "number": 383,
+                "subIssues": {"nodes": [], "totalCount": 0},
+                "subIssuesSummary": {"total": 0, "completed": 0, "percentCompleted": 0},
+            }
+        )
+        result = gh_tool.execute({"op": "issue.sub_issue_list", "number": 383})["result"]
+        self.assertEqual(result["numbers"], [])
+        self.assertEqual(result["subIssues"], [])
+        self.assertEqual(fake.edit_calls(), [])
+
+    def test_sub_issue_children_unwraps_gh_connection(self):
+        self.assertEqual(
+            gh_tool.sub_issue_children(
+                {"nodes": [{"number": 384}], "totalCount": 1}
+            ),
+            [{"number": 384}],
+        )
+        self.assertEqual(
+            gh_tool.sub_issue_children({"nodes": [], "totalCount": 0}),
+            [],
+        )
 
     def test_sub_issue_remove_edits_parent(self):
         fake = self.fake_gh()

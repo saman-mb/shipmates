@@ -1627,7 +1627,8 @@ TOOL_COPY = {
             "`echo '{\"op\":\"repo.view\"}' | python3 gh.py`. List operations with `python3 gh.py --list-ops`. "
             "Multi-line bodies must use `body_file` — inline `body` is capped at 200 chars. Sub-issue ops "
             "take plain issue numbers (`{\"op\":\"issue.sub_issue_add\",\"number\":305,\"sub_issue_number\":306}`) "
-            "and skip the write when the child is already attached; they need a host that exposes the "
+            "and skip the write when the child is already attached (`gh`'s `subIssues` field is a "
+            "connection — the op unwraps `nodes`); they need a host that exposes the "
             "parent/child graph, which github.com does and an older Enterprise Server may not.",
         ),
         sample=(
