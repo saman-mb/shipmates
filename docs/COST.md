@@ -58,7 +58,7 @@ Spawn reviewers **in parallel** against the PR head commit — they review exact
 - **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / {{project-instructions}} / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
 - **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
 
-Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** once a PR head exists.
+Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** on the **first** board once a PR head exists. Later rounds follow **Retry** below — a PE/PO ACCEPT may be carried when the fixer delta cannot invalidate it.
 
 **Scaled optional seats**
 
@@ -82,7 +82,15 @@ The `IS_*` flag vocabulary is shared by `/ship-issue` Stage 0 and `/pr-review` S
 **Decision**
 
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → proceed to deliver / the command's next stage.
-- **Any REJECT / FAIL** → remediation loop (where the command defines one), then re-convene the board on the new head.
+- **Any REJECT / FAIL** → remediation loop (where the command defines one), then **Retry** on the new head.
+
+**Retry (after a fixer)** — do not clone the first-convene roster. Re-select from the **fixer delta** (commits since the last board), not a full Stage 0 redo:
+
+1. **Must sit** — every seat that REJECTED / FAILED last round. They review the new head.
+2. **Reassess, default off** — every seat that ACCEPTED (including PE/PO). Cheap look at the delta with the same `IS_*` flags, scoped to what just changed. Re-spawn only when that delta can invalidate their ACCEPT. Otherwise **carry the ACCEPT forward**.
+3. **May newly sit** — a seat gated out last round joins if the delta newly trips its flag. Do not invent seats the flags never named.
+
+When a seat is re-spawned, they review the **pushed SHA**. The report lists `re-run` / `carried ACCEPT` / `newly seated` / `still gated` — never a silent skip.
 
 **Harness fallback**
 
@@ -136,8 +144,9 @@ Convene when the integrated epic plausibly trips the concern; name gated-out sea
 **Decision**
 
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → proceed to Stage 4 finalize and captain handoff.
-- **Any REJECT / FAIL** → fix on `<EPIC_BRANCH>`, push, re-poll epic PR CI, re-convene this board —
-  bounded by `MAX_FIX_ROUNDS`; exhaustion pauses the epic with integration blockers.
+- **Any REJECT / FAIL** → fix on `<EPIC_BRANCH>`, push, re-poll epic PR CI, then **Retry** this board
+  from the fixer delta (same rule as the unit acceptance board) — bounded by `MAX_FIX_ROUNDS`;
+  exhaustion pauses the epic with integration blockers.
 
 **Harness fallback**
 

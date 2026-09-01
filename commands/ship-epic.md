@@ -411,8 +411,9 @@ On pause, include `<epic-log>` and a link to the progress comment in the pause r
 
 <!-- shipmates:epic-integration-board -->
 
-   Fix any REJECT on `<EPIC_BRANCH>`, push, re-poll step 1, re-convene the board — bounded by
-   `MAX_FIX_ROUNDS`. Exhaustion **pauses the epic** with integration blockers (distinct from unit pause).
+   Fix any REJECT on `<EPIC_BRANCH>`, push, re-poll step 1, **Retry** the board from the fixer
+   delta (shared rule) — bounded by `MAX_FIX_ROUNDS`. Exhaustion **pauses the epic** with
+   integration blockers (distinct from unit pause).
    Record integration verdicts separately from per-unit `<epic-log>` reviews.
 3. **Finalize epic PR notes** — edit `<EPIC_PR>` body: confirm **Quick review guide** still accurate;
    set **Shipped so far** to the full `<epic-log>`; add **Ready to merge** checklist (all stories ticked,

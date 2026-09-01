@@ -116,8 +116,8 @@ Then the full suite green, and the **CI gate**: poll `gh pr checks` until done; 
   own standard — no before/after measurement means it is not an optimisation, whatever the diff looks
   like.
 
-Any `REJECT`/`FAIL` → loop a `senior-engineer` fixer, re-push, re-run the CI gate and this stage,
-bounded by `MAX_FIX_ROUNDS`, then escalate.
+Any `REJECT`/`FAIL` → loop a `senior-engineer` fixer, re-push, re-run the CI gate, then **Retry**
+the board from the fixer delta (shared rule), bounded by `MAX_FIX_ROUNDS`, then escalate.
 
 ## Stage 6 — Deliver
 

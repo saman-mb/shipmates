@@ -552,9 +552,10 @@ AGENT_COPY = {
         ),
         crew_fit=CrewFit(
             paragraphs=(
-                "The principal engineer sits on every acceptance board alongside the product manager — "
-                "the mandatory core every shipping command convenes on the pushed PR head. Optional "
-                "specialists scale in by flag; PE+PO never skip.",
+                "The principal engineer sits on every first acceptance board alongside the product "
+                "manager — the mandatory core every shipping command convenes on the pushed PR head. "
+                "Optional specialists scale in by flag; after a fixer, a PE/PO ACCEPT may carry "
+                "when the delta cannot invalidate it.",
             ),
             related=("product-manager", "senior-engineer", "architect", "sdet"),
         ),
