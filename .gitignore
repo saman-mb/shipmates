@@ -11,3 +11,7 @@ harnesses/*/
 # Added by cargo
 
 /target
+
+# Generated harness trees — never committed (shipmates install payload)
+.claude/
+.shipmates/
