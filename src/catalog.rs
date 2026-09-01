@@ -244,8 +244,20 @@ pub fn load_commands(path: &Path) -> anyhow::Result<Vec<CanonicalCommand>> {
             let (fm, body) = parse_frontmatter(entry.path()).map_err(|e| anyhow::anyhow!(e))?;
             reject_positional(&entry.path().to_string_lossy(), &body)
                 .map_err(|e| anyhow::anyhow!(e))?;
+            let name = fm.get("name").cloned().unwrap_or_default();
+            let stem = entry
+                .path()
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy();
+            if name != stem {
+                anyhow::bail!(
+                    "{}: frontmatter name {name:?} must equal the file stem {stem:?}",
+                    entry.path().display()
+                );
+            }
             commands.push(CanonicalCommand {
-                name: fm.get("name").cloned().unwrap_or_default(),
+                name,
                 description: fm.get("description").cloned().unwrap_or_default(),
                 argument_hint: fm.get("argument-hint").cloned().unwrap_or_default(),
                 allowed_tools: fm.get("allowed-tools").cloned().unwrap_or_default(),
@@ -299,12 +311,17 @@ pub fn load_roles_embedded() -> anyhow::Result<Vec<CanonicalRole>> {
 pub fn load_commands_embedded() -> anyhow::Result<Vec<CanonicalCommand>> {
     let mut commands = Vec::new();
     for (rel, content) in crate::embedded::embedded_sources() {
-        if let Some(name) = rel.strip_prefix("commands/") {
+        if let Some(file) = rel.strip_prefix("commands/") {
             let (fm, body) =
                 parse_frontmatter_from(content, rel).map_err(|e| anyhow::anyhow!(e))?;
             reject_positional(rel, &body).map_err(|e| anyhow::anyhow!(e))?;
+            let stem = file.trim_end_matches(".md");
+            let name = fm.get("name").cloned().unwrap_or_else(|| stem.to_string());
+            if name != stem {
+                anyhow::bail!("{rel}: frontmatter name {name:?} must equal the file stem {stem:?}");
+            }
             commands.push(CanonicalCommand {
-                name: fm.get("name").cloned().unwrap_or_else(|| name.to_string()),
+                name,
                 description: fm.get("description").cloned().unwrap_or_default(),
                 argument_hint: fm.get("argument-hint").cloned().unwrap_or_default(),
                 allowed_tools: fm.get("allowed-tools").cloned().unwrap_or_default(),
@@ -345,6 +362,13 @@ pub fn load_tools(path: &Path) -> anyhow::Result<Vec<CanonicalTool>> {
             .get("name")
             .cloned()
             .unwrap_or_else(|| dir.file_name().unwrap().to_string_lossy().to_string());
+        let dir_name = dir.file_name().unwrap().to_string_lossy();
+        if name != dir_name {
+            anyhow::bail!(
+                "{}: frontmatter name {name:?} must equal the directory name {dir_name:?}",
+                tool_md.display()
+            );
+        }
         let mut assets: Vec<(String, String)> = Vec::new();
         for entry in walkdir::WalkDir::new(&dir)
             .sort_by_file_name()

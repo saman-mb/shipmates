@@ -112,15 +112,23 @@ fn main() -> Result<()> {
                         available
                     } else {
                         for w in &want {
-                            if !available.iter().any(|t| &t.name == w) {
-                                let names: Vec<&str> =
-                                    available.iter().map(|t| t.name.as_str()).collect();
+                            if !available
+                                .iter()
+                                .any(|t| installer::rename::matches_requested_tool(w, &t.name))
+                            {
+                                let names: Vec<&str> = available
+                                    .iter()
+                                    .map(|t| installer::rename::canonical_tool_name(&t.name))
+                                    .collect();
                                 bail!("unknown tool: {} (available: {})", w, names.join(", "));
                             }
                         }
                         available
                             .into_iter()
-                            .filter(|t| want.contains(&t.name))
+                            .filter(|t| {
+                                want.iter()
+                                    .any(|w| installer::rename::matches_requested_tool(w, &t.name))
+                            })
                             .collect()
                     }
                 }
@@ -128,8 +136,8 @@ fn main() -> Result<()> {
             };
 
             let target_dir = resolve_target_dir(local, dir)?;
-            let install_steering = catalog::steering_for_target(&target_dir, root)
-                .map_err(|e| anyhow::anyhow!(e))?;
+            let install_steering =
+                catalog::steering_for_target(&target_dir, root).map_err(|e| anyhow::anyhow!(e))?;
             let harnesses: Vec<String> = if harness == "all" {
                 adapters::targets().iter().map(|s| s.to_string()).collect()
             } else {
@@ -202,38 +210,89 @@ fn main() -> Result<()> {
                     )?;
                 }
 
-                // Migration runs before receipt publication. If backup/removal
-                // fails, apply never publishes a receipt that drops legacy
-                // ownership. Paths deliberately left in place remain claimed so
-                // a later install can retry the migration.
+                let rename_payload: std::collections::HashMap<String, String> = plan
+                    .files
+                    .iter()
+                    .map(|(path, content)| (path.to_string_lossy().into_owned(), content.clone()))
+                    .collect();
+                let rename_candidates =
+                    installer::rename::plan(&target_dir, &rename_payload, adapter.container())?;
+                let rename_items = if no_migrate {
+                    Vec::new()
+                } else {
+                    rename_candidates.clone()
+                };
+                for item in &rename_candidates {
+                    installer::manifest_db::resolve_target_relative(&target_dir, &item.old_path)?;
+                    installer::manifest_db::resolve_target_relative(&target_dir, &item.new_path)?;
+                }
+
+                // Identity rename, then layout migration, then receipt
+                // publication. If a later step fails, earlier steps roll back
+                // so a rename never becomes an irreversible side effect of an
+                // unsuccessful install. Paths deliberately left in place remain
+                // claimed so a later install can retry.
                 let mut preserved_paths = std::collections::BTreeSet::new();
+                let mut rename_report = None;
                 let mut migration_report = None;
                 if no_migrate {
+                    preserved_paths
+                        .extend(installer::rename::preserved_old_paths(&rename_candidates));
                     preserved_paths.extend(
                         migration_candidates
                             .iter()
                             .map(|item| item.legacy_path.to_string_lossy().into_owned()),
                     );
-                } else if !migration_items.is_empty() {
-                    let backup_root = installer::migrate::new_backup_root(&target_dir);
-                    let report =
-                        installer::migrate::apply(&target_dir, &migration_items, &backup_root)?;
-                    for item in &migration_items {
-                        if !report.migrated.contains(&item.legacy_path) {
-                            preserved_paths.insert(item.legacy_path.to_string_lossy().into_owned());
+                } else {
+                    let needs_backup = !rename_items.is_empty() || !migration_items.is_empty();
+                    let backup_root =
+                        needs_backup.then(|| installer::migrate::new_backup_root(&target_dir));
+                    if !rename_items.is_empty() {
+                        let backup_root = backup_root.as_ref().expect("backup root");
+                        let report = installer::rename::apply(
+                            &target_dir,
+                            &rename_items,
+                            &rename_payload,
+                            adapter.container(),
+                            backup_root,
+                        )?;
+                        for item in &rename_items {
+                            if !report
+                                .renamed
+                                .iter()
+                                .any(|renamed| renamed.old_path == item.old_path)
+                            {
+                                preserved_paths
+                                    .insert(item.old_path.to_string_lossy().into_owned());
+                            }
                         }
+                        if !report.renamed.is_empty() {
+                            installer::rename::print_map(&report);
+                        }
+                        rename_report = Some(report);
                     }
-                    migration_report = Some(report);
-                    if let Some(report) = migration_report.as_ref()
-                        && !report.migrated.is_empty()
-                    {
-                        println!(
-                            "Migrated {} superseded command(s) → skills (backup: {})",
-                            report.migrated.len(),
-                            backup_root.display()
-                        );
-                        for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
-                            println!("  moved {} → {}", legacy.display(), backup.display());
+                    if !migration_items.is_empty() {
+                        let backup_root = backup_root.as_ref().expect("backup root");
+                        let report =
+                            installer::migrate::apply(&target_dir, &migration_items, backup_root)?;
+                        for item in &migration_items {
+                            if !report.migrated.contains(&item.legacy_path) {
+                                preserved_paths
+                                    .insert(item.legacy_path.to_string_lossy().into_owned());
+                            }
+                        }
+                        migration_report = Some(report);
+                        if let Some(report) = migration_report.as_ref()
+                            && !report.migrated.is_empty()
+                        {
+                            println!(
+                                "Migrated {} superseded command(s) → skills (backup: {})",
+                                report.migrated.len(),
+                                backup_root.display()
+                            );
+                            for (legacy, backup) in report.migrated.iter().zip(&report.backups) {
+                                println!("  moved {} → {}", legacy.display(), backup.display());
+                            }
                         }
                     }
                 }
@@ -251,11 +310,18 @@ fn main() -> Result<()> {
                 let result = match apply_result {
                     Ok(result) => result,
                     Err(error) => {
-                        let rollback = match migration_report.as_ref() {
+                        let migrate_rollback = match migration_report.as_ref() {
                             Some(report) => installer::migrate::rollback(&target_dir, report),
                             None => Ok(()),
                         };
-                        return Err(combine_rollback_error(error, rollback));
+                        let rename_rollback = match rename_report.as_ref() {
+                            Some(report) => installer::rename::rollback(&target_dir, report),
+                            None => Ok(()),
+                        };
+                        return Err(combine_rollback_error(
+                            combine_rollback_error(error, migrate_rollback),
+                            rename_rollback,
+                        ));
                     }
                 };
                 if let Some(receipt) = &result.receipt {
@@ -401,12 +467,7 @@ fn main() -> Result<()> {
             let steering = catalog::load_steering(root_path).map_err(|e| anyhow::anyhow!(e))?;
 
             let adapter = adapters::select(&target)?;
-            let files = adapters::build_payload(
-                adapter.as_ref(),
-                &roles,
-                &cmds,
-                Some(&steering),
-            )?;
+            let files = adapters::build_payload(adapter.as_ref(), &roles, &cmds, Some(&steering))?;
 
             if check {
                 check_digests(&target, adapter.digest_root(), &files, root_path)?;
@@ -433,12 +494,7 @@ fn main() -> Result<()> {
             let steering = catalog::load_steering(root_path).map_err(|e| anyhow::anyhow!(e))?;
 
             let adapter = adapters::select(&target)?;
-            let files = adapters::build_payload(
-                adapter.as_ref(),
-                &roles,
-                &cmds,
-                Some(&steering),
-            )?;
+            let files = adapters::build_payload(adapter.as_ref(), &roles, &cmds, Some(&steering))?;
             check_digests(&target, adapter.digest_root(), &files, root_path)?;
         }
         Command::Update { target, root } => {
@@ -451,12 +507,7 @@ fn main() -> Result<()> {
             let steering = catalog::load_steering(root_path).map_err(|e| anyhow::anyhow!(e))?;
 
             let adapter = adapters::select(&target)?;
-            let files = adapters::build_payload(
-                adapter.as_ref(),
-                &roles,
-                &cmds,
-                Some(&steering),
-            )?;
+            let files = adapters::build_payload(adapter.as_ref(), &roles, &cmds, Some(&steering))?;
             write_digests(&target, adapter.digest_root(), &files, root_path)?;
         }
         Command::Doctor {

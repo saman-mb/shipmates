@@ -27,13 +27,14 @@ pub enum Command {
 
         /// Which agent-invoked tools to install (comma-separated names, `all`,
         /// or `none`). Omit the flag to install every bundled tool; pass `none`
-        /// for crew + commands only, or name a subset.
+        /// for crew + commands only, or name a subset. Former names (`scrub`)
+        /// still select the namespaced tool (`shipmates-scrub`).
         #[arg(long = "with-tools", value_delimiter = ',')]
         with_tools: Option<Vec<String>>,
 
-        /// Skip migrating a superseded legacy `commands/<name>.md` layout to the
-        /// skill that now supersedes it. Migration is on by default; this is the
-        /// escape hatch for a user who wants their old files left in place.
+        /// Skip legacy-command layout migration and identity renames
+        /// (`polish` → `shipmates-polish`). Install still writes the current
+        /// payload; superseded names are left in place.
         #[arg(long)]
         no_migrate: bool,
 
@@ -110,9 +111,10 @@ pub enum Command {
         #[arg(long, default_value_t = false)]
         fix: bool,
 
-        /// Skip the legacy-command migration sweep during `--fix`, matching
-        /// `install --no-migrate`: missing/drifted files are still restored, but a
-        /// superseded `commands/<name>.md` is left in place.
+        /// Skip the legacy-command and identity-rename sweeps during `--fix`,
+        /// matching `install --no-migrate`: missing/drifted files are still
+        /// restored, but a superseded `commands/<name>.md` or pre-prefix name
+        /// is left in place.
         #[arg(long, requires = "fix")]
         no_migrate: bool,
     },

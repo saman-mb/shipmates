@@ -1,6 +1,6 @@
 ---
 name: ship-epic
-description: Loop /ship-issue over an epic's stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause for sign-off.
+description: Shipmates: Loop /ship-issue over an epic's stories in dependency order — one epic plan amortizes overhead, cohesive stories batch into single runs, gate stories pause for sign-off.
 argument-hint: <epic-issue-number> [resume | dry-run | epic close auto | batch off | unit merge manual | retry-story <n>]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true

@@ -56,7 +56,7 @@ Spawn reviewers **in parallel** against the PR head commit — they review exact
 **Mandatory seats (never skip)**
 
 - **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / {{project-instructions}} / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
-- **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
+- **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/shipmates-harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
 
 Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** on the **first** board once a PR head exists. Later rounds follow **Retry** below — a PE/PO ACCEPT may be carried when the fixer delta cannot invalidate it.
 
@@ -73,7 +73,7 @@ Convene only when the change can plausibly trip the concern. A gated-out seat is
 | `ux-ui-designer` | `IS_UI_STORY` |
 | `art-director` | `IS_VISUAL_STORY` |
 | `security-engineer` | `/pr-review` only when `IS_SECURITY_SENSITIVE` |
-| `performance-engineer` | `/pr-review` when the PR claims a perf win or touches a hot path; `/refactor` when the stated motivation was performance |
+| `performance-engineer` | `/pr-review` when the PR claims a perf win or touches a hot path; `/shipmates-refactor` when the stated motivation was performance |
 | `site-reliability-engineer` | `/pr-review` when runtime behaviour, failure handling, or rollout changes |
 | `data-scientist` | `/pr-review` when the deliverable is an analysis or model |
 

@@ -82,8 +82,31 @@ BACK_HREF = "../../#commands"
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Validated
 # as static HTML meta-refresh stubs; must not appear in sitemap.xml.
+# Keep in sync with tools/gen_command_pages.py REDIRECTS / TOOL_REDIRECTS.
 REDIRECTS = {
     "review": "pr-review",
+    "document": "shipmates-document",
+    "fix-bug": "shipmates-fix-bug",
+    "harden": "shipmates-harden",
+    "migrate": "shipmates-migrate",
+    "onboard": "shipmates-onboard",
+    "polish": "shipmates-polish",
+    "refactor": "shipmates-refactor",
+    "release": "shipmates-release",
+    "spike": "shipmates-spike",
+}
+TOOL_REDIRECTS = {
+    "gh": "shipmates-gh",
+    "badge": "shipmates-badge",
+    "diagram": "shipmates-diagram",
+    "domaincheck": "shipmates-domaincheck",
+    "fixtures": "shipmates-fixtures",
+    "pixelart": "shipmates-pixelart",
+    "scrub": "shipmates-scrub",
+    "social-card": "shipmates-social-card",
+    "sparkline": "shipmates-sparkline",
+    "svgflow": "shipmates-svgflow",
+    "termgif": "shipmates-termgif",
 }
 # The docs hub sits one level below site/ (unlike command pages at two), so
 # its homepage back-link is "../" — "../../" would resolve outside site/ and
@@ -955,7 +978,19 @@ def check_agent_inverse_fidelity(page: Page, src: Path) -> None:
         ok(f"{page.rel}: no body line of agents/{page.slug}.md appears verbatim in the page")
 
 
-def check_redirect_stub(page: Page, target: str) -> None:
+def is_command_redirect(page: Page) -> bool:
+    return page.path.parent.parent.name == "commands" and page.slug in REDIRECTS
+
+
+def is_tool_redirect(page: Page) -> bool:
+    return page.path.parent.parent.name == "tools" and page.slug in TOOL_REDIRECTS
+
+
+def is_redirect_page(page: Page) -> bool:
+    return is_command_redirect(page) or is_tool_redirect(page)
+
+
+def check_redirect_stub(page: Page, target: str, *, kind: str = "commands") -> None:
     """A redirect stub must have a meta refresh, canonical link pointing to target, noindex meta, and not appear in sitemap."""
     refresh = page.attr("meta", "http-equiv", "refresh", "content")
     if not refresh or f"url=../{target}/" not in refresh:
@@ -964,7 +999,7 @@ def check_redirect_stub(page: Page, target: str) -> None:
         ok(f"{page.rel}: meta refresh redirects to ../{target}/")
 
     canonical = page.attr("link", "rel", "canonical", "href")
-    expected_url = f"{SITE_URL}commands/{target}/"
+    expected_url = f"{SITE_URL}{kind}/{target}/"
     if canonical != expected_url:
         fail(f"{page.rel}: expected canonical {expected_url}, found {canonical!r}")
     else:
@@ -1025,7 +1060,11 @@ def check_agent_coverage(pages: list[Page]) -> None:
 
 def check_tool_coverage(pages: list[Page]) -> None:
     """One published page per toolbox/<slug>/tool.md, and no tool page without a source."""
-    published = {p.slug: p for p in pages if p.path.parent.parent.name == "tools"}
+    published = {
+        p.slug: p
+        for p in pages
+        if p.path.parent.parent.name == "tools" and p.slug not in TOOL_REDIRECTS
+    }
     for slug in TOOL_SLUGS:
         if slug not in published:
             fail(
@@ -1059,7 +1098,7 @@ def check_uniqueness(pages: list[Page]) -> None:
     titles: dict[str, list[str]] = {}
     descs: dict[str, list[str]] = {}
     for page in pages:
-        if page.path.parent.parent.name == "commands" and page.slug in REDIRECTS:
+        if is_redirect_page(page):
             continue
         title = page.collector.title.strip()
         if not title:
@@ -1133,9 +1172,7 @@ def check_sitemap(pages: list[Page], n_commands: int, n_docs: int, n_agents: int
     for loc in sorted({loc for loc in locs if locs.count(loc) > 1}):
         fail(f"sitemap.xml: duplicate <loc> {loc}")
 
-    expected = {
-        p.url for p in pages if not (p.path.parent.parent.name == "commands" and p.slug in REDIRECTS)
-    }
+    expected = {p.url for p in pages if not is_redirect_page(p)}
     for url in sorted(expected - set(locs)):
         fail(f"sitemap.xml: no <loc> for {url} — {REGEN_HINT}")
     for url in sorted(set(locs) - expected):
@@ -1185,7 +1222,12 @@ def main() -> int:
     n_docs = len(docs_hub) + len(docs_leaves)
     agent_pages = [p for p in pages if p.path.parent.parent.name == "agents"]
     n_agents = len(AGENT_SLUGS)
-    tool_pages = [p for p in pages if p.path.parent.parent.name == "tools"]
+    tool_pages = [
+        p for p in pages if p.path.parent.parent.name == "tools" and p.slug not in TOOL_REDIRECTS
+    ]
+    redirect_tool_pages = [
+        p for p in pages if p.path.parent.parent.name == "tools" and p.slug in TOOL_REDIRECTS
+    ]
     n_tools = len(TOOL_SLUGS)
 
     check_page_common(homepage, expect_ldjson_type="SoftwareApplication")
@@ -1197,7 +1239,11 @@ def main() -> int:
 
     for page in redirect_pages:
         target = REDIRECTS[page.slug]
-        check_redirect_stub(page, target)
+        check_redirect_stub(page, target, kind="commands")
+
+    for page in redirect_tool_pages:
+        target = TOOL_REDIRECTS[page.slug]
+        check_redirect_stub(page, target, kind="tools")
 
     for page in docs_hub:
         check_page_common(page, expect_ldjson_type="CollectionPage")

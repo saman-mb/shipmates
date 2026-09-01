@@ -1,11 +1,11 @@
-"""Tests for toolbox/gh/gh.py validation (no live gh subprocess)."""
+"""Tests for toolbox/shipmates-gh/gh.py validation (no live gh subprocess)."""
 import json
 import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "toolbox" / "gh"))
+sys.path.insert(0, str(ROOT / "toolbox" / "shipmates-gh"))
 
 import gh as gh_tool  # noqa: E402
 

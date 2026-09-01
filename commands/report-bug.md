@@ -1,6 +1,6 @@
 ---
 name: report-bug
-description: File a structured bug report on the Shipmates repository from a live run — harness, command, repro, expected vs observed, in the format maintainers triage.
+description: Shipmates: File a structured bug report on the Shipmates repository from a live run — harness, command, repro, expected vs observed, in the format maintainers triage.
 argument-hint: [symptom text] [apply] — default report-only preview; apply files on saman-mb/shipmates after captain approval
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 File a **structured bug report on `saman-mb/shipmates`** from a live run in the captain's project —
 harness, command, repro, expected vs observed — in the shape maintainers already triage (#301, #305,
-#307). This command does **not** fix upstream; it reports upstream. Pair it with `/fix-bug`, which
+#307). This command does **not** fix upstream; it reports upstream. Pair it with `/shipmates-fix-bug`, which
 repairs bugs **in the user's repo**.
 
 The symptom text and mode (`report` vs `apply`) come from the Runtime input section at the end.

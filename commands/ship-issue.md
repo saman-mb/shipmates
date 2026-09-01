@@ -1,6 +1,6 @@
 ---
 name: ship-issue
-description: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
+description: Shipmates: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
 argument-hint: <issue-number>... | next [epic <epic-number>] [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
@@ -76,7 +76,7 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   default. Stage 8 `auto` always merges into **`BASE_BRANCH`**
   (the epic branch when `epic-base` is set, otherwise the repo default). If Stage 0 set
   `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
-  of the configured default — a security-sensitive change must not auto-merge past the `/harden`
+  of the configured default — a security-sensitive change must not auto-merge past the `/shipmates-harden`
   recommendation.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
 - `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
@@ -100,7 +100,7 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   enforce THAT bar, not just "it runs."
 - **`VERSION_FILES`** = wherever the repo records its published version (`Cargo.toml`, `package.json`,
   `pyproject.toml`, `VERSION`, etc.) — discover from README / CONTRIBUTING / {{project-instructions}};
-  same discovery rules as `/release`. Only used when `IS_RELEASE_AFFECTING` is set (see Stage 0).
+  same discovery rules as `/shipmates-release`. Only used when `IS_RELEASE_AFFECTING` is set (see Stage 0).
 - **`RELEASE_BRANCH`** = the branch whose merges trigger publication — usually the repo default branch,
   unless contributing docs name a different release line. When `epic-base=<branch>` is set and that
   branch is **not** `RELEASE_BRANCH`, release bumps are deferred to the epic's merge into
@@ -263,8 +263,8 @@ the cohesion bundle widening in step 2.5.
        format, or cross-cut many modules in a way a narrow code review would miss? Gates `architect`.
      - `IS_SECURITY_SENSITIVE = yes/no` — does it touch authn/authz, untrusted input, secrets, crypto,
        file/network/OS access, or dependencies? Does **not** gate a reviewer seat — security review
-       lives in `/harden`, which this command doesn't run. It gates two things instead: the final
-       report must carry the `/harden` recommendation (mechanical, not a judgment call made while
+       lives in `/shipmates-harden`, which this command doesn't run. It gates two things instead: the final
+       report must carry the `/shipmates-harden` recommendation (mechanical, not a judgment call made while
        writing the summary), and it forces `MERGE_MODE=manual` for this run (see Config).
      - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
        or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
@@ -283,9 +283,9 @@ the cohesion bundle widening in step 2.5.
        seat — `principal-engineer` and `technical-writer` (when gated) verify the bump landed.
    This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
    must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
-   `/harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
-   the branch and can just run `/harden` itself. `/pr-review` keeps the same flag wired to a
-   `security-engineer` seat, because it reviews a PR the crew didn't author, where `/harden` isn't
+   `/shipmates-harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
+   the branch and can just run `/shipmates-harden` itself. `/pr-review` keeps the same flag wired to a
+   `security-engineer` seat, because it reviews a PR the crew didn't author, where `/shipmates-harden` isn't
    available — you don't own that branch.
 4. If the plan reveals any issue is too big/ambiguous to finish autonomously, stop and tell the user
    what's blocking — otherwise continue.
@@ -360,7 +360,7 @@ For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUN
 
 When the Planner set **`IS_RELEASE_AFFECTING = yes`**, the version bump and changelog entry for **this
 PR's changes** are part of the delivery — **in this PR, before Stage 4** — never a follow-up PR and
-never deferred to `/release` or captain memory.
+never deferred to `/shipmates-release` or captain memory.
 
 1. Read current version from every discovered **`VERSION_FILES`** entry; derive the next version from
    **`RELEASE_BUMP`** (breaking/API removals → `major`; new user-visible capability → `minor` or
@@ -376,7 +376,7 @@ never deferred to `/release` or captain memory.
    user-visible work without bumping the version the release pipeline reads is a process defect, not
    an optional polish step.
 
-`/release` remains for **batch** release ceremony (everything since the last tag, SRE pre-flight,
+`/shipmates-release` remains for **batch** release ceremony (everything since the last tag, SRE pre-flight,
 tag/publish opt-in) — it does not replace per-PR bumps when a single story ships release-affecting
 work straight to `RELEASE_BRANCH`.
 
@@ -520,7 +520,7 @@ sync/rebase ran, which specialists reviewed it and their
 verdicts (`re-run` / `carried ACCEPT` / `newly seated` after any fix round; gated seats named with
 the flag that gated them), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
-Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now. When
+Stage 0 — the `/shipmates-harden` recommendation, carried here mechanically rather than decided now. When
 **`IS_RELEASE_AFFECTING=yes`**, state the **new version** and that merge to **`RELEASE_BRANCH`**
 will publish it (or name the repo's publish step if manual) — never imply the feature is released
 without the version bump that landed in the PR.
@@ -562,13 +562,13 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 - **Secrets & security hygiene.** Never write secrets, tokens, or credentials into commits, PR/issue
   bodies, or logs — assume the repo is public. The `sdet` flags secret leakage as a defect; a real
   leak is blocking. Deeper security work is not this command's job — see the next bullet.
-- **Security review lives in `/harden`, not here.** This command does not threat-model. When
-  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/harden` recommendation and the
+- **Security review lives in `/shipmates-harden`, not here.** This command does not threat-model. When
+  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/shipmates-harden` recommendation and the
   run stays on `MERGE_MODE=manual` (Stage 0, Config) — the flag is the trigger, not a judgment call
   made while writing the summary.
 - **Release bump in the PR.** When `IS_RELEASE_AFFECTING=yes`, a missing version or changelog update
   is **blocking** — same severity as a missing digest or unstaged generated page. Never tell the
-  captain to run `/release` or open a follow-up PR instead; that is how features merge without
+  captain to run `/shipmates-release` or open a follow-up PR instead; that is how features merge without
   publishing.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work. Every stage should be safe to repeat.

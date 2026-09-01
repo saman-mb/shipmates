@@ -108,7 +108,7 @@ ls /path/to/sandbox/.agents/skills/ship-issue</code></pre>
         </div>
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>copilot --agent security-engineer \
-  --prompt "Run the installed /harden order in report mode against this sandbox. Read AGENTS.md, report findings, and do not edit files or open a PR."</code></pre>
+  --prompt "Run the installed /shipmates-harden order in report mode against this sandbox. Read AGENTS.md, report findings, and do not edit files or open a PR."</code></pre>
           <p>If runtime prerequisites become available, expected result is Copilot resolving <code>security-engineer.agent.md</code>, selecting the installed read-only <code>harden</code> skill, reporting findings, and changing no files. No such result is recorded here; this command is a recipe, not evidence of runtime support.</p>
           <p>Custom-agent <code>tools</code> frontmatter describes the model's tool surface. Headless CLI approval is a separate layer and may use different patterns; consult <code>copilot help permissions</code> for the installed CLI. Do not translate <code>read</code>/<code>search</code> blindly into <code>--allow-tool</code>, and do not use <code>--allow-all</code>. Unavailable CLI, authentication, approval, or model selection means <strong>not run</strong>.</p>
         </div>

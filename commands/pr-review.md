@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.
+description: Shipmates: Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.
 argument-hint: <pr-number or PR url> [optional emphasis passed to every reviewer — e.g. "weight the schema change"]
 allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
@@ -84,9 +84,9 @@ do*. Where the PR description and the diff disagree, that mismatch is itself a f
 This flag vocabulary is **shared with `/ship-issue`** — a new flag must be added to both files.
 `IS_SECURITY_SENSITIVE` is the deliberate exception: it stays wired to the `security-engineer`
 seat here, because this command reviews a PR the crew didn't author — you don't own the branch, so
-`/harden` isn't an available remedy. `/ship-issue` keeps the same flag (it still gates the `/harden`
+`/shipmates-harden` isn't an available remedy. `/ship-issue` keeps the same flag (it still gates the `/shipmates-harden`
 recommendation and forces a manual merge) but not the seat, since a crew-authored change can just
-run `/harden` itself.
+run `/shipmates-harden` itself.
 
 ## Stage 1 — CI state (read it, don't fix it)
 
@@ -153,8 +153,8 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
 
 ### Guardrails
 - **Read-only by default.** No worktree, no commits, no pushes, no fix loop. If the findings need
-  fixing, hand them to `/fix-bug` or `/ship-issue` — don't fork a remediation loop into this command.
-- **This command crosses a trust boundary the others don't.** `/ship-issue`, `/fix-bug` and `/migrate`
+  fixing, hand them to `/shipmates-fix-bug` or `/ship-issue` — don't fork a remediation loop into this command.
+- **This command crosses a trust boundary the others don't.** `/ship-issue`, `/shipmates-fix-bug` and `/shipmates-migrate`
   all run code the crew itself wrote; here the code is a stranger's. Running a fork's test suite
   executes untrusted code on your machine — a PR can put arbitrary commands in a test file or a build
   script. Hence `RUN_TESTS=no` for cross-repository PRs: the `sdet` reviews statically and says so.

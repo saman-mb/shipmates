@@ -50,25 +50,49 @@ from command_page_copy import COMMAND_PAGE_COPY, CommandPageCopy, ProcessStep
 SLUGS = (
     "ship-issue",
     "ship-epic",
-    "fix-bug",
+    "shipmates-fix-bug",
     "report-bug",
     "plan-epics",
     "consolidate-issues",
-    "harden",
-    "spike",
-    "migrate",
-    "document",
-    "release",
-    "polish",
+    "shipmates-harden",
+    "shipmates-spike",
+    "shipmates-migrate",
+    "shipmates-document",
+    "shipmates-release",
+    "shipmates-polish",
     "pr-review",
-    "onboard",
-    "refactor",
+    "shipmates-onboard",
+    "shipmates-refactor",
 )
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
 # as static HTML meta-refresh stubs with canonical links; excluded from sitemap.
 REDIRECTS = {
     "review": "pr-review",
+    "document": "shipmates-document",
+    "fix-bug": "shipmates-fix-bug",
+    "harden": "shipmates-harden",
+    "migrate": "shipmates-migrate",
+    "onboard": "shipmates-onboard",
+    "polish": "shipmates-polish",
+    "refactor": "shipmates-refactor",
+    "release": "shipmates-release",
+    "spike": "shipmates-spike",
+}
+
+# Old tool page slugs → new. Same meta-refresh stubs as command REDIRECTS.
+TOOL_REDIRECTS = {
+    "gh": "shipmates-gh",
+    "badge": "shipmates-badge",
+    "diagram": "shipmates-diagram",
+    "domaincheck": "shipmates-domaincheck",
+    "fixtures": "shipmates-fixtures",
+    "pixelart": "shipmates-pixelart",
+    "scrub": "shipmates-scrub",
+    "social-card": "shipmates-social-card",
+    "sparkline": "shipmates-sparkline",
+    "svgflow": "shipmates-svgflow",
+    "termgif": "shipmates-termgif",
 }
 
 # Hand-authored docs pages under site/docs/. The generator discovers them on
@@ -770,9 +794,9 @@ AGENT_COPY = {
         ),
         crew_fit=CrewFit(
             paragraphs=(
-                "On `/fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
+                "On `/shipmates-fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
                 "minimal fix and its regression check; the `sdet` then proves the fix. On "
-                "`/release` it gates deploy safety. Build-time questions — pipelines, caching, "
+                "`/shipmates-release` it gates deploy safety. Build-time questions — pipelines, caching, "
                 "pinning — belong to the `devops-engineer`, and the SRE defers there "
                 "explicitly.",
             ),
@@ -1273,7 +1297,7 @@ AGENT_COPY = {
         crew_fit=CrewFit(
             paragraphs=(
                 "The data scientist is the crew's specialist for data-and-model deliverables — "
-                "designing experiments in `/spike`, reviewing analysis and model changes in "
+                "designing experiments in `/shipmates-spike`, reviewing analysis and model changes in "
                 "`/pr-review`. Findings hand to the `senior-engineer` as specific fixes, and "
                 "anything outside data work routes back to the rest of the crew.",
             ),
@@ -1293,10 +1317,10 @@ AGENT_COPY = {
 TOOL_COPY_SRC = "tools/gen_command_pages.py"
 
 # Canonical tool order — matches the homepage `#tools` grid.
-TOOLS = ("termgif", "social-card", "pixelart", "diagram", "svgflow", "badge", "sparkline", "scrub", "fixtures", "domaincheck", "gh")
+TOOLS = ("shipmates-termgif", "shipmates-social-card", "shipmates-pixelart", "shipmates-diagram", "shipmates-svgflow", "shipmates-badge", "shipmates-sparkline", "shipmates-scrub", "shipmates-fixtures", "shipmates-domaincheck", "shipmates-gh")
 
 TOOL_COPY = {
-    "termgif": ToolCopy(
+    "shipmates-termgif": ToolCopy(
         tagline="Renders an animated terminal demo GIF of a workflow run from a small JSON spec.",
         what=(
             "`termgif` turns a small JSON spec — a typed prompt, staged progress with "
@@ -1332,7 +1356,7 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "social-card": ToolCopy(
+    "shipmates-social-card": ToolCopy(
         tagline="Renders a shippable 1280×640 social / Open Graph preview card from a small JSON spec.",
         what=(
             "`social-card` turns a small JSON spec — an eyebrow kicker, a title, a subtitle, an accent colour, and a footer wordmark — into a polished 1280×640 PNG, the standard Open Graph aspect that Slack, Discord, Twitter, LinkedIn, and iMessage crop from a shared link. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the card deterministically on a deep, tasteful dark canvas — nothing to install, no design app to open.",
@@ -1360,7 +1384,7 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "pixelart": ToolCopy(
+    "shipmates-pixelart": ToolCopy(
         tagline="Pixel art the way the shipmates logo is made — a limited palette upscaled by a whole-number factor with nearest-neighbour, never smoothed.",
         what=(
             "`pixelart` turns a small JSON spec — a limited palette plus a grid of single-character rows — into a crisp pixel-art asset: a static PNG, or an animated GIF when the spec carries `frames`. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the image deterministically — nothing to install — rather than leaning on a model to imagine one.",
@@ -1406,7 +1430,7 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "diagram": ToolCopy(
+    "shipmates-diagram": ToolCopy(
         tagline="Draws a curated diagram — a flow/pipeline/state machine, or a sequence of actors and messages — as a committed SVG, a deterministic PNG, or an animated GIF, from a tiny JSON spec.",
         what=(
             "`diagram` turns a small JSON spec into a clean, theme-exact diagram in whichever form the doc needs: a self-contained **SVG** assembled as text (no browser, no mermaid runtime, no headless renderer), a deterministic **PNG** repainted from the same primitives, or a tasteful animated **GIF**. The SVG path is pure standard library; PNG and GIF provision Pillow for themselves the first time they run, and raster text uses an embedded font so it is identical on every host. Every form is byte-for-byte deterministic — the same spec always produces the same file — so the output is safe to commit next to the docs it illustrates.",
@@ -1439,8 +1463,8 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "svgflow": ToolCopy(
-        tagline="Deprecated alias for `diagram` — svgflow's flow diagram is now a kind of the more general diagram tool.",
+    "shipmates-svgflow": ToolCopy(
+        tagline="Deprecated alias for `shipmates-diagram` — svgflow's flow diagram is now a kind of the more general diagram tool.",
         what=(
             "`svgflow` has become `diagram` (ADR 0001): the box-and-arrow flow diagram it drew is now the default `kind` of a more general tool that keeps svgflow's theme-exact, byte-for-byte deterministic SVG and adds PNG and animated-GIF output, a `sequence` kind, and intent routing. Reach for `diagram` instead.",
             "For one release `svgflow.py` is kept as a thin deprecation shim: it prints a one-line deprecation notice and forwards every argument, unchanged, to `diagram.py`, so nothing that already reaches for `svgflow` breaks. The default kind is `flow`, so an existing svgflow spec renders exactly the same through the alias.",
@@ -1467,7 +1491,7 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "badge": ToolCopy(
+    "shipmates-badge": ToolCopy(
         tagline="Turns a label, a message, and a colour into a shields-style flat badge you commit as offline SVG.",
         what=(
             "`badge` renders the classic two-segment flat status badge — a grey left segment carrying a `label`, a coloured right segment carrying a `message` — straight to an SVG file. It is pure standard library: no dependencies and no network, so there is no round-trip to `shields.io` and the badge renders forever, offline, and diffs cleanly in git. Output is deterministic, so the same arguments always produce byte-for-byte the same file.",
@@ -1495,7 +1519,7 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "sparkline": ToolCopy(
+    "shipmates-sparkline": ToolCopy(
         tagline="Turns a short run of numbers into a tiny inline SVG that shows the trend at a glance.",
         what=(
             "`sparkline` takes a short series of numbers — `--data \"12,18,9,22,15,27\"` — and draws its trend as one tiny inline chart: a smooth polyline over a faint gradient fill, scaled to its own min/max, with the last point marked by a dot. The output is a self-contained SVG (scalable, self-sizing, verified as valid XML), a light teal stroke on a subtle dark panel that reads on the tool pages; `--color`, `--label`, `--width`, `--height`, `--no-baseline` and `--bare` tune it.",
@@ -1523,7 +1547,7 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "scrub": ToolCopy(
+    "shipmates-scrub": ToolCopy(
         tagline="Strips credentials and personal data out of text before it leaves the repo.",
         what=(
             "`scrub` redacts secrets and PII from a log, paste, or bug report before it's shared. It swaps each match for a typed placeholder — emails become `[REDACTED_EMAIL]`, AWS access keys `[REDACTED_AWS_KEY]`, `api_key=`/`token=`/`secret=` assignments and Bearer tokens `[REDACTED_TOKEN]`, JWTs `[REDACTED_JWT]`, IPv4 addresses `[REDACTED_IP]`, and PEM private-key blocks `[REDACTED_PRIVATE_KEY]` — so the shape of the redaction stays visible. It is pure standard library: no dependencies, no network, and the same input always produces the same cleaned output.",
@@ -1543,7 +1567,7 @@ TOOL_COPY = {
         ),
         sample="$ python3 scrub.py --in app.log\n\nBEFORE\n  env AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n  operator jane.doe@example.com from 203.0.113.42\n  Authorization: Bearer abcDEF0123456789xyzABCDEF\n\nAFTER  (summary on stderr)\n  env AWS_ACCESS_KEY_ID=[REDACTED_AWS_KEY]\n  operator [REDACTED_EMAIL] from [REDACTED_IP]\n  Authorization: Bearer [REDACTED_TOKEN]",
     ),
-    "fixtures": ToolCopy(
+    "shipmates-fixtures": ToolCopy(
         tagline="Turns a tiny field-to-type schema into a reproducible JSON array of believable fake records.",
         what=(
             "`fixtures` reads a small JSON schema — a map of field name to type, like `uuid`, `email`, `bool`, `int` or `choice` — and emits a JSON array of that many fake records. It is a self-contained Python script with no dependencies beyond the standard library, and it is deterministic: the same `--seed` always produces byte-identical output, so a generated fixture can be committed to the repo and diff cleanly like any other source file.",
@@ -1563,7 +1587,7 @@ TOOL_COPY = {
         ),
         sample="schema.json\n{\n  \"id\":    \"uuid\",\n  \"email\": \"email\",\n  \"age\":   {\"type\": \"int\", \"min\": 18, \"max\": 65},\n  \"role\":  {\"type\": \"choice\", \"options\": [\"admin\", \"member\"]}\n}\n\n$ python3 fixtures.py --schema schema.json --count 2 --seed 7\n[\n  {\n    \"id\": \"6513270e-269e-4d37-b2a7-4de452e6b438\",\n    \"email\": \"priya.patel@test.dev\",\n    \"age\": 52,\n    \"role\": \"admin\"\n  },\n  {\n    \"id\": \"e8e25d94-0ed9-4475-9531-985d5d9dc9f8\",\n    \"email\": \"ivan.haddad@example.com\",\n    \"age\": 23,\n    \"role\": \"member\"\n  }\n]",
     ),
-    "domaincheck": ToolCopy(
+    "shipmates-domaincheck": ToolCopy(
         tagline="RDAP domain availability — registry-authoritative, not DNS guesswork.",
         what=(
             "`domaincheck` queries `https://rdap.org/domain/<name>` and follows redirects to the authoritative registry. A registry `404` means **available** (unallocated); `200` means **registered**. Verdicts are `available`, `registered`, or `unknown` when the bootstrap path fails. It is stdlib-only (`urllib`) — no API keys — and batch mode staggers queries with backoff on HTTP 429.",
@@ -1583,7 +1607,7 @@ TOOL_COPY = {
         ),
         sample="$ python3 domaincheck.py github.com\n$ python3 domaincheck.py --tld com,io shipmates-test-name-xyzzy\n\ngithub.com\tregistered\nshipmates-test-name-xyzzy.com\tavailable\nshipmates-test-name-xyzzy.io\tavailable",
     ),
-    "gh": ToolCopy(
+    "shipmates-gh": ToolCopy(
         tagline="Structured GitHub CLI wrapper — the gh patterns shipmates commands use every day.",
         what=(
             "`gh` wraps the GitHub CLI with a JSON spec: validated repo slugs and issue numbers, "
@@ -1591,7 +1615,7 @@ TOOL_COPY = {
             "of scraped shell output. It covers repo default branch lookup, issue fetch/list/search/create/"
             "edit/comment/close, PR view/diff/create/checks/poll/comment/review/merge/list, labels, "
             "releases, and failed workflow logs — the same operations repeated across `/ship-issue`, "
-            "`/ship-epic`, `/pr-review`, `/consolidate-issues`, `/plan-epics`, and `/release`.",
+            "`/ship-epic`, `/pr-review`, `/consolidate-issues`, `/plan-epics`, and `/shipmates-release`.",
             "It is a *tool*, not a command. The crew reach for it when orchestrating GitHub instead of "
             "hand-rolling `gh` bash. Requires the GitHub CLI installed and authenticated (`gh auth login`); "
             "Python side is stdlib-only.",
@@ -4162,21 +4186,30 @@ def tool_page_path(slug: str) -> str:
 SITEMAP_PATH = f"{SITE_DIR}/sitemap.xml"
 
 
-def render_redirect_page(old_slug: str, target_slug: str, ctx: PageContext) -> str:
-    """Render a lightweight HTML meta-refresh stub for a renamed command."""
-    target_url = canonical_url(target_slug, ctx)
+def render_redirect_page(old_slug: str, target_slug: str, ctx: PageContext, kind: str = "commands") -> str:
+    """Render a lightweight HTML meta-refresh stub for a renamed command or tool."""
+    if kind == "tools":
+        target_url = ctx.site_url + f"tools/{target_slug}/"
+        href = f"../{target_slug}/"
+        label = f"/tools/{target_slug}/"
+        title_kind = "tools"
+    else:
+        target_url = canonical_url(target_slug, ctx)
+        href = f"../{target_slug}/"
+        label = f"/commands/{target_slug}/"
+        title_kind = "commands"
     return (
         "<!doctype html>\n"
         '<html lang="en">\n'
         "<head>\n"
         '  <meta charset="utf-8">\n'
-        f"  <title>Redirecting to /commands/{target_slug}/ · Shipmates</title>\n"
-        f'  <meta http-equiv="refresh" content="0; url=../{target_slug}/">\n'
+        f"  <title>Redirecting to /{title_kind}/{target_slug}/ · Shipmates</title>\n"
+        f'  <meta http-equiv="refresh" content="0; url={href}">\n'
         f'  <link rel="canonical" href="{target_url}">\n'
         '  <meta name="robots" content="noindex">\n'
         "</head>\n"
         "<body>\n"
-        f'  <p>Redirecting to <a href="../{target_slug}/">/commands/{target_slug}/</a>...</p>\n'
+        f'  <p>Redirecting to <a href="{href}">{label}</a>...</p>\n'
         "</body>\n"
         "</html>\n"
     )
@@ -4196,6 +4229,12 @@ def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), t
         }
     )
     files.update(
+        {
+            tool_page_path(old_slug): render_redirect_page(old_slug, target_slug, ctx, kind="tools")
+            for old_slug, target_slug in TOOL_REDIRECTS.items()
+        }
+    )
+    files.update(
         {agent_page_path(agent.slug): render_agent_page(agent, agents, ctx) for agent in agents}
     )
     files.update(
@@ -4209,6 +4248,7 @@ def expected_paths(cmds: tuple, agents: tuple, tools: tuple = ()) -> frozenset:
     return frozenset(
         [page_path(cmd.slug) for cmd in cmds]
         + [page_path(old_slug) for old_slug in REDIRECTS]
+        + [tool_page_path(old_slug) for old_slug in TOOL_REDIRECTS]
         + [agent_page_path(agent.slug) for agent in agents]
         + [tool_page_path(tool.slug) for tool in tools]
     )
