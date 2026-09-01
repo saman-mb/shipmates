@@ -1,24 +1,42 @@
-# Shipmates demo video — Remotion scaffold (beats 1–4)
+# Shipmates demo video — Remotion scaffold (beats 1–7)
 
-Programmatic animation for the terminal beats of the 45s LinkedIn demo clip.
+Programmatic animation for the 45s LinkedIn demo clip — all seven beats.
 Visual spec and storyboard: [`docs/DEMO_VIDEO.md`](../../docs/DEMO_VIDEO.md)
-(§2 beats 1–4, §4 typography/palette).
+(§2 beats 1–7, §4 typography/palette).
 
 ## Compositions (1920×1080 @ 30 fps)
 
-| id            | Beat                 | Window     | Frames |
-|---------------|----------------------|------------|--------|
-| `Beat1Hook`   | Hook                 | 0:00–0:03  | 90     |
-| `Beat2Crew`   | What it is (crew)    | 0:03–0:09  | 180    |
-| `Beat3Phases` | Phases run (hero)    | 0:09–0:22  | 390    |
-| `Beat4Gates`  | Gates (CI + board)   | 0:22–0:29  | 210    |
+| id             | Beat                 | Window     | Frames |
+|----------------|----------------------|------------|--------|
+| `Beat1Hook`    | Hook                 | 0:00–0:03  | 90     |
+| `Beat2Crew`    | What it is (crew)    | 0:03–0:09  | 180    |
+| `Beat3Phases`  | Phases run (hero)    | 0:09–0:22  | 390    |
+| `Beat4Gates`   | Gates (CI + board)   | 0:22–0:29  | 210    |
+| `Beat5PR`      | Epic timelapse       | 0:29–0:38  | 270    |
+| `Beat6Close`   | Close (pull-back)    | 0:38–0:41  | 90     |
+| `Beat7EndCard` | End card (hold 4s)   | 0:41–0:45  | 120    |
 
 All beat copy and intra-beat frame timings live in `src/data/beats.ts`
 (transcribed from DEMO_VIDEO.md §2). Palette, glyphs, fonts, type-on rate and
 font sizes live in `src/theme.ts` — the single source of truth. Components are
 dumb: `Terminal` (window chrome + lines), `TypeOn` (pure frame→charCount
 timing), `PhaseChecklist` (pinned top-right, ✓/green only from theme),
-`Tick` (SFX), `Caption` (top-centre plate).
+`Tick` (SFX), `Caption` (top-centre plate), `TerminalInset` (beat-5 corner
+chrome at 0.25 scale — the full renderer, just smaller), `PRTimelapse`
+(beat-5 epic-PR mock driven by one pure tick-clock `beat5TickIndex`),
+`TileGrid` (beat-6 pull-back grid), `EndCard` (beat-7 card).
+
+Design decisions (ADR-style):
+
+- **Beat 6 tile technique:** the pull-back animates a live 4×3 grid of
+  simplified terminal-mock tiles via CSS transform (scale 2.8→1, offset→0,
+  eased cubic) — no frame sampling of other compositions, so every rendered
+  frame stays crisp text-free vector geometry and the render stays
+  deterministic.
+- **Beat 7 logo:** the end card reuses the landing site's pixel-art sailboat
+  (`site/assets/logo.png`, copied to `public/logo.png`, rendered with
+  `image-rendering: pixelated`) instead of drawing a second mark — one brand
+  asset, two surfaces.
 
 ## Commands
 
@@ -30,6 +48,14 @@ pnpm stills         # renders the Beat3 feed-scale still into out/
 pnpm legibility     # asserts ≥20px effective glyph height at feed scale,
                     # then renders the Beat3 still as proof; exits nonzero
                     # on violation
+```
+
+Beats 5–7 render the same way, per composition:
+
+```bash
+npx remotion render src/index.ts Beat5PR out/beat5.mp4
+npx remotion render src/index.ts Beat6Close out/beat6.mp4
+npx remotion render src/index.ts Beat7EndCard out/beat7.mp4
 ```
 
 Single-composition commands (what the scripts wrap):

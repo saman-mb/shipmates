@@ -6,6 +6,9 @@ import { Beat1 } from './beats/Beat1';
 import { Beat2 } from './beats/Beat2';
 import { Beat3 } from './beats/Beat3';
 import { Beat4 } from './beats/Beat4';
+import { Beat5 } from './beats/Beat5';
+import { Beat6 } from './beats/Beat6';
+import { Beat7 } from './beats/Beat7';
 import { FPS } from './data/beats';
 
 // Fonts (OFL-licensed) load at bundle/render time; Remotion waits for
@@ -60,6 +63,33 @@ export const RemotionRoot: React.FC = () => {
         id="Beat4Gates"
         component={Beat4}
         durationInFrames={210}
+        fps={FPS}
+        width={VIDEO_WIDTH}
+        height={VIDEO_HEIGHT}
+      />
+      {/* Beat 5 — Epic timelapse · 0:29–0:38 */}
+      <Composition
+        id="Beat5PR"
+        component={Beat5}
+        durationInFrames={270}
+        fps={FPS}
+        width={VIDEO_WIDTH}
+        height={VIDEO_HEIGHT}
+      />
+      {/* Beat 6 — Close · 0:38–0:41 */}
+      <Composition
+        id="Beat6Close"
+        component={Beat6}
+        durationInFrames={90}
+        fps={FPS}
+        width={VIDEO_WIDTH}
+        height={VIDEO_HEIGHT}
+      />
+      {/* Beat 7 — End card · 0:41–0:45 (hold 4s, loop-friendly) */}
+      <Composition
+        id="Beat7EndCard"
+        component={Beat7}
+        durationInFrames={120}
         fps={FPS}
         width={VIDEO_WIDTH}
         height={VIDEO_HEIGHT}

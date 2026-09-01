@@ -24,6 +24,9 @@ export const FAIL = '✗';
 /** Command prompt / result arrow. */
 export const PROMPT = '❯';
 export const ARROW = '→';
+/** Beat-5 child-PR checklist glyphs (docs/DEMO_VIDEO.md §2 beat 5). */
+export const CHECKBOX_CHECKED = '☑';
+export const CHECKBOX_EMPTY = '☐';
 
 /**
  * Type-on rate: 30 chars/s (docs/DEMO_VIDEO.md §2 "types fast").
@@ -103,3 +106,8 @@ export const CHECKLIST_TOP = 80;
 export const CAPTION_TOP = 132;
 /** Y where terminal body content begins, below the reserved header band. */
 export const TERMINAL_CONTENT_TOP = 236;
+/**
+ * Beat-5 corner inset: the full terminal chrome scaled down into the
+ * bottom-right corner. Same renderer, same constants — only the scale differs.
+ */
+export const TERMINAL_INSET_SCALE = 0.25;
