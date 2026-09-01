@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.14] - 2026-09-01
+
+### Changed
+
+- After a board REJECT, retry re-selects seats from the fixer delta — failers must
+  sit; prior ACCEPTs are carried unless the delta can invalidate them (#203).
+
 ## [0.1.13] - 2026-09-01
 
 ### Fixed

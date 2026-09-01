@@ -88,8 +88,8 @@ nothing). Then push and run the **CI gate**: poll `gh pr checks` until done; if 
 - `senior-engineer` or `site-reliability-engineer` (fresh — not the one who fixed it): confirms the fix
   addresses the root cause, not the symptom, and adds no regression risk.
 
-Any `REJECT`/`FAIL` → loop a `senior-engineer` fixer, re-push, re-run the CI gate and this stage,
-bounded by `MAX_FIX_ROUNDS`, then escalate.
+Any `REJECT`/`FAIL` → loop a `senior-engineer` fixer, re-push, re-run the CI gate, then **Retry**
+the board from the fixer delta (shared rule), bounded by `MAX_FIX_ROUNDS`, then escalate.
 
 ## Stage 6 — Deliver
 
