@@ -73,28 +73,20 @@ pub fn frontmatter_name_matches(content: &str, name: &str) -> bool {
     }
 }
 
-/// Whether this payload path is a YAML-frontmatter artifact — a skill, agent,
-/// or command markdown file that *declares* its name. Only those can be
-/// distinguished from a user's own file at the same path. Companion assets
-/// (`.py` next to a skill, opencode `.ts`, Codex `.toml`) have no such
-/// declaration; the caller only classifies keys of the current payload map, so
-/// those paths are ours by construction.
-fn yaml_identity_name(rel: &Path) -> Option<String> {
-    let name = artifact_name(rel)?;
-    let file = rel.file_name()?.to_str()?;
-    if file == "SKILL.md" || file.ends_with(".md") {
-        Some(name)
-    } else {
-        None
-    }
-}
-
 /// Classify the bytes found at a payload path.
+///
+/// Fail closed: only a YAML-frontmatter artifact whose `name:` matches the
+/// path is adoptable. Companion assets (`.py`, `.ts`, Codex `.toml`) cannot
+/// declare that identity, so they refuse without `--force` rather than being
+/// overwritten on a plain install.
 pub fn classify(rel: &Path, existing: &[u8]) -> Collision {
-    let Some(name) = yaml_identity_name(rel) else {
-        // Payload-map companion (script, native tool, TOML agent): adopt by path.
-        return Collision::Adoptable;
+    let Some(name) = artifact_name(rel) else {
+        return Collision::ThirdParty;
     };
+    let file = rel.file_name().and_then(|value| value.to_str()).unwrap_or("");
+    if file != "SKILL.md" && !file.ends_with(".md") {
+        return Collision::ThirdParty;
+    }
     let Ok(text) = std::str::from_utf8(existing) else {
         return Collision::ThirdParty;
     };
@@ -169,28 +161,18 @@ mod tests {
     }
 
     #[test]
-    fn payload_companion_assets_are_adoptable_by_path() {
-        // No YAML name to check — the path is a payload key, so it is ours.
-        assert_eq!(
-            classify(
-                &PathBuf::from(".claude/skills/shipmates-gh/gh.py"),
-                b"print('hi')\n"
-            ),
-            Collision::Adoptable
-        );
-        assert_eq!(
-            classify(
-                &PathBuf::from(".opencode/tools/shipmates-gh.ts"),
-                b"export default {}\n"
-            ),
-            Collision::Adoptable
-        );
-        assert_eq!(
-            classify(
-                &PathBuf::from(".codex/agents/sdet.toml"),
-                b"name = \"sdet\"\n"
-            ),
-            Collision::Adoptable
-        );
+    fn payload_companion_assets_fail_closed() {
+        for rel in [
+            ".claude/skills/shipmates-gh/gh.py",
+            ".opencode/tools/shipmates-gh.ts",
+            ".codex/agents/sdet.toml",
+            ".claude/rules/shipmates-contributor.md",
+        ] {
+            assert_eq!(
+                classify(&PathBuf::from(rel), b"user bytes\n"),
+                Collision::ThirdParty,
+                "{rel}"
+            );
+        }
     }
 }

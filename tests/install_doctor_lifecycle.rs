@@ -195,6 +195,42 @@ fn third_party_collision_refuses_install_and_leaves_bytes_untouched() {
 }
 
 #[test]
+fn third_party_toml_agent_refuses_install() {
+    // Codex crew files have no YAML name. They must refuse, not silently
+    // overwrite, or a user's own `.codex/agents/sdet.toml` disappears on a
+    // plain install (Stage 5 board on #386).
+    let dir = tempdir().unwrap();
+    let collision = dir.path().join(".codex/agents/sdet.toml");
+    fs::create_dir_all(collision.parent().unwrap()).unwrap();
+    fs::write(&collision, "name = \"not-shipmates\"\nmy_config = true\n").unwrap();
+
+    let output = run(
+        dir.path(),
+        &["install", "--harness", "codex", "--with-tools", "none"],
+    );
+
+    assert!(
+        !output.status.success(),
+        "unowned toml must fail closed: {}",
+        output_text(&output)
+    );
+    assert_eq!(
+        fs::read_to_string(&collision).unwrap(),
+        "name = \"not-shipmates\"\nmy_config = true\n"
+    );
+    assert!(!dir.path().join(".shipmates/receipts/codex.json").exists());
+    let text = output_text(&output);
+    assert!(
+        text.contains("shipmates install --force"),
+        "refusal must name --force: {text}"
+    );
+    assert!(
+        text.contains(".codex/agents/sdet.toml"),
+        "refusal must name the colliding path: {text}"
+    );
+}
+
+#[test]
 fn install_adopts_an_unowned_shipmates_file_at_a_payload_path() {
     // The #386 case: a flagship skill on disk that no receipt claims. Install
     // backs it up, writes the current payload, and claims it — rather than

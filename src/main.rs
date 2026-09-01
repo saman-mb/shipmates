@@ -335,7 +335,8 @@ fn main() -> Result<()> {
 
             let target_dir = resolve_target_dir(local, dir)?;
             let install_steering = source.steering_for_target(&target_dir)?;
-            let harnesses: Vec<String> = if harness == "all" {
+            let install_all = harness == "all";
+            let harnesses: Vec<String> = if install_all {
                 adapters::targets().iter().map(|s| s.to_string()).collect()
             } else {
                 vec![harness]
@@ -357,7 +358,7 @@ fn main() -> Result<()> {
             // one harness failing leaves the others correctly installed, so the
             // loop continues, prints a per-harness summary, and exits non-zero
             // (#384). A single named harness still fails fast.
-            let fail_fast = harnesses.len() == 1;
+            let fail_fast = !install_all;
             let mut installed: Vec<(String, String)> = Vec::new();
             let mut failures: Vec<(String, String)> = Vec::new();
             for harness in &harnesses {
@@ -404,16 +405,6 @@ fn main() -> Result<()> {
             if !provision_scripts.is_empty() {
                 provision_tool_deps(&provision_scripts);
             }
-            if !failures.is_empty() {
-                println!(
-                    "\n{} of {} harnesses failed; the rest are installed at v{}. \
-                     Re-run the failed harness after fixing the cause.",
-                    failures.len(),
-                    harnesses.len(),
-                    env!("CARGO_PKG_VERSION")
-                );
-                std::process::exit(1);
-            }
             if install_steering.is_some() {
                 for action in steering::plan_legacy_migration(&target_dir)? {
                     match action {
@@ -435,6 +426,25 @@ fn main() -> Result<()> {
                         }
                     }
                 }
+            }
+            if !failures.is_empty() {
+                if installed.is_empty() {
+                    println!(
+                        "\n{} of {} harnesses failed; none installed. \
+                         Re-run after fixing the cause.",
+                        failures.len(),
+                        harnesses.len()
+                    );
+                } else {
+                    println!(
+                        "\n{} of {} harnesses failed; the rest are installed at v{}. \
+                         Re-run the failed harness after fixing the cause.",
+                        failures.len(),
+                        harnesses.len(),
+                        env!("CARGO_PKG_VERSION")
+                    );
+                }
+                std::process::exit(1);
             }
         }
         Command::Uninstall {
