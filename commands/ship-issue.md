@@ -81,7 +81,10 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   `/shipmates-harden` recommendation. When `epic-base` points at an integration branch, honour
   `MERGE_MODE=auto` even for `IS_SECURITY_SENSITIVE` units — the harden recommendation still ships
   in the final report, and the parent epic PR into the default branch remains the human gate.
-  Guidance that sets `MERGE_MODE=manual` (`unit merge manual`, a `gate` story) still forces `manual`.
+  When runtime guidance includes an explicit **`MERGE_MODE=manual`**, honour it (typical when
+  `/ship-epic` delegates a gate or security-sensitive unit). Standalone `/ship-issue` does not parse
+  `/ship-epic`-only guidance tokens — the caller passes `MERGE_MODE=manual` when a human merge gate
+  is required.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
 - `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
   leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, **proposes** a bundle, and
@@ -166,7 +169,7 @@ list) for:
 - **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Overridden to
   `manual` when `IS_SECURITY_SENSITIVE` is set **and** `epic-base` is unset (standalone onto the
   default branch). When `epic-base` is set, honour `auto` even if the unit is
-  `IS_SECURITY_SENSITIVE`; `unit merge manual` and `gate` stories still force `manual`.
+  `IS_SECURITY_SENSITIVE`; an explicit **`MERGE_MODE=manual`** from the caller still forces `manual`.
 - **`epic-run`** — with `epic-base`, do not widen the bundle or scan the backlog (see Stage 0 step 3).
 - **`epic-id=<n>`** — parent epic issue number when delegated from `/ship-epic`; required with `epic-run`
   so Stage 8 / final report can emit the **Epic unit record** for the orchestrator's progress log.
@@ -546,9 +549,13 @@ MERGE: auto|manual
 HEAD: <merge commit SHA when auto; PR head SHA when manual>
 DELIVERED: <one plain sentence — what this unit shipped, no jargon>
 REVIEWS: <PO verdict or carried ACCEPT>; <PE verdict or carried ACCEPT>; <scaled: verdict|re-run|carried ACCEPT|newly seated|gated: role (reason)>
+HARDEN: recommended|n/a
 CI: <green checks URL>
 FIX_ROUNDS: <n>
 ```
+
+Set **`HARDEN: recommended`** when Stage 0 set `IS_SECURITY_SENSITIVE=yes`; otherwise **`HARDEN: n/a`**.
+The parent `/ship-epic` orchestrator copies this into the epic progress comment and epic PR notes.
 
 Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the epic issue, not this transcript.
 

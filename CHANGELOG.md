@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.19] - 2026-09-01
+
+### Fixed
+
+- `/ship-epic` Stage 0.5 runs the identical-tip kickoff whenever `<EPIC_PR>` is unset —
+  including when the integration branch already exists on the remote — and pins the empty
+  commit to a dedicated worktree, not the captain's checkout (#397).
+- `/ship-epic` Stage 3.5 surfaces `/shipmates-harden` from delegated unit records via a
+  `HARDEN:` field on `EPIC_UNIT_RECORD` (#398).
+- `/ship-issue` documents merge-mode behaviour in caller terms — explicit `MERGE_MODE=manual`
+  from `/ship-epic` delegation, not `/ship-epic`-only guidance tokens (#399).
+
 ## [0.1.18] - 2026-09-01
 
 ### Fixed
