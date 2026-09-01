@@ -40,7 +40,9 @@ Every call requires `"op"`. Other fields depend on the operation.
 | --- | --- |
 | `op` | Operation name (see table below) |
 | `repo` | `owner/name` — defaults to current repo when omitted |
-| `number` | Issue or PR number |
+| `number` | Issue or PR number — the **parent** for sub-issue ops |
+| `sub_issue_number` | Child issue number (`issue.sub_issue_add` / `issue.sub_issue_remove`) |
+| `replace_parent` | Reassign a child that already has a different parent (default `false`) |
 | `query` | Search string (`issue.search`) |
 | `title` | Issue/PR title |
 | `body_file` | Path to body text (**required** for create/edit/comment/review — never inline untrusted bodies) |
@@ -72,6 +74,9 @@ These mirror what shipmates commands use today.
 | `issue.edit` | Edit issue body (`body_file`) |
 | `issue.comment` | Comment on issue (`body_file`) |
 | `issue.close` | Close issue |
+| `issue.sub_issue_add` | Attach a child issue to a parent (`sub_issue_number`, optional `replace_parent`) |
+| `issue.sub_issue_list` | Children + completion summary for a parent |
+| `issue.sub_issue_remove` | Detach a child from its parent (`sub_issue_number`) |
 | `pr.view` | Fetch PR metadata |
 | `pr.view_current` | PR for current branch |
 | `pr.diff` | PR diff text |
@@ -115,6 +120,22 @@ These mirror what shipmates commands use today.
 }
 ```
 
+**Attach a story to its parent epic (plan-epics Stage 3):**
+
+```json
+{"op": "issue.sub_issue_add", "number": 305, "sub_issue_number": 306}
+```
+
+Both fields are issue **numbers**. The op lists the parent's children first, so a
+re-run on an already-attached story returns `{"attached": false, "reason":
+"already-child"}` without a write.
+
+**Read the parent's sub-issue graph (plan-epics Stage 4, ship-epic Stage 0):**
+
+```json
+{"op": "issue.sub_issue_list", "number": 305}
+```
+
 **Poll CI until done (ship-issue Stage 4.5):**
 
 ```json
@@ -149,3 +170,11 @@ rate limits, and auth scopes follow the CLI. Multi-line bodies must use
 `body_file` — the tool rejects large inline `body` strings to match shipmates
 shell-safety rules. Validate issue/PR numbers and repo slugs before subprocess
 invocation; do not pass raw user tokens to `gh` on the command line.
+
+**Sub-issues are a hosted-GitHub feature.** The three sub-issue ops need a host
+whose API exposes the parent/child graph — github.com does; a GitHub Enterprise
+Server release older than the feature may not, and an installed `gh` predating
+its `--add-sub-issue` / `--remove-sub-issue` flags cannot drive it either. The
+ops surface the CLI's own error rather than emulating the relationship; a caller
+that needs to work on both should treat a failure as "this host has no sub-issue
+graph" and fall back to whatever in-body linking it already writes.

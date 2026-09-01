@@ -304,6 +304,95 @@ def op_issue_close(spec: dict[str, Any]) -> dict[str, Any]:
     return {"number": number, "closed": True}
 
 
+SUB_ISSUE_FIELDS = "number,title,state,subIssues,subIssuesSummary"
+
+
+def sub_issue_pair(spec: dict[str, Any]) -> tuple[int, int]:
+    parent = validate_number(spec.get("number"))
+    child = validate_number(spec.get("sub_issue_number"), "sub_issue_number")
+    if parent == child:
+        raise GhError(f"issue #{parent} cannot be its own sub-issue")
+    return parent, child
+
+
+def op_issue_sub_issue_list(spec: dict[str, Any]) -> dict[str, Any]:
+    number = validate_number(spec.get("number"))
+    data = (
+        gh_json(
+            ["issue", "view", str(number), *repo_flag(spec), "--json", SUB_ISSUE_FIELDS]
+        )
+        or {}
+    )
+    children = data.get("subIssues") or []
+    numbers = [
+        child["number"]
+        for child in children
+        if isinstance(child, dict) and isinstance(child.get("number"), int)
+    ]
+    return {
+        "number": number,
+        "title": data.get("title"),
+        "state": data.get("state"),
+        "subIssues": children,
+        "subIssuesSummary": data.get("subIssuesSummary"),
+        "numbers": numbers,
+    }
+
+
+def op_issue_sub_issue_add(spec: dict[str, Any]) -> dict[str, Any]:
+    parent, child = sub_issue_pair(spec)
+    replace_parent = spec.get("replace_parent", False)
+    if not isinstance(replace_parent, bool):
+        raise GhError("replace_parent must be a boolean")
+    existing = op_issue_sub_issue_list({"number": parent, "repo": spec.get("repo")})
+    if child in existing["numbers"]:
+        return {
+            "number": parent,
+            "sub_issue_number": child,
+            "attached": False,
+            "reason": "already-child",
+            "subIssuesSummary": existing["subIssuesSummary"],
+        }
+    if replace_parent:
+        # Reassign the child away from whatever parent it already has: the
+        # parent-side --add-sub-issue refuses a child owned elsewhere.
+        gh_text(["issue", "edit", str(child), *repo_flag(spec), "--parent", str(parent)])
+        mode = "parent"
+    else:
+        gh_text(
+            [
+                "issue",
+                "edit",
+                str(parent),
+                *repo_flag(spec),
+                "--add-sub-issue",
+                str(child),
+            ]
+        )
+        mode = "add-sub-issue"
+    return {
+        "number": parent,
+        "sub_issue_number": child,
+        "attached": True,
+        "mode": mode,
+    }
+
+
+def op_issue_sub_issue_remove(spec: dict[str, Any]) -> dict[str, Any]:
+    parent, child = sub_issue_pair(spec)
+    gh_text(
+        [
+            "issue",
+            "edit",
+            str(parent),
+            *repo_flag(spec),
+            "--remove-sub-issue",
+            str(child),
+        ]
+    )
+    return {"number": parent, "sub_issue_number": child, "removed": True}
+
+
 def op_pr_view(spec: dict[str, Any]) -> dict[str, Any]:
     number = validate_number(spec.get("number"))
     flds = fields(
@@ -603,6 +692,9 @@ HANDLERS: dict[str, Any] = {
     "issue.edit": op_issue_edit,
     "issue.comment": op_issue_comment,
     "issue.close": op_issue_close,
+    "issue.sub_issue_add": op_issue_sub_issue_add,
+    "issue.sub_issue_list": op_issue_sub_issue_list,
+    "issue.sub_issue_remove": op_issue_sub_issue_remove,
     "pr.view": op_pr_view,
     "pr.view_current": op_pr_view_current,
     "pr.diff": op_pr_diff,

@@ -117,7 +117,8 @@ Stage 3 — prefer specialist fixes that sharpen acceptance criteria over PM rew
 ## Stage 3 — Create the issues  (orchestrator, deterministic)
 
 If `DRY_RUN`: print **`<panel>` and `<panel-reasons>`**, then the epic→story tree (titles, criteria,
-labels, order) and STOP.
+labels, order), then the **attachment plan** — which stories would become sub-issues of which epic —
+and STOP. Create nothing and attach nothing.
 
 Otherwise, in this order (numbers must exist before they're referenced):
 1. **Labels** — ensure `epic`, `user-story`, and any needed `area:*` exist (`gh label create` the
@@ -128,16 +129,34 @@ Otherwise, in this order (numbers must exist before they're referenced):
 3. **Stories** — `gh issue create` each story: body = description + acceptance criteria + **`Part of
    #<epic>`** + `Blocked by #<n>` where known + the trailer + `user-story` and area labels. Capture
    each story number.
-4. **Backfill the epic checklists** — edit each epic body, replacing the placeholder with `- [ ] #<story>`
-   lines for its stories, so the epic tracks its children and GitHub cross-links them.
+4. **Attach every story as a sub-issue of its epic** — a body mention is a mention; the parent/child
+   relationship is a separate GitHub fact and only this step creates it. For each epic, using the
+   **numbers captured in steps 2–3** (validate each against `^[0-9]+$` first — never interpolate a
+   title, body, or any other GitHub-sourced text into the command):
+   ```bash
+   gh issue edit <epic> --add-sub-issue <story>
+   ```
+   Several children may be attached in one call as a comma-separated list of numbers.
+   **Idempotent** — read the parent's current children first (`gh issue view <epic> --json subIssues`)
+   and skip any story already attached, so a re-run or a partial earlier run adds nothing twice.
+   If the host has no sub-issue graph (the flag is rejected or the field is unknown), note that in the
+   report and carry on — steps 3 and 5 still leave the epic traceable.
+5. **Backfill the epic checklists** — edit each epic body, replacing the placeholder with `- [ ] #<story>`
+   lines for its stories, so the epic tracks its children in readable form and GitHub cross-links them.
 
 ## Stage 4 — Verify & report
 
+- **Verify the sub-issue graph** — re-fetch each epic (`gh issue view <epic> --json
+  subIssues,subIssuesSummary`) and confirm its children are exactly the stories you created for it:
+  the count matches the story count and every captured story number appears. A missing child means
+  step 4 didn't land — retry it for that story, then re-verify. Report the parent's completion
+  summary (children total and done).
 - Verify every story carries `Part of #<epic>` matching its epic, and every epic's checklist lists all
   its stories (re-fetch and grep; don't assume).
 - Report **`<panel>` and `<panel-reasons>`** first, then a tree: each **epic** (title + link) → its
-  **stories** (title + link), with counts, any labels created, a recommended **build order**, and
-  anything skipped as an existing duplicate.
+  **stories** (title + link), with counts, **sub-issue attachment counts per epic**, any labels
+  created, a recommended **build order**, and anything skipped as an existing duplicate. Say plainly
+  when a host rejected the sub-issue attachments.
 
 ---
 
@@ -149,7 +168,11 @@ Otherwise, in this order (numbers must exist before they're referenced):
   no speculative epics the brief didn't ask for.
 - **Panel cost.** Respect `MAX_PANEL_ADDITIONS` for auto-selection; never spawn a specialist whose
   domain the brief does not implicate. Explicit user-named roles override the cap.
-- Respect `DRY_RUN` — when set, create nothing; still print the selected panel.
+- **The sub-issue graph is the relationship source of truth**; the epic's checklist is display and
+  progress copy for human readers. Write **both** — never treat a tidy checklist as evidence that the
+  parent/child link exists, and never drop the checklist because the graph is populated.
+- Respect `DRY_RUN` — when set, create nothing and attach nothing; still print the selected panel and
+  the attachment plan.
 - Every epic and story must be individually valuable and traceable (`Part of #`), so the backlog is
   ready to hand to `/ship-epic <epic#>` or `/ship-issue` one story at a time.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the
