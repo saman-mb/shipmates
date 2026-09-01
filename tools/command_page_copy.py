@@ -120,13 +120,13 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             "so that unit's flags pick its specialists. You merge one epic PR at the end."
         ),
         when_to_use=(
-            "An epic issue already has a story checklist on GitHub.",
+            "An epic issue already has stories on GitHub (sub-issues and/or a checklist).",
             "One ticket? /ship-issue. No backlog yet? /plan-epics first.",
         ),
         process=(
             ProcessStep(
                 "Map",
-                "The architect reads the checklist, classifies every story, and groups them into shipping units.",
+                "The architect reads the epic's stories (sub-issue graph, union the checklist), classifies every story, and groups them into shipping units.",
                 always=("architect",),
             ),
             ProcessStep(
@@ -142,7 +142,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
             ProcessStep(
                 "One PR",
-                "When the checklist is done, you review and merge the single epic PR.",
+                "When every story is done, you review and merge the single epic PR.",
                 solo="No extra spawn — you merge the epic PR, not the unit PRs.",
             ),
         ),
@@ -246,7 +246,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
             ProcessStep(
                 "Create",
-                "Open the issues on GitHub and verify they connect.",
+                "Open the issues on GitHub, attach each story as a sub-issue of its epic, and verify they connect.",
                 solo="No extra spawn — the run creates what the panel wrote.",
             ),
         ),

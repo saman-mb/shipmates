@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.17] - 2026-09-01
+
+### Fixed
+
+- `/plan-epics` attaches each story to its epic as a GitHub **sub-issue** (the
+  checklist stays as progress copy), `/ship-epic` reads story membership as the
+  union of the sub-issue graph and the checklist, and `shipmates-gh` gains
+  validated `issue.sub_issue_add` / `issue.sub_issue_list` /
+  `issue.sub_issue_remove` ops (#388).
+
 ## [0.1.16] - 2026-09-01
 
 ### Fixed

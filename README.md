@@ -117,7 +117,7 @@ implicitly, when the intent of your prompt calls for it — never typed, never a
 | [`shipmates-scrub`](https://saman-mb.github.io/shipmates/tools/shipmates-scrub/) | Redacts secrets and PII from a log or paste before it's shared |
 | [`shipmates-fixtures`](https://saman-mb.github.io/shipmates/tools/shipmates-fixtures/) | Generates deterministic fake test data from a small JSON schema |
 | [`shipmates-domaincheck`](https://saman-mb.github.io/shipmates/tools/shipmates-domaincheck/) | Checks domain availability via RDAP — registry-authoritative verdicts, TLD batch sweeps, optional registrar detail |
-| [`shipmates-gh`](https://saman-mb.github.io/shipmates/tools/shipmates-gh/) | Structured GitHub CLI wrapper — validated issue/PR ops, body-file hygiene, JSON results (requires `gh` installed and authenticated) |
+| [`shipmates-gh`](https://saman-mb.github.io/shipmates/tools/shipmates-gh/) | Structured GitHub CLI wrapper — validated issue/PR/sub-issue ops, body-file hygiene, JSON results (requires `gh` installed and authenticated) |
 
 Tools ship with a plain **`shipmates install`**. Use `--with-tools none` for crew + commands only, or `--with-tools <name>` for a subset. Add them with
 `--with-tools` (below), or run `install` in a terminal and pick from the list. Each tool maps to its
