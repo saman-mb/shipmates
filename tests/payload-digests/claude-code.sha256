@@ -27,5 +27,5 @@ target=claude-code
 .claude/skills/shipmates-onboard/SKILL.md fe751d05b4e3daf6f31a873ed4cebfd64f2c8623168ed9a2b376f413cfbf1cdd
 .claude/skills/shipmates-polish/SKILL.md e67626ae4e1069c200a74657e5f075777abe3a1e735e711046f859b1415c44a9
 .claude/skills/shipmates-refactor/SKILL.md 38d5d975122b54e8adaf03a9d42a4f6225898b01b3703bbfb197cdb6bd584110
-.claude/skills/shipmates-release/SKILL.md b8de47d9e73c9a0b8d138f484cad903bd52b11094e714b6d9eea6f2072e0a66c
+.claude/skills/shipmates-release/SKILL.md 420d4582fc394bbbef71ff284f1c13d93a925a9207f54b06c13868e21c88267f
 .claude/skills/shipmates-spike/SKILL.md 40c5145bdd78a310748c2da2c1328a0c516bcb1f403ff004b4d7b8c824d1cf36

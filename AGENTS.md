@@ -34,7 +34,7 @@ cargo install shipmates
 
 **Binary Installer (cargo-dist):**
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/shipmates-releases/download/vX.Y.Z/shipmates-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
 Then `shipmates install --harness <name>` drops the harness's own tree (`.claude/`, `.opencode/`,
@@ -71,7 +71,7 @@ These are load-bearing lessons, not style preferences. Break one and something s
 - **Write user-facing copy with confidence — never undersell or disclaim the product's own work.** No "nothing to do with shipmates", no apologetic or hedging framing on a page describing a shipmates feature. Say what the thing is and does, plainly and positively. (Full voice guidance: [`docs/BRAND.md`](docs/BRAND.md#voice-and-tone).)
 - **`/report-bug` is the one meta command.** Unlike domain-neutral crew roles and the other fourteen workflow commands, it may name Shipmates, harnesses, and the upstream repo `saman-mb/shipmates` explicitly — it files structured bug reports upstream from a captain's project. Domain neutrality applies everywhere else.
 - **Prompt cost discipline.** [`docs/COST.md`](docs/COST.md) is source of truth for the six cost principles and shared preambles. Keep stable command/subagent instructions before volatile input, and require compact decision-shaped returns instead of transcripts.
-- **Release-affecting `/ship-issue` PRs include the version bump.** When a story changes what the published binary or install payload ships (commands, tools, crew, `Cargo.toml`), bump the version and add a `CHANGELOG.md` entry **in the same PR**. Merge to `main` without a new version is a no-op for the release workflow (`.github/workflows/shipmates-release.yml` publishes only when the version tag is new).
+- **Release-affecting `/ship-issue` PRs include the version bump.** When a story changes what the published binary or install payload ships (commands, tools, crew, `Cargo.toml`), bump the version and add a `CHANGELOG.md` entry **in the same PR**. Merge to `main` without a new version is a no-op for the release workflow (`.github/workflows/release.yml` publishes only when the version tag is new).
 - See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution guide.
 
 ## Scope & honesty

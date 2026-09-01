@@ -121,7 +121,7 @@ brew install saman-mb/tap/shipmates
 cargo install shipmates
 
 # Binary Installer
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/shipmates-releases/latest/download/shipmates-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/latest/download/shipmates-installer.sh | sh
 ```
 
 To install the crew into your repository:

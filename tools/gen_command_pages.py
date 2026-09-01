@@ -1464,7 +1464,7 @@ TOOL_COPY = {
         ),
     ),
     "shipmates-svgflow": ToolCopy(
-        tagline="Deprecated alias for `diagram` — svgflow's flow diagram is now a kind of the more general diagram tool.",
+        tagline="Deprecated alias for `shipmates-diagram` — svgflow's flow diagram is now a kind of the more general diagram tool.",
         what=(
             "`svgflow` has become `diagram` (ADR 0001): the box-and-arrow flow diagram it drew is now the default `kind` of a more general tool that keeps svgflow's theme-exact, byte-for-byte deterministic SVG and adds PNG and animated-GIF output, a `sequence` kind, and intent routing. Reach for `diagram` instead.",
             "For one release `svgflow.py` is kept as a thin deprecation shim: it prints a one-line deprecation notice and forwards every argument, unchanged, to `diagram.py`, so nothing that already reaches for `svgflow` breaks. The default kind is `flow`, so an existing svgflow spec renders exactly the same through the alias.",

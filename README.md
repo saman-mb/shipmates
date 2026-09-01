@@ -146,7 +146,7 @@ cargo install shipmates
 
 **Binary Installer (cargo-dist):**
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/shipmates-releases/download/vX.Y.Z/shipmates-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
 Then install the crew for a harness. By default it drops into your global home directory. Use
@@ -200,7 +200,7 @@ shipmates install --harness opencode --dir /path/to/project --with-tools none
 cd /path/to/project
 ls .opencode/agents .opencode/commands
 opencode agent list
-opencode run --command harden --format json \
+opencode run --command shipmates-harden --format json \
   "Review this project in report mode. Do not modify files."
 ```
 
@@ -240,9 +240,9 @@ warns that ownership is unknown; existing files stay untouched and only
 genuinely missing payload files may be restored. An invalid receipt is a problem, and `doctor --fix`
 refuses ownership-based repair. `doctor --fix` repairs receipt-owned files only, backing up existing
 files it replaces or migrates under `.shipmates-backup/` first. A plain `install` also migrates a
-receipt-owned superseded command layout as it writes; pass `--no-migrate` to leave old files in place.
+receipt-owned superseded command layout and identity rename (`polish` → `shipmates-polish`) as it writes; pass `--no-migrate` to leave old files in place.
 For doctor, `--no-migrate` is valid only with `--fix`:
-`shipmates doctor --fix --no-migrate` restores files without migrating old commands.
+`shipmates doctor --fix --no-migrate` restores files without migrating old commands or pre-prefix names.
 
 **Codex quickstart.** From a Shipmates checkout, run this layout/install smoke. It creates a temporary
 sandbox, checks the Codex golden digest, installs the payload, and diagnoses the receipt-backed install:
@@ -251,7 +251,7 @@ sandbox, checks the Codex golden digest, installs the payload, and diagnoses the
 bash tests/test_codex_smoke.sh
 ```
 
-With an authenticated local Codex CLI, add `CODEX_SMOKE=1` to run the optional read-only `harden` skill
+With an authenticated local Codex CLI, add `CODEX_SMOKE=1` to run the optional read-only `shipmates-harden` skill
 headlessly in that temporary sandbox:
 
 ```bash
@@ -481,7 +481,7 @@ universal one.
 ## 🎒 What you'll need
 
 - A supported harness (Claude Code is the proven one; the others build and are format-verified)
-- `git` + an authenticated [`shipmates-gh`](https://cli.github.com/) CLI, for the GitHub flow
+- `git` + an authenticated [`gh`](https://cli.github.com/) CLI, for the GitHub flow
 - A repo with CI (strongly recommended — the green-CI gate is what makes autonomy trustworthy)
 
 ## 💡 Why it's built this way

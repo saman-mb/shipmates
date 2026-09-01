@@ -73,7 +73,7 @@ breaks a running deployment. A one-way, unrecoverable release is a **blocking** 
 
 ## Stage 6 — Report
 
-Version, the changelog, the green-CI link, the SRE pre-flight verdict, tag/shipmates-release state (and the publish
+Version, the changelog, the green-CI link, the SRE pre-flight verdict, tag/release state (and the publish
 command if manual), plus any human follow-ups (secret/config changes, migration ordering, announcement).
 
 ---
