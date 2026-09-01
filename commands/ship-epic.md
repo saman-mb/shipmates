@@ -193,9 +193,8 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
 1. Set `MAIN_BRANCH` from the repo default (see Config).
 2. **Reuse integration state** — when Stage 0 loaded `EPIC_BRANCH:` and `EPIC_PR:` from the progress
    comment, reuse them when `git ls-remote origin <EPIC_BRANCH>` succeeds. If the branch is missing,
-   recreate per step 4 (including the identical-tip kickoff) and note recovery in the report. Do **not**
-   open a second epic PR when `<EPIC_PR>`
-   is already set — refresh its body in Stage 3.5 instead.
+   recreate per step 4 and note recovery in the report. Do **not** open a second epic PR when
+   `<EPIC_PR>` is already set — refresh its body in Stage 3.5 instead.
 3. **Reconstruct mis-targeted work** — when `<mis-merged-to-main>` is non-empty and `<EPIC_BRANCH>` is
    unset or equals a fresh branch with no unit commits:
 
@@ -209,19 +208,32 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
 
    When `<landed>` is non-empty but `<mis-merged-to-main>` is empty and `<EPIC_BRANCH>` already contains
    those commits, skip reconstruction.
-4. **Create** (when `<EPIC_BRANCH>` is unset and branch does not already exist on the remote):
+4. **Ensure integration branch** — when `<EPIC_BRANCH>` is unset and the branch does not already exist
+   on the remote:
    ```bash
    git -C <repo> fetch origin
    git -C <repo> push origin origin/<MAIN_BRANCH>:refs/heads/<EPIC_BRANCH>
    ```
-   Hosts refuse a pull request when head and base tips are identical (no commits between the refs).
-   After the push — and after any recreate of a missing branch whose tip still matches
-   `origin/<MAIN_BRANCH>` — check those two tips. If they match, check out `<EPIC_BRANCH>`, create
-   **one** empty commit with the fixed message `chore: epic kickoff`, and push it **before** step 5.
-   That is the normal kickoff path, not an error-recovery footnote. Skip when the tips already
-   differ (reconstruction or landed work). Never stack a second kickoff commit. Skip the whole
-   create **and** the kickoff in `DRY_RUN` (print that a kickoff commit would be made).
-5. **Open epic PR** — if `<EPIC_PR>` is unset, open one PR with base `MAIN_BRANCH`, head `<EPIC_BRANCH>`.
+   When `<EPIC_BRANCH>` is already known (from progress state or step 3) and exists on the remote,
+   skip create. Skip create in `DRY_RUN` (print the planned branch name).
+5. **Identical-tip kickoff** — whenever `<EPIC_PR>` is unset (after steps 2–4), compare
+   `origin/<EPIC_BRANCH>` and `origin/<MAIN_BRANCH>`. Hosts refuse a pull request when head and base
+   tips are identical — including when the branch already existed on the remote but PR creation was
+   interrupted after push. If the tips match, create **one** empty commit on `<EPIC_BRANCH>` with the
+   fixed message `chore: epic kickoff` and push it **before** step 6. Use a dedicated worktree under
+   `<repo>/.shipmates/worktrees/epic-kickoff-<epic>` (or a temp dir) — **never** switch the captain's
+   own checkout:
+   ```bash
+   git -C <repo> fetch origin
+   git -C <repo> worktree add <kickoff-wt> -B <EPIC_BRANCH> origin/<EPIC_BRANCH>
+   git -C <kickoff-wt> commit --allow-empty -m "chore: epic kickoff"
+   git -C <kickoff-wt> push origin <EPIC_BRANCH>
+   git -C <repo> worktree remove <kickoff-wt>
+   ```
+   That is the normal kickoff path, not an error-recovery footnote. Skip when the tips already differ
+   (reconstruction or landed work). Never stack a second kickoff commit. Skip in `DRY_RUN` (print that
+   a kickoff commit would be made).
+6. **Open epic PR** — if `<EPIC_PR>` is unset, open one PR with base `MAIN_BRANCH`, head `<EPIC_BRANCH>`.
    **Never skip** because `<pending>` is empty or work is already on `MAIN_BRANCH` — reconstruction
    (step 3) ensures the epic PR head reflects landed in-repo slices. Title/body via `--body-file` (see
    **Shell safety**). Structure the body for fast captain review:
@@ -238,17 +250,17 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
      required** — merge only when satisfied with the epic scope.
 
    Record `<EPIC_PR>`.
-6. **Persist state** — post or **edit** the single `<!-- shipmates-epic-progress -->` comment on epic
+7. **Persist state** — post or **edit** the single `<!-- shipmates-epic-progress -->` comment on epic
    `<epic>` (see **Stage 3.5**). Include machine-readable lines `EPIC_BRANCH:`, `EPIC_PR:`, `MAIN_BRANCH:`,
    and `SHIPPED_STORIES:` (space-separated numbers from `<landed>`) so any re-run reloads idempotently.
    Update after every unit and every pause — one living comment, not a new thread per unit.
-7. **Empty pending shortcut** — when `<pending>` is empty after Stage 0 reconciliation, skip Stages 1–2
+8. **Empty pending shortcut** — when `<pending>` is empty after Stage 0 reconciliation, skip Stages 1–2
    and go directly to **Stage 4** (full closure or crew-complete). `<EPIC_PR>` must already be set from
    steps above.
 
 ## Stage 1 — Story graph  (orchestrator)
 
-Skip when Stage 0.5 step 7 sent the run to Stage 4.
+Skip when Stage 0.5 step 8 sent the run to Stage 4.
 
 For each story still in `<pending>` (after Stage 0 reconciliation):
 
@@ -270,7 +282,7 @@ Print (always, not only dry-run): ordered story list, gate stories, external blo
 
 ## Stage 1.5 — Epic shipping plan  (agent: `architect`, once)
 
-Skip when Stage 0.5 step 7 sent the run to Stage 4.
+Skip when Stage 0.5 step 8 sent the run to Stage 4.
 
 Spawn **one** `architect` with: the epic title/body, every pending story's title + body + labels
 (truncate bodies to acceptance-criteria sections when huge), Stage 1 dependency order, repo
@@ -297,7 +309,7 @@ unit sizes, and **token rationale**: "`N` stories → `U` `/ship-issue` invocati
 
 ## Stage 2 — Loop  (orchestrator)
 
-Skip when Stage 0.5 step 7 sent the run to Stage 4.
+Skip when Stage 0.5 step 8 sent the run to Stage 4.
 
 Walk `<units>` in order — one `/ship-issue` delegation per unit (not one per story unless the unit
 is a singleton).
@@ -413,22 +425,27 @@ resumes), ingest the delegated `/ship-issue` **Epic unit record** and update cap
 
 1. **Parse the unit record** from the delegation's final report (`EPIC_UNIT_RECORD:` block — stories,
    PR link, merge SHA, one-line **delivered** summary per story, **reviews** one-liner, green CI link,
-   fix-round count).
+   fix-round count, and optional **`HARDEN:`** line when the unit was security-sensitive).
 2. **Append to `<epic-log>`** — one bullet per unit, newest last. Shape: unit index, story numbers, PR
-   URL, merge SHA, one-line delivered summary, reviews one-liner, green CI link. Keep `<epic-log>`
+   URL, merge SHA, one-line delivered summary, reviews one-liner, green CI link; when the unit record
+   includes `HARDEN: recommended`, append **`/shipmates-harden` recommended** on the same bullet so the
+   captain sees it on the epic issue and epic PR without opening the unit run. Keep `<epic-log>`
    scannable — no transcripts, no raw board dumps.
 3. **Edit the epic progress comment** on epic `<epic>` — single comment anchored
    `<!-- shipmates-epic-progress -->`. Include: machine-readable `EPIC_BRANCH` / `EPIC_PR` / `MAIN_BRANCH`
    lines; **`SHIPPED_STORIES:`** (all numbers in `<landed>` after this unit); a **Shipped units** section
    (paste `<epic-log>` bullets); **Pending stories** (remaining checklist lines); **Latest reviews** (one
-   line from the most recent unit record); and an updated timestamp. One living comment — edit in place,
-   do not open a new thread per unit.
+   line from the most recent unit record); when the latest unit record has `HARDEN: recommended`, a
+   **Security follow-up** line naming `/shipmates-harden`; and an updated timestamp. One living comment —
+   edit in place, do not open a new thread per unit.
 
 4. **Refresh epic PR `<EPIC_PR>` body** via `--body-file` — keep **What this epic delivers** and **Quick
    review guide** intact; update **Stories** checklist ticks, **Shipped so far** (copy `<epic-log>`), and
    add a **Review status** line: "`U` of `N` stories landed; all units passed PE+PO board before merge
-   into `<EPIC_BRANCH>`." Goal: the captain opens epic PR or epic issue and knows what shipped and what
-   was already reviewed without opening every unit PR.
+   into `<EPIC_BRANCH>`." When any shipped unit record carried `HARDEN: recommended`, add a **Security
+   follow-up** bullet under **Shipped so far** listing those units and `/shipmates-harden`. Goal: the
+   captain opens epic PR or epic issue and knows what shipped and what was already reviewed without
+   opening every unit PR.
 
 On pause, include `<epic-log>` and a link to the progress comment in the pause report.
 
