@@ -1,0 +1,626 @@
+---
+name: ship-issue
+description: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
+argument-hint: <issue-number>... | next [epic <epic-number>] [optional extra guidance]
+allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
+disable-model-invocation: true
+---
+# /ship-issue — autonomous ticket delivery
+## Cost discipline
+
+- Stable workflow instructions come before runtime input. Read and parse the complete runtime-input
+  section at the end before acting; do not weave volatile issue text, arguments, diffs, or generated
+  output through this prefix.
+- **Complexity-Based Tiered Execution**: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
+  - **Simple**: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting <= 2 files and <= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but **must still convene the mandatory PE+PO acceptance board** on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.
+  - **Medium**: Moderate changes (<= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. **Must convene PE+PO** (and SDET on the board when validation is non-trivial) — not main-agent review.
+  - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.
+- Spend subagent seats only where their decision can change the outcome. Route model and effort at
+  spawn by work difficulty; never hardcode a model in canonical content.
+- Ask every subagent for a compact structured return: decision/status first, criterion findings and
+  minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant.
+  Return decisions, not transcripts or raw logs.
+
+Take **one or more issues / stories (`#<issue>`..)** from open all the way to a **reviewed, CI-green
+pull request** on the base branch, autonomously — using an isolated git worktree and a board of
+specialist subagents. Merging is gated by `MERGE_MODE` (see Config): by default the run stops with
+the PR open for a human to merge; set `MERGE_MODE=auto` for fully hands-off delivery.
+
+The runtime input is whitespace-delimited tokens. The issue / story numbers (`<issue>` below) are
+the **leading run** of numeric tokens; the first non-numeric token begins the extra guidance, which
+runs to the end. So `104` is one issue with no guidance, `104 105` is two, and `104 focus on retries`
+is issue 104 with the guidance `focus on retries`. Never extend the run past the first non-numeric
+token — a digit later in the guidance is guidance, not an issue. When the guidance itself starts with
+a number, separate it explicitly with `--`, which ends the issue list wherever it appears:
+`104 -- 2 fix rounds max`.
+
+**Or `next`:** if the first token is `next` (in place of any issue number), this is a **selection** run —
+Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, *Selection mode*). `next` is
+mutually exclusive with explicit issue numbers; tokens after it are guidance. **`next epic <n>`** scopes
+selection to epic `<n>`'s unchecked story checklist only (see *Selection mode*).
+
+## Bundling — the token-efficient default
+
+Most of a run's token cost is **fixed overhead paid once per invocation**: the Planner pass, the
+acceptance board (mandatory PE+PO core + any scaled specialists), the CI poll loop, and worktree setup.
+That overhead barely grows with diff size, so shipping several **small, cohesive** issues in one run
+is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole
+board N times. **So bundling cohesive issues is the recommended default** (`BUNDLE=recommend`, see
+Config): given a single small ticket, Stage 0 looks for cohesive siblings and proposes a bundle before
+building. Bundling is right only when the issues are *cohesive and cheap* — it is wrong when combining
+them would muddy the review or let one failure sink the rest, so the Stage 0 **cohesion test** is the
+gate. Never bundle merely to save tokens; bundle when the tickets genuinely belong in one PR.
+
+## Model selection — dynamic, never baked
+
+Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have
+different access, so the right model is chosen **at spawn, by task complexity, from what is available** —
+not written into any crew file:
+- **Mechanical work** (Builders, the SDET's test/validation runs, straightforward Fixers) → the
+  cheapest capable model, low reasoning effort.
+- **Hard judgment** (the Planner, `architect`, `principal-engineer`, `security-engineer`, and the `product-manager`
+  acceptance call) → the top model available, higher effort.
+- **Unsure** → inherit the session model; never guess a model name.
+
+The role sets the **baseline** tier above; then **scale it by the work unit's complexity** (the
+Planner's signal): a `complex` unit bumps the model to the top tier and the effort
+up; a `trivial` unit drops toward the cheapest model and lowest effort; `standard` holds the baseline —
+so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.
+
+Use the harness's own per-spawn mechanism where it exists (e.g. a `model` argument on the spawn) to pick
+the tier-appropriate model; where the harness offers no per-spawn override, **inherit** — never emit a
+hardcoded model. **Effort** can only be adjusted per spawn on the harnesses that expose it (Codex,
+Cursor); on the others the role's static effort (from its crew file, #204) stands. Spend the top model where it changes the outcome, not on mechanical turns.
+
+---
+
+## Config (defaults — override only if the repo clearly needs it)
+
+- `BASE_BRANCH` = the repo's default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
+  When runtime guidance includes **`epic-base=<branch>`** from a `/ship-epic` delegation, set
+  `BASE_BRANCH` to that branch instead — unit PRs and the worktree target the epic integration line,
+  not the repo default.
+- `MERGE_STRATEGY` = `--squash --delete-branch`
+- `MERGE_MODE` = `manual` — `manual`: stop after the acceptance board with a green, reviewed PR
+  open for a human to merge. `auto`: squash-merge automatically once every gate passes. Start with
+  `manual`; opt into `auto` only in a repo where unattended merges to the base branch are acceptable.
+  **`/ship-epic` delegations pass `MERGE_MODE=auto`** so units merge into **`BASE_BRANCH`** (the epic
+  integration branch when `epic-base` is set) without captain action; standalone `/ship-issue` keeps this
+  default. Stage 8 `auto` always merges into **`BASE_BRANCH`**
+  (the epic branch when `epic-base` is set, otherwise the repo default). If Stage 0 set
+  `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
+  of the configured default — a security-sensitive change must not auto-merge past the `/harden`
+  recommendation.
+- `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
+- `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
+  leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, **proposes** a bundle, and
+  **always asks before widening the run** — a recommended bundle never proceeds without the user's
+  explicit ok. `off`: ship exactly the issues passed, never suggest more. There is **no silent
+  auto-bundle**: bundling from a recommendation (a single ticket, or a `next` pick) always requires
+  consent. An explicitly-passed multi-issue invocation (`/ship-issue 1 2 3`) is already that consent — it
+  proceeds as a bundle (with the cohesion warning if it is a poor fit).
+- `WORKTREE_LAYOUT` = `nested` (default) — isolated checkouts live under `<repo>/.shipmates/worktrees/`.
+  Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…` next to
+  the repo).
+- `WORKTREE_DIR` — resolve before Stage 1 from `<repo>` basename + slug (re-runs reuse the same path):
+  - **nested, single issue:** `<repo>/.shipmates/worktrees/issue-<first-issue>`
+  - **nested, bundle:** `<repo>/.shipmates/worktrees/bundle-<first-issue>-<short-slug>`
+  - **sibling, single:** `../<repo>--issue-<first-issue>`
+  - **sibling, bundle:** `../<repo>--bundle-<first-issue>-<short-slug>`
+- `BRANCH` = `feat/issue-<first-issue>-<short-slug>` (single) or `feat/bundle-<first-issue>-<short-slug>` (multiple)
+- **Quality bar** = whatever the repo's `README` / `CLAUDE.md` / contributing docs state. Read it at
+  the start and pass it to every reviewer — the `product-manager` (and the visual specialists)
+  enforce THAT bar, not just "it runs."
+- **`VERSION_FILES`** = wherever the repo records its published version (`Cargo.toml`, `package.json`,
+  `pyproject.toml`, `VERSION`, etc.) — discover from README / CONTRIBUTING / CLAUDE.md;
+  same discovery rules as `/release`. Only used when `IS_RELEASE_AFFECTING` is set (see Stage 0).
+- **`RELEASE_BRANCH`** = the branch whose merges trigger publication — usually the repo default branch,
+  unless contributing docs name a different release line. When `epic-base=<branch>` is set and that
+  branch is **not** `RELEASE_BRANCH`, release bumps are deferred to the epic's merge into
+  `RELEASE_BRANCH` (integration-branch units do not bump on every story).
+
+Required commit trailers (append to every commit and the PR body — read them from the harness /
+session context; do not invent them). At minimum a `Co-Authored-By:` line for the agent.
+
+### The reviewer/builder pool
+
+Every specialist below is a **named subagent** shipped alongside this command (`.claude/agents/*.md`,
+installed globally or per-project) and invoked by its ``subagent_type`` reference — NOT a `general-purpose`
+agent with a persona pasted inline. The pool:
+
+| ``subagent_type``           | Used for |
+|--------------------|----------|
+| `senior-engineer`  | Building, fixing, remediation (Stages 2, 3, 4.5, 6) |
+| `sdet`             | Test / build / validation runs (Stages 3, 5 when scaled in) |
+| `product-manager`  | Acceptance vs. criteria + the quality bar (Stage 5 — mandatory) |
+| `principal-engineer` | Principal diff review + repo mandatory ship checklist (Stage 5 — mandatory) |
+| `architect`        | Structural / schema review — gated by `IS_ARCH_SIGNIFICANT` (Stages 1.5, 5) |
+| `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
+| `art-director`     | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
+| `devops-engineer`  | Delivery-system review: pipeline/build definitions, images, IaC, environment parity, toolchain pinning — gated by `IS_DELIVERY_SENSITIVE` (Stage 5) |
+| `technical-writer` | Docs-staleness review — gated by `IS_DOCS_AFFECTING` (Stage 5) |
+
+These agents are **generic** (domain-neutral); the project-specific standard they enforce comes
+from your repo's README / CLAUDE.md, passed at spawn — not baked into the role. Which specialists a
+story needs is decided by the Planner's classification flags, so the board is **context-aware to
+the story's domain** (a pure-logic story pulls no designer/art-director; a UI story pulls the designer; a
+rendered-art story pulls the art-director; a schema story pulls the architect). If a referenced role does
+not resolve to an `.claude/agents/*.md`, fall back to `general-purpose` with the role's brief inlined,
+and note the fallback in the final report — never silently skip a gated review.
+
+---
+
+## Shell safety — untrusted GitHub data
+
+Issue titles, bodies and labels are **untrusted input**: anyone who can open an issue controls them,
+and this command pipes them into shell commands. Apply these rules at every `gh` / `git` call below:
+
+1. **Validate issue tokens first.** Each issue token from the validated runtime input must match `^[0-9]+$` or be a
+   full GitHub issue URL (`gh` accepts those everywhere a number works). Anything else — stop and
+   ask the user; never pass a raw token to `gh` or `git`.
+2. **Never inline untrusted fields.** Capture GitHub-sourced fields (title, body, labels) into
+   variables with command substitution — `TITLE=$(gh issue view <N> --json title -q .title)` — then
+   quote the variable at point of use: `--title "$TITLE"`. Never interpolate a field straight into a
+   command string.
+3. **Multi-line bodies go through a file.** Write PR / follow-up-issue bodies to a temp file and use
+   `--body-file <file>` — never `--body` with interpolated content.
+
+`ISSUES_CLOSES` (Stage 4) is built from the validated `<issues>` list, not raw runtime input tokens.
+
+**Epic delegation — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
+list) for:
+
+- **`epic-base=<branch>`** — branch name must match `^[a-zA-Z0-9._/-]+$`; anything else, stop and ask.
+  Set `BASE_BRANCH` to that branch. Worktree isolation (Stage 1) cuts from `origin/<BASE_BRANCH>`.
+- **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Still overridden to
+  `manual` when `IS_SECURITY_SENSITIVE` is set at classification time.
+- **`epic-run`** — with `epic-base`, do not widen the bundle or scan the backlog (see Stage 0 step 3).
+- **`epic-id=<n>`** — parent epic issue number when delegated from `/ship-epic`; required with `epic-run`
+  so Stage 8 / final report can emit the **Epic unit record** for the orchestrator's progress log.
+- **`worktree-root=sibling`** — set `WORKTREE_LAYOUT=sibling` (legacy `../<repo>--…` paths; skips nested
+  gitignore append).
+- **`sync-base`** — on resume when `BASE_REF` may have advanced (typical for `/ship-epic` units after
+  another unit merged); Stage 1 step 4 applies with `BASE_REF=origin/<BASE_BRANCH>`.
+
+## Stage 0 — Intake & plan  (agent: `planner`)
+
+**Selection mode — `next`.** If the leading token is `next` (in place of issue numbers), first pick the
+work from the backlog, then continue with the numbered steps below on the chosen `<issues>`:
+
+**Epic scope — `next epic <n>`.** When the token after `next` is `epic` and the next token is a valid
+issue number, set `<epic-scope>` to that number and restrict the candidate pool to the epic's
+**unchecked** checklist lines (`- [ ] #<story>` in the epic body). Still map `blocked by` /
+`Blocked by #N` and **never pick a story whose dependencies are unmet**. Do **not** scan the
+whole backlog. Force `BUNDLE=off` for this run — epic-scoped selection ships one story only. Skip
+the cohesion bundle widening in step 2.5.
+
+**Backlog-wide — `next` alone.** When `<epic-scope>` is unset:
+- Read open issues (`gh issue list --state open --json number,title,labels`), map dependencies (epic
+  checklists, `Part of #N`, `blocked by`) and **never pick a ticket with an unmet dependency**; rank by
+  priority / value / blast-radius / staleness.
+- Take the top ticket, then run the **cohesion test** (step 2.5) against its open siblings to judge
+  whether a cohesive bundle is the better unit.
+- **Single ticket** → set `<issues>` to it and proceed — just ship it.
+- **Bundle** → present the candidates and the token rationale and **ask the user to confirm before
+  proceeding**; set `<issues>` to only what they ok (they may take just the lead). A `next` bundle never
+  proceeds without explicit consent — if declined or the run is non-interactive, ship the single lead.
+
+1. Validate, then resolve: each issue token must match `^[0-9]+$` or be a full GitHub issue URL —
+   anything else, **stop and ask the user** (see **Shell safety** above). For each validated `<N>`,
+   run `gh issue view <N> --json number,title,body,labels,url`. Resolve story-number mappings if
+   needed. Let `<issues>` = the validated, resolved list — later stages take issue numbers only from
+   this list, never from raw input tokens.
+2. `<first-issue>` = the first number in `<issues>` — it names the worktree and branch, so a re-run
+   with the same leading issue resolves to the same identifiers.
+2.5. **Bundle evaluation** (per `BUNDLE`, before planning). Bundling amortizes the fixed per-run cost
+   (Planner + acceptance board + CI poll + worktree) across several tickets, so a combined run of
+   cohesive small issues is much cheaper than one run each. Apply the **cohesion test** — two issues
+   belong in one bundle only when ALL hold:
+   - **same area** — shared labels or overlapping paths — with **non-overlapping file ownership** (so
+     builders still parallelize without collisions);
+   - **each small and low-risk** — never fold an `IS_ARCH_SIGNIFICANT` or `IS_SECURITY_SENSITIVE`
+     change in with unrelated work; it needs its own review and its own merge story;
+   - **independent** — neither needs the other merged first;
+   - **still one reviewable PR** — the combined diff reads cleanly as a single change (cap a bundle at
+     ~4 issues / a diff a human would still review in one sitting).
+
+   Then act by `BUNDLE`:
+   - **multi-issue input** — already an explicit bundle (the user named the issues): run the cohesion
+     test and, if it fails, **warn** (don't block), naming what makes them a poor bundle, then proceed.
+   - **single issue or `next`, `BUNDLE=recommend`** (default) — if the lead issue is small/low-risk, run
+     ONE cheap `gh issue list --state open --label <its-labels> --json number,title,labels` for cohesive
+     candidates. If any pass the test, **recommend the bundle and ask** — list the candidates and the
+     token rationale — folding in only what the user oks. **A recommended bundle never proceeds without
+     consent**; if the user declines (or the run is non-interactive), ship the single lead ticket.
+   - **`BUNDLE=off`** — ship exactly the issues passed.
+
+   **Parallel release-affecting PRs:** when several open stories each touch `VERSION_FILES`, payload
+   digests, or install-count fixtures, warn that merging them in parallel to `RELEASE_BRANCH` often
+   conflicts — prefer bundling cohesive release-affecting work in one `/ship-issue` run or merging
+   serially.
+
+   Add any accepted issues to `<issues>` (re-sort so `<first-issue>` is unchanged). Whatever the
+   bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
+   can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
+3. Spawn ONE **Planner** (`subagent_type: Plan`). Give it all issue bodies + repo README +
+   CLAUDE.md. When runtime guidance includes **`epic-plan`** from a `/ship-epic`
+   delegation, treat that classification and unit grouping as the **starting plan** — amend only where
+   an issue body contradicts it; do not re-derive the epic shape from scratch. When guidance includes
+   **`epic-run`**, do not scan the wider backlog or propose bundle widening beyond the passed issue
+   numbers. When guidance includes **`epic-base=<branch>`**, the worktree and PR target that branch —
+   do not reset `BASE_BRANCH` to the repo default. When guidance includes **`MERGE_MODE=auto`**, Stage 8
+   merges into `BASE_BRANCH` after green CI and board pass. When guidance includes
+   **`complexity tier: simple`** or **`medium`**, honour the command preamble's tiered execution path for this run. Ask it to return, as structured data:
+   - a **build plan** broken into independent work units with **non-overlapping file ownership**
+     (so builders can run in parallel without collisions),
+   - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
+     project's **Definition of Done** where it states one (tests, docs/changelog, non-functional bars),
+   - a **test/validation plan** (the commands the SDET should run: unit tests, lint, type-check,
+     build/compile/import — whatever this repo uses),
+   - a list of files expected to change,
+   - a **complexity signal per work unit** — `trivial`, `standard`, or `complex` — from its size,
+     unfamiliarity, algorithmic depth and blast radius; the orchestrator scales model/effort by it at
+     spawn (see **Model selection**),
+   - **domain classification flags** that decide which specialists the board pulls (set each
+     independently — a story can trip more than one):
+     - `IS_UI_STORY = yes/no` — does it create/modify on-screen UI (screens, HUD, panels, overlays,
+       menus, components, styling)? Gates `ux-ui-designer`.
+     - `IS_VISUAL_STORY = yes/no` — gate the `art-director` on the PROJECT'S DOMAIN, not merely on whether
+       a story touches pixels. Set it only when the project's actual deliverable is rendered visual
+       *art* — a game's world/sprites/shaders, illustration/brand/motion assets, generative imagery —
+       and this story touches it. A conventional app (finance, media, SaaS, dev-tooling) whose only
+       visual surface is its interface is a **UI** story (`ux-ui-designer`), NOT an art story: the
+       art-director reviews pictures judged *as art*, not application chrome. Most projects never set this —
+       when in doubt, prefer `IS_UI_STORY` and leave the art-director out.
+     - `IS_ARCH_SIGNIFICANT = yes/no` — does it add a new subsystem, change a persisted data/schema
+       format, or cross-cut many modules in a way a narrow code review would miss? Gates `architect`.
+     - `IS_SECURITY_SENSITIVE = yes/no` — does it touch authn/authz, untrusted input, secrets, crypto,
+       file/network/OS access, or dependencies? Does **not** gate a reviewer seat — security review
+       lives in `/harden`, which this command doesn't run. It gates two things instead: the final
+       report must carry the `/harden` recommendation (mechanical, not a judgment call made while
+       writing the summary), and it forces `MERGE_MODE=manual` for this run (see Config).
+     - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
+       or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
+       infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
+     - `IS_DOCS_AFFECTING = yes/no` — does the change touch documented behaviour, flags, commands,
+       config, or public API/CLI surface that user- or agent-facing docs describe? Gates
+       `technical-writer`.
+     - `IS_RELEASE_AFFECTING = yes/no` — will this PR's merge to **`RELEASE_BRANCH`** require a new
+       published version for users to receive the change (new/changed commands, tools, crew roles,
+       install payload, CLI/API behaviour, or other release-artifact surface)? Internal refactors,
+       test-only changes, and work that does not change what installs or publishes → `no`. When
+       `epic-base=<branch>` targets an integration branch that is not `RELEASE_BRANCH`, force `no`
+       — the epic's landing PR on `RELEASE_BRANCH` owns the bump. When `yes`, also return
+       **`RELEASE_BUMP`**: one of `patch`, `minor`, or `major` (SemVer unless the repo says otherwise) and
+       the list of `VERSION_FILES` + changelog path to update. Does **not** gate an extra reviewer
+       seat — `principal-engineer` and `technical-writer` (when gated) verify the bump landed.
+   This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
+   must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
+   `/harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
+   the branch and can just run `/harden` itself. `/pr-review` keeps the same flag wired to a
+   `security-engineer` seat, because it reviews a PR the crew didn't author, where `/harden` isn't
+   available — you don't own that branch.
+4. If the plan reveals any issue is too big/ambiguous to finish autonomously, stop and tell the user
+   what's blocking — otherwise continue.
+
+## Stage 1.5 — Design specs  (specialist agents — each only if its flag is set)
+
+BEFORE any Builder runs, spawn whichever apply, **in parallel** (a story can need more than one).
+Each writes NO code — it returns a spec document, fed verbatim to every Stage 2 Builder whose files
+its work governs. Skip this stage entirely when none of the flags are set.
+
+- **`ux-ui-designer`** (only if `IS_UI_STORY`) — a UI design spec: wireframes, a shared-token/theme
+  plan, responsive container layout (no hardcoded positions), focus order + interaction states, and
+  accessibility/contrast, consistent with the project's design system.
+- **`art-director`** (only if `IS_VISUAL_STORY`) — a concrete, numeric art direction (palette values,
+  dimensions, light angle/ratio — whatever the medium needs) held to the project's visual bar, so a
+  Builder implements what's meant, not a guess.
+- **`architect`** (only if `IS_ARCH_SIGNIFICANT`) — the structural approach: module boundaries and
+  ownership, and the schema/versioning/migration strategy if persisted data changes.
+
+## Stage 1 — Isolate  (orchestrator, deterministic — no agent)
+
+1. **Resolve `<WORKTREE_DIR>`** from Config (`WORKTREE_LAYOUT` + single vs bundle). Parse
+   **`worktree-root=sibling`** from runtime guidance before resolving.
+2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — from `<repo>`, idempotently ensure
+   `.shipmates/worktrees/` is ignored. If `.gitignore` exists, append only when no line already ignores
+   `.shipmates/worktrees/` as a path prefix. If `.gitignore` is missing, create it with the comment
+   `# Shipmates isolated command worktrees (auto-managed)` and the entry `.shipmates/worktrees/`.
+   Never rewrite unrelated ignore rules.
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required
+   before any worktree create or resume work; **stop with a clear error if fetch fails**. A **new**
+   branch cut from `BASE_REF` via `worktree add` **is** the pull-latest mechanism — no separate
+   `git pull` in a fresh worktree.
+4. **Resume / reuse** — when `<WORKTREE_DIR>` and `<BRANCH>` already exist, re-run fetch, then if the
+   branch is behind `BASE_REF`, rebase onto `BASE_REF` inside the worktree (merge `BASE_REF` instead
+   when the repo's contributing docs prefer merge). Sync conflicts count toward `MAX_FIX_ROUNDS`; stop
+   and report if sync cannot complete cleanly.
+5. **Create the worktree** (when branch/worktree do not yet exist):
+
+```bash
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
+git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
+```
+
+All build/fix work happens **inside `<WORKTREE_DIR>`** so the base branch and the user's checkout
+stay clean. Pass the absolute worktree path to every agent.
+
+Immediately after creating the worktree, install selected harness payload there:
+
+```bash
+shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
+```
+
+## Stage 2 — Build  (agents: `senior-engineer` × N, parallel)
+
+- Spawn one **Builder** (`subagent_type: senior-engineer`) per independent work unit from the plan,
+  **in a single message** so they run concurrently. Each Builder is told: its exact file ownership,
+  the acceptance criteria it must satisfy, the worktree path, to follow CLAUDE.md
+  for project style/conventions, to inspect `git log` and `git blame` on the files it touches for context,
+  any Stage 1.5 spec that governs its files, and to match existing code style/idioms.
+- Builders write code only — they do **not** commit, push, or open PRs (the orchestrator owns git).
+- After they report done, **verify the files on disk yourself** (Read/Grep). Never trust a "done"
+  report blindly.
+
+For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUNDS`.
+
+## Stage 2.5 — Release version bump  (same PR — orchestrator or builder; only if `IS_RELEASE_AFFECTING`)
+
+When the Planner set **`IS_RELEASE_AFFECTING = yes`**, the version bump and changelog entry for **this
+PR's changes** are part of the delivery — **in this PR, before Stage 4** — never a follow-up PR and
+never deferred to `/release` or captain memory.
+
+1. Read current version from every discovered **`VERSION_FILES`** entry; derive the next version from
+   **`RELEASE_BUMP`** (breaking/API removals → `major`; new user-visible capability → `minor` or
+   `patch` per repo convention; default `patch` when unsure).
+2. Update every `VERSION_FILES` entry consistently (and lockfiles the repo pins to that version, if
+   any). Add a changelog / release-notes entry covering **only what this PR ships** — use the repo's
+   changelog format (Keep a Changelog, `CHANGELOG.md`, GitHub release notes stub, etc.); spawn
+   `technical-writer` when the format is non-trivial.
+3. Include `VERSION_FILES` + changelog paths in the build plan's file ownership (orchestrator-owned is
+   fine — they must not collide with feature builders).
+4. **Blocking gate:** if `IS_RELEASE_AFFECTING=yes` and the diff reaching Stage 3 lacks a version
+   bump or changelog entry, treat it as a failed self-check — fix before opening the PR. Merging
+   user-visible work without bumping the version the release pipeline reads is a process defect, not
+   an optional polish step.
+
+`/release` remains for **batch** release ceremony (everything since the last tag, SRE pre-flight,
+tag/publish opt-in) — it does not replace per-PR bumps when a single story ships release-affecting
+work straight to `RELEASE_BRANCH`.
+
+## Stage 3 — Self-check before PR  (agent: `sdet`)
+
+- Spawn the **SDET** (`subagent_type: sdet`) to run the test/validation plan against the worktree (running
+  `--help` on unfamiliar test runners/tools to discover flags if needed):
+  unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step
+  (whatever this repo uses: e.g. `npm test && npm run build`, `cargo test`, `pytest -q`,
+  `go build ./...`, `make check`). If the toolchain is absent, it does a rigorous **static** pass
+  and says so explicitly in the PR.
+- When the diff touches `toolbox/`, `TOOLS` in `tools/gen_command_pages.py`, `build.rs`, `src/catalog.rs`,
+  or other install/embed paths, also run **`cargo run -- install --harness codex --dir <tmpdir> --with-tools none`**
+  from the worktree (add `--with-tools all` or specific tools when the story adds/changes tools). A green
+  `cargo test` alone does not catch dev-loop install failures (e.g. non-UTF-8 files under `toolbox/`).
+- When the diff touches `toolbox/` or `TOOLS` in `tools/gen_command_pages.py`, also run the
+  contributor checklists in the installed steering file (`.claude/rules/shipmates-contributor.md`,
+  `.cursor/rules/shipmates-contributor.mdc`, `.github/instructions/shipmates.instructions.md`, or
+  `.shipmates/contributor-steering.md` on harnesses without a documented rules path):
+  terminal tools need an **Examples** termgif gallery like `scrub` / `fixtures`; the homepage `#tools`
+  grid must list every `TOOLS` entry in canonical order.
+- When **`IS_RELEASE_AFFECTING=yes`**, confirm every `VERSION_FILES` entry matches the planned next
+  version and a changelog entry for this PR exists — flag missing bumps as **blocking**.
+- If self-check fails, loop a **Fixer** (`subagent_type: senior-engineer`) until green (counts
+  toward `MAX_FIX_ROUNDS`). Only open a PR once self-check passes — never open a known-red PR.
+
+## Stage 4 — Commit, push, open PR  (orchestrator)
+
+```bash
+git -C <WORKTREE_DIR> add -A
+# <summary> derives from the issue title — untrusted. Capture once into a variable, quote at point
+# of use; never inline it.
+TITLE="<type>: <summary> (#<first-issue>)"
+git -C <WORKTREE_DIR> commit -m "$TITLE"   # + required trailers
+git -C <WORKTREE_DIR> push -u origin <BRANCH>
+# ISSUES_CLOSES comes from the validated <issues> list, not raw runtime input.
+# separator substitution first: "Closes #" contains a space, so prefixing first would rewrite it too
+ISSUES_CLOSES=$(echo "<issues>" | sed 's/ / · Closes #/g; s/^/Closes #/')
+# the body carries untrusted issue text — write it to a temp file, never pass it inline
+BODY_FILE=$(mktemp)
+# ... write summary, acceptance checklist, validation, ${ISSUES_CLOSES}, trailers to "$BODY_FILE" ...
+gh pr create --base <BASE_BRANCH> --head <BRANCH> \
+  --title "$TITLE" \
+  --body-file "$BODY_FILE"
+```
+The PR body must include: summary, the acceptance criteria as a checklist, how it was validated
+(and any validation that could NOT be run locally), and a `Closes #<issue>` keyword repeated for
+every issue in `<issues>` — GitHub only auto-closes the ones it's told individually, so a single
+comma-separated `Closes #1, #2, #3` silently leaves all but the first open.
+
+## Stage 4.5 — CI gate: wait for green, fix if red  (orchestrator + Fixer)  ⛔ HARD GATE
+
+**When there is no local toolchain to fully validate, CI is the ONLY real runtime gate — the Stage 3
+SDET pass is static and WILL miss things (parse errors, lint-as-error, dependency/version drift). You
+MUST confirm CI is green on the pushed head before the acceptance board runs. Never assume a push is
+green.** (If the repo has no CI, say so and treat the SDET pass as the gate, explicitly noting the
+reduced assurance.)
+
+**Epic runs (`/ship-epic` delegation):** red CI — including checks already red on the base branch —
+is remediated **here** on this unit's branch. Do **not** return to the epic orchestrator to pause;
+exhaust `MAX_FIX_ROUNDS` first, then escalate from `/ship-issue` so the epic can pause with cause.
+
+1. **Wait for the checks to finish** on the PR head (poll, don't guess):
+   ```bash
+   until s=$(gh pr checks <PR#> 2>&1 | head -1); st=$(echo "$s" | cut -f2); \
+     [ "$st" != "pending" ]; do sleep 15; done; echo "$s"
+   ```
+   (Long-running: launch as a background command / until-loop so you're notified on completion — do
+   not chain foreground sleeps.)
+2. **If any check FAILS**, pull the actual failure log — do not speculate:
+   ```bash
+   gh run view <run-id> --log-failed | grep -iE "FAIL|error|Parse|::error" | head -60
+   ```
+   Diagnose the real cause from the log. Before pushing a fix, **grep the whole changeset for sibling
+   instances of the same failure class** so you fix them all in one round instead of burning several.
+3. **Dispatch a Fixer** (`subagent_type: senior-engineer`; or fix directly if it's a trivial,
+   unambiguous one-liner you've root-caused from the log) in the worktree, commit with the required
+   trailers, push to the same branch. This counts toward `MAX_FIX_ROUNDS`.
+4. **Re-poll CI** (back to step 1) on the new head. Repeat until green or `MAX_FIX_ROUNDS` is
+   exhausted — if still red after that, **stop and escalate to the user** with the failure log; do
+   not proceed to acceptance on a red PR.
+5. Only once **CI is green** do you proceed to Stage 5. Carry the confirmed-green run link into the
+   final report.
+
+## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
+
+Spawn reviewers **in parallel** against the PR head commit — they review exactly what will merge.
+
+**Mandatory seats (never skip)**
+
+- **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / CLAUDE.md / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
+- **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
+
+Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** once a PR head exists.
+
+**Scaled optional seats**
+
+Convene only when the change can plausibly trip the concern. A gated-out seat is **named in the report with its flag or reason** — never silently skipped.
+
+| Seat | Join when |
+|------|-----------|
+| `sdet` | Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran. |
+| `architect` | `IS_ARCH_SIGNIFICANT` |
+| `devops-engineer` | `IS_DELIVERY_SENSITIVE` |
+| `technical-writer` | `IS_DOCS_AFFECTING` — doc copy/staleness (PE covers process compliance; both may run) |
+| `ux-ui-designer` | `IS_UI_STORY` |
+| `art-director` | `IS_VISUAL_STORY` |
+| `security-engineer` | `/pr-review` only when `IS_SECURITY_SENSITIVE` |
+| `performance-engineer` | `/pr-review` when the PR claims a perf win or touches a hot path; `/refactor` when the stated motivation was performance |
+| `site-reliability-engineer` | `/pr-review` when runtime behaviour, failure handling, or rollout changes |
+| `data-scientist` | `/pr-review` when the deliverable is an analysis or model |
+
+The `IS_*` flag vocabulary is shared by `/ship-issue` Stage 0 and `/pr-review` Stage 0 — a new flag must be added to both classifiers.
+
+**Decision**
+
+- **All spawned reviewers ACCEPT/PASS (nits allowed)** → proceed to deliver / the command's next stage.
+- **Any REJECT / FAIL** → remediation loop (where the command defines one), then re-convene the board on the new head.
+
+**Harness fallback**
+
+If `principal-engineer` or any role does not resolve to an `.claude/agents/*.md` file (skill-only harnesses until crew agents ship), fall back to `general-purpose` with the role brief inlined and note the fallback — never silently skip a mandatory seat.
+
+Use the Stage 0 classification flags to decide which **scaled optional seats** join the mandatory
+PE+PO core. Pass each reviewer the acceptance criteria, quality bar, and (for visual roles) any
+Stage 1.5 spec.
+
+Decision:
+- **All spawned reviewers ACCEPT/PASS (nits allowed)** → go to Stage 7.
+- **Any REJECT / FAIL** → Stage 6.
+
+## Stage 6 — Remediation loop  (agent: `senior-engineer` as Fixer)
+
+- Spawn a **Fixer** (`subagent_type: senior-engineer`) to address every blocking item (REJECT reasons
+  from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then **re-run Stage 5**
+  on the new head.
+- Repeat up to `MAX_FIX_ROUNDS`. If still not green after that, **stop and escalate to the user** with
+  the outstanding blockers — do not merge a failing PR.
+
+## Stage 7 — Follow-up issues  (orchestrator)
+
+- Take every **non-blocking nit** (from any "WITH-NITS" verdict and low-severity SDET findings) and
+  file each as its own GitHub issue: capture title and body into quoted variables / a body file per
+  **Shell safety** above (titles may quote text from the source issues — untrusted), then
+  `gh issue create --title "$ISSUE_TITLE" --body-file "$ISSUE_BODY_FILE"` with a `priority:low` /
+  `tech-debt` label (create the label if missing), a clear title, context, and a link back to this PR.
+- Do NOT let nits block delivery; they become tracked follow-ups.
+
+## Stage 8 — Deliver  (orchestrator)
+
+- **If `MERGE_MODE=manual`** (default): stop here. Post a completion comment on the PR (what shipped,
+  how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge into
+  **`BASE_BRANCH`**. Leave
+  the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
+  the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
+  so name every issue the PR will close in the completion comment. **Tick the epic checklist** when
+  any shipped story belongs to an epic: for each issue in `<issues>`, if its body contains
+  `Part of #<epic>`, edit the epic body — replace `- [ ] #<story>` with `- [x] #<story>` for that
+  story (via `--body-file`; see **Shell safety**). This keeps `/ship-epic` and manual `/ship-issue next
+  epic` runs consistent without requiring `MERGE_MODE=auto`.
+- **If `MERGE_MODE=auto`**: immediately before merging into **`BASE_BRANCH`**, capture current PR head and bind merge to it:
+  `HEAD_SHA=$(gh pr view <PR#> --json headRefOid -q .headRefOid)` followed by
+  `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch --match-head-commit "$HEAD_SHA")`, then confirm all issues
+  auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
+  epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
+  and post the completion comment. When runtime guidance includes **`epic-run`** and **`epic-id=<epic>`**,
+  the completion comment must also carry a one-line **delivered** summary and **reviews** line (PO/PE/scaled
+  verdicts from Stage 5) so the parent epic progress log stays current if the unit merged manually.
+
+## Final report to the user
+
+One concise summary: PR link (and merge state), commit(s), the absolute **worktree path**
+(`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), fetch outcome, and whether a resume
+sync/rebase ran, which specialists reviewed it and their
+verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
+anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
+Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now. When
+**`IS_RELEASE_AFFECTING=yes`**, state the **new version** and that merge to **`RELEASE_BRANCH`**
+will publish it (or name the repo's publish step if manual) — never imply the feature is released
+without the version bump that landed in the PR.
+
+**Epic unit record** — when runtime guidance includes **`epic-run`** and **`epic-id=<epic>`**, end the
+final report with this machine-readable block (orchestrator parses it into the epic progress log):
+
+```
+EPIC_UNIT_RECORD:
+EPIC_ID: <epic>
+STORIES: <space-separated issue numbers from <issues>>
+PR: <PR URL>
+MERGE: auto|manual
+HEAD: <merge commit SHA when auto; PR head SHA when manual>
+DELIVERED: <one plain sentence — what this unit shipped, no jargon>
+REVIEWS: <PO verdict>; <PE verdict>; <scaled seats with verdicts or "gated: role (reason)">
+CI: <green checks URL>
+FIX_ROUNDS: <n>
+```
+
+Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the epic issue, not this transcript.
+
+---
+
+### Guardrails
+- The orchestrator owns **all** git/gh actions; agents never push or merge.
+- Reviewers always evaluate the **pushed PR head**, so "accepted" == "what merges".
+- Never open or advance a red PR. Never skip the mandatory PE+PO board once a PR head exists. Never silently drop a nit — file it.
+- **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
+  4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
+  re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.
+- Keep the base branch and the user's working tree untouched throughout (all work in the worktree).
+  Default nested layout lives under `.shipmates/worktrees/` (gitignored); `worktree-root=sibling`
+  restores legacy `../<repo>--…` paths.
+- Respect `MERGE_MODE` — do not auto-merge unless it is explicitly set to `auto`.
+- If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan
+  requires), stop and surface it — autonomy does not mean forcing a bad merge.
+- **Secrets & security hygiene.** Never write secrets, tokens, or credentials into commits, PR/issue
+  bodies, or logs — assume the repo is public. The `sdet` flags secret leakage as a defect; a real
+  leak is blocking. Deeper security work is not this command's job — see the next bullet.
+- **Security review lives in `/harden`, not here.** This command does not threat-model. When
+  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/harden` recommendation and the
+  run stays on `MERGE_MODE=manual` (Stage 0, Config) — the flag is the trigger, not a judgment call
+  made while writing the summary.
+- **Release bump in the PR.** When `IS_RELEASE_AFFECTING=yes`, a missing version or changelog update
+  is **blocking** — same severity as a missing digest or unstaged generated page. Never tell the
+  captain to run `/release` or open a follow-up PR instead; that is how features merge without
+  publishing.
+- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
+  than erroring or duplicating work. Every stage should be safe to repeat.
+- Static review cannot verify pixels, and no reviewer can verify what it didn't examine. When neither
+  the `ux-ui-designer` (UI) nor the `art-director` (visual-art) could actually render and inspect the
+  result, surface their **"needs human visual pass"** flag in the final report rather than implying
+  the visuals are confirmed. The same holds for any Stage 5 reviewer that names a gap in what it
+  covered — carry it into the final report; never let an ACCEPT/PASS silently stand in for ground it
+  didn't see. Both visual roles are auto-gated by the Planner's `IS_UI_STORY` / `IS_VISUAL_STORY`
+  flags, as `architect` is by `IS_ARCH_SIGNIFICANT`.
+
+## Runtime input
+
+`$ARGUMENTS` contains the issue/story tokens and optional guidance. Parse the leading numeric run as
+issues, or use `next` for selection mode, exactly as described in Stage 0; all remaining text is guidance.

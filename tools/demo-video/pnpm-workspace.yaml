@@ -1,0 +1,5 @@
+# pnpm settings (pnpm 11 reads config here, not from package.json).
+# esbuild ships platform binaries via optionalDependencies; allow its
+# postinstall so `remotion render`/`still` bundle reliably.
+allowBuilds:
+  esbuild: true
