@@ -4,7 +4,7 @@ import { Caption } from '../components/Caption';
 import { Terminal } from '../components/Terminal';
 import { TypeOn } from '../components/TypeOn';
 import { BEAT1 } from '../data/beats';
-import { COLORS } from '../theme';
+import { COLORS, FONT_SIZES } from '../theme';
 
 /**
  * Beat 1 — Hook · 0:00–0:03 (docs/DEMO_VIDEO.md §2).
@@ -36,12 +36,12 @@ export const Beat1: React.FC = () => {
 
   return (
     <Terminal lines={[]}>
-      <div style={{ position: 'relative', fontSize: 48, lineHeight: 1.6 }}>
+      <div style={{ position: 'relative', fontSize: FONT_SIZES.hook, lineHeight: 1.6 }}>
         <div style={{ whiteSpace: 'pre' }}>
           <TypeOn
             text={BEAT1.hookLine}
             startFrame={typeStartFrame}
-            fontSize={48}
+            fontSize={FONT_SIZES.hook}
             showCaret={!stampVisible}
           />
         </div>
@@ -62,7 +62,7 @@ export const Beat1: React.FC = () => {
         <div
           style={{
             marginTop: 32,
-            fontSize: 56,
+            fontSize: FONT_SIZES.stamp,
             fontWeight: 700,
             color: COLORS.green,
             whiteSpace: 'pre',

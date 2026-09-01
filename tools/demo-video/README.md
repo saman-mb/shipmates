@@ -1,7 +1,7 @@
 # Shipmates demo video — Remotion scaffold (beats 1–4)
 
 Programmatic animation for the terminal beats of the 45s LinkedIn demo clip.
-Visual spec and storyboard: [`docs/DEMO_VIDEO.md`](../../../docs/DEMO_VIDEO.md)
+Visual spec and storyboard: [`docs/DEMO_VIDEO.md`](../../docs/DEMO_VIDEO.md)
 (§2 beats 1–4, §4 typography/palette).
 
 ## Compositions (1920×1080 @ 30 fps)

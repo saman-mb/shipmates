@@ -10,9 +10,10 @@
  * Exits nonzero on any violation.
  */
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import {
   effectiveGlyphHeight,
+  FEED_SCALE,
   FONT_SIZES,
   MIN_FEED_GLYPH_PX,
 } from '../src/theme';
@@ -41,10 +42,22 @@ if (failed) {
 }
 
 // Prove the feed-scale still actually renders (downloads Chrome Headless Shell
-// on first run — see README.md).
+// on first run — see README.md). The scale must equal theme FEED_SCALE; the
+// package.json literal is asserted so the two can never drift.
+const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as {
+  scripts: Record<string, string>;
+};
+const stillsScript = pkg.scripts.stills ?? '';
+const scaleLiteral = `--scale=${FEED_SCALE}`;
+if (!stillsScript.includes(scaleLiteral)) {
+  console.error(
+    `FAIL: package.json "stills" script must carry ${scaleLiteral} (drift from theme FEED_SCALE).`,
+  );
+  process.exit(1);
+}
 const OUT = 'out/beat3-feed.png';
 execSync(
-  'npx remotion still src/index.ts Beat3Phases out/beat3-feed.png --scale=0.5625',
+  `npx remotion still src/index.ts Beat3Phases out/beat3-feed.png ${scaleLiteral}`,
   { stdio: 'inherit' },
 );
 if (!existsSync(OUT)) {

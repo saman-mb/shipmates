@@ -61,6 +61,10 @@ export const FONT_SIZES = {
   caption: 48,
   /** Oversized gate results (beat 4). */
   gate: 72,
+  /** Beat-1 hook line (typed prose + strike-through). */
+  hook: 48,
+  /** Beat-1 command stamp (`/ship-issue 42`). */
+  stamp: 56,
 } as const;
 
 export type ContentFontSizeKey = keyof typeof FONT_SIZES;
