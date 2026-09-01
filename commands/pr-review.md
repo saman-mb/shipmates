@@ -85,8 +85,9 @@ This flag vocabulary is **shared with `/ship-issue`** — a new flag must be add
 `IS_SECURITY_SENSITIVE` is the deliberate exception: it stays wired to the `security-engineer`
 seat here, because this command reviews a PR the crew didn't author — you don't own the branch, so
 `/shipmates-harden` isn't an available remedy. `/ship-issue` keeps the same flag (it still gates the `/shipmates-harden`
-recommendation and forces a manual merge) but not the seat, since a crew-authored change can just
-run `/shipmates-harden` itself.
+recommendation, and forces a manual merge on **standalone** runs onto the default branch) but not the
+seat, since a crew-authored change can just run `/shipmates-harden` itself. Epic-delegated units
+(`epic-base`) do not force manual merge from this flag — the parent epic PR is the human gate.
 
 ## Stage 1 — CI state (read it, don't fix it)
 
