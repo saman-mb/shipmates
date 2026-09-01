@@ -65,6 +65,12 @@ or any AC that only the captain can flip with zero in-repo prep left) — stays 
 next-unit / crew-complete** loop. **Do not pause the epic** for owner-only work. Naming an external
 dependency is not a license to end the turn.
 
+**Not a pause — harness backgrounding.** A harness hint that child agents were backgrounded, or that
+you should **end the turn** so it can deliver their completion later (Cursor's Task tool says this
+when builders run in the background), is **not** a hard-limit row. The current `/ship-issue` unit is
+still in Stage 2. Stay in that unit until every builder returns (or fails), or **immediately
+re-delegate the same unit**. Ending the turn here is a silent stop.
+
 **Confirmed-green CI** is a per-unit requirement inside `/ship-issue` Stage 4.5; remediate there, not
 by stopping `/ship-epic` early. Pause is **not** a substitute for the Fixer loop.
 
@@ -464,7 +470,9 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
 - **Failure-aware** — never advance after `MAX_FIX_ROUNDS` exhaustion on a unit.
 - **No silent stops** — before ending a `/ship-epic` turn on a **pause**, name which hard-limit row
   fired. If none fired, you are **not allowed** to stop on a pause/resume handshake. Owner-only
-  remainder uses **crew-complete** (Stage 4) — a normal terminal report, not a pause.
+  remainder uses **crew-complete** (Stage 4) — a normal terminal report, not a pause. Harness
+  backgrounding / "end your turn for notifications" is **not** a pause — see **Not a pause —
+  harness backgrounding** above; keep or re-delegate the in-flight `/ship-issue` unit.
 - **Owner-only remainder is not a pause** — DNS, registrar, deploy-console attach, or any AC only the
   captain can satisfy with zero in-repo slice left: record residual, continue or crew-complete; never
   post `/ship-epic <epic> resume` for it.
