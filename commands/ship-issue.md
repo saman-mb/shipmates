@@ -348,6 +348,11 @@ shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 - Builders write code only — they do **not** commit, push, or open PRs (the orchestrator owns git).
 - After they report done, **verify the files on disk yourself** (Read/Grep). Never trust a "done"
   report blindly.
+- **Do not return while builders are in flight.** A harness that backgrounds subagent work and tells
+  you to end the turn for a completion notification (Cursor's Task tool does this) is **not** a
+  reason to stop, and it is **not** a `/ship-epic` hard-limit pause. Wait for every Stage 2 builder
+  to return or fail before you report to `/ship-epic` or the captain. If a builder vanishes without
+  a result, re-spawn it. Never end the turn solely because the harness asked you to.
 
 For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUNDS`.
 
