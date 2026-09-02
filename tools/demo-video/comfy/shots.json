@@ -1,0 +1,49 @@
+{
+  "presets": {
+    "768p-16x9": { "width": 1344, "height": 768, "note": "H3 official 768p. Matches the 1920x1080 export." },
+    "768p-1x1": { "width": 768, "height": 768, "note": "Square, for the 1080x1080 feed export." },
+    "480p-16x9": { "width": 864, "height": 480, "note": "Fast iteration only. Never final." }
+  },
+
+  "guardrail": "No text, no letters, no numbers, no symbols, no user interface, no windows, no icons, no logos, no watermarks, no captions, no subtitles, no signage. Every surface stays abstract and unreadable.\n\nAudio: silence.",
+
+  "defaults": {
+    "preset": "768p-16x9",
+    "duration_s": 5.0,
+    "steps": 20,
+    "turbo": false
+  },
+
+  "shots": [
+    {
+      "id": "hook-atmosphere",
+      "pipeline": "i2v",
+      "plate": "hook-atmosphere.png",
+      "seed": 8801,
+      "used_by": "Beat 1 hook underlay (docs/DEMO_VIDEO.md §2)",
+      "prompt": "Cinematic macro shot in a dark room before dawn. A monitor sits at a steep oblique angle, its screen a soft out-of-focus wash of deep blue-green light: pure bokeh, no shapes, no characters. Fine dust drifts slowly through the light. The camera pushes in a few centimetres, very slow, with faint handheld drift. Near-black background, a single green accent glow. Shallow depth of field, anamorphic, fine film grain. Mood: quiet, focused, unhurried."
+    },
+    {
+      "id": "hook-atmosphere-explore",
+      "pipeline": "t2v",
+      "seed": 8801,
+      "used_by": "Exploration only. UNCONTROLLED composition: never cut next to UI.",
+      "prompt": "Cinematic macro shot in a dark room before dawn. A monitor sits at a steep oblique angle, its screen a soft out-of-focus wash of deep blue-green light: pure bokeh, no shapes, no characters. Fine dust drifts slowly through the light. The camera pushes in a few centimetres, very slow, with faint handheld drift. Near-black background, a single green accent glow. Shallow depth of field, anamorphic, fine film grain. Mood: quiet, focused, unhurried."
+    },
+    {
+      "id": "epic-transition",
+      "pipeline": "i2v",
+      "plate": "epic-transition.png",
+      "seed": 8802,
+      "used_by": "Beat 4 to beat 5 hard-cut transition (docs/DEMO_VIDEO.md §2)",
+      "prompt": "Cinematic abstract transition. Dozens of small rectangular panels of soft green light drift and settle into a loose grid inside a pitch-black void, like harbour lights seen from far offshore. Slow parallax pull-back, panels at the edges falling gently out of focus. Near-black background, a single green accent. Anamorphic bokeh, fine film grain, no lens flare, no starburst."
+    },
+    {
+      "id": "epic-transition-explore",
+      "pipeline": "t2v",
+      "seed": 8802,
+      "used_by": "Exploration only. UNCONTROLLED composition: never cut next to UI.",
+      "prompt": "Cinematic abstract transition. Dozens of small rectangular panels of soft green light drift and settle into a loose grid inside a pitch-black void, like harbour lights seen from far offshore. Slow parallax pull-back, panels at the edges falling gently out of focus. Near-black background, a single green accent. Anamorphic bokeh, fine film grain, no lens flare, no starburst."
+    }
+  ]
+}
