@@ -117,13 +117,9 @@ pub fn apply_with_preserved_paths(
         }
         match fs::read(&path) {
             Ok(current) if current == want.as_bytes() => {
-                if !owned && !force {
-                    report.warnings.push(format!(
-                        "Warning: existing file left untouched (use --force to replace): {}",
-                        rel.display()
-                    ));
-                    continue;
-                }
+                // Already the desired bytes — claim ownership. Refusing to claim
+                // identical content used to shrink receipts on reinstall and left
+                // `shipmates update` with nothing to refresh.
                 managed.push(rel.clone());
                 report.skipped += 1;
             }

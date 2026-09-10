@@ -62,8 +62,8 @@ pub trait Adapter {
 #[allow(dead_code)]
 pub fn conformance_report() {}
 
-/// Resolve a target name to its adapter. Shared by `install`, `build`, `check`,
-/// `update` and `doctor`, so a new harness is wired into selection in one place.
+/// Resolve a target name to its adapter. Shared by `install`, `update`, `build`,
+/// `check` and `doctor`, so a new harness is wired into selection in one place.
 pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
     let adapter: Box<dyn Adapter> = match target {
         "opencode" => Box::new(opencode::OpencodeAdapter),

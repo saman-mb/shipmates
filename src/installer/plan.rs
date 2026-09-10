@@ -103,7 +103,8 @@ pub fn read_receipt(
 
 /// Return regular files under install roots not present in a receipt. The
 /// scan is bounded to roots recorded by the adapter and never enters receipt or
-/// backup state.
+/// backup state. Symlinks are skipped without following — harness homes often
+/// contain them (e.g. Claude Code's `debug/latest`) and must not abort install.
 pub fn unmanaged_files(
     target_dir: &Path,
     roots: &[String],
@@ -128,6 +129,19 @@ fn collect_unmanaged(
         return Ok(());
     };
     for entry in entries.flatten() {
+        let name = entry.file_name();
+        if name == ".shipmates" || name == ".shipmates-backup" {
+            continue;
+        }
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        // Never follow or resolve symlinks: a final-component symlink would
+        // trip `resolve_target_relative`, and a directory symlink could escape
+        // the target. Leave them untouched and unlisted.
+        if file_type.is_symlink() {
+            continue;
+        }
         let path = entry.path();
         let relative = path.strip_prefix(target_dir).map_err(|error| {
             anyhow::anyhow!(
@@ -136,13 +150,6 @@ fn collect_unmanaged(
             )
         })?;
         let path = manifest_db::resolve_target_relative(target_dir, relative)?;
-        let name = entry.file_name();
-        if name == ".shipmates" || name == ".shipmates-backup" {
-            continue;
-        }
-        let Ok(file_type) = entry.file_type() else {
-            continue;
-        };
         if file_type.is_dir() {
             collect_unmanaged(&path, target_dir, managed, result)?;
         } else if file_type.is_file() {
@@ -197,6 +204,7 @@ fn layout_for(files: &BTreeMap<PathBuf, String>) -> String {
 mod tests {
     use super::*;
     use crate::installer::manifest_db::ReceiptFile;
+    use std::collections::BTreeSet;
 
     #[test]
     fn receipt_rejects_traversal() {
@@ -211,5 +219,42 @@ mod tests {
             }],
         );
         assert!(receipt.is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unmanaged_scan_skips_symlinks_without_aborting() {
+        use std::os::unix::fs::symlink;
+        use tempfile::tempdir;
+
+        let target = tempdir().unwrap();
+        let debug = target.path().join(".claude/debug");
+        fs::create_dir_all(&debug).unwrap();
+        fs::write(debug.join("session.txt"), "log").unwrap();
+        fs::write(target.path().join(".claude/settings.json"), "{}").unwrap();
+        // Mirrors Claude Code's `~/.claude/debug/latest` pointer.
+        symlink(debug.join("session.txt"), debug.join("latest")).unwrap();
+
+        let unmanaged = unmanaged_files(
+            target.path(),
+            &[".claude".into()],
+            &BTreeSet::from([".claude/settings.json".into()]),
+        )
+        .expect("symlink in harness tree must not abort unmanaged scan");
+
+        let relatives: BTreeSet<_> = unmanaged
+            .iter()
+            .map(|path| {
+                path.strip_prefix(target.path())
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect();
+        assert_eq!(
+            relatives,
+            BTreeSet::from([".claude/debug/session.txt".into()])
+        );
+        assert!(debug.join("latest").symlink_metadata().unwrap().file_type().is_symlink());
     }
 }
