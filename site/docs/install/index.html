@@ -105,10 +105,14 @@
           <p class="section__lead">One command drops the crew and the thirteen commands into a harness&#x27;s own tree.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code
+          <pre class="order-code" tabindex="0"><code>shipmates install                            # interactive: pick harness(es); all tools
+shipmates install --harness claude-code
 shipmates install --harness opencode --local
-shipmates install --harness all --dir /path/to/project</code></pre>
-          <p>Installs into your global home directory by default. Use <code>--local</code> for the current directory, or <code>--dir /path/to/project</code> for a specific root. The crew and the thirteen commands land in the exact tree your harness reads, in its own native format — nothing is downloaded; the CLI compiles the payload from sources built into the binary. Full per-harness paths are in the <a href="#harness-paths">table below</a>.</p>
+shipmates install --harness all --dir /path/to/project
+shipmates update                             # refresh installed harnesses in place
+shipmates update --harness claude-code</code></pre>
+          <p>Installs into your global home directory by default. Use <code>--local</code> for the current directory, or <code>--dir /path/to/project</code> for a specific root. With no <code>--harness</code> in a terminal, the CLI asks which harness(es) to install; non-interactive runs default to <code>claude-code</code>. The crew and the thirteen commands land in the exact tree your harness reads, in its own native format — nothing is downloaded; the CLI compiles the payload from sources built into the binary. Full per-harness paths are in the <a href="#harness-paths">table below</a>.</p>
+          <p>After you upgrade the <code>shipmates</code> binary, run <code>shipmates update</code> to refresh an existing install. It overwrites payload files to match the new binary, keeps previously installed tools unless you pass <code>--with-tools</code>, and prints an upgrade summary.</p>
           <p>One thing to know up front: five harnesses take the full crew (<code>claude-code</code>, <code>opencode</code>, <code>antigravity</code>, <code>codex</code>, <code>github-copilot</code>). The two skill-only harnesses (<code>cursor</code>, <code>windsurf</code>) have no native subagent directory, so only the thirteen commands land — the workflows still run, just without the named specialists.</p>
         </div>
       </div>
@@ -169,20 +173,39 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
     <section class="section" id="flags" aria-labelledby="flags-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="flags-title">Flags</h2>
+          <h2 class="section__title" id="flags-title">CLI reference</h2>
+          <p class="section__lead">Every flag is also on <code>shipmates help &lt;command&gt;</code> with examples. Start with <code>shipmates --help</code>.</p>
+        </div>
+        <div class="order-prose">
+          <pre class="order-code" tabindex="0"><code>shipmates targets                 # harness names for --harness / --target
+shipmates install                 # first-time install (interactive in a terminal)
+shipmates update                  # refresh after upgrading the shipmates binary
+shipmates doctor [--fix]          # health check; --fix repairs drift
+shipmates uninstall               # remove a receipt-owned install
+shipmates build|check             # contributor digest / payload tooling</code></pre>
+          <p><strong>Where</strong> (shared by <code>install</code>, <code>update</code>, <code>uninstall</code>, <code>doctor</code>): omit for the global home directory; <code>--local</code> for the current directory; <code>--dir PATH</code> for an explicit root. The three are mutually exclusive.</p>
         </div>
         <div class="order-table" tabindex="0">
           <table>
-            <thead><tr><th scope="col">Flag</th><th scope="col">Default</th><th scope="col">Effect</th></tr></thead>
+            <thead><tr><th scope="col">Command</th><th scope="col">Flag</th><th scope="col">Default</th><th scope="col">Effect</th></tr></thead>
             <tbody>
-              <tr><td><code>--harness NAME</code></td><td><code>claude-code</code></td><td>Which harness tree to install into. Pass <code>all</code> to install into every harness.</td></tr>
-              <tr><td><code>--global</code></td><td>yes</td><td>Install into the global home directory.</td></tr>
-              <tr><td><code>--local</code></td><td>no</td><td>Install into the current directory.</td></tr>
-              <tr><td><code>--dir PATH</code></td><td>none</td><td>Install into an explicit target directory. Cannot be combined with <code>--global</code> or <code>--local</code>.</td></tr>
-              <tr><td><code>--with-tools NAMES</code></td><td>all bundled tools</td><td>Which agent-invoked tools to install: names (comma-separated), <code>all</code> (same as omitting the flag), or <code>none</code> for crew-only.</td></tr>
-              <tr><td><code>--no-migrate</code></td><td>no</td><td>Skip the layout-migrate and identity-rename sweeps. Install still writes the current payload; superseded names (<code>polish</code> → <code>shipmates-polish</code>) are left in place.</td></tr>
-              <tr><td><code>--force</code></td><td>no</td><td>Explicitly replace an existing colliding file, including one not claimed by a receipt.</td></tr>
-              <tr><td><code>--from-cwd</code></td><td>no</td><td>Build the payload from the <code>crew/</code>, <code>commands/</code> and <code>toolbox/</code> trees in the current directory instead of the one compiled into the binary. <code>SHIPMATES_SRC=/path/to/checkout</code> does the same for another directory. Also accepted by <code>uninstall</code> and <code>doctor</code>.</td></tr>
+              <tr><td rowspan="6"><code>install</code></td><td><code>--harness NAME</code></td><td>interactive / <code>claude-code</code></td><td>Harness tree to install (<code>all</code> = every target). Omit in a terminal to pick.</td></tr>
+              <tr><td><code>--with-tools NAMES|all|none</code></td><td>all bundled tools</td><td>Omit for every tool; <code>none</code> for crew-only; names or <code>all</code> for a subset.</td></tr>
+              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code></td><td>global home</td><td>Install root (see Where above).</td></tr>
+              <tr><td><code>--force</code></td><td>off</td><td>Overwrite colliding files even when not receipt-owned.</td></tr>
+              <tr><td><code>--no-migrate</code></td><td>off</td><td>Skip layout-migrate and identity-rename sweeps.</td></tr>
+              <tr><td><code>--from-cwd</code></td><td>off</td><td>Build from this directory&#x27;s <code>crew/</code>, <code>commands/</code>, <code>toolbox/</code> instead of the embedded payload.</td></tr>
+              <tr><td rowspan="3"><code>update</code></td><td><code>--harness NAME</code></td><td>all installed</td><td>Refresh one harness, or omit to refresh every receipt (interactive when several).</td></tr>
+              <tr><td><code>--with-tools NAMES|all|none</code></td><td>keep receipt</td><td>Omit to keep previously installed tools; pass to replace the set.</td></tr>
+              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code> / <code>--from-cwd</code></td><td>global home</td><td>Same Where / Source flags as install.</td></tr>
+              <tr><td rowspan="2"><code>uninstall</code></td><td><code>--harness NAME</code></td><td>only if one receipt</td><td>Required when more than one harness is installed under the root.</td></tr>
+              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code> / <code>--from-cwd</code></td><td>global home</td><td>Same Where / Source flags as install.</td></tr>
+              <tr><td rowspan="3"><code>doctor</code></td><td><code>--harness NAME</code></td><td><code>claude-code</code></td><td>Which install to diagnose.</td></tr>
+              <tr><td><code>--fix</code></td><td>off</td><td>Repair missing or drifted Shipmates-owned files.</td></tr>
+              <tr><td><code>--no-migrate</code></td><td>off</td><td>With <code>--fix</code>, restore files but leave legacy / pre-prefix names alone.</td></tr>
+              <tr><td><code>targets</code></td><td>—</td><td>—</td><td>List harness names this binary can install.</td></tr>
+              <tr><td rowspan="2"><code>build</code> / <code>check</code></td><td><code>--target NAME</code></td><td><code>claude-code</code></td><td>Contributor: harness to build or digest-check.</td></tr>
+              <tr><td><code>--update</code> (build only)</td><td>off</td><td>Contributor: regenerate <code>tests/payload-digests/</code> (not a user install refresh).</td></tr>
             </tbody>
           </table>
         </div>
