@@ -1,0 +1,28 @@
+{
+  "name": "shipmates-demo-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remotion scaffold for the Shipmates 45s demo clip (beats 1-4). See docs/DEMO_VIDEO.md.",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "render": "remotion render src/index.ts Beat1Hook out/beat1.mp4 && remotion render src/index.ts Beat2Crew out/beat2.mp4 && remotion render src/index.ts Beat3Phases out/beat3.mp4 && remotion render src/index.ts Beat4Gates out/beat4.mp4",
+    "stills": "remotion still src/index.ts Beat3Phases out/beat3-feed.png --scale=0.5625",
+    "legibility": "tsx scripts/legibility-check.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.519",
+    "@remotion/google-fonts": "4.0.519",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "remotion": "4.0.519"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.8.0"
+  }
+}

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>principal-engineer — Principal diff review — quality, tests, repo ship checklist. · Shipmates</title>
+  <meta name="description" content="Principal-level diff reviewer — correctness, maintainability, test quality, scope discipline, and repo mandatory ship-process compliance. Use on every…">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/agents/principal-engineer/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="principal-engineer — Principal diff review — quality, tests, repo ship checklist.">
+  <meta property="og:description" content="Principal-level diff reviewer — correctness, maintainability, test quality, scope discipline, and repo mandatory ship-process compliance. Use on every…">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/agents/principal-engineer/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="principal-engineer — Principal diff review — quality, tests, repo ship checklist.">
+  <meta name="twitter:description" content="Principal-level diff reviewer — correctness, maintainability, test quality, scope discipline, and repo mandatory ship-process compliance. Use on every…">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "principal-engineer",
+    "description": "Principal-level diff reviewer — correctness, maintainability, test quality, scope discipline, and repo mandatory ship-process compliance. Use on every acceptance board and when verifying a PR followed the project's contributor checklist.",
+    "url": "https://saman-mb.github.io/shipmates/agents/principal-engineer/",
+    "isPartOf": {
+      "@type": "CollectionPage",
+      "url": "https://saman-mb.github.io/shipmates/#crew"
+    }
+  }
+  </script>
+</head>
+<body class="page--doc">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#tools">Tools</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+        </ul>
+        <a class="btn btn--primary site-nav__cta--mobile" href="../../#install">Install</a>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="order-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../../#crew"><span aria-hidden="true">←</span> All crew</a>
+        <div class="order-detail">
+          <p class="section__eyebrow"><span aria-hidden="true">🧭</span> Subagent</p>
+          <h1 class="order-detail__title" id="order-title"><code>principal-engineer</code></h1>
+          <p class="order-detail__tagline">Principal diff review — quality, tests, repo ship checklist.</p>
+          <p class="order-detail__desc">Principal-level diff reviewer — correctness, maintainability, test quality, scope discipline, and repo mandatory ship-process compliance. Use on every acceptance board and when verifying a PR followed the project&#x27;s contributor checklist.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="what" aria-labelledby="what-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="what-title">What this agent does</h2>
+        </div>
+        <div class="order-prose">
+          <p>The principal engineer reviews a finished change on the pushed PR head at principal bar: correctness, maintainability, meaningful tests, scope discipline, and whether the repo&#x27;s mandatory ship process was actually followed for this change class.</p>
+          <p>Distinct from the architect&#x27;s structural pass and the product manager&#x27;s acceptance call — PE owns line-level quality and contributor checklist compliance, with every REJECT grounded in specific file evidence.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="scenarios" aria-labelledby="scenarios-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="scenarios-title">When you&#x27;d want it</h2>
+        </div>
+        <div class="agent-scenarios">
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">A PR needs principal review</h3>
+            <p class="agent-scenario__desc">Before merge, PE reads the diff and verifies tests, naming, and edge-case handling match the codebase&#x27;s standard — not just that CI went green.</p>
+          </div>
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">Contributor process must hold</h3>
+            <p class="agent-scenario__desc">When a change touches generated pages, digests, version fields, or site gates, PE confirms those mandatory steps ran — a missing digest is a REJECT even when the code looks fine.</p>
+          </div>
+          <div class="agent-scenario">
+            <h3 class="agent-scenario__title">Scope and test quality</h3>
+            <p class="agent-scenario__desc">PE catches coverage theatre, scope creep, and fixes that fight local conventions — the kinds of issues a mechanical lint pass will not surface.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="checks" aria-labelledby="checks-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="checks-title">What it checks</h2>
+        </div>
+        <div class="order-prose">
+          <ul>
+            <li><strong>Correctness.</strong> Logic errors, missing edge cases, and weak error handling flagged with file evidence.</li>
+            <li><strong>Maintainability.</strong> Naming, structure, and diff scope read like the surrounding codebase.</li>
+            <li><strong>Test quality.</strong> Tests cover meaningful failure paths, not just happy-path theatre.</li>
+            <li><strong>Ship checklist.</strong> Generated pages, digests, version bumps, and validation gates required by the repo.</li>
+            <li><strong>Scope discipline.</strong> Unrequested expansion and gold-plating rejected with concrete alternatives.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="crew-fit" aria-labelledby="crew-fit-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="crew-fit-title">How it fits the crew</h2>
+        </div>
+        <div class="order-prose">
+          <p>The principal engineer sits on every first acceptance board alongside the product manager — the mandatory core every shipping command convenes on the pushed PR head. Optional specialists scale in by flag; after a fixer, a PE/PO ACCEPT may carry when the delta cannot invalidate it.</p>
+        </div>
+        <p class="order-stage__crew">Related roles: <a class="chip order-stage__crew-item" href="../product-manager/"><code>product-manager</code></a> <a class="chip order-stage__crew-item" href="../senior-engineer/"><code>senior-engineer</code></a> <a class="chip order-stage__crew-item" href="../architect/"><code>architect</code></a> <a class="chip order-stage__crew-item" href="../sdet/"><code>sdet</code></a></p>
+        <p class="order-stage__crew">Called in by: <a class="chip order-stage__crew-item" href="../../commands/ship-issue/"><code>/ship-issue</code></a> <a class="chip order-stage__crew-item" href="../../commands/ship-epic/"><code>/ship-epic</code></a> <a class="chip order-stage__crew-item" href="../../commands/shipmates-fix-bug/"><code>/shipmates-fix-bug</code></a> <a class="chip order-stage__crew-item" href="../../commands/shipmates-migrate/"><code>/shipmates-migrate</code></a> <a class="chip order-stage__crew-item" href="../../commands/pr-review/"><code>/pr-review</code></a> <a class="chip order-stage__crew-item" href="../../commands/shipmates-refactor/"><code>/shipmates-refactor</code></a></p>
+      </div>
+    </section>
+
+    <section class="section" id="reference" aria-labelledby="reference-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="reference-title">Reference</h2>
+        </div>
+        <dl class="agent-ref">
+          <dt>Name</dt>
+          <dd><code>principal-engineer</code></dd>
+          <dt>Description</dt>
+          <dd>Principal-level diff reviewer — correctness, maintainability, test quality, scope discipline, and repo mandatory ship-process compliance. Use on every acceptance board and when verifying a PR followed the project&#x27;s contributor checklist.</dd>
+          <dt>Tools</dt>
+          <dd><code>Read</code>, <code>Grep</code>, <code>Glob</code>, <code>Bash</code></dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section order-source" id="source" aria-labelledby="source-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="source-title">Where this lives</h2>
+        </div>
+        <p>This page is generated from <code>crew/principal-engineer.md</code>. The installer copies it to <code>~/.claude/agents/principal-engineer.md</code> for every project, or <code>.claude/agents/principal-engineer.md</code> inside a single repo.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/crew/principal-engineer.md">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>View crew/principal-engineer.md on GitHub</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="other-agents" aria-labelledby="other-agents-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="other-agents-title">Other agents</h2>
+        </div>
+        <nav class="order-siblings" aria-label="Other agents">
+          <ul class="order-siblings__list" role="list">
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../architect/"><code>architect</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../senior-engineer/"><code>senior-engineer</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>principal-engineer</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../sdet/"><code>sdet</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../security-engineer/"><code>security-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../site-reliability-engineer/"><code>site-reliability-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../performance-engineer/"><code>performance-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../devops-engineer/"><code>devops-engineer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../product-manager/"><code>product-manager</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../ux-ui-designer/"><code>ux-ui-designer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../art-director/"><code>art-director</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../technical-writer/"><code>technical-writer</code></a></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../data-scientist/"><code>data-scientist</code></a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../../#crew"><span aria-hidden="true">←</span> All crew</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for your AI coding harness.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>

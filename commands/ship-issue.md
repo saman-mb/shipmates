@@ -1,7 +1,7 @@
 ---
 name: ship-issue
-description: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
-argument-hint: <issue-number>... | next [optional extra guidance]
+description: Shipmates: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
+argument-hint: <issue-number>... | next [epic <epic-number>] [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -23,12 +23,13 @@ a number, separate it explicitly with `--`, which ends the issue list wherever i
 
 **Or `next`:** if the first token is `next` (in place of any issue number), this is a **selection** run —
 Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, *Selection mode*). `next` is
-mutually exclusive with explicit issue numbers; tokens after it are guidance.
+mutually exclusive with explicit issue numbers; tokens after it are guidance. **`next epic <n>`** scopes
+selection to epic `<n>`'s unchecked story checklist only (see *Selection mode*).
 
 ## Bundling — the token-efficient default
 
 Most of a run's token cost is **fixed overhead paid once per invocation**: the Planner pass, the
-acceptance board (two core reviewers + any gated specialists), the CI poll loop, and worktree setup.
+acceptance board (mandatory PE+PO core + any scaled specialists), the CI poll loop, and worktree setup.
 That overhead barely grows with diff size, so shipping several **small, cohesive** issues in one run
 is far cheaper than one run each — the board reads one combined diff instead of re-paying the whole
 board N times. **So bundling cohesive issues is the recommended default** (`BUNDLE=recommend`, see
@@ -44,7 +45,7 @@ different access, so the right model is chosen **at spawn, by task complexity, f
 not written into any crew file:
 - **Mechanical work** (Builders, the SDET's test/validation runs, straightforward Fixers) → the
   cheapest capable model, low reasoning effort.
-- **Hard judgment** (the Planner, `architect`, `security-engineer`, and the `product-manager`
+- **Hard judgment** (the Planner, `architect`, `principal-engineer`, `security-engineer`, and the `product-manager`
   acceptance call) → the top model available, higher effort.
 - **Unsure** → inherit the session model; never guess a model name.
 
@@ -63,13 +64,27 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
 ## Config (defaults — override only if the repo clearly needs it)
 
 - `BASE_BRANCH` = the repo's default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
+  When runtime guidance includes **`epic-base=<branch>`** from a `/ship-epic` delegation, set
+  `BASE_BRANCH` to that branch instead — unit PRs and the worktree target the epic integration line,
+  not the repo default.
 - `MERGE_STRATEGY` = `--squash --delete-branch`
 - `MERGE_MODE` = `manual` — `manual`: stop after the acceptance board with a green, reviewed PR
   open for a human to merge. `auto`: squash-merge automatically once every gate passes. Start with
   `manual`; opt into `auto` only in a repo where unattended merges to the base branch are acceptable.
-  If Stage 0 set `IS_SECURITY_SENSITIVE`, `MERGE_MODE` is forced to `manual` for this run regardless
-  of the configured default — a security-sensitive change must not auto-merge past the `/harden`
-  recommendation.
+  **`/ship-epic` delegations pass `MERGE_MODE=auto`** so units merge into **`BASE_BRANCH`** (the epic
+  integration branch when `epic-base` is set) without captain action; standalone `/ship-issue` keeps this
+  default. Stage 8 `auto` always merges into **`BASE_BRANCH`**
+  (the epic branch when `epic-base` is set, otherwise the repo default). If Stage 0 set
+  `IS_SECURITY_SENSITIVE` and this run is **standalone** (`epic-base` unset — merge target is the
+  repo default / `RELEASE_BRANCH`), `MERGE_MODE` is forced to `manual` regardless of the configured
+  default: a security-sensitive change must not auto-merge onto the default branch past the
+  `/shipmates-harden` recommendation. When `epic-base` points at an integration branch, honour
+  `MERGE_MODE=auto` even for `IS_SECURITY_SENSITIVE` units — the harden recommendation still ships
+  in the final report, and the parent epic PR into the default branch remains the human gate.
+  When runtime guidance includes an explicit **`MERGE_MODE=manual`**, honour it (typical when
+  `/ship-epic` delegates a gate or security-sensitive unit). Standalone `/ship-issue` does not parse
+  `/ship-epic`-only guidance tokens — the caller passes `MERGE_MODE=manual` when a human merge gate
+  is required.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
 - `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
   leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, **proposes** a bundle, and
@@ -78,12 +93,25 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   auto-bundle**: bundling from a recommendation (a single ticket, or a `next` pick) always requires
   consent. An explicitly-passed multi-issue invocation (`/ship-issue 1 2 3`) is already that consent — it
   proceeds as a bundle (with the cohesion warning if it is a poor fit).
-- `WORKTREE_DIR` = a sibling of the repo root: `../<repo>--issue-<first-issue>` (single issue)
-  or `../<repo>--bundle-<first-issue>-<short-slug>` (multiple issues)
+- `WORKTREE_LAYOUT` = `nested` (default) — isolated checkouts live under `<repo>/.shipmates/worktrees/`.
+  Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…` next to
+  the repo).
+- `WORKTREE_DIR` — resolve before Stage 1 from `<repo>` basename + slug (re-runs reuse the same path):
+  - **nested, single issue:** `<repo>/.shipmates/worktrees/issue-<first-issue>`
+  - **nested, bundle:** `<repo>/.shipmates/worktrees/bundle-<first-issue>-<short-slug>`
+  - **sibling, single:** `../<repo>--issue-<first-issue>`
+  - **sibling, bundle:** `../<repo>--bundle-<first-issue>-<short-slug>`
 - `BRANCH` = `feat/issue-<first-issue>-<short-slug>` (single) or `feat/bundle-<first-issue>-<short-slug>` (multiple)
 - **Quality bar** = whatever the repo's `README` / `{{project-instructions}}` / contributing docs state. Read it at
   the start and pass it to every reviewer — the `product-manager` (and the visual specialists)
   enforce THAT bar, not just "it runs."
+- **`VERSION_FILES`** = wherever the repo records its published version (`Cargo.toml`, `package.json`,
+  `pyproject.toml`, `VERSION`, etc.) — discover from README / CONTRIBUTING / {{project-instructions}};
+  same discovery rules as `/shipmates-release`. Only used when `IS_RELEASE_AFFECTING` is set (see Stage 0).
+- **`RELEASE_BRANCH`** = the branch whose merges trigger publication — usually the repo default branch,
+  unless contributing docs name a different release line. When `epic-base=<branch>` is set and that
+  branch is **not** `RELEASE_BRANCH`, release bumps are deferred to the epic's merge into
+  `RELEASE_BRANCH` (integration-branch units do not bump on every story).
 
 Required commit trailers (append to every commit and the PR body — read them from the harness /
 session context; do not invent them). At minimum a `Co-Authored-By:` line for the agent.
@@ -97,8 +125,9 @@ agent with a persona pasted inline. The pool:
 | `{{role-reference}}`           | Used for |
 |--------------------|----------|
 | `senior-engineer`  | Building, fixing, remediation (Stages 2, 3, 4.5, 6) |
-| `sdet`             | Test / build / validation runs (Stages 3, 5) |
-| `product-manager`  | Acceptance vs. criteria + the quality bar (Stage 5) |
+| `sdet`             | Test / build / validation runs (Stages 3, 5 when scaled in) |
+| `product-manager`  | Acceptance vs. criteria + the quality bar (Stage 5 — mandatory) |
+| `principal-engineer` | Principal diff review + repo mandatory ship checklist (Stage 5 — mandatory) |
 | `architect`        | Structural / schema review — gated by `IS_ARCH_SIGNIFICANT` (Stages 1.5, 5) |
 | `ux-ui-designer`   | On-screen UI design + review — gated by `IS_UI_STORY` (Stages 1.5, 5) |
 | `art-director`     | Visual-art direction + review — **art-producing domains only**, gated by `IS_VISUAL_STORY` (Stages 1.5, 5) |
@@ -132,10 +161,36 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 
 `ISSUES_CLOSES` (Stage 4) is built from the validated `<issues>` list, not raw runtime input tokens.
 
+**Epic delegation — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
+list) for:
+
+- **`epic-base=<branch>`** — branch name must match `^[a-zA-Z0-9._/-]+$`; anything else, stop and ask.
+  Set `BASE_BRANCH` to that branch. Worktree isolation (Stage 1) cuts from `origin/<BASE_BRANCH>`.
+- **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Overridden to
+  `manual` when `IS_SECURITY_SENSITIVE` is set **and** `epic-base` is unset (standalone onto the
+  default branch). When `epic-base` is set, honour `auto` even if the unit is
+  `IS_SECURITY_SENSITIVE`; an explicit **`MERGE_MODE=manual`** from the caller still forces `manual`.
+- **`epic-run`** — with `epic-base`, do not widen the bundle or scan the backlog (see Stage 0 step 3).
+- **`epic-id=<n>`** — parent epic issue number when delegated from `/ship-epic`; required with `epic-run`
+  so Stage 8 / final report can emit the **Epic unit record** for the orchestrator's progress log.
+- **`worktree-root=sibling`** — set `WORKTREE_LAYOUT=sibling` (legacy `../<repo>--…` paths; skips nested
+  gitignore append).
+- **`sync-base`** — on resume when `BASE_REF` may have advanced (typical for `/ship-epic` units after
+  another unit merged); Stage 1 step 4 applies with `BASE_REF=origin/<BASE_BRANCH>`.
+
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
 **Selection mode — `next`.** If the leading token is `next` (in place of issue numbers), first pick the
 work from the backlog, then continue with the numbered steps below on the chosen `<issues>`:
+
+**Epic scope — `next epic <n>`.** When the token after `next` is `epic` and the next token is a valid
+issue number, set `<epic-scope>` to that number and restrict the candidate pool to the epic's
+**unchecked** checklist lines (`- [ ] #<story>` in the epic body). Still map `blocked by` /
+`Blocked by #N` and **never pick a story whose dependencies are unmet**. Do **not** scan the
+whole backlog. Force `BUNDLE=off` for this run — epic-scoped selection ships one story only. Skip
+the cohesion bundle widening in step 2.5.
+
+**Backlog-wide — `next` alone.** When `<epic-scope>` is unset:
 - Read open issues (`gh issue list --state open --json number,title,labels`), map dependencies (epic
   checklists, `Part of #N`, `blocked by`) and **never pick a ticket with an unmet dependency**; rank by
   priority / value / blast-radius / staleness.
@@ -175,11 +230,23 @@ work from the backlog, then continue with the numbered steps below on the chosen
      consent**; if the user declines (or the run is non-interactive), ship the single lead ticket.
    - **`BUNDLE=off`** — ship exactly the issues passed.
 
+   **Parallel release-affecting PRs:** when several open stories each touch `VERSION_FILES`, payload
+   digests, or install-count fixtures, warn that merging them in parallel to `RELEASE_BRANCH` often
+   conflicts — prefer bundling cohesive release-affecting work in one `/ship-issue` run or merging
+   serially.
+
    Add any accepted issues to `<issues>` (re-sort so `<first-issue>` is unchanged). Whatever the
    bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
    can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
 3. Spawn ONE **Planner** (`{{role:planner}}`). Give it all issue bodies + repo README +
-   {{project-instructions}}. Ask it to return, as structured data:
+   {{project-instructions}}. When runtime guidance includes **`epic-plan`** from a `/ship-epic`
+   delegation, treat that classification and unit grouping as the **starting plan** — amend only where
+   an issue body contradicts it; do not re-derive the epic shape from scratch. When guidance includes
+   **`epic-run`**, do not scan the wider backlog or propose bundle widening beyond the passed issue
+   numbers. When guidance includes **`epic-base=<branch>`**, the worktree and PR target that branch —
+   do not reset `BASE_BRANCH` to the repo default. When guidance includes **`MERGE_MODE=auto`**, Stage 8
+   merges into `BASE_BRANCH` after green CI and board pass. When guidance includes
+   **`complexity tier: simple`** or **`medium`**, honour the command preamble's tiered execution path for this run. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
    - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
@@ -205,20 +272,32 @@ work from the backlog, then continue with the numbered steps below on the chosen
        format, or cross-cut many modules in a way a narrow code review would miss? Gates `architect`.
      - `IS_SECURITY_SENSITIVE = yes/no` — does it touch authn/authz, untrusted input, secrets, crypto,
        file/network/OS access, or dependencies? Does **not** gate a reviewer seat — security review
-       lives in `/harden`, which this command doesn't run. It gates two things instead: the final
-       report must carry the `/harden` recommendation (mechanical, not a judgment call made while
-       writing the summary), and it forces `MERGE_MODE=manual` for this run (see Config).
+       lives in `/shipmates-harden`, which this command doesn't run. It gates two things instead: the final
+       report must carry the `/shipmates-harden` recommendation (mechanical, not a judgment call made while
+       writing the summary), and — on **standalone** runs only — it forces `MERGE_MODE=manual` (see
+       Config). Epic units (`epic-base`) keep the caller's `MERGE_MODE` so `/ship-epic` can auto-merge
+       into the integration branch; the harden line still ships.
      - `IS_DELIVERY_SENSITIVE = yes/no` — does it change how the project is built, packaged, configured
        or shipped (pipeline/CI definitions, build scripts, image or environment definitions,
        infrastructure-as-code, dependency or toolchain pins)? Gates `devops-engineer`.
      - `IS_DOCS_AFFECTING = yes/no` — does the change touch documented behaviour, flags, commands,
        config, or public API/CLI surface that user- or agent-facing docs describe? Gates
        `technical-writer`.
+     - `IS_RELEASE_AFFECTING = yes/no` — will this PR's merge to **`RELEASE_BRANCH`** require a new
+       published version for users to receive the change (new/changed commands, tools, crew roles,
+       install payload, CLI/API behaviour, or other release-artifact surface)? Internal refactors,
+       test-only changes, and work that does not change what installs or publishes → `no`. When
+       `epic-base=<branch>` targets an integration branch that is not `RELEASE_BRANCH`, force `no`
+       — the epic's landing PR on `RELEASE_BRANCH` owns the bump. When `yes`, also return
+       **`RELEASE_BUMP`**: one of `patch`, `minor`, or `major` (SemVer unless the repo says otherwise) and
+       the list of `VERSION_FILES` + changelog path to update. Does **not** gate an extra reviewer
+       seat — `principal-engineer` and `technical-writer` (when gated) verify the bump landed.
    This flag vocabulary is shared with `/pr-review`, which classifies a PR diff the same way — a new flag
    must be added to both files. `IS_SECURITY_SENSITIVE` is the deliberate exception: here it gates the
-   `/harden` recommendation and `MERGE_MODE` above, never a reviewer seat, because this command owns
-   the branch and can just run `/harden` itself. `/pr-review` keeps the same flag wired to a
-   `security-engineer` seat, because it reviews a PR the crew didn't author, where `/harden` isn't
+   `/shipmates-harden` recommendation and, on standalone runs, `MERGE_MODE` above — never a reviewer
+   seat — because this command owns the branch and can just run `/shipmates-harden` itself. Epic units
+   keep the caller's `MERGE_MODE` (see Config). `/pr-review` keeps the same flag wired to a
+   `security-engineer` seat, because it reviews a PR the crew didn't author, where `/shipmates-harden` isn't
    available — you don't own that branch.
 4. If the plan reveals any issue is too big/ambiguous to finish autonomously, stop and tell the user
    what's blocking — otherwise continue.
@@ -240,10 +319,28 @@ its work governs. Skip this stage entirely when none of the flags are set.
 
 ## Stage 1 — Isolate  (orchestrator, deterministic — no agent)
 
+1. **Resolve `<WORKTREE_DIR>`** from Config (`WORKTREE_LAYOUT` + single vs bundle). Parse
+   **`worktree-root=sibling`** from runtime guidance before resolving.
+2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — from `<repo>`, idempotently ensure
+   `.shipmates/worktrees/` is ignored. If `.gitignore` exists, append only when no line already ignores
+   `.shipmates/worktrees/` as a path prefix. If `.gitignore` is missing, create it with the comment
+   `# Shipmates isolated command worktrees (auto-managed)` and the entry `.shipmates/worktrees/`.
+   Never rewrite unrelated ignore rules.
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required
+   before any worktree create or resume work; **stop with a clear error if fetch fails**. A **new**
+   branch cut from `BASE_REF` via `worktree add` **is** the pull-latest mechanism — no separate
+   `git pull` in a fresh worktree.
+4. **Resume / reuse** — when `<WORKTREE_DIR>` and `<BRANCH>` already exist, re-run fetch, then if the
+   branch is behind `BASE_REF`, rebase onto `BASE_REF` inside the worktree (merge `BASE_REF` instead
+   when the repo's contributing docs prefer merge). Sync conflicts count toward `MAX_FIX_ROUNDS`; stop
+   and report if sync cannot complete cleanly.
+5. **Create the worktree** (when branch/worktree do not yet exist):
+
 ```bash
-git -C <repo> fetch origin
+mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```
+
 All build/fix work happens **inside `<WORKTREE_DIR>`** so the base branch and the user's checkout
 stay clean. Pass the absolute worktree path to every agent.
 
@@ -257,21 +354,64 @@ shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 
 - Spawn one **Builder** (`{{role:senior-engineer}}`) per independent work unit from the plan,
   **in a single message** so they run concurrently. Each Builder is told: its exact file ownership,
-  the acceptance criteria it must satisfy, the worktree path, any Stage 1.5 spec that governs its
-  files, and to match existing code style/idioms.
+  the acceptance criteria it must satisfy, the worktree path, to follow {{project-instructions}}
+  for project style/conventions, to inspect `git log` and `git blame` on the files it touches for context,
+  any Stage 1.5 spec that governs its files, and to match existing code style/idioms.
 - Builders write code only — they do **not** commit, push, or open PRs (the orchestrator owns git).
 - After they report done, **verify the files on disk yourself** (Read/Grep). Never trust a "done"
   report blindly.
+- **Do not return while builders are in flight.** A harness that backgrounds subagent work and tells
+  you to end the turn for a completion notification (Cursor's Task tool does this) is **not** a
+  reason to stop, and it is **not** a `/ship-epic` hard-limit pause. Wait for every Stage 2 builder
+  to return or fail before you report to `/ship-epic` or the captain. If a builder vanishes without
+  a result, re-spawn it. Never end the turn solely because the harness asked you to.
 
 For a rejected verify/review, loop back to the builder, bounded by `MAX_FIX_ROUNDS`.
 
+## Stage 2.5 — Release version bump  (same PR — orchestrator or builder; only if `IS_RELEASE_AFFECTING`)
+
+When the Planner set **`IS_RELEASE_AFFECTING = yes`**, the version bump and changelog entry for **this
+PR's changes** are part of the delivery — **in this PR, before Stage 4** — never a follow-up PR and
+never deferred to `/shipmates-release` or captain memory.
+
+1. Read current version from every discovered **`VERSION_FILES`** entry; derive the next version from
+   **`RELEASE_BUMP`** (breaking/API removals → `major`; new user-visible capability → `minor` or
+   `patch` per repo convention; default `patch` when unsure).
+2. Update every `VERSION_FILES` entry consistently (and lockfiles the repo pins to that version, if
+   any). Add a changelog / release-notes entry covering **only what this PR ships** — use the repo's
+   changelog format (Keep a Changelog, `CHANGELOG.md`, GitHub release notes stub, etc.); spawn
+   `technical-writer` when the format is non-trivial.
+3. Include `VERSION_FILES` + changelog paths in the build plan's file ownership (orchestrator-owned is
+   fine — they must not collide with feature builders).
+4. **Blocking gate:** if `IS_RELEASE_AFFECTING=yes` and the diff reaching Stage 3 lacks a version
+   bump or changelog entry, treat it as a failed self-check — fix before opening the PR. Merging
+   user-visible work without bumping the version the release pipeline reads is a process defect, not
+   an optional polish step.
+
+`/shipmates-release` remains for **batch** release ceremony (everything since the last tag, SRE pre-flight,
+tag/publish opt-in) — it does not replace per-PR bumps when a single story ships release-affecting
+work straight to `RELEASE_BRANCH`.
+
 ## Stage 3 — Self-check before PR  (agent: `sdet`)
 
-- Spawn the **SDET** (`{{role:sdet}}`) to run the test/validation plan against the worktree:
+- Spawn the **SDET** (`{{role:sdet}}`) to run the test/validation plan against the worktree (running
+  `--help` on unfamiliar test runners/tools to discover flags if needed):
   unit tests, linters, type-checks, and — if the toolchain exists — a real build/compile step
   (whatever this repo uses: e.g. `npm test && npm run build`, `cargo test`, `pytest -q`,
   `go build ./...`, `make check`). If the toolchain is absent, it does a rigorous **static** pass
   and says so explicitly in the PR.
+- When the diff touches `toolbox/`, `TOOLS` in `tools/gen_command_pages.py`, `build.rs`, `src/catalog.rs`,
+  or other install/embed paths, also run **`cargo run -- install --harness codex --dir <tmpdir> --with-tools none`**
+  from the worktree (add `--with-tools all` or specific tools when the story adds/changes tools). A green
+  `cargo test` alone does not catch dev-loop install failures (e.g. non-UTF-8 files under `toolbox/`).
+- When the diff touches `toolbox/` or `TOOLS` in `tools/gen_command_pages.py`, also run the
+  contributor checklists in the installed steering file (`.claude/rules/shipmates-contributor.md`,
+  `.cursor/rules/shipmates-contributor.mdc`, `.github/instructions/shipmates.instructions.md`, or
+  `.shipmates/contributor-steering.md` on harnesses without a documented rules path):
+  terminal tools need an **Examples** termgif gallery like `scrub` / `fixtures`; the homepage `#tools`
+  grid must list every `TOOLS` entry in canonical order.
+- When **`IS_RELEASE_AFFECTING=yes`**, confirm every `VERSION_FILES` entry matches the planned next
+  version and a changelog entry for this PR exists — flag missing bumps as **blocking**.
 - If self-check fails, loop a **Fixer** (`{{role:senior-engineer}}`) until green (counts
   toward `MAX_FIX_ROUNDS`). Only open a PR once self-check passes — never open a known-red PR.
 
@@ -307,6 +447,10 @@ MUST confirm CI is green on the pushed head before the acceptance board runs. Ne
 green.** (If the repo has no CI, say so and treat the SDET pass as the gate, explicitly noting the
 reduced assurance.)
 
+**Epic runs (`/ship-epic` delegation):** red CI — including checks already red on the base branch —
+is remediated **here** on this unit's branch. Do **not** return to the epic orchestrator to pause;
+exhaust `MAX_FIX_ROUNDS` first, then escalate from `/ship-issue` so the epic can pause with cause.
+
 1. **Wait for the checks to finish** on the PR head (poll, don't guess):
    ```bash
    until s=$(gh pr checks <PR#> 2>&1 | head -1); st=$(echo "$s" | cut -f2); \
@@ -331,42 +475,22 @@ reduced assurance.)
 
 ## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
 
-Spawn these **in parallel** against the PR head commit (they review exactly what will merge). The two
-core reviewers always run; each specialist runs only when its flag is set. Convene a reviewer/specialist
-only when the change can plausibly trip its concern surface; a role gated out is named in the run report
-together with the flag that gated it — never silently skipped.
+<!-- shipmates:acceptance-board -->
 
-- **`product-manager`** (always): checks every acceptance criterion AND the quality bar (from the
-  repo's README/{{project-instructions}}). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
-- **`sdet`** (always): re-runs the validation plan against the PR branch; returns `PASS` / `FAIL`
-  with a severity-tagged defect list.
-- **`ux-ui-designer`** (only if `IS_UI_STORY`): reviews the pushed head against the Stage 1.5 spec and
-  the UI bar — shared-token/theme usage (not per-component override sprawl), responsive layout, focus
-  navigation, interaction states, contrast/readability. If it cannot actually render the UI, it
-  reviews statically and MUST flag the PR **"needs a human visual pass"** — carry that into the report.
-- **`art-director`** (only if `IS_VISUAL_STORY`): renders the actual change via the project's render/preview
-  harness (if one exists) and reviews the produced output against the Stage 1.5 direction and the
-  visual bar — the render, not the source. If it cannot render, it says so and flags **"needs a human
-  visual pass"**.
-- **`architect`** (only if `IS_ARCH_SIGNIFICANT`): reviews structural fit, coupling/blast radius, and
-  schema/migration safety.
-- **`devops-engineer`** (only if `IS_DELIVERY_SENSITIVE`): reviews the delivery definitions for
-  reproducibility (same commit → same artifact), toolchain/base pinning, environment parity, config and
-  secret plumbing, and whether the pipeline actually gates. Defers rollout/rollback and migration safety
-  to `site-reliability-engineer`.
-- **`technical-writer`** (only if `IS_DOCS_AFFECTING`): reviews the shipped change against the docs that
-  describe it — stale flags/commands/behaviour, missing changelog/README/site updates. Returns
-  `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT`.
+Use the Stage 0 classification flags to decide which **scaled optional seats** join the mandatory
+PE+PO core. Pass each reviewer the acceptance criteria, quality bar, and (for visual roles) any
+Stage 1.5 spec.
 
-Decision (each specialist participates only when its flag is set):
+Decision:
 - **All spawned reviewers ACCEPT/PASS (nits allowed)** → go to Stage 7.
 - **Any REJECT / FAIL** → Stage 6.
 
 ## Stage 6 — Remediation loop  (agent: `senior-engineer` as Fixer)
 
 - Spawn a **Fixer** (`{{role:senior-engineer}}`) to address every blocking item (REJECT reasons
-  from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then **re-run Stage 5**
-  on the new head.
+  from any Stage 5 reviewer + FAIL defects). Commit + push to the same branch. Then **Retry** the
+  board from the **fixer delta** (shared rule in the acceptance board) — do **not** re-run Stage 5's
+  full first-convene roster.
 - Repeat up to `MAX_FIX_ROUNDS`. If still not green after that, **stop and escalate to the user** with
   the outstanding blockers — do not merge a failing PR.
 
@@ -382,44 +506,87 @@ Decision (each specialist participates only when its flag is set):
 ## Stage 8 — Deliver  (orchestrator)
 
 - **If `MERGE_MODE=manual`** (default): stop here. Post a completion comment on the PR (what shipped,
-  how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge. Leave
+  how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge into
+  **`BASE_BRANCH`**. Leave
   the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
   the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
-  so name every issue the PR will close in the completion comment.
-- **If `MERGE_MODE=auto`**: immediately before merging, capture current PR head and bind merge to it:
+  so name every issue the PR will close in the completion comment. **Tick the epic checklist** when
+  any shipped story belongs to an epic: for each issue in `<issues>`, if its body contains
+  `Part of #<epic>`, edit the epic body — replace `- [ ] #<story>` with `- [x] #<story>` for that
+  story (via `--body-file`; see **Shell safety**). This keeps `/ship-epic` and manual `/ship-issue next
+  epic` runs consistent without requiring `MERGE_MODE=auto`.
+- **If `MERGE_MODE=auto`**: immediately before merging into **`BASE_BRANCH`**, capture current PR head and bind merge to it:
   `HEAD_SHA=$(gh pr view <PR#> --json headRefOid -q .headRefOid)` followed by
   `(cd <WORKTREE_DIR> && gh pr merge <BRANCH> --squash --delete-branch --match-head-commit "$HEAD_SHA")`, then confirm all issues
   auto-closed (for each issue in `<issues>`: `gh issue close <N>` if not already closed), tick the
   epic checklist box if any, remove the worktree (`git -C <repo> worktree remove <WORKTREE_DIR>`),
-  and post the completion comment.
+  and post the completion comment. When runtime guidance includes **`epic-run`** and **`epic-id=<epic>`**,
+  the completion comment must also carry a one-line **delivered** summary and **reviews** line (PO/PE/scaled
+  verdicts from Stage 5) so the parent epic progress log stays current if the unit merged manually.
 
 ## Final report to the user
 
-One concise summary: PR link (and merge state), commit(s), which specialists reviewed it and their
-verdicts, which specialists were gated out (each named with the flag that gated it), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
+One concise summary: PR link (and merge state), commit(s), the absolute **worktree path**
+(`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), fetch outcome, and whether a resume
+sync/rebase ran, which specialists reviewed it and their
+verdicts (`re-run` / `carried ACCEPT` / `newly seated` after any fix round; gated seats named with
+the flag that gated them), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
-Stage 0 — the `/harden` recommendation, carried here mechanically rather than decided now.
+Stage 0 — the `/shipmates-harden` recommendation, carried here mechanically rather than decided now. When
+**`IS_RELEASE_AFFECTING=yes`**, state the **new version** and that merge to **`RELEASE_BRANCH`**
+will publish it (or name the repo's publish step if manual) — never imply the feature is released
+without the version bump that landed in the PR.
+
+**Epic unit record** — when runtime guidance includes **`epic-run`** and **`epic-id=<epic>`**, end the
+final report with this machine-readable block (orchestrator parses it into the epic progress log):
+
+```
+EPIC_UNIT_RECORD:
+EPIC_ID: <epic>
+STORIES: <space-separated issue numbers from <issues>>
+PR: <PR URL>
+MERGE: auto|manual
+HEAD: <merge commit SHA when auto; PR head SHA when manual>
+DELIVERED: <one plain sentence — what this unit shipped, no jargon>
+REVIEWS: <PO verdict or carried ACCEPT>; <PE verdict or carried ACCEPT>; <scaled: verdict|re-run|carried ACCEPT|newly seated|gated: role (reason)>
+HARDEN: recommended|n/a
+CI: <green checks URL>
+FIX_ROUNDS: <n>
+```
+
+Set **`HARDEN: recommended`** when Stage 0 set `IS_SECURITY_SENSITIVE=yes`; otherwise **`HARDEN: n/a`**.
+The parent `/ship-epic` orchestrator copies this into the epic progress comment and epic PR notes.
+
+Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the epic issue, not this transcript.
 
 ---
 
 ### Guardrails
 - The orchestrator owns **all** git/gh actions; agents never push or merge.
 - Reviewers always evaluate the **pushed PR head**, so "accepted" == "what merges".
-- Never open or advance a red PR. Never skip the SDET run. Never silently drop a nit — file it.
+- Never open or advance a red PR. Never skip PE+PO on the **first** board once a PR head exists
+  (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a nit — file it.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
   re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.
 - Keep the base branch and the user's working tree untouched throughout (all work in the worktree).
+  Default nested layout lives under `.shipmates/worktrees/` (gitignored); `worktree-root=sibling`
+  restores legacy `../<repo>--…` paths.
 - Respect `MERGE_MODE` — do not auto-merge unless it is explicitly set to `auto`.
 - If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan
   requires), stop and surface it — autonomy does not mean forcing a bad merge.
 - **Secrets & security hygiene.** Never write secrets, tokens, or credentials into commits, PR/issue
   bodies, or logs — assume the repo is public. The `sdet` flags secret leakage as a defect; a real
   leak is blocking. Deeper security work is not this command's job — see the next bullet.
-- **Security review lives in `/harden`, not here.** This command does not threat-model. When
-  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/harden` recommendation and the
-  run stays on `MERGE_MODE=manual` (Stage 0, Config) — the flag is the trigger, not a judgment call
-  made while writing the summary.
+- **Security review lives in `/shipmates-harden`, not here.** This command does not threat-model. When
+  `IS_SECURITY_SENSITIVE` is set, the final report must carry the `/shipmates-harden` recommendation —
+  the flag is the trigger, not a judgment call made while writing the summary. Standalone runs (no
+  `epic-base`) stay on `MERGE_MODE=manual` (Stage 0, Config). Epic-delegated units honour the caller's
+  `MERGE_MODE` so the human gate sits on the epic PR, not on every unit.
+- **Release bump in the PR.** When `IS_RELEASE_AFFECTING=yes`, a missing version or changelog update
+  is **blocking** — same severity as a missing digest or unstaged generated page. Never tell the
+  captain to run `/shipmates-release` or open a follow-up PR instead; that is how features merge without
+  publishing.
 - **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
   than erroring or duplicating work. Every stage should be safe to repeat.
 - Static review cannot verify pixels, and no reviewer can verify what it didn't examine. When neither

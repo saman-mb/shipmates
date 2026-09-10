@@ -3,7 +3,7 @@ use super::render::{emit_shared_skills, emit_shared_tool_skills};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
-/// Cursor ships no subagents, so only the thirteen commands ship (as skills) and
+/// Cursor ships no subagents, so only the fourteen commands ship (as skills) and
 /// `roles` is not emitted. Cursor reads the open Agent Skills tree
 /// `.agents/skills/<name>/SKILL.md` natively (a first-party peer of
 /// `.cursor/skills/`, since Cursor 2.4), so its skills come from the shared
@@ -15,6 +15,23 @@ pub struct CursorAdapter;
 impl Adapter for CursorAdapter {
     fn base_dir(&self) -> &'static str {
         "harnesses/cursor/.agents"
+    }
+
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&super::render::AGENT_SKILLS)
+    }
+
+    fn steering_target(&self) -> Option<super::render::SteeringTarget> {
+        Some(super::render::SteeringTarget {
+            rel_path: ".cursor/rules/shipmates-contributor.mdc",
+            format: super::render::SteeringFormat::CursorMdc {
+                description: "Shipmates contributor checklists for crew, commands, tools, and site assets",
+            },
+        })
     }
 
     fn build(
@@ -45,7 +62,7 @@ mod tests {
     #[test]
     fn test_cursor_adapter_emits_skills_only() {
         let command = CanonicalCommand {
-            name: "fix-bug".to_string(),
+            name: "shipmates-fix-bug".to_string(),
             description: "desc".to_string(),
             argument_hint: String::new(),
             allowed_tools: String::new(),
@@ -57,7 +74,7 @@ mod tests {
             source: std::path::PathBuf::from(""),
         };
         let files = CursorAdapter.build(&[], &[command]).unwrap();
-        assert!(files.contains_key("harnesses/cursor/.agents/skills/fix-bug/SKILL.md"));
+        assert!(files.contains_key("harnesses/cursor/.agents/skills/shipmates-fix-bug/SKILL.md"));
         // No crew dir or private skills tree.
         assert!(!files.keys().any(|k| k.contains("/agents/")));
         assert!(!files.keys().any(|k| k.contains(".cursor/skills/")));

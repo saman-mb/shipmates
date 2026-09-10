@@ -107,7 +107,7 @@ impl InstallReceipt {
         let mut previous: Option<&str> = None;
         for root in &self.roots {
             validate_relative_path(root, "receipt root")?;
-            if !allowed_roots.contains(&root.as_str()) {
+            if !allowed_roots.contains(&root.as_str()) && !is_legacy_instructions_root(root) {
                 bail!(
                     "receipt root {:?} is not part of harness {} install layout",
                     root,
@@ -125,7 +125,8 @@ impl InstallReceipt {
         let mut previous: Option<&str> = None;
         for file in &self.files {
             file.validate()?;
-            if !allowed_receipt_path(&self.harness, &file.path)
+            if (!allowed_receipt_path(&self.harness, &file.path)
+                && !is_legacy_steering_receipt_path(&self.harness, &file.path))
                 || !self
                     .roots
                     .iter()
@@ -396,13 +397,30 @@ fn validate_harness(harness: &str) -> Result<()> {
 fn allowed_roots(harness: &str) -> &'static [&'static str] {
     match harness {
         "claude-code" => &[".claude"],
-        "opencode" => &[".opencode"],
-        "antigravity" | "cursor" => &[".agents"],
-        "codex" => &[".agents", ".codex"],
+        "opencode" => &[".opencode", ".shipmates"],
+        "antigravity" => &[".agents", ".shipmates"],
+        "codex" => &[".agents", ".codex", ".shipmates"],
+        "cursor" => &[".agents", ".cursor"],
         "github-copilot" => &[".agents", ".github"],
-        "windsurf" => &[".windsurf"],
+        "windsurf" => &[".windsurf", ".shipmates"],
         _ => &[],
     }
+}
+
+fn is_steering_receipt_path(harness: &str, path: &str) -> bool {
+    match harness {
+        "claude-code" => path == ".claude/rules/shipmates-contributor.md",
+        "cursor" => path == ".cursor/rules/shipmates-contributor.mdc",
+        "github-copilot" => path == ".github/instructions/shipmates.instructions.md",
+        "opencode" | "codex" | "antigravity" | "windsurf" => {
+            path == ".shipmates/contributor-steering.md"
+        }
+        _ => false,
+    }
+}
+
+fn is_shipmates_steering_path(path: &str) -> bool {
+    path == ".shipmates/contributor-steering.md"
 }
 
 /// Receipt paths are attacker-controlled input. Keep them inside the exact
@@ -430,10 +448,11 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
     };
     match harness {
         "claude-code" => {
-            (parts.len() == 3
-                && root == ".claude"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".md"))
+            is_steering_receipt_path(harness, path)
+                || (parts.len() == 3
+                    && root == ".claude"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
                 || is_skill_tree(".claude")
                 || (parts.len() == 3
                     && root == ".claude"
@@ -441,10 +460,12 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && parts[2].ends_with(".md"))
         }
         "opencode" => {
-            (parts.len() == 3
-                && root == ".opencode"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".md"))
+            is_steering_receipt_path(harness, path)
+                || is_shipmates_steering_path(path)
+                || (parts.len() == 3
+                    && root == ".opencode"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
                 || (parts.len() == 3
                     && root == ".opencode"
                     && parts[1] == "commands"
@@ -455,26 +476,46 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && (parts[2].ends_with(".ts") || parts[2].ends_with(".py")))
         }
         "antigravity" => {
-            (parts.len() == 3
-                && root == ".agents"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".md"))
+            is_steering_receipt_path(harness, path)
+                || is_shipmates_steering_path(path)
+                || (parts.len() == 3
+                    && root == ".agents"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
                 || is_skill_tree(".agents")
         }
         "codex" => {
-            (parts.len() == 3
-                && root == ".codex"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".toml"))
+            is_steering_receipt_path(harness, path)
+                || is_shipmates_steering_path(path)
+                || (parts.len() == 3
+                    && root == ".codex"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".toml"))
                 || is_skill_tree(".agents")
         }
-        "cursor" => is_skill_tree(".agents"),
-        "windsurf" => is_skill_tree(".windsurf"),
+        "cursor" => {
+            is_steering_receipt_path(harness, path)
+                || (parts.len() == 3
+                    && root == ".cursor"
+                    && parts[1] == "rules"
+                    && parts[2].ends_with(".mdc"))
+                || is_skill_tree(".agents")
+        }
+        "windsurf" => {
+            is_steering_receipt_path(harness, path)
+                || is_shipmates_steering_path(path)
+                || is_skill_tree(".windsurf")
+        }
         "github-copilot" => {
-            (parts.len() == 3
-                && root == ".github"
-                && parts[1] == "agents"
-                && parts[2].ends_with(".agent.md"))
+            is_steering_receipt_path(harness, path)
+                || (parts.len() == 3
+                    && root == ".github"
+                    && parts[1] == "instructions"
+                    && parts[2].ends_with(".instructions.md"))
+                || (parts.len() == 3
+                    && root == ".github"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".agent.md"))
                 || is_skill_tree(".agents")
         }
         _ => false,
@@ -516,7 +557,7 @@ fn validate_relative_path(path: &str, field: &str) -> Result<()> {
     for component in Path::new(path).components() {
         match component {
             Component::Normal(segment) => {
-                if segment == ".shipmates" {
+                if segment == ".shipmates" && !is_allowed_shipmates_path(path) {
                     bail!("{field} may not address .shipmates: {:?}", path);
                 }
             }
@@ -524,6 +565,26 @@ fn validate_relative_path(path: &str, field: &str) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Paths under `.shipmates/` that install may own (not the receipt store).
+fn is_allowed_shipmates_path(path: &str) -> bool {
+    path == ".shipmates" || path == ".shipmates/contributor-steering.md"
+}
+
+/// #295 installed steering at root instructions files; tolerate in old receipts.
+fn is_legacy_instructions_root(root: &str) -> bool {
+    root == "CLAUDE.md" || root == "AGENTS.md"
+}
+
+fn is_legacy_steering_receipt_path(harness: &str, path: &str) -> bool {
+    match harness {
+        "claude-code" => path == "CLAUDE.md",
+        "opencode" | "codex" | "cursor" | "github-copilot" | "antigravity" | "windsurf" => {
+            path == "AGENTS.md"
+        }
+        _ => false,
+    }
 }
 
 #[cfg(test)]

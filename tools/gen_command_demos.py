@@ -37,7 +37,21 @@ ACCENTS = [dt.BLUE, dt.PURPLE, dt.ORANGE, dt.CYAN, dt.CORAL, dt.GOLD, dt.SAGE]
 # against the parsed SKILL.md so a stage added or removed upstream fails the
 # build instead of silently drifting.
 COMMANDS = {
-    "fix-bug": {
+    "ship-epic": {
+        "arg": "42",
+        "stages": [
+            ("INTAKE", "parse epic checklist"),
+            ("BRANCH", "epic integration line + PR"),
+            ("GRAPH", "dependency order + gate map"),
+            ("PLAN", "one architect -> shipping units"),
+            ("LOOP", "delegate /ship-issue per unit"),
+            ("TICK", "checklist after each unit"),
+            ("LOG", "epic progress + PR review notes"),
+            ("CLOSE", "epic PR green — captain merge"),
+        ],
+        "closer": "Epic delivered — N stories in U runs, one epic PR. ⚓",
+    },
+    "shipmates-fix-bug": {
         "arg": "142",
         "stages": [
             ("REPRODUCE", "a failing test that pins the bug"),
@@ -49,6 +63,18 @@ COMMANDS = {
             ("DELIVER", "PR — reviewed, CI-green"),
         ],
         "closer": "Bug fixed — proven by a test, reviewed, CI-green. ⚓",
+    },
+    "report-bug": {
+        "arg": "ship-epic re-shipped merged stories",
+        "stages": [
+            ("INTAKE", "symptom + report vs apply"),
+            ("HARVEST", "harness, version, repo, command"),
+            ("DEDUPE", "search upstream open issues"),
+            ("DRAFT", "Shipmates triage shape"),
+            ("PREVIEW", "title + body for captain"),
+            ("FILE", "apply -> saman-mb/shipmates"),
+        ],
+        "closer": "Upstream bug filed — structured for maintainer triage. ⚓",
     },
     "plan-epics": {
         "arg": "briefs/q3.md",
@@ -73,7 +99,7 @@ COMMANDS = {
         ],
         "closer": "Backlog slimmed — the survivors ship as bundles. ⚓",
     },
-    "harden": {
+    "shipmates-harden": {
         "arg": "the auth flow",
         "stages": [
             ("SCOPE", "map the attack surface"),
@@ -86,7 +112,7 @@ COMMANDS = {
         ],
         "closer": "Hardened — every blocker fixed or signed off. ⚓",
     },
-    "spike": {
+    "shipmates-spike": {
         "arg": "which queue for jobs",
         "stages": [
             ("FRAME", "the open question"),
@@ -99,7 +125,7 @@ COMMANDS = {
         ],
         "closer": "Decision made — captured as an ADR. ⚓",
     },
-    "migrate": {
+    "shipmates-migrate": {
         "arg": "moment.js -> date-fns",
         "stages": [
             ("DISCOVER", "every call site"),
@@ -112,7 +138,7 @@ COMMANDS = {
         ],
         "closer": "Migrated — every call site moved, swept clean. ⚓",
     },
-    "document": {
+    "shipmates-document": {
         "arg": "the public API",
         "stages": [
             ("SCOPE", "audience + doc type"),
@@ -124,7 +150,7 @@ COMMANDS = {
         ],
         "closer": "Docs that work — a fresh reader can follow them. ⚓",
     },
-    "release": {
+    "shipmates-release": {
         "arg": "v1.4.0",
         "stages": [
             ("SCOPE", "what merged since last tag"),
@@ -137,7 +163,7 @@ COMMANDS = {
         ],
         "closer": "Released — CI-green at the tag. ⚓",
     },
-    "polish": {
+    "shipmates-polish": {
         "arg": "the dashboard",
         "stages": [
             ("ISOLATE", "throwaway worktree"),
@@ -159,7 +185,7 @@ COMMANDS = {
         ],
         "closer": "Reviewed — one ranked verdict, with reasons. ⚓",
     },
-    "onboard": {
+    "shipmates-onboard": {
         "arg": "",
         "stages": [
             ("SURVEY", "repo shape + mode"),
@@ -171,7 +197,7 @@ COMMANDS = {
         ],
         "closer": "Onboarded — a guide that answers real questions. ⚓",
     },
-    "refactor": {
+    "shipmates-refactor": {
         "arg": "the order service",
         "stages": [
             ("SCOPE", "what & why"),

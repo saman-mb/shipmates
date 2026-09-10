@@ -5,7 +5,7 @@ use super::render::{
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
-/// GitHub Copilot — thirteen skills in the shared open `.agents/skills/` tree plus
+/// GitHub Copilot — fourteen skills in the shared open `.agents/skills/` tree plus
 /// the crew as custom agents under `.github/agents/<name>.agent.md`.
 ///
 /// Copilot reads Agent Skills from `.github/skills`, `.claude/skills` AND the
@@ -178,6 +178,19 @@ impl Adapter for GithubCopilotAdapter {
     // off the install container to cover both.
     fn digest_root(&self) -> &'static str {
         self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&super::render::GITHUB_COPILOT)
+    }
+
+    fn steering_target(&self) -> Option<super::render::SteeringTarget> {
+        Some(super::render::SteeringTarget {
+            rel_path: ".github/instructions/shipmates.instructions.md",
+            format: super::render::SteeringFormat::CopilotInstructions {
+                apply_to: "**/*",
+            },
+        })
     }
 
     fn build(

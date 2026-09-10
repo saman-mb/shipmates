@@ -24,9 +24,27 @@ pub trait Adapter {
     /// closest native fit is a model-invoked Agent Skill (Claude Code can pin it
     /// agent-only with `user-invocable: false`; the rest cannot hide it from
     /// manual mention, which is recorded, not faked). The default is empty —
-    /// tools are opt-in and only ever written when `--with-tools` selects them.
+    /// tools install with a plain `install` unless `--with-tools none` opts out.
     fn build_tools(&self, _tools: &[CanonicalTool]) -> HashMap<String, String> {
         HashMap::new()
+    }
+
+    /// Dialect used to render `steering/shipmates.md` into project instructions.
+    fn steering_dialect(&self) -> Option<&'static render::Dialect> {
+        None
+    }
+
+    /// Harness-native path and wrapper for contributor steering (rules file,
+    /// instructions file, or `.shipmates/contributor-steering.md` fallback).
+    fn steering_target(&self) -> Option<render::SteeringTarget> {
+        None
+    }
+
+    fn build_steering(&self, body: &str) -> HashMap<String, String> {
+        match (self.steering_dialect(), self.steering_target()) {
+            (Some(d), Some(t)) => render::emit_steering_at(self.container(), &t, d, body),
+            _ => HashMap::new(),
+        }
     }
 
     /// Directory inside the built payload that this adapter owns, e.g.
@@ -76,6 +94,20 @@ pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
         other => anyhow::bail!("Unsupported target: {}", other),
     };
     Ok(adapter)
+}
+
+/// Build crew + commands payload, optionally appending rendered steering.
+pub fn build_payload(
+    adapter: &dyn Adapter,
+    roles: &[CanonicalRole],
+    commands: &[CanonicalCommand],
+    steering: Option<&str>,
+) -> anyhow::Result<HashMap<String, String>> {
+    let mut built = adapter.build(roles, commands)?;
+    if let Some(body) = steering {
+        built.extend(adapter.build_steering(body));
+    }
+    Ok(built)
 }
 
 /// The harnesses a user can `shipmates install --harness <name>` for.

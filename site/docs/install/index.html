@@ -105,7 +105,7 @@
           <p class="section__lead">One command drops the crew and the thirteen commands into a harness&#x27;s own tree.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>shipmates install                            # interactive: pick harness(es), then tools
+          <pre class="order-code" tabindex="0"><code>shipmates install                            # interactive: pick harness(es); all tools
 shipmates install --harness claude-code
 shipmates install --harness opencode --local
 shipmates install --harness all --dir /path/to/project
@@ -121,17 +121,16 @@ shipmates update --harness claude-code</code></pre>
     <section class="section" id="install-tools" aria-labelledby="install-tools-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="install-tools-title">3. Add a tool (optional)</h2>
-          <p class="section__lead">Tools are off by default. Run <code>install</code> in a terminal and it asks which you&#x27;d like; name them up front with <code>--with-tools</code> to skip the prompt.</p>
+          <h2 class="section__title" id="install-tools-title">3. Tools</h2>
+          <p class="section__lead">A plain <code>install</code> ships the full toolbox. Pass <code>--with-tools none</code> for crew + commands only, or name a subset.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>shipmates install                                    # prompts: harnesses, then tools
-shipmates install --harness claude-code              # prompts: pick tools, or Enter for none
-shipmates install --harness claude-code --with-tools termgif
-shipmates install --harness opencode --with-tools all
-shipmates install --harness codex --with-tools none  # explicit opt-out, no prompt</code></pre>
-          <p>A <strong>tool</strong> is the third kind of shipmates resource, alongside the crew and the commands. Unlike a command, a tool is never invoked with a slash — the crew reach for it on their own when the intent of your prompt calls for it. <code>termgif</code>, the first tool, renders a polished animated terminal demo GIF of a workflow run from a small JSON spec — see its <a href="../../tools/termgif/">tool page</a>.</p>
-          <p>When you run <code>install</code> interactively without <code>--with-tools</code>, it lists the available tools and lets you pick; a non-interactive run (CI, a pipe, a script) installs none. Pass the flag to be explicit: one or more tool names comma-separated, <code>all</code>, or <code>none</code>. Each tool maps to the harness&#x27;s own native tool surface: a native code tool on opencode (<code>.opencode/tools/&lt;name&gt;.ts</code>), and an agent-invoked Agent Skill in the shared <code>.agents/skills/</code> tree everywhere else — on Claude Code pinned agent-only with <code>user-invocable: false</code>, so it never shows up as a slash command.</p>
+          <pre class="order-code" tabindex="0"><code>shipmates install --harness claude-code              # crew + commands + all tools
+shipmates install --harness claude-code --with-tools termgif,scrub
+shipmates install --harness opencode --with-tools all   # same as omitting the flag
+shipmates install --harness codex --with-tools none     # explicit crew-only</code></pre>
+          <p>A <strong>tool</strong> is the third kind of shipmates resource, alongside the crew and the commands. Unlike a command, a tool is never invoked with a slash — the crew reach for it on their own when the intent of your prompt calls for it. <code>shipmates-termgif</code>, the first tool, renders a polished animated terminal demo GIF of a workflow run from a small JSON spec — see its <a href="../../tools/shipmates-termgif/">tool page</a>. Former short names (<code>termgif</code>, <code>scrub</code>) still select the namespaced tool at install.</p>
+          <p>Omitting <code>--with-tools</code> installs every bundled tool. Pass <code>none</code> for a minimal crew-only install, <code>all</code> explicitly (same as the default), or a comma-separated list for a subset. Each tool maps to the harness&#x27;s own native tool surface: a native code tool on opencode (<code>.opencode/tools/&lt;name&gt;.ts</code>), and an agent-invoked Agent Skill in the shared <code>.agents/skills/</code> tree everywhere else — on Claude Code pinned agent-only with <code>user-invocable: false</code>, so it never shows up as a slash command.</p>
         </div>
       </div>
     </section>
@@ -162,7 +161,9 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
             <li>Writes into the tree each harness reads. Four harnesses (<code>codex</code>, <code>antigravity</code>, <code>cursor</code>, <code>github-copilot</code>) share one <code>.agents/skills/</code> tree — rendered once, byte-identical, so a multi-harness install has a single copy, not four. Crew stay harness-native (<code>.codex/agents/</code>, <code>.github/agents/</code>, <code>.agents/agents/</code>). The rest keep their own root: <code>.claude/</code>, <code>.windsurf/</code>, and opencode&#x27;s <code>.opencode/commands/</code>.</li>
             <li>Emits the thirteen skills whole — whatever a skill bundles comes along with its <code>SKILL.md</code> — and, on the five crew-bearing harnesses, the twelve crew personas: <code>agents/*.md</code> on claude-code, opencode and antigravity, <code>agents/*.toml</code> on codex, and <code>agents/*.agent.md</code> on github-copilot. The two skill-only harnesses (cursor, windsurf) get the skills and nothing else.</li>
             <li>Writes an install receipt at <code>&lt;target&gt;/.shipmates/receipts/&lt;harness&gt;.json</code>. The receipt records Shipmates version, harness, resolved layout, and each file Shipmates owns with its SHA-256 hash.</li>
-            <li>Reinstalling is idempotent: unchanged receipt-owned files are skipped; changed receipt-owned files get a sibling <code>.bak-…</code> backup before replacement. New files are added. Existing colliding files, including first-install files, are unmanaged until <code>--force</code> explicitly replaces them. Symlinked target paths are rejected.</li>
+            <li>Reinstalling is idempotent: unchanged receipt-owned files are skipped; changed receipt-owned files get a sibling <code>.bak-…</code> backup before replacement. New files are added. Symlinked target paths are rejected.</li>
+            <li>A file already at a payload path is classified by its own frontmatter. One that names the artifact installed there is adopted — backed up, rewritten from the payload, and claimed in the receipt. One that does not is yours: install stops before writing anything and names <code>shipmates install --force</code>, which backs each up and replaces it.</li>
+            <li>The payload is the one compiled into the binary. <code>cargo run -- install</code> inside a Shipmates checkout uses that checkout; any other source tree must be asked for with <code>--from-cwd</code> or <code>SHIPMATES_SRC=/path/to/checkout</code>.</li>
             <li>Warns about files recorded by the previous receipt but absent from the new payload instead of silently deleting them.</li>
           </ul>
         </div>
@@ -188,19 +189,20 @@ shipmates build|check             # contributor digest / payload tooling</code><
           <table>
             <thead><tr><th scope="col">Command</th><th scope="col">Flag</th><th scope="col">Default</th><th scope="col">Effect</th></tr></thead>
             <tbody>
-              <tr><td rowspan="5"><code>install</code></td><td><code>--harness NAME</code></td><td>interactive / <code>claude-code</code></td><td>Harness tree to install (<code>all</code> = every target). Omit in a terminal to pick.</td></tr>
-              <tr><td><code>--with-tools NAMES|all|none</code></td><td>prompt / none</td><td>Optional tools. Omit in a terminal to pick; omit non-interactively for none.</td></tr>
+              <tr><td rowspan="6"><code>install</code></td><td><code>--harness NAME</code></td><td>interactive / <code>claude-code</code></td><td>Harness tree to install (<code>all</code> = every target). Omit in a terminal to pick.</td></tr>
+              <tr><td><code>--with-tools NAMES|all|none</code></td><td>all bundled tools</td><td>Omit for every tool; <code>none</code> for crew-only; names or <code>all</code> for a subset.</td></tr>
               <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code></td><td>global home</td><td>Install root (see Where above).</td></tr>
               <tr><td><code>--force</code></td><td>off</td><td>Overwrite colliding files even when not receipt-owned.</td></tr>
-              <tr><td><code>--no-migrate</code></td><td>off</td><td>Leave superseded legacy <code>commands/&lt;name&gt;.md</code> files in place.</td></tr>
+              <tr><td><code>--no-migrate</code></td><td>off</td><td>Skip layout-migrate and identity-rename sweeps.</td></tr>
+              <tr><td><code>--from-cwd</code></td><td>off</td><td>Build from this directory&#x27;s <code>crew/</code>, <code>commands/</code>, <code>toolbox/</code> instead of the embedded payload.</td></tr>
               <tr><td rowspan="3"><code>update</code></td><td><code>--harness NAME</code></td><td>all installed</td><td>Refresh one harness, or omit to refresh every receipt (interactive when several).</td></tr>
               <tr><td><code>--with-tools NAMES|all|none</code></td><td>keep receipt</td><td>Omit to keep previously installed tools; pass to replace the set.</td></tr>
-              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code></td><td>global home</td><td>Same Where flags as install.</td></tr>
+              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code> / <code>--from-cwd</code></td><td>global home</td><td>Same Where / Source flags as install.</td></tr>
               <tr><td rowspan="2"><code>uninstall</code></td><td><code>--harness NAME</code></td><td>only if one receipt</td><td>Required when more than one harness is installed under the root.</td></tr>
-              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code></td><td>global home</td><td>Same Where flags as install.</td></tr>
+              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code> / <code>--from-cwd</code></td><td>global home</td><td>Same Where / Source flags as install.</td></tr>
               <tr><td rowspan="3"><code>doctor</code></td><td><code>--harness NAME</code></td><td><code>claude-code</code></td><td>Which install to diagnose.</td></tr>
               <tr><td><code>--fix</code></td><td>off</td><td>Repair missing or drifted Shipmates-owned files.</td></tr>
-              <tr><td><code>--no-migrate</code></td><td>off</td><td>With <code>--fix</code>, restore files but leave legacy command files alone.</td></tr>
+              <tr><td><code>--no-migrate</code></td><td>off</td><td>With <code>--fix</code>, restore files but leave legacy / pre-prefix names alone.</td></tr>
               <tr><td><code>targets</code></td><td>—</td><td>—</td><td>List harness names this binary can install.</td></tr>
               <tr><td rowspan="2"><code>build</code> / <code>check</code></td><td><code>--target NAME</code></td><td><code>claude-code</code></td><td>Contributor: harness to build or digest-check.</td></tr>
               <tr><td><code>--update</code> (build only)</td><td>off</td><td>Contributor: regenerate <code>tests/payload-digests/</code> (not a user install refresh).</td></tr>

@@ -6,8 +6,9 @@ so it gates *staleness*, not *correctness* — it stayed green throughout the
 period the site published harness-neutral exporter tokens (#158). Reverting the
 fix and regenerating would make it green again with wrong content.
 
-These tests assert the property `--check` cannot: that the published pages carry
-the dialect a user actually installs.
+These tests assert the property `--check` cannot: that published command
+pages are a human guide (not a dump of the install skill), and that agent
+pages still carry the dialect a user actually installs.
 """
 
 from __future__ import annotations
@@ -90,11 +91,15 @@ class SiteGenerationTests(unittest.TestCase):
                     f"{page.relative_to(ROOT)} contains an unresolved exporter token",
                 )
 
-    def test_command_pages_carry_the_rendered_dialect(self) -> None:
-        """Positive control: absence of neutral tokens must not mean absence of content."""
-        migrate = (ROOT / "site/commands/migrate/index.html").read_text(encoding="utf-8")
-        self.assertIn("ARGUMENTS", migrate)
-        self.assertIn(".claude/agents/*.md", migrate)
+    def test_command_pages_are_a_guide_not_the_skill(self) -> None:
+        """Positive control: the page names the process and crew, and links the skill."""
+        migrate = (ROOT / "site/commands/shipmates-migrate/index.html").read_text(encoding="utf-8")
+        self.assertIn('id="process"', migrate)
+        self.assertIn("How it works", migrate)
+        self.assertIn("senior-engineer", migrate)
+        self.assertIn("Also sit when", migrate)
+        self.assertIn("commands/shipmates-migrate.md", migrate)
+        self.assertNotIn("ARGUMENTS", migrate)
 
     def test_agent_pages_list_harness_tool_names(self) -> None:
         """Crew pages must show the harness's tool names, not semantic capabilities.
@@ -135,13 +140,36 @@ class SiteGenerationTests(unittest.TestCase):
 
         nested = rendered / "skills"
         agents = generator.load_agents(rendered / "agents", nested)
-        self.assertEqual(12, len(agents))
+        self.assertEqual(13, len(agents))
         commands = generator.load_skills(nested, tuple(a.name for a in agents))
-        self.assertEqual(13, len(commands))
+        self.assertEqual(15, len(commands))
         self.assertIn("ship-issue", {c.slug for c in commands})
 
         flat = generator.load_skills(ROOT / "commands", tuple(a.name for a in agents))
         self.assertEqual({c.slug for c in commands}, {c.slug for c in flat})
+
+    def test_redirect_stubs_emitted_and_excluded_from_sitemap(self) -> None:
+        """Legacy renamed command and tool paths serve a meta-refresh stub and are not indexed."""
+        from tools.gen_command_pages import REDIRECTS, SITE_URL, TOOL_REDIRECTS
+
+        sitemap_text = (ROOT / "site/sitemap.xml").read_text(encoding="utf-8")
+        for old_slug, target_slug in REDIRECTS.items():
+            stub = ROOT / f"site/commands/{old_slug}/index.html"
+            self.assertTrue(stub.is_file(), f"missing redirect stub {stub}")
+            text = stub.read_text(encoding="utf-8")
+            self.assertIn(f'url=../{target_slug}/"', text)
+            self.assertIn(f'rel="canonical" href="{SITE_URL}commands/{target_slug}/"', text)
+            self.assertIn('name="robots" content="noindex"', text)
+            self.assertNotIn(f"{SITE_URL}commands/{old_slug}/", sitemap_text)
+
+        for old_slug, target_slug in TOOL_REDIRECTS.items():
+            stub = ROOT / f"site/tools/{old_slug}/index.html"
+            self.assertTrue(stub.is_file(), f"missing tool redirect stub {stub}")
+            text = stub.read_text(encoding="utf-8")
+            self.assertIn(f'url=../{target_slug}/"', text)
+            self.assertIn(f'rel="canonical" href="{SITE_URL}tools/{target_slug}/"', text)
+            self.assertIn('name="robots" content="noindex"', text)
+            self.assertNotIn(f"{SITE_URL}tools/{old_slug}/", sitemap_text)
 
 
 if __name__ == "__main__":

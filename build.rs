@@ -10,8 +10,16 @@ fn main() {
     println!("cargo:rerun-if-changed=commands");
     println!("cargo:rerun-if-changed=docs/COST.md");
     println!("cargo:rerun-if-changed=toolbox");
+    println!("cargo:rerun-if-changed=steering");
 
     let mut entries: Vec<(String, String)> = Vec::new();
+    let steering = root.join("steering").join("shipmates.md");
+    if steering.is_file() {
+        entries.push((
+            "steering/shipmates.md".to_string(),
+            steering.to_string_lossy().into_owned(),
+        ));
+    }
     for dir in ["crew", "commands"] {
         let base = root.join(dir);
         if !base.is_dir() {
@@ -66,7 +74,12 @@ fn collect_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
     for entry in fs::read_dir(dir).expect("read embed dir").filter_map(|e| e.ok()) {
         let path = entry.path();
         if path.is_dir() {
+            if path.file_name().is_some_and(|n| n == "__pycache__") {
+                continue;
+            }
             collect_files(&path, out);
+        } else if path.extension().is_some_and(|ext| ext == "pyc") {
+            continue;
         } else {
             out.push(path);
         }

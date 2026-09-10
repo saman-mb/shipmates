@@ -25,6 +25,8 @@ pub struct Dialect {
 
 const SENTINEL: &str = "\u{00A7}agents-instructions";
 const COMMAND_PREAMBLE_MARKER: &str = "<!-- shipmates:command-preamble -->";
+const ACCEPTANCE_BOARD_MARKER: &str = "<!-- shipmates:acceptance-board -->";
+const EPIC_INTEGRATION_BOARD_MARKER: &str = "<!-- shipmates:epic-integration-board -->";
 const SUBAGENT_PREAMBLE_MARKER: &str = "<!-- shipmates:subagent-preamble -->";
 const COST_DOCTRINE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/COST.md"));
 
@@ -48,6 +50,17 @@ fn command_preamble() -> &'static str {
     doctrine_section("<!-- command-preamble:start -->", "<!-- command-preamble:end -->")
 }
 
+fn acceptance_board() -> &'static str {
+    doctrine_section("<!-- acceptance-board:start -->", "<!-- acceptance-board:end -->")
+}
+
+fn epic_integration_board() -> &'static str {
+    doctrine_section(
+        "<!-- epic-integration-board:start -->",
+        "<!-- epic-integration-board:end -->",
+    )
+}
+
 fn subagent_preamble() -> &'static str {
     doctrine_section("<!-- subagent-preamble:start -->", "<!-- subagent-preamble:end -->")
 }
@@ -65,6 +78,8 @@ fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
 /// Render a harness-neutral command body into a harness's dialect.
 pub fn render_body(text: &str, d: &Dialect) -> String {
     let mut out = text.replace(COMMAND_PREAMBLE_MARKER, command_preamble());
+    out = out.replace(ACCEPTANCE_BOARD_MARKER, acceptance_board());
+    out = out.replace(EPIC_INTEGRATION_BOARD_MARKER, epic_integration_board());
     out = out.replace(SUBAGENT_PREAMBLE_MARKER, subagent_preamble());
     out = render_instructions(&out, d.instructions_primary, d.instructions_fallback);
     out = render_token(&out, "{{agents-glob}}", &format!("{}/*.md", d.agents_glob));
@@ -116,6 +131,44 @@ fn render_args(text: &str, token: &str) -> anyhow::Result<String> {
 
 pub fn render_command_body(command: &CanonicalCommand, d: &Dialect) -> anyhow::Result<String> {
     render_args(&render_body(&command.narrative, d), d.args_token)
+}
+
+/// How a harness wraps rendered steering prose at its install path.
+pub enum SteeringFormat {
+    PlainMarkdown,
+    CursorMdc { description: &'static str },
+    CopilotInstructions { apply_to: &'static str },
+}
+
+pub struct SteeringTarget {
+    pub rel_path: &'static str,
+    pub format: SteeringFormat,
+}
+
+/// Fallback steering path when a harness has no documented auto-load rules surface.
+pub const SHIPMATES_STEERING_REL: &str = ".shipmates/contributor-steering.md";
+
+/// Render contributor steering to a harness-native modular path (rules file,
+/// instructions file, or `.shipmates/contributor-steering.md` fallback).
+pub fn emit_steering_at(
+    container: &str,
+    target: &SteeringTarget,
+    dialect: &Dialect,
+    body: &str,
+) -> HashMap<String, String> {
+    let rendered =
+        render_instructions(body, dialect.instructions_primary, dialect.instructions_fallback);
+    let content = match target.format {
+        SteeringFormat::PlainMarkdown => rendered,
+        SteeringFormat::CursorMdc { description } => {
+            format!("---\ndescription: {description}\nalwaysApply: true\n---\n{rendered}")
+        }
+        SteeringFormat::CopilotInstructions { apply_to } => {
+            format!("---\napplyTo: \"{apply_to}\"\n---\n{rendered}")
+        }
+    };
+    let path = format!("{}/{}", container, target.rel_path);
+    HashMap::from([(path, content)])
 }
 
 /// Claude Code's dialect.
@@ -425,13 +478,46 @@ mod tests {
     }
 
     #[test]
+    fn test_emit_steering_claude_rules_path() {
+        let target = SteeringTarget {
+            rel_path: ".claude/rules/shipmates-contributor.md",
+            format: SteeringFormat::PlainMarkdown,
+        };
+        let files = emit_steering_at("harnesses/claude-code", &target, &CLAUDE_CODE, "body");
+        assert_eq!(files.len(), 1);
+        assert!(files.contains_key("harnesses/claude-code/.claude/rules/shipmates-contributor.md"));
+    }
+
+    #[test]
+    fn test_emit_steering_cursor_mdc_wrapper() {
+        let target = SteeringTarget {
+            rel_path: ".cursor/rules/shipmates-contributor.mdc",
+            format: SteeringFormat::CursorMdc {
+                description: "Shipmates contributor checklists",
+            },
+        };
+        let files = emit_steering_at("harnesses/cursor", &target, &AGENT_SKILLS, "steer");
+        let content = &files["harnesses/cursor/.cursor/rules/shipmates-contributor.mdc"];
+        assert!(content.starts_with("---\n"));
+        assert!(content.contains("alwaysApply: true"));
+        assert!(content.contains("steer"));
+    }
+
+    #[test]
     fn test_shared_preambles_expand_and_leave_no_markers() {
-        let command = render_body("<!-- shipmates:command-preamble -->\nbody", &CLAUDE_CODE);
+        let command = render_body(
+            "<!-- shipmates:command-preamble -->\n<!-- shipmates:acceptance-board -->\n<!-- shipmates:epic-integration-board -->\nbody",
+            &CLAUDE_CODE,
+        );
         let role = render_role_body("<!-- shipmates:subagent-preamble -->\nrole", &CLAUDE_CODE);
 
         assert!(command.contains("## Cost discipline"));
+        assert!(command.contains("Mandatory seats"));
+        assert!(command.contains("Integration questions"));
         assert!(role.contains("## Return discipline"));
         assert!(!command.contains("shipmates:command-preamble"));
+        assert!(!command.contains("shipmates:acceptance-board"));
+        assert!(!command.contains("shipmates:epic-integration-board"));
         assert!(!role.contains("shipmates:subagent-preamble"));
     }
 }

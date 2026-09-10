@@ -2,14 +2,11 @@
 """Generate site/commands/<slug>/index.html and site/agents/<role>/index.html —
 one detail page per command, one per agent.
 
-Honest by construction: every command-specific sentence on a command page is a
-markdown-rendered projection of skills/<slug>/SKILL.md — no invented stage names,
-gates, crew, counts, durations or file names. Only command-agnostic chrome
-("How to run it", "The stages", "Other commands") is authored here. Anything the
-parser does not recognise raises with a file:line and a remedy rather than being
-silently dropped or passed through, and every non-blank source line must be
-claimed by a block. Deterministic and committed, matching the repo's other
-generators. Regenerate with:  python3 tools/gen_command_pages.py
+Command pages are a **human guide layer**: what the command is, when to use it,
+and the process it encodes — authored in COMMAND_PAGE_COPY, including which
+crew roles sit on each step. They do **not** dump the install skill
+(`commands/*.md`) onto the site. The skill stays the agent-facing spec; the
+page links to it on GitHub. Regenerate with:  python3 tools/gen_command_pages.py
 
 Agent pages project the agents/<role>.md frontmatter (name/description/tools)
 verbatim; their editorial copy (tagline, what/scenarios/checks/crew-fit) is
@@ -40,6 +37,11 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+_TOOLS = Path(__file__).resolve().parent
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
+from command_page_copy import COMMAND_PAGE_COPY, CommandPageCopy, ProcessStep
+
 # ---------------------------------------------------------------------------
 # Constants (the generator's whole non-source input; see the drift invariant)
 # ---------------------------------------------------------------------------
@@ -47,19 +49,51 @@ from pathlib import Path
 # Canonical order. Drives page order, the sitemap, and the sibling nav.
 SLUGS = (
     "ship-issue",
-    "fix-bug",
+    "ship-epic",
+    "shipmates-fix-bug",
+    "report-bug",
     "plan-epics",
     "consolidate-issues",
-    "harden",
-    "spike",
-    "migrate",
-    "document",
-    "release",
-    "polish",
+    "shipmates-harden",
+    "shipmates-spike",
+    "shipmates-migrate",
+    "shipmates-document",
+    "shipmates-release",
+    "shipmates-polish",
     "pr-review",
-    "onboard",
-    "refactor",
+    "shipmates-onboard",
+    "shipmates-refactor",
 )
+
+# Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
+# as static HTML meta-refresh stubs with canonical links; excluded from sitemap.
+REDIRECTS = {
+    "review": "pr-review",
+    "document": "shipmates-document",
+    "fix-bug": "shipmates-fix-bug",
+    "harden": "shipmates-harden",
+    "migrate": "shipmates-migrate",
+    "onboard": "shipmates-onboard",
+    "polish": "shipmates-polish",
+    "refactor": "shipmates-refactor",
+    "release": "shipmates-release",
+    "spike": "shipmates-spike",
+}
+
+# Old tool page slugs → new. Same meta-refresh stubs as command REDIRECTS.
+TOOL_REDIRECTS = {
+    "gh": "shipmates-gh",
+    "badge": "shipmates-badge",
+    "diagram": "shipmates-diagram",
+    "domaincheck": "shipmates-domaincheck",
+    "fixtures": "shipmates-fixtures",
+    "pixelart": "shipmates-pixelart",
+    "scrub": "shipmates-scrub",
+    "social-card": "shipmates-social-card",
+    "sparkline": "shipmates-sparkline",
+    "svgflow": "shipmates-svgflow",
+    "termgif": "shipmates-termgif",
+}
 
 # Hand-authored docs pages under site/docs/. The generator discovers them on
 # disk and includes them in the sitemap — it never generates them.
@@ -71,6 +105,7 @@ FLAGSHIP_SLUG = "ship-issue"
 AGENT_ROLES = (
     "architect",
     "senior-engineer",
+    "principal-engineer",
     "sdet",
     "security-engineer",
     "site-reliability-engineer",
@@ -91,7 +126,15 @@ LASTMOD = "2026-07-25"
 
 # Section ids reserved by the page skeleton; a source heading may not claim one.
 RESERVED_ANCHORS = frozenset(
-    {"invoke", "stages", "config", "guardrails", "source", "other-commands", "main", "top"}
+    {
+        "invoke",
+        "process",
+        "when-to-use",
+        "source",
+        "other-commands",
+        "main",
+        "top",
+    }
 )
 
 # Spelled out so the stages lead reads as prose; derived, never hand-typed.
@@ -479,7 +522,66 @@ AGENT_COPY = {
                 "verified diff and a precise report, which the sdet then re-verifies "
                 "independently.",
             ),
-            related=("architect", "sdet", "product-manager"),
+            related=("architect", "sdet", "product-manager", "principal-engineer"),
+        ),
+    ),
+    "principal-engineer": AgentCopy(
+        tagline="Principal diff review — quality, tests, repo ship checklist.",
+        what=(
+            "The principal engineer reviews a finished change on the pushed PR head at principal "
+            "bar: correctness, maintainability, meaningful tests, scope discipline, and whether the "
+            "repo's mandatory ship process was actually followed for this change class.",
+            "Distinct from the architect's structural pass and the product manager's acceptance call — "
+            "PE owns line-level quality and contributor checklist compliance, with every REJECT grounded "
+            "in specific file evidence.",
+        ),
+        scenarios=(
+            AgentScenario(
+                "A PR needs principal review",
+                "Before merge, PE reads the diff and verifies tests, naming, and edge-case handling "
+                "match the codebase's standard — not just that CI went green.",
+            ),
+            AgentScenario(
+                "Contributor process must hold",
+                "When a change touches generated pages, digests, version fields, or site gates, PE "
+                "confirms those mandatory steps ran — a missing digest is a REJECT even when the code looks fine.",
+            ),
+            AgentScenario(
+                "Scope and test quality",
+                "PE catches coverage theatre, scope creep, and fixes that fight local conventions — "
+                "the kinds of issues a mechanical lint pass will not surface.",
+            ),
+        ),
+        checks=(
+            AgentCheck(
+                "Correctness.",
+                "Logic errors, missing edge cases, and weak error handling flagged with file evidence.",
+            ),
+            AgentCheck(
+                "Maintainability.",
+                "Naming, structure, and diff scope read like the surrounding codebase.",
+            ),
+            AgentCheck(
+                "Test quality.",
+                "Tests cover meaningful failure paths, not just happy-path theatre.",
+            ),
+            AgentCheck(
+                "Ship checklist.",
+                "Generated pages, digests, version bumps, and validation gates required by the repo.",
+            ),
+            AgentCheck(
+                "Scope discipline.",
+                "Unrequested expansion and gold-plating rejected with concrete alternatives.",
+            ),
+        ),
+        crew_fit=CrewFit(
+            paragraphs=(
+                "The principal engineer sits on every first acceptance board alongside the product "
+                "manager — the mandatory core every shipping command convenes on the pushed PR head. "
+                "Optional specialists scale in by flag; after a fixer, a PE/PO ACCEPT may carry "
+                "when the delta cannot invalidate it.",
+            ),
+            related=("product-manager", "senior-engineer", "architect", "sdet"),
         ),
     ),
     "sdet": AgentCopy(
@@ -692,9 +794,9 @@ AGENT_COPY = {
         ),
         crew_fit=CrewFit(
             paragraphs=(
-                "On `/fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
+                "On `/shipmates-fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
                 "minimal fix and its regression check; the `sdet` then proves the fix. On "
-                "`/release` it gates deploy safety. Build-time questions — pipelines, caching, "
+                "`/shipmates-release` it gates deploy safety. Build-time questions — pipelines, caching, "
                 "pinning — belong to the `devops-engineer`, and the SRE defers there "
                 "explicitly.",
             ),
@@ -906,11 +1008,11 @@ AGENT_COPY = {
         crew_fit=CrewFit(
             paragraphs=(
                 "The product manager books the ends of a run: clarifying requirements with the "
-                "`architect` during planning, then accepting or rejecting the finished PR after "
-                "the `sdet` has verified it. A REJECT lists the specific unmet criteria and "
-                "routes the work back to the `senior-engineer`.",
+                "`architect` during planning, then accepting or rejecting the finished PR alongside "
+                "the mandatory `principal-engineer` after the `sdet` has verified it. A REJECT lists "
+                "the specific unmet criteria and routes the work back to the `senior-engineer`.",
             ),
-            related=("sdet", "architect", "senior-engineer"),
+            related=("sdet", "architect", "senior-engineer", "principal-engineer"),
         ),
     ),
     "ux-ui-designer": AgentCopy(
@@ -1195,7 +1297,7 @@ AGENT_COPY = {
         crew_fit=CrewFit(
             paragraphs=(
                 "The data scientist is the crew's specialist for data-and-model deliverables — "
-                "designing experiments in `/spike`, reviewing analysis and model changes in "
+                "designing experiments in `/shipmates-spike`, reviewing analysis and model changes in "
                 "`/pr-review`. Findings hand to the `senior-engineer` as specific fixes, and "
                 "anything outside data work routes back to the rest of the crew.",
             ),
@@ -1215,10 +1317,10 @@ AGENT_COPY = {
 TOOL_COPY_SRC = "tools/gen_command_pages.py"
 
 # Canonical tool order — matches the homepage `#tools` grid.
-TOOLS = ("termgif", "social-card", "pixelart", "diagram", "svgflow", "badge", "sparkline", "scrub", "fixtures")
+TOOLS = ("shipmates-termgif", "shipmates-social-card", "shipmates-pixelart", "shipmates-diagram", "shipmates-svgflow", "shipmates-badge", "shipmates-sparkline", "shipmates-scrub", "shipmates-fixtures", "shipmates-domaincheck", "shipmates-gh")
 
 TOOL_COPY = {
-    "termgif": ToolCopy(
+    "shipmates-termgif": ToolCopy(
         tagline="Renders an animated terminal demo GIF of a workflow run from a small JSON spec.",
         what=(
             "`termgif` turns a small JSON spec — a typed prompt, staged progress with "
@@ -1230,10 +1332,7 @@ TOOL_COPY = {
             "docs page, a release note, or a social preview — instead of static text.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> "
-            "--with-tools termgif`, or omit the flag and pick it from the interactive list. Once "
-            "installed it sits alongside the crew as a capability they invoke implicitly; there "
-            "is no slash command to type.",
+            "Tools ship with a plain install (`shipmates install --harness <name>`). Use `--with-tools none` for crew-only or `--with-tools <name>` to refresh one tool. "
             "The renderer and its instructions are bundled together, so wherever the tool lands "
             "the agent has both the `termgif.py` script and the spec format it needs to drive it.",
         ),
@@ -1257,14 +1356,14 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "social-card": ToolCopy(
+    "shipmates-social-card": ToolCopy(
         tagline="Renders a shippable 1280×640 social / Open Graph preview card from a small JSON spec.",
         what=(
             "`social-card` turns a small JSON spec — an eyebrow kicker, a title, a subtitle, an accent colour, and a footer wordmark — into a polished 1280×640 PNG, the standard Open Graph aspect that Slack, Discord, Twitter, LinkedIn, and iMessage crop from a shared link. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the card deterministically on a deep, tasteful dark canvas — nothing to install, no design app to open.",
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is *a share image* — a repo or product launch, a release, a docs or guide page — instead of a described one. Long titles wrap and the type auto-fits, so copy of any length stays inside the frame.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools social-card`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install. Use `--with-tools none` for crew-only or `--with-tools <name>` to refresh one tool. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `social_card.py` script and the spec format it needs to drive it — `python3 social_card.py --spec spec.json --out card.png`.",
         ),
         examples=(
@@ -1285,14 +1384,14 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "pixelart": ToolCopy(
+    "shipmates-pixelart": ToolCopy(
         tagline="Pixel art the way the shipmates logo is made — a limited palette upscaled by a whole-number factor with nearest-neighbour, never smoothed.",
         what=(
             "`pixelart` turns a small JSON spec — a limited palette plus a grid of single-character rows — into a crisp pixel-art asset: a static PNG, or an animated GIF when the spec carries `frames`. It is a self-contained Python renderer that provisions its one dependency (Pillow) itself the first time it runs, so a run produces the image deterministically — nothing to install — rather than leaning on a model to imagine one.",
             "It reproduces the technique behind the shipmates logo, which is a 48×48 grid on ~39 colours scaled up ×14 with nearest-neighbour and no smoothing. Every upscale here is `Image.NEAREST`, so each logical pixel becomes a solid block — hard-edged and aliased on purpose, never a gradient. It is a tool, not a command: the crew reach for it on their own when the natural artifact is an icon, sprite, favicon, or badge in that style.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools pixelart`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools pixelart. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions travel together, so wherever the tool lands the agent has both the `pixelart.py` script and the spec format it needs to drive it — a `grid` and `palette` for a still, or `frames` and `durations` for an animation, with `--poster` to drop a reduced-motion still beside a GIF.",
         ),
         examples=(
@@ -1331,14 +1430,14 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "diagram": ToolCopy(
+    "shipmates-diagram": ToolCopy(
         tagline="Draws a curated diagram — a flow/pipeline/state machine, or a sequence of actors and messages — as a committed SVG, a deterministic PNG, or an animated GIF, from a tiny JSON spec.",
         what=(
             "`diagram` turns a small JSON spec into a clean, theme-exact diagram in whichever form the doc needs: a self-contained **SVG** assembled as text (no browser, no mermaid runtime, no headless renderer), a deterministic **PNG** repainted from the same primitives, or a tasteful animated **GIF**. The SVG path is pure standard library; PNG and GIF provision Pillow for themselves the first time they run, and raster text uses an embedded font so it is identical on every host. Every form is byte-for-byte deterministic — the same spec always produces the same file — so the output is safe to commit next to the docs it illustrates.",
             "It is the evolution of the older `svgflow` tool (now a deprecated alias that forwards here). A `flow` diagram — the default — lays nodes out in a column (`\"direction\": \"down\"`) or row (`\"direction\": \"right\"`), each box sized to its label, with straight spine arrows and side-bowed skips, back-edges, and self-loops. A `sequence` diagram draws actors across the top with dashed lifelines and directional message arrows. The builder is chosen by an explicit `kind`, or routed from a `prompt`/`intent` string through a plain keyword map — no model call. It is a *tool*, not a command: the crew reach for it on their own when the natural artifact of a task is a diagram of how the pieces connect or talk — a CI pipeline, a request path, a state machine, a service interaction — instead of a paragraph of prose or a mermaid block something else has to render. It draws a curated set of hand-laid types — there is no automatic graph layout — and the PNG is a faithful re-render of the same spec, not a pixel copy of the SVG.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools diagram`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools diagram. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `diagram.py` script and the spec format it needs to drive it — `python3 diagram.py --spec spec.json --out flow.svg` for SVG, or `--out flow.png` / `--out flow.gif` for a deterministic raster. The format is inferred from the extension, or set with `--format`; `--provision` places the raster dependency ahead of time.",
         ),
         examples=(
@@ -1364,8 +1463,8 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "svgflow": ToolCopy(
-        tagline="Deprecated alias for `diagram` — svgflow's flow diagram is now a kind of the more general diagram tool.",
+    "shipmates-svgflow": ToolCopy(
+        tagline="Deprecated alias for `shipmates-diagram` — svgflow's flow diagram is now a kind of the more general diagram tool.",
         what=(
             "`svgflow` has become `diagram` (ADR 0001): the box-and-arrow flow diagram it drew is now the default `kind` of a more general tool that keeps svgflow's theme-exact, byte-for-byte deterministic SVG and adds PNG and animated-GIF output, a `sequence` kind, and intent routing. Reach for `diagram` instead.",
             "For one release `svgflow.py` is kept as a thin deprecation shim: it prints a one-line deprecation notice and forwards every argument, unchanged, to `diagram.py`, so nothing that already reaches for `svgflow` breaks. The default kind is `flow`, so an existing svgflow spec renders exactly the same through the alias.",
@@ -1392,14 +1491,14 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "badge": ToolCopy(
+    "shipmates-badge": ToolCopy(
         tagline="Turns a label, a message, and a colour into a shields-style flat badge you commit as offline SVG.",
         what=(
             "`badge` renders the classic two-segment flat status badge — a grey left segment carrying a `label`, a coloured right segment carrying a `message` — straight to an SVG file. It is pure standard library: no dependencies and no network, so there is no round-trip to `shields.io` and the badge renders forever, offline, and diffs cleanly in git. Output is deterministic, so the same arguments always produce byte-for-byte the same file.",
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when the natural artifact of a task is a small status badge — build `passing`, a `version` tag, a `coverage` number, a licence — for a README, a docs page, or a release note, and that badge should live in the repo rather than hot-linking an external service. Colours are a named palette (`green`, `blue`, `red`, `brightgreen`, `orange`, `yellow`, ...) or any `#rrggbb` hex value, and segment widths are sized from a baked DejaVu Sans width table and locked with SVG `textLength` so text is never clipped.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools badge`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools badge. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `badge.py` script and the CLI it needs to drive it: `python3 badge.py --label build --message passing --color green --out badge.svg` (or omit `--out` to write the SVG to stdout).",
         ),
         examples=(
@@ -1420,14 +1519,14 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "sparkline": ToolCopy(
+    "shipmates-sparkline": ToolCopy(
         tagline="Turns a short run of numbers into a tiny inline SVG that shows the trend at a glance.",
         what=(
             "`sparkline` takes a short series of numbers — `--data \"12,18,9,22,15,27\"` — and draws its trend as one tiny inline chart: a smooth polyline over a faint gradient fill, scaled to its own min/max, with the last point marked by a dot. The output is a self-contained SVG (scalable, self-sizing, verified as valid XML), a light teal stroke on a subtle dark panel that reads on the tool pages; `--color`, `--label`, `--width`, `--height`, `--no-baseline` and `--bare` tune it.",
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when a task hands over a run of numbers — a benchmark trend, a metrics readout, a latency/throughput/error-rate history — and the honest artifact is the shape of the curve rather than a wall of digits. It has no dependencies beyond `python3` and the standard library, so a run is deterministic and offline.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools sparkline`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools sparkline. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The renderer and its instructions are bundled together, so wherever the tool lands the agent has both the `sparkline.py` script and the CLI it needs to drive it: `python3 sparkline.py --data \"…\" --out spark.svg`.",
         ),
         examples=(
@@ -1448,14 +1547,14 @@ TOOL_COPY = {
             ),
         ),
     ),
-    "scrub": ToolCopy(
+    "shipmates-scrub": ToolCopy(
         tagline="Strips credentials and personal data out of text before it leaves the repo.",
         what=(
             "`scrub` redacts secrets and PII from a log, paste, or bug report before it's shared. It swaps each match for a typed placeholder — emails become `[REDACTED_EMAIL]`, AWS access keys `[REDACTED_AWS_KEY]`, `api_key=`/`token=`/`secret=` assignments and Bearer tokens `[REDACTED_TOKEN]`, JWTs `[REDACTED_JWT]`, IPv4 addresses `[REDACTED_IP]`, and PEM private-key blocks `[REDACTED_PRIVATE_KEY]` — so the shape of the redaction stays visible. It is pure standard library: no dependencies, no network, and the same input always produces the same cleaned output.",
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own whenever text is about to leave the repo — pasted into an issue, a bug report, a chat message, or a PR body — and might carry a credential or someone's personal data. The detectors are deliberately conservative, leaving ordinary prose and code identifiers like `token = response.data.token` alone, which makes it a strong first pass rather than a guarantee — read the cleaned text before sharing.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools scrub`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools scrub. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "Run it on a file with `python3 scrub.py --in log.txt --out clean.txt`, or pipe text through it stdin-to-stdout with `cat log.txt | python3 scrub.py`. The cleaned text goes to `--out` or stdout; a per-category redaction summary goes to stderr so it never pollutes the output. Exit code is `0` on success and `2` on a usage error.",
         ),
         examples=(
@@ -1468,14 +1567,14 @@ TOOL_COPY = {
         ),
         sample="$ python3 scrub.py --in app.log\n\nBEFORE\n  env AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n  operator jane.doe@example.com from 203.0.113.42\n  Authorization: Bearer abcDEF0123456789xyzABCDEF\n\nAFTER  (summary on stderr)\n  env AWS_ACCESS_KEY_ID=[REDACTED_AWS_KEY]\n  operator [REDACTED_EMAIL] from [REDACTED_IP]\n  Authorization: Bearer [REDACTED_TOKEN]",
     ),
-    "fixtures": ToolCopy(
+    "shipmates-fixtures": ToolCopy(
         tagline="Turns a tiny field-to-type schema into a reproducible JSON array of believable fake records.",
         what=(
             "`fixtures` reads a small JSON schema — a map of field name to type, like `uuid`, `email`, `bool`, `int` or `choice` — and emits a JSON array of that many fake records. It is a self-contained Python script with no dependencies beyond the standard library, and it is deterministic: the same `--seed` always produces byte-identical output, so a generated fixture can be committed to the repo and diff cleanly like any other source file.",
             "It is a *tool*, not a command: you never type it. The crew reach for it on their own when a task needs seed rows or example records — unit-test data, a demo database, an API sample payload — instead of hand-typing objects or pulling in a heavyweight faker dependency. The data is fake and drawn independently per field, meant to exercise code paths rather than model any real-world distribution.",
         ),
         usage=(
-            "Tools are opt-in. Add it at install time with `shipmates install --harness <name> --with-tools fixtures`, or omit the flag and pick it from the interactive list. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools fixtures. Use --with-tools none for crew-only. Once installed it sits alongside the crew as a capability they invoke implicitly; there is no slash command to type.",
             "The script and its instructions are bundled together, so wherever the tool lands the agent has both the `fixtures.py` generator and the schema format it needs to drive it. Run it as `python3 fixtures.py --schema schema.json --count 5 --seed 7 --out data.json`, or omit `--out` to write the array to stdout.",
         ),
         examples=(
@@ -1487,6 +1586,64 @@ TOOL_COPY = {
             ),
         ),
         sample="schema.json\n{\n  \"id\":    \"uuid\",\n  \"email\": \"email\",\n  \"age\":   {\"type\": \"int\", \"min\": 18, \"max\": 65},\n  \"role\":  {\"type\": \"choice\", \"options\": [\"admin\", \"member\"]}\n}\n\n$ python3 fixtures.py --schema schema.json --count 2 --seed 7\n[\n  {\n    \"id\": \"6513270e-269e-4d37-b2a7-4de452e6b438\",\n    \"email\": \"priya.patel@test.dev\",\n    \"age\": 52,\n    \"role\": \"admin\"\n  },\n  {\n    \"id\": \"e8e25d94-0ed9-4475-9531-985d5d9dc9f8\",\n    \"email\": \"ivan.haddad@example.com\",\n    \"age\": 23,\n    \"role\": \"member\"\n  }\n]",
+    ),
+    "shipmates-domaincheck": ToolCopy(
+        tagline="RDAP domain availability — registry-authoritative, not DNS guesswork.",
+        what=(
+            "`domaincheck` queries `https://rdap.org/domain/<name>` and follows redirects to the authoritative registry. A registry `404` means **available** (unallocated); `200` means **registered**. Verdicts are `available`, `registered`, or `unknown` when the bootstrap path fails. It is stdlib-only (`urllib`) — no API keys — and batch mode staggers queries with backoff on HTTP 429.",
+            "It is a *tool*, not a command: you never type it. The crew reach for it when naming a product, sweeping a shortlist across TLDs, or verifying a domain claim — especially alongside `social-card` and `pixelart` in a launch-branding workflow. RDAP *available* does not mean cheap: premium and aftermarket names only surface at the registrar cart.",
+        ),
+        usage=(
+            "Tools ship with a plain install; refresh one with shipmates install --harness <name> --with-tools domaincheck. Use --with-tools none for crew-only. Once installed the crew invokes it implicitly; there is no slash command.",
+            "Run `python3 domaincheck.py github.com`, pass several domains, or sweep TLDs with `python3 domaincheck.py --tld com,app,io shipmates`. Add `--detail` for registrar and date fields from RDAP JSON; `--whois` optionally prints human-readable whois output when the binary exists. Use `--delay` on large sweeps — public bootstrap rate-limits rapid queries.",
+        ),
+        examples=(
+            ToolExample(
+                src="examples/domaincheck.gif", width=900, height=400,
+                alt="Terminal recording of domaincheck querying github.com as registered, then sweeping shipmates-test-xyzzy across .com and .io as available — ending with a green confirmation that verdicts are registry-authoritative RDAP, not DNS guesswork.",
+                caption="domaincheck querying a registered name, then sweeping a shortlist across TLDs — available means unallocated in RDAP, not cheap at the registrar.",
+                poster="examples/domaincheck_poster.png",
+            ),
+        ),
+        sample="$ python3 domaincheck.py github.com\n$ python3 domaincheck.py --tld com,io shipmates-test-name-xyzzy\n\ngithub.com\tregistered\nshipmates-test-name-xyzzy.com\tavailable\nshipmates-test-name-xyzzy.io\tavailable",
+    ),
+    "shipmates-gh": ToolCopy(
+        tagline="Structured GitHub CLI wrapper — the gh patterns shipmates commands use every day.",
+        what=(
+            "`gh` wraps the GitHub CLI with a JSON spec: validated repo slugs and issue numbers, "
+            "`body_file` hygiene for create/edit/comment/review, and structured JSON results instead "
+            "of scraped shell output. It covers repo default branch lookup, issue fetch/list/search/create/"
+            "edit/comment/close, parent/child **sub-issue** attach/list/detach, PR view/diff/create/checks/"
+            "poll/comment/review/merge/list, labels, "
+            "releases, and failed workflow logs — the same operations repeated across `/ship-issue`, "
+            "`/ship-epic`, `/pr-review`, `/consolidate-issues`, `/plan-epics`, and `/shipmates-release`.",
+            "It is a *tool*, not a command. The crew reach for it when orchestrating GitHub instead of "
+            "hand-rolling `gh` bash. Requires the GitHub CLI installed and authenticated (`gh auth login`); "
+            "Python side is stdlib-only.",
+        ),
+        usage=(
+            "Tools ship with a plain install; refresh one with `shipmates install --harness <name> --with-tools gh`, "
+            "or `--with-tools none` for crew-only. Pass one JSON spec on stdin: "
+            "`echo '{\"op\":\"repo.view\"}' | python3 gh.py`. List operations with `python3 gh.py --list-ops`. "
+            "Multi-line bodies must use `body_file` — inline `body` is capped at 200 chars. Sub-issue ops "
+            "take plain issue numbers (`{\"op\":\"issue.sub_issue_add\",\"number\":305,\"sub_issue_number\":306}`) "
+            "and skip the write when the child is already attached (`gh`'s `subIssues` field is a "
+            "connection — the op unwraps `nodes`); they need a host that exposes the "
+            "parent/child graph, which github.com does and an older Enterprise Server may not.",
+        ),
+        sample=(
+            '$ echo \'{"op":"repo.view"}\' | python3 gh.py\n'
+            '{\n'
+            '  "ok": true,\n'
+            '  "op": "repo.view",\n'
+            '  "result": {\n'
+            '    "nameWithOwner": "owner/repo",\n'
+            '    "defaultBranch": "main",\n'
+            '    "url": "https://github.com/owner/repo"\n'
+            '  }\n'
+            '}\n\n'
+            '$ echo \'{"op":"pr.checks_poll","number":306}\' | python3 gh.py'
+        ),
     ),
 }
 
@@ -1698,6 +1855,88 @@ def check_agent_copy(role: str, copy: AgentCopy) -> None:
     for rel in copy.crew_fit.related:
         if rel not in AGENT_ROLES:
             bad(f"related role {rel!r} is not a known agent", f"use one of: {', '.join(AGENT_ROLES)}")
+
+
+COMMAND_PAGE_COPY_SRC = "tools/command_page_copy.py"
+
+
+def check_command_page_copy(slug: str, copy: CommandPageCopy, cmd: Command) -> None:
+    """Shape rules on the site guide layer — enforced at build time."""
+    src = COMMAND_PAGE_COPY_SRC
+
+    def bad(what: str, remedy: str) -> None:
+        raise SourceError(src, 1, f"COMMAND_PAGE_COPY['{slug}']: {what}", "", remedy)
+
+    if not copy.guide_blurb.strip():
+        bad("empty guide_blurb", "write one plain sentence (≤120 chars)")
+    if len(copy.guide_blurb) > 120:
+        bad(f"guide_blurb is {len(copy.guide_blurb)} chars", "keep guide_blurb to 120 characters")
+    if not 2 <= len(copy.when_to_use) <= 3:
+        bad(f"{len(copy.when_to_use)} when_to_use bullets", "allow 2-3 bullets")
+    if not 4 <= len(copy.process) <= 6:
+        bad(f"{len(copy.process)} process steps", "allow 4-6 journey steps")
+    if copy.process_lead and len(copy.process_lead) > 280:
+        bad(f"process_lead is {len(copy.process_lead)} chars", "keep process_lead under 280 characters")
+    for i, step in enumerate(copy.process):
+        words = len(step.label.split())
+        if not 1 <= words <= 4:
+            bad(f"process[{i}] label {step.label!r} is {words} words", "labels are 1-4 words")
+        line_words = len(step.line.split())
+        if not step.line.strip():
+            bad(f"process[{i}] line is empty", "write one or two short sentences per step")
+        if line_words > 32:
+            bad(f"process[{i}] line is {line_words} words", "keep each line to ~24 words")
+        seen = set()
+        for role in step.always:
+            if role not in AGENT_ROLES:
+                bad(f"process[{i}] always {role!r} is not a known role", f"use one of: {', '.join(AGENT_ROLES)}")
+            if role in seen:
+                bad(f"process[{i}] repeats {role!r}", "a role is always or also, not both")
+            seen.add(role)
+        for seat in step.also:
+            if seat.role not in AGENT_ROLES:
+                bad(f"process[{i}] also {seat.role!r} is not a known role", f"use one of: {', '.join(AGENT_ROLES)}")
+            if not seat.when.strip():
+                bad(f"process[{i}] also {seat.role!r} has no criterion", "say when that role sits")
+            when_words = len(seat.when.split())
+            if when_words > 16:
+                bad(f"process[{i}] also {seat.role!r} when is {when_words} words", "keep the criterion to ~12 words")
+            if seat.role in seen:
+                bad(f"process[{i}] repeats {seat.role!r}", "a role is always or also, not both")
+            seen.add(seat.role)
+        if not step.always and not step.also and not step.solo.strip():
+            bad(f"process[{i}] has no crew and no solo note", "name who sits, or say the run does it with no spawn")
+        if (step.always or step.also) and step.solo.strip():
+            bad(f"process[{i}] has seats and a solo note", "solo is for steps with no specialist")
+
+
+def validate_command_page_copy(cmds: tuple) -> None:
+    """Every SLUGS entry has COMMAND_PAGE_COPY and vice versa; shape-check each."""
+    on_slugs = {cmd.slug for cmd in cmds}
+    for slug in SLUGS:
+        if slug not in COMMAND_PAGE_COPY:
+            raise SourceError(
+                COMMAND_PAGE_COPY_SRC,
+                1,
+                "command has no COMMAND_PAGE_COPY entry",
+                "",
+                f"add a COMMAND_PAGE_COPY entry for {slug!r} in tools/command_page_copy.py",
+            )
+    for slug in sorted(COMMAND_PAGE_COPY):
+        if slug not in SLUGS:
+            raise SourceError(
+                COMMAND_PAGE_COPY_SRC,
+                1,
+                "COMMAND_PAGE_COPY entry has no command",
+                "",
+                f"remove {slug!r} from COMMAND_PAGE_COPY or add it to SLUGS",
+            )
+    for cmd in cmds:
+        check_command_page_copy(cmd.slug, COMMAND_PAGE_COPY[cmd.slug], cmd)
+
+
+def command_page_copy(cmd: Command) -> CommandPageCopy:
+    return COMMAND_PAGE_COPY[cmd.slug]
 
 
 def derive_called_by(skills_dir: Path, roles: tuple) -> dict:
@@ -2897,12 +3136,14 @@ def _head(
 
 
 def render_head(cmd: Command, ctx: PageContext) -> str:
+    copy = command_page_copy(cmd)
+    desc = copy.guide_blurb if copy else cmd.frontmatter.description
     return _head(
         full_title=page_title(cmd) + " · Shipmates",
         social_title=page_title(cmd),
-        description=truncate_words(cmd.frontmatter.description, MAX_META_DESCRIPTION),
+        description=truncate_words(desc, MAX_META_DESCRIPTION),
         url=canonical_url(cmd.slug, ctx),
-        jsonld=render_jsonld(cmd, ctx),
+        jsonld=render_jsonld(cmd, ctx, copy),
         ctx=ctx,
     )
 
@@ -2916,35 +3157,38 @@ def _jsonld_script(payload: dict) -> str:
     return '<script type="application/ld+json">\n' + body + "\n</script>"
 
 
-def _step_text(cmd: Command, stage: Stage) -> str:
-    for text in block_texts(stage.blocks):
-        summary = plain_inline(text)
-        if summary:
-            return truncate_words(summary, MAX_JSONLD_TEXT)
-    for block in stage.blocks:
-        if isinstance(block, Code) and block.lines:
-            return truncate_words("\n".join(block.lines).strip(), MAX_JSONLD_TEXT)
-    return stage.title
+def _howto_step_text(step: ProcessStep) -> str:
+    """Plain-text HowToStep: what happens, then who sits and when."""
+    parts = [step.line.rstrip(".")]
+    if step.always:
+        parts.append("Always: " + ", ".join(step.always))
+    if step.also:
+        extras = "; ".join(f"{seat.role} ({seat.when})" for seat in step.also)
+        parts.append("Also sit when: " + extras)
+    if step.solo:
+        parts.append(step.solo.rstrip("."))
+    return ". ".join(parts) + "."
 
 
-def render_jsonld(cmd: Command, ctx: PageContext) -> str:
-    """Exactly one ld+json block per page — the site validator concatenates them."""
+def render_jsonld(cmd: Command, ctx: PageContext, copy: CommandPageCopy | None = None) -> str:
+    """HowTo from the human guide process — not every skill stage."""
     url = canonical_url(cmd.slug, ctx)
+    steps = copy.process if copy else tuple()
     payload = {
         "@context": "https://schema.org",
         "@type": "HowTo",
         "name": f"/{cmd.slug}",
-        "description": cmd.frontmatter.description,
+        "description": copy.guide_blurb if copy else cmd.frontmatter.description,
         "url": url,
         "step": [
             {
                 "@type": "HowToStep",
                 "position": position,
-                "name": f"Stage {stage.label} — {plain_inline(stage.title)}",
-                "text": _step_text(cmd, stage),
-                "url": f"{url}#{stage.anchor}",
+                "name": step.label,
+                "text": _howto_step_text(step),
+                "url": f"{url}#step-{position}",
             }
-            for position, stage in enumerate(cmd.stages, start=1)
+            for position, step in enumerate(steps, start=1)
         ],
     }
     return _jsonld_script(payload)
@@ -3016,15 +3260,16 @@ def render_agent_back_link() -> str:
     return _back_link("../../#crew", "All crew")
 
 
-def render_hero(cmd: Command, src: str) -> str:
+def render_hero(cmd: Command, src: str, copy: CommandPageCopy | None = None) -> str:
     flag = ""
     if cmd.slug == FLAGSHIP_SLUG:
         flag = '\n          <span class="order-detail__flag">Flagship</span>'
-    # The frontmatter description is the one-line summary (it is also the meta
-    # description); the intro blocks are the skill file's own lede and follow it.
-    intro = render_prose(cmd.intro, src, "          ")
-    if intro:
-        intro = "\n" + intro
+    desc = copy.guide_blurb if copy else cmd.frontmatter.description
+    intro = ""
+    if not copy:
+        intro = render_prose(cmd.intro, src, "          ")
+        if intro:
+            intro = "\n" + intro
     return f"""    <section class="section" aria-labelledby="order-title">
       <div class="container container--prose">
         {render_back_link()}
@@ -3032,7 +3277,7 @@ def render_hero(cmd: Command, src: str) -> str:
           <p class="section__eyebrow"><span aria-hidden="true">\U0001f4dc</span> Command</p>{flag}
           <h1 class="order-detail__title" id="order-title"><code>/{esc(cmd.slug)}</code></h1>
           <p class="order-detail__tagline">{esc(cmd.tagline)}</p>
-          <p class="order-detail__desc">{esc(cmd.frontmatter.description)}</p>{intro}
+          <p class="order-detail__desc">{esc(desc)}</p>{intro}
         </div>
       </div>
     </section>"""
@@ -3141,47 +3386,42 @@ def annotation_residue(st: Stage) -> str:
     return re.sub(r"\s+", " ", inner).strip(" ,")
 
 
-def render_stage(st: Stage, src: str) -> str:
-    """DOM order is visual order: num, title, gate, crew, body. No `order:` shuffling."""
+def _render_stage_crew(st: Stage, src: str) -> str:
+    """Crew chips + qualifier for a stage header (visible when accordion is collapsed)."""
+    if not (st.crew or st.annotation):
+        return ""
+    bits = ["Crew:"]
+    bits.extend(
+        f'<span class="chip order-stage__crew-item"><code>{esc(name)}</code></span>'
+        for name in st.crew
+    )
+    if st.annotation:
+        if st.crew:
+            residue = annotation_residue(st)
+            if residue:
+                bits.append(render_inline(f"({residue})", src, st.lineno))
+        else:
+            bits.append(render_inline(st.annotation, src, st.lineno))
+    return '  <p class="order-stage__crew">' + " ".join(bits) + "</p>"
+
+
+def render_stage(st: Stage, src: str, *, summary: str = "") -> str:
+    """One-line process step — no skill body, no accordion."""
+    line = summary or plain_inline(st.title)
     parts = [
         f'<li class="order-stage" id="{esc(st.anchor)}">',
         f'  <span class="order-stage__num" aria-hidden="true">{esc(st.label)}</span>',
-        '  <h3 class="order-stage__title"><span class="visually-hidden">Stage '
-        f'{esc(st.label)} — </span>{render_inline(st.title, src, st.lineno)}</h3>',
+        '  <div class="order-stage__main">',
+        f'    <h3 class="order-stage__title"><span class="visually-hidden">Stage '
+        f'{esc(st.label)} — {render_inline(st.title, src, st.lineno)}</span>'
+        f'<span class="order-stage__summary-text">{esc(line)}</span></h3>',
     ]
     if st.gate:
         parts.append(
-            '  <p class="order-stage__gate"><span class="visually-hidden">Gate: </span>'
-            f'<span aria-hidden="true">{GATE_MARK}</span> '
-            f"{render_inline(st.gate, src, st.lineno)}</p>"
+            '    <p class="order-stage__gate"><span class="visually-hidden">Gate. </span>'
+            "Hard gate — the run stops here until this step passes.</p>"
         )
-    if st.crew or st.annotation:
-        # [C-2] Names live in the chips now, so the source's parenthetical only
-        # earns a place beside them when it says something the chips can't — a
-        # qualifier ("fresh pass", "x N, parallel", "for runtime/ops bugs"). An
-        # annotation that reduces to nothing but the names and the agent:/
-        # agents: scaffolding is dropped instead of repeating the chips in
-        # prose (#136). Annotations with no recognised crew (MODE=pr notes,
-        # "specialist agents, in parallel") have nothing to de-duplicate
-        # against and still render verbatim.
-        bits = ["Crew:"]
-        bits.extend(
-            f'<span class="chip order-stage__crew-item"><code>{esc(name)}</code></span>'
-            for name in st.crew
-        )
-        if st.annotation:
-            if st.crew:
-                residue = annotation_residue(st)
-                if residue:
-                    bits.append(render_inline(f"({residue})", src, st.lineno))
-            else:
-                bits.append(render_inline(st.annotation, src, st.lineno))
-        parts.append('  <p class="order-stage__crew">' + " ".join(bits) + "</p>")
-    if st.blocks:
-        parts.append('  <div class="order-stage__body">')
-        parts.append(render_prose(st.blocks, src, "    "))
-        parts.append("  </div>")
-    parts.append("</li>")
+    parts.extend(["  </div>", "</li>"])
     return indent_html("\n".join(parts), "          ")
 
 
@@ -3217,29 +3457,126 @@ def render_extra_sections(sections: tuple, src: str) -> str:
     return "\n".join(out)
 
 
-def render_stages(cmd: Command, src: str) -> str:
-    before = render_extra_sections(cmd.sections_before_stages, src)
-    after = render_extra_sections(cmd.sections_after_stages, src)
-    body = "\n".join(render_stage(stage, src) for stage in cmd.stages)
-    parts = [
-        '    <section class="section" id="stages" aria-labelledby="stages-title">',
-        '      <div class="container container--prose">',
-        '        <div class="section__head">',
-        '          <p class="section__eyebrow">Step by step</p>',
-        '          <h2 class="section__title" id="stages-title">The stages</h2>',
-        f'          <p class="section__lead">{esc(_stages_lead(cmd))}</p>',
-        "        </div>",
-    ]
-    if before:
-        parts.append(before)
-    parts.append('        <ol class="order-stages" role="list">')
-    parts.append(body)
-    parts.append("        </ol>")
-    if after:
-        parts.append(after)
-    parts.append("      </div>")
-    parts.append("    </section>")
-    return "\n".join(parts)
+def _command_crew(cmd: Command) -> tuple:
+    """Ordered, de-duplicated crew names across all stages (first appearance wins)."""
+    seen: dict[str, None] = {}
+    for stage in cmd.stages:
+        for name in stage.crew:
+            seen.setdefault(name, None)
+    return tuple(seen)
+
+
+def render_crew_involved(cmd: Command) -> str:
+    """At-a-glance strip linking to agent pages for every role named in stages."""
+    crew = _command_crew(cmd)
+    if not crew:
+        return ""
+    chips = []
+    for name in crew:
+        href = link(f"../../agents/{name}/")
+        chips.append(
+            f'<a class="chip order-crew__chip" href="{href}"><code>{esc(name)}</code></a>'
+        )
+    listing = "\n".join(f"          {chip}" for chip in chips)
+    return f"""    <section class="section order-crew" id="crew-involved" aria-labelledby="crew-involved-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="crew-involved-title">Who&rsquo;s involved</h2>
+          <p class="section__lead">Roles referenced across the stages below.</p>
+        </div>
+        <div class="order-crew__strip" role="list">
+{listing}
+        </div>
+      </div>
+    </section>"""
+
+
+def render_when_to_use(copy: CommandPageCopy) -> str:
+    bullets = "\n".join(f"          <li>{esc(line)}</li>" for line in copy.when_to_use)
+    return f"""    <section class="section order-when" id="when-to-use" aria-labelledby="when-to-use-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="when-to-use-title">When to use</h2>
+        </div>
+        <ul class="order-when__list">
+{bullets}
+        </ul>
+      </div>
+    </section>"""
+
+
+def _crew_chip(name: str) -> str:
+    href = link(f"../../agents/{name}/")
+    return (
+        f'<a class="chip order-stage__crew-item order-process__chip" href="{href}">'
+        f"<code>{esc(name)}</code></a>"
+    )
+
+
+def _process_crew_html(step: ProcessStep) -> str:
+    """Who sits — always chips, then optional seats with the criterion that pulls them."""
+    if not step.always and not step.also:
+        if step.solo:
+            return f'<p class="order-process__crew order-process__crew--solo">{esc(step.solo)}</p>'
+        return ""
+    bands = []
+    if step.always:
+        label = "Always" if step.also else "Crew"
+        chips = " ".join(_crew_chip(name) for name in step.always)
+        bands.append(
+            f'<div class="order-process__band">'
+            f'<p class="order-process__crew-label">{label}</p>'
+            f'<p class="order-process__chips">{chips}</p>'
+            f"</div>"
+        )
+    if step.also:
+        label = "Also sit when" if step.always else "Sit when"
+        items = []
+        for seat in step.also:
+            items.append(
+                f'<li class="order-process__when-item">'
+                f"{_crew_chip(seat.role)}"
+                f'<span class="order-process__when-text">{esc(seat.when)}</span>'
+                f"</li>"
+            )
+        bands.append(
+            f'<div class="order-process__also">'
+            f'<p class="order-process__crew-label">{label}</p>'
+            f'<ul class="order-process__when">{"".join(items)}</ul>'
+            f"</div>"
+        )
+    return f'<div class="order-process__crew">{"".join(bands)}</div>'
+
+
+def render_process(copy: CommandPageCopy) -> str:
+    items = []
+    for i, step in enumerate(copy.process, start=1):
+        crew = _process_crew_html(step)
+        items.append(
+            f'          <li class="order-process__item" id="step-{i}">'
+            f'<span class="order-process__num" aria-hidden="true">{i}</span>'
+            f'<div class="order-process__body">'
+            f'<h3 class="order-process__label">{esc(step.label)}</h3>'
+            f'<p class="order-process__line">{esc(step.line)}</p>'
+            f"{crew}"
+            f"</div></li>"
+        )
+    listing = "\n".join(items)
+    lead = (
+        f'\n        <p class="order-process__lead">{esc(copy.process_lead)}</p>'
+        if copy.process_lead
+        else ""
+    )
+    return f"""    <section class="section order-process" id="process" aria-labelledby="process-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="process-title">How it works</h2>
+        </div>{lead}
+        <ol class="order-process__list" role="list">
+{listing}
+        </ol>
+      </div>
+    </section>"""
 
 
 def render_section(section, section_id: str, src: str):
@@ -3260,12 +3597,12 @@ def render_source(cmd: Command, ctx: PageContext) -> str:
     return f"""    <section class="section order-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="source-title">Where this lives</h2>
+          <h2 class="section__title" id="source-title">The skill</h2>
         </div>
-        <p>This page is generated from <code>{esc(cmd.source_path)}</code>. The installer copies it to <code>~/.claude/skills/{esc(cmd.slug)}/SKILL.md</code> for every project, or <code>.claude/skills/{esc(cmd.slug)}/SKILL.md</code> inside a single repo.</p>
+        <p>The installer ships the full skill — stages, gates, config — from <code>{esc(cmd.source_path)}</code>.</p>
         <a class="btn btn--secondary" href="{link(blob)}">
           {GITHUB_ICON}
-          <span>View {esc(cmd.source_path)} on GitHub</span>
+          <span>Read the skill on GitHub</span>
         </a>
       </div>
     </section>"""
@@ -3305,13 +3642,13 @@ def render_siblings(cmd: Command, all_cmds: tuple) -> str:
 
 def render_page(cmd: Command, all_cmds: tuple, ctx: PageContext) -> str:
     src = cmd.source_path
+    copy = command_page_copy(cmd)
     sections = [
-        render_hero(cmd, src),
+        render_hero(cmd, src, copy),
         render_demo(cmd),
         render_invoke(cmd),
-        render_stages(cmd, src),
-        render_section(cmd.config, "config", src),
-        render_section(cmd.guardrails, "guardrails", src),
+        render_process(copy),
+        render_when_to_use(copy),
         render_source(cmd, ctx),
         render_siblings(cmd, all_cmds),
     ]
@@ -3854,6 +4191,35 @@ def tool_page_path(slug: str) -> str:
 SITEMAP_PATH = f"{SITE_DIR}/sitemap.xml"
 
 
+def render_redirect_page(old_slug: str, target_slug: str, ctx: PageContext, kind: str = "commands") -> str:
+    """Render a lightweight HTML meta-refresh stub for a renamed command or tool."""
+    if kind == "tools":
+        target_url = ctx.site_url + f"tools/{target_slug}/"
+        href = f"../{target_slug}/"
+        label = f"/tools/{target_slug}/"
+        title_kind = "tools"
+    else:
+        target_url = canonical_url(target_slug, ctx)
+        href = f"../{target_slug}/"
+        label = f"/commands/{target_slug}/"
+        title_kind = "commands"
+    return (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '  <meta charset="utf-8">\n'
+        f"  <title>Redirecting to /{title_kind}/{target_slug}/ · Shipmates</title>\n"
+        f'  <meta http-equiv="refresh" content="0; url={href}">\n'
+        f'  <link rel="canonical" href="{target_url}">\n'
+        '  <meta name="robots" content="noindex">\n'
+        "</head>\n"
+        "<body>\n"
+        f'  <p>Redirecting to <a href="{href}">{label}</a>...</p>\n'
+        "</body>\n"
+        "</html>\n"
+    )
+
+
 def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), tools: tuple = ()) -> dict:
     """Repo-relative posix path -> full file text. PURE: no I/O, no clock, no cwd.
 
@@ -3861,6 +4227,18 @@ def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), t
     failure in any command, agent, or tool leaves the tree completely untouched.
     """
     files = {page_path(cmd.slug): render_page(cmd, cmds, ctx) for cmd in cmds}
+    files.update(
+        {
+            page_path(old_slug): render_redirect_page(old_slug, target_slug, ctx)
+            for old_slug, target_slug in REDIRECTS.items()
+        }
+    )
+    files.update(
+        {
+            tool_page_path(old_slug): render_redirect_page(old_slug, target_slug, ctx, kind="tools")
+            for old_slug, target_slug in TOOL_REDIRECTS.items()
+        }
+    )
     files.update(
         {agent_page_path(agent.slug): render_agent_page(agent, agents, ctx) for agent in agents}
     )
@@ -3874,6 +4252,8 @@ def build_site(cmds: tuple, agents: tuple, ctx: PageContext, docs: tuple = (), t
 def expected_paths(cmds: tuple, agents: tuple, tools: tuple = ()) -> frozenset:
     return frozenset(
         [page_path(cmd.slug) for cmd in cmds]
+        + [page_path(old_slug) for old_slug in REDIRECTS]
+        + [tool_page_path(old_slug) for old_slug in TOOL_REDIRECTS]
         + [agent_page_path(agent.slug) for agent in agents]
         + [tool_page_path(tool.slug) for tool in tools]
     )
@@ -4006,8 +4386,9 @@ def main(argv=None) -> int:
         rendered = Path(payload) / "harnesses" / SITE_TARGET / ".claude"
         agents = load_agents(rendered / "agents", rendered / "skills")
         cmds = load_skills(rendered / "skills", tuple(agent.name for agent in agents))
+        validate_command_page_copy(cmds)
         # Tools come from the repo `toolbox/` source, not the rendered payload —
-        # a plain `build` excludes opt-in tools, so they aren't in `rendered`.
+        # a plain `build` excludes tools unless selected, so they aren't in `rendered`.
         tools = load_tools(root / "toolbox")
         # Discover hand-authored docs pages for the sitemap.
         docs = tuple(

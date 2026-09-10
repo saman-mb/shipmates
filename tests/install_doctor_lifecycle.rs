@@ -163,20 +163,103 @@ fn fresh_install_writes_receipt_with_harness_layout_and_hashes() {
 }
 
 #[test]
-fn first_install_preserves_existing_collision_without_force() {
+fn third_party_collision_refuses_install_and_leaves_bytes_untouched() {
+    // A file shipmates does not own at a payload path stops the install before
+    // anything is written, and names the flag that would replace it (#386).
     let dir = tempdir().unwrap();
     let collision = managed_file(dir.path());
     fs::create_dir_all(collision.parent().unwrap()).unwrap();
     fs::write(&collision, b"user content\n").unwrap();
 
+    let output = install(dir.path());
+
+    assert!(
+        !output.status.success(),
+        "third-party collision must fail closed: {}",
+        output_text(&output)
+    );
+    assert_eq!(fs::read(&collision).unwrap(), b"user content\n");
+    assert!(
+        !receipt_path(dir.path()).exists(),
+        "a refused install must publish no receipt"
+    );
+    let text = output_text(&output);
+    assert!(
+        text.contains("shipmates install --force"),
+        "refusal must name the flag that replaces it: {text}"
+    );
+    assert!(
+        text.contains(".claude/agents/architect.md"),
+        "refusal must name the colliding path: {text}"
+    );
+}
+
+#[test]
+fn third_party_toml_agent_refuses_install() {
+    // Codex crew files have no YAML name. They must refuse, not silently
+    // overwrite, or a user's own `.codex/agents/sdet.toml` disappears on a
+    // plain install (Stage 5 board on #386).
+    let dir = tempdir().unwrap();
+    let collision = dir.path().join(".codex/agents/sdet.toml");
+    fs::create_dir_all(collision.parent().unwrap()).unwrap();
+    fs::write(&collision, "name = \"not-shipmates\"\nmy_config = true\n").unwrap();
+
+    let output = run(
+        dir.path(),
+        &["install", "--harness", "codex", "--with-tools", "none"],
+    );
+
+    assert!(
+        !output.status.success(),
+        "unowned toml must fail closed: {}",
+        output_text(&output)
+    );
+    assert_eq!(
+        fs::read_to_string(&collision).unwrap(),
+        "name = \"not-shipmates\"\nmy_config = true\n"
+    );
+    assert!(!dir.path().join(".shipmates/receipts/codex.json").exists());
+    let text = output_text(&output);
+    assert!(
+        text.contains("shipmates install --force"),
+        "refusal must name --force: {text}"
+    );
+    assert!(
+        text.contains(".codex/agents/sdet.toml"),
+        "refusal must name the colliding path: {text}"
+    );
+}
+
+#[test]
+fn install_adopts_an_unowned_shipmates_file_at_a_payload_path() {
+    // The #386 case: a flagship skill on disk that no receipt claims. Install
+    // backs it up, writes the current payload, and claims it — rather than
+    // leaving it stale forever behind an "unmanaged" warning.
+    let dir = tempdir().unwrap();
+    let skill = dir.path().join(".claude/skills/report-bug/SKILL.md");
+    fs::create_dir_all(skill.parent().unwrap()).unwrap();
+    fs::write(&skill, "---\nname: report-bug\n---\nstale 0.1.13 body\n").unwrap();
+
     install_ok(dir.path());
 
-    assert_eq!(fs::read(&collision).unwrap(), b"user content\n");
+    let installed = fs::read_to_string(&skill).unwrap();
+    assert!(
+        !installed.contains("stale 0.1.13 body"),
+        "an adopted file must be rewritten from the payload"
+    );
+    let backups = backup_files(dir.path());
+    assert!(
+        backups.iter().any(|path| fs::read_to_string(path)
+            .unwrap()
+            .contains("stale 0.1.13 body")),
+        "adoption must back up the bytes it replaces: {backups:?}"
+    );
     let receipt = read_receipt(dir.path());
     assert!(
-        !receipt_files(&receipt)
+        receipt_files(&receipt)
             .iter()
-            .any(|file| file["path"] == ".claude/agents/architect.md")
+            .any(|file| file["path"] == ".claude/skills/report-bug/SKILL.md"),
+        "an adopted path must be claimed by the receipt"
     );
 }
 
@@ -337,20 +420,13 @@ fn upgrade_prints_version_and_file_summary() {
 
 #[test]
 fn unmanaged_file_survives_reinstall_with_warning() {
+    // A file of the user's own inside a payload subtree — not at a payload path
+    // — is still reported, and still survives.
     let dir = tempdir().unwrap();
     install_ok(dir.path());
-    let unmanaged = managed_file(dir.path());
-    let mut receipt = read_receipt(dir.path());
-    receipt["files"]
-        .as_array_mut()
-        .unwrap()
-        .retain(|entry| entry["path"] != ".claude/agents/architect.md");
-    fs::write(
-        receipt_path(dir.path()),
-        serde_json::to_vec_pretty(&receipt).unwrap(),
-    )
-    .unwrap();
-    fs::write(&unmanaged, "local agent\n").unwrap();
+    let unmanaged = dir.path().join(".claude/skills/my-notes/SKILL.md");
+    fs::create_dir_all(unmanaged.parent().unwrap()).unwrap();
+    fs::write(&unmanaged, "local skill\n").unwrap();
 
     let output = install(dir.path());
     assert!(
@@ -358,16 +434,112 @@ fn unmanaged_file_survives_reinstall_with_warning() {
         "reinstall failed: {}",
         output_text(&output)
     );
-    assert_eq!(fs::read_to_string(&unmanaged).unwrap(), "local agent\n");
+    assert_eq!(fs::read_to_string(&unmanaged).unwrap(), "local skill\n");
     let stdout = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
     assert!(
-        stdout.contains("not managed") || stdout.contains("unmanaged"),
-        "reinstall should warn about unmanaged files: {stdout}"
+        stdout.contains("unmanaged file left untouched")
+            && stdout.contains(".claude/skills/my-notes/skill.md"),
+        "reinstall should warn about the unmanaged file: {stdout}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn install_ignores_package_manager_symlinks_inside_a_harness_root() {
+    // A lived-in opencode tree keeps its own runtime beside the payload. The
+    // unmanaged scan must neither resolve those symlinks nor walk node_modules,
+    // or the whole upgrade dies on a `.bin` shim (#384).
+    use std::os::unix::fs::symlink;
+
+    let dir = tempdir().unwrap();
+    let first = run(dir.path(), &["install", "--harness", "opencode"]);
+    assert!(
+        first.status.success(),
+        "opencode install failed: {}",
+        output_text(&first)
+    );
+
+    let bin = dir.path().join(".opencode/node_modules/.bin");
+    fs::create_dir_all(&bin).unwrap();
+    let package = dir.path().join(".opencode/node_modules/pkg/cli.js");
+    fs::create_dir_all(package.parent().unwrap()).unwrap();
+    fs::write(&package, "#!/usr/bin/env node\n").unwrap();
+    symlink("../pkg/cli.js", bin.join("node-gyp-build")).unwrap();
+    symlink("../pkg/does-not-exist.js", bin.join("dangling")).unwrap();
+
+    let second = run(dir.path(), &["install", "--harness", "opencode"]);
+
+    assert!(
+        second.status.success(),
+        "install must survive package manager symlinks: {}",
+        output_text(&second)
+    );
+    let stdout = String::from_utf8_lossy(&second.stdout);
+    assert!(
+        !stdout.contains("node_modules"),
+        "the scan must not walk the user's runtime: {stdout}"
+    );
+    assert!(bin.join("node-gyp-build").symlink_metadata().is_ok());
+}
+
+#[test]
+fn install_all_continues_past_a_failed_harness_and_exits_non_zero() {
+    // `--harness all` is not transactional: one target failing must not abandon
+    // the rest, and the run must still report failure (#384).
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+
+    let dir = tempdir().unwrap();
+    let outside = tempdir().unwrap();
+    #[cfg(unix)]
+    symlink(outside.path(), dir.path().join(".claude")).unwrap();
+    #[cfg(not(unix))]
+    let _ = &outside;
+
+    let output = run(dir.path(), &["install", "--harness", "all"]);
+
+    assert!(
+        !output.status.success(),
+        "a failed harness must make the run non-zero: {}",
+        output_text(&output)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Harness summary:"),
+        "a multi-harness run must summarize every target: {stdout}"
+    );
+    assert!(
+        stdout.contains("claude-code: failed"),
+        "the failed harness must be named: {stdout}"
+    );
+    assert!(
+        stdout.contains(&format!(
+            "opencode: installed v{}",
+            env!("CARGO_PKG_VERSION")
+        )),
+        "healthy harnesses must report their version: {stdout}"
+    );
+    assert!(
+        dir.path()
+            .join(".opencode/commands/ship-issue.md")
+            .is_file(),
+        "later harnesses must still install"
+    );
+    assert!(
+        dir.path()
+            .join(".shipmates/receipts/opencode.json")
+            .is_file(),
+        "later harnesses must still publish a receipt"
+    );
+    assert!(
+        !dir.path()
+            .join(".shipmates/receipts/claude-code.json")
+            .exists()
     );
 }
 
 #[test]
-fn removed_receipt_files_remain_with_warning() {
+fn removed_receipt_files_are_removed_with_backup() {
     let dir = tempdir().unwrap();
     let first = run(
         dir.path(),
@@ -378,7 +550,7 @@ fn removed_receipt_files_remain_with_warning() {
         "tool install failed: {}",
         output_text(&first)
     );
-    let tool = dir.path().join(".claude/skills/termgif/SKILL.md");
+    let tool = dir.path().join(".claude/skills/shipmates-termgif/SKILL.md");
     assert!(tool.is_file(), "selected tool should be installed");
 
     let second = run(
@@ -390,10 +562,13 @@ fn removed_receipt_files_remain_with_warning() {
         "tool removal install failed: {}",
         output_text(&second)
     );
-    assert!(tool.is_file(), "removed tool file must remain untouched");
+    assert!(
+        !tool.is_file(),
+        "removed tool file should be deleted, not left orphaned"
+    );
     let stdout = String::from_utf8_lossy(&second.stdout).to_ascii_lowercase();
     assert!(
-        stdout.contains("no longer in payload") || stdout.contains("previous managed"),
+        stdout.contains("removed dropped file"),
         "removed receipt file should be reported: {stdout}"
     );
 }
@@ -421,6 +596,89 @@ fn uninstall_removes_receipt_owned_files_but_preserves_unmanaged_files() {
     assert!(
         stdout.contains("not managed") || stdout.contains("unmanaged"),
         "uninstall should warn about preserved files: {stdout}"
+    );
+}
+
+#[test]
+fn uninstall_removes_empty_directories() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    // Verify some expected directories exist after install.
+    assert!(
+        dir.path().join(".claude").is_dir(),
+        ".claude/ should exist after install"
+    );
+    assert!(
+        dir.path().join(".claude/agents").is_dir(),
+        ".claude/agents/ should exist after install"
+    );
+    assert!(
+        dir.path().join(".shipmates").is_dir(),
+        ".shipmates/ should exist after install"
+    );
+
+    let output = run(dir.path(), &["uninstall"]);
+    assert!(
+        output.status.success(),
+        "uninstall failed: {}",
+        output_text(&output)
+    );
+
+    // Receipt and managed file must be gone.
+    assert!(
+        !managed_file(dir.path()).exists(),
+        "managed file must be removed"
+    );
+    assert!(
+        !receipt_path(dir.path()).exists(),
+        "receipt must be removed"
+    );
+
+    // Empty directories left behind by file removal should be cleaned up.
+    assert!(
+        !dir.path().join(".claude/agents").is_dir(),
+        "empty .claude/agents/ should be removed"
+    );
+    assert!(
+        !dir.path().join(".shipmates/receipts").is_dir(),
+        "empty .shipmates/receipts/ should be removed"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+    assert!(
+        !stdout.contains("empty dir"),
+        "should not warn about removing empty dirs: {stdout}"
+    );
+}
+
+#[test]
+fn uninstall_warns_about_shipmates_backup() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    // Simulate a prior `doctor --fix` creating a backup directory.
+    let backup = dir.path().join(".shipmates-backup");
+    fs::create_dir_all(&backup).unwrap();
+    fs::write(backup.join("some-backup.md"), "backed up\n").unwrap();
+
+    let output = run(dir.path(), &["uninstall"]);
+    assert!(
+        output.status.success(),
+        "uninstall failed: {}",
+        output_text(&output)
+    );
+
+    // Backup should survive (it contains user files).
+    assert!(
+        backup.is_dir(),
+        ".shipmates-backup/ should survive uninstall"
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+    assert!(
+        stdout.contains("backup directory preserved"),
+        "uninstall should warn about backup dir: {stdout}"
     );
 }
 
@@ -497,7 +755,7 @@ fn shared_path_uninstall_does_not_remove_files_owned_by_another_harness() {
 }
 
 #[test]
-fn doctor_fix_leaves_unowned_drift_untouched() {
+fn doctor_fix_leaves_third_party_drift_untouched_and_names_force() {
     let dir = tempdir().unwrap();
     install_ok(dir.path());
     let managed = managed_file(dir.path());
@@ -515,12 +773,82 @@ fn doctor_fix_leaves_unowned_drift_untouched() {
 
     let output = run(dir.path(), &["doctor", "--fix"]);
 
-    assert!(
-        output.status.success(),
-        "doctor fix failed: {}",
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "a collision doctor cannot repair stays a reported problem: {}",
         output_text(&output)
     );
     assert_eq!(fs::read(&managed).unwrap(), b"unmanaged edit\n");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("shipmates install --force"),
+        "doctor must name the required next step (#386): {stdout}"
+    );
+}
+
+#[test]
+fn doctor_fix_adopts_an_unowned_shipmates_file_and_claims_it() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+    let skill = dir.path().join(".claude/skills/report-bug/SKILL.md");
+    let payload = fs::read_to_string(&skill).unwrap();
+    let mut receipt = read_receipt(dir.path());
+    receipt["files"]
+        .as_array_mut()
+        .unwrap()
+        .retain(|entry| entry["path"] != ".claude/skills/report-bug/SKILL.md");
+    fs::write(
+        receipt_path(dir.path()),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+    fs::write(&skill, "---\nname: report-bug\n---\nstale body\n").unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+
+    assert!(
+        output.status.success(),
+        "doctor --fix must repair an adoptable collision: {}",
+        output_text(&output)
+    );
+    assert_eq!(fs::read_to_string(&skill).unwrap(), payload);
+    let refreshed = read_receipt(dir.path());
+    assert!(
+        receipt_files(&refreshed)
+            .iter()
+            .any(|file| file["path"] == ".claude/skills/report-bug/SKILL.md"),
+        "the adopted path must be claimed"
+    );
+}
+
+#[test]
+fn doctor_fix_leaves_third_party_skills_in_the_payload_directory_alone() {
+    // A user's own skill beside ours is not a payload path and is never touched.
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+    let theirs = dir.path().join(".claude/skills/3-amigos/SKILL.md");
+    fs::create_dir_all(theirs.parent().unwrap()).unwrap();
+    fs::write(&theirs, "---\nname: 3-amigos\n---\ntheirs\n").unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+
+    assert!(
+        output.status.success(),
+        "an unrelated skill must not make doctor unhealthy: {}",
+        output_text(&output)
+    );
+    assert_eq!(
+        fs::read_to_string(&theirs).unwrap(),
+        "---\nname: 3-amigos\n---\ntheirs\n"
+    );
+    let receipt = read_receipt(dir.path());
+    assert!(
+        !receipt_files(&receipt)
+            .iter()
+            .any(|file| file["path"] == ".claude/skills/3-amigos/SKILL.md"),
+        "an unrelated skill must never be claimed"
+    );
 }
 
 #[test]
@@ -657,11 +985,76 @@ fn doctor_no_migrate_requires_fix_and_fix_leaves_legacy_file() {
 }
 
 #[test]
+fn doctor_fix_skipped_does_not_list_never_installed_tools() {
+    // A healthy no-tools install must not print a scary "Skipped N file(s)"
+    // line listing every optional tool that was never installed (#267).
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+    assert!(
+        output.status.success(),
+        "doctor --fix failed: {}",
+        output_text(&output)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("Skipped"),
+        "no-tools install must not report skipped tool files: {}",
+        stdout
+    );
+}
+
+#[test]
+fn doctor_fix_still_repairs_drifted_installed_tool() {
+    // When tools ARE installed, doctor --fix must still repair drifted files
+    // among them. The #267 fix only suppresses the skip report for tools that
+    // were never claimed by the receipt.
+    let dir = tempdir().unwrap();
+    let output = run(
+        dir.path(),
+        &["install", "--harness", HARNESS, "--with-tools", "termgif"],
+    );
+    assert!(
+        output.status.success(),
+        "tool install failed: {}",
+        output_text(&output)
+    );
+    let tool_skill = dir.path().join(".claude/skills/shipmates-termgif/SKILL.md");
+    assert!(
+        tool_skill.is_file(),
+        "shipmates-termgif SKILL.md must exist"
+    );
+
+    // Drift the tool file.
+    fs::write(&tool_skill, "drifted content\n").unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+    assert!(
+        output.status.success(),
+        "doctor --fix failed: {}",
+        output_text(&output)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // The drifted file should have been restored, not skipped.
+    let restored = fs::read_to_string(&tool_skill).unwrap();
+    assert!(
+        restored != "drifted content\n",
+        "drifted tool file must be repaired, not left alone"
+    );
+    assert!(
+        !stdout.contains("Skipped"),
+        "installed tool repair must not produce a skipped line: {}",
+        stdout
+    );
+}
+
+#[test]
 fn update_refreshes_drifted_payload_and_preserves_tools() {
     let dir = tempdir().unwrap();
     let first = run(
         dir.path(),
-        &["install", "--harness", HARNESS, "--with-tools", "badge"],
+        &["install", "--harness", HARNESS, "--with-tools", "termgif"],
     );
     assert!(
         first.status.success(),
@@ -669,8 +1062,8 @@ fn update_refreshes_drifted_payload_and_preserves_tools() {
         output_text(&first)
     );
     let managed = managed_file(dir.path());
-    let tool = dir.path().join(".claude/skills/badge/SKILL.md");
-    assert!(tool.exists(), "badge tool should be installed");
+    let tool = dir.path().join(".claude/skills/shipmates-termgif/SKILL.md");
+    assert!(tool.exists(), "termgif tool should be installed");
     fs::write(&managed, b"local drift\n").unwrap();
 
     let output = run(dir.path(), &["update", "--harness", HARNESS]);
@@ -694,9 +1087,9 @@ fn update_refreshes_drifted_payload_and_preserves_tools() {
         files.iter().any(|file| {
             file["path"]
                 .as_str()
-                .is_some_and(|path| path.contains("/badge/"))
+                .is_some_and(|path| path.contains("shipmates-termgif"))
         }),
-        "receipt should still claim the badge tool after update"
+        "receipt should still claim the termgif tool after update"
     );
 }
 
@@ -715,27 +1108,5 @@ fn update_without_receipt_fails_closed() {
     assert!(
         text.contains("No install receipt"),
         "should tell the user to install first: {text}"
-    );
-}
-
-#[test]
-fn identical_collision_is_claimed_on_first_install() {
-    let dir = tempdir().unwrap();
-    let probe = tempdir().unwrap();
-    install_ok(probe.path());
-    let source = managed_file(probe.path());
-    let want = fs::read(&source).unwrap();
-    let dest = managed_file(dir.path());
-    fs::create_dir_all(dest.parent().unwrap()).unwrap();
-    fs::write(&dest, &want).unwrap();
-
-    install_ok(dir.path());
-    let receipt = read_receipt(dir.path());
-    let claimed = receipt["files"].as_array().unwrap().iter().any(|file| {
-        file["path"].as_str() == Some(".claude/agents/architect.md")
-    });
-    assert!(
-        claimed,
-        "identical pre-existing payload bytes should be claimed without --force"
     );
 }

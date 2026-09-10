@@ -33,7 +33,7 @@ were distinguished. Recorded on issue #72; do not reopen it here.
 ## What Shipmates is
 
 Shipmates is an open-source (MIT) crew of specialist AI agents on
-[Claude Code](https://code.claude.com/docs) today: **12 domain-neutral subagents** and
+[Claude Code](https://code.claude.com/docs) today: **13 domain-neutral subagents** and
 **12 reusable commands**. Its flagship, `/ship-issue`, takes a GitHub issue all the way to a
 reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git
 worktree, waits for CI to go green, convenes an adversarial review board, loops on fixes within
@@ -50,7 +50,7 @@ delegation) land in one read.
 | Term | Maps to | Where it appears today |
 |---|---|---|
 | **captain** | the user — you decide, you approve, you merge | README: "You stay the captain." |
-| **crew** / **shipmates** | the 12 subagents, authored in `crew/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
+| **crew** / **shipmates** | the 13 subagents, authored in `crew/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
 | **shipmate** | a single subagent role | README crew table column header |
 | **command** | one of the 12 workflows, authored in `commands/*.md`, as the captain issues it | README "The commands"; site `#commands`; `order-card` components |
 | **order** | what one subagent is told to do *inside* a command | Nowhere yet — reserved for per-subagent copy; see [The narrow sense of "order"](#the-narrow-sense-of-order) |
@@ -92,7 +92,7 @@ swapped at will.
 | Term | Register | What it names |
 |---|---|---|
 | **skill** | technical | The artifact on disk — `skills/<name>/SKILL.md`, in the [Agent Skills](https://agentskills.io) open-standard shape. |
-| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/fix-bug`. The thirteen of them are **the commands**. |
+| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/shipmates-fix-bug`. The thirteen of them are **the commands**. |
 | **order** | brand | What a single subagent is told to do *within* a command — one specialist's instruction. |
 
 The metaphor holds the three together: the captain issues a **command** to the crew, and carrying
@@ -105,7 +105,7 @@ artifact, one directory per skill with a `SKILL.md` inside:
 
 ```
 .claude/skills/ship-issue/SKILL.md
-.claude/skills/fix-bug/SKILL.md
+.claude/skills/shipmates-fix-bug/SKILL.md
 …
 ```
 
@@ -356,15 +356,15 @@ Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 
 | Rule | Detail |
 |---|---|
-| Format | Imperative verb phrase, `lowercase-hyphenated`. Invoked with a leading slash: `/ship-issue`, `/fix-bug`, `/plan-epics`. |
+| Format | Imperative verb phrase, `lowercase-hyphenated`. Invoked with a leading slash: `/ship-issue`, `/shipmates-fix-bug`, `/plan-epics`. |
 | Filename | `skills/<name>/SKILL.md`, where `<name>` exactly equals the frontmatter `name` and the command you type (`/<name>`). |
-| Verb first | The name is a command you give the crew. `/harden`, `/migrate`, `/document`, `/release`, `/polish`, `/spike` — every one starts with the action. |
-| Object second, if needed | `/ship-issue`, `/fix-bug`, `/plan-epics`. Singular or plural per what the command actually takes. |
+| Verb first | The name is a command you give the crew. `/shipmates-harden`, `/shipmates-migrate`, `/shipmates-document`, `/shipmates-release`, `/shipmates-polish`, `/shipmates-spike` — every one starts with the action. |
+| Object second, if needed | `/ship-issue`, `/shipmates-fix-bug`, `/plan-epics`. Singular or plural per what the command actually takes. |
 | No nouns-as-names | Not `/quality-gate`, not `/pr-flow`. If you can't phrase it as an instruction, it isn't a command. |
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
-The thirteen that exist: `/ship-issue` · `/fix-bug` · `/plan-epics` · `/consolidate-issues` · `/harden` · `/spike` ·
-`/migrate` · `/document` · `/release` · `/polish` · `/pr-review` · `/onboard` · `/refactor`.
+The fifteen that exist: `/ship-issue` · `/ship-epic` · `/shipmates-fix-bug` · `/report-bug` · `/plan-epics` · `/consolidate-issues` · `/shipmates-harden` · `/shipmates-spike` ·
+`/shipmates-migrate` · `/shipmates-document` · `/shipmates-release` · `/shipmates-polish` · `/pr-review` · `/shipmates-onboard` · `/shipmates-refactor`.
 
 ---
 

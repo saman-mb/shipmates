@@ -4,13 +4,28 @@ use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
 /// Windsurf (Cascade) discovers skills under `.windsurf/skills/<name>/SKILL.md`
-/// and has no subagent mechanic, so the crew becomes thirteen skills and `roles`
+/// and has no subagent mechanic, so the crew becomes fourteen skills and `roles`
 /// is not emitted.
 pub struct WindsurfAdapter;
 
 impl Adapter for WindsurfAdapter {
     fn base_dir(&self) -> &'static str {
         "harnesses/windsurf/.windsurf"
+    }
+
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&WINDSURF)
+    }
+
+    fn steering_target(&self) -> Option<super::render::SteeringTarget> {
+        Some(super::render::SteeringTarget {
+            rel_path: super::render::SHIPMATES_STEERING_REL,
+            format: super::render::SteeringFormat::PlainMarkdown,
+        })
     }
 
     fn build(

@@ -1,7 +1,9 @@
+pub mod adopt;
 pub mod apply;
 pub mod manifest_db;
 pub mod migrate;
 pub mod plan;
+pub mod rename;
 pub mod uninstall;
 
 use std::fs::{self, File};

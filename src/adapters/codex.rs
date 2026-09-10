@@ -5,7 +5,7 @@ use super::render::{
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
-/// Codex CLI — thirteen skills under `.agents/skills/<name>/SKILL.md` plus the
+/// Codex CLI — fourteen skills under `.agents/skills/<name>/SKILL.md` plus the
 /// crew as project-scoped subagents under `.codex/agents/<name>.toml`.
 ///
 /// Skills and crew land in **two different dotdirs**. Codex discovers skills at
@@ -102,6 +102,17 @@ impl Adapter for CodexAdapter {
     // off the install container to cover both rather than only `.codex/`.
     fn digest_root(&self) -> &'static str {
         self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&CODEX)
+    }
+
+    fn steering_target(&self) -> Option<super::render::SteeringTarget> {
+        Some(super::render::SteeringTarget {
+            rel_path: super::render::SHIPMATES_STEERING_REL,
+            format: super::render::SteeringFormat::PlainMarkdown,
+        })
     }
 
     fn build(

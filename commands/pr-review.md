@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.
+description: Shipmates: Run the specialist acceptance board against an existing pull request the crew didn't author — classify the diff, pull the right reviewers, and return one consolidated verdict. Read-only by default: it reports, it never repairs.
 argument-hint: <pr-number or PR url> [optional emphasis passed to every reviewer — e.g. "weight the schema change"]
 allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
@@ -74,13 +74,20 @@ do*. Where the PR description and the diff disagree, that mismatch is itself a f
   dependency or toolchain pins)? Gates `devops-engineer`.
 - `IS_DOCS_AFFECTING` — does the change touch documented behaviour, flags, commands, config, or public
   API/CLI surface that user- or agent-facing docs describe? Gates `technical-writer`.
+- `IS_RELEASE_AFFECTING` — does merging this PR to the repo's release branch require a new published
+  version for users to receive the change (commands, tools, crew, install payload, CLI/API surface)?
+  When `yes`, verify the diff includes a consistent version bump in every `VERSION_FILES` entry the
+  repo uses and a changelog entry for this PR — a missing bump is a **process REJECT**
+  (`principal-engineer` / `technical-writer`). Integration-branch PRs that are not targeting the
+  release branch are usually `no`.
 
 This flag vocabulary is **shared with `/ship-issue`** — a new flag must be added to both files.
 `IS_SECURITY_SENSITIVE` is the deliberate exception: it stays wired to the `security-engineer`
 seat here, because this command reviews a PR the crew didn't author — you don't own the branch, so
-`/harden` isn't an available remedy. `/ship-issue` keeps the same flag (it still gates the `/harden`
-recommendation and forces a manual merge) but not the seat, since a crew-authored change can just
-run `/harden` itself.
+`/shipmates-harden` isn't an available remedy. `/ship-issue` keeps the same flag (it still gates the `/shipmates-harden`
+recommendation, and forces a manual merge on **standalone** runs onto the default branch) but not the
+seat, since a crew-authored change can just run `/shipmates-harden` itself. Epic-delegated units
+(`epic-base`) do not force manual merge from this flag — the parent epic PR is the human gate.
 
 ## Stage 1 — CI state (read it, don't fix it)
 
@@ -95,26 +102,21 @@ runtime signal is unconfirmed.
 
 ## Stage 2 — The board  (specialist agents, in parallel, against `headRefOid`)
 
-Spawn these in a single message so they run concurrently, each pinned to the **head commit** so they
-review exactly what would merge. Two always run; the rest only when their flag is set:
+<!-- shipmates:acceptance-board -->
+
+Spawn in a single message so they run concurrently, each pinned to the **head commit**. Use the Stage 0
+flags for scaled optional seats. **`/pr-review`-specific additions** on top of the shared board:
 
 | `{{role-reference}}` | Runs |
 |---|---|
-| `product-manager` | always — does it solve the stated problem, and does it clear the repo's bar? |
-| `sdet` | always — test coverage and quality of the change (see `RUN_TESTS` before executing anything) |
-| `architect` | only if `IS_ARCH_SIGNIFICANT` |
 | `security-engineer` | only if `IS_SECURITY_SENSITIVE` |
-| `devops-engineer` | only if `IS_DELIVERY_SENSITIVE` |
-| `ux-ui-designer` | only if `IS_UI_STORY` |
-| `art-director` | only if `IS_VISUAL_STORY` |
-| `technical-writer` | only if `IS_DOCS_AFFECTING` |
 | `performance-engineer` | if the PR claims a performance win, or touches a known hot path |
 | `site-reliability-engineer` | if it changes runtime behaviour, failure handling, or rollout |
 | `data-scientist` | if the deliverable is an analysis or a model |
 
 **Don't restate what each reviewer checks.** Their remit lives in `agents/*.md` — that is the single
-source of truth, and duplicating it here is how the two boards drift apart. Pass each agent the PR
-head, the repo's bar, and the caller's focus hint; let the role do the rest.
+source of truth. Pass each agent the PR head, the repo's bar, and the caller's focus hint; let the
+role do the rest. See `RUN_TESTS` before the `sdet` executes anything.
 
 ## Stage 3 — Consolidate
 
@@ -152,8 +154,8 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
 
 ### Guardrails
 - **Read-only by default.** No worktree, no commits, no pushes, no fix loop. If the findings need
-  fixing, hand them to `/fix-bug` or `/ship-issue` — don't fork a remediation loop into this command.
-- **This command crosses a trust boundary the others don't.** `/ship-issue`, `/fix-bug` and `/migrate`
+  fixing, hand them to `/shipmates-fix-bug` or `/ship-issue` — don't fork a remediation loop into this command.
+- **This command crosses a trust boundary the others don't.** `/ship-issue`, `/shipmates-fix-bug` and `/shipmates-migrate`
   all run code the crew itself wrote; here the code is a stranger's. Running a fork's test suite
   executes untrusted code on your machine — a PR can put arbitrary commands in a test file or a build
   script. Hence `RUN_TESTS=no` for cross-repository PRs: the `sdet` reviews statically and says so.

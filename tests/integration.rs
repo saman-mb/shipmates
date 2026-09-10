@@ -98,14 +98,10 @@ fn test_opencode_cli_build_matches_golden_payload() {
     );
 
     let expected = read_payload_digest(&root.join("tests/payload-digests/opencode.sha256"));
-    let payload = out.path().join("harnesses/opencode/.opencode");
+    let payload_root = out.path().join("harnesses/opencode");
     let mut actual = BTreeMap::new();
-    for path in walk(&payload) {
-        let relative = path
-            .strip_prefix(&payload)
-            .unwrap()
-            .to_string_lossy()
-            .replace('\\', "/");
+    for path in walk(&payload_root) {
+        let relative = normalized_relative_path(&path, &payload_root);
         actual.insert(relative, digest::compute_sha256(&path).unwrap());
     }
 
@@ -145,6 +141,7 @@ fn test_opencode_embedded_install_fidelity() {
         "data-scientist",
         "devops-engineer",
         "performance-engineer",
+        "principal-engineer",
         "product-manager",
         "sdet",
         "security-engineer",
@@ -161,9 +158,9 @@ fn test_opencode_embedded_install_fidelity() {
         assert!(content.contains("permission:\n"), "{path:?} has no permission map");
     }
     assert_eq!(file_count(&agents), expected_roles.len());
-    assert_eq!(file_count(&commands), 13);
+    assert_eq!(file_count(&commands), 15);
 
-    let report_order = std::fs::read_to_string(commands.join("harden.md")).unwrap();
+    let report_order = std::fs::read_to_string(commands.join("shipmates-harden.md")).unwrap();
     assert!(report_order.contains("report"), "harden order lost report-only mode");
     assert!(report_order.contains("$ARGUMENTS"), "harden order lost argument passing");
     assert!(!report_order.contains("{{"), "neutral argument placeholder leaked");
@@ -186,7 +183,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
     let commands = load_commands(&root.join("commands")).unwrap();
     let roles = load_roles(&root.join("crew")).unwrap();
 
-    assert_eq!(commands.len(), 13, "cost preamble must cover every command");
+    assert_eq!(commands.len(), 15, "cost preamble must cover every command");
     let re_tokens = regex::Regex::new(r"\{\{[a-zA-Z:-]+\}\}").unwrap();
     for command in &commands {
         assert_eq!(
@@ -245,7 +242,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
         }
     }
 
-    assert_eq!(roles.len(), 12);
+    assert_eq!(roles.len(), 13);
     for role in &roles {
         assert_eq!(
             role.body.matches("<!-- shipmates:subagent-preamble -->").count(),
@@ -271,6 +268,11 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
             let (path, content) = matches[0];
             assert!(content.contains("## Cost discipline"), "{target} {path} missed command preamble");
             assert!(!content.contains("shipmates:command-preamble"), "{target} {path} leaked command marker");
+            assert!(!content.contains("shipmates:acceptance-board"), "{target} {path} leaked board marker");
+            assert!(
+                !content.contains("shipmates:epic-integration-board"),
+                "{target} {path} leaked epic integration board marker"
+            );
         }
 
         let role_outputs: Vec<_> = files

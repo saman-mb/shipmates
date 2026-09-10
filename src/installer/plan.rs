@@ -2,7 +2,7 @@
 
 use crate::adapters::Adapter;
 use crate::installer::manifest_db::{self, InstallReceipt, ReceiptFile, ReceiptRepository};
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -101,22 +101,58 @@ pub fn read_receipt(
     }
 }
 
-/// Return regular files under install roots not present in a receipt. The
-/// scan is bounded to roots recorded by the adapter and never enters receipt or
-/// backup state. Symlinks are skipped without following — harness homes often
-/// contain them (e.g. Claude Code's `debug/latest`) and must not abort install.
+/// Directory names never descended into, whatever a harness root holds. A
+/// lived-in harness root is also the user's runtime (`.opencode/node_modules`),
+/// and Shipmates never installs below one of these.
+const NEVER_SCANNED: &[&str] = &[".shipmates", ".shipmates-backup", "node_modules"];
+
+/// Return regular files inside the payload's own subtrees that a receipt does
+/// not claim.
+///
+/// The scan is bounded to the two-component prefixes the managed set itself
+/// occupies (`.opencode/commands`, `.claude/skills`, …) rather than the whole
+/// harness root, because a harness root doubles as the user's environment — an
+/// opencode tree holds `node_modules/.bin` shims that are none of our business.
+/// Symlinks are skipped outright: never resolved, never descended, never
+/// reported. Reporting unmanaged files is advisory, so a root that cannot be
+/// resolved is skipped rather than failing the install or uninstall around it.
 pub fn unmanaged_files(
     target_dir: &Path,
-    roots: &[String],
     managed: &std::collections::BTreeSet<String>,
-) -> Result<Vec<PathBuf>> {
+) -> Vec<PathBuf> {
     let mut result = Vec::new();
-    for root in roots {
-        let root = manifest_db::resolve_target_relative(target_dir, Path::new(root))?;
-        collect_unmanaged(&root, target_dir, managed, &mut result)?;
+    for prefix in scan_prefixes(managed) {
+        let Ok(root) = manifest_db::resolve_target_relative(target_dir, Path::new(&prefix)) else {
+            continue;
+        };
+        collect_unmanaged(&root, target_dir, managed, &mut result);
     }
     result.sort();
-    Ok(result)
+    result.dedup();
+    result
+}
+
+/// The `<first>/<second>` component prefixes the managed paths occupy. A
+/// managed path shallower than two components contributes nothing: its parent
+/// is the harness root itself, which is exactly what must not be walked.
+fn scan_prefixes(managed: &std::collections::BTreeSet<String>) -> BTreeSet<String> {
+    managed
+        .iter()
+        .filter_map(|path| {
+            let mut components = Path::new(path).components().filter_map(|c| match c {
+                Component::Normal(value) => value.to_str(),
+                _ => None,
+            });
+            let first = components.next()?;
+            let second = components.next()?;
+            // A two-component managed path is a file, not a subtree.
+            components.next()?;
+            if NEVER_SCANNED.contains(&first) || NEVER_SCANNED.contains(&second) {
+                return None;
+            }
+            Some(format!("{first}/{second}"))
+        })
+        .collect()
 }
 
 fn collect_unmanaged(
@@ -124,45 +160,39 @@ fn collect_unmanaged(
     target_dir: &Path,
     managed: &std::collections::BTreeSet<String>,
     result: &mut Vec<PathBuf>,
-) -> Result<()> {
+) {
     let Ok(entries) = fs::read_dir(path) else {
-        return Ok(());
+        return;
     };
     for entry in entries.flatten() {
-        let name = entry.file_name();
-        if name == ".shipmates" || name == ".shipmates-backup" {
-            continue;
-        }
+        // File type first, and symlinks are dropped before anything resolves a
+        // path: a package manager's `.bin` shim must never abort a scan (#384).
         let Ok(file_type) = entry.file_type() else {
             continue;
         };
-        // Never follow or resolve symlinks: a final-component symlink would
-        // trip `resolve_target_relative`, and a directory symlink could escape
-        // the target. Leave them untouched and unlisted.
         if file_type.is_symlink() {
             continue;
         }
-        let path = entry.path();
-        let relative = path.strip_prefix(target_dir).map_err(|error| {
-            anyhow::anyhow!(
-                "unmanaged path escaped target: {} ({error})",
-                path.display()
-            )
-        })?;
-        let path = manifest_db::resolve_target_relative(target_dir, relative)?;
+        let name = entry.file_name();
+        if NEVER_SCANNED.iter().any(|skipped| name == *skipped) {
+            continue;
+        }
+        let entry_path = entry.path();
+        let Ok(relative) = entry_path.strip_prefix(target_dir) else {
+            continue;
+        };
+        let Ok(resolved) = manifest_db::resolve_target_relative(target_dir, relative) else {
+            continue;
+        };
         if file_type.is_dir() {
-            collect_unmanaged(&path, target_dir, managed, result)?;
+            collect_unmanaged(&resolved, target_dir, managed, result);
         } else if file_type.is_file() {
-            let Ok(relative) = path.strip_prefix(target_dir) else {
-                continue;
-            };
             let relative = relative.to_string_lossy().into_owned();
             if !managed.contains(&relative) {
-                result.push(path);
+                result.push(resolved);
             }
         }
     }
-    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -204,7 +234,49 @@ fn layout_for(files: &BTreeMap<PathBuf, String>) -> String {
 mod tests {
     use super::*;
     use crate::installer::manifest_db::ReceiptFile;
-    use std::collections::BTreeSet;
+
+    fn managed(paths: &[&str]) -> BTreeSet<String> {
+        paths.iter().map(|path| (*path).to_string()).collect()
+    }
+
+    #[test]
+    fn scan_is_bounded_to_payload_subtrees() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path();
+        crate::installer::atomic_write(&target.join(".opencode/commands/ship-issue.md"), "a")
+            .unwrap();
+        crate::installer::atomic_write(&target.join(".opencode/commands/mine.md"), "b").unwrap();
+        crate::installer::atomic_write(&target.join(".opencode/opencode.json"), "{}").unwrap();
+        crate::installer::atomic_write(&target.join(".opencode/node_modules/pkg/index.js"), "x")
+            .unwrap();
+
+        let found = unmanaged_files(target, &managed(&[".opencode/commands/ship-issue.md"]));
+
+        assert_eq!(found, vec![target.join(".opencode/commands/mine.md")]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_entries_are_skipped_not_fatal() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let target = dir.path();
+        crate::installer::atomic_write(&target.join(".opencode/tools/shipmates-gh.ts"), "a")
+            .unwrap();
+        std::fs::write(outside.path().join("payload.js"), "outside").unwrap();
+        symlink(
+            outside.path().join("payload.js"),
+            target.join(".opencode/tools/link.ts"),
+        )
+        .unwrap();
+        symlink(outside.path(), target.join(".opencode/tools/linked-dir")).unwrap();
+
+        let found = unmanaged_files(target, &managed(&[".opencode/tools/shipmates-gh.ts"]));
+
+        assert!(found.is_empty(), "symlinks must be skipped, not reported");
+    }
 
     #[test]
     fn receipt_rejects_traversal() {
@@ -219,42 +291,5 @@ mod tests {
             }],
         );
         assert!(receipt.is_err());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn unmanaged_scan_skips_symlinks_without_aborting() {
-        use std::os::unix::fs::symlink;
-        use tempfile::tempdir;
-
-        let target = tempdir().unwrap();
-        let debug = target.path().join(".claude/debug");
-        fs::create_dir_all(&debug).unwrap();
-        fs::write(debug.join("session.txt"), "log").unwrap();
-        fs::write(target.path().join(".claude/settings.json"), "{}").unwrap();
-        // Mirrors Claude Code's `~/.claude/debug/latest` pointer.
-        symlink(debug.join("session.txt"), debug.join("latest")).unwrap();
-
-        let unmanaged = unmanaged_files(
-            target.path(),
-            &[".claude".into()],
-            &BTreeSet::from([".claude/settings.json".into()]),
-        )
-        .expect("symlink in harness tree must not abort unmanaged scan");
-
-        let relatives: BTreeSet<_> = unmanaged
-            .iter()
-            .map(|path| {
-                path.strip_prefix(target.path())
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned()
-            })
-            .collect();
-        assert_eq!(
-            relatives,
-            BTreeSet::from([".claude/debug/session.txt".into()])
-        );
-        assert!(debug.join("latest").symlink_metadata().unwrap().file_type().is_symlink());
     }
 }

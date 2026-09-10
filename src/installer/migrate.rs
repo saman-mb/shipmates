@@ -7,7 +7,6 @@
 //! plans and applies the cleanup — always backing a file up before removing it,
 //! and only ever touching files Shipmates itself installed.
 
-use crate::catalog::parse_frontmatter;
 use crate::installer::atomic_write_bytes;
 use anyhow::{Context, Result};
 use std::collections::HashMap;
@@ -122,8 +121,8 @@ pub fn is_shipmates_owned(legacy_path: &Path, name: &str) -> bool {
     if legacy_path.file_stem().and_then(|s| s.to_str()) != Some(name) {
         return false;
     }
-    match parse_frontmatter(legacy_path) {
-        Ok((fm, _)) => fm.get("name").map(|n| n == name).unwrap_or(false),
+    match fs::read_to_string(legacy_path) {
+        Ok(content) => crate::installer::adopt::frontmatter_name_matches(&content, name),
         Err(_) => false,
     }
 }
@@ -180,7 +179,7 @@ pub fn apply(
                 Err(error) => {
                     return Err(error).with_context(|| {
                         format!("inspecting legacy file {}", full_legacy.display())
-                    })
+                    });
                 }
             };
             if !metadata.file_type().is_file() {
@@ -201,11 +200,13 @@ pub fn apply(
             let contents = fs::read(&full_legacy)
                 .with_context(|| format!("reading legacy file {}", full_legacy.display()))?;
             let backup_path = backup_root.join(&item.legacy_path);
-            let backup_relative = backup_path.strip_prefix(target_dir).map_err(|error| {
-                anyhow::anyhow!("migration backup escaped target: {}", error)
-            })?;
-            let backup_path =
-                crate::installer::manifest_db::resolve_target_relative(target_dir, backup_relative)?;
+            let backup_relative = backup_path
+                .strip_prefix(target_dir)
+                .map_err(|error| anyhow::anyhow!("migration backup escaped target: {}", error))?;
+            let backup_path = crate::installer::manifest_db::resolve_target_relative(
+                target_dir,
+                backup_relative,
+            )?;
             atomic_write_bytes(&backup_path, &contents)
                 .with_context(|| format!("backing up legacy file {}", full_legacy.display()))?;
             let backup_relative = backup_path
@@ -260,8 +261,14 @@ pub fn rollback(target_dir: &Path, report: &MigrationReport) -> Result<()> {
             .with_context(|| format!("restoring migrated file {}", legacy_path.display()))?;
         let legacy_path =
             crate::installer::manifest_db::resolve_target_relative(target_dir, legacy)?;
-        if fs::read(&legacy_path).map(|restored| restored != bytes).unwrap_or(true) {
-            anyhow::bail!("migration rollback verification failed for {}", legacy_path.display());
+        if fs::read(&legacy_path)
+            .map(|restored| restored != bytes)
+            .unwrap_or(true)
+        {
+            anyhow::bail!(
+                "migration rollback verification failed for {}",
+                legacy_path.display()
+            );
         }
         let backup_path =
             crate::installer::manifest_db::resolve_target_relative(target_dir, backup_relative)?;

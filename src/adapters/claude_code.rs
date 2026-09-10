@@ -101,6 +101,21 @@ impl Adapter for ClaudeCodeAdapter {
         "harnesses/claude-code/.claude"
     }
 
+    fn digest_root(&self) -> &'static str {
+        self.container()
+    }
+
+    fn steering_dialect(&self) -> Option<&'static super::render::Dialect> {
+        Some(&CLAUDE_CODE)
+    }
+
+    fn steering_target(&self) -> Option<super::render::SteeringTarget> {
+        Some(super::render::SteeringTarget {
+            rel_path: ".claude/rules/shipmates-contributor.md",
+            format: super::render::SteeringFormat::PlainMarkdown,
+        })
+    }
+
     fn build(
         &self,
         roles: &[CanonicalRole],

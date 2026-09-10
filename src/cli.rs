@@ -56,37 +56,35 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// First-time install: drop the crew (+ optional tools) into a harness
+    /// First-time install: drop the crew (+ tools by default) into a harness
     #[command(
         long_about = "Install the Shipmates crew and commands into one or more harness trees.
 
 Omit --harness in a terminal to pick harness(es) interactively; non-interactive
-runs default to claude-code. Omit --with-tools in a terminal to pick tools;
-non-interactive runs install no tools (crew + commands only).
+runs default to claude-code. Omit --with-tools to install every bundled tool;
+pass none for crew + commands only, or name a subset (former short names like
+scrub still select shipmates-scrub).
 
 Where defaults to the global home directory (~). Use --local for . or --dir PATH.
 
 Examples:
   shipmates install
   shipmates install --harness claude-code
-  shipmates install --harness opencode --local --with-tools all
-  shipmates install --harness cursor --dir ~/proj --with-tools none
-  shipmates install --harness all --force",
+  shipmates install --harness opencode --local --with-tools none
+  shipmates install --harness cursor --dir ~/proj --with-tools termgif,scrub
+  shipmates install --harness all --force
+  shipmates install --from-cwd",
         after_help = "Tip: after upgrading the shipmates binary, prefer `shipmates update` over a blind reinstall."
     )]
     Install {
-        /// Harness name, or `all` for every target. Omit in a terminal to pick interactively
-        #[arg(
-            long,
-            value_name = "NAME",
-            help_heading = "What"
-        )]
+        /// Harness name, or `all`. Omit in a terminal to pick interactively
+        #[arg(long, value_name = "NAME", help_heading = "What")]
         harness: Option<String>,
 
         #[command(flatten)]
         location: LocationOpts,
 
-        /// Tools to install: `all`, `none`, or comma-separated names (e.g. `termgif,badge`)
+        /// Tools: omit = all; `none` = crew only; or comma-separated names / `all`
         #[arg(
             long = "with-tools",
             value_name = "NAMES|all|none",
@@ -95,13 +93,17 @@ Examples:
         )]
         with_tools: Option<Vec<String>>,
 
-        /// Leave superseded legacy `commands/<name>.md` files in place (migration is on by default)
+        /// Skip legacy-command and identity-rename sweeps (superseded names stay)
         #[arg(long, help_heading = "Safety")]
         no_migrate: bool,
 
         /// Overwrite colliding files even when not claimed by a Shipmates receipt
         #[arg(long, help_heading = "Safety")]
         force: bool,
+
+        /// Build from this directory's crew/commands/toolbox instead of the embedded payload
+        #[arg(long = "from-cwd", help_heading = "Source")]
+        from_cwd: bool,
     },
 
     /// Refresh an existing install from this binary (keeps tools unless overridden)
@@ -120,6 +122,7 @@ Examples:
   shipmates update --harness opencode --local
   shipmates update --with-tools all
   shipmates update --with-tools none
+  shipmates update --from-cwd
 
 Note: payload digest regeneration for contributors is `shipmates build --update`,
 not this command.",
@@ -127,17 +130,13 @@ not this command.",
     )]
     Update {
         /// Harness to refresh. Omit to refresh all installed receipts (interactive when several)
-        #[arg(
-            long,
-            value_name = "NAME",
-            help_heading = "What"
-        )]
+        #[arg(long, value_name = "NAME", help_heading = "What")]
         harness: Option<String>,
 
         #[command(flatten)]
         location: LocationOpts,
 
-        /// Replace the tool set: `all`, `none`, or names. Omit to keep tools from the receipt
+        /// Replace tools: omit = keep receipt tools; `all` / `none` / names to change
         #[arg(
             long = "with-tools",
             value_name = "NAMES|all|none",
@@ -146,9 +145,13 @@ not this command.",
         )]
         with_tools: Option<Vec<String>>,
 
-        /// Leave superseded legacy `commands/<name>.md` files in place
+        /// Skip legacy-command and identity-rename sweeps
         #[arg(long, help_heading = "Safety")]
         no_migrate: bool,
+
+        /// Refresh from this directory's source trees instead of the embedded payload
+        #[arg(long = "from-cwd", help_heading = "Source")]
+        from_cwd: bool,
     },
 
     /// Remove files claimed by a valid install receipt
@@ -164,19 +167,20 @@ Examples:
   shipmates uninstall
   shipmates uninstall --harness claude-code
   shipmates uninstall --harness opencode --local
-  shipmates uninstall --dir /path/to/project --harness cursor"
+  shipmates uninstall --dir /path/to/project --harness cursor
+  shipmates uninstall --from-cwd"
     )]
     Uninstall {
         /// Harness to remove. Required when more than one receipt is present
-        #[arg(
-            long,
-            value_name = "NAME",
-            help_heading = "What"
-        )]
+        #[arg(long, value_name = "NAME", help_heading = "What")]
         harness: Option<String>,
 
         #[command(flatten)]
         location: LocationOpts,
+
+        /// Recognize the payload from this directory's source trees
+        #[arg(long = "from-cwd", help_heading = "Source")]
+        from_cwd: bool,
     },
 
     /// Report install health; add `--fix` to repair drift
@@ -194,7 +198,8 @@ Examples:
   shipmates doctor --harness opencode --local
   shipmates doctor --fix
   shipmates doctor --fix --no-migrate
-  shipmates doctor --dir /path/to/project --harness cursor --fix"
+  shipmates doctor --dir /path/to/project --harness cursor --fix
+  shipmates doctor --from-cwd"
     )]
     Doctor {
         /// Harness to diagnose
@@ -213,9 +218,13 @@ Examples:
         #[arg(long, help_heading = "Repair")]
         fix: bool,
 
-        /// With `--fix`, restore files but leave superseded legacy command files in place
+        /// With `--fix`, restore files but leave superseded legacy / pre-prefix names in place
         #[arg(long, requires = "fix", help_heading = "Repair")]
         no_migrate: bool,
+
+        /// Diagnose against this directory's source trees instead of the embedded payload
+        #[arg(long = "from-cwd", help_heading = "Source")]
+        from_cwd: bool,
     },
 
     /// List harness names this binary can install (`--harness` / `--target` values)

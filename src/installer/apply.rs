@@ -81,6 +81,7 @@ pub fn apply_with_preserved_paths(
         .collect();
     let mut managed = Vec::new();
     let mut pending = Vec::new();
+    let mut third_party: Vec<PathBuf> = Vec::new();
     for (rel, want) in &install.files {
         let path = crate::installer::manifest_db::resolve_target_relative(target_dir, rel)?;
         let rel_string = rel.to_string_lossy().into_owned();
@@ -117,18 +118,30 @@ pub fn apply_with_preserved_paths(
         }
         match fs::read(&path) {
             Ok(current) if current == want.as_bytes() => {
-                // Already the desired bytes — claim ownership. Refusing to claim
-                // identical content used to shrink receipts on reinstall and left
-                // `shipmates update` with nothing to refresh.
+                // The bytes are already ours whoever wrote them. Claim the path
+                // so the receipt stops omitting a file the payload owns; there
+                // is nothing to back up.
                 managed.push(rel.clone());
                 report.skipped += 1;
             }
             Ok(current) => {
                 if !owned && !force {
-                    report.warnings.push(format!(
-                        "Warning: existing file left untouched (use --force to replace): {}",
-                        rel.display()
-                    ));
+                    // Adopt a file that declares itself to be this artifact;
+                    // refuse the whole install for anything else, rather than
+                    // publishing a receipt that quietly omits it (#386).
+                    match crate::installer::adopt::classify(rel, &current) {
+                        crate::installer::adopt::Collision::Adoptable => {
+                            pending.push(PendingWrite {
+                                rel: rel.clone(),
+                                path,
+                                content: want.as_bytes().to_vec(),
+                                previous: Some(current),
+                            });
+                        }
+                        crate::installer::adopt::Collision::ThirdParty => {
+                            third_party.push(rel.clone());
+                        }
+                    }
                     continue;
                 }
                 if std::str::from_utf8(&current).is_err() && !force {
@@ -160,13 +173,29 @@ pub fn apply_with_preserved_paths(
         }
     }
 
+    // Every collision is decided before the first byte moves, so a refusal
+    // leaves the tree exactly as it was found.
+    if !third_party.is_empty() {
+        let paths: Vec<String> = third_party
+            .iter()
+            .map(|rel| rel.display().to_string())
+            .collect();
+        bail!(
+            "refusing to install over {} file(s) shipmates does not own at payload path(s): {}. \
+             Re-run with `shipmates install --force` to back each one up and overwrite it, or \
+             move them aside first.",
+            paths.len(),
+            paths.join(", ")
+        );
+    }
+
     if let Some(old_receipt) = old.as_ref() {
         let old_managed = old_receipt
             .files
             .iter()
             .map(|file| file.path.clone())
             .collect::<BTreeSet<_>>();
-        for path in plan::unmanaged_files(target_dir, &old_receipt.roots, &old_managed)? {
+        for path in plan::unmanaged_files(target_dir, &old_managed) {
             report.warnings.push(format!(
                 "Warning: unmanaged file left untouched: {}",
                 path.strip_prefix(target_dir).unwrap_or(&path).display()
@@ -176,15 +205,31 @@ pub fn apply_with_preserved_paths(
             if install.files.contains_key(Path::new(&old_file.path)) {
                 continue;
             }
+            if preserved_paths.contains(&old_file.path) {
+                continue;
+            }
+            if sibling_claims.contains(&old_file.path) {
+                report.warnings.push(format!(
+                    "Warning: shared-managed file preserved (no longer in payload): {}",
+                    old_file.path
+                ));
+                continue;
+            }
             let path = crate::installer::manifest_db::resolve_target_relative(
                 target_dir,
                 Path::new(&old_file.path),
             )?;
             if fs::symlink_metadata(&path).is_ok() {
-                report.warnings.push(format!(
-                    "Warning: previous managed file left untouched (no longer in payload): {}",
-                    old_file.path
-                ));
+                let current = fs::read(&path)
+                    .with_context(|| format!("reading dropped file {}", path.display()))?;
+                if let Some(backup) = backup_existing(&path, &current)? {
+                    report.backups.push(backup.clone());
+                }
+                fs::remove_file(&path)
+                    .with_context(|| format!("removing dropped file {}", path.display()))?;
+                report
+                    .warnings
+                    .push(format!("Removed dropped file: {}", old_file.path));
             }
         }
     }
@@ -382,6 +427,52 @@ mod tests {
         assert_eq!(
             fs::read_to_string(dir.path().join(".claude/agents/a.md")).unwrap(),
             "b"
+        );
+    }
+
+    #[test]
+    fn preserved_path_is_not_deleted_when_dropped_from_payload() {
+        let dir = tempdir().unwrap();
+        let first = install(
+            dir.path(),
+            "one",
+            &[
+                (".claude/agents/a.md", "a"),
+                (".claude/skills/polish/SKILL.md", "old polish"),
+            ],
+        );
+        apply(dir.path(), &first, false).unwrap();
+
+        let second = install(
+            dir.path(),
+            "two",
+            &[
+                (".claude/agents/a.md", "a"),
+                (".claude/skills/shipmates-polish/SKILL.md", "new polish"),
+            ],
+        );
+        let mut preserved = BTreeSet::new();
+        preserved.insert(".claude/skills/polish/SKILL.md".into());
+        apply_with_preserved_paths(dir.path(), &second, false, &preserved).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(dir.path().join(".claude/skills/polish/SKILL.md")).unwrap(),
+            "old polish",
+            "preserved_paths must keep the file on disk, not only the receipt claim"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join(".claude/skills/shipmates-polish/SKILL.md"))
+                .unwrap(),
+            "new polish"
+        );
+        let receipt = crate::installer::plan::read_receipt(dir.path(), "claude-code")
+            .1
+            .unwrap();
+        assert!(receipt.file(".claude/skills/polish/SKILL.md").is_some());
+        assert!(
+            receipt
+                .file(".claude/skills/shipmates-polish/SKILL.md")
+                .is_some()
         );
     }
 }

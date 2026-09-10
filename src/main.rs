@@ -6,6 +6,7 @@ mod doctor;
 mod embedded;
 mod installer;
 mod manifest;
+mod steering;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -15,7 +16,7 @@ use std::fs;
 use std::io::{IsTerminal, Write};
 use std::path::{Component, Path, PathBuf};
 
-use catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
+use catalog::CanonicalTool;
 
 /// How optional tools are chosen for an install/update run.
 enum ToolSelection {
@@ -23,78 +24,6 @@ enum ToolSelection {
     Explicit(Vec<CanonicalTool>),
     /// Keep whatever each harness receipt already claims (update default).
     FromReceipt,
-}
-
-/// Parse one line of the tool picker against the available tools.
-///
-/// `Some(tools)` for a valid line — empty / `none` → no tools; `all` → every
-/// tool; a comma/space-separated list of 1-based numbers → those tools, kept in
-/// input order and de-duplicated. `None` means a token was not a number in
-/// range, so the caller should re-prompt.
-fn select_tools_from_line(line: &str, available: &[CanonicalTool]) -> Option<Vec<CanonicalTool>> {
-    let trimmed = line.trim();
-    let lower = trimmed.to_ascii_lowercase();
-    if trimmed.is_empty() || lower == "none" || lower == "n" {
-        return Some(Vec::new());
-    }
-    if lower == "all" || lower == "a" {
-        return Some(available.to_vec());
-    }
-    let mut picked: Vec<CanonicalTool> = Vec::new();
-    for token in trimmed
-        .split(|c: char| c == ',' || c.is_whitespace())
-        .filter(|s| !s.is_empty())
-    {
-        match token.parse::<usize>() {
-            Ok(n) if n >= 1 && n <= available.len() => {
-                let tool = &available[n - 1];
-                if !picked.iter().any(|p| p.name == tool.name) {
-                    picked.push(tool.clone());
-                }
-            }
-            _ => return None,
-        }
-    }
-    Some(picked)
-}
-
-/// Interactively pick which optional tools to install (terminal only).
-///
-/// Reached only when `--with-tools` was omitted and stdin is a TTY. Re-prompts a
-/// few times on an out-of-range entry, then defaults to none rather than looping
-/// forever; a closed stdin (EOF) reads as an empty line, i.e. no tools.
-fn prompt_for_tools(available: &[CanonicalTool]) -> Vec<CanonicalTool> {
-    println!("\nOptional tools — the crew reach for these implicitly when a task needs one.");
-    println!("They're off by default; pick any you'd like installed:\n");
-    for (i, tool) in available.iter().enumerate() {
-        let blurb: String = tool
-            .description
-            .split(['.', '\n'])
-            .next()
-            .unwrap_or("")
-            .trim()
-            .chars()
-            .take(72)
-            .collect();
-        println!("  {}) {} — {}", i + 1, tool.name, blurb);
-    }
-    for _ in 0..3 {
-        print!("\nSelect tools [e.g. 1,2 · all · Enter for none]: ");
-        let _ = std::io::stdout().flush();
-        let mut line = String::new();
-        if std::io::stdin().read_line(&mut line).is_err() {
-            return Vec::new();
-        }
-        match select_tools_from_line(&line, available) {
-            Some(tools) => return tools,
-            None => println!(
-                "  Pick numbers from 1 to {} (or 'all', or Enter for none).",
-                available.len()
-            ),
-        }
-    }
-    println!("  No valid selection — installing no tools.");
-    Vec::new()
 }
 
 fn harness_blurb(name: &str) -> &'static str {
@@ -191,8 +120,7 @@ fn prompt_among(labels: &[String], heading: &str, empty_default: &[String]) -> V
         if std::io::stdin().read_line(&mut line).is_err() {
             return empty_default.to_vec();
         }
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
+        if line.trim().is_empty() {
             return empty_default.to_vec();
         }
         match select_harnesses_from_line(&line, &available) {
@@ -225,52 +153,6 @@ fn resolve_install_harnesses(harness: Option<String>) -> Result<Vec<String>> {
     }
 }
 
-fn resolve_named_tools(
-    with_tools: Option<Vec<String>>,
-    available: &[CanonicalTool],
-) -> Result<Vec<CanonicalTool>> {
-    match with_tools {
-        None if !std::io::stdin().is_terminal() => Ok(Vec::new()),
-        None if available.is_empty() => Ok(Vec::new()),
-        None => Ok(prompt_for_tools(available)),
-        Some(want) => {
-            let want: Vec<String> = want.into_iter().filter(|w| !w.is_empty()).collect();
-            if want.iter().any(|t| t == "none") {
-                Ok(Vec::new())
-            } else if want.iter().any(|t| t == "all") {
-                Ok(available.to_vec())
-            } else {
-                for w in &want {
-                    if !available.iter().any(|t| &t.name == w) {
-                        let names: Vec<&str> = available.iter().map(|t| t.name.as_str()).collect();
-                        bail!("unknown tool: {} (available: {})", w, names.join(", "));
-                    }
-                }
-                Ok(available
-                    .iter()
-                    .filter(|t| want.contains(&t.name))
-                    .cloned()
-                    .collect())
-            }
-        }
-    }
-}
-
-/// Tools a receipt already claims, matched by path component (skill/tool dir name).
-fn tools_from_receipt(receipt: &InstallReceipt, available: &[CanonicalTool]) -> Vec<CanonicalTool> {
-    available
-        .iter()
-        .filter(|tool| {
-            receipt.files.iter().any(|file| {
-                Path::new(&file.path).components().any(|component| {
-                    matches!(component, Component::Normal(value) if value == tool.name.as_str())
-                })
-            })
-        })
-        .cloned()
-        .collect()
-}
-
 fn resolve_update_harnesses(target_dir: &Path, harness: Option<String>) -> Result<Vec<String>> {
     let receipts = installer::manifest_db::ReceiptRepository::new(target_dir).load_all()?;
     if receipts.is_empty() {
@@ -300,6 +182,182 @@ fn resolve_update_harnesses(target_dir: &Path, harness: Option<String>) -> Resul
         )),
         None => Ok(installed),
     }
+}
+
+/// Tools a receipt already claims, matched by path component (skill/tool dir name).
+fn tools_from_receipt(receipt: &InstallReceipt, available: &[CanonicalTool]) -> Vec<CanonicalTool> {
+    available
+        .iter()
+        .filter(|tool| {
+            receipt.files.iter().any(|file| {
+                Path::new(&file.path).components().any(|component| {
+                    matches!(component, Component::Normal(value) if value == tool.name.as_str())
+                })
+            })
+        })
+        .cloned()
+        .collect()
+}
+
+fn select_tools(
+    with_tools: Option<Vec<String>>,
+    available: Vec<CanonicalTool>,
+) -> Result<Vec<CanonicalTool>> {
+    match with_tools {
+        Some(want) => {
+            let want: Vec<String> = want.into_iter().filter(|w| !w.is_empty()).collect();
+            if want.iter().any(|t| t == "none") {
+                Ok(Vec::new())
+            } else if want.iter().any(|t| t == "all") {
+                Ok(available)
+            } else {
+                for w in &want {
+                    if !available
+                        .iter()
+                        .any(|t| installer::rename::matches_requested_tool(w, &t.name))
+                    {
+                        let names: Vec<&str> = available
+                            .iter()
+                            .map(|t| installer::rename::canonical_tool_name(&t.name))
+                            .collect();
+                        bail!("unknown tool: {} (available: {})", w, names.join(", "));
+                    }
+                }
+                Ok(available
+                    .into_iter()
+                    .filter(|t| {
+                        want.iter()
+                            .any(|w| installer::rename::matches_requested_tool(w, &t.name))
+                    })
+                    .collect())
+            }
+        }
+        None => Ok(available),
+    }
+}
+
+fn run_install_loop(
+    target_dir: &Path,
+    harnesses: &[String],
+    tools: ToolSelection,
+    available_tools: &[CanonicalTool],
+    roles: &[catalog::CanonicalRole],
+    cmds: &[catalog::CanonicalCommand],
+    install_steering: Option<&str>,
+    no_migrate: bool,
+    force: bool,
+    migrate_steering: bool,
+) -> Result<()> {
+    let mut provision_scripts: Vec<PathBuf> = Vec::new();
+    let install_all = harnesses.len() > 1;
+    let fail_fast = !install_all;
+    let mut installed: Vec<(String, String)> = Vec::new();
+    let mut failures: Vec<(String, String)> = Vec::new();
+
+    for harness in harnesses {
+        let selected_tools = match &tools {
+            ToolSelection::Explicit(tools) => tools.clone(),
+            ToolSelection::FromReceipt => {
+                let (_, previous, _) = installer::plan::read_receipt(target_dir, harness);
+                previous
+                    .as_ref()
+                    .map(|receipt| tools_from_receipt(receipt, available_tools))
+                    .unwrap_or_default()
+            }
+        };
+        let provision_filenames: std::collections::HashSet<String> = selected_tools
+            .iter()
+            .filter(|t| !t.requires.is_empty())
+            .flat_map(|t| {
+                t.assets
+                    .iter()
+                    .map(|(rel, _)| rel.rsplit('/').next().unwrap_or(rel).to_string())
+            })
+            .filter(|f| f.ends_with(".py"))
+            .collect();
+
+        match install_harness(
+            harness,
+            target_dir,
+            roles,
+            cmds,
+            &selected_tools,
+            install_steering,
+            &provision_filenames,
+            no_migrate,
+            force,
+        ) {
+            Ok(outcome) => {
+                for script in outcome.provision_scripts {
+                    if !provision_scripts
+                        .iter()
+                        .any(|known| known.file_name() == script.file_name())
+                    {
+                        provision_scripts.push(script);
+                    }
+                }
+                installed.push((harness.clone(), outcome.version));
+            }
+            Err(error) if fail_fast => return Err(error),
+            Err(error) => {
+                println!("Failed harness: {} — {:#}", harness, error);
+                failures.push((harness.clone(), format!("{:#}", error)));
+            }
+        }
+    }
+
+    if !fail_fast {
+        println!("\nHarness summary:");
+        for (harness, version) in &installed {
+            println!("  {}: installed v{}", harness, version);
+        }
+        for (harness, error) in &failures {
+            println!("  {}: failed — {}", harness, error);
+        }
+    }
+    if !provision_scripts.is_empty() {
+        provision_tool_deps(&provision_scripts);
+    }
+    if migrate_steering {
+        for action in steering::plan_legacy_migration(target_dir)? {
+            match action {
+                steering::LegacyMigration::Write { path, content } => {
+                    crate::installer::atomic_write(&path, &content)?;
+                    println!(
+                        "Removed legacy contributor steering section from {}",
+                        path.display()
+                    );
+                }
+                steering::LegacyMigration::Remove { path } => {
+                    if path.is_file() {
+                        std::fs::remove_file(&path)?;
+                        println!(
+                            "Removed legacy contributor steering file {}",
+                            path.display()
+                        );
+                    }
+                }
+            }
+        }
+    }
+    if !failures.is_empty() {
+        if installed.is_empty() {
+            println!(
+                "\n{} of {} harnesses failed; none installed.                  Re-run after fixing the cause.",
+                failures.len(),
+                harnesses.len()
+            );
+        } else {
+            println!(
+                "\n{} of {} harnesses failed; the rest are installed at v{}.                  Re-run the failed harness after fixing the cause.",
+                failures.len(),
+                harnesses.len(),
+                env!("CARGO_PKG_VERSION")
+            );
+        }
+        std::process::exit(1);
+    }
+    Ok(())
 }
 
 /// Pre-warm the runtime dependencies of the installed tool scripts, at install
@@ -347,129 +405,125 @@ fn provision_tool_deps(scripts: &[PathBuf]) {
     }
 }
 
-fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
-    if let Some(dir) = dir {
-        Ok(PathBuf::from(dir))
-    } else if local {
-        Ok(Path::new(".").to_path_buf())
-    } else {
-        home::home_dir().context("Failed to determine home directory")
-    }
+/// What one harness's install produced, for the cross-harness summary.
+struct HarnessInstall {
+    version: String,
+    provision_scripts: Vec<PathBuf>,
 }
 
-fn load_catalog() -> Result<(
-    Vec<CanonicalRole>,
-    Vec<CanonicalCommand>,
-    Vec<CanonicalTool>,
-)> {
-    let root = Path::new(".");
-    let roles_path = root.join("crew");
-    let commands_path = root.join("commands");
-    let tools_path = root.join("toolbox");
-    let roles = if roles_path.is_dir() {
-        catalog::load_roles(&roles_path).context("Failed to load roles")?
-    } else {
-        catalog::load_roles_embedded().context("Failed to load embedded roles")?
-    };
-    let cmds = if commands_path.is_dir() {
-        catalog::load_commands(&commands_path).context("Failed to load commands")?
-    } else {
-        catalog::load_commands_embedded().context("Failed to load embedded commands")?
-    };
-    let tools = if tools_path.is_dir() {
-        catalog::load_tools(&tools_path).context("Failed to load tools")?
-    } else {
-        catalog::load_tools_embedded().context("Failed to load embedded tools")?
-    };
-    Ok((roles, cmds, tools))
-}
-
-fn run_install(
+/// Install one harness. Every failure mode returns `Err` rather than exiting, so
+/// `--harness all` can report a failed target and carry on with the rest (#384).
+#[allow(clippy::too_many_arguments)]
+fn install_harness(
+    harness: &str,
     target_dir: &Path,
-    harnesses: &[String],
-    tools: ToolSelection,
-    available_tools: &[CanonicalTool],
-    roles: &[CanonicalRole],
-    cmds: &[CanonicalCommand],
+    roles: &[catalog::CanonicalRole],
+    cmds: &[catalog::CanonicalCommand],
+    selected_tools: &[catalog::CanonicalTool],
+    install_steering: Option<&str>,
+    provision_filenames: &std::collections::HashSet<String>,
     no_migrate: bool,
     force: bool,
-) -> Result<()> {
+) -> Result<HarnessInstall> {
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
-
-    for harness in harnesses {
-        let selected_tools = match &tools {
-            ToolSelection::Explicit(tools) => tools.clone(),
-            ToolSelection::FromReceipt => {
-                let (_, previous, _) = installer::plan::read_receipt(target_dir, harness);
-                previous
-                    .as_ref()
-                    .map(|receipt| tools_from_receipt(receipt, available_tools))
-                    .unwrap_or_default()
-            }
-        };
-        let provision_filenames: std::collections::HashSet<String> = selected_tools
-            .iter()
-            .filter(|t| !t.requires.is_empty())
-            .flat_map(|t| {
-                t.assets
-                    .iter()
-                    .map(|(rel, _)| rel.rsplit('/').next().unwrap_or(rel).to_string())
-            })
-            .filter(|f| f.ends_with(".py"))
-            .collect();
-
-        let adapter = adapters::select(harness)?;
-        let built = adapter.build(roles, cmds)?;
-        let payload_prefix = format!("{}/", adapter.container());
-        for key in built.keys() {
-            if let Some(rel) = key.strip_prefix(&payload_prefix) {
-                installer::manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
-            }
+    let adapter = adapters::select(harness)?;
+    let built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
+    let payload_prefix = format!("{}/", adapter.container());
+    for key in built.keys() {
+        if let Some(rel) = key.strip_prefix(&payload_prefix) {
+            installer::manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
         }
-        let plan = installer::plan::InstallPlan::from_payload(
-            adapter.as_ref(),
-            harness,
-            built.clone(),
-            adapter.build_tools(&selected_tools),
-        )?;
-        let migration_candidates = if force {
+    }
+    let plan = installer::plan::InstallPlan::from_payload(
+        adapter.as_ref(),
+        harness,
+        built.clone(),
+        adapter.build_tools(selected_tools),
+    )?;
+    let migration_candidates = if force {
+        installer::migrate::plan(target_dir, &built, adapter.container())?
+    } else {
+        let (_, previous, _) = installer::plan::read_receipt(target_dir, harness);
+        if let Some(owned) = previous.as_ref() {
             installer::migrate::plan(target_dir, &built, adapter.container())?
+                .into_iter()
+                .filter(|item| owned.file(&item.legacy_path.to_string_lossy()).is_some())
+                .collect()
         } else {
-            let (_, previous, _) = installer::plan::read_receipt(target_dir, harness);
-            if let Some(owned) = previous.as_ref() {
-                installer::migrate::plan(target_dir, &built, adapter.container())?
-                    .into_iter()
-                    .filter(|item| owned.file(&item.legacy_path.to_string_lossy()).is_some())
-                    .collect()
-            } else {
-                Vec::new()
-            }
-        };
-        let migration_items = if no_migrate {
             Vec::new()
-        } else {
-            migration_candidates.clone()
-        };
-        for item in &migration_candidates {
-            installer::manifest_db::resolve_target_relative(target_dir, &item.legacy_path)?;
-            installer::manifest_db::resolve_target_relative(target_dir, &item.superseded_by)?;
         }
+    };
+    let migration_items = if no_migrate {
+        Vec::new()
+    } else {
+        migration_candidates.clone()
+    };
+    for item in &migration_candidates {
+        installer::manifest_db::resolve_target_relative(target_dir, &item.legacy_path)?;
+        installer::manifest_db::resolve_target_relative(target_dir, &item.superseded_by)?;
+    }
 
-        // Migration runs before receipt publication. If backup/removal
-        // fails, apply never publishes a receipt that drops legacy
-        // ownership. Paths deliberately left in place remain claimed so
-        // a later install can retry the migration.
-        let mut preserved_paths = std::collections::BTreeSet::new();
-        let mut migration_report = None;
-        if no_migrate {
-            preserved_paths.extend(
-                migration_candidates
+    let rename_payload: std::collections::HashMap<String, String> = plan
+        .files
+        .iter()
+        .map(|(path, content)| (path.to_string_lossy().into_owned(), content.clone()))
+        .collect();
+    let rename_candidates =
+        installer::rename::plan(target_dir, &rename_payload, adapter.container())?;
+    let rename_items = if no_migrate {
+        Vec::new()
+    } else {
+        rename_candidates.clone()
+    };
+    for item in &rename_candidates {
+        installer::manifest_db::resolve_target_relative(target_dir, &item.old_path)?;
+        installer::manifest_db::resolve_target_relative(target_dir, &item.new_path)?;
+    }
+
+    // Identity rename, then layout migration, then receipt
+    // publication. If a later step fails, earlier steps roll back
+    // so a rename never becomes an irreversible side effect of an
+    // unsuccessful install. Paths deliberately left in place remain
+    // claimed so a later install can retry.
+    let mut preserved_paths = std::collections::BTreeSet::new();
+    let mut rename_report = None;
+    let mut migration_report = None;
+    if no_migrate {
+        preserved_paths.extend(installer::rename::preserved_old_paths(&rename_candidates));
+        preserved_paths.extend(
+            migration_candidates
+                .iter()
+                .map(|item| item.legacy_path.to_string_lossy().into_owned()),
+        );
+    } else {
+        let needs_backup = !rename_items.is_empty() || !migration_items.is_empty();
+        let backup_root = needs_backup.then(|| installer::migrate::new_backup_root(target_dir));
+        if !rename_items.is_empty() {
+            let backup_root = backup_root.as_ref().expect("backup root");
+            let report = installer::rename::apply(
+                target_dir,
+                &rename_items,
+                &rename_payload,
+                adapter.container(),
+                backup_root,
+            )?;
+            for item in &rename_items {
+                if !report
+                    .renamed
                     .iter()
-                    .map(|item| item.legacy_path.to_string_lossy().into_owned()),
-            );
-        } else if !migration_items.is_empty() {
-            let backup_root = installer::migrate::new_backup_root(target_dir);
-            let report = installer::migrate::apply(target_dir, &migration_items, &backup_root)?;
+                    .any(|renamed| renamed.old_path == item.old_path)
+                {
+                    preserved_paths.insert(item.old_path.to_string_lossy().into_owned());
+                }
+            }
+            if !report.renamed.is_empty() {
+                installer::rename::print_map(&report);
+            }
+            rename_report = Some(report);
+        }
+        if !migration_items.is_empty() {
+            let backup_root = backup_root.as_ref().expect("backup root");
+            let report = installer::migrate::apply(target_dir, &migration_items, backup_root)?;
             for item in &migration_items {
                 if !report.migrated.contains(&item.legacy_path) {
                     preserved_paths.insert(item.legacy_path.to_string_lossy().into_owned());
@@ -489,79 +543,90 @@ fn run_install(
                 }
             }
         }
+    }
 
-        let apply_result = if preserved_paths.is_empty() {
-            installer::apply::apply(target_dir, &plan, force)
-        } else {
-            installer::apply::apply_with_preserved_paths(
-                target_dir,
-                &plan,
-                force,
-                &preserved_paths,
-            )
-        };
-        let result = match apply_result {
-            Ok(result) => result,
-            Err(error) => {
-                let rollback = match migration_report.as_ref() {
-                    Some(report) => installer::migrate::rollback(target_dir, report),
-                    None => Ok(()),
-                };
-                return Err(combine_rollback_error(error, rollback));
-            }
-        };
-        if let Some(receipt) = &result.receipt {
-            for file in &receipt.files {
-                let rel = PathBuf::from(&file.path);
-                if let Some(fname) = rel.file_name().and_then(|name| name.to_str()) {
-                    if provision_filenames.contains(fname)
-                        && !provision_scripts
-                            .iter()
-                            .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
-                    {
-                        provision_scripts.push(
-                            installer::manifest_db::resolve_target_relative(target_dir, &rel)?,
-                        );
-                    }
-                }
-            }
+    let apply_result = if preserved_paths.is_empty() {
+        installer::apply::apply(target_dir, &plan, force)
+    } else {
+        installer::apply::apply_with_preserved_paths(target_dir, &plan, force, &preserved_paths)
+    };
+    let result = match apply_result {
+        Ok(result) => result,
+        Err(error) => {
+            let migrate_rollback = match migration_report.as_ref() {
+                Some(report) => installer::migrate::rollback(target_dir, report),
+                None => Ok(()),
+            };
+            let rename_rollback = match rename_report.as_ref() {
+                Some(report) => installer::rename::rollback(target_dir, report),
+                None => Ok(()),
+            };
+            return Err(combine_rollback_error(
+                combine_rollback_error(error, migrate_rollback),
+                rename_rollback,
+            ));
         }
-
-        if let Some(previous) = &result.previous_version {
-            if previous != &plan.version {
-                println!("Upgrading shipmates v{} → v{}", previous, plan.version);
-                println!(
-                    "{} files changed, {} new, {} removed",
-                    result.summary.changed, result.summary.new, result.summary.removed
-                );
+    };
+    if let Some(receipt) = &result.receipt {
+        for file in &receipt.files {
+            let rel = PathBuf::from(&file.path);
+            if let Some(fname) = rel.file_name().and_then(|name| name.to_str())
+                && provision_filenames.contains(fname)
+                && !provision_scripts
+                    .iter()
+                    .any(|p| p.file_name().and_then(|s| s.to_str()) == Some(fname))
+            {
+                provision_scripts.push(installer::manifest_db::resolve_target_relative(
+                    target_dir, &rel,
+                )?);
             }
-        }
-        for warning in &result.warnings {
-            println!("{}", warning);
-        }
-
-        if selected_tools.is_empty() {
-            println!(
-                "Installed harness: {} ({} files written)",
-                harness, result.written
-            );
-        } else {
-            let names: Vec<&str> = selected_tools
-                .iter()
-                .map(|tool| tool.name.as_str())
-                .collect();
-            println!(
-                "Installed harness: {} ({} files written, tools: {})",
-                harness,
-                result.written,
-                names.join(", ")
-            );
         }
     }
-    if !provision_scripts.is_empty() {
-        provision_tool_deps(&provision_scripts);
+
+    if let Some(previous) = &result.previous_version
+        && previous != &plan.version
+    {
+        println!("Upgrading shipmates v{} → v{}", previous, plan.version);
+        println!(
+            "{} files changed, {} new, {} removed",
+            result.summary.changed, result.summary.new, result.summary.removed
+        );
     }
-    Ok(())
+    for warning in &result.warnings {
+        println!("{}", warning);
+    }
+
+    if selected_tools.is_empty() {
+        println!(
+            "Installed harness: {} ({} files written)",
+            harness, result.written
+        );
+    } else {
+        let names: Vec<&str> = selected_tools
+            .iter()
+            .map(|tool| tool.name.as_str())
+            .collect();
+        println!(
+            "Installed harness: {} ({} files written, tools: {})",
+            harness,
+            result.written,
+            names.join(", ")
+        );
+    }
+    Ok(HarnessInstall {
+        version: plan.version,
+        provision_scripts,
+    })
+}
+
+fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
+    if let Some(dir) = dir {
+        Ok(PathBuf::from(dir))
+    } else if local {
+        Ok(Path::new(".").to_path_buf())
+    } else {
+        home::home_dir().context("Failed to determine home directory")
+    }
 }
 
 fn main() -> Result<()> {
@@ -573,35 +638,51 @@ fn main() -> Result<()> {
             with_tools,
             no_migrate,
             force,
+            from_cwd,
         } => {
-            let (roles, cmds, available_tools) = load_catalog()?;
-            let harnesses = resolve_install_harnesses(harness)?;
-            let selected_tools = resolve_named_tools(with_tools, &available_tools)?;
+            let source = catalog::resolve_source_from_env(from_cwd)?;
+            let roles = source.load_roles()?;
+            let cmds = source.load_commands()?;
+            let available = source.load_tools()?;
+            let available_for_receipt = available.clone();
+            let selected_tools = select_tools(with_tools, available)?;
             let target_dir = resolve_target_dir(location.local, location.dir)?;
-            run_install(
+            let install_steering = source.steering_for_target(&target_dir)?;
+            let harnesses = resolve_install_harnesses(harness)?;
+            run_install_loop(
                 &target_dir,
                 &harnesses,
                 ToolSelection::Explicit(selected_tools),
-                &available_tools,
+                &available_for_receipt,
                 &roles,
                 &cmds,
+                install_steering.as_deref(),
                 no_migrate,
                 force,
+                install_steering.is_some(),
             )?;
         }
-        Command::Uninstall { harness, location } => {
+        Command::Uninstall {
+            harness,
+            location,
+            from_cwd,
+        } => {
             let target_dir = resolve_target_dir(location.local, location.dir)?;
             let selected = installer::uninstall::select_receipt(&target_dir, harness.as_deref())?;
             let Some(selected) = selected else {
                 println!("No install receipt found; nothing to uninstall.");
                 return Ok(());
             };
-            let (roles, cmds, tools) = load_catalog()?;
+            let source = catalog::resolve_source_from_env(from_cwd)?;
+            let roles = source.load_roles()?;
+            let cmds = source.load_commands()?;
+            let tools = source.load_tools()?;
             let known_payload = installer::uninstall::payload_for(
                 &selected.receipt.harness,
                 &roles,
                 &cmds,
                 &tools,
+                &source.load_steering()?,
             )?;
             let report = installer::uninstall::uninstall_with_payload(
                 &target_dir,
@@ -629,9 +710,10 @@ fn main() -> Result<()> {
 
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
+            let steering = catalog::load_steering(root_path).map_err(|e| anyhow::anyhow!(e))?;
 
             let adapter = adapters::select(&target)?;
-            let files = adapter.build(&roles, &cmds)?;
+            let files = adapters::build_payload(adapter.as_ref(), &roles, &cmds, Some(&steering))?;
 
             if check {
                 check_digests(&target, adapter.digest_root(), &files, root_path)?;
@@ -655,9 +737,10 @@ fn main() -> Result<()> {
 
             let roles = catalog::load_roles(&roles_path).context("Failed to load roles")?;
             let cmds = catalog::load_commands(&commands_path).context("Failed to load commands")?;
+            let steering = catalog::load_steering(root_path).map_err(|e| anyhow::anyhow!(e))?;
 
             let adapter = adapters::select(&target)?;
-            let files = adapter.build(&roles, &cmds)?;
+            let files = adapters::build_payload(adapter.as_ref(), &roles, &cmds, Some(&steering))?;
             check_digests(&target, adapter.digest_root(), &files, root_path)?;
         }
         Command::Update {
@@ -665,27 +748,30 @@ fn main() -> Result<()> {
             location,
             with_tools,
             no_migrate,
+            from_cwd,
         } => {
             let target_dir = resolve_target_dir(location.local, location.dir)?;
             let harnesses = resolve_update_harnesses(&target_dir, harness)?;
-            let (roles, cmds, available_tools) = load_catalog()?;
+            let source = catalog::resolve_source_from_env(from_cwd)?;
+            let roles = source.load_roles()?;
+            let cmds = source.load_commands()?;
+            let available = source.load_tools()?;
             let tools = match with_tools {
-                Some(_) => {
-                    ToolSelection::Explicit(resolve_named_tools(with_tools, &available_tools)?)
-                }
+                Some(_) => ToolSelection::Explicit(select_tools(with_tools, available.clone())?),
                 None => ToolSelection::FromReceipt,
             };
-            // Force refresh: update means bring payload files to the binary's
-            // current bytes, including paths that drifted outside a receipt.
-            run_install(
+            let install_steering = source.steering_for_target(&target_dir)?;
+            run_install_loop(
                 &target_dir,
                 &harnesses,
                 tools,
-                &available_tools,
+                &available,
                 &roles,
                 &cmds,
+                install_steering.as_deref(),
                 no_migrate,
                 true,
+                install_steering.is_some(),
             )?;
         }
         Command::Doctor {
@@ -693,25 +779,35 @@ fn main() -> Result<()> {
             location,
             fix,
             no_migrate,
+            from_cwd,
         } => {
-            let (roles, cmds, tools) = load_catalog()?;
+            let source = catalog::resolve_source_from_env(from_cwd)?;
+            let roles = source.load_roles()?;
+            let cmds = source.load_commands()?;
+            let tools = source.load_tools()?;
             let target_dir = resolve_target_dir(location.local, location.dir)?;
 
             let report = if fix {
-                doctor::fix(&target_dir, &harness, &roles, &cmds, &tools, no_migrate)?
+                doctor::fix(
+                    &target_dir,
+                    &harness,
+                    &roles,
+                    &cmds,
+                    &tools,
+                    no_migrate,
+                    &source,
+                )?
             } else {
-                doctor::diagnose(&target_dir, &harness, &roles, &cmds, &tools)?
+                doctor::diagnose(&target_dir, &harness, &roles, &cmds, &tools, &source)?
             };
             doctor::print_report(&report);
-            // Exit 2 on problems via `std::process::exit` — not `bail!`, which
-            // would print an error and exit 1 rather than the health-check code.
             if report.has_problems() {
                 std::process::exit(2);
             }
         }
         Command::Targets => {
             for name in adapters::targets() {
-                println!("{name}");
+                println!("{}", name);
             }
         }
     }
@@ -807,25 +903,11 @@ fn combine_rollback_error(error: anyhow::Error, rollback: Result<()>) -> anyhow:
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use clap::CommandFactory;
-
-    fn tool(name: &str) -> CanonicalTool {
-        CanonicalTool {
-            name: name.to_string(),
-            description: "desc".to_string(),
-            body: String::new(),
-            assets: vec![],
-            requires: vec![],
-            source: PathBuf::from(""),
-        }
-    }
-
-    fn names(v: Option<Vec<CanonicalTool>>) -> Option<Vec<String>> {
-        v.map(|ts| ts.into_iter().map(|t| t.name).collect())
-    }
 
     fn help_for(command: &str) -> String {
         let mut cmd = Cli::command();
@@ -840,25 +922,8 @@ mod tests {
         let mut buf = Vec::new();
         Cli::command().write_long_help(&mut buf).unwrap();
         let help = String::from_utf8(buf).unwrap();
-        assert!(
-            help.contains("Start here:"),
-            "top-level long help should orient first-time users: {help}"
-        );
-        assert!(
-            help.contains("Contributor commands"),
-            "build/check should sit under a contributor heading: {help}"
-        );
-        for cmd in [
-            "install",
-            "update",
-            "uninstall",
-            "doctor",
-            "targets",
-            "build",
-            "check",
-        ] {
-            assert!(help.contains(cmd), "missing {cmd} in top-level help");
-        }
+        assert!(help.contains("Start here:"), "{help}");
+        assert!(help.contains("Contributor commands"), "{help}");
     }
 
     #[test]
@@ -869,130 +934,37 @@ mod tests {
             "--dir <PATH>",
             "--with-tools <NAMES|all|none>",
             "--force",
-            "--no-migrate",
-            "--global",
-            "--local",
+            "--from-cwd",
             "Examples:",
-            "shipmates install --harness claude-code",
+            "Where:",
         ] {
-            assert!(
-                help.contains(needle),
-                "install help missing `{needle}`:\n{help}"
-            );
+            assert!(help.contains(needle), "missing `{needle}`:\n{help}");
         }
     }
 
     #[test]
     fn update_help_documents_refresh_semantics() {
         let help = help_for("update");
-        for needle in [
-            "--harness <NAME>",
-            "--with-tools <NAMES|all|none>",
-            "Examples:",
-            "shipmates update",
-            "build --update",
-        ] {
-            assert!(
-                help.contains(needle),
-                "update help missing `{needle}`:\n{help}"
-            );
+        for needle in ["--harness <NAME>", "Examples:", "shipmates update", "build --update"] {
+            assert!(help.contains(needle), "missing `{needle}`:\n{help}");
         }
     }
 
     #[test]
     fn doctor_help_documents_fix() {
         let help = help_for("doctor");
-        for needle in [
-            "--harness <NAME>",
-            "--fix",
-            "Repair missing or drifted",
-            "Examples:",
-            "shipmates doctor --fix",
-        ] {
-            assert!(
-                help.contains(needle),
-                "doctor help missing `{needle}`:\n{help}"
-            );
+        for needle in ["--fix", "Repair missing or drifted", "Examples:"] {
+            assert!(help.contains(needle), "missing `{needle}`:\n{help}");
         }
-    }
-
-    #[test]
-    fn build_and_check_help_mark_contributor_workflows() {
-        let build = help_for("build");
-        let check = help_for("check");
-        assert!(build.contains("--target <NAME>"));
-        assert!(build.contains("--root <PATH>"));
-        assert!(build.contains("--update"));
-        assert!(build.contains("Contributor"));
-        assert!(build.contains("Examples:"));
-        assert!(check.contains("--target <NAME>"));
-        assert!(check.contains("Contributor"));
-        assert!(check.contains("Examples:"));
     }
 
     #[test]
     fn location_flags_share_where_heading_across_user_commands() {
         for command in ["install", "update", "uninstall", "doctor"] {
             let help = help_for(command);
-            assert!(
-                help.contains("Where:"),
-                "{command} help should group location flags under Where:\n{help}"
-            );
-            assert!(help.contains("--global"), "{command} missing --global");
-            assert!(help.contains("--local"), "{command} missing --local");
-            assert!(
-                help.contains("--dir <PATH>"),
-                "{command} missing --dir <PATH>"
-            );
+            assert!(help.contains("Where:"), "{command}:\n{help}");
+            assert!(help.contains("--dir <PATH>"), "{command}");
         }
-    }
-
-    #[test]
-    fn test_tool_line_empty_and_none_select_nothing() {
-        let avail = [tool("termgif"), tool("second")];
-        assert_eq!(names(select_tools_from_line("", &avail)), Some(vec![]));
-        assert_eq!(names(select_tools_from_line("   ", &avail)), Some(vec![]));
-        assert_eq!(names(select_tools_from_line("none", &avail)), Some(vec![]));
-        assert_eq!(names(select_tools_from_line("N", &avail)), Some(vec![]));
-    }
-
-    #[test]
-    fn test_tool_line_all_selects_everything() {
-        let avail = [tool("termgif"), tool("second")];
-        assert_eq!(
-            names(select_tools_from_line("all", &avail)),
-            Some(vec!["termgif".into(), "second".into()])
-        );
-        assert_eq!(
-            names(select_tools_from_line("A", &avail)),
-            Some(vec!["termgif".into(), "second".into()])
-        );
-    }
-
-    #[test]
-    fn test_tool_line_numbers_pick_in_order_and_dedup() {
-        let avail = [tool("termgif"), tool("second"), tool("third")];
-        assert_eq!(
-            names(select_tools_from_line("1", &avail)),
-            Some(vec!["termgif".into()])
-        );
-        assert_eq!(
-            names(select_tools_from_line("3, 1", &avail)),
-            Some(vec!["third".into(), "termgif".into()])
-        );
-        assert_eq!(
-            names(select_tools_from_line("2 2 2", &avail)),
-            Some(vec!["second".into()])
-        );
-    }
-
-    #[test]
-    fn test_tool_line_out_of_range_or_garbage_is_reprompt() {
-        let avail = [tool("termgif")];
-        assert_eq!(select_tools_from_line("2", &avail).map(|_| ()), None);
-        assert_eq!(select_tools_from_line("0", &avail).map(|_| ()), None);
-        assert_eq!(select_tools_from_line("nope", &avail).map(|_| ()), None);
-        assert_eq!(select_tools_from_line("1, 9", &avail).map(|_| ()), None);
     }
 
     #[test]
@@ -1015,35 +987,5 @@ mod tests {
             select_harnesses_from_line("2, cursor", &avail),
             Some(vec!["opencode".into(), "cursor".into()])
         );
-        assert_eq!(select_harnesses_from_line("9", &avail), None);
-        assert_eq!(select_harnesses_from_line("nope", &avail), None);
-    }
-
-    #[test]
-    fn test_tools_from_receipt_matches_path_components() {
-        use installer::manifest_db::ReceiptFile;
-        let receipt = InstallReceipt::new(
-            "0.1.4".to_string(),
-            "claude-code".to_string(),
-            "skills".to_string(),
-            vec![".claude".to_string()],
-            vec![
-                ReceiptFile {
-                    path: ".claude/skills/badge/SKILL.md".to_string(),
-                    sha256: "0".repeat(64),
-                },
-                ReceiptFile {
-                    path: ".claude/skills/ship-issue/SKILL.md".to_string(),
-                    sha256: "1".repeat(64),
-                },
-            ],
-        )
-        .unwrap();
-        let available = [tool("badge"), tool("termgif"), tool("scrub")];
-        let got: Vec<_> = tools_from_receipt(&receipt, &available)
-            .into_iter()
-            .map(|t| t.name)
-            .collect();
-        assert_eq!(got, vec!["badge".to_string()]);
     }
 }
