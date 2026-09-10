@@ -1048,3 +1048,65 @@ fn doctor_fix_still_repairs_drifted_installed_tool() {
         stdout
     );
 }
+
+#[test]
+fn update_refreshes_drifted_payload_and_preserves_tools() {
+    let dir = tempdir().unwrap();
+    let first = run(
+        dir.path(),
+        &["install", "--harness", HARNESS, "--with-tools", "termgif"],
+    );
+    assert!(
+        first.status.success(),
+        "install failed: {}",
+        output_text(&first)
+    );
+    let managed = managed_file(dir.path());
+    let tool = dir.path().join(".claude/skills/shipmates-termgif/SKILL.md");
+    assert!(tool.exists(), "termgif tool should be installed");
+    fs::write(&managed, b"local drift\n").unwrap();
+
+    let output = run(dir.path(), &["update", "--harness", HARNESS]);
+    assert!(
+        output.status.success(),
+        "update failed: {}",
+        output_text(&output)
+    );
+    assert_ne!(
+        fs::read(&managed).unwrap(),
+        b"local drift\n",
+        "update must refresh drifted owned payload files"
+    );
+    assert!(
+        tool.exists(),
+        "update without --with-tools must keep previously installed tools"
+    );
+    let receipt = read_receipt(dir.path());
+    let files = receipt["files"].as_array().expect("files array");
+    assert!(
+        files.iter().any(|file| {
+            file["path"]
+                .as_str()
+                .is_some_and(|path| path.contains("shipmates-termgif"))
+        }),
+        "receipt should still claim the termgif tool after update"
+    );
+}
+
+#[test]
+fn update_without_receipt_fails_closed() {
+    let dir = tempdir().unwrap();
+    let output = run(dir.path(), &["update"]);
+    assert!(
+        !output.status.success(),
+        "update with no receipt must fail: {}",
+        output_text(&output)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let text = format!("{stdout}{stderr}");
+    assert!(
+        text.contains("No install receipt"),
+        "should tell the user to install first: {text}"
+    );
+}

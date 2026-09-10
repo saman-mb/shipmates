@@ -153,11 +153,14 @@ Then install the crew for a harness. By default it drops into your global home d
 `--local` for the current directory, or `--dir` to target a specific project:
 
 ```bash
+shipmates install                           # interactive: pick harness(es); all tools
 shipmates install --harness claude-code     # the proven target
 shipmates install --harness opencode        # format-verified, not runtime-verified
 shipmates install --harness codex
 shipmates install --harness claude-code --local
 shipmates install --harness claude-code --dir /path/to/project
+shipmates update                            # refresh every installed harness in place
+shipmates update --harness claude-code      # refresh one harness; keeps its tools
 ```
 
 Tools ship with a plain install. Pass `--with-tools none` for crew + commands only,
@@ -169,6 +172,11 @@ shipmates install --harness claude-code --with-tools termgif,scrub  # subset
 shipmates install --harness claude-code --with-tools none  # crew-only
 shipmates install --harness opencode --with-tools all      # same as omitting the flag
 ```
+
+After you upgrade the `shipmates` binary (Homebrew / cargo), refresh an existing
+install with `shipmates update` — it overwrites payload files to match the new
+binary, keeps previously installed tools, and prints an upgrade summary. Payload
+digest regeneration for contributors stays on `cargo run -- build --target <name> --update`.
 
 Which harnesses can you install? `shipmates targets` lists them — today all of:
 

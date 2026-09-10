@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # e2e_cli.sh — end-to-end CLI behaviour test for shipmates.
 #
-# Validates the install/uninstall/doctor/check/update lifecycle against a
+# Validates the install/uninstall/doctor/check/build --update/update lifecycle against a
 # hermetic temp project directory so nothing touches the real user home.
 #
 # Run from the repository root:
@@ -73,7 +73,7 @@ assert_contains() {
   local needle="$1"
   local haystack="$2"
   local desc="$3"
-  if printf '%s' "$haystack" | grep -qF "$needle" || true; then
+  if printf '%s' "$haystack" | grep -qF "$needle"; then
     ok "$desc"
   else
     fail "$desc — output missing '$needle'"
@@ -403,27 +403,48 @@ CHECK_RC="$CMD_RC"
 assert_contains "Check passed" "$CMD_OUT" "Check reports all targets passed"
 
 # ---------------------------------------------------------------------------
-# Segment 20 — Update regenerates digest
+# Segment 20 — build --update regenerates digest (contributor)
 # ---------------------------------------------------------------------------
-echo "=== Segment 20: Update regenerates digest ==="
+echo "=== Segment 20: build --update regenerates digest ==="
 # Back up the digest
 cp tests/payload-digests/claude-code.sha256 "$TMPDIR/claude-code.sha256.bak"
 # Corrupt it
 echo "bad" > tests/payload-digests/claude-code.sha256
-# Update should regenerate it
-cmd_capture "update" "$BIN" update --target claude-code
-UPDATE_RC="$CMD_RC"
-[ "$UPDATE_RC" -eq 0 ] && ok "Update exits 0" || fail "Update exited $UPDATE_RC (expected 0)"
-assert_contains "Wrote digests" "$CMD_OUT" "Update reports writing digests"
+# Contributor digest regeneration lives on build --update, not shipmates update
+cmd_capture "build --update" "$BIN" build --target claude-code --update
+BUILD_UPDATE_RC="$CMD_RC"
+[ "$BUILD_UPDATE_RC" -eq 0 ] && ok "build --update exits 0" || fail "build --update exited $BUILD_UPDATE_RC (expected 0)"
+assert_contains "Wrote digests" "$CMD_OUT" "build --update reports writing digests"
 # Verify digest is restored
-cmd_capture "check after update" "$BIN" check --target claude-code
-if echo "$CMD_OUT" | grep -qF "Check passed" || true; then
-  ok "Digest restored after update"
-else
-  fail "Digest not restored after update"
-fi
+cmd_capture "check after build --update" "$BIN" check --target claude-code
+CHECK_AFTER_RC="$CMD_RC"
+[ "$CHECK_AFTER_RC" -eq 0 ] && ok "Digest restored after build --update" || fail "Digest not restored after build --update (exit $CHECK_AFTER_RC)"
 # Restore original digest
 cp "$TMPDIR/claude-code.sha256.bak" tests/payload-digests/claude-code.sha256
+
+# ---------------------------------------------------------------------------
+# Segment 21 — update refreshes an existing install
+# ---------------------------------------------------------------------------
+echo "=== Segment 21: update refreshes an existing install ==="
+UPDATE_PROJ="$TMPDIR/proj-update"
+mkdir -p "$UPDATE_PROJ"
+cmd_capture "install for update" "$BIN" install --harness claude-code --dir "$UPDATE_PROJ" --with-tools none
+[ "$CMD_RC" -eq 0 ] && ok "Install for update exits 0" || fail "Install for update exited $CMD_RC"
+AGENT="$UPDATE_PROJ/.claude/agents/architect.md"
+[ -f "$AGENT" ] || fail "architect.md missing after install"
+printf 'local drift\n' > "$AGENT"
+cmd_capture "update install" "$BIN" update --harness claude-code --dir "$UPDATE_PROJ"
+[ "$CMD_RC" -eq 0 ] && ok "update exits 0" || fail "update exited $CMD_RC (expected 0)"
+assert_contains "Installed harness: claude-code" "$CMD_OUT" "update reports installed harness"
+if grep -qF 'local drift' "$AGENT"; then
+  fail "update left drifted architect.md untouched"
+else
+  ok "update refreshed drifted architect.md"
+fi
+mkdir -p "$TMPDIR/empty-update"
+cmd_capture "update without receipt" "$BIN" update --dir "$TMPDIR/empty-update"
+[ "$CMD_RC" -ne 0 ] && ok "update without receipt fails closed" || fail "update without receipt unexpectedly succeeded"
+assert_contains "No install receipt" "$CMD_OUT" "update without receipt names the cause"
 
 # ---------------------------------------------------------------------------
 # Summary
