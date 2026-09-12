@@ -66,25 +66,25 @@ from anything hardcoded into the role.
 |---|---|
 | `/ship-issue <n>...` | Drives GitHub issue `#n` — or several at once, bundled into one PR — from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
 | `/ship-epic <n>` | Loops `/ship-issue` over an epic's unchecked stories in dependency order — gate stories pause for sign-off; failures pause with state |
-| `/shipmates-fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
-| `/report-bug [symptom] [apply]` | Files a structured bug report on `saman-mb/shipmates` from a live run — preview by default; `apply` creates the issue |
-| `/plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
-| `/consolidate-issues [filter] [apply]` | Reviews every open issue against git history — closes what's done or stale, migrates legacy ones, bundles the rest by theme so they ship together |
-| `/shipmates-harden <surface>` | Threat-models a surface and ranks every finding — read-only by default; remediation on a branch, opt-in |
-| `/shipmates-spike <question>` | De-risks a decision — prototypes the options in parallel, judges them, records the pick as an ADR |
-| `/shipmates-migrate <from→to>` | Sweeps a mechanical migration across the codebase — every call site, verified, no remnants left |
-| `/shipmates-document <target>` | Writes docs from the real code, gated on a *fresh reader* actually completing the steps |
-| `/shipmates-release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
-| `/shipmates-polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
-| `/pr-review <pr>` | Runs the board against a PR the crew didn't author — read-only, it reports and never repairs |
-| `/shipmates-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
-| `/shipmates-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
+| `/ship-fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
+| `/ship-report-bug [symptom] [apply]` | Files a structured bug report on `saman-mb/shipmates` from a live run — preview by default; `apply` creates the issue |
+| `/ship-plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
+| `/ship-consolidate-issues [filter] [apply]` | Reviews every open issue against git history — closes what's done or stale, migrates legacy ones, bundles the rest by theme so they ship together |
+| `/ship-harden <surface>` | Threat-models a surface and ranks every finding — read-only by default; remediation on a branch, opt-in |
+| `/ship-spike <question>` | De-risks a decision — prototypes the options in parallel, judges them, records the pick as an ADR |
+| `/ship-migrate <from→to>` | Sweeps a mechanical migration across the codebase — every call site, verified, no remnants left |
+| `/ship-document <target>` | Writes docs from the real code, gated on a *fresh reader* actually completing the steps |
+| `/ship-release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
+| `/ship-polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
+| `/ship-pr-review <pr>` | Runs the board against a PR the crew didn't author — read-only, it reports and never repairs |
+| `/ship-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
+| `/ship-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
-worktree, and hands you a pull request — your checkout is left as you left it. `/report-bug` writes to
-the upstream Shipmates repo (preview by default), not your project. `/shipmates-release` is the one
+worktree, and hands you a pull request — your checkout is left as you left it. `/ship-report-bug` writes to
+the upstream Shipmates repo (preview by default), not your project. `/ship-release` is the one
 exception: the release commit has to land on the branch being tagged, so it commits, pushes and tags
-straight in your checkout instead of an unmerged side branch. `/pr-review` and `/shipmates-harden`'s default
+straight in your checkout instead of an unmerged side branch. `/ship-pr-review` and `/ship-harden`'s default
 `report` mode write nothing at all. Writing straight into the working tree is opt-in
 (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
@@ -209,13 +209,13 @@ shipmates install --harness opencode --dir /path/to/project --with-tools none
 cd /path/to/project
 ls .opencode/agents .opencode/commands
 opencode agent list
-opencode run --command shipmates-harden --format json \
+opencode run --command ship-harden --format json \
   "Review this project in report mode. Do not modify files."
 ```
 
 The agent list should include all thirteen Shipmates roles. The report-mode command is a narrow manual
 probe; keep `--auto` disabled. Deterministic CI install-fidelity tests check all thirteen installed agents
-and commands, the exact opencode golden payload, and the translated report-only `/shipmates-harden` order. They do
+and commands, the exact opencode golden payload, and the translated report-only `/ship-harden` order. They do
 not use model credentials and do not claim that opencode runtime behavior is verified. Full crew resolution,
 argument passing, permission enforcement,
 parallel board execution, and `/ship-issue` end-to-end remain open for [#31](https://github.com/saman-mb/shipmates/issues/31)
@@ -263,9 +263,9 @@ warns that ownership is unknown; existing files stay untouched and only
 genuinely missing payload files may be restored. An invalid receipt is a problem, and `doctor --fix`
 refuses ownership-based repair. `doctor --fix` repairs receipt-owned files only, backing up existing
 files it replaces or migrates under `.shipmates-backup/` first. A plain `install` also migrates a
-receipt-owned superseded command layout and identity rename (`polish` → `shipmates-polish`) as it writes; pass `--no-migrate` to leave old files in place.
+receipt-owned superseded command layout and identity rename (`polish` and `shipmates-polish` → `ship-polish`) as it writes; pass `--no-migrate` to leave old files in place.
 For doctor, `--no-migrate` is valid only with `--fix`:
-`shipmates doctor --fix --no-migrate` restores files without migrating old commands or pre-prefix names.
+`shipmates doctor --fix --no-migrate` restores files without migrating old command names.
 
 **Codex quickstart.** From a Shipmates checkout, run this layout/install smoke. It creates a temporary
 sandbox, checks the Codex golden digest, installs the payload, and diagnoses the receipt-backed install:
@@ -274,7 +274,7 @@ sandbox, checks the Codex golden digest, installs the payload, and diagnoses the
 bash tests/test_codex_smoke.sh
 ```
 
-With an authenticated local Codex CLI, add `CODEX_SMOKE=1` to run the optional read-only `shipmates-harden` skill
+With an authenticated local Codex CLI, add `CODEX_SMOKE=1` to run the optional read-only `ship-harden` skill
 headlessly in that temporary sandbox:
 
 ```bash
@@ -359,7 +359,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 6. **Acceptance board** ⚖️ — `product-manager` + `sdet` (+ gated `ux-ui-designer` / `art-director` /
    `architect`) review the *pushed PR head*, independently and adversarially.
 7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-reviews. Bounded, then escalates.
-8. **Deliver** 🏁 — files the non-blocking nits as follow-ups, names a `/shipmates-harden` follow-up if the
+8. **Deliver** 🏁 — files the non-blocking nits as follow-ups, names a `/ship-harden` follow-up if the
    change touched a security-relevant surface (this board doesn't threat-model), and opens (or,
    opt-in, merges) the PR.
 
@@ -390,26 +390,26 @@ MERGE_MODE=auto /ship-issue 142      # or just say "auto-merge" in the prompt
 
 **Turn a one-line brief into a tracked backlog:**
 ```
-/plan-epics "User accounts: signup, login, password reset, and a profile page"
+/ship-plan-epics "User accounts: signup, login, password reset, and a profile page"
 ```
 A `product-manager` scopes it into an epic, drafts INVEST user stories with acceptance criteria, and
 files them as linked, labelled GitHub issues — ready to hand to `/ship-issue` one at a time.
 
 **Break a big vision into several epics at once (fan-out):**
 ```
-/plan-epics ./docs/product-brief.md
+/ship-plan-epics ./docs/product-brief.md
 ```
 When the brief spans multiple epics, one `product-manager` subagent per epic drafts its stories in
 parallel, then everything is created and cross-linked.
 
 **Preview a backlog without creating anything:**
 ```
-/plan-epics "checkout + payments + order history"  — dry run
+/ship-plan-epics "checkout + payments + order history"  — dry run
 ```
 
 **Polish a UI screen until it's actually right:**
 ```
-/shipmates-polish the settings screen
+/ship-polish the settings screen
 ```
 The `ux-ui-designer` reviews the *rendered* screen (not the code), lists concrete fixes, a
 `senior-engineer` applies them, it re-renders, and the loop repeats until the designer signs off — or
@@ -422,14 +422,14 @@ cuts a `polish/<slug>` branch from `HEAD` and opens a PR of its own.
 
 **Polish rendered art the same way:**
 ```
-/shipmates-polish the title-screen background — reviewer: art-director
+/ship-polish the title-screen background — reviewer: art-director
 ```
 Same loop, but the `art-director` judges the actual render — palette, composition, contrast — round after
 round until it meets the bar.
 
 **Fix a bug — proven, not just patched:**
 ```
-/shipmates-fix-bug 213
+/ship-fix-bug 213
 ```
 A failing regression test is written *first* to reproduce #213; a `senior-engineer` root-causes and fixes
 it; the test flips red→green while the suite stays green; a fresh reviewer confirms it's the root cause,
@@ -437,7 +437,7 @@ not the symptom. You get a PR with the proof attached.
 
 **Threat-model and harden a surface:**
 ```
-/shipmates-harden the auth + session flow
+/ship-harden the auth + session flow
 ```
 The `security-engineer` walks it with STRIDE / OWASP and ranks findings by severity with the exploit path.
 That pass is **read-only** — it reports, it doesn't touch your tree. Ask for the fixes (`MODE=pr`)
@@ -446,41 +446,41 @@ left open, then hands you a CI-gated PR.
 
 **De-risk a decision before committing to it:**
 ```
-/shipmates-spike "job queue: Redis vs Postgres vs SQS"
+/ship-spike "job queue: Redis vs Postgres vs SQS"
 ```
 Engineers prototype each option in parallel as throwaways, an `architect` judges them against your real
 constraints (weighing reversibility), and you get a recommendation recorded as an ADR — not a hunch.
 
 **Sweep a migration across the whole codebase:**
 ```
-/shipmates-migrate "moment.js → date-fns"
+/ship-migrate "moment.js → date-fns"
 ```
 Every call site is inventoried, transformed in isolation, verified, and the run only closes when a re-grep
 for the old pattern comes back empty and the suite is green. Nothing left half-migrated.
 
 **Write docs that actually work:**
 ```
-/shipmates-document the getting-started guide
+/ship-document the getting-started guide
 ```
 The `technical-writer` drafts from the real code, then a *fresh* agent follows the steps against the repo
 like a newcomer — the docs ship only once that reader reaches the result. No drift, no dead ends.
 
 **Cut a release safely:**
 ```
-/shipmates-release minor
+/ship-release minor
 ```
 The changelog is assembled from what actually merged, the version is bumped, CI must be green on the exact
 tagged commit, and the `site-reliability-engineer` checks rollback + migration safety before it's tagged.
 
 **Chain them — scope the work, ship a story, polish its UI:**
 ```
-/plan-epics "settings redesign"     # → creates the epic + stories
+/ship-plan-epics "settings redesign"     # → creates the epic + stories
 /ship-epic 42                       # → ships every story in epic #42 (or pauses at gates)
 /ship-issue next epic 42            # → ships the next unchecked story in epic #42 only
-/shipmates-polish the settings screen         # → iterates the visuals to sign-off
+/ship-polish the settings screen         # → iterates the visuals to sign-off
 ```
 Run that third step **from the worktree `/ship-issue` left behind** (`../<repo>--issue-148`), so the
-polish lands on the same branch. Started from your base branch, `/shipmates-polish` would begin from a baseline
+polish lands on the same branch. Started from your base branch, `/ship-polish` would begin from a baseline
 that doesn't contain the new screen yet.
 
 ## 🗂️ Scopes & precedence

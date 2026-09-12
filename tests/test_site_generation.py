@@ -93,12 +93,12 @@ class SiteGenerationTests(unittest.TestCase):
 
     def test_command_pages_are_a_guide_not_the_skill(self) -> None:
         """Positive control: the page names the process and crew, and links the skill."""
-        migrate = (ROOT / "site/commands/shipmates-migrate/index.html").read_text(encoding="utf-8")
+        migrate = (ROOT / "site/commands/ship-migrate/index.html").read_text(encoding="utf-8")
         self.assertIn('id="process"', migrate)
         self.assertIn("How it works", migrate)
         self.assertIn("senior-engineer", migrate)
         self.assertIn("Also sit when", migrate)
-        self.assertIn("commands/shipmates-migrate.md", migrate)
+        self.assertIn("commands/ship-migrate.md", migrate)
         self.assertNotIn("ARGUMENTS", migrate)
 
     def test_agent_pages_list_harness_tool_names(self) -> None:

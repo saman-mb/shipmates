@@ -257,11 +257,11 @@ mod tests {
         let files = GithubCopilotAdapter
             .build(
                 &[role("architect", &["read", "bash"], "body")],
-                &[command("pr-review")],
+                &[command("ship-pr-review")],
             )
             .unwrap();
         // Skills go to the shared open tree; only the crew are `.github/`-native.
-        assert!(files.contains_key("harnesses/github-copilot/.agents/skills/pr-review/SKILL.md"));
+        assert!(files.contains_key("harnesses/github-copilot/.agents/skills/ship-pr-review/SKILL.md"));
         assert!(!files.keys().any(|k| k.contains(".github/skills/")));
         assert!(files.contains_key("harnesses/github-copilot/.github/agents/architect.agent.md"));
     }

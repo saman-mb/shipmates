@@ -109,8 +109,8 @@ mod tests {
     #[test]
     fn artifact_name_reads_the_skill_directory_not_the_file_stem() {
         assert_eq!(
-            name(".claude/skills/report-bug/SKILL.md").as_deref(),
-            Some("report-bug")
+            name(".claude/skills/ship-report-bug/SKILL.md").as_deref(),
+            Some("ship-report-bug")
         );
         assert_eq!(
             name(".agents/skills/shipmates-gh/SKILL.md").as_deref(),
@@ -143,14 +143,14 @@ mod tests {
 
     #[test]
     fn matching_frontmatter_name_is_adoptable() {
-        let rel = PathBuf::from(".claude/skills/report-bug/SKILL.md");
-        let body = "---\nname: report-bug\ndescription: d\n---\nbody\n";
+        let rel = PathBuf::from(".claude/skills/ship-report-bug/SKILL.md");
+        let body = "---\nname: ship-report-bug\ndescription: d\n---\nbody\n";
         assert_eq!(classify(&rel, body.as_bytes()), Collision::Adoptable);
     }
 
     #[test]
     fn foreign_unreadable_and_unrecognised_files_fail_closed() {
-        let skill = PathBuf::from(".claude/skills/report-bug/SKILL.md");
+        let skill = PathBuf::from(".claude/skills/ship-report-bug/SKILL.md");
         for bytes in [
             "---\nname: my-own-thing\n---\nkeep me\n".as_bytes(),
             "just prose\n".as_bytes(),

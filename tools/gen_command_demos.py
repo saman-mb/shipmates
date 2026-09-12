@@ -51,7 +51,7 @@ COMMANDS = {
         ],
         "closer": "Epic delivered — N stories in U runs, one epic PR. ⚓",
     },
-    "shipmates-fix-bug": {
+    "ship-fix-bug": {
         "arg": "142",
         "stages": [
             ("REPRODUCE", "a failing test that pins the bug"),
@@ -64,7 +64,7 @@ COMMANDS = {
         ],
         "closer": "Bug fixed — proven by a test, reviewed, CI-green. ⚓",
     },
-    "report-bug": {
+    "ship-report-bug": {
         "arg": "ship-epic re-shipped merged stories",
         "stages": [
             ("INTAKE", "symptom + report vs apply"),
@@ -76,7 +76,7 @@ COMMANDS = {
         ],
         "closer": "Upstream bug filed — structured for maintainer triage. ⚓",
     },
-    "plan-epics": {
+    "ship-plan-epics": {
         "arg": "briefs/q3.md",
         "stages": [
             ("INTAKE", "read the brief + repo context"),
@@ -87,7 +87,7 @@ COMMANDS = {
         ],
         "closer": "Backlog ready — epics + linked stories on GitHub. ⚓",
     },
-    "consolidate-issues": {
+    "ship-consolidate-issues": {
         "arg": "area:* apply",
         "stages": [
             ("INVENTORY", "every open issue, scoped"),
@@ -99,7 +99,7 @@ COMMANDS = {
         ],
         "closer": "Backlog slimmed — the survivors ship as bundles. ⚓",
     },
-    "shipmates-harden": {
+    "ship-harden": {
         "arg": "the auth flow",
         "stages": [
             ("SCOPE", "map the attack surface"),
@@ -112,7 +112,7 @@ COMMANDS = {
         ],
         "closer": "Hardened — every blocker fixed or signed off. ⚓",
     },
-    "shipmates-spike": {
+    "ship-spike": {
         "arg": "which queue for jobs",
         "stages": [
             ("FRAME", "the open question"),
@@ -125,7 +125,7 @@ COMMANDS = {
         ],
         "closer": "Decision made — captured as an ADR. ⚓",
     },
-    "shipmates-migrate": {
+    "ship-migrate": {
         "arg": "moment.js -> date-fns",
         "stages": [
             ("DISCOVER", "every call site"),
@@ -138,7 +138,7 @@ COMMANDS = {
         ],
         "closer": "Migrated — every call site moved, swept clean. ⚓",
     },
-    "shipmates-document": {
+    "ship-document": {
         "arg": "the public API",
         "stages": [
             ("SCOPE", "audience + doc type"),
@@ -150,7 +150,7 @@ COMMANDS = {
         ],
         "closer": "Docs that work — a fresh reader can follow them. ⚓",
     },
-    "shipmates-release": {
+    "ship-release": {
         "arg": "v1.4.0",
         "stages": [
             ("SCOPE", "what merged since last tag"),
@@ -163,7 +163,7 @@ COMMANDS = {
         ],
         "closer": "Released — CI-green at the tag. ⚓",
     },
-    "shipmates-polish": {
+    "ship-polish": {
         "arg": "the dashboard",
         "stages": [
             ("ISOLATE", "throwaway worktree"),
@@ -174,7 +174,7 @@ COMMANDS = {
         ],
         "closer": "Shipped — the specialist signed off. ⚓",
     },
-    "pr-review": {
+    "ship-pr-review": {
         "arg": "128",
         "stages": [
             ("CLASSIFY", "size & risk of the PR"),
@@ -185,7 +185,7 @@ COMMANDS = {
         ],
         "closer": "Reviewed — one ranked verdict, with reasons. ⚓",
     },
-    "shipmates-onboard": {
+    "ship-onboard": {
         "arg": "",
         "stages": [
             ("SURVEY", "repo shape + mode"),
@@ -197,7 +197,7 @@ COMMANDS = {
         ],
         "closer": "Onboarded — a guide that answers real questions. ⚓",
     },
-    "shipmates-refactor": {
+    "ship-refactor": {
         "arg": "the order service",
         "stages": [
             ("SCOPE", "what & why"),

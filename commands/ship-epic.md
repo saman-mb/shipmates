@@ -109,7 +109,7 @@ workflow.
   without captain action. Override with guidance `unit merge manual` (discouraged mid-epic). Forced
   to `manual` when the unit contains a `gate` story. `IS_SECURITY_SENSITIVE` does **not** force
   `manual` here: those units still auto-merge into `<EPIC_BRANCH>` under `auto`, still carry the
-  `/shipmates-harden` recommendation in the unit report, and still wait for the captain at the
+  `/ship-harden` recommendation in the unit report, and still wait for the captain at the
   **epic PR** (`EPIC_MERGE_MODE=manual`). Security-sensitive stories stay **singleton units** (Stage 1.5).
 - `EPIC_MERGE_MODE` = `manual` — **fixed**. When the checklist is complete (or crew-complete with owner
   residuals), stop with epic PR `<EPIC_PR>` open for the captain to merge into `MAIN_BRANCH`. There is
@@ -428,7 +428,7 @@ resumes), ingest the delegated `/ship-issue` **Epic unit record** and update cap
    fix-round count, and optional **`HARDEN:`** line when the unit was security-sensitive).
 2. **Append to `<epic-log>`** — one bullet per unit, newest last. Shape: unit index, story numbers, PR
    URL, merge SHA, one-line delivered summary, reviews one-liner, green CI link; when the unit record
-   includes `HARDEN: recommended`, append **`/shipmates-harden` recommended** on the same bullet so the
+   includes `HARDEN: recommended`, append **`/ship-harden` recommended** on the same bullet so the
    captain sees it on the epic issue and epic PR without opening the unit run. Keep `<epic-log>`
    scannable — no transcripts, no raw board dumps.
 3. **Edit the epic progress comment** on epic `<epic>` — single comment anchored
@@ -436,14 +436,14 @@ resumes), ingest the delegated `/ship-issue` **Epic unit record** and update cap
    lines; **`SHIPPED_STORIES:`** (all numbers in `<landed>` after this unit); a **Shipped units** section
    (paste `<epic-log>` bullets); **Pending stories** (remaining checklist lines); **Latest reviews** (one
    line from the most recent unit record); when the latest unit record has `HARDEN: recommended`, a
-   **Security follow-up** line naming `/shipmates-harden`; and an updated timestamp. One living comment —
+   **Security follow-up** line naming `/ship-harden`; and an updated timestamp. One living comment —
    edit in place, do not open a new thread per unit.
 
 4. **Refresh epic PR `<EPIC_PR>` body** via `--body-file` — keep **What this epic delivers** and **Quick
    review guide** intact; update **Stories** checklist ticks, **Shipped so far** (copy `<epic-log>`), and
    add a **Review status** line: "`U` of `N` stories landed; all units passed PE+PO board before merge
    into `<EPIC_BRANCH>`." When any shipped unit record carried `HARDEN: recommended`, add a **Security
-   follow-up** bullet under **Shipped so far** listing those units and `/shipmates-harden`. Goal: the
+   follow-up** bullet under **Shipped so far** listing those units and `/ship-harden`. Goal: the
    captain opens epic PR or epic issue and knows what shipped and what was already reviewed without
    opening every unit PR.
 
@@ -540,7 +540,7 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   `MERGE_MODE=auto`, **including** `IS_SECURITY_SENSITIVE` units. Never hand the captain a unit PR
   link and wait unless a hard-limit row actually fired (`gate`, `unit merge manual`). The only human
   merge gate for shipped code is the **epic PR** into `MAIN_BRANCH` at Stage 4; security still
-  surfaces as the `/shipmates-harden` recommendation plus the integration board, not a per-unit pause.
+  surfaces as the `/ship-harden` recommendation plus the integration board, not a per-unit pause.
 - **CI every unit** — economy comes from fewer Planner/board **invocations**, not from skipping
   validation or acceptance on shipped code. **Integration board** at epic closure is never skipped on
   full closure — it is the holistic review of the combined epic PR.
