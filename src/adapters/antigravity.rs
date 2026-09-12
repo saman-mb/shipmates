@@ -1,5 +1,8 @@
 use super::Adapter;
-use super::render::{emit_crew_files, emit_shared_skills, emit_shared_tool_skills, ANTIGRAVITY, CrewFormat};
+use super::render::{
+    ANTIGRAVITY, CrewFormat, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
+    yaml_scalar,
+};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
@@ -98,7 +101,10 @@ fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Resu
     let mut content = String::new();
     content.push_str("---\n");
     content.push_str(&format!("name: {}\n", role.name));
-    content.push_str(&format!("description: {}\n", role.description));
+    content.push_str(&format!(
+        "description: {}\n",
+        yaml_scalar(&role.description)
+    ));
     if !tools.is_empty() {
         content.push_str("tools:\n");
         for tool in tools {
@@ -182,7 +188,7 @@ mod tests {
             .get("harnesses/antigravity/.agents/agents/test-role.md")
             .unwrap();
         assert!(content.contains("name: test-role"));
-        assert!(content.contains("description: A test role"));
+        assert!(content.contains("description: \"A test role\""));
         assert!(
             content
                 .contains("tools:\n  - grep_search\n  - list_dir\n  - run_command\n  - view_file")
@@ -246,7 +252,7 @@ mod tests {
         let content = files
             .get("harnesses/antigravity/.agents/skills/ship-issue/SKILL.md")
             .unwrap();
-        assert!(content.starts_with("---\nname: ship-issue\ndescription: desc\n---\n"));
+        assert!(content.starts_with("---\nname: ship-issue\ndescription: \"desc\"\n---\n"));
         // Shared neutral dialect: `.agents/agents` glob (matches agy's real crew
         // dir) and the neutral `Agent-Session` trailer.
         assert!(content.contains(".agents/agents/*.md"));
