@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.21] - 2026-09-12
+
+### Fixed
+
+- Generated skill frontmatter is valid strict YAML: free-text scalars such as
+  `description` are double-quoted and escaped at the serialization boundary, so
+  a description like `Shipmates: …` no longer breaks the whole frontmatter
+  block. Cursor's picker now discovers every command from `~/.cursor/skills/`
+  without a captain-side rewrite, and a cross-target integration test parses
+  every emitted frontmatter block to keep it that way (#407).
+
 ## [0.1.20] - 2026-09-12
 
 ### Fixed

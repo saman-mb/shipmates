@@ -1,6 +1,7 @@
 use super::Adapter;
 use super::render::{
     CrewFormat, GITHUB_COPILOT, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
+    yaml_scalar,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
@@ -115,16 +116,6 @@ fn tools_for(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
     tools.sort_unstable();
     tools.dedup();
     Ok(tools)
-}
-
-/// Quote a scalar for YAML frontmatter.
-///
-/// Descriptions are prose written by contributors and routinely contain `:`,
-/// `#`, quotes and leading symbols. An unquoted `description: foo: bar` is not
-/// a parse warning — it is a frontmatter block Copilot cannot read, so the
-/// agent installs cleanly and is never loaded. Always quote; never hope.
-fn yaml_scalar(value: &str) -> String {
-    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
 fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Result<String> {
