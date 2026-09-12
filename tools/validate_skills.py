@@ -77,7 +77,7 @@ POSITIONAL_RE = re.compile(r"(?<!\\)\$\{?[0-9]")
 
 # `--body <anything>` puts content inside a shell command string, where a
 # crafted title/body/diff/comment can break out of the quoting — the exact
-# defect fixed twice already (#82 in ship-issue, #138 in pr-review).
+# defect fixed twice already (#82 in ship-issue, #138 in ship-pr-review).
 # `--body-file <path>` is the only form these skills may document.
 #
 # Deliberately blunt: it matches *any* value form, not just a double-quoted

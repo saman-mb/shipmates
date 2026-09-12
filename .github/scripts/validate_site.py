@@ -84,16 +84,31 @@ BACK_HREF = "../../#commands"
 # as static HTML meta-refresh stubs; must not appear in sitemap.xml.
 # Keep in sync with tools/gen_command_pages.py REDIRECTS / TOOL_REDIRECTS.
 REDIRECTS = {
-    "review": "pr-review",
-    "document": "shipmates-document",
-    "fix-bug": "shipmates-fix-bug",
-    "harden": "shipmates-harden",
-    "migrate": "shipmates-migrate",
-    "onboard": "shipmates-onboard",
-    "polish": "shipmates-polish",
-    "refactor": "shipmates-refactor",
-    "release": "shipmates-release",
-    "spike": "shipmates-spike",
+    "review": "ship-pr-review",
+    "document": "ship-document",
+    "fix-bug": "ship-fix-bug",
+    "harden": "ship-harden",
+    "migrate": "ship-migrate",
+    "onboard": "ship-onboard",
+    "polish": "ship-polish",
+    "refactor": "ship-refactor",
+    "release": "ship-release",
+    "spike": "ship-spike",
+    # The intermediate `shipmates-` generation.
+    "shipmates-document": "ship-document",
+    "shipmates-fix-bug": "ship-fix-bug",
+    "shipmates-harden": "ship-harden",
+    "shipmates-migrate": "ship-migrate",
+    "shipmates-onboard": "ship-onboard",
+    "shipmates-polish": "ship-polish",
+    "shipmates-refactor": "ship-refactor",
+    "shipmates-release": "ship-release",
+    "shipmates-spike": "ship-spike",
+    # Full workflow names that gained the prefix.
+    "plan-epics": "ship-plan-epics",
+    "pr-review": "ship-pr-review",
+    "report-bug": "ship-report-bug",
+    "consolidate-issues": "ship-consolidate-issues",
 }
 TOOL_REDIRECTS = {
     "gh": "shipmates-gh",
