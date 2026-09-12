@@ -127,7 +127,9 @@ fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Resu
     }
     let mut content = String::new();
     content.push_str("---\n");
-    content.push_str(&format!("name: {}\n", yaml_scalar(&role.name)));
+    // Bare, unlike the free-text scalars: install identity and pre-receipt
+    // adoption (`adopt::frontmatter_name_matches`) read the unquoted name.
+    content.push_str(&format!("name: {}\n", role.name));
     content.push_str(&format!(
         "description: {}\n",
         yaml_scalar(&role.description)
@@ -255,6 +257,21 @@ mod tests {
         assert!(files.contains_key("harnesses/github-copilot/.agents/skills/pr-review/SKILL.md"));
         assert!(!files.keys().any(|k| k.contains(".github/skills/")));
         assert!(files.contains_key("harnesses/github-copilot/.github/agents/architect.agent.md"));
+    }
+
+    #[test]
+    fn test_agent_name_stays_bare_for_receipt_matching() {
+        // `name:` is install identity: a quoted scalar is not the bare form
+        // `adopt::frontmatter_name_matches` reads, so a pre-receipt Copilot
+        // agent would classify as third party and refuse to upgrade.
+        let files = GithubCopilotAdapter
+            .build(&[role("architect", &["read"], "body")], &[])
+            .unwrap();
+        let agent = files
+            .get("harnesses/github-copilot/.github/agents/architect.agent.md")
+            .unwrap();
+        assert!(agent.starts_with("---\nname: architect\n"), "{agent}");
+        assert!(!agent.contains("name: \"architect\""), "{agent}");
     }
 
     #[test]

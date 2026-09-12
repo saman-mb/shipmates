@@ -3,7 +3,9 @@ use shipmates::adapters::antigravity::AntigravityAdapter;
 use shipmates::adapters::claude_code::ClaudeCodeAdapter;
 use shipmates::adapters::codex::CodexAdapter;
 use shipmates::adapters::opencode::OpencodeAdapter;
-use shipmates::catalog::{load_commands, load_roles, reject_positional, CanonicalCommand, CanonicalRole};
+use shipmates::catalog::{
+    load_commands, load_roles, load_tools, reject_positional, CanonicalCommand, CanonicalRole,
+};
 use shipmates::digest;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -293,6 +295,121 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
             assert!(!content.contains("shipmates:subagent-preamble"), "{target} {path} leaked role marker");
         }
     }
+}
+
+/// The #407 defect was frontmatter that installed cleanly and was never
+/// discovered because a strict loader rejected it. So: strict-parse every
+/// emitted frontmatter block, keep every artifact's `name:` bare and equal to
+/// the identity its install path implies (what `adopt::frontmatter_name_matches`
+/// reads), and pin the failure mode with a negative control.
+///
+/// Codex is the one target whose crew is TOML rather than Markdown — those bytes
+/// are digest-gated and exercised by `tests/test_codex_smoke.sh`, so they are
+/// skipped here.
+#[test]
+fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let roles = load_roles(&root.join("crew")).unwrap();
+    let commands = load_commands(&root.join("commands")).unwrap();
+    let tools = load_tools(&root.join("toolbox")).unwrap();
+    assert_eq!(commands.len(), 15);
+    assert!(!tools.is_empty(), "toolbox/ must hold tools for build_tools");
+
+    // Negative control: `description: Shipmates: take an issue` is a nested
+    // mapping to YAML and fails a strict parse; the double-quoted style is what
+    // this change exists to ship.
+    assert!(
+        serde_yaml::from_str::<serde_yaml::Value>(
+            "name: ship-epic\ndescription: Shipmates: take an issue\n"
+        )
+        .is_err(),
+        "an unquoted `: ` description must fail a strict YAML parse"
+    );
+    assert!(
+        serde_yaml::from_str::<serde_yaml::Value>(
+            "name: ship-epic\ndescription: \"Shipmates: take an issue\"\n"
+        )
+        .is_ok(),
+        "the double-quoted equivalent must parse"
+    );
+
+    let mut saw_shipmates_description = false;
+    for target in shipmates::adapters::targets() {
+        let adapter = shipmates::adapters::select(target).unwrap();
+        let mut files = adapter.build(&roles, &commands).unwrap();
+        files.extend(adapter.build_tools(&tools));
+
+        // All fifteen commands must arrive exactly once, as a skill or as
+        // opencode's command file — the path shape every harness resolves.
+        for command in &commands {
+            let emitted = files
+                .keys()
+                .filter(|path| {
+                    path.ends_with(&format!("/skills/{}/SKILL.md", command.name))
+                        || path.ends_with(&format!("/commands/{}.md", command.name))
+                })
+                .count();
+            assert_eq!(emitted, 1, "{target} must emit command {}", command.name);
+        }
+
+        let mut parsed_blocks = 0;
+        for (path, content) in &files {
+            // Codex crew are standalone TOML (`name = "architect"`), not YAML
+            // frontmatter: their bytes are digest-gated in
+            // tests/payload-digests/codex.sha256 and run through
+            // tests/test_codex_smoke.sh, so strict-YAML parsing does not apply.
+            if path.ends_with(".toml") {
+                continue;
+            }
+            if !(path.ends_with(".md") || path.ends_with(".mdc")) {
+                continue;
+            }
+            let Some(frontmatter) = frontmatter_block(content) else {
+                continue;
+            };
+            let parsed: serde_yaml::Value =
+                serde_yaml::from_str(frontmatter).unwrap_or_else(|error| {
+                    panic!("{target} {path}: frontmatter is not strict YAML: {error}\n{frontmatter}")
+                });
+            parsed_blocks += 1;
+            if parsed
+                .get("description")
+                .and_then(|description| description.as_str())
+                .is_some_and(|description| description.starts_with("Shipmates"))
+            {
+                saw_shipmates_description = true;
+            }
+
+            // Identity contract: a skill/command/agent `name:` is bare and
+            // equal to the path's artifact name — the shape adopt reads.
+            // Skills always declare it; opencode's agents and commands are
+            // named by their filename, so absence is tolerated there.
+            let Some(identity) =
+                shipmates::installer::adopt::artifact_name(std::path::Path::new(path))
+            else {
+                continue;
+            };
+            match frontmatter.lines().find(|line| line.starts_with("name:")) {
+                Some(line) => assert_eq!(
+                    line,
+                    format!("name: {identity}"),
+                    "{target} {path}: `name:` must be bare and equal the path identity"
+                ),
+                None => assert!(
+                    !path.ends_with("/SKILL.md"),
+                    "{target} {path}: an emitted skill must declare `name: {identity}`"
+                ),
+            }
+        }
+        assert!(
+            parsed_blocks > 0,
+            "{target} emitted no parseable YAML frontmatter block"
+        );
+    }
+    assert!(
+        saw_shipmates_description,
+        "no emitted description starts with `Shipmates`"
+    );
 }
 
 #[test]
@@ -654,6 +771,20 @@ fn test_matrix_effort_flag_matches_adapter_output() {
             "{name}: harness_matrix.json says effort={claims_effort} but the adapter emits effort={emits_effort}",
         );
     }
+}
+
+/// The frontmatter text between the opening and closing `---` lines, for a file
+/// that begins with a frontmatter block.
+fn frontmatter_block(content: &str) -> Option<&str> {
+    let rest = content.strip_prefix("---\n")?;
+    let mut offset = 0;
+    for line in rest.split_inclusive('\n') {
+        if line.trim_end() == "---" {
+            return Some(&rest[..offset]);
+        }
+        offset += line.len();
+    }
+    None
 }
 
 fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
