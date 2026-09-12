@@ -190,17 +190,6 @@ pub fn apply_with_preserved_paths(
     }
 
     if let Some(old_receipt) = old.as_ref() {
-        let old_managed = old_receipt
-            .files
-            .iter()
-            .map(|file| file.path.clone())
-            .collect::<BTreeSet<_>>();
-        for path in plan::unmanaged_files(target_dir, &old_managed) {
-            report.warnings.push(format!(
-                "Warning: unmanaged file left untouched: {}",
-                path.strip_prefix(target_dir).unwrap_or(&path).display()
-            ));
-        }
         for old_file in &old_receipt.files {
             if install.files.contains_key(Path::new(&old_file.path)) {
                 continue;
@@ -292,6 +281,30 @@ pub fn apply_with_preserved_paths(
             receipt.files,
         )?;
     }
+    // Unmanaged files are reported against what this run actually published,
+    // not against the receipt it superseded: a path `--force` just overwrote
+    // and claimed is managed, and saying otherwise in the same breath is the
+    // contradiction #404 reported. Only an upgrade reports — a first install
+    // has no prior state to account for.
+    if old.is_some() {
+        let owned: BTreeSet<String> = receipt
+            .files
+            .iter()
+            .map(|file| file.path.clone())
+            .collect::<BTreeSet<_>>();
+        for path in plan::unmanaged_files(target_dir, &owned) {
+            let relative = path.strip_prefix(target_dir).unwrap_or(&path);
+            // A sibling harness's claim is ownership too, just not ours.
+            if sibling_claims.contains(&relative.to_string_lossy().into_owned()) {
+                continue;
+            }
+            report.warnings.push(format!(
+                "Warning: unmanaged file left untouched: {}",
+                relative.display()
+            ));
+        }
+    }
+
     let receipt_path = repository.receipt_path(&receipt.harness)?;
     let previous_receipt = fs::read(&receipt_path).ok();
     if let Err(error) = plan::save_receipt(target_dir, &receipt) {
@@ -427,6 +440,70 @@ mod tests {
         assert_eq!(
             fs::read_to_string(dir.path().join(".claude/agents/a.md")).unwrap(),
             "b"
+        );
+    }
+
+    fn unmanaged_warnings(report: &ApplyReport) -> Vec<&str> {
+        report
+            .warnings
+            .iter()
+            .filter(|warning| warning.contains("unmanaged file left untouched"))
+            .map(String::as_str)
+            .collect()
+    }
+
+    #[test]
+    fn force_written_file_is_not_reported_unmanaged() {
+        let dir = tempdir().unwrap();
+        let skill = ".claude/skills/polish/SKILL.md";
+        let first = install(dir.path(), "one", &[(".claude/agents/a.md", "a")]);
+        apply(dir.path(), &first, false).unwrap();
+        // A file the old receipt never claimed, at a path the new payload owns.
+        crate::installer::atomic_write(&dir.path().join(skill), "theirs").unwrap();
+
+        let second = install(
+            dir.path(),
+            "two",
+            &[(".claude/agents/a.md", "a"), (skill, "ours")],
+        );
+        let report = apply(dir.path(), &second, true).unwrap();
+
+        assert_eq!(report.written, 1);
+        assert_eq!(
+            fs::read_to_string(dir.path().join(skill)).unwrap(),
+            "ours",
+            "--force must overwrite the collision"
+        );
+        assert!(
+            unmanaged_warnings(&report).is_empty(),
+            "a path this run claimed is not unmanaged: {:?}",
+            report.warnings
+        );
+        assert!(
+            report.receipt.as_ref().unwrap().file(skill).is_some(),
+            "the force-written path must keep its receipt claim"
+        );
+    }
+
+    #[test]
+    fn genuinely_unmanaged_file_is_still_reported() {
+        let dir = tempdir().unwrap();
+        let skill = ".claude/skills/polish/SKILL.md";
+        let plan_one = install(dir.path(), "one", &[(skill, "ours")]);
+        apply(dir.path(), &plan_one, false).unwrap();
+        crate::installer::atomic_write(&dir.path().join(".claude/skills/mine/SKILL.md"), "mine")
+            .unwrap();
+
+        let plan_two = install(dir.path(), "two", &[(skill, "ours v2")]);
+        let report = apply(dir.path(), &plan_two, false).unwrap();
+
+        assert_eq!(
+            unmanaged_warnings(&report),
+            vec!["Warning: unmanaged file left untouched: .claude/skills/mine/SKILL.md"]
+        );
+        assert!(
+            !report.backups.is_empty(),
+            "the upgrade backs the changed file up"
         );
     }
 

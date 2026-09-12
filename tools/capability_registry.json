@@ -154,9 +154,9 @@
       }
     },
     "cursor": {
-      "notes": "Cursor ships no subagents, so the adapter emits only the fourteen commands as skills and ignores `roles`. Cursor reads the open Agent Skills tree `.agents/skills/` natively (a first-party peer of `.cursor/skills/`, since Cursor 2.4), so skills ship to the shared `.agents/skills/` location \u2014 byte-identical with codex/antigravity/copilot. Verified 2026-08-03.",
+      "notes": "Cursor ships no subagents, so the adapter emits only the fourteen commands as skills and ignores `roles`. Cursor's slash-command picker only lists skills from its first-party `.cursor/skills/` tree, so skills ship there rather than to the shared `.agents/skills/` location (#405). One copy, not two: a second copy under `.agents/skills/` would list every command twice in the picker and double prompt cost. Verified 2026-09-12.",
       "agent_path": ".cursor/agents/{name}.md",
-      "skill_path": ".agents/skills/{name}/SKILL.md",
+      "skill_path": ".cursor/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
       "steering_install_path": ".cursor/rules/shipmates-contributor.mdc",
       "permission_model": "permission-map",
