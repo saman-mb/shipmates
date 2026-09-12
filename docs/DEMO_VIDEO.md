@@ -140,11 +140,41 @@ Practical notes (ComfyUI, Strix Halo):
 - I2V first frame: render at the workflow's native aspect (see resolution selector, e.g. 832×480 for 15s) so H3 doesn't crop.
 - Keep clips ≤10s total b-roll (epic budget); regenerate beats of the same shot rather than stacking longer generations.
 
+### Running it
+
+The pipeline is built and lives in [`tools/demo-video/comfy/`](../tools/demo-video/comfy/README.md)
+— API-format workflows plus a stdlib-only headless driver. Start ComfyUI, then:
+
+```bash
+cd tools/demo-video/comfy
+python3 render.py --list                            # registered shots
+python3 render.py --shot hook-atmosphere --dry-run  # resolve without queueing
+python3 render.py --shot hook-atmosphere            # render to out/<shot>/<seed>-<hash>.mp4
+```
+
+`--turbo --preset 480p-16x9` for cheap iteration; drop both for the take you keep.
+Shot prompts, seeds, plates and the shared no-text guardrail live in `shots.json`;
+the README covers model downloads, the plate rule and the output contract.
+
+Three findings worth carrying into the edit:
+
+- **H3 has no negative prompt.** `MiniMaxH3ImageToVideo` emits positive conditioning
+  only and sampling runs through `BasicGuider`, so there is no CFG branch to hang
+  "no text, no watermark" on. The guardrail is appended to every positive prompt from
+  one shared string instead.
+- **Duration snaps up to a 17k+5 frame grid**, and the model's trained range starts at
+  124 frames (5.167s at 24 fps). Generate at or above that and trim in Remotion rather
+  than asking for a 2s clip.
+- **The clips are silent by design.** H3 generates joint audio, but §5 authors its own
+  bed, so the audio VAE and decode are dropped from the graph.
+
 ## 7. TODO
 
 - [ ] Record captain's voice sample (1–5 min, quiet room) → clone + approve narration take
 - [x] Scaffold Remotion project (beats 1–7) — **scaffolded** (tools/demo-video/)
 - [x] Render beat 3 first; verify legibility at phone-feed scale (≥20 px effective glyph height) before committing to full build — gate: `pnpm legibility` (20.25px terminal / 27px caption / 40.5px gates)
-- [ ] Generate MiniMax H3 transition shot (once ComfyUI model downloads finish)
+- [x] Build the custom MiniMax H3 b-roll pipeline (I2V-first, headless, text-free) — **built** (tools/demo-video/comfy/), verified end to end against a running ComfyUI
+- [ ] Author the two first-frame plates (zero legible text) → `tools/demo-video/comfy/plates/`
+- [ ] Generate MiniMax H3 transition shot + hook atmosphere; captain approves
 - [ ] Assemble, mix audio, export 1080×1080 + 1920×1080
 - [ ] LinkedIn post copy + AI-disclosure line
