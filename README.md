@@ -185,19 +185,20 @@ claude-code      .claude/          agents + skills
 opencode         .opencode/        agents + commands
 antigravity      .agents/          agents + skills   (agy — the successor to the retired Gemini CLI)
 codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
-cursor           .agents/          skills only (shared open Agent Skills tree)
+cursor           .cursor/          skills only (first-party tree; slash picker reads it)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
 windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
 Every harness compiles the same canonical crew and commands. Five have a native subagent directory
 and receive the thirteen specialists as agents; the other two ship the fifteen commands as skills only.
-Four harnesses (codex, antigravity, cursor, github-copilot) read the open [Agent Skills](https://agentskills.io)
+Three harnesses (codex, antigravity, github-copilot) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
 one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of four colliding
-ones. Their crew still land in each harness's own native format. `windsurf` keeps its canonical
-`.windsurf/skills/` (its docs make `.agents/skills/` only a secondary scan) and `claude-code` its own
-`.claude/skills/`.
+ones. Their crew still land in each harness's own native format. `cursor` reads that open tree too, but
+only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and
+nowhere else — one copy, never two. `windsurf` keeps its canonical `.windsurf/skills/` (its docs make
+`.agents/skills/` only a secondary scan) and `claude-code` its own `.claude/skills/`.
 
 ### opencode quickstart
 

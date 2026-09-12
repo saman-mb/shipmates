@@ -113,6 +113,293 @@ fn backup_matches_payload(bak: &Path, want: &[u8]) -> bool {
         .unwrap_or(false)
 }
 
+/// True when `filename` has the installer's own sidecar shape,
+/// `{original}.bak-<secs>-<pid>-<n>`. Shape is the ownership signal: a captain's
+/// hand-made `notes.md.bak-mine` does not match, so hygiene never sees it.
+fn is_install_backup_name(filename: &str) -> bool {
+    filename.rsplit_once(".bak-").is_some_and(|(original, _)| {
+        !original.is_empty() && parse_install_backup_name(filename, original).is_some()
+    })
+}
+
+/// Split `name.ext` into stem and extension, the dot kept on the extension.
+fn split_stem_ext(filename: &str) -> Option<(&str, &str)> {
+    let dot = filename.rfind('.')?;
+    if dot == 0 {
+        return None;
+    }
+    Some((&filename[..dot], &filename[dot..]))
+}
+
+/// Trees a harness install writes into, under one of its roots. A husk can only
+/// be one of these directories' children.
+const INSTALL_TREES: &[&str] = &["skills", "commands", "tools", "agents"];
+
+/// The pre-prefix aliases of a current name — `harden` for `shipmates-harden`,
+/// from `installer::rename`'s public table. The same artifact under the name it
+/// used to have, so a husk left at the old name is recognised as ours.
+fn pre_prefix_aliases(name: &str) -> Vec<String> {
+    rename::COMMAND_RENAMES
+        .iter()
+        .chain(rename::TOOL_RENAMES.iter())
+        .filter(|(_, new)| *new == name)
+        .map(|(old, _)| (*old).to_string())
+        .collect()
+}
+
+/// The install identity a payload path belongs to — `shipmates-harden` for
+/// `.cursor/skills/shipmates-harden/SKILL.md`, `architect` for
+/// `.claude/agents/architect.md`. The name the harness shows a user, and the
+/// name a leftover directory in an older tree still carries.
+fn install_identity(rel: &str) -> Option<String> {
+    let segments: Vec<&str> = rel.split('/').collect();
+    let tree = segments.iter().position(|s| INSTALL_TREES.contains(s))?;
+    let name = segments.get(tree + 1)?;
+    if tree + 2 == segments.len() {
+        // A file directly in the tree: the identity is its stem.
+        return Some(
+            split_stem_ext(name)
+                .map(|(stem, _)| stem)
+                .unwrap_or(name)
+                .to_string(),
+        );
+    }
+    Some((*name).to_string())
+}
+
+/// Installer sidecar backups Shipmates left behind, in two kinds:
+///
+/// * a **husk** — a directory in one of the harness's trees holding nothing but
+///   `.bak-…` files, its live file gone. Two ways to get one, and the same
+///   remedy for both: a pre-prefix name (`skills/harden/`) whose file was
+///   renamed away, and an install that moved a tree wholesale — #405 moved
+///   cursor's skills from the shared `.agents/` tree to `.cursor/`, and left 13
+///   husks in `.agents/skills/`. Neither is visible to `rename::plan`, which
+///   sees only live leftovers, so doctor called the emptied tree shipshape
+///   (#406).
+/// * a **superseded** sidecar — one beside a live payload file that already
+///   matches the running version, so the undo it offers is a copy of what is
+///   already installed.
+///
+/// Both are collected only where the artifact is installed *and* current at its
+/// path in the harness's **current** tree: that is the signal the move or
+/// rewrite completed and the backup is spent. While the live file is missing or
+/// drifted, the backup is the undo for an interrupted install, and stays.
+#[derive(Debug, Default)]
+struct Hygiene {
+    /// Backup files per husk, keyed by the path shown in the report.
+    husks: BTreeMap<String, BTreeSet<PathBuf>>,
+    /// Husk directories, removed once emptied.
+    husk_dirs: BTreeSet<PathBuf>,
+    /// Their `skills/` tree and root, removed if nothing else lives there.
+    husk_parents: BTreeSet<PathBuf>,
+    superseded: BTreeSet<PathBuf>,
+}
+
+impl Hygiene {
+    fn is_empty(&self) -> bool {
+        self.husks.is_empty() && self.superseded.is_empty()
+    }
+}
+
+/// Classify leftover installer backups under `target_dir`. Read-only.
+///
+/// The sweep is bounded by `manifest_db::allowed_roots(harness)` — every root
+/// the harness may own, including one it has stopped writing to, which is
+/// exactly where a migration leaves its litter — and within those, by the
+/// identities the current payload actually has installed and current. A tree
+/// no harness owns, or a skill of the captain's own (`caveman`), is never
+/// reached.
+fn scan_hygiene(
+    target_dir: &Path,
+    harness: &str,
+    payload: &BTreeMap<String, String>,
+) -> Result<Hygiene> {
+    let mut hygiene = Hygiene::default();
+    let mut live: BTreeSet<String> = BTreeSet::new();
+    for (rel, want) in payload {
+        let path = manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
+        let Ok(on_disk) = std::fs::read(&path) else {
+            continue; // missing or unreadable — its backups are still the undo
+        };
+        if digest::hash_bytes(&on_disk) != digest::hash_bytes(want.as_bytes()) {
+            continue; // drifted — the sidecar may be the only copy of v-current
+        }
+        hygiene.superseded.extend(sibling_install_backups(&path));
+        if let Some(identity) = install_identity(rel) {
+            live.extend(pre_prefix_aliases(&identity));
+            live.insert(identity);
+        }
+    }
+    for root in manifest_db::allowed_roots(harness) {
+        for tree in INSTALL_TREES {
+            let tree_rel = Path::new(root).join(tree);
+            collect_husks(target_dir, &tree_rel, &live, &mut hygiene)?;
+        }
+    }
+    Ok(hygiene)
+}
+
+/// Collect the husks directly under one install tree (`.agents/skills`).
+///
+/// A directory qualifies only when its name is a live identity *and* every
+/// entry in it is an installer backup file: one README of the captain's and the
+/// directory is theirs, left whole. A loose file qualifies only when it is an
+/// installer backup whose original is gone. Symlinks are skipped rather than
+/// followed, and a tree that resolves outside the target is skipped rather than
+/// failing the run — it is not ours to walk either way.
+fn collect_husks(
+    target_dir: &Path,
+    tree_rel: &Path,
+    live: &BTreeSet<String>,
+    hygiene: &mut Hygiene,
+) -> Result<()> {
+    let Ok(tree) = manifest_db::resolve_target_relative(target_dir, tree_rel) else {
+        return Ok(());
+    };
+    let Ok(entries) = std::fs::read_dir(&tree) else {
+        return Ok(());
+    };
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        let file_type = entry.file_type()?;
+        if file_type.is_symlink() {
+            continue;
+        }
+        if file_type.is_dir() {
+            if !live.contains(name) {
+                continue; // not an artifact we install — not ours to judge
+            }
+            let Some(backups) = bak_only_entries(&entry.path())? else {
+                continue;
+            };
+            hygiene
+                .husks
+                .insert(tree_rel.join(name).display().to_string(), backups);
+            hygiene.husk_dirs.insert(entry.path());
+            hygiene.husk_parents.insert(tree.clone());
+            if let Some(root) = tree.parent() {
+                hygiene.husk_parents.insert(root.to_path_buf());
+            }
+        } else if file_type.is_file() && is_install_backup_name(name) {
+            let Some((original, _)) = name.rsplit_once(".bak-") else {
+                continue;
+            };
+            if tree.join(original).exists() {
+                continue; // a sidecar of a live file, not a husk
+            }
+            let identity = split_stem_ext(original)
+                .map(|(stem, _)| stem)
+                .unwrap_or(original);
+            if !live.contains(identity) {
+                continue;
+            }
+            hygiene
+                .husks
+                .entry(tree_rel.join(original).display().to_string())
+                .or_default()
+                .insert(entry.path());
+        }
+    }
+    Ok(())
+}
+
+/// The installer backups in `dir`, or `None` if anything else lives there.
+fn bak_only_entries(dir: &Path) -> Result<Option<BTreeSet<PathBuf>>> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Ok(None);
+    };
+    let mut backups = BTreeSet::new();
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name();
+        let is_backup = name.to_str().is_some_and(is_install_backup_name);
+        if !is_backup || !entry.file_type()?.is_file() {
+            return Ok(None);
+        }
+        backups.insert(entry.path());
+    }
+    Ok((!backups.is_empty()).then_some(backups))
+}
+
+fn hygiene_check(hygiene: &Hygiene) -> Check {
+    if !hygiene.husks.is_empty() {
+        let names: Vec<&str> = hygiene.husks.keys().map(String::as_str).collect();
+        let mut detail = format!(
+            "{} leftover path(s) hold install backups and no live file: {}",
+            hygiene.husks.len(),
+            names.join(", ")
+        );
+        if !hygiene.superseded.is_empty() {
+            detail.push_str(&format!(
+                "; {} superseded backup(s) beside current file(s)",
+                hygiene.superseded.len()
+            ));
+        }
+        detail.push_str(". `shipmates doctor --fix` prunes them");
+        Check {
+            name: "Hygiene".into(),
+            severity: Severity::Problem,
+            detail,
+            fixable: true,
+        }
+    } else if !hygiene.superseded.is_empty() {
+        Check {
+            name: "Hygiene".into(),
+            severity: Severity::Warn,
+            detail: format!(
+                "{} install backup(s) sit beside a file that already matches shipmates v{} — \
+                 `shipmates doctor --fix` prunes them",
+                hygiene.superseded.len(),
+                env!("CARGO_PKG_VERSION")
+            ),
+            fixable: true,
+        }
+    } else {
+        Check {
+            name: "Hygiene".into(),
+            severity: Severity::Ok,
+            detail: "no leftover install backups".into(),
+            fixable: false,
+        }
+    }
+}
+
+/// Delete the backups `scan_hygiene` classified. Returns (removed, failed); a
+/// failure leaves that file for the next run rather than aborting the repair.
+fn prune_hygiene(hygiene: &Hygiene) -> (usize, usize) {
+    let mut removed = 0usize;
+    let mut failed = 0usize;
+    for path in hygiene
+        .husks
+        .values()
+        .flatten()
+        .chain(hygiene.superseded.iter())
+    {
+        match std::fs::remove_file(path) {
+            Ok(()) => removed += 1,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => failed += 1,
+        }
+    }
+    // `remove_dir` refuses a non-empty directory, so anything left behind —
+    // a backup that would not delete, a file of the captain's — keeps its
+    // folder, and the emptied tree and root only go when nothing else is there.
+    for dir in &hygiene.husk_dirs {
+        let _ = std::fs::remove_dir(dir);
+    }
+    let mut parents: Vec<&PathBuf> = hygiene.husk_parents.iter().collect();
+    parents.sort_by_key(|path| std::cmp::Reverse(path.components().count()));
+    for dir in parents {
+        let _ = std::fs::remove_dir(dir);
+    }
+    (removed, failed)
+}
+
 /// The files a healthy install must contain, keyed by their on-disk path relative
 /// to the target directory (the `<container>/` prefix stripped, exactly as the
 /// installer writes them). Only the test harness materialises a healthy tree from
@@ -723,6 +1010,19 @@ fn diagnose_built(
         fixable: (!tool_missing.is_empty() || !tool_drift.is_empty()) && tool_unfixable.is_empty(),
     });
 
+    // 5b. Install backups, swept across every root the harness may own — the
+    // tree a migration moved *out* of is where its litter sits. `rename::plan`
+    // sees only live leftovers, so a directory holding nothing but `.bak-…`
+    // husks read as clean and doctor called the whole tree shipshape (#406).
+    // Reporting is all `doctor` does here — pruning is `--fix`'s opt-in.
+    let mut hygiene_payload = expected.clone();
+    hygiene_payload.extend(tool_expected.clone());
+    checks.push(hygiene_check(&scan_hygiene(
+        target_dir,
+        harness,
+        &hygiene_payload,
+    )?));
+
     // 6. Receipt ownership. The receipt is the authority for repair; files not
     // listed there remain user-owned from doctor's perspective and are never
     // changed automatically.
@@ -832,6 +1132,13 @@ pub fn fix(
     for rel in tool_expected.keys() {
         manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
     }
+    // Classify leftover install backups before anything is repaired, so `--fix`
+    // prunes exactly what the preceding report named: a file that is drifted
+    // now keeps its sidecar even though the repair below makes it current.
+    let mut hygiene_payload = expected.clone();
+    hygiene_payload.extend(tool_expected.clone());
+    let hygiene = scan_hygiene(target_dir, harness, &hygiene_payload)?;
+
     let mut repair_expected = expected.clone();
     // Only pull optional-tool files into the repair set when the receipt
     // actually claims them. A no-tools install has no tool files to restore,
@@ -1112,7 +1419,23 @@ pub fn fix(
         ));
     }
 
-    // 3. Re-diagnose and hand back the fresh report — reusing the single built
+    // 3. Prune the leftover install backups. Deliberately last and never rolled
+    // back: it removes only copies of bytes that are already on disk, and a
+    // per-file failure leaves that file for the next run.
+    if !hygiene.is_empty() {
+        let (removed, failed) = prune_hygiene(&hygiene);
+        if removed > 0 {
+            println!("Pruned {} leftover install backup(s)", removed);
+        }
+        if failed > 0 {
+            println!(
+                "Could not prune {} install backup(s) — left them in place",
+                failed
+            );
+        }
+    }
+
+    // 4. Re-diagnose and hand back the fresh report — reusing the single built
     // payload rather than rebuilding it.
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
 }
@@ -1377,6 +1700,229 @@ mod tests {
                 .contains(&format!("shipmates v{}", env!("CARGO_PKG_VERSION"))),
             "Content ok must name the running version"
         );
+    }
+
+    /// The installer's own sidecar shape, for husks the tests plant.
+    const BAK: &str = ".bak-1788191317-3827013-0";
+
+    #[test]
+    fn test_install_backup_name_shape_is_the_ownership_signal() {
+        assert!(is_install_backup_name("SKILL.md.bak-1788191317-3827013-0"));
+        assert!(is_install_backup_name("gh.py.bak-1-2-3"));
+        // A captain's own backup: never the installer's, never touched.
+        assert!(!is_install_backup_name("notes.md.bak-mine"));
+        assert!(!is_install_backup_name("notes.md.bak"));
+        assert!(!is_install_backup_name("SKILL.md.bak-1-2"));
+        assert!(!is_install_backup_name(".bak-1-2-3"));
+        assert!(!is_install_backup_name("SKILL.md"));
+    }
+
+    #[test]
+    fn test_install_identity_and_pre_prefix_aliases() {
+        assert_eq!(
+            install_identity(".cursor/skills/shipmates-harden/SKILL.md").as_deref(),
+            Some("shipmates-harden")
+        );
+        assert_eq!(
+            install_identity(".agents/skills/ship-issue/SKILL.md").as_deref(),
+            Some("ship-issue")
+        );
+        assert_eq!(
+            install_identity(".claude/agents/architect.md").as_deref(),
+            Some("architect")
+        );
+        assert_eq!(install_identity(".shipmates/receipts/cursor.json"), None);
+
+        assert_eq!(pre_prefix_aliases("shipmates-harden"), vec!["harden"]);
+        assert_eq!(pre_prefix_aliases("shipmates-gh"), vec!["gh"]);
+        // Flagships and third-party skills are not in the rename table.
+        assert!(pre_prefix_aliases("ship-issue").is_empty());
+        assert!(pre_prefix_aliases("caveman").is_empty());
+    }
+
+    #[test]
+    fn test_diagnose_reports_bak_only_husk_and_fix_prunes_it() {
+        // #406: `skills/harden/` holding nothing but `SKILL.md.bak-…` is
+        // invisible to the live-file rename sweep, so doctor called the tree
+        // shipshape. It is a Problem, and --fix prunes the husk (and the
+        // superseded sidecar beside the current skill) without touching the
+        // live payload.
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("shipmates-harden")];
+        install_healthy(target, &roles, &cmds);
+        write_receipt(target, &roles, &cmds, &[]);
+
+        let live = target.join(".claude/skills/shipmates-harden/SKILL.md");
+        let live_bytes = std::fs::read_to_string(&live).unwrap();
+        let husk = target.join(format!(".claude/skills/harden/SKILL.md{BAK}"));
+        atomic_write(&husk, "pre-prefix payload\n").unwrap();
+        let sidecar = target.join(format!(".claude/skills/shipmates-harden/SKILL.md{BAK}"));
+        atomic_write(&sidecar, "shipmates v0.1.4\n").unwrap();
+
+        let before = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
+        let check = before.checks.iter().find(|c| c.name == "Hygiene").unwrap();
+        assert_eq!(check.severity, Severity::Problem);
+        assert!(check.fixable);
+        assert!(
+            check.detail.contains(".claude/skills/harden"),
+            "must name the husk: {}",
+            check.detail
+        );
+        assert!(
+            before.has_problems(),
+            "a tree full of husks must not exit zero"
+        );
+        assert!(husk.exists(), "diagnose is read-only");
+
+        let after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert!(!husk.exists(), "husk backup must be pruned");
+        assert!(
+            !target.join(".claude/skills/harden").exists(),
+            "the emptied identity directory goes with it"
+        );
+        assert!(!sidecar.exists(), "superseded sidecar must be pruned");
+        assert_eq!(
+            std::fs::read_to_string(&live).unwrap(),
+            live_bytes,
+            "the live skill is untouched"
+        );
+        assert_eq!(sev(&after, "Hygiene"), Severity::Ok);
+        assert!(!after.has_problems());
+    }
+
+    #[test]
+    fn test_diagnose_reports_husks_left_in_a_migrated_tree_and_fix_prunes_them() {
+        // #405 moved cursor's skills off the shared `.agents/` tree onto
+        // `.cursor/`, leaving a `SKILL.md.bak-…` alone in each emptied
+        // `.agents/skills/<name>/`. `.agents` is still a cursor root, so the
+        // sweep reaches it — and the names are flagships, which no rename-table
+        // row can reach (#406).
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let cmds = [cmd("ship-issue"), cmd("plan-epics")];
+        let adapter = adapters::select("cursor").unwrap();
+        for (rel, content) in
+            strip_container(&adapter.build(&[], &cmds).unwrap(), adapter.container())
+        {
+            atomic_write(&target.join(&rel), &content).unwrap();
+        }
+        let husks: Vec<PathBuf> = cmds
+            .iter()
+            .map(|command| {
+                let husk = target.join(format!(".agents/skills/{}/SKILL.md{BAK}", command.name));
+                atomic_write(&husk, "pre-#405 payload\n").unwrap();
+                husk
+            })
+            .collect();
+        // A skill of the captain's own, in the same emptied tree.
+        let third_party = target.join(".agents/skills/caveman/SKILL.md");
+        atomic_write(&third_party, "name: caveman\n").unwrap();
+
+        let before = diagnose(target, "cursor", &[], &cmds, &[]).unwrap();
+        let check = before.checks.iter().find(|c| c.name == "Hygiene").unwrap();
+        assert_eq!(check.severity, Severity::Problem);
+        assert!(
+            check.detail.contains(".agents/skills/ship-issue")
+                && check.detail.contains(".agents/skills/plan-epics"),
+            "must name the husks in the tree the install moved out of: {}",
+            check.detail
+        );
+        assert!(
+            before.has_problems(),
+            "a migrated-away tree is not shipshape"
+        );
+
+        let after = fix(target, "cursor", &[], &cmds, &[], false).unwrap();
+        for husk in &husks {
+            assert!(!husk.exists(), "{} must be pruned", husk.display());
+            assert!(
+                !husk.parent().unwrap().exists(),
+                "the emptied identity directory goes with it"
+            );
+        }
+        assert!(
+            third_party.exists(),
+            "a skill shipmates does not install keeps its tree"
+        );
+        assert!(
+            target.join(".agents/skills").exists(),
+            "and so the tree itself stays"
+        );
+        assert!(
+            target.join(".cursor/skills/ship-issue/SKILL.md").exists(),
+            "the live payload is untouched"
+        );
+        assert_eq!(sev(&after, "Hygiene"), Severity::Ok);
+        assert!(!after.has_problems());
+    }
+
+    #[test]
+    fn test_hygiene_leaves_hand_named_and_interrupted_backups_alone() {
+        // Two files hygiene must never claim: a captain's own `*.bak-mine`,
+        // which does not have the installer's shape, and a sidecar beside a
+        // drifted file, which may be the only copy of the current version.
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(target, &roles, &cmds);
+        write_receipt(target, &roles, &cmds, &[]);
+
+        let mine = target.join(".claude/agents/notes.md.bak-mine");
+        atomic_write(&mine, "my own backup\n").unwrap();
+        let drifted = target.join(".claude/agents/architect.md");
+        atomic_write(&drifted, "hand-edited\n").unwrap();
+        let interrupted = target.join(format!(".claude/agents/architect.md{BAK}"));
+        atomic_write(&interrupted, "shipmates v0.1.4\n").unwrap();
+
+        let before = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
+        assert_eq!(sev(&before, "Hygiene"), Severity::Ok);
+        assert_eq!(
+            sev(&before, "Content"),
+            Severity::Warn,
+            "drift is Content's"
+        );
+
+        fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert!(
+            mine.exists(),
+            "a hand-named backup is not shipmates' to prune"
+        );
+        assert!(
+            interrupted.exists(),
+            "the sidecar of a file that was drifted at report time stays"
+        );
+    }
+
+    #[test]
+    fn test_hygiene_leaves_third_party_and_occupied_husk_alone() {
+        // A skill the rename table never names is out of scope entirely, and a
+        // pre-prefix directory the captain keeps a file in is theirs, not a husk.
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("shipmates-polish")];
+        install_healthy(target, &roles, &cmds);
+        write_receipt(target, &roles, &cmds, &[]);
+
+        let third_party = target.join(".claude/skills/caveman/SKILL.md");
+        atomic_write(&third_party, "name: caveman\n").unwrap();
+        let third_party_bak = target.join(format!(".claude/skills/caveman/SKILL.md{BAK}"));
+        atomic_write(&third_party_bak, "older caveman\n").unwrap();
+        let readme = target.join(".claude/skills/polish/README.md");
+        atomic_write(&readme, "why I kept this\n").unwrap();
+        let occupied = target.join(format!(".claude/skills/polish/SKILL.md{BAK}"));
+        atomic_write(&occupied, "pre-prefix payload\n").unwrap();
+
+        let before = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
+        assert_eq!(sev(&before, "Hygiene"), Severity::Ok);
+
+        fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert!(third_party.exists() && third_party_bak.exists());
+        assert!(readme.exists(), "the captain's file keeps its directory");
+        assert!(occupied.exists(), "so the husk beside it stays too");
     }
 
     #[test]

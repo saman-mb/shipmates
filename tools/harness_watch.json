@@ -36,12 +36,12 @@
     },
     "cursor": {
       "docs_url": "https://cursor.com/docs/skills",
-      "tree": "shared",
-      "adapter_skill_path": ".agents/skills/<name>/SKILL.md",
+      "tree": "native",
+      "adapter_skill_path": ".cursor/skills/<name>/SKILL.md",
       "expect_contains": [".agents/skills", ".cursor/skills"],
       "expect_absent": [],
-      "verified_on": "2026-08-03",
-      "note": "Reads BOTH .agents/skills and .cursor/skills (first-party peers, since Cursor 2.4); we use the shared .agents/skills. Also watch: `.cursor/agents` subagent schema is still undocumented — if it lands, cursor could become crew-bearing (harness_matrix agents=false)."
+      "verified_on": "2026-09-12",
+      "note": "Reads BOTH .agents/skills and .cursor/skills, but only .cursor/skills reaches the slash-command picker (#405), so we ship there — one copy, never both. Also watch: `.cursor/agents` subagent schema is still undocumented — if it lands, cursor could become crew-bearing (harness_matrix agents=false)."
     },
     "github-copilot": {
       "docs_url": "https://docs.github.com/en/copilot/concepts/agents/about-agent-skills",

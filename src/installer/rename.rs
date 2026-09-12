@@ -7,12 +7,16 @@
 //! map; leftover `…/commands/<old>.md` is included when the payload ships
 //! `…/skills/<new>/SKILL.md`.
 //!
-//! Ownership is any Shipmates receipt that `claims_for_path`. New files are
+//! Ownership is any Shipmates receipt that `claims_for_path`, or — for a tree
+//! installed before receipts existed — a file at a rename-table path that
+//! still declares the very identity the table moves (`name: harden` at
+//! `…/skills/harden/SKILL.md`), which is reclaimed (#403). New files are
 //! written from the current payload (never `mv` of a directory), then old
 //! files are deleted, then every receipt that listed the old path is
 //! rewritten. `--no-migrate` skips this sweep.
 
 use crate::digest;
+use crate::installer::adopt;
 use crate::installer::atomic_write_bytes;
 use crate::installer::manifest_db::{self, InstallReceipt, ReceiptFile, ReceiptRepository};
 use crate::installer::migrate;
@@ -86,6 +90,20 @@ pub struct RenamedFile {
     pub kind: RenameKind,
     pub backup: PathBuf,
     pub wrote_new: bool,
+    /// No receipt claimed the old path; ownership came from the file's own
+    /// identity declaration instead (#403).
+    pub reclaimed: bool,
+}
+
+/// Who the file at a rename-table old path belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Ownership {
+    /// A Shipmates receipt lists the old path.
+    Claimed,
+    /// No receipt lists it, but it declares the identity the table moves.
+    Reclaimed,
+    /// Somebody else's file that merely sits at a table name.
+    ThirdParty,
 }
 
 /// Match `--with-tools` against a catalog name, accepting either the current
@@ -268,34 +286,43 @@ pub fn rollback(target_dir: &Path, report: &RenameReport) -> Result<()> {
     Ok(())
 }
 
-/// Print the logical rename map once, grouped by kind. No-ops if nothing
-/// actually moved.
+/// Print the logical rename map once, grouped by kind. Identities no receipt
+/// claimed are reported separately, so a captain can see which moves rested on
+/// the file's own declaration rather than on recorded ownership (#403). No-ops
+/// if nothing actually moved.
 pub fn print_map(report: &RenameReport) {
-    let mut commands = BTreeMap::new();
-    let mut tools = BTreeMap::new();
-    for item in &report.renamed {
-        match item.kind {
-            RenameKind::Command => {
-                commands.insert(item.old_name.as_str(), item.new_name.as_str());
-            }
-            RenameKind::Tool => {
-                tools.insert(item.old_name.as_str(), item.new_name.as_str());
+    for reclaimed in [false, true] {
+        let mut commands = BTreeMap::new();
+        let mut tools = BTreeMap::new();
+        for item in report
+            .renamed
+            .iter()
+            .filter(|item| item.reclaimed == reclaimed)
+        {
+            match item.kind {
+                RenameKind::Command => {
+                    commands.insert(item.old_name.as_str(), item.new_name.as_str());
+                }
+                RenameKind::Tool => {
+                    tools.insert(item.old_name.as_str(), item.new_name.as_str());
+                }
             }
         }
-    }
-    if !commands.is_empty() {
-        println!(
-            "Renamed {} command(s) (autocomplete /shipmates-):",
-            commands.len()
-        );
-        for (old, new) in commands {
-            println!("  /{old} → /{new}");
+        let verb = if reclaimed { "Reclaimed" } else { "Renamed" };
+        if !commands.is_empty() {
+            println!(
+                "{verb} {} command(s) (autocomplete /shipmates-):",
+                commands.len()
+            );
+            for (old, new) in commands {
+                println!("  /{old} → /{new}");
+            }
         }
-    }
-    if !tools.is_empty() {
-        println!("Renamed {} tool(s):", tools.len());
-        for (old, new) in tools {
-            println!("  {old} → {new}");
+        if !tools.is_empty() {
+            println!("{verb} {} tool(s):", tools.len());
+            for (old, new) in tools {
+                println!("  {old} → {new}");
+            }
         }
     }
 }
@@ -323,20 +350,12 @@ fn apply_one(
         report.skipped_unmanaged.push(item.old_path.clone());
         return Ok(());
     }
-    let claimants = repository.claims_for_path(&item.old_path)?;
-    if claimants.is_empty() {
+    let contents =
+        fs::read(&full_old).with_context(|| format!("reading {}", full_old.display()))?;
+    let ownership = ownership(repository, item, &contents)?;
+    if ownership == Ownership::ThirdParty {
         report.skipped_unmanaged.push(item.old_path.clone());
-        if noticed.insert(item.old_name.clone()) {
-            let kind = match item.kind {
-                RenameKind::Command => "skill",
-                RenameKind::Tool => "tool",
-            };
-            println!(
-                "left {} (not ours); new {kind} is {}",
-                display_old_identity(&item.old_path),
-                item.new_name
-            );
-        }
+        notice_left(item, noticed);
         return Ok(());
     }
 
@@ -348,8 +367,40 @@ fn apply_one(
         );
     };
 
-    let contents =
-        fs::read(&full_old).with_context(|| format!("reading {}", full_old.display()))?;
+    // Settle the new path before a single byte moves, so a refusal leaves no
+    // orphaned backup behind and the old file stays exactly as found.
+    let full_new = manifest_db::resolve_target_relative(target_dir, &item.new_path)?;
+    let new_exists = match fs::symlink_metadata(&full_new) {
+        Ok(meta) if meta.file_type().is_file() => true,
+        Ok(_) => {
+            anyhow::bail!("refusing to overwrite non-file at {}", full_new.display());
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+        Err(error) => {
+            return Err(error).with_context(|| format!("inspecting {}", full_new.display()));
+        }
+    };
+    let write_new = if new_exists {
+        let current =
+            fs::read(&full_new).with_context(|| format!("reading {}", full_new.display()))?;
+        if current == want.as_bytes() {
+            false
+        } else if !repository.claims_for_path(&item.new_path)?.is_empty()
+            || adopt::classify(&item.new_path, &current) == adopt::Collision::Adoptable
+        {
+            true
+        } else {
+            // Somebody else already occupies the new name. Leaving the old file
+            // in place keeps one working copy rather than two half-migrated
+            // ones; the notice says so out loud (#403).
+            report.skipped_unmanaged.push(item.old_path.clone());
+            notice_left(item, noticed);
+            return Ok(());
+        }
+    } else {
+        true
+    };
+
     let backup_path = backup_root.join(&item.old_path);
     let backup_relative = backup_path
         .strip_prefix(target_dir)
@@ -369,39 +420,7 @@ fn apply_one(
         anyhow::bail!("backup verification failed for {}", full_old.display());
     }
 
-    let full_new = manifest_db::resolve_target_relative(target_dir, &item.new_path)?;
-    let new_exists = match fs::symlink_metadata(&full_new) {
-        Ok(meta) if meta.file_type().is_file() => true,
-        Ok(_) => {
-            anyhow::bail!("refusing to overwrite non-file at {}", full_new.display());
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
-        Err(error) => {
-            return Err(error).with_context(|| format!("inspecting {}", full_new.display()));
-        }
-    };
-    let new_claimed = !repository.claims_for_path(&item.new_path)?.is_empty();
-    let mut wrote_new = false;
-    if new_exists {
-        let current =
-            fs::read(&full_new).with_context(|| format!("reading {}", full_new.display()))?;
-        if current != want.as_bytes() && !new_claimed {
-            report.skipped_unmanaged.push(item.old_path.clone());
-            return Ok(());
-        }
-        if current != want.as_bytes() {
-            atomic_write_bytes(&full_new, want.as_bytes())
-                .with_context(|| format!("writing {}", full_new.display()))?;
-            let verified = manifest_db::resolve_target_relative(target_dir, &item.new_path)?;
-            if fs::read(&verified)
-                .map(|bytes| bytes != want.as_bytes())
-                .unwrap_or(true)
-            {
-                anyhow::bail!("write verification failed for {}", full_new.display());
-            }
-            wrote_new = true;
-        }
-    } else {
+    if write_new {
         atomic_write_bytes(&full_new, want.as_bytes())
             .with_context(|| format!("writing {}", full_new.display()))?;
         let verified = manifest_db::resolve_target_relative(target_dir, &item.new_path)?;
@@ -411,7 +430,6 @@ fn apply_one(
         {
             anyhow::bail!("write verification failed for {}", full_new.display());
         }
-        wrote_new = true;
     }
 
     // New is valid on disk. Record before delete so a delete error still
@@ -423,7 +441,8 @@ fn apply_one(
         new_name: item.new_name.clone(),
         kind: item.kind,
         backup: backup_path.clone(),
-        wrote_new,
+        wrote_new: write_new,
+        reclaimed: ownership == Ownership::Reclaimed,
     });
     report.backups.push(backup_path);
 
@@ -440,6 +459,47 @@ fn apply_one(
         receipt_originals,
     )?;
     Ok(())
+}
+
+/// Who owns the file sitting at a rename-table old path.
+///
+/// A receipt claim settles it. Failing that — a tree installed before receipts
+/// existed, or one restored from a backup — the file may still be reclaimed,
+/// but only when it declares the very identity this table row moves: `name:
+/// harden` in `…/skills/harden/SKILL.md` (#403). The path must imply that same
+/// name, so reclaiming stays confined to the table's own names and a
+/// third-party artifact squatting one (`name: my-own-polish`) fails closed, as
+/// does anything `adopt` cannot read or recognise.
+fn ownership(
+    repository: &ReceiptRepository,
+    item: &RenameItem,
+    contents: &[u8],
+) -> Result<Ownership> {
+    if !repository.claims_for_path(&item.old_path)?.is_empty() {
+        return Ok(Ownership::Claimed);
+    }
+    if adopt::artifact_name(&item.old_path).as_deref() == Some(item.old_name.as_str())
+        && adopt::classify(&item.old_path, contents) == adopt::Collision::Adoptable
+    {
+        return Ok(Ownership::Reclaimed);
+    }
+    Ok(Ownership::ThirdParty)
+}
+
+/// One line per old identity for anything the sweep declined to move.
+fn notice_left(item: &RenameItem, noticed: &mut BTreeSet<String>) {
+    if !noticed.insert(item.old_name.clone()) {
+        return;
+    }
+    let kind = match item.kind {
+        RenameKind::Command => "skill",
+        RenameKind::Tool => "tool",
+    };
+    println!(
+        "left {} (not ours); new {kind} is {}",
+        display_old_identity(&item.old_path),
+        item.new_name
+    );
 }
 
 fn rewrite_receipts(
@@ -873,6 +933,151 @@ mod tests {
             !target
                 .join(".claude/skills/shipmates-polish/SKILL.md")
                 .exists()
+        );
+    }
+
+    fn skill_declaring(name: &str) -> String {
+        format!("---\nname: {name}\ndescription: d\n---\nbody\n")
+    }
+
+    #[test]
+    fn unowned_but_self_declaring_old_skill_is_reclaimed() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let old = ".agents/skills/polish/SKILL.md";
+        let new = ".agents/skills/shipmates-polish/SKILL.md";
+        // A pre-receipt v0.1.4 tree: nothing claims the path, but the file
+        // still declares the identity the table moves (#403).
+        atomic_write(&target.join(old), &skill_declaring("polish")).unwrap();
+
+        let payload = payload_skill(new, "new polish");
+        let items = plan(target, &payload, "").unwrap();
+        let report = apply(
+            target,
+            &items,
+            &payload,
+            "",
+            &migrate::new_backup_root(target),
+        )
+        .unwrap();
+
+        assert_eq!(report.renamed.len(), 1);
+        assert!(
+            report.renamed[0].reclaimed,
+            "a move with no receipt claim must be reported as reclaimed"
+        );
+        assert!(report.skipped_unmanaged.is_empty());
+        assert!(!target.join(old).exists());
+        assert!(!target.join(".agents/skills/polish").exists());
+        assert_eq!(fs::read_to_string(target.join(new)).unwrap(), "new polish");
+        assert_eq!(
+            fs::read_to_string(&report.backups[0]).unwrap(),
+            skill_declaring("polish"),
+            "the reclaimed bytes must be recoverable"
+        );
+    }
+
+    #[test]
+    fn third_party_skill_at_a_table_name_is_still_left() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let old = ".agents/skills/polish/SKILL.md";
+        // Somebody else's skill that merely squats a rename-table name.
+        atomic_write(&target.join(old), &skill_declaring("my-own-polish")).unwrap();
+
+        let payload = payload_skill(".agents/skills/shipmates-polish/SKILL.md", "new polish");
+        let items = plan(target, &payload, "").unwrap();
+        let report = apply(
+            target,
+            &items,
+            &payload,
+            "",
+            &migrate::new_backup_root(target),
+        )
+        .unwrap();
+
+        assert!(report.renamed.is_empty());
+        assert_eq!(report.skipped_unmanaged, vec![PathBuf::from(old)]);
+        assert_eq!(
+            fs::read_to_string(target.join(old)).unwrap(),
+            skill_declaring("my-own-polish")
+        );
+        assert!(report.backups.is_empty());
+    }
+
+    #[test]
+    fn foreign_file_at_the_new_path_leaves_old_and_backs_up_nothing() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let old = ".claude/skills/polish/SKILL.md";
+        let new = ".claude/skills/shipmates-polish/SKILL.md";
+        atomic_write(&target.join(old), "old polish").unwrap();
+        save_receipt(target, "claude-code", &[".claude"], &[(old, "old polish")]);
+        // Unclaimed foreign bytes already occupy the new name.
+        atomic_write(&target.join(new), &skill_declaring("somebody-else")).unwrap();
+
+        let payload = payload_skill(new, "new polish");
+        let items = plan(target, &payload, "").unwrap();
+        let backup_root = migrate::new_backup_root(target);
+        let report = apply(target, &items, &payload, "", &backup_root).unwrap();
+
+        assert!(report.renamed.is_empty());
+        assert_eq!(report.skipped_unmanaged, vec![PathBuf::from(old)]);
+        assert_eq!(fs::read_to_string(target.join(old)).unwrap(), "old polish");
+        assert_eq!(
+            fs::read_to_string(target.join(new)).unwrap(),
+            skill_declaring("somebody-else"),
+            "a refusal must not overwrite the foreign file"
+        );
+        assert!(
+            !backup_root.exists(),
+            "a skipped item must not leave an orphaned backup behind"
+        );
+    }
+
+    #[test]
+    fn reclaim_rolls_back_on_later_write_failure() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let polish_old = ".claude/skills/polish/SKILL.md";
+        let polish_new = ".claude/skills/shipmates-polish/SKILL.md";
+        let spike_old = ".claude/skills/spike/SKILL.md";
+        atomic_write(&target.join(polish_old), &skill_declaring("polish")).unwrap();
+        atomic_write(&target.join(spike_old), &skill_declaring("spike")).unwrap();
+        // Block the second item's destination: a regular file where the folder
+        // must go, so the sweep fails after the first reclaim succeeded.
+        atomic_write(&target.join(".claude/skills/shipmates-spike"), "blocker").unwrap();
+
+        let mut payload = payload_skill(polish_new, "new polish");
+        payload.insert(
+            ".claude/skills/shipmates-spike/SKILL.md".into(),
+            "new spike".into(),
+        );
+        let items = plan(target, &payload, "").unwrap();
+        assert_eq!(items.len(), 2, "both reclaimable skills must be planned");
+
+        let error = apply(
+            target,
+            &items,
+            &payload,
+            "",
+            &migrate::new_backup_root(target),
+        )
+        .unwrap_err();
+
+        assert!(!error.to_string().is_empty());
+        assert_eq!(
+            fs::read_to_string(target.join(polish_old)).unwrap(),
+            skill_declaring("polish"),
+            "a reclaimed file must be restored when a later item fails"
+        );
+        assert_eq!(
+            fs::read_to_string(target.join(spike_old)).unwrap(),
+            skill_declaring("spike")
+        );
+        assert!(
+            !target.join(polish_new).exists(),
+            "the half-written new path must be gone after rollback"
         );
     }
 

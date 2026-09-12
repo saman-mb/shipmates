@@ -146,8 +146,9 @@ jobs:
           # the neutral crew glob, never a per-harness one (the pre-dedup bug).
           grep -q '\.agents/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
           ! grep -qE '\.(codex|cursor|github)/agents/\*\.md' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
-          # None of the shared harnesses write their own private skills tree.
-          test ! -d "$RUNNER_TEMP/install-all/.cursor/skills"
+          # cursor owns its own tree for slash discovery (#405); the other
+          # shared harnesses write no private skills tree.
+          test -d "$RUNNER_TEMP/install-all/.cursor/skills"
           test ! -d "$RUNNER_TEMP/install-all/.codex/skills"
           test ! -d "$RUNNER_TEMP/install-all/.github/skills"
       # Tools ship by default; --with-tools selects subsets or opts out.
@@ -230,10 +231,10 @@ jobs:
       - name: Install a skill-only harness end to end
         run: |
           cargo run -- install --harness cursor --dir "$RUNNER_TEMP/install-cursor"
-          # Cursor reads the open Agent Skills tree (.agents/skills).
-          test -f "$RUNNER_TEMP/install-cursor/.agents/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-cursor/.cursor/skills"
-          test ! -d "$RUNNER_TEMP/install-cursor/.agents/agents"
+          # Cursor's slash picker only reads its first-party tree (#405).
+          test -f "$RUNNER_TEMP/install-cursor/.cursor/skills/ship-issue/SKILL.md"
+          test ! -d "$RUNNER_TEMP/install-cursor/.agents/skills"
+          test ! -d "$RUNNER_TEMP/install-cursor/.cursor/agents"
 
   deploy:
     name: Deploy to GitHub Pages
