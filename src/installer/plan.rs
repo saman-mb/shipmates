@@ -106,6 +106,27 @@ pub fn read_receipt(
 /// and Shipmates never installs below one of these.
 const NEVER_SCANNED: &[&str] = &[".shipmates", ".shipmates-backup", "node_modules"];
 
+/// Whether a filename is one of `installer::apply`'s in-place sibling backups,
+/// `{original}.bak-<secs>-<pid>-<n>`.
+///
+/// Matched by shape alone — all three trailing fields must be numeric — so a
+/// user's own `notes.md.bak-mine` is still a file Shipmates does not own and is
+/// still reported. `doctor` keeps a stricter parser anchored to a known
+/// original name; unifying the two is follow-up work, not this fix.
+pub fn is_install_backup_name(name: &str) -> bool {
+    let Some((original, rest)) = name.rsplit_once(".bak-") else {
+        return false;
+    };
+    if original.is_empty() {
+        return false;
+    }
+    let mut fields = rest.split('-');
+    let numeric = fields.next().is_some_and(|f| f.parse::<u64>().is_ok())
+        && fields.next().is_some_and(|f| f.parse::<u32>().is_ok())
+        && fields.next().is_some_and(|f| f.parse::<u32>().is_ok());
+    numeric && fields.next().is_none()
+}
+
 /// Return regular files inside the payload's own subtrees that a receipt does
 /// not claim.
 ///
@@ -116,6 +137,9 @@ const NEVER_SCANNED: &[&str] = &[".shipmates", ".shipmates-backup", "node_module
 /// Symlinks are skipped outright: never resolved, never descended, never
 /// reported. Reporting unmanaged files is advisory, so a root that cannot be
 /// resolved is skipped rather than failing the install or uninstall around it.
+///
+/// Shipmates' own sibling backups are not reported: an install that just wrote
+/// `SKILL.md.bak-…` must not then warn about the file it created itself (#404).
 pub fn unmanaged_files(
     target_dir: &Path,
     managed: &std::collections::BTreeSet<String>,
@@ -175,6 +199,9 @@ fn collect_unmanaged(
         }
         let name = entry.file_name();
         if NEVER_SCANNED.iter().any(|skipped| name == *skipped) {
+            continue;
+        }
+        if name.to_str().is_some_and(is_install_backup_name) {
             continue;
         }
         let entry_path = entry.path();
@@ -276,6 +303,44 @@ mod tests {
         let found = unmanaged_files(target, &managed(&[".opencode/tools/shipmates-gh.ts"]));
 
         assert!(found.is_empty(), "symlinks must be skipped, not reported");
+    }
+
+    #[test]
+    fn install_backups_are_not_reported_but_user_bak_files_are() {
+        assert!(is_install_backup_name("SKILL.md.bak-1700000000-4242-0"));
+        for not_ours in [
+            "notes.md.bak-mine",
+            "SKILL.md.bak-1700000000-4242",
+            "SKILL.md.bak-1700000000-4242-0-1",
+            "SKILL.md.bak-1700000000-4242-x",
+            ".bak-1-2-3",
+            "SKILL.md",
+        ] {
+            assert!(!is_install_backup_name(not_ours), "{not_ours}");
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path();
+        crate::installer::atomic_write(&target.join(".claude/skills/polish/SKILL.md"), "a")
+            .unwrap();
+        crate::installer::atomic_write(
+            &target.join(".claude/skills/polish/SKILL.md.bak-1700000000-4242-0"),
+            "old",
+        )
+        .unwrap();
+        crate::installer::atomic_write(
+            &target.join(".claude/skills/polish/notes.md.bak-mine"),
+            "u",
+        )
+        .unwrap();
+
+        let found = unmanaged_files(target, &managed(&[".claude/skills/polish/SKILL.md"]));
+
+        assert_eq!(
+            found,
+            vec![target.join(".claude/skills/polish/notes.md.bak-mine")],
+            "only Shipmates' own `.bak-<secs>-<pid>-<n>` siblings are hidden"
+        );
     }
 
     #[test]

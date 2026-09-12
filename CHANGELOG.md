@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.20] - 2026-09-12
+
+### Fixed
+
+- `install` reclaims a pre-prefix skill left by an older release when the file itself
+  declares the matching identity, instead of requiring a receipt claim and leaving a
+  duplicate slash command beside the `shipmates-` prefixed one. A third-party skill that
+  merely sits at one of those names still fails closed and is left untouched (#403).
+- `install` no longer refuses silently when the prefixed path already holds a foreign
+  file; it reports the conflict and leaves both files in place (#403).
+- `install --force` stopped warning that it left a file untouched when it went on to
+  overwrite and claim it. The unmanaged scan now runs after the write loop and is keyed
+  on what the run actually published (#404).
+- `install` no longer reports its own `.bak-<secs>-<pid>-<n>` backups as unmanaged
+  files. A user file such as `notes.md.bak-mine` is still reported (#404).
+- `cursor` installs skills to its first-party `.cursor/skills/` tree, which is the only
+  one the slash-command picker reads, so `/ship-issue` and friends now appear in Cursor.
+  One copy, never two: shipping to `.agents/skills/` as well would list every command
+  twice and pay for the payload twice. The shared tree is unchanged for `codex`,
+  `antigravity` and `github-copilot` (#405).
+- `doctor` gained a Hygiene check and no longer reports "All shipshape" over leftover
+  install backups or emptied pre-prefix skill directories (#406).
+
+### Added
+
+- `doctor --fix` prunes recognised install backups and bak-only pre-prefix husk
+  directories. It never touches a backup whose live file is missing or drifted, because
+  that backup is the interrupted-install undo, and never touches a directory holding any
+  user file or a skill outside the rename table (#406).
+
 ## [0.1.19] - 2026-09-01
 
 ### Fixed

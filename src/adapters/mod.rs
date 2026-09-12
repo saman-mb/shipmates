@@ -122,3 +122,52 @@ pub fn targets() -> [&'static str; 7] {
         "windsurf",
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn command(name: &str) -> CanonicalCommand {
+        CanonicalCommand {
+            name: name.to_string(),
+            description: "desc".to_string(),
+            argument_hint: String::new(),
+            allowed_tools: String::new(),
+            disable_model_invocation: true,
+            arguments: vec![],
+            narrative: "reproduce first".to_string(),
+            invocation: String::new(),
+            board: String::new(),
+            source: std::path::PathBuf::from(""),
+        }
+    }
+
+    /// Cursor ships to its own `.cursor/skills/` tree (#405) and NOT to the
+    /// shared one: a mirrored payload would list every command twice in Cursor's
+    /// picker (#403). The shared-tree harnesses must be untouched by that move —
+    /// same `.agents/skills/` paths, same bytes as cursor renders.
+    #[test]
+    fn cursor_owns_its_tree_alone_and_shared_harnesses_keep_theirs() {
+        let commands = [command("ship-issue")];
+        let cursor = select("cursor").unwrap().build(&[], &commands).unwrap();
+        let cursor_skill = &cursor["harnesses/cursor/.cursor/skills/ship-issue/SKILL.md"];
+        assert!(
+            !cursor.keys().any(|path| path.contains("/.agents/")),
+            "cursor must not double-ship into the shared tree"
+        );
+
+        for target in ["codex", "github-copilot", "antigravity"] {
+            let adapter = select(target).unwrap();
+            let files = adapter.build(&[], &commands).unwrap();
+            assert!(
+                !files.keys().any(|path| path.contains("/.cursor/")),
+                "{target} must not emit into cursor's dotdir"
+            );
+            let shared = format!("{}/.agents/skills/ship-issue/SKILL.md", adapter.container());
+            assert_eq!(
+                &files[&shared], cursor_skill,
+                "{target} drifted from the neutral skill rendering"
+            );
+        }
+    }
+}

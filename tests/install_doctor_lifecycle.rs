@@ -1110,3 +1110,113 @@ fn update_without_receipt_fails_closed() {
         "should tell the user to install first: {text}"
     );
 }
+
+/// #405: cursor's skills moved from the shared `.agents/skills/` tree to its
+/// own `.cursor/skills/` — the only location a global Cursor install is
+/// observed to load. Exactly one copy ships (two would double every entry in
+/// Cursor's picker, the #403 defect), receipts claim the new tree, and doctor
+/// treats it as owned.
+#[test]
+fn cursor_installs_into_its_own_skill_tree_and_doctor_owns_it() {
+    let dir = tempdir().unwrap();
+    let output = run(dir.path(), &["install", "--harness", "cursor"]);
+    assert!(
+        output.status.success(),
+        "cursor install failed: {}",
+        output_text(&output)
+    );
+
+    let native = dir.path().join(".cursor/skills/ship-issue/SKILL.md");
+    assert!(native.is_file(), "cursor skill not installed");
+    assert!(
+        !dir.path()
+            .join(".agents/skills/ship-issue/SKILL.md")
+            .exists(),
+        "a second copy in the shared tree would double the picker (#403)"
+    );
+
+    let bytes = fs::read_to_string(dir.path().join(".shipmates/receipts/cursor.json")).unwrap();
+    let receipt: Value = serde_json::from_str(&bytes).unwrap();
+    assert!(
+        receipt_files(&receipt)
+            .iter()
+            .any(|file| file["path"] == ".cursor/skills/ship-issue/SKILL.md"),
+        "receipt must claim the native cursor tree"
+    );
+
+    fs::write(&native, "---\nname: ship-issue\n---\nlocal drift marker\n").unwrap();
+    let drifted = run(dir.path(), &["doctor", "--harness", "cursor"]);
+    assert!(
+        String::from_utf8_lossy(&drifted.stdout).contains(".cursor/skills/ship-issue/SKILL.md"),
+        "doctor must report drift in the cursor tree: {}",
+        output_text(&drifted)
+    );
+
+    let fixed = run(dir.path(), &["doctor", "--harness", "cursor", "--fix"]);
+    assert!(
+        fixed.status.success(),
+        "doctor --fix failed: {}",
+        output_text(&fixed)
+    );
+    assert!(
+        !fs::read_to_string(&native)
+            .unwrap()
+            .contains("local drift marker"),
+        "doctor --fix must restore an owned cursor skill: {}",
+        output_text(&fixed)
+    );
+}
+
+/// Upgrading a pre-#405 cursor install: its receipt claims `.agents/skills/`
+/// paths that are no longer in the payload. Install must still load that
+/// receipt (fail-closed validation would strand the user), write the payload to
+/// `.cursor/skills/`, and clear the orphans rather than leaving two sets of
+/// slash commands behind.
+#[test]
+fn cursor_upgrade_from_a_shared_tree_receipt_leaves_no_orphans() {
+    let dir = tempdir().unwrap();
+    let legacy = dir.path().join(".agents/skills/ship-issue/SKILL.md");
+    fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+    let body = "---\nname: ship-issue\n---\npre-405 body\n";
+    fs::write(&legacy, body).unwrap();
+    let receipt = serde_json::json!({
+        "schema_version": 1,
+        "version": "0.1.18",
+        "harness": "cursor",
+        "layout": "skills",
+        "roots": [".agents"],
+        "files": [{
+            "path": ".agents/skills/ship-issue/SKILL.md",
+            "sha256": shipmates::digest::compute_sha256(&legacy).unwrap(),
+        }],
+    });
+    let receipt_file = dir.path().join(".shipmates/receipts/cursor.json");
+    fs::create_dir_all(receipt_file.parent().unwrap()).unwrap();
+    fs::write(&receipt_file, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+
+    let output = run(dir.path(), &["install", "--harness", "cursor"]);
+    assert!(
+        output.status.success(),
+        "cursor upgrade failed: {}",
+        output_text(&output)
+    );
+
+    assert!(
+        dir.path()
+            .join(".cursor/skills/ship-issue/SKILL.md")
+            .is_file(),
+        "upgrade must write the payload to the new tree"
+    );
+    assert!(
+        !legacy.exists(),
+        "the orphaned shared-tree copy must not survive the upgrade"
+    );
+    let bytes = fs::read_to_string(&receipt_file).unwrap();
+    let refreshed: Value = serde_json::from_str(&bytes).unwrap();
+    assert!(
+        !receipt_files(&refreshed)
+            .iter()
+            .any(|file| file["path"].as_str().unwrap().starts_with(".agents/")),
+        "the refreshed receipt must not keep claiming `.agents` paths"
+    );
+}

@@ -394,12 +394,19 @@ fn validate_harness(harness: &str) -> Result<()> {
     Ok(())
 }
 
-fn allowed_roots(harness: &str) -> &'static [&'static str] {
+/// Every root a harness may own, current and legacy. The single source of truth
+/// for an install's footprint: receipt validation bounds ownership with it, and
+/// `doctor` bounds its hygiene sweep with it, so a tree the harness has stopped
+/// writing to is still swept for the litter it left there.
+pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
     match harness {
         "claude-code" => &[".claude"],
         "opencode" => &[".opencode", ".shipmates"],
         "antigravity" => &[".agents", ".shipmates"],
         "codex" => &[".agents", ".codex", ".shipmates"],
+        // `.agents` is legacy-only for cursor: pre-#405 installs shipped skills
+        // to the shared tree, and their receipts must still load so install can
+        // clean the orphans up. Nothing writes there any more.
         "cursor" => &[".agents", ".cursor"],
         "github-copilot" => &[".agents", ".github"],
         "windsurf" => &[".windsurf", ".shipmates"],
@@ -499,6 +506,12 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && root == ".cursor"
                     && parts[1] == "rules"
                     && parts[2].ends_with(".mdc"))
+                // Cursor's skills live in its own tree, not the shared
+                // `.agents/skills/` one: only `.cursor/skills/` is observed to
+                // load (#405), and shipping both would double the picker (#403).
+                || is_skill_tree(".cursor")
+                // Still accepted on the read side so a pre-#405 receipt loads
+                // and its `.agents` orphans can be removed on upgrade.
                 || is_skill_tree(".agents")
         }
         "windsurf" => {
@@ -612,6 +625,49 @@ mod tests {
     }
 
     const HASH: &str = "a000000000000000000000000000000000000000000000000000000000000000";
+
+    #[test]
+    fn cursor_receipt_owns_its_own_skill_tree_and_still_loads_legacy_agents_paths() {
+        // #405: the cursor payload now lands in `.cursor/skills/` only.
+        assert!(allowed_receipt_path(
+            "cursor",
+            ".cursor/skills/ship-issue/SKILL.md"
+        ));
+        // A pre-#405 receipt still validates, so install can load it and clear
+        // the orphaned shared-tree copies instead of failing closed.
+        assert!(allowed_receipt_path(
+            "cursor",
+            ".agents/skills/ship-issue/SKILL.md"
+        ));
+        // The widening is cursor-only and skills-only: no other harness may
+        // claim a `.cursor` path, and cursor still can't claim arbitrary ones.
+        for harness in ["codex", "github-copilot", "antigravity", "claude-code"] {
+            assert!(!allowed_receipt_path(
+                harness,
+                ".cursor/skills/ship-issue/SKILL.md"
+            ));
+        }
+        assert!(!allowed_receipt_path("cursor", ".cursor/mcp.json"));
+        assert!(!allowed_receipt_path("cursor", ".cursor/skills/evil.sh"));
+    }
+
+    #[test]
+    fn cursor_receipt_round_trips_a_native_skill_path() {
+        let dir = tempdir().unwrap();
+        let repository = ReceiptRepository::new(dir.path());
+        let expected = InstallReceipt::new(
+            "0.1.3",
+            "cursor",
+            LAYOUT_SKILLS,
+            vec![".cursor".into()],
+            vec![file(".cursor/skills/a/SKILL.md", HASH)],
+        )
+        .unwrap();
+
+        repository.save(&expected).unwrap();
+
+        assert_eq!(repository.load("cursor").unwrap(), Some(expected));
+    }
 
     #[test]
     fn save_loads_atomic_receipt_and_preserves_schema() {
