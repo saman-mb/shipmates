@@ -30,7 +30,7 @@ fn test_claude_code_payload_digest() {
     let hashed = digest::hash(content);
     assert_eq!(
         hashed,
-        "491b209dc45c12fd8b89e113ba775ca5c6c03b0b977c868427cdbf22e0705209"
+        "3b29fbd767a48839b5e6c0ef9778960372a6af89fc1d6b4f2daa929fc2846b3a"
     );
 }
 
@@ -55,7 +55,7 @@ fn test_opencode_payload_digest() {
     let hashed = digest::hash(content);
     assert_eq!(
         hashed,
-        "d7f5ef7b388b4472f7005bd7788b93ff8a637cc2e889528f8a505af60d3fbe5f"
+        "2987e52d7d1aa16f2496230b9584f2035baecab47dc7a0bc63d4958bce4d83ec"
     );
 }
 

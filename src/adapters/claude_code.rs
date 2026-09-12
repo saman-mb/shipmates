@@ -1,6 +1,6 @@
 use super::Adapter;
 use super::render::{
-    CLAUDE_CODE, CrewFormat, emit_crew_files, emit_tool_files, render_command_body,
+    CLAUDE_CODE, CrewFormat, emit_crew_files, emit_tool_files, render_command_body, yaml_scalar,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
@@ -75,7 +75,10 @@ fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Resu
     let mut content = String::new();
     content.push_str("---\n");
     content.push_str(&format!("name: {}\n", role.name));
-    content.push_str(&format!("description: {}\n", role.description));
+    content.push_str(&format!(
+        "description: {}\n",
+        yaml_scalar(&role.description)
+    ));
     if !tools.is_empty() {
         content.push_str(&format!("tools: {}\n", tools.join(", ")));
     }
@@ -126,12 +129,21 @@ impl Adapter for ClaudeCodeAdapter {
             let mut content = String::new();
             content.push_str("---\n");
             content.push_str(&format!("name: {}\n", command.name));
-            content.push_str(&format!("description: {}\n", command.description));
+            content.push_str(&format!(
+                "description: {}\n",
+                yaml_scalar(&command.description)
+            ));
             if !command.argument_hint.is_empty() {
-                content.push_str(&format!("argument-hint: {}\n", command.argument_hint));
+                content.push_str(&format!(
+                    "argument-hint: {}\n",
+                    yaml_scalar(&command.argument_hint)
+                ));
             }
             if !command.allowed_tools.is_empty() {
-                content.push_str(&format!("allowed-tools: {}\n", command.allowed_tools));
+                content.push_str(&format!(
+                    "allowed-tools: {}\n",
+                    yaml_scalar(&command.allowed_tools)
+                ));
             }
             if command.disable_model_invocation {
                 content.push_str("disable-model-invocation: true\n");
@@ -180,6 +192,7 @@ mod tests {
         let content = files
             .get("harnesses/claude-code/.claude/agents/architect.md")
             .unwrap();
+        assert!(content.contains("description: \"desc\"\n"));
         assert!(content.contains("tools: Read, Grep, Glob, Bash\n"));
         assert!(!content.contains("read,"));
     }
@@ -270,7 +283,9 @@ mod tests {
         let content = files
             .get("harnesses/claude-code/.claude/skills/migrate/SKILL.md")
             .unwrap();
-        assert!(content.contains("argument-hint: <arg>\n"));
+        assert!(content.contains("description: \"desc\"\n"));
+        assert!(content.contains("argument-hint: \"<arg>\"\n"));
+        assert!(content.contains("allowed-tools: \"Bash\"\n"));
         assert!(content.contains("disable-model-invocation: true\n"));
         assert!(content.contains(".claude/agents/*.md"));
         assert!(content.contains("$ARGUMENTS"));
