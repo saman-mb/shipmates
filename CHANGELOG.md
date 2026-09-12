@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-12
+
+### Changed
+
+- **Every command now carries the `ship-` prefix, and the catalogue is uniform.**
+  `/ship-issue` and `/ship-epic` are joined by `/ship-fix-bug`, `/ship-harden`,
+  `/ship-migrate`, `/ship-document`, `/ship-release`, `/ship-polish`,
+  `/ship-spike`, `/ship-onboard`, `/ship-refactor`, `/ship-plan-epics`,
+  `/ship-pr-review`, `/ship-report-bug`, and `/ship-consolidate-issues`.
+  The four workflow names that previously had no prefix (`plan-epics`,
+  `pr-review`, `report-bug`, `consolidate-issues`) and the nine that carried
+  `shipmates-` all move. An install migrates existing trees automatically — a
+  bare `polish` and a `shipmates-polish` both become `ship-polish`, with the
+  old bytes backed up and receipts rewritten — and every renamed page on the
+  site keeps a redirect. Tools keep their `shipmates-` names.
+
 ## [0.1.20] - 2026-09-12
 
 ### Fixed

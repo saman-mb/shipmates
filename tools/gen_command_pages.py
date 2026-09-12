@@ -50,34 +50,49 @@ from command_page_copy import COMMAND_PAGE_COPY, CommandPageCopy, ProcessStep
 SLUGS = (
     "ship-issue",
     "ship-epic",
-    "shipmates-fix-bug",
-    "report-bug",
-    "plan-epics",
-    "consolidate-issues",
-    "shipmates-harden",
-    "shipmates-spike",
-    "shipmates-migrate",
-    "shipmates-document",
-    "shipmates-release",
-    "shipmates-polish",
-    "pr-review",
-    "shipmates-onboard",
-    "shipmates-refactor",
+    "ship-fix-bug",
+    "ship-report-bug",
+    "ship-plan-epics",
+    "ship-consolidate-issues",
+    "ship-harden",
+    "ship-spike",
+    "ship-migrate",
+    "ship-document",
+    "ship-release",
+    "ship-polish",
+    "ship-pr-review",
+    "ship-onboard",
+    "ship-refactor",
 )
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
 # as static HTML meta-refresh stubs with canonical links; excluded from sitemap.
 REDIRECTS = {
-    "review": "pr-review",
-    "document": "shipmates-document",
-    "fix-bug": "shipmates-fix-bug",
-    "harden": "shipmates-harden",
-    "migrate": "shipmates-migrate",
-    "onboard": "shipmates-onboard",
-    "polish": "shipmates-polish",
-    "refactor": "shipmates-refactor",
-    "release": "shipmates-release",
-    "spike": "shipmates-spike",
+    "review": "ship-pr-review",
+    "document": "ship-document",
+    "fix-bug": "ship-fix-bug",
+    "harden": "ship-harden",
+    "migrate": "ship-migrate",
+    "onboard": "ship-onboard",
+    "polish": "ship-polish",
+    "refactor": "ship-refactor",
+    "release": "ship-release",
+    "spike": "ship-spike",
+    # The intermediate `shipmates-` generation.
+    "shipmates-document": "ship-document",
+    "shipmates-fix-bug": "ship-fix-bug",
+    "shipmates-harden": "ship-harden",
+    "shipmates-migrate": "ship-migrate",
+    "shipmates-onboard": "ship-onboard",
+    "shipmates-polish": "ship-polish",
+    "shipmates-refactor": "ship-refactor",
+    "shipmates-release": "ship-release",
+    "shipmates-spike": "ship-spike",
+    # Full workflow names that gained the prefix.
+    "plan-epics": "ship-plan-epics",
+    "pr-review": "ship-pr-review",
+    "report-bug": "ship-report-bug",
+    "consolidate-issues": "ship-consolidate-issues",
 }
 
 # Old tool page slugs → new. Same meta-refresh stubs as command REDIRECTS.
@@ -794,9 +809,9 @@ AGENT_COPY = {
         ),
         crew_fit=CrewFit(
             paragraphs=(
-                "On `/shipmates-fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
+                "On `/ship-fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
                 "minimal fix and its regression check; the `sdet` then proves the fix. On "
-                "`/shipmates-release` it gates deploy safety. Build-time questions — pipelines, caching, "
+                "`/ship-release` it gates deploy safety. Build-time questions — pipelines, caching, "
                 "pinning — belong to the `devops-engineer`, and the SRE defers there "
                 "explicitly.",
             ),
@@ -1297,8 +1312,8 @@ AGENT_COPY = {
         crew_fit=CrewFit(
             paragraphs=(
                 "The data scientist is the crew's specialist for data-and-model deliverables — "
-                "designing experiments in `/shipmates-spike`, reviewing analysis and model changes in "
-                "`/pr-review`. Findings hand to the `senior-engineer` as specific fixes, and "
+                "designing experiments in `/ship-spike`, reviewing analysis and model changes in "
+                "`/ship-pr-review`. Findings hand to the `senior-engineer` as specific fixes, and "
                 "anything outside data work routes back to the rest of the crew.",
             ),
             related=("senior-engineer", "sdet", "product-manager"),
@@ -1616,7 +1631,7 @@ TOOL_COPY = {
             "edit/comment/close, parent/child **sub-issue** attach/list/detach, PR view/diff/create/checks/"
             "poll/comment/review/merge/list, labels, "
             "releases, and failed workflow logs — the same operations repeated across `/ship-issue`, "
-            "`/ship-epic`, `/pr-review`, `/consolidate-issues`, `/plan-epics`, and `/shipmates-release`.",
+            "`/ship-epic`, `/ship-pr-review`, `/ship-consolidate-issues`, `/ship-plan-epics`, and `/ship-release`.",
             "It is a *tool*, not a command. The crew reach for it when orchestrating GitHub instead of "
             "hand-rolling `gh` bash. Requires the GitHub CLI installed and authenticated (`gh auth login`); "
             "Python side is stdlib-only.",

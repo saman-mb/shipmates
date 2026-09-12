@@ -139,12 +139,28 @@ const INSTALL_TREES: &[&str] = &["skills", "commands", "tools", "agents"];
 /// from `installer::rename`'s public table. The same artifact under the name it
 /// used to have, so a husk left at the old name is recognised as ours.
 fn pre_prefix_aliases(name: &str) -> Vec<String> {
-    rename::COMMAND_RENAMES
+    let rows: Vec<(&str, &str)> = rename::COMMAND_RENAMES
         .iter()
         .chain(rename::TOOL_RENAMES.iter())
-        .filter(|(_, new)| *new == name)
+        .copied()
+        .collect();
+    // A superseded name itself still has older generations behind it: a live
+    // `shipmates-harden` on disk is preceded by `harden`, and the husk left in
+    // an older tree carries the bare verb.
+    let current = rows
+        .iter()
+        .find(|(old, _)| *old == name)
+        .map(|(_, new)| *new)
+        .unwrap_or(name);
+    let mut aliases: Vec<String> = rows
+        .iter()
+        .filter(|(_, new)| *new == current)
         .map(|(old, _)| (*old).to_string())
-        .collect()
+        .collect();
+    if let Some(index) = aliases.iter().position(|alias| alias == name) {
+        aliases.truncate(index);
+    }
+    aliases
 }
 
 /// The install identity a payload path belongs to — `shipmates-harden` for
@@ -583,7 +599,8 @@ fn diagnose_built(
         });
     }
 
-    // 2b. Identity — leftover pre-prefix names (`polish` beside `shipmates-polish`)
+    // 2b. Identity — leftover superseded names (`polish` or `shipmates-polish`
+    // beside `ship-polish`)
     // that a Shipmates receipt still claims. `--fix` runs the rename sweep.
     let mut rename_payload = built.clone();
     for (key, content) in adapter.build_tools(tools) {
@@ -609,7 +626,7 @@ fn diagnose_built(
         checks.push(Check {
             name: "Identity".into(),
             severity: Severity::Ok,
-            detail: "no leftover pre-prefix skill or tool names".into(),
+            detail: "no leftover superseded skill or tool names".into(),
             fixable: false,
         });
     } else {
@@ -621,7 +638,7 @@ fn diagnose_built(
             name: "Identity".into(),
             severity: Severity::Problem,
             detail: format!(
-                "{} leftover pre-prefix name(s) still installed: {}",
+                "{} leftover superseded name(s) still installed: {}",
                 owned_renames.len(),
                 names.join(", ")
             ),
@@ -637,7 +654,7 @@ fn diagnose_built(
             name: "Foreign names".into(),
             severity: Severity::Ok,
             detail: format!(
-                "{} of your own file(s) share a pre-prefix name and were left untouched: {}",
+                "{} of your own file(s) share a superseded name and were left untouched: {}",
                 unmanaged_renames.len(),
                 names.join(", ")
             ),
@@ -1047,13 +1064,13 @@ fn diagnose_built(
     Ok(Report { checks })
 }
 
-/// Repair an install: identity-rename leftover pre-prefix names, migrate
+/// Repair an install: identity-rename leftover superseded names, migrate
 /// superseded commands, then restore any missing or drifted crew/skill files,
 /// backing up everything it touches. Re-diagnoses and returns the fresh report.
 ///
 /// With `no_migrate`, the identity-rename and legacy-command sweeps are skipped
 /// — parity with `install --no-migrate`: missing/drifted files are still
-/// restored, but a superseded `commands/<name>.md` or pre-prefix name is left
+/// restored, but a superseded `commands/<name>.md` or superseded command name is left
 /// in place.
 pub fn fix(
     target_dir: &Path,
@@ -1097,7 +1114,7 @@ pub fn fix(
         rename_payload.insert(key.clone(), content.clone());
     }
 
-    // 0. Identity-rename leftover pre-prefix names before layout migrate,
+    // 0. Identity-rename leftover superseded names before layout migrate,
     // unless the caller opted out with `--no-migrate`. Reload this harness's
     // receipt afterwards so repair sees the new paths.
     if !no_migrate {

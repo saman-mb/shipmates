@@ -108,7 +108,7 @@ These mirror what shipmates commands use today.
 {"op": "issue.view", "number": 305, "repo": "saman-mb/shipmates"}
 ```
 
-**Create issue with body file (report-bug / file upstream):**
+**Create issue with body file (ship-report-bug / file upstream):**
 
 ```json
 {
@@ -120,7 +120,7 @@ These mirror what shipmates commands use today.
 }
 ```
 
-**Attach a story to its parent epic (plan-epics Stage 3):**
+**Attach a story to its parent epic (ship-plan-epics Stage 3):**
 
 ```json
 {"op": "issue.sub_issue_add", "number": 305, "sub_issue_number": 306}
@@ -132,7 +132,7 @@ re-run on an already-attached story returns `{"attached": false, "reason":
 connection (`{nodes, totalCount}`); the op unwraps `nodes` into `subIssues` (a
 list of children) plus `numbers`.
 
-**Read the parent's sub-issue graph (plan-epics Stage 4, ship-epic Stage 0):**
+**Read the parent's sub-issue graph (ship-plan-epics Stage 4, ship-epic Stage 0):**
 
 ```json
 {"op": "issue.sub_issue_list", "number": 305}

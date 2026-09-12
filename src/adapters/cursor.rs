@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn test_cursor_adapter_emits_skills_only() {
         let command = CanonicalCommand {
-            name: "shipmates-fix-bug".to_string(),
+            name: "ship-fix-bug".to_string(),
             description: "desc".to_string(),
             argument_hint: String::new(),
             allowed_tools: String::new(),
@@ -91,7 +91,7 @@ mod tests {
         // `.agents/skills/` too would double every entry in the picker (#403).
         assert_eq!(
             files.keys().collect::<Vec<_>>(),
-            vec!["harnesses/cursor/.cursor/skills/shipmates-fix-bug/SKILL.md"]
+            vec!["harnesses/cursor/.cursor/skills/ship-fix-bug/SKILL.md"]
         );
     }
 

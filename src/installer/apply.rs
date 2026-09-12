@@ -525,7 +525,7 @@ mod tests {
             "two",
             &[
                 (".claude/agents/a.md", "a"),
-                (".claude/skills/shipmates-polish/SKILL.md", "new polish"),
+                (".claude/skills/ship-polish/SKILL.md", "new polish"),
             ],
         );
         let mut preserved = BTreeSet::new();
@@ -538,7 +538,7 @@ mod tests {
             "preserved_paths must keep the file on disk, not only the receipt claim"
         );
         assert_eq!(
-            fs::read_to_string(dir.path().join(".claude/skills/shipmates-polish/SKILL.md"))
+            fs::read_to_string(dir.path().join(".claude/skills/ship-polish/SKILL.md"))
                 .unwrap(),
             "new polish"
         );
@@ -548,7 +548,7 @@ mod tests {
         assert!(receipt.file(".claude/skills/polish/SKILL.md").is_some());
         assert!(
             receipt
-                .file(".claude/skills/shipmates-polish/SKILL.md")
+                .file(".claude/skills/ship-polish/SKILL.md")
                 .is_some()
         );
     }

@@ -92,7 +92,7 @@ swapped at will.
 | Term | Register | What it names |
 |---|---|---|
 | **skill** | technical | The artifact on disk — `skills/<name>/SKILL.md`, in the [Agent Skills](https://agentskills.io) open-standard shape. |
-| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/shipmates-fix-bug`. The thirteen of them are **the commands**. |
+| **command** | brand | A whole workflow the captain issues to the crew — `/ship-issue`, `/ship-fix-bug`. The thirteen of them are **the commands**. |
 | **order** | brand | What a single subagent is told to do *within* a command — one specialist's instruction. |
 
 The metaphor holds the three together: the captain issues a **command** to the crew, and carrying
@@ -105,7 +105,7 @@ artifact, one directory per skill with a `SKILL.md` inside:
 
 ```
 .claude/skills/ship-issue/SKILL.md
-.claude/skills/shipmates-fix-bug/SKILL.md
+.claude/skills/ship-fix-bug/SKILL.md
 …
 ```
 
@@ -356,15 +356,15 @@ Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 
 | Rule | Detail |
 |---|---|
-| Format | Imperative verb phrase, `lowercase-hyphenated`. Invoked with a leading slash: `/ship-issue`, `/shipmates-fix-bug`, `/plan-epics`. |
+| Format | Imperative verb phrase, `lowercase-hyphenated`. Invoked with a leading slash: `/ship-issue`, `/ship-fix-bug`, `/ship-plan-epics`. |
 | Filename | `skills/<name>/SKILL.md`, where `<name>` exactly equals the frontmatter `name` and the command you type (`/<name>`). |
-| Verb first | The name is a command you give the crew. `/shipmates-harden`, `/shipmates-migrate`, `/shipmates-document`, `/shipmates-release`, `/shipmates-polish`, `/shipmates-spike` — every one starts with the action. |
-| Object second, if needed | `/ship-issue`, `/shipmates-fix-bug`, `/plan-epics`. Singular or plural per what the command actually takes. |
+| Verb first | The name is a command you give the crew. `/ship-harden`, `/ship-migrate`, `/ship-document`, `/ship-release`, `/ship-polish`, `/ship-spike` — every one starts with the action. |
+| Object second, if needed | `/ship-issue`, `/ship-fix-bug`, `/ship-plan-epics`. Singular or plural per what the command actually takes. |
 | No nouns-as-names | Not `/quality-gate`, not `/pr-flow`. If you can't phrase it as an instruction, it isn't a command. |
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
-The fifteen that exist: `/ship-issue` · `/ship-epic` · `/shipmates-fix-bug` · `/report-bug` · `/plan-epics` · `/consolidate-issues` · `/shipmates-harden` · `/shipmates-spike` ·
-`/shipmates-migrate` · `/shipmates-document` · `/shipmates-release` · `/shipmates-polish` · `/pr-review` · `/shipmates-onboard` · `/shipmates-refactor`.
+The fifteen that exist: `/ship-issue` · `/ship-epic` · `/ship-fix-bug` · `/ship-report-bug` · `/ship-plan-epics` · `/ship-consolidate-issues` · `/ship-harden` · `/ship-spike` ·
+`/ship-migrate` · `/ship-document` · `/ship-release` · `/ship-polish` · `/ship-pr-review` · `/ship-onboard` · `/ship-refactor`.
 
 ---
 

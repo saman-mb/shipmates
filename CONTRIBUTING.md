@@ -58,7 +58,7 @@ are correct; which one belongs in a given sentence is set by the
 6. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
    repo works on its own branch in its own worktree and proposes the result as a pull request; the
    caller's checkout is left as they left it. Writing straight into the working tree is an opt-in
-   (`MODE=edit-in-place`), never a default. `/shipmates-release` is the one shipped exception: the release
+   (`MODE=edit-in-place`), never a default. `/ship-release` is the one shipped exception: the release
    commit has to land on the branch being tagged, so it commits, pushes and tags straight in the
    caller's checkout instead of an unmerged side branch — not because a worktree defeats tagging (it
    doesn't; a worktree shares the object database and the remote, so `git tag` behaves the same
@@ -70,15 +70,15 @@ are correct; which one belongs in a given sentence is set by the
    so it's not in the class. Merging (`MERGE_MODE=auto`), publishing (`PUBLISH_MODE=auto`),
    posting on a third party's pull request (`MODE=post`), and creating issues or labels on someone
    else's tracker all pass it — none undoes with one command in the caller's own repo — so each stays
-   opt-in, off unless the caller sets it, with one known deviation: `/plan-epics` files issues and
+   opt-in, off unless the caller sets it, with one known deviation: `/ship-plan-epics` files issues and
    labels by default today ([#111](https://github.com/saman-mb/shipmates/issues/111), not yet fixed).
    Be a good guest on other people's repos: a branch is a suggestion, a merge is a decision.
    **Which ref to branch from follows the same split: cut from wherever the stage that found the
-   work read from.** `/shipmates-harden` locates findings in your checkout, `/shipmates-document` describes what you
-   built, `/shipmates-onboard` surveys your files, `/shipmates-polish` critiques your render, and `/shipmates-spike`'s ADR
+   work read from.** `/ship-harden` locates findings in your checkout, `/ship-document` describes what you
+   built, `/ship-onboard` surveys your files, `/ship-polish` critiques your render, and `/ship-spike`'s ADR
    belongs on top of the state that provoked it, so those cut from `HEAD`; `/ship-issue` and
-   `/shipmates-fix-bug` start from an issue and a bug must reproduce against the base branch, and
-   `/shipmates-migrate` and `/shipmates-refactor` transform the whole codebase and want a clean mergeable baseline,
+   `/ship-fix-bug` start from an issue and a bug must reproduce against the base branch, and
+   `/ship-migrate` and `/ship-refactor` transform the whole codebase and want a clean mergeable baseline,
    so those cut from `origin/<BASE_BRANCH>`. `HEAD` is not the working tree — uncommitted work
    isn't in it — so a command that cuts from `HEAD` must check `git status --porcelain` first
    and stop or warn, or it ends up surveying one thing and changing another.

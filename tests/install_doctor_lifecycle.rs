@@ -236,9 +236,9 @@ fn install_adopts_an_unowned_shipmates_file_at_a_payload_path() {
     // backs it up, writes the current payload, and claims it — rather than
     // leaving it stale forever behind an "unmanaged" warning.
     let dir = tempdir().unwrap();
-    let skill = dir.path().join(".claude/skills/report-bug/SKILL.md");
+    let skill = dir.path().join(".claude/skills/ship-report-bug/SKILL.md");
     fs::create_dir_all(skill.parent().unwrap()).unwrap();
-    fs::write(&skill, "---\nname: report-bug\n---\nstale 0.1.13 body\n").unwrap();
+    fs::write(&skill, "---\nname: ship-report-bug\n---\nstale 0.1.13 body\n").unwrap();
 
     install_ok(dir.path());
 
@@ -258,7 +258,7 @@ fn install_adopts_an_unowned_shipmates_file_at_a_payload_path() {
     assert!(
         receipt_files(&receipt)
             .iter()
-            .any(|file| file["path"] == ".claude/skills/report-bug/SKILL.md"),
+            .any(|file| file["path"] == ".claude/skills/ship-report-bug/SKILL.md"),
         "an adopted path must be claimed by the receipt"
     );
 }
@@ -791,19 +791,19 @@ fn doctor_fix_leaves_third_party_drift_untouched_and_names_force() {
 fn doctor_fix_adopts_an_unowned_shipmates_file_and_claims_it() {
     let dir = tempdir().unwrap();
     install_ok(dir.path());
-    let skill = dir.path().join(".claude/skills/report-bug/SKILL.md");
+    let skill = dir.path().join(".claude/skills/ship-report-bug/SKILL.md");
     let payload = fs::read_to_string(&skill).unwrap();
     let mut receipt = read_receipt(dir.path());
     receipt["files"]
         .as_array_mut()
         .unwrap()
-        .retain(|entry| entry["path"] != ".claude/skills/report-bug/SKILL.md");
+        .retain(|entry| entry["path"] != ".claude/skills/ship-report-bug/SKILL.md");
     fs::write(
         receipt_path(dir.path()),
         serde_json::to_vec_pretty(&receipt).unwrap(),
     )
     .unwrap();
-    fs::write(&skill, "---\nname: report-bug\n---\nstale body\n").unwrap();
+    fs::write(&skill, "---\nname: ship-report-bug\n---\nstale body\n").unwrap();
 
     let output = run(dir.path(), &["doctor", "--fix"]);
 
@@ -817,7 +817,7 @@ fn doctor_fix_adopts_an_unowned_shipmates_file_and_claims_it() {
     assert!(
         receipt_files(&refreshed)
             .iter()
-            .any(|file| file["path"] == ".claude/skills/report-bug/SKILL.md"),
+            .any(|file| file["path"] == ".claude/skills/ship-report-bug/SKILL.md"),
         "the adopted path must be claimed"
     );
 }
