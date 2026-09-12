@@ -47,17 +47,11 @@ fn doctrine_section(start: &str, end: &str) -> &'static str {
 }
 
 fn command_preamble() -> &'static str {
-    doctrine_section(
-        "<!-- command-preamble:start -->",
-        "<!-- command-preamble:end -->",
-    )
+    doctrine_section("<!-- command-preamble:start -->", "<!-- command-preamble:end -->")
 }
 
 fn acceptance_board() -> &'static str {
-    doctrine_section(
-        "<!-- acceptance-board:start -->",
-        "<!-- acceptance-board:end -->",
-    )
+    doctrine_section("<!-- acceptance-board:start -->", "<!-- acceptance-board:end -->")
 }
 
 fn epic_integration_board() -> &'static str {
@@ -68,10 +62,7 @@ fn epic_integration_board() -> &'static str {
 }
 
 fn subagent_preamble() -> &'static str {
-    doctrine_section(
-        "<!-- subagent-preamble:start -->",
-        "<!-- subagent-preamble:end -->",
-    )
+    doctrine_section("<!-- subagent-preamble:start -->", "<!-- subagent-preamble:end -->")
 }
 
 /// Resolve explicit repo-instructions tokens in neutral prose.
@@ -165,11 +156,8 @@ pub fn emit_steering_at(
     dialect: &Dialect,
     body: &str,
 ) -> HashMap<String, String> {
-    let rendered = render_instructions(
-        body,
-        dialect.instructions_primary,
-        dialect.instructions_fallback,
-    );
+    let rendered =
+        render_instructions(body, dialect.instructions_primary, dialect.instructions_fallback);
     let content = match target.format {
         SteeringFormat::PlainMarkdown => rendered,
         SteeringFormat::CursorMdc { description } => {
