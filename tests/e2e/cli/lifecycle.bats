@@ -33,6 +33,58 @@ load helpers
   [ "$(find "$SANDBOX/.claude/skills" -mindepth 2 -maxdepth 2 -name 'SKILL.md' ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 15 ]
 }
 
+@test "update without --with-tools keeps opencode native tools and their receipt claims" {
+  run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools all
+  assert_success
+  local before
+  before="$(find "$SANDBOX/.opencode/tools" -type f ! -name '*.bak-*' | wc -l | tr -d ' ')"
+  [ "$before" -ge 11 ]
+
+  run "$SHIPMATES_BIN" update --harness opencode --dir "$SANDBOX"
+  assert_success
+  refute_output --partial "Removed dropped file"
+  [ "$(find "$SANDBOX/.opencode/tools" -type f ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq "$before" ]
+  [ "$(find "$SANDBOX/.opencode/tools" -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
+  run jq -e '[.files[].path] | index(".opencode/tools/shipmates-termgif.ts") != null' "$SANDBOX/.shipmates/receipts/opencode.json"
+  assert_success
+}
+
+@test "update advances a drifted shared .agents skill across sibling receipts" {
+  local harness
+  for harness in codex antigravity github-copilot; do
+    run "$SHIPMATES_BIN" install --harness "$harness" --dir "$SANDBOX" --with-tools all
+    assert_success
+  done
+  stale_shared_skill "$SANDBOX" ship-issue
+
+  for harness in codex antigravity github-copilot; do
+    run "$SHIPMATES_BIN" update --harness "$harness" --dir "$SANDBOX"
+    assert_success
+    refute_output --partial "shared-managed file left untouched"
+    run jq -e '[.files[].path] | index(".agents/skills/ship-issue/SKILL.md") != null' "$SANDBOX/.shipmates/receipts/$harness.json"
+    assert_success
+  done
+
+  run "$SHIPMATES_BIN" install --harness codex --dir "$BATS_TEST_TMPDIR/fresh" --with-tools all
+  assert_success
+  cmp "$SANDBOX/.agents/skills/ship-issue/SKILL.md" "$BATS_TEST_TMPDIR/fresh/.agents/skills/ship-issue/SKILL.md"
+}
+
+@test "update --harness all refreshes every receipt non-interactively" {
+  install_claude_code "$SANDBOX"
+  run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools all
+  assert_success
+  local before
+  before="$(find "$SANDBOX/.opencode/tools" -type f ! -name '*.bak-*' | wc -l | tr -d ' ')"
+
+  run "$SHIPMATES_BIN" update --harness all --dir "$SANDBOX"
+  assert_success
+  assert_output --partial "claude-code"
+  assert_output --partial "opencode"
+  refute_output --partial "Removed dropped file"
+  [ "$(find "$SANDBOX/.opencode/tools" -type f ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq "$before" ]
+}
+
 @test "uninstall removes receipt-owned files and keeps the captain's own" {
   install_claude_code "$SANDBOX"
   printf 'mine\n' > "$SANDBOX/.claude/agents/notes.md"

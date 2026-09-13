@@ -54,15 +54,29 @@ fn managed_file(target: &Path) -> PathBuf {
 fn receipt_path(target: &Path) -> PathBuf {
     // One target-relative receipt per harness. This also permits shared roots
     // such as `.agents` to have independent ownership records.
-    target.join(".shipmates/receipts/claude-code.json")
+    receipt_path_for(target, HARNESS)
+}
+
+fn receipt_path_for(target: &Path, harness: &str) -> PathBuf {
+    target.join(format!(".shipmates/receipts/{harness}.json"))
 }
 
 fn read_receipt(target: &Path) -> Value {
-    let path = receipt_path(target);
+    read_receipt_for(target, HARNESS)
+}
+
+fn read_receipt_for(target: &Path, harness: &str) -> Value {
+    let path = receipt_path_for(target, harness);
     let bytes = fs::read_to_string(&path)
         .unwrap_or_else(|error| panic!("receipt missing at {}: {error}", path.display()));
     serde_json::from_str(&bytes)
         .unwrap_or_else(|error| panic!("receipt at {} is not JSON: {error}", path.display()))
+}
+
+fn receipt_claims(receipt: &Value, relative: &str) -> bool {
+    receipt_files(receipt)
+        .iter()
+        .any(|file| file["path"] == relative)
 }
 
 fn backup_files(target: &Path) -> Vec<PathBuf> {
@@ -93,6 +107,33 @@ fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
             visit(&path);
         }
     }
+}
+
+fn is_installer_sidecar(path: &Path) -> bool {
+    path.file_name()
+        .is_some_and(|name| name.to_string_lossy().contains(".bak-"))
+}
+
+/// Files under `dir` that are not installer sidecars — the live install.
+fn live_file_count(dir: &Path) -> usize {
+    let mut count = 0;
+    walk(dir, &mut |path| {
+        if !is_installer_sidecar(path) {
+            count += 1;
+        }
+    });
+    count
+}
+
+/// Installer sidecars (`*.bak-<secs>-<pid>-<n>`) under `dir`.
+fn sidecar_count(dir: &Path) -> usize {
+    let mut count = 0;
+    walk(dir, &mut |path| {
+        if is_installer_sidecar(path) {
+            count += 1;
+        }
+    });
+    count
 }
 
 fn receipt_files(receipt: &Value) -> &[Value] {
@@ -1050,6 +1091,87 @@ fn doctor_fix_still_repairs_drifted_installed_tool() {
 }
 
 #[test]
+fn doctor_reports_removed_tools_instead_of_a_clean_no_tools_state() {
+    // #412: a wipe removes the live tool files, leaves installer sidecars and
+    // rewrites the receipt without them. Doctor must read the sidecars as
+    // evidence of a removal, not announce a deliberate crew-only install.
+    let dir = tempdir().unwrap();
+    let first = run(
+        dir.path(),
+        &["install", "--harness", "opencode", "--with-tools", "all"],
+    );
+    assert!(
+        first.status.success(),
+        "opencode install failed: {}",
+        output_text(&first)
+    );
+    let wipe = run(
+        dir.path(),
+        &["install", "--harness", "opencode", "--with-tools", "none"],
+    );
+    assert!(
+        wipe.status.success(),
+        "wipe install failed: {}",
+        output_text(&wipe)
+    );
+    let tools_dir = dir.path().join(".opencode/tools");
+    assert_eq!(live_file_count(&tools_dir), 0, "the wipe must remove tools");
+    assert!(
+        sidecar_count(&tools_dir) > 0,
+        "the wipe must leave installer sidecars as evidence"
+    );
+
+    let output = run(dir.path(), &["doctor", "--harness", "opencode"]);
+    let text = output_text(&output);
+    assert!(
+        text.contains("shipmates-termgif"),
+        "doctor must name a removed tool: {text}"
+    );
+    assert!(
+        text.contains("--with-tools"),
+        "doctor must name the reinstall path: {text}"
+    );
+    assert!(
+        !text.contains("no optional tools installed"),
+        "a wipe must not read as a crew-only install: {text}"
+    );
+}
+
+#[test]
+fn doctor_reports_problem_when_a_claimed_tool_is_missing() {
+    let dir = tempdir().unwrap();
+    let first = run(
+        dir.path(),
+        &["install", "--harness", "opencode", "--with-tools", "all"],
+    );
+    assert!(
+        first.status.success(),
+        "opencode install failed: {}",
+        output_text(&first)
+    );
+    let missing = dir.path().join(".opencode/tools/shipmates-termgif.ts");
+    assert!(missing.is_file(), "tool file should be installed");
+    fs::remove_file(&missing).unwrap();
+
+    let output = run(dir.path(), &["doctor", "--harness", "opencode"]);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "a receipt-claimed file that is gone is a problem: {}",
+        output_text(&output)
+    );
+    let text = output_text(&output);
+    assert!(
+        text.contains("shipmates-termgif"),
+        "doctor must name the affected tool: {text}"
+    );
+    assert!(
+        text.contains("missing"),
+        "doctor must report the missing file: {text}"
+    );
+}
+
+#[test]
 fn update_refreshes_drifted_payload_and_preserves_tools() {
     let dir = tempdir().unwrap();
     let first = run(
@@ -1091,6 +1213,152 @@ fn update_refreshes_drifted_payload_and_preserves_tools() {
         }),
         "receipt should still claim the termgif tool after update"
     );
+}
+
+#[test]
+fn update_keeps_opencode_native_tools() {
+    // #412: opencode stores each tool as native `.opencode/tools/*.ts` beside
+    // its Python assets. A bare update used to match tools by path component
+    // only, read the receipt as tool-less, and remove every live file.
+    let dir = tempdir().unwrap();
+    let first = run(
+        dir.path(),
+        &["install", "--harness", "opencode", "--with-tools", "all"],
+    );
+    assert!(
+        first.status.success(),
+        "opencode install failed: {}",
+        output_text(&first)
+    );
+    let tools_dir = dir.path().join(".opencode/tools");
+    let before = live_file_count(&tools_dir);
+    assert!(before >= 11, "all-tools install must write the native tools");
+
+    let receipt = read_receipt_for(dir.path(), "opencode");
+    let claimed: Vec<String> = receipt_files(&receipt)
+        .iter()
+        .filter_map(|file| file["path"].as_str())
+        .filter(|path| path.contains("/tools/"))
+        .map(str::to_owned)
+        .collect();
+    assert!(
+        claimed.contains(&".opencode/tools/shipmates-termgif.ts".to_string()),
+        "receipt must claim the native tool files: {claimed:?}"
+    );
+
+    let output = run(dir.path(), &["update", "--harness", "opencode"]);
+    assert!(
+        output.status.success(),
+        "opencode update failed: {}",
+        output_text(&output)
+    );
+    let text = output_text(&output);
+    assert!(
+        !text.contains("Removed dropped file"),
+        "a bare update must not remove tools: {text}"
+    );
+    assert_eq!(
+        live_file_count(&tools_dir),
+        before,
+        "bare update must keep every live native tool"
+    );
+    assert_eq!(
+        sidecar_count(&tools_dir),
+        0,
+        "an unchanged bare update must leave no backups beside the tools"
+    );
+
+    let receipt = read_receipt_for(dir.path(), "opencode");
+    for path in &claimed {
+        assert!(
+            receipt_claims(&receipt, path),
+            "receipt must keep claiming {path}"
+        );
+    }
+}
+
+#[test]
+fn update_advances_shared_agents_skill_across_sibling_receipts() {
+    // #428: three harnesses co-own `.agents/skills/`. When bytes drifted but
+    // every receipt still records the on-disk digest, whichever harness updates
+    // first must advance the file, and its siblings must follow rather than
+    // defer to a stale receipt claim.
+    let dir = tempdir().unwrap();
+    let harnesses = ["codex", "antigravity", "github-copilot"];
+    for harness in harnesses {
+        let output = run(
+            dir.path(),
+            &["install", "--harness", harness, "--with-tools", "all"],
+        );
+        assert!(
+            output.status.success(),
+            "{harness} install failed: {}",
+            output_text(&output)
+        );
+    }
+
+    let relative = ".agents/skills/ship-issue/SKILL.md";
+    let skill = dir.path().join(relative);
+    let stale = b"---\nname: ship-issue\n---\nstale shared generation\n";
+    fs::write(&skill, stale).unwrap();
+    let stale_hash = shipmates::digest::compute_sha256(&skill).unwrap();
+    for harness in harnesses {
+        let path = receipt_path_for(dir.path(), harness);
+        let mut receipt = read_receipt_for(dir.path(), harness);
+        let mut rewrote = false;
+        for file in receipt["files"].as_array_mut().unwrap() {
+            if file["path"] == relative {
+                file["sha256"] = Value::String(stale_hash.clone());
+                rewrote = true;
+            }
+        }
+        assert!(rewrote, "{harness} receipt must claim the shared skill");
+        fs::write(&path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+    }
+
+    for harness in harnesses {
+        let output = run(dir.path(), &["update", "--harness", harness]);
+        assert!(
+            output.status.success(),
+            "{harness} update failed: {}",
+            output_text(&output)
+        );
+        assert!(
+            !output_text(&output).contains("shared-managed file left untouched"),
+            "{harness} update must advance bytes its receipt recorded: {}",
+            output_text(&output)
+        );
+    }
+
+    let fresh = tempdir().unwrap();
+    let output = run(
+        fresh.path(),
+        &["install", "--harness", "codex", "--with-tools", "all"],
+    );
+    assert!(
+        output.status.success(),
+        "fresh comparison install failed: {}",
+        output_text(&output)
+    );
+    assert_eq!(
+        fs::read(&skill).unwrap(),
+        fs::read(fresh.path().join(relative)).unwrap(),
+        "the updated shared skill must match a fresh single-harness install"
+    );
+
+    for harness in harnesses {
+        let receipt = read_receipt_for(dir.path(), harness);
+        assert!(
+            receipt_claims(&receipt, relative),
+            "{harness} receipt must keep claiming the shared skill"
+        );
+        let output = run(dir.path(), &["doctor", "--harness", harness]);
+        assert!(
+            output.status.success(),
+            "{harness} doctor must exit 0: {}",
+            output_text(&output)
+        );
+    }
 }
 
 #[test]

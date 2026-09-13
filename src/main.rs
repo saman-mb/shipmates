@@ -14,7 +14,7 @@ use cli::{Cli, Command};
 use installer::manifest_db::InstallReceipt;
 use std::fs;
 use std::io::{IsTerminal, Write};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use catalog::CanonicalTool;
 
@@ -185,19 +185,28 @@ fn resolve_update_harnesses(target_dir: &Path, harness: Option<String>) -> Resul
     }
 }
 
-/// Tools a receipt already claims, matched by path component (skill/tool dir name).
+/// Tools a receipt already claims, matched by the shared `CanonicalTool::owns_path`
+/// predicate so both the skill-dir and native-file (`…/shipmates-termgif.ts`)
+/// install forms map back to the tool they belong to (#412).
 fn tools_from_receipt(receipt: &InstallReceipt, available: &[CanonicalTool]) -> Vec<CanonicalTool> {
     available
         .iter()
         .filter(|tool| {
-            receipt.files.iter().any(|file| {
-                Path::new(&file.path).components().any(|component| {
-                    matches!(component, Component::Normal(value) if value == tool.name.as_str())
-                })
-            })
+            receipt
+                .files
+                .iter()
+                .any(|file| tool.owns_path(Path::new(&file.path)))
         })
         .cloned()
         .collect()
+}
+
+/// Render a tool count, adding the before → after delta when this run changed it.
+fn tool_change(tools: usize, previous: Option<usize>) -> String {
+    match previous {
+        Some(previous) if previous != tools => format!("tools: {} → {}", previous, tools),
+        _ => format!("tools: {}", tools),
+    }
 }
 
 fn select_tools(
@@ -252,19 +261,22 @@ fn run_install_loop(
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
     let install_all = harnesses.len() > 1;
     let fail_fast = !install_all;
-    let mut installed: Vec<(String, String)> = Vec::new();
+    let mut installed: Vec<(String, HarnessInstall)> = Vec::new();
     let mut failures: Vec<(String, String)> = Vec::new();
 
     for harness in harnesses {
+        // The previous receipt is both the `--with-tools` source and the baseline
+        // for the summary's tool delta.
+        let (_, previous_receipt, _) = installer::plan::read_receipt(target_dir, harness);
+        let previous_tools = previous_receipt
+            .as_ref()
+            .map(|receipt| tools_from_receipt(receipt, available_tools).len());
         let selected_tools = match &tools {
             ToolSelection::Explicit(tools) => tools.clone(),
-            ToolSelection::FromReceipt => {
-                let (_, previous, _) = installer::plan::read_receipt(target_dir, harness);
-                previous
-                    .as_ref()
-                    .map(|receipt| tools_from_receipt(receipt, available_tools))
-                    .unwrap_or_default()
-            }
+            ToolSelection::FromReceipt => previous_receipt
+                .as_ref()
+                .map(|receipt| tools_from_receipt(receipt, available_tools))
+                .unwrap_or_default(),
         };
         let provision_filenames: std::collections::HashSet<String> = selected_tools
             .iter()
@@ -287,17 +299,18 @@ fn run_install_loop(
             &provision_filenames,
             no_migrate,
             force,
+            previous_tools,
         ) {
             Ok(outcome) => {
-                for script in outcome.provision_scripts {
+                for script in &outcome.provision_scripts {
                     if !provision_scripts
                         .iter()
                         .any(|known| known.file_name() == script.file_name())
                     {
-                        provision_scripts.push(script);
+                        provision_scripts.push(script.clone());
                     }
                 }
-                installed.push((harness.clone(), outcome.version));
+                installed.push((harness.clone(), outcome));
             }
             Err(error) if fail_fast => return Err(error),
             Err(error) => {
@@ -309,8 +322,15 @@ fn run_install_loop(
 
     if !fail_fast {
         println!("\nHarness summary:");
-        for (harness, version) in &installed {
-            println!("  {}: installed v{}", harness, version);
+        for (harness, outcome) in &installed {
+            // Keep the `<harness>: installed v<version>` prefix stable — the CLI
+            // e2e suite greps it — and carry the tool count/delta after it.
+            println!(
+                "  {}: installed v{} ({})",
+                harness,
+                outcome.version,
+                tool_change(outcome.tools.len(), outcome.previous_tools)
+            );
         }
         for (harness, error) in &failures {
             println!("  {}: failed — {}", harness, error);
@@ -410,6 +430,10 @@ fn provision_tool_deps(scripts: &[PathBuf]) {
 struct HarnessInstall {
     version: String,
     provision_scripts: Vec<PathBuf>,
+    /// Tools this run selected, in catalog order.
+    tools: Vec<CanonicalTool>,
+    /// Tools the previous receipt claimed, when one existed — the delta baseline.
+    previous_tools: Option<usize>,
 }
 
 /// Install one harness. Every failure mode returns `Err` rather than exiting, so
@@ -425,6 +449,7 @@ fn install_harness(
     provision_filenames: &std::collections::HashSet<String>,
     no_migrate: bool,
     force: bool,
+    previous_tools: Option<usize>,
 ) -> Result<HarnessInstall> {
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
     let adapter = adapters::select(harness)?;
@@ -597,10 +622,11 @@ fn install_harness(
         println!("{}", warning);
     }
 
+    let tool_change = tool_change(selected_tools.len(), previous_tools);
     if selected_tools.is_empty() {
         println!(
-            "Installed harness: {} ({} files written)",
-            harness, result.written
+            "Installed harness: {} ({} files written, {})",
+            harness, result.written, tool_change
         );
     } else {
         let names: Vec<&str> = selected_tools
@@ -608,15 +634,18 @@ fn install_harness(
             .map(|tool| tool.name.as_str())
             .collect();
         println!(
-            "Installed harness: {} ({} files written, tools: {})",
+            "Installed harness: {} ({} files written, {} — {})",
             harness,
             result.written,
+            tool_change,
             names.join(", ")
         );
     }
     Ok(HarnessInstall {
         version: plan.version,
         provision_scripts,
+        tools: selected_tools.to_vec(),
+        previous_tools,
     })
 }
 
@@ -946,7 +975,17 @@ mod tests {
     #[test]
     fn update_help_documents_refresh_semantics() {
         let help = help_for("update");
-        for needle in ["--harness <NAME>", "Examples:", "shipmates update", "build --update"] {
+        for needle in [
+            "--harness <NAME>",
+            "Examples:",
+            "shipmates update",
+            "build --update",
+            // Omitted --harness refreshes every receipt without a prompt
+            // off a terminal; omitted --with-tools keeps each receipt's tools.
+            "without a prompt",
+            "`--harness all`",
+            "keep the tools",
+        ] {
             assert!(help.contains(needle), "missing `{needle}`:\n{help}");
         }
     }
@@ -988,5 +1027,64 @@ mod tests {
             select_harnesses_from_line("2, cursor", &avail),
             Some(vec!["opencode".into(), "cursor".into()])
         );
+    }
+
+    fn receipt(paths: &[&str]) -> InstallReceipt {
+        InstallReceipt {
+            schema_version: installer::manifest_db::CURRENT_SCHEMA_VERSION,
+            version: "0.0.0".into(),
+            harness: "opencode".into(),
+            layout: "commands".into(),
+            roots: vec![".opencode".into()],
+            files: paths
+                .iter()
+                .map(|path| installer::manifest_db::ReceiptFile {
+                    path: (*path).to_string(),
+                    sha256: "0".repeat(64),
+                })
+                .collect(),
+        }
+    }
+
+    fn canonical_tool(name: &str) -> CanonicalTool {
+        CanonicalTool {
+            name: name.into(),
+            description: String::new(),
+            body: String::new(),
+            assets: Vec::new(),
+            requires: Vec::new(),
+            source: PathBuf::new(),
+        }
+    }
+
+    #[test]
+    fn test_tools_from_receipt_maps_native_and_skill_install_forms() {
+        // #412: opencode's native `.ts` file must map back to its tool, exactly
+        // like the skill-directory form the other harnesses emit.
+        let tools = [
+            canonical_tool("shipmates-termgif"),
+            canonical_tool("shipmates-scrub"),
+        ];
+        let claimed = receipt(&[
+            ".opencode/tools/shipmates-termgif.ts",
+            ".opencode/tools/termgif.py",
+            ".claude/skills/shipmates-scrub/SKILL.md",
+        ]);
+        let selected_tools = tools_from_receipt(&claimed, &tools);
+        let selected: Vec<&str> = selected_tools
+            .iter()
+            .map(|tool| tool.name.as_str())
+            .collect();
+        assert_eq!(selected, vec!["shipmates-termgif", "shipmates-scrub"]);
+
+        let unrelated = receipt(&[".opencode/commands/ship-issue.md"]);
+        assert!(tools_from_receipt(&unrelated, &tools).is_empty());
+    }
+
+    #[test]
+    fn test_tool_change_renders_count_and_delta() {
+        assert_eq!(tool_change(11, None), "tools: 11");
+        assert_eq!(tool_change(11, Some(11)), "tools: 11");
+        assert_eq!(tool_change(0, Some(11)), "tools: 11 → 0");
     }
 }

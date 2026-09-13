@@ -36,6 +36,31 @@ load helpers
   assert_success
 }
 
+@test "doctor points at removed tool files instead of a clean no-tools state" {
+  run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools all
+  assert_success
+  run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools none
+  assert_success
+  [ "$(find "$SANDBOX/.opencode/tools" -type f ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
+  [ "$(find "$SANDBOX/.opencode/tools" -name '*.bak-*' | wc -l | tr -d ' ')" -gt 0 ]
+
+  run "$SHIPMATES_BIN" doctor --harness opencode --dir "$SANDBOX"
+  refute_output --partial "no optional tools installed"
+  assert_output --partial "shipmates-termgif"
+  assert_output --partial "--with-tools"
+}
+
+@test "doctor fails when a receipt-claimed tool file is missing" {
+  run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools all
+  assert_success
+  rm "$SANDBOX/.opencode/tools/shipmates-termgif.ts"
+
+  run "$SHIPMATES_BIN" doctor --harness opencode --dir "$SANDBOX"
+  assert_failure
+  assert_output --partial "shipmates-termgif"
+  assert_output --partial "missing"
+}
+
 @test "--no-migrate without --fix is rejected" {
   install_claude_code "$SANDBOX"
   run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX" --no-migrate
