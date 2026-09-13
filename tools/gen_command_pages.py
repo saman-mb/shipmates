@@ -3358,15 +3358,33 @@ def render_demo(cmd: Command) -> str:
     button swaps in the animated GIF (WCAG 2.2.2 — motion is user-initiated)."""
     _gif, poster = _demo_assets(cmd.slug)
     w, h = _png_size(ROOT / "site" / "assets" / poster)
+    if cmd.slug == "ship-qa":
+        alt = (
+            f"Illustrative terminal recording of an interactive /{esc(cmd.slug)} "
+            "session — agent announces each check, captain types pass or a bug note."
+        )
+        caption = (
+            f"Illustrative — an interactive <code>/{esc(cmd.slug)}</code> walk: "
+            "the agent asks one check at a time; the captain types pass or a bug note."
+        )
+    else:
+        alt = (
+            f"Illustrative terminal recording of the stages /{esc(cmd.slug)} "
+            "runs, in order."
+        )
+        caption = (
+            f"Illustrative — the stages <code>/{esc(cmd.slug)}</code> runs, "
+            "in order."
+        )
     return f"""    <section class="section" id="demo" aria-labelledby="demo-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="demo-title">See it run</h2>
         </div>
         <figure class="demo">
-          <img class="demo__media" id="demo-media" src="{link('../../assets/' + poster)}" width="{w}" height="{h}" alt="Illustrative terminal recording of the stages /{esc(cmd.slug)} runs, in order." loading="lazy">
+          <img class="demo__media" id="demo-media" src="{link('../../assets/' + poster)}" width="{w}" height="{h}" alt="{alt}" loading="lazy">
           <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
-          <figcaption class="demo__caption">Illustrative — the stages <code>/{esc(cmd.slug)}</code> runs, in order.</figcaption>
+          <figcaption class="demo__caption">{caption}</figcaption>
         </figure>
       </div>
     </section>"""

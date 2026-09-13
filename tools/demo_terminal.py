@@ -166,18 +166,32 @@ class Reel:
             self._mid_sample = frame
         return frame
 
-    def type_command(self, segments_prefix, text, char_ms=55, hold_blinks=2):
+    def type_command(self, segments_prefix, text, char_ms=55, hold_blinks=2,
+                     text_color=WHITE):
         """Type TEXT one char at a time after SEGMENTS_PREFIX (e.g. the prompt),
-        on a new line below the current log, then hold with a blinking cursor."""
+        on a new line below the current log, then hold with a blinking cursor.
+
+        TEXT_COLOR defaults to WHITE (typed commands); captain replies in an
+        interactive reel may pass GREEN / CORAL so pass vs fail reads clearly.
+        """
         line_idx = len(self.log)
         for k in range(len(text) + 1):
-            line = list(segments_prefix) + [(text[:k], WHITE, True)]
+            line = list(segments_prefix) + [(text[:k], text_color, True)]
             self._emit(self.log + [line], char_ms, cursor_line=line_idx)
-        full = list(segments_prefix) + [(text, WHITE, True)]
+        full = list(segments_prefix) + [(text, text_color, True)]
         for _ in range(hold_blinks):
             self._emit(self.log + [full], 110, cursor_line=line_idx)
             self._emit(self.log + [full], 110)
         self.log = self.log + [full]
+
+    def wait_reply(self, segments_prefix, blinks=4):
+        """Hold a blinking cursor on an empty reply line — the agent is waiting
+        for the captain before anything is typed."""
+        line_idx = len(self.log)
+        empty = list(segments_prefix)
+        for _ in range(blinks):
+            self._emit(self.log + [empty], 130, cursor_line=line_idx)
+            self._emit(self.log + [empty], 130)
 
     def reveal(self, segments, dur=240):
         """Commit one output line to the log and hold it briefly."""
