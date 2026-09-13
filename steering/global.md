@@ -42,7 +42,13 @@ Every issue, user story, and pull request description must state in plain langua
 - Never advance or merge on a failing CI check.
 - File what you don't fix: out-of-scope findings become follow-up issues, never silent scope creep.
 
-## 7. Execution efficiency and review amortization
+## 7. Execution efficiency, rework elimination, and review amortization
+- **Cost is seats × model plus rework**: Treat rework as the dominant cost driver on complex or multi-unit runs. Prevent round-trips before code is written:
+  - **Verify citations before specs become binding**: Verify cited `file:line` references and quantitative counting claims ("written 3x", "N call sites") with `grep` before handing design or architectural specs to builders. A spec that cannot survive `grep` must not be treated as binding.
+  - **Route empirical questions to whoever can run code**: If answering a question requires executing code (running a test, measuring layout/offsets, inspecting runtime state), it is not a design or spec question. Route it to the builder or test runner as an empirical measurement task rather than stalling in speculative conditionals through non-executing design stages.
+  - **Plan-time blast-radius sizing**: When introducing, modifying, or replacing a shared provider, interface, or API, run a plan-time `grep -rl` across callers and tests to discover the full blast radius and assign all affected files to an owning unit upfront. Never leave integration breakage to be discovered in CI by accident.
+  - **Machine-checkable owned-paths manifests**: Give each builder or transformer unit an explicit, machine-checkable file and path manifest rather than repeating prose scope fences across prompts and specs. Verify `git status` and `git diff --name-only` against the manifest upon unit return to reject out-of-scope modifications and eliminate cross-unit collisions.
+  - **Record shared repo facts once**: For multi-unit runs, capture common tokens, fixtures, generated file rules, and CI quirks at plan time once so subagents read them directly instead of independently rediscovering repository facts.
 - For multi-step, multi-slice, or epic work, prioritize parallel fan-out over sequential blocking for independent, file-disjoint tasks — bounded by a concurrency cap, with a sequential fallback when the work isn't file-disjoint or the environment can't take it.
 - Rely on automated CI gates for intermediate progress; convene full multi-perspective review boards at milestone integration boundaries (e.g. the epic PR head) rather than paying redundant review seats on micro-steps. A review deferred to a milestone boundary is still mandatory there — deferral moves the review, it never cancels it.
 - Enforce compact, decision-shaped handoffs between subagents (decisions, minimal evidence, blockers) rather than dumping conversational transcripts.

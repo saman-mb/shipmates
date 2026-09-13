@@ -93,7 +93,8 @@ the findings table, not applied. The caller runs `MODE=pr` when they want the ch
 
 Under `EXECUTION=fanout` (default), when blockers span multiple independent, file-disjoint areas, spawn
 multiple `senior-engineer` builders concurrently in a single message — up to `MAX_CONCURRENT_WORKERS` —
-each with explicit file ownership. Under `EXECUTION=sequential`, fix one blocker at a time. For
+each with a machine-checkable **owned-paths manifest** (diffed against `git status` and `git diff --name-only`
+upon return to prevent collision). Under `EXECUTION=sequential`, fix one blocker at a time. For
 single-file or cohesive fixes, spawn one builder either way.
 
 Apply **scoped** fixes (parameterise the query, add the authz check, move the secret to config,

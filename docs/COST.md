@@ -20,7 +20,9 @@ repeated instructions and low-signal output out of the main context.
    and next action. Do not return command logs or a narrative of every step.
 6. **Avoid paid repetition.** Reuse context and results already proven in the current run. Repeat a
    check only when new information or a changed artifact makes it decision-relevant; record what was
-   checked rather than replaying a transcript.
+   checked rather than replaying a transcript. Cut rework before builders run: verify spec citations
+   with grep, emit blast radius for shared APIs at plan time, give units machine-checkable owned-paths
+   manifests, and route empirical questions to whoever can run code.
 
 ## Reusable command preamble
 
@@ -39,6 +41,9 @@ authors reference it instead of copying cost rules into each workflow.
   - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.
 - Spend subagent seats only where their decision can change the outcome. Route model and effort at
   spawn by work difficulty; never hardcode a model in canonical content.
+- Cost is seats × model **plus rework**: Before a spec becomes binding, verify its citations. Route
+  empirical questions to whoever can run code. Emit the blast radius of any shared API change at plan
+  time. Give each unit a machine-checkable owned-paths manifest rather than prose fences.
 - Ask every subagent for a compact structured return: decision/status first, criterion findings and
   minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant.
   Return decisions, not transcripts or raw logs.
@@ -76,9 +81,11 @@ Every board that is actually convened keeps the mandatory PE+PO seats and follow
 
 Convene only when the change can plausibly trip the concern. A gated-out seat is **named in the report with its flag or reason** — never silently skipped.
 
+**Artifact damping**: when multiple independent `IS_*` flags fire on a change confined to a single artifact family (e.g. documentation-only, build/release metadata, or a single isolated module), pull **at most one** specialist beyond the mandatory PE+PO core. Select the specialist whose concern is distinct from PE/PO on that specific artifact, and gate the others out (naming them in the report). Do not stack redundant specialists on a single artifact.
+
 | Seat | Join when |
 |------|-----------|
-| `sdet` | Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran. |
+| `sdet` | Medium+ code changes, or any change where validation is non-trivial. Do not seat `sdet` on the board when Stage 3 already ran a full independent validation pass on the same tree AND CI re-runs the same gate set on the pushed commit — record the gate that covers it instead of re-spawning. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran. |
 | `architect` | `IS_ARCH_SIGNIFICANT` |
 | `devops-engineer` | `IS_DELIVERY_SENSITIVE` |
 | `technical-writer` | `IS_DOCS_AFFECTING` — doc copy/staleness (PE covers process compliance; both may run) |
@@ -99,7 +106,7 @@ The `IS_*` flag vocabulary is shared by `/ship-issue` Stage 0 and `/ship-pr-revi
 **Retry (after a fixer)** — do not clone the first-convene roster. Re-select from the **fixer delta** (commits since the last board), not a full Stage 0 redo:
 
 1. **Must sit** — every seat that REJECTED / FAILED last round. They review the new head.
-2. **Reassess, default off** — every seat that ACCEPTED (including PE/PO). Cheap look at the delta with the same `IS_*` flags, scoped to what just changed. Re-spawn only when that delta can invalidate their ACCEPT. Otherwise **carry the ACCEPT forward**.
+2. **Reassess, default off** — every seat that ACCEPTED (including PE/PO). A seat that ACCEPTED is **carried forward by default** when the fixer delta implements that seat's own prior finding without expanding scope or introducing new concerns. Re-spawn an accepting seat only when: (a) the delta touches files outside that seat's finding in a way that could invalidate their ACCEPT, or (b) the delta perturbs that seat's specific verification gate (e.g. test, digest, or build-artifact changes for verification seats). Never re-seat a reviewer merely to confirm their own finding was applied — **carry the ACCEPT forward**.
 3. **May newly sit** — a seat gated out last round joins if the delta newly trips its flag. Do not invent seats the flags never named.
 
 When a seat is re-spawned, they review the **pushed SHA**. The report lists `re-run` / `carried ACCEPT` / `newly seated` / `still gated` — never a silent skip.

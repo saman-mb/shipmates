@@ -88,7 +88,8 @@ grep the codebase for the same defect class elsewhere.
 **Execution posture**:
 - Under `EXECUTION=fanout` (default), when sibling bugs or independent root causes span file-disjoint areas,
   spawn multiple `senior-engineer` Builders concurrently in a single message up to `MAX_CONCURRENT_WORKERS`,
-  each with explicit file ownership.
+  each with a machine-checkable **owned-paths manifest** (diffed against `git status` and `git diff --name-only`
+  upon completion to prevent cross-unit collision).
 - Under `EXECUTION=sequential`, apply fixes one at a time serially.
 
 ## Stage 4 — Prove it  ⛔ HARD GATE  (agent: `sdet`)
@@ -108,7 +109,7 @@ the review, and `board=off` is recorded in the report and PR body.
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 
-- `sdet` (always): re-runs the suite on the PR head; confirms the regression test is present and green.
+- `sdet` (always on first convene; retries follow the shared Retry rule): re-runs the suite on the PR head; confirms the regression test is present and green.
 - `senior-engineer` or `site-reliability-engineer` (fresh — not the one who fixed it): confirms the fix
   addresses the root cause, not the symptom, and adds no regression risk.
 
