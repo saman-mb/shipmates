@@ -1,5 +1,5 @@
 use super::Adapter;
-use super::render::{CrewFormat, OPENCODE, emit_crew_files, render_command_body};
+use super::render::{CrewFormat, OPENCODE, emit_crew_files, render_command_body, yaml_scalar};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
@@ -125,7 +125,7 @@ fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Resu
     content.push_str("---\n");
     content.push_str(&format!(
         "description: {}\nmode: subagent\n",
-        role.description
+        yaml_scalar(&role.description)
     ));
     if let Some(e) = &role.effort {
         content.push_str(&format!("reasoningEffort: {e}\n"));
@@ -175,7 +175,10 @@ impl Adapter for OpencodeAdapter {
         for command in commands {
             let mut content = String::new();
             content.push_str("---\n");
-            content.push_str(&format!("description: {}\n", command.description));
+            content.push_str(&format!(
+                "description: {}\n",
+                yaml_scalar(&command.description)
+            ));
             content.push_str("---\n");
             content.push_str(&render_command_body(command, &OPENCODE)?);
             files.insert(
@@ -228,7 +231,7 @@ mod tests {
 
         // Assert the frontmatter
         assert!(content.starts_with("---\n"));
-        assert!(content.contains("description: A test role\n"));
+        assert!(content.contains("description: \"A test role\"\n"));
         assert!(content.contains("mode: subagent\n"));
         assert!(content.contains("permission:\n"));
         assert!(content.contains("  \"*\": deny\n"));
@@ -300,6 +303,7 @@ mod tests {
         let content = files
             .get("harnesses/opencode/.opencode/commands/ship-issue.md")
             .unwrap();
+        assert!(content.contains("description: \"desc\"\n"));
         assert!(content.contains(".opencode/agents/*.md"));
         assert!(content.contains("general"));
         assert!(content.contains("subagent_type: architect"));

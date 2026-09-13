@@ -13,6 +13,7 @@ pages still carry the dialect a user actually installs.
 
 from __future__ import annotations
 
+import importlib.util
 import shutil
 import sys
 import tempfile
@@ -24,6 +25,27 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import subprocess
+
+
+def _load_site_validator():
+    """Import .github/scripts/validate_site.py by path.
+
+    Module-level, that script builds the rendered payload it audits, so it is
+    loaded lazily — only the test that pins its frontmatter parsing pays for it.
+    """
+    path = ROOT / ".github/scripts/validate_site.py"
+    spec = importlib.util.spec_from_file_location("shipmates_validate_site", path)
+    module = importlib.util.module_from_spec(spec)
+    # Register before exec: the script's @dataclass classes resolve their
+    # module through sys.modules, which importlib only fills in for us after.
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        del sys.modules[spec.name]
+        raise
+    return module
+
 
 # gen_command_pages uses @dataclass(slots=True) and so needs Python 3.10+. That
 # is fine — it is a CI-and-maintainer tool, not part of the installer, which
@@ -147,6 +169,140 @@ class SiteGenerationTests(unittest.TestCase):
 
         flat = generator.load_skills(ROOT / "commands", tuple(a.name for a in agents))
         self.assertEqual({c.slug for c in commands}, {c.slug for c in flat})
+
+    @unittest.skipIf(
+        sys.version_info < GENERATOR_MIN,
+        "gen_command_pages requires Python 3.10+ (dataclass slots)",
+    )
+    def test_quoted_frontmatter_round_trips_to_authored_copy(self) -> None:
+        """#407: double-quoted scalars must not publish their quotes.
+
+        The renderer quotes free-text frontmatter so a strict YAML loader (the
+        one behind Cursor's slash picker) accepts a description containing
+        `: `, but the page must still show the authored string — the quotes are
+        YAML syntax, not copy.
+        """
+        from tools import gen_command_pages as generator
+
+        lines = [
+            "---",
+            "name: ship-epic",
+            'description: "Shipmates: Loop /ship-issue over an epic\'s stories — colon: yes"',
+            'argument-hint: "<epic issue> [focus] [max-cycles]"',
+            'allowed-tools: "Read, Grep, Glob, Bash"',
+            "---",
+            "# /ship-epic — test",
+            "",
+        ]
+        fm, _ = generator.split_frontmatter(lines, "commands/ship-epic.md", set())
+        self.assertEqual("ship-epic", fm.name)
+        self.assertEqual(
+            "Shipmates: Loop /ship-issue over an epic's stories — colon: yes",
+            fm.description,
+        )
+        self.assertEqual("<epic issue> [focus] [max-cycles]", fm.argument_hint)
+        self.assertEqual(("Read", "Grep", "Glob", "Bash"), fm.allowed_tools)
+
+    @unittest.skipIf(
+        sys.version_info < GENERATOR_MIN,
+        "gen_command_pages requires Python 3.10+ (dataclass slots)",
+    )
+    def test_quoted_agent_frontmatter_round_trips_to_authored_copy(self) -> None:
+        """The same quoting lands on rendered crew files, which agent pages read."""
+        from tools import gen_command_pages as generator
+
+        path = Path(tempfile.mkdtemp()) / "architect.md"
+        self.addCleanup(shutil.rmtree, path.parent, True)
+        path.write_text(
+            "---\n"
+            "name: architect\n"
+            'description: "Agent copy: colon-space, and a \\"quote\\""\n'
+            "tools: Read, Grep\n"
+            "---\n"
+            "# architect\n",
+            encoding="utf-8",
+        )
+        fm = generator.parse_agent(path)
+        self.assertEqual("architect", fm.name)
+        self.assertEqual('Agent copy: colon-space, and a "quote"', fm.description)
+        self.assertEqual(("Read", "Grep"), fm.tools)
+
+    @unittest.skipIf(
+        sys.version_info < GENERATOR_MIN,
+        "gen_command_pages requires Python 3.10+ (dataclass slots)",
+    )
+    def test_unquoted_frontmatter_values_pass_through_unchanged(self) -> None:
+        """Authored sources are not quoted; unquoting must leave them byte-identical."""
+        from tools import gen_command_pages as generator
+
+        lines = [
+            "---",
+            "name: ship-issue",
+            "description: A plain description with no mapping colon",
+            "argument-hint: <issue-number>",
+            "allowed-tools: Read, Grep",
+            "---",
+            "# /ship-issue — test",
+            "",
+        ]
+        fm, _ = generator.split_frontmatter(lines, "commands/ship-issue.md", set())
+        self.assertEqual("A plain description with no mapping colon", fm.description)
+        self.assertEqual("<issue-number>", fm.argument_hint)
+        self.assertEqual(("Read", "Grep"), fm.allowed_tools)
+
+    @unittest.skipIf(
+        sys.version_info < GENERATOR_MIN,
+        "gen_command_pages requires Python 3.10+ (dataclass slots)",
+    )
+    def test_yaml_unquote_mirrors_the_renderer_escapes(self) -> None:
+        """The helper inverts `yaml_scalar` (src/adapters/render.rs) exactly."""
+        from tools import gen_command_pages as generator
+
+        self.assertEqual(
+            'quote " backslash \\ slash \n newline \r cr \t tab \x00 nul',
+            generator._yaml_unquote(
+                '"quote \\" backslash \\\\ slash \\n newline \\r cr \\t tab \\u0000 nul"'
+            ),
+        )
+        self.assertEqual("plain value", generator._yaml_unquote("plain value"))
+        self.assertEqual("", generator._yaml_unquote(""))
+
+    @unittest.skipIf(
+        sys.version_info < GENERATOR_MIN,
+        "gen_command_pages requires Python 3.10+ (dataclass slots)",
+    )
+    def test_site_validator_unquotes_rendered_agent_frontmatter(self) -> None:
+        """#407: the independent site gate must read rendered frontmatter too.
+
+        `check_agent_reference` compares a parsed description against page
+        prose. A gate that keeps the renderer's `yaml_scalar` quotes fails every
+        crew page; one whose unquoting drifts from the generator's would pass a
+        wrong comparison instead.
+        """
+        from tools import gen_command_pages as generator
+
+        validator = _load_site_validator()
+        quoted = '"quote \\" backslash \\\\ slash \\n newline \\r cr \\t tab \\u0000 nul"'
+        self.assertEqual(generator._yaml_unquote(quoted), validator._yaml_unquote(quoted))
+        self.assertEqual(
+            'quote " backslash \\ slash \n newline \r cr \t tab \x00 nul',
+            validator._yaml_unquote(quoted),
+        )
+        self.assertEqual("plain value", validator._yaml_unquote("plain value"))
+        self.assertEqual("", validator._yaml_unquote(""))
+
+        path = Path(tempfile.mkdtemp()) / "architect.md"
+        self.addCleanup(shutil.rmtree, path.parent, True)
+        path.write_text(
+            "---\n"
+            'name: "architect"\n'
+            'description: "Agent copy: colon-space, and a \\"quote\\""\n'
+            "---\n",
+            encoding="utf-8",
+        )
+        front = validator.agent_frontmatter(path)
+        self.assertEqual("architect", front["name"])
+        self.assertEqual('Agent copy: colon-space, and a "quote"', front["description"])
 
     def test_redirect_stubs_emitted_and_excluded_from_sitemap(self) -> None:
         """Legacy renamed command and tool paths serve a meta-refresh stub and are not indexed."""

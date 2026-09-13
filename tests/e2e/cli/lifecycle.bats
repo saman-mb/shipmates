@@ -1,0 +1,137 @@
+#!/usr/bin/env bats
+# update / uninstall / identity migration — the lifecycle a captain runs after
+# upgrading the binary.
+
+bats_load_library bats-support
+bats_load_library bats-assert
+load helpers
+
+@test "update without a receipt fails" {
+  run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX"
+  assert_failure
+}
+
+@test "update restores a removed payload file" {
+  install_claude_code "$SANDBOX"
+  rm "$SANDBOX/.claude/agents/architect.md"
+
+  run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX" --no-migrate
+  assert_success
+  [ -f "$SANDBOX/.claude/agents/architect.md" ]
+}
+
+@test "update --with-tools none removes the live tools the receipt claimed" {
+  run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools all
+  assert_success
+  [ "$(tool_dirs "$SANDBOX")" -eq 11 ]
+
+  run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX" --with-tools none
+  assert_success
+  # The removed payload is backed up as a sidecar (the undo a captain can ask
+  # for), but no live tool file remains.
+  [ "$(find "$SANDBOX/.claude/skills" -path '*shipmates-*' -type f ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
+  [ "$(find "$SANDBOX/.claude/skills" -mindepth 2 -maxdepth 2 -name 'SKILL.md' ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 15 ]
+}
+
+@test "uninstall removes receipt-owned files and keeps the captain's own" {
+  install_claude_code "$SANDBOX"
+  printf 'mine\n' > "$SANDBOX/.claude/agents/notes.md"
+
+  run "$SHIPMATES_BIN" uninstall --harness claude-code --dir "$SANDBOX"
+  assert_success
+  [ -f "$SANDBOX/.claude/agents/notes.md" ]
+  [ "$(cat "$SANDBOX/.claude/agents/notes.md")" = "mine" ]
+  [ ! -e "$SANDBOX/.claude/skills/ship-issue" ]
+  [ "$(receipt_files "$SANDBOX")" -eq 0 ]
+}
+
+@test "uninstall without a receipt fails" {
+  run "$SHIPMATES_BIN" uninstall --harness claude-code --dir "$SANDBOX"
+  assert_failure
+}
+
+@test "update migrates the previous shipmates- prefix in a claimed tree" {
+  install_claude_code "$SANDBOX"
+  make_previous_generation "$SANDBOX" ship-harden shipmates-harden
+
+  run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX"
+  assert_success
+
+  [ ! -e "$SANDBOX/.claude/skills/shipmates-harden" ]
+  [ -f "$SANDBOX/.claude/skills/ship-harden/SKILL.md" ]
+  run jq -e '[.files[].path] | index(".claude/skills/ship-harden/SKILL.md") != null' "$SANDBOX/.shipmates/receipts/claude-code.json"
+  assert_success
+  run bash -c "find '$SANDBOX/.shipmates-backup' -name 'SKILL.md' | head -1"
+  assert_success
+  [ -n "$output" ]
+}
+
+@test "update migrates the pre-prefix bare verb in a claimed tree" {
+  install_claude_code "$SANDBOX"
+  make_previous_generation "$SANDBOX" ship-harden harden
+
+  run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX"
+  assert_success
+
+  [ ! -e "$SANDBOX/.claude/skills/harden" ]
+  [ -f "$SANDBOX/.claude/skills/ship-harden/SKILL.md" ]
+}
+
+@test "update --from-cwd refreshes from the checkout" {
+  install_claude_code "$SANDBOX"
+  cd "$REPO_ROOT"
+  run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX" --from-cwd
+  assert_success
+}
+
+@test "update --local and --global refresh the receipt in that root" {
+  run "$SHIPMATES_BIN" install --harness claude-code --local --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" update --local
+  assert_success
+
+  run "$SHIPMATES_BIN" install --harness claude-code --global --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" update --global
+  assert_success
+}
+
+@test "uninstall --local and --global remove that root's receipt-owned files" {
+  run "$SHIPMATES_BIN" install --harness claude-code --local --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" uninstall --harness claude-code --local
+  assert_success
+  [ ! -e "$SANDBOX/.claude/skills/ship-issue" ]
+
+  run "$SHIPMATES_BIN" install --harness claude-code --global --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" uninstall --harness claude-code --global
+  assert_success
+  [ ! -e "$HOME/.claude/skills/ship-issue" ]
+}
+
+@test "uninstall --from-cwd removes the install and uninstall without --harness is ambiguous" {
+  install_claude_code "$SANDBOX"
+  run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools none
+  assert_success
+
+  run "$SHIPMATES_BIN" uninstall --dir "$SANDBOX"
+  assert_failure
+
+  cd "$REPO_ROOT"
+  run "$SHIPMATES_BIN" uninstall --harness claude-code --dir "$SANDBOX" --from-cwd
+  assert_success
+  [ ! -e "$SANDBOX/.claude/skills/ship-issue" ]
+}
+
+@test "an installed tool runs from its installed location" {
+  run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools scrub
+  assert_success
+  local tool="$SANDBOX/.claude/skills/shipmates-scrub/scrub.py"
+  printf 'api_key=abc123xyz\nmail dev@example.com\n' > "$BATS_TEST_TMPDIR/in.txt"
+
+  run python3 "$tool" --in "$BATS_TEST_TMPDIR/in.txt"
+  assert_success
+  assert_output --partial "[REDACTED_TOKEN]"
+  assert_output --partial "[REDACTED_EMAIL]"
+}
