@@ -154,7 +154,7 @@ passed on.
 - Proven over plausible: a command that wasn't run is labelled unverified, never presented as fact.
 - Preserve hand-written rules on a refresh. You are augmenting someone's judgement, not replacing it.
 - Don't write a README. If the content is for humans, it belongs in `/ship-document`.
-- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
+- If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined, and note it.
 
 ## Runtime input

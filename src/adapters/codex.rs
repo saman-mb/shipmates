@@ -188,6 +188,9 @@ mod tests {
         // Shared neutral dialect: the crew glob is the open `.agents/agents`, not
         // the Codex-native `.codex/agents` (crew still install there; the skill's
         // glob is a descriptive pointer, orchestration goes through subagent_type).
+        // The shared dialect's value, asserted here as the *mechanism*: the token
+        // resolves. Canonical content no longer uses it, because it can only be
+        // right for one of the four harnesses that share these bytes.
         assert!(skill.contains(".agents/agents/*.md"));
         assert!(!skill.contains(".codex/agents/*.md"));
         assert!(skill.contains("$ARGUMENTS"));

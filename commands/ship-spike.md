@@ -126,7 +126,7 @@ review on — and offer the next step: `/ship-plan-epics` to turn the chosen dir
   lands as a diff a human can read, not a surprise in someone's checkout. `MODE=edit-in-place` is an
   explicit request, never an assumption — and it's a different switch from `ISOLATION`, which only
   governs the throwaway prototype worktrees.
-- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
+- If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined and note it.
 
 ## Runtime input

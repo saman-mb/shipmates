@@ -162,7 +162,7 @@ touched and why, and the green-CI link. File the bugs you found and didn't fix a
   may be moved and renamed but never weakened.
 - Behaviour-preserving means *observable* behaviour — public API, output, side effects, error cases.
 - A refactor with no stated motivation is unreviewable; ask before starting.
-- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
+- If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined, and note it.
 
 ## Runtime input

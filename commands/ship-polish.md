@@ -203,7 +203,7 @@ remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with th
 - **The loop runs on its own branch by default.** Five rounds of edits belong in a diff a human can
   read, not in someone's checkout. `MODE=edit-in-place` is an explicit request — except when you're
   already inside an isolated worktree, where staying put *is* the isolation.
-- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the role's
+- If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the role's
   brief inlined, and note the fallback.
 
 ## Runtime input
