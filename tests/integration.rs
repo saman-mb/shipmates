@@ -783,6 +783,118 @@ fn test_matrix_effort_flag_matches_adapter_output() {
     }
 }
 
+/// Every harness's `model_surface` record must be complete, closed-enum and
+/// internally consistent. The issue's "no unstated cells" requirement is a
+/// mechanical invariant, not a prose one: prose in the ADR cannot stop a cell
+/// from going blank, and only a check can — the same lesson the `agents` and
+/// `effort` guards above encode. `enumeration.command` being non-empty exactly
+/// when `available` is true is what stops a blank command from being read
+/// downstream as a usable pool.
+#[test]
+fn test_matrix_model_surface_is_complete() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let matrix: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap(),
+    )
+    .unwrap();
+    let schema = matrix["model_surface_schema"]
+        .as_object()
+        .expect("harness_matrix.json has no model_surface_schema block");
+    assert_eq!(
+        schema["empty_pool_fallback"].as_str(),
+        Some("inherit"),
+        "the schema must record `inherit` as the empty-pool fallback"
+    );
+
+    let harnesses = matrix["harnesses"]
+        .as_object()
+        .expect("harness_matrix.json has no harnesses map");
+
+    const DISCOVERY_TIERS: [&str; 3] = ["query", "declared", "inherit"];
+    const OVERRIDE_KINDS: [&str; 4] = ["per-spawn", "static-agent-file", "session-level", "none"];
+    const EFFORT_KINDS: [&str; 4] = [
+        "separate-key",
+        "folded-into-model-string",
+        "run-level",
+        "none",
+    ];
+    const ENFORCEMENTS: [&str; 4] = ["abort", "warn", "fallback", "none"];
+    const REQUIRED_KEYS: [&str; 9] = [
+        "discovery_tier",
+        "enumeration",
+        "identity",
+        "runtime_model_override",
+        "effort",
+        "declared_pool",
+        "reported_gaps",
+        "verified_on",
+        "notes",
+    ];
+    let date = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
+
+    for name in shipmates::adapters::targets() {
+        let surface = harnesses[name]["model_surface"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{name}: harness_matrix.json has no `model_surface`"));
+        for key in REQUIRED_KEYS {
+            assert!(
+                surface.contains_key(key),
+                "{name}: model_surface is missing `{key}` — every cell is stated, never left blank"
+            );
+        }
+        let tier = surface["discovery_tier"].as_str().unwrap();
+        assert!(
+            DISCOVERY_TIERS.contains(&tier),
+            "{name}: discovery_tier `{tier}` is outside the closed enum"
+        );
+        let override_kind = surface["runtime_model_override"]["kind"].as_str().unwrap();
+        assert!(
+            OVERRIDE_KINDS.contains(&override_kind),
+            "{name}: runtime_model_override.kind `{override_kind}` is outside the closed enum"
+        );
+        let effort_kind = surface["effort"]["kind"].as_str().unwrap();
+        assert!(
+            EFFORT_KINDS.contains(&effort_kind),
+            "{name}: effort.kind `{effort_kind}` is outside the closed enum"
+        );
+        let enforcement = surface["declared_pool"]["enforcement"].as_str().unwrap();
+        assert!(
+            ENFORCEMENTS.contains(&enforcement),
+            "{name}: declared_pool.enforcement `{enforcement}` is outside the closed enum"
+        );
+        let enumeration = surface["enumeration"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{name}: enumeration is not an object"));
+        let available = enumeration["available"]
+            .as_bool()
+            .unwrap_or_else(|| panic!("{name}: enumeration.available is not a boolean"));
+        let command = enumeration["command"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{name}: enumeration.command is not a string"));
+        assert_eq!(
+            available,
+            !command.trim().is_empty(),
+            "{name}: enumeration.command must be non-empty exactly when available is true — \
+             a blank command must never read downstream as a pool"
+        );
+        let verified_on = surface["verified_on"].as_str().unwrap();
+        assert!(
+            date.is_match(verified_on),
+            "{name}: verified_on `{verified_on}` is not YYYY-MM-DD"
+        );
+        assert!(
+            surface["notes"]
+                .as_str()
+                .is_some_and(|s| !s.trim().is_empty()),
+            "{name}: model_surface.notes must name the first-party URL the row was checked against"
+        );
+        assert!(
+            surface["reported_gaps"].is_array(),
+            "{name}: reported_gaps must be an array (empty when nothing was reported)"
+        );
+    }
+}
+
 /// The frontmatter text between the opening and closing `---` lines, for a file
 /// that begins with a frontmatter block.
 fn frontmatter_block(content: &str) -> Option<&str> {

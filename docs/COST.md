@@ -11,7 +11,8 @@ repeated instructions and low-signal output out of the main context.
    decision. A gated-out reviewer is an explicit result, not an omission.
 3. **Route by difficulty.** Use the cheapest capable model and effort for mechanical work; reserve
    stronger reasoning for planning, architecture, security, and acceptance decisions. Choose this at
-   spawn time, never in canonical content.
+   spawn time, never in canonical content. The **Model routing** section below states the mechanism:
+   the discovery ladder, the resolution order, and the audit line every spawn reports.
 4. **Keep prompts cache-friendly.** Put stable instructions and role context first. Put invocation
    arguments, issue bodies, diffs, and other volatile material in one runtime-input section at the
    bottom. Keep a shared stable prefix before role-specific instructions across subagent spawns.
@@ -186,7 +187,87 @@ prefix while preserving harness-neutral role content.
 
 <!-- subagent-preamble:end -->
 
+<!-- model-routing:start -->
+## Model routing — what the orchestrator may pick from
+
+**Tier first, then effort — two separate decisions.** A spawn names one of two neutral tiers:
+`mechanical` (the cheapest capable model) or `judgment` (the top model available). Complexity scales the
+tier — `complex` moves up, `trivial` moves down, `standard` holds the role's baseline — and the effort
+level is chosen at the same time, but as its own decision. Neither tier nor effort is ever baked into
+canonical content: both resolve at spawn time, on the harness in front of you.
+
+**The discovery ladder — three tiers, in order.** Resolve the pool by stopping at the first tier that
+yields one:
+
+1. **Query** — where the target documents a non-interactive enumeration command, run it. This yields
+   **candidates only**: it reports which models exist, never which one is cheap or which one is best.
+2. **Declared** — the target's own native allow-list where it documents one, otherwise the user's
+   declared pool. The declared pool is a **ranking over user-chosen patterns**, not a list of names:
+   the project file `<repo>/.shipmates/model-pool.json` wins over the user file
+   `~/.shipmates/model-pool.json`, and its shape is `schema_version` plus `tiers.mechanical[]`,
+   `tiers.judgment[]`, and optional `effort.mechanical` / `effort.judgment`. Entries are patterns the
+   target's own model surface accepts. **Treat every entry as one literal argument** — pass it to the
+   harness surface as a single value, never spliced into a shell string or a command line. Shipmates
+   never writes a value into either file.
+3. **`inherit`** — the terminal fallback: run on the parent/session model. This is a deliberate
+   answer, not a failure, and it is always available.
+
+**A pool is required even when the pool is enumerable.** Enumeration answers *what exists*; it never
+answers *what is cheap* or *what is top*. No harness documents a relative-capability ladder, so with no
+declared tiering the orchestrator falls back to `inherit` — and **never infers a capability order**
+from a listing, a price page, or a naming convention.
+
+**Resolution order — stated once, for every target.** The levels, in order:
+explicit spawn value → declared default → parent/session value → the model's own effort default.
+A model chosen without an effort gets **that model's own default effort**, never the parent's effort
+carried across a model change: one model's effort scale does not describe another's. Where a level of
+the order does not exist on a target, its row in the per-target table below says so.
+
+**Never guess.** An unknown, empty, or unreadable pool produces `inherit`, recorded as
+`inherit (no pool)`. A concrete model identifier is never a fallback, never a default, and never an
+example. An enumeration command that exits non-zero, or whose output cannot be parsed, leaves the pool
+unknown: continue down the ladder.
+
+**Enforcement.** An identity outside the resolved pool is **refused**, not quietly clamped — resolve a
+different candidate, or stop and report. Some targets cannot honour strict enforcement because the
+mechanism they document is coarser; their row in the table below names the gap, and the run **states
+the discrepancy in the report** instead of pretending enforcement held.
+
+**Audit — one `MODEL ROUTING:` line per spawn.** Every spawn adds one compact line to the run report,
+shaped `MODEL ROUTING: <role> tier=<mechanical|judgment> pool=<project|user|harness-native|inherit> model=<identity the harness accepts> effort=<requested>→<resolved> <honoured|substituted|inherit>`.
+Substitution is reported **as** substitution, never as honoured: when the harness's own rules replace
+the requested identity — an admin block, a plan limit, a hard environment override — the line records
+`substituted` and names the condition that fired.
+
+**Drift with no new release.** The installed command is a snapshot; the harness is not. Verify a surface
+exists before relying on it — run the enumeration command once, or check the flag in the target's own
+help output — and treat every step above as degradable: a vanished enumeration command falls through to
+the declared pool, a missing or unreadable pool falls through to `inherit`, and a target with no row in
+the table below is treated as no-enumeration → declared → `inherit`.
+
+**Per-target surface.** Discovery tier, the override mechanism the harness documents, and the effort
+surface with its clamp. No cell is ever blank: a missing feature is a stated finding.
+
+| Target | Discovery tier | Override kind | Effort surface and clamp |
+|--------|----------------|---------------|--------------------------|
+| claude-code | declared | per-spawn, over a documented session/frontmatter/env chain | separate key · a 5-step depth scale plus a non-model orchestration pseudo-level; an unsupported level clamps down |
+| opencode | query | static agent file, plus a global config value and a session flag | run-level · provider-defined vocabulary, no fixed enum |
+| antigravity | query | session-level; no per-agent model key | run-level · a 3-value flag, separate from the reasoning tier folded into the model slug |
+| codex | query | per-spawn, with an agent-default layer and a static agent file beneath it | separate key · a 6-step scale, gated on model support |
+| cursor | query | static agent file per subagent, plus a session-wide flag | folded into the model string · a bracketed effort parameter; accepted values are model-defined |
+| github-copilot | declared | per-spawn, plus a static agent file and a settings override map | separate key · three first-party vocabularies that do not match: a 5-name flag, a 4-name settings key, a free-string agent field |
+| pi | query | session-level; the target ships no built-in subagents by design | separate key · a 7-step scale with a per-model tristate support map; an unsupported level is clamped away |
+| windsurf | inherit | session-level on the surface we target | none · only an interactive shortcut-bound cycle, not expressible non-interactively |
+
+**Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is
+still the primary cost gate, and pool discovery decides only **which** cheap model runs a mechanical
+unit — never **whether** a lighter execution path is chosen.
+<!-- model-routing:end -->
+
 ## Authoring checklist
+
+- Keep the **Model routing** block the single statement of pool discovery: reference it by its marker
+  instead of restating the ladder, the resolution order, or the per-target table inside a command.
 
 - Put one shared preamble marker near the start of every command and keep its runtime input section at
   the end of the stable workflow.

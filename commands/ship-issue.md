@@ -54,10 +54,11 @@ Planner's signal): a `complex` unit bumps the model to the top tier and the effo
 up; a `trivial` unit drops toward the cheapest model and lowest effort; `standard` holds the baseline —
 so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.
 
-Use the harness's own per-spawn mechanism where it exists (e.g. a `model` argument on the spawn) to pick
-the tier-appropriate model; where the harness offers no per-spawn override, **inherit** — never emit a
-hardcoded model. **Effort** can only be adjusted per spawn on the harnesses that expose it (Codex,
-Cursor); on the others the role's static effort (from its crew file, #204) stands. Spend the top model where it changes the outcome, not on mechanical turns.
+The discovery ladder, the resolution order, each target's override and effort surface, and the audit
+line every spawn reports are stated once in the **Model routing** block below — follow it there; do not
+restate it here.
+
+<!-- shipmates:model-routing -->
 
 ---
 
@@ -557,7 +558,9 @@ One concise summary: PR link (and merge state), commit(s), the absolute **worktr
 (`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), fetch outcome, and whether a resume
 sync/rebase ran, which specialists reviewed it and their
 verdicts (`re-run` / `carried ACCEPT` / `newly seated` after any fix round; gated seats named with
-the flag that gated them), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
+the flag that gated them), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
+(tier, pool source, the model identity the harness accepted, effort requested and resolved, and
+`honoured` / `substituted` / `inherit`), follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/ship-harden` recommendation, carried here mechanically rather than decided now. When
 **`IS_RELEASE_AFFECTING=yes`**, state the **new version** and that merge to **`RELEASE_BRANCH`**

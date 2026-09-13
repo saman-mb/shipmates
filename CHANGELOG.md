@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-13
+
+### Added
+
+- **Model-pool discovery and spawn-time routing.** The orchestrator now resolves a spawn's model
+  tier against a pool it can actually see, instead of falling back to `inherit` for want of one. A
+  three-tier ladder — query the harness's documented enumeration command, then a declared pool, then
+  `inherit` — is stated once in `docs/COST.md` (`## Model routing`) and expanded into `/ship-issue`
+  and `/ship-epic` through a single marker, so the two commands cannot drift apart. The ladder
+  records that enumeration answers *what exists*, never *what is cheap*, so a declared ranking is
+  required even where the pool is enumerable, and an unknown or empty pool always produces a named
+  `inherit` — never a guessed model name (#434).
+- **A declared-pool shape the captain owns.** `model-pool.json` (project `.shipmates/`, then user
+  `~/.shipmates/`) maps the neutral `mechanical` / `judgment` tiers to patterns the harness's own
+  model surface accepts. Shipmates never writes a value into it and ships no model-name default,
+  example or fallback (#434).
+- **A `MODEL ROUTING:` audit line per spawn** in the run report, carrying the pool source, the
+  identity the harness accepted, the effort requested and resolved, and `honoured` / `substituted` /
+  `inherit` — so a model the harness silently substituted is visible as substituted (#434).
+- **A per-harness model-surface record** in `tools/harness_matrix.json` (`model_surface`):
+  enumeration command or an explicit "none", the model-identity scheme, the per-spawn vs static
+  override, the effort surface with its clamp, and the declared-pool mechanism — every cell stated,
+  with a `verified_on` date and a mechanical completeness guard in the test suite (#434).
+- **ADR 0002 — discovering the available model pool before routing a tier to a model**, recording
+  the verified per-harness evidence, the corrections it forced against the story's own table, and
+  the six design answers behind the decision (#434).
+
 ## [0.4.0] - 2026-09-13
 
 ### Added
