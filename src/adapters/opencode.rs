@@ -94,7 +94,11 @@ fn tools_for(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
                     );
                 }
             }
-            "edit" => tools.push("edit".to_string()),
+            // `edit` alone edits an existing file; creating or overwriting one
+            // needs `write`, which is a first-class opencode tool. Claude Code and
+            // Antigravity both map this capability to two tools for the same reason,
+            // so a builder is not left unable to create a file.
+            "edit" => tools.extend(["write", "edit"].map(str::to_string)),
             "bash" => tools.push("bash".to_string()),
             "web" => {
                 let scopes: Vec<String> = if role.web_scopes.is_empty() {
@@ -209,6 +213,34 @@ impl Adapter for OpencodeAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The `edit` capability must reach opencode's `write` tool as well.
+    ///
+    /// `edit` can only modify a file that exists, so a builder given `edit` alone
+    /// cannot create one. Claude Code maps this capability to `Write` + `Edit` and
+    /// Antigravity to `write_to_file` + `replace_file_content` for the same reason.
+    /// opencode emits only `edit` today, and no role notices because both
+    /// edit-capable roles carry an explicit `tool-order` that names `write` — so
+    /// the gap is latent until the next role omits one (#468).
+    #[test]
+    fn test_edit_capability_reaches_opencode_write_as_well_as_edit() {
+        let role = CanonicalRole {
+            name: "builder".to_string(),
+            description: "A builder".to_string(),
+            capabilities: vec!["read".to_string(), "edit".to_string()],
+            writes: true,
+            web_scopes: vec![],
+            read_scopes: vec![],
+            tool_order: vec![],
+            effort: None,
+            source: std::path::PathBuf::from(""),
+            body: "body".to_string(),
+        };
+        let files = OpencodeAdapter.build(&[role], &[]).unwrap();
+        let content = &files["harnesses/opencode/.opencode/agents/builder.md"];
+        assert!(content.contains("  write: allow\n"), "{content}");
+        assert!(content.contains("  edit: allow\n"), "{content}");
+    }
 
     #[test]
     fn test_opencode_adapter_frontmatter() {

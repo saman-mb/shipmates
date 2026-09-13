@@ -492,7 +492,9 @@ fn foreign_crew_reads(harness: &str) -> Vec<&'static str> {
 fn harness_tool_vocabulary(harness: &str) -> Option<&'static [&'static str]> {
     match harness {
         "claude-code" => Some(&["Read", "Grep", "Glob", "Write", "Edit", "Bash", "WebSearch", "WebFetch", "Agent"]),
-        "opencode" => Some(&["read", "grep", "glob", "edit", "bash", "websearch", "webfetch", "task"]),
+        "opencode" => Some(&[
+            "read", "write", "edit", "grep", "glob", "bash", "websearch", "webfetch", "task",
+        ]),
         "antigravity" => Some(&[
             "view_file", "grep_search", "list_dir", "write_to_file", "replace_file_content",
             "run_command", "search_web", "read_url_content", "invoke_subagent"
@@ -1898,6 +1900,47 @@ pub fn print_report(report: &Report) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every tool name the registry documents for a harness must resolve in the
+    /// vocabulary `doctor` checks that harness against.
+    ///
+    /// The two live in different files and were free to disagree, which is how
+    /// opencode shipped a permanent false positive: the registry said `write` was
+    /// folded into `edit`, the checker's list had no `write`, and the two agreed
+    /// *with each other* while the adapter emitted `write` correctly — so the
+    /// payload was right and the checker was wrong (#468). A captain who learns
+    /// to ignore a `[fix]` that `--fix` never clears is a captain who ignores the
+    /// check when it is right.
+    #[test]
+    fn registry_tool_names_resolve_in_the_checked_vocabulary() {
+        let registry: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(
+                Path::new(env!("CARGO_MANIFEST_DIR")).join("tools/capability_registry.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let mut checked = 0;
+        for (harness, entry) in registry["harnesses"].as_object().unwrap() {
+            // `codex` documents no per-agent allowlist at all, so there is nothing
+            // to resolve against and no vocabulary to check.
+            let Some(vocabulary) = harness_tool_vocabulary(harness) else {
+                continue;
+            };
+            // `scopes` is what the adapters translate, so it is the half that must
+            // agree with the checker.
+            for (scope, mapped) in entry["scopes"].as_object().unwrap() {
+                let Some(name) = mapped.as_str() else { continue };
+                assert!(
+                    vocabulary.contains(&name),
+                    "{harness}: scope {scope:?} maps to {name:?}, which the doctor vocabulary \
+                     does not resolve — the adapter would emit a tool the checker rejects"
+                );
+                checked += 1;
+            }
+        }
+        assert!(checked > 0, "the gate must actually compare something");
+    }
     use crate::installer::atomic_write;
     use std::path::PathBuf;
     use tempfile::tempdir;

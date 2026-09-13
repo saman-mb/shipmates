@@ -5,6 +5,28 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.7.1] - 2026-09-13
+
+### Fixed
+
+- **`doctor --harness opencode` reported a `[fix]` that `--fix` could never clear.** opencode's `write`
+  tool was invisible to two places that agreed with each other: `capability_registry.json` recorded
+  `write` as folded into `edit`, and the checker's vocabulary list had no `write` — while the adapter
+  emitted `write` correctly, because two roles carry an explicit `tool-order` naming it. A false
+  `Problem` on every opencode install trains a captain to ignore the check, which is the failure mode
+  the check exists to prevent (#468).
+
+  opencode's `write` is first-class alongside `edit` — verified against the shipped binary, which
+  defines both in one tool table next to `bash`. The registry and the vocabulary now agree with the
+  adapter, and a new test asserts that **every tool name the registry documents resolves in the
+  vocabulary `doctor` checks that harness against**, so the two can no longer drift apart in silence.
+
+- The `edit` capability now reaches opencode's `write` tool as well as `edit`. `edit` can only modify
+  a file that exists, so a builder given `edit` alone cannot create one; Claude Code and Antigravity
+  both map this capability to two tools for that reason. The gap was latent — both edit-capable roles
+  declare an explicit `tool-order` naming `write` — and is pinned by a test before the next role
+  omits one.
+
 ## [0.7.0] - 2026-09-13
 
 ### Added
