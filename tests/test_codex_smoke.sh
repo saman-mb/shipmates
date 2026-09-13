@@ -42,8 +42,8 @@ test "$(ls -1 "$PROJECT/.codex/agents"/*.toml | wc -l | tr -d ' ')" -eq 13
 
 for role in \
   architect art-director data-scientist devops-engineer performance-engineer \
-  product-manager sdet security-engineer senior-engineer site-reliability-engineer \
-  technical-writer ux-ui-designer
+  principal-engineer product-manager sdet security-engineer senior-engineer \
+  site-reliability-engineer technical-writer ux-ui-designer
 do
   test -f "$PROJECT/.codex/agents/$role.toml"
 done
