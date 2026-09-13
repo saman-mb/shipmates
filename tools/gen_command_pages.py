@@ -3361,11 +3361,11 @@ def render_demo(cmd: Command) -> str:
     if cmd.slug == "ship-qa":
         alt = (
             f"Illustrative terminal recording of an interactive /{esc(cmd.slug)} "
-            "session — one manual check per turn, waiting for pass or fail."
+            "session — agent announces each check, captain types pass or a bug note."
         )
         caption = (
             f"Illustrative — an interactive <code>/{esc(cmd.slug)}</code> walk: "
-            "one check per turn, the captain replies pass or fail."
+            "the agent asks one check at a time; the captain types pass or a bug note."
         )
     else:
         alt = (

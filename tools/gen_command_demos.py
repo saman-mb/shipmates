@@ -245,9 +245,9 @@ def _height_for_lines(n_lines):
 def build_ship_qa(spec):
     """Interactive one-check-per-turn walk — not the generic stage spinner.
 
-    Captains operate the device; the agent announces step N of M, waits for
-    pass/fail, then advances. The reel shows that contract, not a finished
-    checklist of workflow stages.
+    The reel is a back-and-forth: the agent announces step N of M, waits on a
+    blinking reply prompt, then the captain *types* pass or a bug note. That is
+    the product — not a finished checklist of workflow stages.
     """
     # cmd, blank, contract, blank, 4×(step + reply), blank, closer
     H = _height_for_lines(14)
@@ -263,7 +263,7 @@ def build_ship_qa(spec):
         [("one check per turn — reply ", dt.WHITE, False),
          ("pass", dt.GREEN, True),
          (" / ", dt.GREY, False),
-         ("fail", dt.CORAL, True)],
+         ("bug found", dt.CORAL, True)],
         dur=320,
     )
     reel.blank()
@@ -273,18 +273,23 @@ def build_ship_qa(spec):
         ("2", "primary nav visits each top-level once", "pass", True),
         ("3", "offline empty state shows the recovery CTA", "pass", True),
         ("4", "leave offline — list refreshes on its own",
-         "fail: list stale until pull-to-refresh", False),
+         "bug: list stale until pull-to-refresh", False),
     ]
     for n, check, reply, ok in steps:
+        # Agent turn
         reel.reveal(
             [("step ", dt.GREY, False),
              (f"{n} of 4", dt.CYAN, True),
              (": ", dt.GREY, False),
              (check, dt.WHITE, False)],
-            dur=280,
+            dur=220,
         )
+        # Wait for the captain, then type their reply character by character
+        reel.wait_reply(captain, blinks=3)
         color = dt.GREEN if ok else dt.CORAL
-        reel.reveal(captain + [(reply, color, True)], dur=300)
+        reel.type_command(
+            captain, reply, char_ms=42 if ok else 36, hold_blinks=1, text_color=color,
+        )
 
     reel.blank()
     reel.reveal([("✓ ", dt.GREEN, True), (spec["closer"], dt.GREEN, False)], dur=320)
