@@ -1,7 +1,7 @@
 ---
 name: ship-issue
 description: Shipmates: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
-argument-hint: <issue-number>... | next [epic <epic-number>] [optional extra guidance]
+argument-hint: <issue-number>... | next [epic <epic-number>] [sequential] [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -93,6 +93,11 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   auto-bundle**: bundling from a recommendation (a single ticket, or a `next` pick) always requires
   consent. An explicitly-passed multi-issue invocation (`/ship-issue 1 2 3`) is already that consent — it
   proceeds as a bundle (with the cohesion warning if it is a poor fit).
+- `EXECUTION` = `fanout` — how file-disjoint work units/slices execute within the issue or bundle.
+  `fanout` (default): when the plan identifies independent file-disjoint slices, spawn Builders
+  concurrently up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential` to
+  walk work units serially.
+- `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
 - `WORKTREE_LAYOUT` = `nested` (default) — isolated checkouts live under `<repo>/.shipmates/worktrees/`.
   Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…` next to
   the repo).
@@ -164,6 +169,7 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 **Epic delegation — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
 list) for:
 
+- **`sequential`** — sets `EXECUTION=sequential` to force serial execution of work units/slices instead of the default parallel fan-out.
 - **`board=epic-deferred`** or **`board=off`** — skips Stage 5 (acceptance board) and Stage 6 (remediation loop); proceed directly to Stage 7 / Stage 8.
 - **`epic-base=<branch>`** — branch name must match `^[a-zA-Z0-9._/-]+$`; anything else, stop and ask.
   Set `BASE_BRANCH` to that branch. Worktree isolation (Stage 1) cuts from `origin/<BASE_BRANCH>`.
@@ -351,11 +357,16 @@ Immediately after creating the worktree, install selected harness payload there:
 shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 ```
 
-## Stage 2 — Build  (agents: `senior-engineer` × N, parallel)
+## Stage 2 — Build  (agents: `senior-engineer` × N, parallel when fan-out)
 
-- **Multi-builder parallel execution**: when the Planner divides an issue into independent file-disjoint slices (sub-tasks), spawn Builders concurrently.
+- **Execution mode**: `EXECUTION=fanout` is the default execution posture; `sequential` is an opt-in mode
+  to force serial execution.
+  - When `EXECUTION=fanout` (default), and the Planner divides an issue or bundle into independent
+    file-disjoint slices (sub-tasks), spawn Builders (`senior-engineer` × N) concurrently in a single message
+    up to `MAX_CONCURRENT_WORKERS`.
+  - When `EXECUTION=sequential`, walk the planned work units one at a time serially.
 - Spawn one **Builder** (`{{role:senior-engineer}}`) per independent work unit from the plan,
-  **in a single message** so they run concurrently. Each Builder is told: its exact file ownership,
+  **in a single message** under `fanout` so they run concurrently. Each Builder is told: its exact file ownership,
   the acceptance criteria it must satisfy, the worktree path, to follow {{project-instructions}}
   for project style/conventions, to inspect `git log` and `git blame` on the files it touches for context,
   any Stage 1.5 spec that governs its files, and to match existing code style/idioms.

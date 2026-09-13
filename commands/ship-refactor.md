@@ -1,7 +1,7 @@
 ---
 name: ship-refactor
 description: Shipmates: Change the shape of the code without changing what it does — pin current behaviour in characterization tests first, transform, then prove equivalence by those tests passing unmodified and no existing test being deleted, skipped or loosened.
-argument-hint: <what to refactor + why — e.g. "split the 900-line order service, it's untestable">
+argument-hint: <what to refactor + why> [sequential] [board=epic-deferred | board=off]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 ---
@@ -29,11 +29,21 @@ no such grep, which is exactly why it needs behaviour pinned first.
   `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
   `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/ship-refactor-<slug>`;
   **sibling:** `../<repo>--refactor-<slug>`. Re-runs reuse the same path. `BRANCH` = `refactor/<slug>`.
+- `EXECUTION` = `fanout` — how decoupled refactoring seams execute. `fanout` (default): when
+  Stage 1.5 identifies multiple independent, file-disjoint seams, spawn Builders concurrently
+  up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential` to force
+  serial execution.
+- `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
+- `BOARD` = `full` (default) — Stage 5 acceptance board. Delegated runs support `board=epic-deferred` or
+  `board=off` to defer review to the milestone PR.
 - `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in).
 - **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states.
 - The orchestrator owns all git/gh; agents never push.
 
 ## Stage 0 — Scope, motivation, and the `/ship-migrate` escape hatch
+
+Parse runtime guidance: `sequential` sets `EXECUTION=sequential`; `board=epic-deferred` or `board=off`
+sets `BOARD=off`.
 
 Name the target precisely (files, module, the seam being introduced) and state the motivation in one
 sentence. Inspect `git log` and `git blame` on the target files to understand historical context, linked issues, and why current boundaries were chosen. Check the escape hatch above. Then decide `IS_ARCH_SIGNIFICANT`: does this cross module
@@ -75,7 +85,14 @@ mkdir -p "$(dirname "<WORKTREE_DIR>")"
 git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 ```
 
-## Stage 3 — Transform  (agent: `senior-engineer`)
+## Stage 3 — Transform  (agents: `senior-engineer` × N, parallel when fan-out)
+
+**Execution posture**:
+- Under `EXECUTION=fanout` (default), when the Stage 1.5 target structure identifies multiple
+  independent, file-disjoint seams or decoupled modules, spawn multiple Builders (`senior-engineer` × N)
+  concurrently in a single message up to `MAX_CONCURRENT_WORKERS`, each with its explicit file ownership.
+- Under `EXECUTION=sequential`, execute refactoring transforms serially one seam at a time.
+- For single-seam refactors, spawn a single `senior-engineer`.
 
 **Override the agent's default posture explicitly in the brief.** `senior-engineer` is told to make
 the minimum viable diff and to expand no further than asked — correct everywhere else, wrong here,
@@ -105,6 +122,9 @@ Then the full suite green, and the **CI gate**: poll `gh pr checks` until done; 
 ## Stage 5 — Review  (agents, on the pushed PR head)
 
 <!-- shipmates:acceptance-board -->
+
+**Skip check**: if runtime guidance includes `board=epic-deferred` or `board=off` (or `BOARD=off`),
+skip Stage 5 (acceptance board) and proceed directly to Stage 6 (Deliver).
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 
@@ -140,4 +160,5 @@ touched and why, and the green-CI link. File the bugs you found and didn't fix a
 
 ## Runtime input
 
-`$ARGUMENTS` names what to restructure and why. If empty, ask what hurts and what it costs.
+`$ARGUMENTS` names what to restructure and why, plus optional guidance (`sequential`, `board=epic-deferred`, `board=off`).
+If empty, ask what hurts and what it costs.

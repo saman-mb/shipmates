@@ -1,7 +1,7 @@
 ---
 name: ship-polish
 description: Shipmates: Iterate a visual / UI / output artifact to a specialist's sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or product-manager is genuinely happy (or a round cap).
-argument-hint: <what to polish — a screen, an asset, a rendered surface> [reviewer: art-director|ux-ui-designer|product-manager]
+argument-hint: <what to polish — a screen, an asset, a rendered surface> [reviewer: art-director|ux-ui-designer|product-manager] [sequential]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -30,6 +30,10 @@ The artifact and optional reviewer come from the Runtime input section at the en
 - `MAX_FIX_ROUNDS` = `2` — bounds the Stage 4 CI-fix loop only; separate from `MAX_ROUNDS`, which
   bounds the Stage 3 critique loop.
 - `BUILDER` = `senior-engineer` — applies the reviewer's fixes each round.
+- `EXECUTION` = `fanout` — how a round's fixes execute. `fanout` (default): when the reviewer's
+  blockers span file-disjoint components/assets, spawn Builders concurrently up to
+  `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential` to fix one at a time.
+- `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
 - `DESTINATION` = `reused-worktree`, `existing-pr`, or `new-branch` — resolved once by Stage 0, named
   in the report before round 0 runs, and consumed by Stage 4 to pick the push target and whether
   `MERGE_MODE` applies.
@@ -144,9 +148,11 @@ Each round:
    rubber-stamp to end the loop.
 2. **Signed off?** `ACCEPT` → leave the loop. `ACCEPT-WITH-NITS` → leave the loop too (the nits become
    follow-ups) unless the caller asked to resolve nits as well. `REJECT` → continue.
-3. **Fix** — spawn a `senior-engineer` with the reviewer's exact blocker list; apply the changes where
-   Stage 0 put you — the worktree branch under `MODE=pr`, the working tree under `MODE=edit-in-place`.
-   Keep the change scoped to the notes — no unrelated drift.
+3. **Fix** — spawn a `senior-engineer` — or, under `EXECUTION=fanout` (default), parallel Builders
+   across disjoint components/assets up to `MAX_CONCURRENT_WORKERS` (`EXECUTION=sequential` fixes one
+   at a time) — with the reviewer's exact blocker list; apply the changes where Stage 0 put you — the
+   worktree branch under `MODE=pr`, the working tree under `MODE=edit-in-place`. Keep the change scoped
+   to the notes — no unrelated drift.
 4. **Re-produce** — re-run the harness and capture the new artifact.
 5. Keep a one-line changelog per round, naming that round's capture-matrix coverage, so the trajectory
    and the coverage are both visible.
@@ -203,4 +209,4 @@ remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with th
 ## Runtime input
 
 `$ARGUMENTS` names the artifact to polish (screen/panel, generated art, rendered view, chart, or
-other output) and may name a reviewer. If empty, ask what to polish.
+other output) and may name a reviewer, plus optional `sequential` guidance. If empty, ask what to polish.

@@ -1,7 +1,7 @@
 ---
 name: ship-harden
 description: Shipmates: Security-harden a surface — threat-model it, rank the findings, and re-review until every finding has a fix or an explicit accepted-risk note (and secrets/dependency scans are clean). Read-only by default — it reports; remediation happens on a branch, opt-in.
-argument-hint: <what to harden — a module, an endpoint, an auth flow, or the whole app>
+argument-hint: <what to harden — a module, an endpoint, an auth flow, or the whole app> [sequential]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -22,6 +22,10 @@ The hardening surface comes from the Runtime input section at the end of this wo
 - `REVIEWER` = `security-engineer`. `BUILDER` = `senior-engineer`. `MAX_ROUNDS` = `4` — the
   remediate/re-review loop cap (Stage 4). `MAX_FIX_ROUNDS` = `2` — a separate cap, on CI-fix rounds
   at Stage 5, so a permanently-red PR escalates to the user instead of looping.
+- `EXECUTION` = `fanout` — how file-disjoint remediations execute. `fanout` (default): when blockers
+  span independent, file-disjoint areas, spawn Builders concurrently up to `MAX_CONCURRENT_WORKERS`.
+  Guidance `sequential` sets `EXECUTION=sequential` to apply fixes one at a time.
+- `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
 - `MODE` = `report` (default) — **read-only**: threat-model, rank, report. It writes nothing to the
   working tree, not even a fix that looks safe; a mode that edits is named for it. `pr` — apply
   the remediations in a worktree on a branch and open a CI-gated PR, reusing the shape of
@@ -47,13 +51,15 @@ Map what's in scope: the entry points (routes, CLI, message handlers), the trust
 crosses them, and what an attacker controls. List the assets worth protecting. Keep the surface bounded
 to the validated runtime input — note explicitly what you're *not* covering so it isn't mistaken for cleared.
 
-## Stage 1 — Threat-model & find  (agent: `security-engineer`)
+## Stage 1 — Threat-model & find  (agent: `security-engineer` × N, parallel across boundaries)
 
 Spawn the `security-engineer` to walk the surface with **STRIDE** across each trust boundary and review
 against OWASP fundamentals (broken access control / IDOR, injection, secrets & crypto, supply chain,
-secure defaults / defence in depth). Run the repo's existing SCA / secret scanners as corroboration —
-but reason about data flow, don't just collect lint. Return findings ranked **Critical/High/Medium/Low**,
-each with the **exploit path** (inputs → impact), exact location, and a specific fix.
+secure defaults / defence in depth). For broad surfaces, fan out parallel inspection across disjoint
+attack vectors (authn/authz, input validation/injection, dependencies/supply chain) with compact
+structured returns. Run the repo's existing SCA / secret scanners as corroboration — but reason about
+data flow, don't just collect lint. Return findings ranked **Critical/High/Medium/Low**, each with
+the **exploit path** (inputs → impact), exact location, and a specific fix.
 
 ## Stage 2 — Triage
 
@@ -80,15 +86,20 @@ git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> HEAD
 Every remediation and re-review below runs inside `<WORKTREE_DIR>`. Under `MODE=report` this stage
 does not run, because nothing is written.
 
-## Stage 3 — Remediate  (agent: `senior-engineer`)
+## Stage 3 — Remediate  (agents: `senior-engineer` × N, parallel across disjoint files)
 
 **`MODE=pr` only.** Under `report` this stage does not run: each blocker's fix is *described* in
 the findings table, not applied. The caller runs `MODE=pr` when they want the change made.
 
-Spawn a `senior-engineer` with the exact blocker list; apply **scoped** fixes (parameterise the query,
-add the authz check, move the secret to config, pin/upgrade the dep) — no unrelated rewrites. Where a
-fix changes behaviour, add/adjust a test so it's covered. Rotate any exposed secret is a human action —
-flag it loudly; don't just delete it from the diff and consider it solved.
+Under `EXECUTION=fanout` (default), when blockers span multiple independent, file-disjoint areas, spawn
+multiple `senior-engineer` builders concurrently in a single message — up to `MAX_CONCURRENT_WORKERS` —
+each with explicit file ownership. Under `EXECUTION=sequential`, fix one blocker at a time. For
+single-file or cohesive fixes, spawn one builder either way.
+
+Apply **scoped** fixes (parameterise the query, add the authz check, move the secret to config,
+pin/upgrade the dep) — no unrelated rewrites. Where a fix changes behaviour, add/adjust a test so it's
+covered. Rotate any exposed secret is a human action — flag it loudly; don't just delete it from the
+diff and consider it solved.
 
 ## Stage 4 — Re-review  (agent: `security-engineer`, fresh pass)
 
@@ -141,4 +152,5 @@ in place with the PR open for a human to merge.
 ## Runtime input
 
 `$ARGUMENTS` names the surface to harden: a module, endpoint/route, auth or payment flow, dependency
-set, or whole app. If empty, ask which surface; do not silently pick the whole repo.
+set, or whole app, plus optional `sequential` guidance. If empty, ask which surface; do not silently
+pick the whole repo.

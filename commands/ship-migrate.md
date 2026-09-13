@@ -1,7 +1,7 @@
 ---
 name: ship-migrate
 description: Shipmates: Run a mechanical migration across a whole codebase — discover every call site, transform each in isolation, verify per-site, and gate on a clean sweep (no old-pattern remnants) with the suite green. For API/dependency/pattern/framework migrations.
-argument-hint: <from → to — e.g. "moment.js → date-fns" or "callback API → async/await">
+argument-hint: <from → to — e.g. "moment.js → date-fns" or "callback API → async/await"> [sequential]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -24,6 +24,10 @@ The migration comes from the Runtime input section at the end of this workflow.
   `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/ship-migrate-<slug>`;
   **sibling:** `../<repo>--migrate-<slug>`. Re-runs reuse the same path. `BRANCH` = `chore/ship-migrate-<slug>`.
 - `TRANSFORMER` = `senior-engineer`. `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (`auto` opt-in).
+- `EXECUTION` = `fanout` — how transformer batches run. `fanout` (default): batches execute
+  concurrently up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential`
+  to transform batches one at a time.
+- `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
 - `BATCH` = group call sites by module/ownership so parallel transformers don't touch the same files.
 - **Correctness bar / test commands** = the repo's own. Read them first. Orchestrator owns all git/gh.
 
@@ -42,8 +46,8 @@ them for careful individual handling rather than a blind sweep. Batch the invent
 
 ## Stage 2 — Isolate
 
-1. **Resolve `<WORKTREE_DIR>`** from Config. Parse **`worktree-root=sibling`** from runtime guidance
-   before resolving.
+1. **Resolve `<WORKTREE_DIR>`** from Config. Parse **`worktree-root=sibling`** and **`sequential`**
+   (sets `EXECUTION=sequential`) from runtime guidance before resolving.
 2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — idempotently ensure
    `.shipmates/worktrees/` is in `<repo>/.gitignore` (append only when missing; create with a one-line
    Shipmates comment if absent). Never rewrite unrelated rules.
@@ -60,8 +64,10 @@ All transforms land in the worktree; the base branch stays clean.
 
 ## Stage 3 — Transform each batch  (agents: `senior-engineer` × N, parallel, non-overlapping files)
 
-Spawn one `TRANSFORMER` per batch **in a single message** (concurrent), each owning a disjoint file set
-(use `isolation: worktree` if they'd otherwise collide). Each applies the exact transform to its sites,
+Under `EXECUTION=fanout` (default), spawn one `TRANSFORMER` per batch **in a single message** (concurrent,
+up to `MAX_CONCURRENT_WORKERS`), each owning a disjoint file set (use `isolation: worktree` if they'd
+otherwise collide); under `EXECUTION=sequential`, walk batches one at a time. Each applies the exact
+transform to its sites,
 preserves behaviour, matches surrounding style, and reports the sites it changed. **Handle the flagged
 non-mechanical sites individually** — never blind-replace where semantics differ.
 
@@ -78,6 +84,9 @@ non-mechanical sites individually** — never blind-replace where semantics diff
 ## Stage 5 — Review & deliver  (agents, on the pushed PR head)
 
 <!-- shipmates:acceptance-board -->
+
+**Skip check**: if runtime guidance includes `board=epic-deferred` or `board=off` (or `BOARD=off`),
+skip the board and proceed directly to opening (or, `auto`, merging) the PR.
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 
@@ -109,4 +118,5 @@ and the PR link. Be explicit about anything deliberately left behind.
 ## Runtime input
 
 `$ARGUMENTS` describes the `from → to` migration: an API/signature change, dependency swap,
-language/framework idiom, config format, or renamed symbol. If empty, ask what is migrating to what.
+language/framework idiom, config format, or renamed symbol, plus optional guidance (`sequential`,
+`board=epic-deferred`, `board=off`). If empty, ask what is migrating to what.
