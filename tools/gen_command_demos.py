@@ -186,7 +186,10 @@ COMMANDS = {
         "closer": "Reviewed — one ranked verdict, with reasons. ⚓",
     },
     "ship-qa": {
-        "arg": "128 smoke ios-sim",
+        # Stages list stays in lockstep with commands/ship-qa.md for the
+        # source-count assertion; the reel itself is a custom interactive walk
+        # (see build_ship_qa) — not the generic spinner-stage idiom.
+        "arg": "128 risk",
         "stages": [
             ("INTAKE", "target + risk|smoke + platform"),
             ("CONTEXT", "diff, AC, how to run locally"),
@@ -196,7 +199,7 @@ COMMANDS = {
             ("SUMMARY", "pass/fail + product-impact findings"),
             ("RE-QA", "same checklist after fixes"),
         ],
-        "closer": "QA done — findings ready, checklist reusable. ⚓",
+        "closer": "QA-FAIL — 1 finding, checklist reusable for re-QA. ⚓",
     },
     "ship-onboard": {
         "arg": "",
@@ -234,7 +237,67 @@ def _height(n_stages):
     return h + (h % 2)  # keep even
 
 
+def _height_for_lines(n_lines):
+    h = dt.Y0 + n_lines * dt.LINE_H + 26
+    return h + (h % 2)
+
+
+def build_ship_qa(spec):
+    """Interactive one-check-per-turn walk — not the generic stage spinner.
+
+    Captains operate the device; the agent announces step N of M, waits for
+    pass/fail, then advances. The reel shows that contract, not a finished
+    checklist of workflow stages.
+    """
+    # cmd, blank, contract, blank, 4×(step + reply), blank, closer
+    H = _height_for_lines(14)
+    term = dt.Terminal(W, H, "shipmates — /ship-qa")
+    reel = dt.Reel(term)
+    prompt = [("$ ", dt.PROMPT, True)]
+    captain = [("→ ", dt.PROMPT, True)]
+
+    invocation = f"/ship-qa {spec['arg']}".strip()
+    reel.type_command(prompt, invocation, hold_blinks=1)
+    reel.blank()
+    reel.reveal(
+        [("one check per turn — reply ", dt.WHITE, False),
+         ("pass", dt.GREEN, True),
+         (" / ", dt.GREY, False),
+         ("fail", dt.CORAL, True)],
+        dur=320,
+    )
+    reel.blank()
+
+    steps = [
+        ("1", "launch reaches a usable first screen", "pass", True),
+        ("2", "primary nav visits each top-level once", "pass", True),
+        ("3", "offline empty state shows the recovery CTA", "pass", True),
+        ("4", "leave offline — list refreshes on its own",
+         "fail: list stale until pull-to-refresh", False),
+    ]
+    for n, check, reply, ok in steps:
+        reel.reveal(
+            [("step ", dt.GREY, False),
+             (f"{n} of 4", dt.CYAN, True),
+             (": ", dt.GREY, False),
+             (check, dt.WHITE, False)],
+            dur=280,
+        )
+        color = dt.GREEN if ok else dt.CORAL
+        reel.reveal(captain + [(reply, color, True)], dur=300)
+
+    reel.blank()
+    reel.reveal([("✓ ", dt.GREEN, True), (spec["closer"], dt.GREEN, False)], dur=320)
+    reel.hold(300, times=3)
+
+    gif_bytes, poster_bytes, frame_count = dt.encode(reel, W, H, PALETTE)
+    return gif_bytes, poster_bytes, frame_count, len(spec["stages"])
+
+
 def build_one(slug, spec):
+    if slug == "ship-qa":
+        return build_ship_qa(spec)
+
     n = len(spec["stages"])
     H = _height(n)
     term = dt.Terminal(W, H, f"shipmates — /{slug}")
