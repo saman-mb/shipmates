@@ -102,6 +102,35 @@ assert "pi: crew under .pi/agents" test -f "$D/.pi/agents/sdet.md"
 assert "pi: no crew in the shared .agents tree" test ! -d "$D/.agents/agents"
 assert "pi: tools are a comma scalar, not a YAML list" grep -q '^tools: read, grep, find' "$D/.pi/agents/sdet.md"
 
+# --- a GLOBAL install must land in each harness's own user-scope tree ---
+#
+# `--global` (the default) writes into $HOME. For most harnesses the workspace
+# path joined to home is already correct; for antigravity and pi it is not, and
+# the files landed where nothing reads them. This asserts the relocated layout
+# for the crew, the command skills AND the toolbox — the last of which is a
+# separate payload and was missed once already.
+GHOME="$WORK/global-home"
+mkdir -p "$GHOME"
+# Invoke the built binary rather than `cargo run`: cargo needs the real $HOME for
+# ~/.cargo, so overriding HOME inside a cargo invocation fails before the CLI
+# under test ever starts.
+( cd "$REPO" && cargo build --quiet ) || true
+BIN="$REPO/target/debug/shipmates"
+global_install() { # harness
+  HOME="$GHOME" "$BIN" install --harness "$1"
+}
+assert "global pi: exits 0" global_install pi
+assert "global pi: crew at ~/.pi/agent/agents" test -f "$GHOME/.pi/agent/agents/sdet.md"
+assert "global pi: commands at ~/.pi/agent/skills" test -f "$GHOME/.pi/agent/skills/ship-issue/SKILL.md"
+assert "global pi: toolbox at ~/.pi/agent/skills" test -f "$GHOME/.pi/agent/skills/shipmates-badge/SKILL.md"
+assert "global pi: crew is NOT a flat <name>.md in the shared tree" test ! -d "$GHOME/.agents/agents"
+assert "global pi: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
+
+assert "global antigravity: exits 0" global_install antigravity
+assert "global antigravity: crew is a dir per agent" test -f "$GHOME/.gemini/config/agents/sdet/agent.md"
+assert "global antigravity: commands under .gemini/config/skills" test -f "$GHOME/.gemini/config/skills/ship-issue/SKILL.md"
+assert "global antigravity: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
+
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"
 
