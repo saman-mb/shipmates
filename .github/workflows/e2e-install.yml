@@ -1,0 +1,56 @@
+name: Install E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sandbox-e2e:
+    name: Sandbox install + CLI e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+      - name: Build release binary
+        run: cargo build --release --locked --bin shipmates
+      - name: Install bats-core and assertion libraries (pinned)
+        shell: bash
+        env:
+          BATS_LIB_PATH: ${{ runner.temp }}/bats-libs
+        run: |
+          mkdir -p "$BATS_LIB_PATH" "$RUNNER_TEMP/bats-bin"
+          git clone --depth 1 --branch v1.14.0 https://github.com/bats-core/bats-core "$RUNNER_TEMP/bats-core"
+          git clone --depth 1 --branch v0.3.0 https://github.com/bats-core/bats-support "$BATS_LIB_PATH/bats-support"
+          git clone --depth 1 --branch v2.2.4 https://github.com/bats-core/bats-assert "$BATS_LIB_PATH/bats-assert"
+          ln -s "$RUNNER_TEMP/bats-core/bin/bats" "$RUNNER_TEMP/bats-bin/bats"
+          echo "$RUNNER_TEMP/bats-bin" >> "$GITHUB_PATH"
+          echo "BATS_LIB_PATH=$BATS_LIB_PATH" >> "$GITHUB_ENV"
+      - name: Run sandbox CLI e2e suite
+        env:
+          SHIPMATES_BIN: ${{ github.workspace }}/target/release/shipmates
+        run: |
+          mkdir -p "$RUNNER_TEMP/reports"
+          bats --print-output-on-failure --timing \
+            --report-formatter junit --output "$RUNNER_TEMP/reports" \
+            tests/e2e/cli
+      - name: Upload e2e reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-install-reports
+          path: ${{ runner.temp }}/reports
+          if-no-files-found: ignore

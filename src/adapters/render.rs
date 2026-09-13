@@ -161,10 +161,13 @@ pub fn emit_steering_at(
     let content = match target.format {
         SteeringFormat::PlainMarkdown => rendered,
         SteeringFormat::CursorMdc { description } => {
-            format!("---\ndescription: {description}\nalwaysApply: true\n---\n{rendered}")
+            format!(
+                "---\ndescription: {}\nalwaysApply: true\n---\n{rendered}",
+                yaml_scalar(description)
+            )
         }
         SteeringFormat::CopilotInstructions { apply_to } => {
-            format!("---\napplyTo: \"{apply_to}\"\n---\n{rendered}")
+            format!("---\napplyTo: {}\n---\n{rendered}", yaml_scalar(apply_to))
         }
     };
     let path = format!("{}/{}", container, target.rel_path);
@@ -283,6 +286,35 @@ pub struct CrewFormat {
     pub serialize: fn(&CanonicalRole, &str, &[String]) -> anyhow::Result<String>,
 }
 
+/// Quote a scalar for YAML frontmatter.
+///
+/// Contributors' prose routinely contains `: `, quotes and leading symbols.
+/// An unquoted `description: Shipmates: take an issue…` is not a parse
+/// warning: YAML reads the second colon as a nested mapping, the whole
+/// frontmatter block fails in a strict loader (Cursor parses `.mdc` rules with
+/// Ruby's Psych), and the skill installs cleanly and is never discovered
+/// (#407). Double-quoted style is the one YAML style that can carry every
+/// character, so escape control characters and quoting rather than strip,
+/// reject or hope. Callers deliberately leave `name:` bare — install identity
+/// and receipt matching read the bare form.
+pub fn yaml_scalar(value: &str) -> String {
+    let mut out = String::with_capacity(value.len() + 2);
+    out.push('"');
+    for character in value.chars() {
+        match character {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            control if control.is_control() => out.push_str(&format!("\\u{:04x}", control as u32)),
+            other => out.push(other),
+        }
+    }
+    out.push('"');
+    out
+}
+
 /// Emit crew files with one path/body loop shared by every crew-bearing target.
 /// Format-specific tool mapping and serialisation stay adapter-owned.
 pub fn emit_crew_files(
@@ -324,7 +356,10 @@ pub fn emit_skill_files(
         let mut content = String::new();
         content.push_str("---\n");
         content.push_str(&format!("name: {}\n", command.name));
-        content.push_str(&format!("description: {}\n", command.description));
+        content.push_str(&format!(
+            "description: {}\n",
+            yaml_scalar(&command.description)
+        ));
         content.push_str("---\n");
         content.push_str(&render_command_body(command, dialect)?);
         files.insert(
@@ -356,7 +391,10 @@ pub fn emit_tool_files(
         let mut content = String::new();
         content.push_str("---\n");
         content.push_str(&format!("name: {}\n", tool.name));
-        content.push_str(&format!("description: {}\n", tool.description));
+        content.push_str(&format!(
+            "description: {}\n",
+            yaml_scalar(&tool.description)
+        ));
         if agent_only {
             content.push_str("user-invocable: false\n");
         }
@@ -499,8 +537,63 @@ mod tests {
         let files = emit_steering_at("harnesses/cursor", &target, &AGENT_SKILLS, "steer");
         let content = &files["harnesses/cursor/.cursor/rules/shipmates-contributor.mdc"];
         assert!(content.starts_with("---\n"));
+        assert!(content.contains("description: \"Shipmates contributor checklists\"\n"));
         assert!(content.contains("alwaysApply: true"));
         assert!(content.contains("steer"));
+    }
+
+    #[test]
+    fn test_emit_steering_copilot_apply_to_stays_quoted() {
+        let target = SteeringTarget {
+            rel_path: ".github/instructions/shipmates.instructions.md",
+            format: SteeringFormat::CopilotInstructions { apply_to: "**/*" },
+        };
+        let files = emit_steering_at(
+            "harnesses/github-copilot",
+            &target,
+            &GITHUB_COPILOT,
+            "steer",
+        );
+        let content =
+            &files["harnesses/github-copilot/.github/instructions/shipmates.instructions.md"];
+        assert!(content.starts_with("---\napplyTo: \"**/*\"\n---\n"));
+        assert!(content.ends_with("steer"));
+    }
+
+    #[test]
+    fn test_yaml_scalar_quotes_colon_space() {
+        assert_eq!(
+            yaml_scalar("Shipmates: take an issue to a PR"),
+            "\"Shipmates: take an issue to a PR\""
+        );
+    }
+
+    #[test]
+    fn test_yaml_scalar_quotes_leading_bracket() {
+        assert_eq!(yaml_scalar("[draft] ship it"), "\"[draft] ship it\"");
+    }
+
+    #[test]
+    fn test_yaml_scalar_escapes_embedded_quote() {
+        assert_eq!(
+            yaml_scalar("the \"right\" shape"),
+            r#""the \"right\" shape""#
+        );
+    }
+
+    #[test]
+    fn test_yaml_scalar_escapes_backslash() {
+        assert_eq!(yaml_scalar(r"a\b"), r#""a\\b""#);
+    }
+
+    #[test]
+    fn test_yaml_scalar_escapes_newline() {
+        assert_eq!(yaml_scalar("two\nlines"), "\"two\\nlines\"");
+    }
+
+    #[test]
+    fn test_yaml_scalar_escapes_control_characters() {
+        assert_eq!(yaml_scalar("a\tb\rc\u{7}"), "\"a\\tb\\rc\\u0007\"");
     }
 
     #[test]
