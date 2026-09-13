@@ -466,7 +466,14 @@ fn install_harness(
 ) -> Result<HarnessInstall> {
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
     let adapter = adapters::select(harness)?;
-    let built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
+    let mut built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
+    // A global install (target = $HOME) writes into each harness's own
+    // user-scope tree, which for antigravity and pi is NOT the workspace path
+    // joined to home. Relocate once, here, so the plan, the receipt and the
+    // migration table all describe where the files actually land.
+    if installer::manifest_db::is_global_target(target_dir) {
+        built = installer::manifest_db::relocate_payload(harness, adapter.container(), &built);
+    }
     let payload_prefix = format!("{}/", adapter.container());
     for key in built.keys() {
         if let Some(rel) = key.strip_prefix(&payload_prefix) {

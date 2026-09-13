@@ -51,7 +51,8 @@ assert "opencode: agent under .opencode/agents" test -f "$D/.opencode/agents/sde
 D="$WORK/antigravity"
 assert "antigravity: install exits 0" install_to antigravity "$D"
 assert "antigravity: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
-assert "antigravity: agent under .agents/agents" test -f "$D/.agents/agents/sdet.md"
+assert "antigravity: agent is a dir per agent (agent.md)" test -f "$D/.agents/agents/sdet/agent.md"
+assert "antigravity: flat <name>.md is NOT emitted" test ! -f "$D/.agents/agents/sdet.md"
 
 # --- crew-bearing targets whose agent format is not Claude's ---
 # Codex agents are TOML, not Markdown; Copilot needs the .agent.md double

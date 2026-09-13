@@ -1,6 +1,6 @@
 use super::Adapter;
 use super::render::{
-    CLAUDE_CODE, CrewFormat, emit_crew_files, emit_tool_files, render_command_body, yaml_scalar,
+    CLAUDE_CODE, CrewFormat, CrewLayout, emit_crew_files, emit_tool_files, render_command_body, yaml_scalar,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
@@ -95,6 +95,7 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     dialect: &CLAUDE_CODE,
     map_tools,
     serialize,
+    layout: CrewLayout::Flat,
 };
 
 pub struct ClaudeCodeAdapter;

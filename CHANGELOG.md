@@ -49,6 +49,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.5.0] - 2026-09-13
 
+### Fixed
+
+- **Global installs wrote workspace paths into `$HOME`.** A global install (`--global`, the default)
+  joined the *workspace* tree to the home directory, which for two harnesses is a location nothing
+  reads. Antigravity's global tree is `~/.gemini/config/` — agents at
+  `~/.gemini/config/agents/<name>/agent.md`, skills at `~/.gemini/config/skills/<name>/SKILL.md` — and
+  pi's is `~/.pi/agent/`. Both now land there, and the receipt, the migration table and `doctor` all
+  agree on the relocated paths. The payload and its committed digests are unchanged: relocation
+  happens once at write time, so a scope-variant payload was not needed. A mis-shaped global
+  Antigravity install was also actively breaking pi, because `~/.agents/agents/` is a tree pi reads as
+  a legacy agent location (#458).
+- **Antigravity's crew were never loaded.** The adapter emitted a flat
+  `.agents/agents/<name>.md`, but Antigravity discovers `{workspace}/.agents/agents/{agent_name}/` and
+  reads the `agent.md` inside that directory — so the crew installed cleanly and were invisible, in
+  both scopes. Verified against the shipped `agy` binary, which embeds that path template and whose
+  release notes describe agents as `agent.md` files. The legacy flat shape stays loadable on the
+  receipt side so an existing install remains upgradable and removable (#460).
+- The `doctor` shared-tree check scanned `.agents/agents/` non-recursively, so it could not see a
+  foreign crew in Antigravity's actual shape — the nest was exactly what it needed to find. It now
+  walks the tree the way the readers do.
+
 ### Added
 
 - **Intelligent harness auto-detection on `shipmates install`:** `shipmates install` without

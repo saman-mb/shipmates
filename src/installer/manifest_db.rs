@@ -12,6 +12,7 @@ use std::path::{Component, Path, PathBuf};
 
 use crate::digest;
 use crate::installer::atomic_write;
+use std::collections::HashMap;
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 pub const RECEIPTS_DIR: &str = ".shipmates/receipts";
@@ -403,7 +404,7 @@ pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
     match harness {
         "claude-code" => &[".claude"],
         "opencode" => &[".opencode", ".shipmates"],
-        "antigravity" => &[".agents", ".shipmates"],
+        "antigravity" => &[".agents", ".gemini", ".shipmates"],
         "codex" => &[".agents", ".codex", ".shipmates"],
         // `.agents` is legacy-only for cursor: pre-#405 installs shipped skills
         // to the shared tree, and their receipts must still load so install can
@@ -417,6 +418,105 @@ pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
         "windsurf" => &[".windsurf", ".shipmates"],
         _ => &[],
     }
+}
+
+/// The harness's own **user-scope** configuration root, when it differs from
+/// the workspace tree the payload is built in.
+///
+/// A global install (`--global`, which is the default) writes into `$HOME`.
+/// For most harnesses that already lands correctly, because their global tree is
+/// the workspace dotdir at home — `~/.claude/`, `~/.codex/`, `~/.cursor/`,
+/// `~/.windsurf/` — so they carry no entry here and nothing changes for them.
+///
+/// Two do not, and joining the workspace path to `$HOME` writes files nothing
+/// reads:
+///
+/// * **antigravity** reads `~/.gemini/config/` — agents at
+///   `.gemini/config/agents/<name>/agent.md`, skills at
+///   `.gemini/config/skills/<name>/SKILL.md`. Verified against the shipped
+///   `agy` binary, which embeds `~/.gemini/config/` as its global root.
+/// * **pi** reads `~/.pi/agent/` — agents at `.pi/agent/agents/<name>.md`,
+///   skills at `.pi/agent/skills/<name>/SKILL.md`.
+///
+/// Being the global root rather than a workspace path, it is stored relative to
+/// the install target (which is `$HOME` for a global install).
+pub(crate) fn global_root(harness: &str) -> Option<&'static str> {
+    match harness {
+        "antigravity" => Some(".gemini/config"),
+        "pi" => Some(".pi/agent"),
+        _ => None,
+    }
+}
+
+/// Rewrite a payload-relative path into the harness's global location, or `None`
+/// when the harness needs no relocation or the path is not a resource subtree.
+///
+/// The payload is built once, in its workspace shape, and the committed digest
+/// pins exactly those bytes — so a global install relocates **at write time**
+/// rather than shipping a second, scope-variant payload. Only the two resource
+/// subtrees that have a global meaning (`agents/`, `skills/`) move; anything
+/// else, such as `.shipmates/contributor-steering.md`, stays put.
+///
+/// The resource is taken from the second path component rather than the first,
+/// because pi keeps its crew and its skills in *different* payload dotdirs
+/// (`.pi/agents/…` and `.agents/skills/…`) while both belong under
+/// `~/.pi/agent/` once installed globally.
+pub(crate) fn global_relocate(harness: &str, rel: &str) -> Option<String> {
+    let root = global_root(harness)?;
+    let mut parts = rel.splitn(3, '/');
+    let _dotdir = parts.next()?;
+    let resource = parts.next()?;
+    let rest = parts.next()?;
+    if resource != "agents" && resource != "skills" {
+        return None;
+    }
+    Some(format!("{root}/{resource}/{rest}"))
+}
+
+/// Whether `target_dir` is the user's home directory — which is what `--global`
+/// (the default) resolves to, and therefore what makes an install a *global* one.
+///
+/// Scope is inferred from the destination rather than threaded through as a flag,
+/// because the destination is the thing that decides which tree the harness will
+/// actually read.
+pub(crate) fn is_global_target(target_dir: &Path) -> bool {
+    let Some(home) = home::home_dir() else {
+        return false;
+    };
+    match (std::fs::canonicalize(target_dir), std::fs::canonicalize(&home)) {
+        (Ok(target), Ok(home)) => target == home,
+        _ => target_dir == home,
+    }
+}
+
+/// Rewrite a whole container-prefixed payload into the harness's global layout.
+///
+/// Returns the input unchanged for a harness that needs no relocation, so this is
+/// safe to call unconditionally. It is applied once, before the plan, the receipt
+/// and the migration table are derived from it — everything downstream then
+/// agrees, which is the point: a receipt claiming workspace paths while the files
+/// sat in the global tree is exactly the drift `doctor` exists to catch.
+pub(crate) fn relocate_payload(
+    harness: &str,
+    container: &str,
+    built: &HashMap<String, String>,
+) -> HashMap<String, String> {
+    if global_root(harness).is_none() {
+        return built.clone();
+    }
+    let prefix = format!("{container}/");
+    let mut out = HashMap::with_capacity(built.len());
+    for (key, content) in built {
+        let new_key = match key.strip_prefix(&prefix) {
+            Some(rel) => match global_relocate(harness, rel) {
+                Some(relocated) => format!("{prefix}{relocated}"),
+                None => key.clone(),
+            },
+            None => key.clone(),
+        };
+        out.insert(new_key, content.clone());
+    }
+    out
 }
 
 fn is_steering_receipt_path(harness: &str, path: &str) -> bool {
@@ -490,10 +590,38 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
         "antigravity" => {
             is_steering_receipt_path(harness, path)
                 || is_shipmates_steering_path(path)
+                // Current shape: a DIRECTORY per agent, `<name>/agent.md`.
+                // Antigravity discovers `{workspace}/.agents/agents/{name}/`
+                // and reads the `agent.md` inside it.
+                || (parts.len() == 4
+                    && root == ".agents"
+                    && parts[1] == "agents"
+                    && parts[3] == "agent.md")
+                // Legacy flat `<name>.md`, emitted before the shape was
+                // corrected. Accepted on the read side so a pre-change receipt
+                // still loads and `update`/`uninstall` can clear the files
+                // Antigravity never read.
                 || (parts.len() == 3
                     && root == ".agents"
                     && parts[1] == "agents"
                     && parts[2].ends_with(".md"))
+                // Global scope: `~/.gemini/config/agents/<name>/agent.md` and
+                // `~/.gemini/config/skills/<name>/…`. Tight for the same reason
+                // as pi's: `~/.gemini/config/` also holds mcp_config.json,
+                // hooks.json, workflows/ and plugins/, none of which are ours.
+                || (parts.len() == 5
+                    && root == ".gemini"
+                    && parts[1] == "config"
+                    && parts[2] == "agents"
+                    && !parts[3].is_empty()
+                    && parts[4] == "agent.md")
+                || (parts.len() >= 5
+                    && root == ".gemini"
+                    && parts[1] == "config"
+                    && parts[2] == "skills"
+                    && !parts[3].is_empty()
+                    && (parts[4] == "SKILL.md"
+                        || (parts.len() == 5 && parts[4].ends_with(".py"))))
                 || is_skill_tree(".agents")
         }
         "codex" => {
@@ -530,6 +658,23 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && root == ".pi"
                     && parts[1] == "agents"
                     && parts[2].ends_with(".md"))
+                // Global scope: `~/.pi/agent/agents/<name>.md` and
+                // `~/.pi/agent/skills/<name>/…`. Kept as tight as the
+                // workspace arms above: the harness's global tree is a lived-in
+                // config directory, so only the two resource subtrees are
+                // claimable, and only at the depths Shipmates writes.
+                || (parts.len() == 4
+                    && root == ".pi"
+                    && parts[1] == "agent"
+                    && parts[2] == "agents"
+                    && parts[3].ends_with(".md"))
+                || (parts.len() >= 5
+                    && root == ".pi"
+                    && parts[1] == "agent"
+                    && parts[2] == "skills"
+                    && !parts[3].is_empty()
+                    && (parts[4] == "SKILL.md"
+                        || (parts.len() == 5 && parts[4].ends_with(".py"))))
         }
         "github-copilot" => {
             is_steering_receipt_path(harness, path)
@@ -661,6 +806,127 @@ mod tests {
         }
         assert!(!allowed_receipt_path("cursor", ".cursor/mcp.json"));
         assert!(!allowed_receipt_path("cursor", ".cursor/skills/evil.sh"));
+    }
+
+    #[test]
+    fn global_relocation_moves_only_resource_subtrees_into_the_harness_global_root() {
+        // Antigravity's global tree is `~/.gemini/config/`, not `.agents/` at
+        // home — joining the workspace path to $HOME wrote files nothing reads.
+        assert_eq!(
+            global_relocate("antigravity", ".agents/agents/sdet/agent.md").as_deref(),
+            Some(".gemini/config/agents/sdet/agent.md")
+        );
+        assert_eq!(
+            global_relocate("antigravity", ".agents/skills/ship-issue/SKILL.md").as_deref(),
+            Some(".gemini/config/skills/ship-issue/SKILL.md")
+        );
+        // pi keeps crew and skills in *different* payload dotdirs, and both
+        // belong under `~/.pi/agent/` once installed globally.
+        assert_eq!(
+            global_relocate("pi", ".pi/agents/sdet.md").as_deref(),
+            Some(".pi/agent/agents/sdet.md")
+        );
+        assert_eq!(
+            global_relocate("pi", ".agents/skills/ship-issue/SKILL.md").as_deref(),
+            Some(".pi/agent/skills/ship-issue/SKILL.md")
+        );
+        // A harness whose global tree IS its workspace dotdir at home is left
+        // strictly alone — relocating these would break them.
+        for harness in [
+            "claude-code",
+            "codex",
+            "cursor",
+            "windsurf",
+            "opencode",
+            "github-copilot",
+        ] {
+            assert_eq!(global_root(harness), None, "{harness} must declare no global root");
+            assert_eq!(
+                global_relocate(harness, ".claude/agents/sdet.md"),
+                None,
+                "{harness} must not be relocated"
+            );
+        }
+        // Only the two resource subtrees move; steering and anything else stay.
+        assert_eq!(global_relocate("pi", ".shipmates/contributor-steering.md"), None);
+        assert_eq!(
+            global_relocate("antigravity", ".shipmates/contributor-steering.md"),
+            None
+        );
+    }
+
+    #[test]
+    fn global_receipt_paths_are_claimable_narrowly() {
+        assert!(allowed_receipt_path("pi", ".pi/agent/agents/sdet.md"));
+        assert!(allowed_receipt_path(
+            "pi",
+            ".pi/agent/skills/ship-issue/SKILL.md"
+        ));
+        assert!(allowed_receipt_path(
+            "antigravity",
+            ".gemini/config/agents/sdet/agent.md"
+        ));
+        assert!(allowed_receipt_path(
+            "antigravity",
+            ".gemini/config/skills/ship-issue/SKILL.md"
+        ));
+        // The global tree is a lived-in config directory: claim only the two
+        // resource subtrees under it, never a settings file or an arbitrary one.
+        assert!(!allowed_receipt_path("pi", ".pi/agent/settings.json"));
+        assert!(!allowed_receipt_path("pi", ".pi/agent/agents/evil.sh"));
+        assert!(!allowed_receipt_path("antigravity", ".gemini/config/mcp_config.json"));
+        assert!(!allowed_receipt_path(
+            "antigravity",
+            ".gemini/config/agents/evil.sh"
+        ));
+        // And no other harness may claim either tree.
+        for harness in ["codex", "github-copilot", "claude-code", "cursor", "opencode", "windsurf"] {
+            assert!(!allowed_receipt_path(harness, ".pi/agent/agents/sdet.md"), "{harness}");
+            assert!(
+                !allowed_receipt_path(harness, ".gemini/config/agents/sdet/agent.md"),
+                "{harness}"
+            );
+        }
+    }
+
+    #[test]
+    fn antigravity_crew_is_a_directory_per_agent_and_the_flat_shape_still_loads() {
+        // Antigravity discovers `{workspace}/.agents/agents/{name}/` and reads
+        // the `agent.md` inside it.
+        assert!(allowed_receipt_path(
+            "antigravity",
+            ".agents/agents/sdet/agent.md"
+        ));
+        // A sibling file in that directory is not ours to own.
+        assert!(!allowed_receipt_path(
+            "antigravity",
+            ".agents/agents/sdet/notes.md"
+        ));
+        // The legacy flat shape is still claimable on the read side, so a
+        // pre-correction receipt loads and its dead files can be cleared.
+        assert!(allowed_receipt_path("antigravity", ".agents/agents/sdet.md"));
+    }
+
+    /// The registry documents each harness's global root; the installer is what
+    /// honours it. Keep them in step, or a documented scope path silently stops
+    /// being the path that is written.
+    #[test]
+    fn registry_global_roots_match_the_installer() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tools/capability_registry.json");
+        let registry: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        for (name, entry) in registry["harnesses"].as_object().unwrap() {
+            let documented = entry
+                .get("global_root")
+                .and_then(|value| value.as_str())
+                .filter(|value| !value.is_empty());
+            assert_eq!(
+                documented,
+                global_root(name),
+                "{name}: capability_registry.json's global_root disagrees with manifest_db::global_root"
+            );
+        }
     }
 
     #[test]

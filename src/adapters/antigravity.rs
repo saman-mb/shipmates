@@ -1,6 +1,6 @@
 use super::Adapter;
 use super::render::{
-    ANTIGRAVITY, CrewFormat, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
+    ANTIGRAVITY, CrewFormat, CrewLayout, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
     yaml_scalar,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
@@ -9,12 +9,27 @@ use std::collections::HashMap;
 /// The Antigravity CLI (`agy`) — Google's successor to the retired Gemini CLI.
 ///
 /// `agy` reads workspace customizations from `.agents/`: subagent definitions
-/// as `.agents/agents/<name>.md` (YAML frontmatter with `name`, `description`,
-/// `tools`, `subagent: true`, `mainAgent: false`), and skills as
-/// `.agents/skills/<name>/SKILL.md`. The CLI reads project instructions from
-/// `AGENTS.md` (falling back to `GEMINI.md`), scopes conversations to the
-/// workspace, and authenticates through the Antigravity account rather than a
-/// per-process key. See https://antigravity.google/docs/cli/plugins.
+/// as **`.agents/agents/<name>/agent.md`** — a directory per agent, with YAML
+/// frontmatter (`name`, `description`, `tools`, `subagent: true`,
+/// `mainAgent: false`, `commandExecutionPolicy`) — and skills as
+/// `.agents/skills/<name>/SKILL.md`.
+///
+/// The crew shape is not cosmetic: `agy` discovers
+/// `{workspace}/.agents/agents/{agent_name}/` and reads the `agent.md` inside
+/// that directory. A flat `.agents/agents/<name>.md` installs cleanly and is
+/// never read, which is why the crew silently never loaded before this was
+/// corrected. Verified against the shipped `agy` binary's own embedded path
+/// template and its release notes.
+///
+/// Global scope is `~/.gemini/config/` — agents at
+/// `~/.gemini/config/agents/<name>/agent.md`, skills at
+/// `~/.gemini/config/skills/<name>/SKILL.md` — NOT `.agents/` joined to the
+/// home directory. See `global_root` in `tools/capability_registry.json`.
+///
+/// The CLI reads project instructions from `AGENTS.md` (falling back to
+/// `GEMINI.md`), scopes conversations to the workspace, and authenticates
+/// through the Antigravity account rather than a per-process key. See
+/// https://antigravity.google/docs/cli/plugins.
 pub struct AntigravityAdapter;
 
 fn scope_tool(scope: &str) -> Option<&'static str> {
@@ -121,6 +136,7 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     dialect: &ANTIGRAVITY,
     map_tools: tools_for,
     serialize,
+    layout: CrewLayout::DirPerAgent,
 };
 
 impl Adapter for AntigravityAdapter {
@@ -185,7 +201,7 @@ mod tests {
         let adapter = AntigravityAdapter;
         let files = adapter.build(&[role], &[]).unwrap();
         let content = files
-            .get("harnesses/antigravity/.agents/agents/test-role.md")
+            .get("harnesses/antigravity/.agents/agents/test-role/agent.md")
             .unwrap();
         assert!(content.contains("name: test-role"));
         assert!(content.contains("description: \"A test role\""));
@@ -223,7 +239,7 @@ mod tests {
         };
         let files = AntigravityAdapter.build(&[role], &[]).unwrap();
         let content = files
-            .get("harnesses/antigravity/.agents/agents/ordered-role.md")
+            .get("harnesses/antigravity/.agents/agents/ordered-role/agent.md")
             .unwrap();
         let tools = content
             .lines()
