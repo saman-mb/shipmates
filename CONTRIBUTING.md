@@ -54,8 +54,11 @@ are correct; which one belongs in a given sentence is set by the
    for field two gets the literal word `on`.) If you genuinely need a literal, escape it as `\$2` —
    but prefer restructuring so you don't, e.g. `cut -f2` rather than an `awk` field reference.
    `cargo run -- check` enforces this over the whole file, fenced or not.
-5. Prefer invoking the shared agents by `subagent_type` over inlining personas.
-6. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
+5. Every catalogue command ships interactive argument intake by default: declare a `## Parameters`
+   table (Name / Required / Token / Values / Default / Help) immediately above Runtime input; shared
+   picker rules live in `docs/COST.md`'s command-preamble — do not copy them into the command.
+6. Prefer invoking the shared agents by `subagent_type` over inlining personas.
+7. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
    repo works on its own branch in its own worktree and proposes the result as a pull request; the
    caller's checkout is left as they left it. Writing straight into the working tree is an opt-in
    (`MODE=edit-in-place`), never a default. `/ship-release` is the one shipped exception: the release
@@ -82,13 +85,13 @@ are correct; which one belongs in a given sentence is set by the
    so those cut from `origin/<BASE_BRANCH>`. `HEAD` is not the working tree — uncommitted work
    isn't in it — so a command that cuts from `HEAD` must check `git status --porcelain` first
    and stop or warn, or it ends up surveying one thing and changing another.
-7. Add `<name>` to `SLUGS` in `tools/gen_command_pages.py`.
-8. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
+8. Add `<name>` to `SLUGS` in `tools/gen_command_pages.py`.
+9. Run `python3 tools/gen_command_pages.py` and commit the regenerated `site/commands/**` and
    `site/sitemap.xml` — never hand-edit those. CI fails if they drift from the rendered sources.
-9. Add a matching card to the `#commands` grid in `site/index.html`, linking to `commands/<name>/`.
-10. Both validators must exit 0 before you open the PR: `cargo run -- check --target <target>` and
+10. Add a matching card to the `#commands` grid in `site/index.html`, linking to `commands/<name>/`.
+11. Both validators must exit 0 before you open the PR: `cargo run -- check --target <target>` and
     `python3 .github/scripts/validate_site.py`.
-11. **Release-affecting changes** (new/changed commands, tools, crew, or install payload) must bump
+12. **Release-affecting changes** (new/changed commands, tools, crew, or install payload) must bump
     `Cargo.toml` and add a `CHANGELOG.md` entry in the **same PR** — not a follow-up. Without the
     bump, merge to `main` does not publish a new release.
 

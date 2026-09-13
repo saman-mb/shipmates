@@ -170,7 +170,19 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined, and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| pr | no | `<pr-number or PR url>` | number  /  URL | current branch PR | PR to review; empty resolves via `gh pr view` on the current branch. |
+| focus | no | remaining prose | free text | — | Emphasis passed to every reviewer (e.g. weight a schema change). |
+
 ## Runtime input
 
-`$ARGUMENTS` contains a PR number or URL plus an optional focus hint. If empty, use the PR for the
-current branch (`gh pr view --json number`); if none exists, ask which PR to review.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse
+Tokens/Values from that table (required then optionals). If intake ran, treat the restated
+invocation as authoritative for this run.
+
+Leading token is the PR number or URL when present; remaining text is the focus hint. When `pr` is
+unset, use the PR for the current branch (`gh pr view --json number`); if none exists, intake must
+collect a PR before Stage 0.

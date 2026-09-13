@@ -5,6 +5,16 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.7.1] - 2026-09-13
+
+### Added
+
+- **Interactive argument intake as the catalogue default.** Every command declares a `## Parameters`
+  catalogue and the shared command-preamble in `docs/COST.md` runs interactive intake when
+  `$ARGUMENTS` is empty or missing a required parameter — native ask/choice when available, otherwise
+  a numbered menu. Fully specified invocations still skip straight to the workflow; non-interactive
+  runs fail closed on missing requireds and never hang (#467).
+
 ## [0.7.0] - 2026-09-13
 
 ### Added

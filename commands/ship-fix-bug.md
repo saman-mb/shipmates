@@ -135,8 +135,20 @@ the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined, and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| bug | yes | issue number or description | issue number  /  prose | — | Bug to fix; if a number, pull it with `gh issue view`. |
+| sequential | no | `sequential` | `sequential` | — | Force serial fix execution instead of fan-out. |
+| board | no | `board=…` | `board=epic-deferred`  /  `board=off` | full | Defer Stage 5 to a milestone board, or skip it with no deferral. |
+| repro_hints | no | remaining prose | free text | — | Reproduction hints for Stage 0 (steps, env, failing command). |
+
 ## Runtime input
 
-`$ARGUMENTS` is the complete invocation text: a GitHub issue number or plain-text bug description,
-plus optional guidance (`sequential`, `board=epic-deferred`, `board=off`) and reproduction hints.
-If it is a number, pull it with `gh issue view`; if empty, ask what is broken.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse
+Tokens/Values from that table (required then optionals). If intake ran, treat the restated
+invocation as authoritative for this run.
+
+The leading issue number or bug description is `<target>`; scan remaining tokens for `sequential`,
+`board=epic-deferred`, `board=off`, and treat the rest as reproduction hints.

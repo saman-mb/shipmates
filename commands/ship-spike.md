@@ -129,6 +129,14 @@ review on — and offer the next step: `/ship-plan-epics` to turn the chosen dir
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| question | yes | free text | open question / decision | — | The decision the spike must answer with evidence. |
+
 ## Runtime input
 
-`$ARGUMENTS` is the open question or decision to resolve. If empty, ask what decision is blocked.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Tokens are the open question or decision to resolve.

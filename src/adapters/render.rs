@@ -677,6 +677,7 @@ mod tests {
         let role = render_role_body("<!-- shipmates:subagent-preamble -->\nrole", &CLAUDE_CODE);
 
         assert!(command.contains("## Cost discipline"));
+        assert!(command.contains("## Argument intake"));
         assert!(command.contains("Mandatory seats"));
         assert!(command.contains("Integration questions"));
         // The model-routing ruleset is part of the shared cost-discipline

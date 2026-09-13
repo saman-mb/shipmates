@@ -570,7 +570,26 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   truth for human review; epic PR notes stay in sync. Never leave the captain to reconstruct unit work
   from scattered PR threads alone.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| epic | yes | `<epic-issue-number>` | issue number or URL | — | Epic whose unchecked stories this run delivers. |
+| resume | no | `resume` | `resume` | — | Resume a paused epic loop from saved progress. |
+| dry_run | no | `dry-run` | `dry-run`  /  `dry run`  /  `preview` | — | Print story order, units, gates, and estimated invocations; invoke nothing. |
+| sequential | no | `sequential` | `sequential` | — | Walk units one at a time instead of fan-out waves. |
+| epic_close | no | `epic close auto` | `epic close auto` | manual | Auto-close the epic when every checklist box is ticked. |
+| batch | no | `batch off` | `batch off` | smart | Force singleton units (one story per `/ship-issue`). |
+| unit_merge | no | `unit merge manual` | `unit merge manual` | auto | Require captain merge of each unit PR into the epic branch. |
+| retry_story | no | `retry-story <n>` | `retry-story` + story number | — | Re-run story `<n>` even if progress already marks it landed. |
+
 ## Runtime input
 
-`$ARGUMENTS` contains the epic issue number and optional guidance. The first token is `<epic>`; the
-rest is guidance (`resume`, `dry run`, `sequential`, `epic close auto`, `batch off`, `unit merge manual`, `retry-story <n>`, etc.).
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse
+Tokens/Values from that table (required then optionals). If intake ran, treat the restated
+invocation as authoritative for this run.
+
+The first token is `<epic>` (numeric issue or URL); the rest is guidance. Recognised guidance tokens
+map to Config as in Stage 0 (`resume`, `dry-run` / `dry run` / `preview`, `sequential`,
+`epic close auto`, `batch off`, `unit merge manual`, `retry-story <n>`). `epic merge auto` is
+hard-rejected (epic PRs always need captain review).

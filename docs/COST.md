@@ -28,13 +28,13 @@ repeated instructions and low-signal output out of the main context.
 ## Reusable command preamble
 
 The markers below are expanded into every rendered command. Keep everything except **Model routing**
-short and stable: command authors reference it instead of copying cost rules into each workflow.
-**Model routing** is the one deliberately large member, and it is inlined here rather than opted into
-per command because every command spawns the crew and each drives it differently — a ruleset only some
-commands carry is a ruleset the rest silently route around. Its size is tracked in #450. The
-`<!-- shipmates:model-routing -->` marker at the end of the block below expands the **Model routing**
-section further down this file, which is the only statement of it; that marker is expanded after the
-preamble itself, so the substitution order in `render_body` is load-bearing.
+short and stable: command authors reference it instead of copying cost or argument-intake rules into
+each workflow. **Model routing** is the one deliberately large member, and it is inlined here rather
+than opted into per command because every command spawns the crew and each drives it differently — a
+ruleset only some commands carry is a ruleset the rest silently route around. Its size is tracked in
+#450. The `<!-- shipmates:model-routing -->` marker at the end of the block below expands the **Model
+routing** section further down this file, which is the only statement of it; that marker is expanded
+after the preamble itself, so the substitution order in `render_body` is load-bearing.
 
 <!-- command-preamble:start -->
 ## Cost discipline
@@ -54,6 +54,23 @@ preamble itself, so the substitution order in `render_body` is load-bearing.
 - Ask every subagent for a compact structured return: decision/status first, criterion findings and
   minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant.
   Return decisions, not transcripts or raw logs.
+
+## Argument intake
+
+- Before any mutating step, classify `$ARGUMENTS`: **empty**, **partial**, or **fully specified**.
+  Empty or partial → run intake; fully specified → skip and execute.
+- Completeness: Empty = blank/whitespace. Partial = non-empty but ≥1 Required=yes Parameters row
+  unresolved. Fully specified = every Required=yes row present/parseable (missing optionals keep
+  Defaults).
+- Intake order: collect every Required=yes first; then offer optionals, with one upfront choice
+  **Accept defaults for all optionals** vs walk each optional row.
+- Prefer the harness native ask/choice surface when present; else a numbered chat menu. Never invent
+  a TUI outside the session. Canonical prose must NOT name harness-specific tool IDs.
+- Non-interactive / no user-turn: **fail closed** if any required is missing (clear missing-arg
+  message); apply Defaults for optionals. Never hang; never invent irreversible choices.
+- After intake, restate one resolved invocation line (`/<command> <tokens…>`), then proceed with the
+  existing workflow unchanged.
+- Per-command files only declare `## Parameters`; do not copy these intake rules into each command.
 
 <!-- shipmates:model-routing -->
 
