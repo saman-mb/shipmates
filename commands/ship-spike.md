@@ -134,6 +134,9 @@ review on — and offer the next step: `/ship-plan-epics` to turn the chosen dir
 | Name | Required | Token | Values | Default | Help |
 |------|----------|-------|--------|---------|------|
 | question | yes | free text | open question / decision | — | The decision the spike must answer with evidence. |
+| mode | no | `edit-in-place` / `MODE=edit-in-place` | `pr` / `edit-in-place` | `pr` | Where the ADR lands — PR (default) or write in the calling tree. |
+| merge_mode | no | `MERGE_MODE=auto` / `auto` | manual / auto | manual | Under `MODE=pr`, merge the ADR PR when CI is green. |
+| sync_base | no | `sync-base` | on / off | off | Under `MODE=pr`, cut the ADR worktree from `origin/<BASE_BRANCH>` instead of local `HEAD`. |
 
 ## Runtime input
 

@@ -55,9 +55,10 @@ are correct; which one belongs in a given sentence is set by the
    but prefer restructuring so you don't, e.g. `cut -f2` rather than an `awk` field reference.
    `cargo run -- check` enforces this over the whole file, fenced or not.
 5. Every catalogue command ships interactive argument intake by default: declare a `## Parameters`
-   table (Name / Required / Token / Values / Default / Help) immediately above Runtime input; shared
-   picker rules live in `docs/COST.md`'s command-preamble (defaults-first: show proposed defaults,
-   ask OK or type what to change — never a long form) — do not copy them into the command.
+   table (Name / Required / Token / Values / Default / Help) immediately above Runtime input —
+   every captain-facing knob is its own row with a Default, never a catch-all; shared picker rules
+   live in `docs/COST.md`'s command-preamble (always show every row, then OK or type what to change)
+   — do not copy them into the command.
 6. Prefer invoking the shared agents by `subagent_type` over inlining personas.
 7. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
    repo works on its own branch in its own worktree and proposes the result as a pull request; the

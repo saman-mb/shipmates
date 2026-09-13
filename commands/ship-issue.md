@@ -637,9 +637,13 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 
 | Name | Required | Token | Values | Default | Help |
 |------|----------|-------|--------|---------|------|
-| issues | yes | `<n>…` or `next` | leading numeric issue run  /  `next` | — | Issue/story numbers to ship, or `next` for backlog selection (mutually exclusive). |
+| issues | yes | `<n>…` or `next` | leading numeric issue run / `next` | — | Issue/story numbers to ship, or `next` for backlog selection (mutually exclusive). |
 | epic_scope | no | `epic <n>` | `epic` + epic number | — | After `next` only: restrict selection to that epic's unchecked checklist. |
-| guidance | no | remaining tokens | prose / knobs (`sequential`, `board=…`, …) | — | Extra guidance after issues/`next`; recognised knobs are listed under Guidance above. |
+| board | no | `board=full` / `board=epic-deferred` / `board=off` | full / epic-deferred / off | full | Acceptance board: full (default), defer to an epic milestone board, or skip (`board=off`). |
+| sequential | no | `sequential` | fanout / sequential | fanout | Force serial work-unit execution instead of parallel fan-out. |
+| merge_mode | no | `MERGE_MODE=manual` / `MERGE_MODE=auto` | manual / auto | manual | Stop with an open PR (`manual`) or squash-merge when gates pass (`auto`). |
+| worktree_root | no | `worktree-root=sibling` | nested / sibling | nested | Nested worktrees under `.shipmates/worktrees/` (default) or legacy sibling paths. |
+| guidance | no | remaining prose | free text | — | Extra focus text after knobs (not a place to hide knobs — use the rows above). |
 
 ## Runtime input
 

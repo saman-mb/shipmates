@@ -62,8 +62,12 @@ after the preamble itself, so the substitution order in `render_body` is load-be
 - Completeness: Empty = blank/whitespace. Partial = non-empty but ≥1 Required=yes Parameters row
   unresolved. Fully specified = every Required=yes row present/parseable (missing optionals keep
   Defaults).
-- **Defaults-first, one turn.** Do **not** walk the captain through a long form. Build the proposed
-  invocation from Parameters Defaults (and any tokens already in `$ARGUMENTS`), show that short
+- **Always show every Parameters row.** The defaults card lists **each** Name with its current or
+  Default value (and a one-line Help hint when useful) — requireds and optionals alike — so the
+  captain can see knobs like `board`, `merge_mode`, `dry_run`, or `mode` without memorizing tokens.
+  Never hide captain-facing knobs inside a catch-all `guidance` row; free-text focus may be a
+  separate optional row after the named knobs.
+- **Defaults-first, one turn.** Do **not** walk the captain through a long form. Show that full
   defaults summary once, and ask a single question: **OK to proceed, or type what to change?**
   - **OK / yes / empty reply** → lock the proposal and proceed.
   - **Typed changes** → apply only what they named (free text or Token phrases from Parameters),

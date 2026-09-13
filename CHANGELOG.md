@@ -10,11 +10,11 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - **Interactive argument intake as the catalogue default.** Every command declares a `## Parameters`
-  catalogue and the shared command-preamble in `docs/COST.md` runs a **defaults-first** intake when
-  `$ARGUMENTS` is empty or missing a required parameter: show the proposed defaults, ask OK or type
-  what to change, then proceed — no long form each run. Fully specified invocations still skip
-  straight to the workflow; non-interactive runs fail closed on missing requireds and never hang
-  (#467).
+  catalogue (each captain-facing knob is its own row with a Default) and the shared command-preamble
+  in `docs/COST.md` runs a **defaults-first** intake when `$ARGUMENTS` is empty or missing a required
+  parameter: show **every** Parameters row, ask OK or type what to change, then proceed — no long
+  form each run. Fully specified invocations still skip straight to the workflow; non-interactive
+  runs fail closed on missing requireds and never hang (#467).
 
 ## [0.7.0] - 2026-09-13
 

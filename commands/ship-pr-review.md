@@ -174,7 +174,8 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
 
 | Name | Required | Token | Values | Default | Help |
 |------|----------|-------|--------|---------|------|
-| pr | no | `<pr-number or PR url>` | number  /  URL | current branch PR | PR to review; empty resolves via `gh pr view` on the current branch. |
+| pr | no | `<pr-number or PR url>` | number / URL | current branch PR | PR to review; empty resolves via `gh pr view` on the current branch. |
+| mode | no | `report` / `post` | report / post | report | `report` returns the verdict only; `post` also publishes the review on the PR. |
 | focus | no | remaining prose | free text | — | Emphasis passed to every reviewer (e.g. weight a schema change). |
 
 ## Runtime input

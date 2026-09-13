@@ -92,7 +92,8 @@ command if manual), plus any human follow-ups (secret/config changes, migration 
 
 | Name | Required | Token | Values | Default | Help |
 |------|----------|-------|--------|---------|------|
-| version | no | version or bump keyword | `vX.Y.Z`  /  `patch`  /  `minor`  /  `major` | infer from change set | Explicit tag version or SemVer bump; omit to derive from merges since the last release and propose it. |
+| version | no | version or bump keyword | `vX.Y.Z` / `patch` / `minor` / `major` | infer from change set | Explicit tag version or SemVer bump; omit to derive from merges since the last release and propose it. |
+| publish_mode | no | `PUBLISH_MODE=auto` / `auto` | manual / auto | manual | Prepare changelog/bump/tag candidate and stop (`manual`), or publish the tag/release (`auto`). |
 
 ## Runtime input
 
