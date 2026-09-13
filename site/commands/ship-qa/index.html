@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>/ship-consolidate-issues — inventory → cross-check history → close → migrate → bundle · Shipmates</title>
-  <meta name="description" content="Triage the backlog against git history; keep what still matters.">
-  <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/ship-consolidate-issues/">
+  <title>/ship-qa — context → checklist → one step per turn → summary · Shipmates</title>
+  <meta name="description" content="Interactive local QA — one check per turn on a PR, issue branch, or named branch.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/ship-qa/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
-  <meta property="og:title" content="/ship-consolidate-issues — inventory → cross-check history → close → migrate → bundle">
-  <meta property="og:description" content="Triage the backlog against git history; keep what still matters.">
-  <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/ship-consolidate-issues/">
+  <meta property="og:title" content="/ship-qa — context → checklist → one step per turn → summary">
+  <meta property="og:description" content="Interactive local QA — one check per turn on a PR, issue branch, or named branch.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/ship-qa/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="/ship-consolidate-issues — inventory → cross-check history → close → migrate → bundle">
-  <meta name="twitter:description" content="Triage the backlog against git history; keep what still matters.">
+  <meta name="twitter:title" content="/ship-qa — context → checklist → one step per turn → summary">
+  <meta name="twitter:description" content="Interactive local QA — one check per turn on a PR, issue branch, or named branch.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -28,37 +28,44 @@
   {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    "name": "/ship-consolidate-issues",
-    "description": "Triage the backlog against git history; keep what still matters.",
-    "url": "https://saman-mb.github.io/shipmates/commands/ship-consolidate-issues/",
+    "name": "/ship-qa",
+    "description": "Interactive local QA — one check per turn on a PR, issue branch, or named branch.",
+    "url": "https://saman-mb.github.io/shipmates/commands/ship-qa/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
-        "name": "Inventory",
-        "text": "List the open issues in scope. No specialist — the run lists the backlog.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-consolidate-issues/#step-1"
+        "name": "Intake",
+        "text": "Parse PR, issue, or branch plus risk vs smoke and an optional platform hint. Announce the one-step-per-turn contract. No spawn — parse and confirm the target.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-qa/#step-1"
       },
       {
         "@type": "HowToStep",
         "position": 2,
-        "name": "Evidence",
-        "text": "Match them against commits and merged PRs so a close has a reason. Still evidence-first, no spawn.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-consolidate-issues/#step-2"
+        "name": "Context",
+        "text": "Boot from the diff, acceptance criteria, and the repo's run docs. Confirm how the captain will run the build. Still the run — read the change, do not rewrite it.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-qa/#step-2"
       },
       {
         "@type": "HowToStep",
         "position": 3,
-        "name": "Verdicts",
-        "text": "Close, keep, or rewrite each one. The product-manager owns every verdict. Always: product-manager.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-consolidate-issues/#step-3"
+        "name": "Checklist",
+        "text": "Build an ordered risk or smoke checklist privately. Gate out checks the named platform cannot run; prefer in-app toggles over OS network hacks. The checklist stays in working memory — never dump it once one-at-a-time is in force.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-qa/#step-3"
       },
       {
         "@type": "HowToStep",
         "position": 4,
-        "name": "Bundle",
-        "text": "Group what remains into themes you can actually ship. Always: product-manager.",
-        "url": "https://saman-mb.github.io/shipmates/commands/ship-consolidate-issues/#step-4"
+        "name": "Walk",
+        "text": "Announce step N of M only. Wait for pass, fail notes, screenshot, or logs before advancing. Captain operates the device; you log findings and do not repair.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-qa/#step-4"
+      },
+      {
+        "@type": "HowToStep",
+        "position": 5,
+        "name": "Summarize",
+        "text": "Per-step PASS/FAIL/DEFERRED plus product-impact-ready findings. Optional handoff and re-QA reuse the same checklist. Report only unless the captain asks to file or re-QA.",
+        "url": "https://saman-mb.github.io/shipmates/commands/ship-qa/#step-5"
       }
     ]
   }
@@ -99,9 +106,9 @@
         <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>
         <div class="order-detail">
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
-          <h1 class="order-detail__title" id="order-title"><code>/ship-consolidate-issues</code></h1>
-          <p class="order-detail__tagline">inventory → cross-check history → close → migrate → bundle</p>
-          <p class="order-detail__desc">Triage the backlog against git history; keep what still matters.</p>
+          <h1 class="order-detail__title" id="order-title"><code>/ship-qa</code></h1>
+          <p class="order-detail__tagline">context → checklist → one step per turn → summary</p>
+          <p class="order-detail__desc">Interactive local QA — one check per turn on a PR, issue branch, or named branch.</p>
         </div>
       </div>
     </section>
@@ -112,9 +119,9 @@
           <h2 class="section__title" id="demo-title">See it run</h2>
         </div>
         <figure class="demo">
-          <img class="demo__media" id="demo-media" src="../../assets/command-ship-consolidate-issues-poster.png" width="820" height="402" alt="Illustrative terminal recording of the stages /ship-consolidate-issues runs, in order." loading="lazy">
+          <img class="demo__media" id="demo-media" src="../../assets/command-ship-qa-poster.png" width="820" height="432" alt="Illustrative terminal recording of the stages /ship-qa runs, in order." loading="lazy">
           <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
-          <figcaption class="demo__caption">Illustrative — the stages <code>/ship-consolidate-issues</code> runs, in order.</figcaption>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/ship-qa</code> runs, in order.</figcaption>
         </figure>
       </div>
     </section>
@@ -127,7 +134,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/ship-consolidate-issues [scope filter such as label/area] [apply] — no args: the whole open backlog, report-only</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/ship-qa &lt;pr-number|issue-number|branch&gt; [mode: risk|smoke] [platform hint]</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -139,11 +146,13 @@
         <div class="section__head">
           <h2 class="section__title" id="process-title">How it works</h2>
         </div>
+        <p class="order-process__lead">You drive the checklist; the captain operates the simulator, emulator, or device. No specialist board — this is human verification of a running build, not a diff review.</p>
         <ol class="order-process__list" role="list">
-          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Inventory</h3><p class="order-process__line">List the open issues in scope.</p><p class="order-process__crew order-process__crew--solo">No specialist — the run lists the backlog.</p></div></li>
-          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Evidence</h3><p class="order-process__line">Match them against commits and merged PRs so a close has a reason.</p><p class="order-process__crew order-process__crew--solo">Still evidence-first, no spawn.</p></div></li>
-          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Verdicts</h3><p class="order-process__line">Close, keep, or rewrite each one. The product-manager owns every verdict.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a></p></div></div></div></li>
-          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">Bundle</h3><p class="order-process__line">Group what remains into themes you can actually ship.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Intake</h3><p class="order-process__line">Parse PR, issue, or branch plus risk vs smoke and an optional platform hint. Announce the one-step-per-turn contract.</p><p class="order-process__crew order-process__crew--solo">No spawn — parse and confirm the target.</p></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Context</h3><p class="order-process__line">Boot from the diff, acceptance criteria, and the repo&#x27;s run docs. Confirm how the captain will run the build.</p><p class="order-process__crew order-process__crew--solo">Still the run — read the change, do not rewrite it.</p></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Checklist</h3><p class="order-process__line">Build an ordered risk or smoke checklist privately. Gate out checks the named platform cannot run; prefer in-app toggles over OS network hacks.</p><p class="order-process__crew order-process__crew--solo">The checklist stays in working memory — never dump it once one-at-a-time is in force.</p></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">Walk</h3><p class="order-process__line">Announce step N of M only. Wait for pass, fail notes, screenshot, or logs before advancing.</p><p class="order-process__crew order-process__crew--solo">Captain operates the device; you log findings and do not repair.</p></div></li>
+          <li class="order-process__item" id="step-5"><span class="order-process__num" aria-hidden="true">5</span><div class="order-process__body"><h3 class="order-process__label">Summarize</h3><p class="order-process__line">Per-step PASS/FAIL/DEFERRED plus product-impact-ready findings. Optional handoff and re-QA reuse the same checklist.</p><p class="order-process__crew order-process__crew--solo">Report only unless the captain asks to file or re-QA.</p></div></li>
         </ol>
       </div>
     </section>
@@ -154,8 +163,8 @@
           <h2 class="section__title" id="when-to-use-title">When to use</h2>
         </div>
         <ul class="order-when__list">
-          <li>Open issues are stale, duplicated, or already shipped.</li>
-          <li>Starting from a brief? /ship-plan-epics. Shipping survivors? /ship-issue.</li>
+          <li>A change needs human eyes on a running build (offline states, chrome collisions, cold-start races).</li>
+          <li>Diff / board review? /ship-pr-review. Automated gates? CI. Known defect repair? /ship-fix-bug.</li>
         </ul>
       </div>
     </section>
@@ -165,8 +174,8 @@
         <div class="section__head">
           <h2 class="section__title" id="source-title">The skill</h2>
         </div>
-        <p>The installer ships the full skill — stages, gates, config — from <code>commands/ship-consolidate-issues.md</code>.</p>
-        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/ship-consolidate-issues.md">
+        <p>The installer ships the full skill — stages, gates, config — from <code>commands/ship-qa.md</code>.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/ship-qa.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           <span>Read the skill on GitHub</span>
         </a>
@@ -185,7 +194,7 @@
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-fix-bug/"><code>/ship-fix-bug</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-report-bug/"><code>/ship-report-bug</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-plan-epics/"><code>/ship-plan-epics</code></a></li>
-            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/ship-consolidate-issues</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-consolidate-issues/"><code>/ship-consolidate-issues</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-harden/"><code>/ship-harden</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-spike/"><code>/ship-spike</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-migrate/"><code>/ship-migrate</code></a></li>
@@ -193,7 +202,7 @@
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-release/"><code>/ship-release</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-polish/"><code>/ship-polish</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-pr-review/"><code>/ship-pr-review</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-qa/"><code>/ship-qa</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/ship-qa</code><span class="visually-hidden"> (current page)</span></span></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-onboard/"><code>/ship-onboard</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-refactor/"><code>/ship-refactor</code></a></li>
           </ul>
@@ -231,7 +240,7 @@
     var toggle = document.getElementById('demo-toggle');
     if (!img || !toggle) return;
     var poster = img.getAttribute('src');
-    var gif = '../../assets/command-ship-consolidate-issues.gif';
+    var gif = '../../assets/command-ship-qa.gif';
     var playing = false;
     toggle.addEventListener('click', function () {
       playing = !playing;

@@ -5,7 +5,7 @@ shipmates CLI and bringing the crew aboard.
 Honest by construction: every command shown is a real one and every line of
 output matches what the CLI actually prints — `cargo install shipmates`, then
 `shipmates install --harness claude-code` printing its real
-"Installed harness: … (28 files written)" line (13 crew + 15 commands), then
+"Installed harness: … (29 files written)" line (13 crew + 16 commands), then
 `ls .claude` showing the two trees it writes.
 
 Writes two artifacts from one set of frames:

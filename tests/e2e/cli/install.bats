@@ -7,7 +7,7 @@ load helpers
 
 @test "install writes the full claude-code crew and a receipt" {
   install_claude_code "$SANDBOX"
-  [ "$(skill_dirs "$SANDBOX")" -eq 15 ]
+  [ "$(skill_dirs "$SANDBOX")" -eq 16 ]
   [ "$(agent_files "$SANDBOX")" -eq 13 ]
   [ "$(tool_dirs "$SANDBOX")" -eq 0 ]
   [ "$(receipt_files "$SANDBOX")" -eq 1 ]
@@ -21,14 +21,14 @@ load helpers
   run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools none
   assert_success
   cmp "$BATS_TEST_TMPDIR/before.md" "$SANDBOX/.claude/skills/ship-issue/SKILL.md"
-  [ "$(skill_dirs "$SANDBOX")" -eq 15 ]
+  [ "$(skill_dirs "$SANDBOX")" -eq 16 ]
 }
 
 @test "omitting --with-tools installs every tool; --with-tools all matches" {
   run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX"
   assert_success
   [ "$(tool_dirs "$SANDBOX")" -eq 11 ]
-  [ "$(skill_dirs "$SANDBOX")" -eq 26 ]
+  [ "$(skill_dirs "$SANDBOX")" -eq 27 ]
   [ -d "$SANDBOX/.claude/skills/shipmates-termgif" ]
 
   run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX/all" --with-tools all
@@ -39,7 +39,7 @@ load helpers
 @test "omitting --harness installs claude-code non-interactively" {
   run "$SHIPMATES_BIN" install --dir "$SANDBOX" --with-tools none
   assert_success
-  [ "$(skill_dirs "$SANDBOX")" -eq 15 ]
+  [ "$(skill_dirs "$SANDBOX")" -eq 16 ]
   [ -f "$SANDBOX/.shipmates/receipts/claude-code.json" ]
 }
 
@@ -100,5 +100,5 @@ load helpers
   cd "$REPO_ROOT"
   run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools none --from-cwd
   assert_success
-  [ "$(skill_dirs "$SANDBOX")" -eq 15 ]
+  [ "$(skill_dirs "$SANDBOX")" -eq 16 ]
 }

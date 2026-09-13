@@ -185,6 +185,19 @@ COMMANDS = {
         ],
         "closer": "Reviewed — one ranked verdict, with reasons. ⚓",
     },
+    "ship-qa": {
+        "arg": "128 smoke ios-sim",
+        "stages": [
+            ("INTAKE", "target + risk|smoke + platform"),
+            ("CONTEXT", "diff, AC, how to run locally"),
+            ("CHECKLIST", "private ordered checks"),
+            ("ENV GATE", "skip what the platform can't do"),
+            ("WALK", "one check per turn"),
+            ("SUMMARY", "pass/fail + product-impact findings"),
+            ("RE-QA", "same checklist after fixes"),
+        ],
+        "closer": "QA done — findings ready, checklist reusable. ⚓",
+    },
     "ship-onboard": {
         "arg": "",
         "stages": [

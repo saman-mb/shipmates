@@ -3,7 +3,7 @@ use super::render::{AGENT_SKILLS, emit_skill_files, emit_tool_files};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
-/// Cursor ships no subagents, so only the fifteen commands ship (as skills) and
+/// Cursor ships no subagents, so only the sixteen commands ship (as skills) and
 /// `roles` is not emitted.
 ///
 /// Cursor is documented as reading the open Agent Skills tree
