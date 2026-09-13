@@ -471,6 +471,7 @@ pub fn load_tools_embedded() -> anyhow::Result<Vec<CanonicalTool>> {
 }
 
 const STEERING_REL: &str = "steering/shipmates.md";
+const GLOBAL_STEERING_REL: &str = "steering/global.md";
 
 /// Load harness-neutral contributor steering for Shipmates itself.
 pub fn load_steering_embedded() -> Result<String, String> {
@@ -487,6 +488,24 @@ pub fn load_steering(root: &Path) -> Result<String, String> {
         fs::read_to_string(&path).map_err(|e| e.to_string())
     } else {
         load_steering_embedded()
+    }
+}
+
+/// Load canonical global steering heuristics (user-scope rules).
+pub fn load_global_steering_embedded() -> Result<String, String> {
+    crate::embedded::embedded_sources()
+        .iter()
+        .find(|(rel, _)| *rel == GLOBAL_STEERING_REL)
+        .map(|(_, content)| content.to_string())
+        .ok_or_else(|| "embedded steering/global.md missing".to_string())
+}
+
+pub fn load_global_steering(root: &Path) -> Result<String, String> {
+    let path = root.join("steering").join("global.md");
+    if path.is_file() {
+        fs::read_to_string(&path).map_err(|e| e.to_string())
+    } else {
+        load_global_steering_embedded()
     }
 }
 
@@ -536,6 +555,15 @@ impl CatalogSource {
         match self {
             Self::Disk(root) => load_steering(root),
             Self::Embedded => load_steering_embedded(),
+        }
+        .map_err(|error| anyhow::anyhow!(error))
+    }
+
+    /// Canonical global steering text for this source.
+    pub fn load_global_steering(&self) -> anyhow::Result<String> {
+        match self {
+            Self::Disk(root) => load_global_steering(root),
+            Self::Embedded => load_global_steering_embedded(),
         }
         .map_err(|error| anyhow::anyhow!(error))
     }

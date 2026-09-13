@@ -1,6 +1,7 @@
 mod adapters;
 mod catalog;
 mod cli;
+mod detector;
 mod digest;
 mod doctor;
 mod embedded;
@@ -136,7 +137,10 @@ fn prompt_among(labels: &[String], heading: &str, empty_default: &[String]) -> V
     empty_default.to_vec()
 }
 
-fn resolve_install_harnesses(harness: Option<String>) -> Result<Vec<String>> {
+fn resolve_install_harnesses(
+    harness: Option<String>,
+    target_dir: Option<&Path>,
+) -> Result<Vec<String>> {
     let available = adapters::targets();
     match harness {
         Some(name) if name == "all" => Ok(available.iter().map(|s| (*s).to_string()).collect()),
@@ -149,8 +153,17 @@ fn resolve_install_harnesses(harness: Option<String>) -> Result<Vec<String>> {
             }
             Ok(vec![name])
         }
-        None if std::io::stdin().is_terminal() => Ok(prompt_for_harnesses(&available)),
-        None => Ok(vec!["claude-code".into()]),
+        None => {
+            let detected = detector::detect_installed_harness_names(target_dir);
+            if !detected.is_empty() {
+                println!("Detected installed harness(es): {}", detected.join(", "));
+                Ok(detected)
+            } else if std::io::stdin().is_terminal() {
+                Ok(prompt_for_harnesses(&available))
+            } else {
+                Ok(vec!["claude-code".into()])
+            }
+        }
     }
 }
 
@@ -678,7 +691,8 @@ fn main() -> Result<()> {
             let selected_tools = select_tools(with_tools, available)?;
             let target_dir = resolve_target_dir(location.local, location.dir)?;
             let install_steering = source.steering_for_target(&target_dir)?;
-            let harnesses = resolve_install_harnesses(harness)?;
+            let harnesses = resolve_install_harnesses(harness, Some(&target_dir))?;
+
             run_install_loop(
                 &target_dir,
                 &harnesses,
@@ -691,6 +705,33 @@ fn main() -> Result<()> {
                 force,
                 install_steering.is_some(),
             )?;
+
+            // Install canonical global steering into user home directory
+            if let Some(home_path) = home::home_dir() {
+                if let Ok(global_content) = source.load_global_steering() {
+                    println!("\nInstalling canonical global steering (heuristics and workflow routing)...");
+                    for h in &harnesses {
+                        match steering::install_global_steering(h, &home_path, &global_content) {
+                            Ok(steering::SteeringOutcome::Created(p)) => {
+                                println!("  {} — installed global steering at {}", h, p.display());
+                            }
+                            Ok(steering::SteeringOutcome::Updated(p)) => {
+                                println!("  {} — updated global steering at {}", h, p.display());
+                            }
+                            Ok(steering::SteeringOutcome::Unchanged(p)) => {
+                                println!("  {} — global steering up to date at {}", h, p.display());
+                            }
+                            Ok(steering::SteeringOutcome::Gap(msg)) => {
+                                println!("  {} — note: {}", h, msg);
+                            }
+                            Ok(steering::SteeringOutcome::Removed(_)) => {}
+                            Err(e) => {
+                                eprintln!("  {} — failed to install global steering: {}", h, e);
+                            }
+                        }
+                    }
+                }
+            }
         }
         Command::Uninstall {
             harness,
@@ -803,6 +844,15 @@ fn main() -> Result<()> {
                 true,
                 install_steering.is_some(),
             )?;
+
+            // Refresh canonical global steering if home directory is available
+            if let Some(home_path) = home::home_dir() {
+                if let Ok(global_content) = source.load_global_steering() {
+                    for h in &harnesses {
+                        let _ = steering::install_global_steering(h, &home_path, &global_content);
+                    }
+                }
+            }
         }
         Command::Doctor {
             harness,

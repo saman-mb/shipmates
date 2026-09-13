@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-13
+
+### Added
+
+- **Intelligent harness auto-detection on `shipmates install`:** `shipmates install` without
+  `--harness` now discovers which supported harnesses are actually installed on the system (via
+  PATH binaries, home configuration directories, project markers, and install receipts) and
+  configures an optimal native setup for each detected harness — native dialect, tool vocabulary,
+  least-privilege permissions, and canonical user-scope steering in 1 command, 1 time, perfectly (#438).
+- **Canonical user-scope steering (`steering/global.md`) installation:** `shipmates install` installs
+  domain-neutral global heuristics into user-scope instruction files across supported harnesses:
+  Tier A for Cursor (`~/.cursor/rules/shipmates.mdc`) and Tier B for Claude Code (`~/.claude/CLAUDE.md`),
+  Codex (`~/.codex/AGENTS.md`), OpenCode (`~/.config/opencode/AGENTS.md`), Antigravity (`~/.gemini/GEMINI.md`),
+  and Pi (`~/.pi/agent/AGENTS.md`) using `<!-- shipmates:global-steering -->` managed blocks with atomic
+  writes and idempotency (#417, #430, #438).
+- **`shipmates doctor` vocabulary and foreign agent checks:** Doctor now validates that every installed
+  agent's declared tools resolve within that harness's first-party tool vocabulary, verifies required
+  least-privilege keys (such as OpenCode's catch-all `*: deny`), flags foreign agent vocabularies in
+  shared trees (`.agents/agents/`) that would cause silent zero-tool seats on Pi, and reports user-scope
+  global steering status (#438).
+
 ## [0.4.1] - 2026-09-13
 
 ### Added
