@@ -1019,12 +1019,12 @@ fn diagnose_built(
     // 5. Tool status — optional tools are healthy only when every selected
     // file is present and its raw bytes match. A partially present tool is not
     // the same as no tool installed.
-    let prefix = format!("{}/", adapter.container());
-    let tool_expected: BTreeMap<String, String> = adapter
-        .build_tools(tools)
-        .into_iter()
-        .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|r| (r.to_string(), v)))
-        .collect();
+    let tool_expected: BTreeMap<String, String> = expected_at(
+        target_dir,
+        harness,
+        &adapter.build_tools(tools),
+        adapter.container(),
+    );
     for rel in tool_expected.keys() {
         manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
     }
@@ -1443,11 +1443,8 @@ pub fn fix(
         }
     }
 
-    let tool_prefix = format!("{}/", adapter.container());
-    let tool_expected: BTreeMap<String, String> = tool_built
-        .into_iter()
-        .filter_map(|(k, v)| k.strip_prefix(&tool_prefix).map(|r| (r.to_string(), v)))
-        .collect();
+    let tool_expected: BTreeMap<String, String> =
+        expected_at(target_dir, harness, &tool_built, adapter.container());
     for rel in tool_expected.keys() {
         manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
     }

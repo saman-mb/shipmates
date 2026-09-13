@@ -131,6 +131,13 @@ assert "global antigravity: crew is a dir per agent" test -f "$GHOME/.gemini/con
 assert "global antigravity: commands under .gemini/config/skills" test -f "$GHOME/.gemini/config/skills/ship-issue/SKILL.md"
 assert "global antigravity: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
 
+# Both harnesses in one home must be clean — including the toolbox, which doctor
+# compares against the relocated paths. Asserting the layout alone missed that:
+# the files landed correctly while `doctor` still read the workspace paths and
+# reported every installed tool as orphaned.
+assert "global pi: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness pi | grep -q 'All shipshape'"
+assert "global antigravity: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness antigravity | grep -q 'All shipshape'"
+
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"
 
