@@ -608,7 +608,7 @@ mod tests {
     #[test]
     fn test_shared_preambles_expand_and_leave_no_markers() {
         let command = render_body(
-            "<!-- shipmates:command-preamble -->\n<!-- shipmates:acceptance-board -->\n<!-- shipmates:epic-integration-board -->\n<!-- shipmates:model-routing -->\nbody",
+            "<!-- shipmates:command-preamble -->\n<!-- shipmates:acceptance-board -->\n<!-- shipmates:epic-integration-board -->\nbody",
             &CLAUDE_CODE,
         );
         let role = render_role_body("<!-- shipmates:subagent-preamble -->\nrole", &CLAUDE_CODE);
@@ -616,7 +616,13 @@ mod tests {
         assert!(command.contains("## Cost discipline"));
         assert!(command.contains("Mandatory seats"));
         assert!(command.contains("Integration questions"));
+        // The model-routing ruleset is part of the shared cost-discipline
+        // preamble, so a command carrying only that one marker still gets it —
+        // which is what makes the ruleset global rather than per-command.
         assert!(command.contains("## Model routing"));
+        // Agents carry the subagent preamble, not the command preamble, so the
+        // ruleset reaches commands only — never every crew file.
+        assert!(!role.contains("## Model routing"));
         assert!(role.contains("## Return discipline"));
         assert!(!command.contains("shipmates:command-preamble"));
         assert!(!command.contains("shipmates:acceptance-board"));

@@ -99,8 +99,9 @@ we have never seen recorded is handled by the same ladder (no row → declared �
 ## Decision
 
 **Adopt C.** The algorithm is stated once, canonically, in `docs/COST.md` under `## Model routing` and
-expanded into `/ship-issue` and `/ship-epic` through a single marker, so the two commands cannot drift
-apart. The repo-side capability record is `tools/harness_matrix.json` → `model_surface`.
+expanded from the shared cost-discipline preamble into **every** command — the ruleset is global, not
+a two-command special case — so no command can drift from it. The repo-side capability record is
+`tools/harness_matrix.json` → `model_surface`.
 
 1. **Tiers.** Two neutral model tiers — `mechanical` (cheapest capable) and `judgment` (top available) —
    plus complexity scaling (`trivial` / `standard` / `complex`) and `inherit`. Effort is a **separate**
@@ -168,7 +169,7 @@ substituted model is visible as substituted. The line is additive: the existing 
 
 ### 6. Where is the ownership boundary?
 
-The pool **shape** is install-time canonical content (`docs/COST.md` → both commands, via one marker).
+The pool **shape** is install-time canonical content (`docs/COST.md` → every command, via one marker).
 The pool **values** are runtime and per-user; Shipmates never writes one into an installed file and
 never ships a model-name default. The per-harness `model_surface` record is repo-side only.
 

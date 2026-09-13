@@ -79,8 +79,6 @@ by stopping `/ship-epic` early. Pause is **not** a substitute for the Fixer loop
 The epic issue number and optional guidance come from the Runtime input section at the end of this
 workflow.
 
-<!-- shipmates:model-routing -->
-
 ---
 
 ## Config (defaults — override only if the repo clearly needs it)

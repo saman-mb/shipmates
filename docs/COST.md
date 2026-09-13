@@ -44,6 +44,8 @@ authors reference it instead of copying cost rules into each workflow.
   minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant.
   Return decisions, not transcripts or raw logs.
 
+<!-- shipmates:model-routing -->
+
 <!-- command-preamble:end -->
 
 ## Reusable acceptance board

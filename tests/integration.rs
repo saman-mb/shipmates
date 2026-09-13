@@ -973,20 +973,49 @@ fn test_matrix_model_surface_is_complete() {
     }
 }
 
-/// The two commands that route subagent models must carry the marker that expands
-/// the canonical block. Nothing else asserts it, and dropping the line would
-/// silently remove every routing rule from both installed skills while every
-/// other gate stayed green.
+/// The model-routing ruleset is a *global* one. It is expanded from the shared
+/// cost-discidence preamble, so **every** command carries it — not only the two
+/// that spawn the most subagents. A marker left in a single command would make
+/// the ruleset look installed everywhere while reaching only that command.
 #[test]
-fn test_commands_carry_the_model_routing_marker() {
+fn test_every_command_carries_the_model_routing_ruleset() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    for name in ["ship-issue", "ship-epic"] {
-        let source = std::fs::read_to_string(root.join("commands").join(format!("{name}.md")))
-            .unwrap_or_else(|err| panic!("cannot read commands/{name}.md: {err}"));
+    let commands = load_commands(&root.join("commands")).unwrap();
+    assert!(!commands.is_empty());
+    let files = ClaudeCodeAdapter.build(&[], &commands).unwrap();
+
+    // The ruleset is sourced once, from the shared cost-discipline preamble.
+    let doctrine = std::fs::read_to_string(root.join("docs/COST.md")).unwrap();
+    let preamble = doctrine
+        .split_once("<!-- command-preamble:start -->")
+        .expect("cost doctrine has no command-preamble start marker")
+        .1
+        .split_once("<!-- command-preamble:end -->")
+        .expect("cost doctrine has no command-preamble end marker")
+        .0;
+    assert!(
+        preamble.contains("<!-- shipmates:model-routing -->"),
+        "the cost-discipline preamble must expand the model-routing ruleset"
+    );
+
+    for command in &commands {
+        let path = format!(
+            "harnesses/claude-code/.claude/skills/{}/SKILL.md",
+            command.name
+        );
+        let rendered = files
+            .get(&path)
+            .unwrap_or_else(|| panic!("no rendered payload for {path}"));
         assert_eq!(
-            source.matches("<!-- shipmates:model-routing -->").count(),
+            rendered.matches("## Model routing").count(),
             1,
-            "commands/{name}.md must carry exactly one `<!-- shipmates:model-routing -->` marker"
+            "{}: every command must carry the model-routing ruleset exactly once",
+            command.name
+        );
+        assert!(
+            !rendered.contains("shipmates:model-routing"),
+            "{}: the marker must not survive into the payload",
+            command.name
         );
     }
 }

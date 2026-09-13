@@ -11,8 +11,9 @@ All notable changes to this project are documented here. The format follows
 - **Model-pool discovery and spawn-time routing.** The orchestrator now resolves a spawn's model
   tier against a pool it can actually see, instead of falling back to `inherit` for want of one. A
   three-tier ladder — query the harness's documented enumeration command, then a declared pool, then
-  `inherit` — is stated once in `docs/COST.md` (`## Model routing`) and expanded into `/ship-issue`
-  and `/ship-epic` through a single marker, so the two commands cannot drift apart. The ladder
+  `inherit` — is stated once in `docs/COST.md` (`## Model routing`) and expanded from the shared
+  cost-discipline preamble into **every** command, so the ruleset is global rather than a two-command
+  special case and no command can drift from it. The ladder
   records that enumeration answers *what exists*, never *what is cheap*, so a declared ranking is
   required even where the pool is enumerable, and an unknown or empty pool always produces a named
   `inherit` — never a guessed model name (#434).
