@@ -41,23 +41,11 @@ gate. Never bundle merely to save tokens; bundle when the tickets genuinely belo
 ## Model selection — dynamic, never baked
 
 Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have
-different access, so the right model is chosen **at spawn, by task complexity, from what is available** —
-not written into any crew file:
-- **Mechanical work** (Builders, the SDET's test/validation runs, straightforward Fixers) → the
-  cheapest capable model, low reasoning effort.
-- **Hard judgment** (the Planner, `architect`, `principal-engineer`, `security-engineer`, and the `product-manager`
-  acceptance call) → the top model available, higher effort.
-- **Unsure** → inherit the session model; never guess a model name.
-
-The role sets the **baseline** tier above; then **scale it by the work unit's complexity** (the
-Planner's signal): a `complex` unit bumps the model to the top tier and the effort
-up; a `trivial` unit drops toward the cheapest model and lowest effort; `standard` holds the baseline —
-so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.
-
-Use the harness's own per-spawn mechanism where it exists (e.g. a `model` argument on the spawn) to pick
-the tier-appropriate model; where the harness offers no per-spawn override, **inherit** — never emit a
-hardcoded model. **Effort** can only be adjusted per spawn on the harnesses that expose it (Codex,
-Cursor); on the others the role's static effort (from its crew file, #204) stands. Spend the top model where it changes the outcome, not on mechanical turns.
+different access, so the right model is chosen **at spawn, by task complexity, from what is
+available** — not written into any crew file. Which tier a role starts at, which pool it resolves
+against, the resolution order, each target's override and effort surface, and the audit line every
+spawn reports are stated once in the **Model routing** section above — follow it there; do not restate
+it here.
 
 ---
 
@@ -556,8 +544,10 @@ Decision:
 One concise summary: PR link (and merge state), commit(s), the absolute **worktree path**
 (`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), fetch outcome, and whether a resume
 sync/rebase ran, which specialists reviewed it and their
-verdicts (`re-run` / `carried ACCEPT` / `newly seated` after any fix round; gated seats named with
-the flag that gated them), number of fix rounds, follow-up issues filed (with links), the confirmed-green CI link,
+verdicts (`re-run` / `carried ACCEPT` / `newly seated` / `still gated` after any fix round — a `still
+gated` seat is named with the flag that gated it), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
+(tier, pool source, the model identity the harness accepted, effort requested and resolved, and
+`honoured` / `substituted` / `inherit`), follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/ship-harden` recommendation, carried here mechanically rather than decided now. When
 **`IS_RELEASE_AFFECTING=yes`**, state the **new version** and that merge to **`RELEASE_BRANCH`**
@@ -575,7 +565,7 @@ PR: <PR URL>
 MERGE: auto|manual
 HEAD: <merge commit SHA when auto; PR head SHA when manual>
 DELIVERED: <one plain sentence — what this unit shipped, no jargon>
-REVIEWS: <PO verdict or carried ACCEPT>; <PE verdict or carried ACCEPT>; <scaled: verdict|re-run|carried ACCEPT|newly seated|gated: role (reason)>
+REVIEWS: <PO verdict or carried ACCEPT>; <PE verdict or carried ACCEPT>; <scaled: verdict|re-run|carried ACCEPT|newly seated|still gated: role (reason)>
 HARDEN: recommended|n/a
 CI: <green checks URL>
 FIX_ROUNDS: <n>
@@ -590,7 +580,7 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 
 ### Guardrails
 - The orchestrator owns **all** git/gh actions; agents never push or merge.
-- Reviewers always evaluate the **pushed PR head**, so "accepted" == "what merges".
+- Reviewers always evaluate the **pushed PR head**: for a **seated or re-run** reviewer, "accepted" == "what merges". A **carried ACCEPT** was taken on the delta that reviewer actually saw, so it is only valid while that delta stands.
 - Never skip PE+PO on the **first** board once a PR head exists
   (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a nit — file it.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage

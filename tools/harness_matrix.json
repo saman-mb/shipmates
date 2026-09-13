@@ -1,55 +1,393 @@
 {
   "version": 1,
+  "model_surface_schema": {
+    "purpose": "Per-harness record of the model-selection surface the harness documents for #434. Repo-side only; never installed. Every cell is stated \u2014 a missing feature is a finding, never a blank.",
+    "keys": {
+      "discovery_tier": "query | declared | inherit",
+      "enumeration": "{ available: bool, command: string, notes: string }",
+      "identity": "string \u2014 the naming SCHEME only; never a concrete model id",
+      "runtime_model_override": "{ kind: per-spawn | static-agent-file | session-level | none, notes: string }",
+      "effort": "{ kind: separate-key | folded-into-model-string | run-level | none, vocabulary: string, clamp: string, notes: string }",
+      "declared_pool": "{ mechanism: string, enforcement: abort | warn | fallback | none, notes: string }",
+      "reported_gaps": "[{ item: string, label: reported-not-documented, url: string }]",
+      "verified_on": "YYYY-MM-DD",
+      "notes": "string \u2014 must name the first-party URL the row was checked against"
+    },
+    "enums": {
+      "discovery_tier": [
+        "query",
+        "declared",
+        "inherit"
+      ],
+      "runtime_model_override.kind": [
+        "per-spawn",
+        "static-agent-file",
+        "session-level",
+        "none"
+      ],
+      "effort.kind": [
+        "separate-key",
+        "folded-into-model-string",
+        "run-level",
+        "none"
+      ],
+      "declared_pool.enforcement": [
+        "abort",
+        "warn",
+        "fallback",
+        "none"
+      ]
+    },
+    "enumeration_rule": "`enumeration.command` is non-empty if and only if `enumeration.available` is true \u2014 a blank command must never be read downstream as a usable pool.",
+    "enforcement_values": {
+      "abort": "An out-of-pool identity is refused",
+      "warn": "The harness reports the identity but proceeds",
+      "fallback": "The harness substitutes a different model; the audit line records `substituted`",
+      "none": "No native mechanism exists, so the orchestrator self-enforces or falls to `inherit`"
+    },
+    "axis": "This record asserts TARGET CAPABILITY \u2014 what the harness documents \u2014 not what our adapter emits. That is a different axis from the CI-enforced `agents` and `effort` flags, which assert EMISSION: a harness can document an effort surface and still be `effort: false` because the adapter emits no key.",
+    "empty_pool_fallback": "inherit",
+    "sibling_relationship": "#296 owns neutral spawn-hint RENDERING and consumes this record, including its `runtime_model_override` sub-key; #434 owns the record itself. One record, one owner \u2014 #296 must not add a second.",
+    "verified_on": "2026-09-13"
+  },
   "harnesses": {
     "claude-code": {
       "agents": true,
       "notes": "Canonical source format. The payload is a byte-for-byte mirror of skills/ and agents/.",
       "agents_notes": "Subagents at `.claude/agents/<name>.md` (Markdown + YAML frontmatter, `tools` allowlist). Verified 2026-08-03: https://code.claude.com/docs/en/skills",
       "effort": true,
-      "effort_notes": "Per-agent `effort:` frontmatter key. Shipmates emits the cross-harness `low|medium|high` set; Claude Code's own key accepts up to `max`. Static only \u2014 the adapter stamps it; there is no per-spawn override. Verified 2026-08-05."
+      "effort_notes": "Per-agent `effort:` frontmatter key. Shipmates emits the cross-harness `low|medium|high` set; Claude Code's own key accepts up to `max`. Static only \u2014 the adapter stamps it; there is no per-spawn override. Verified 2026-08-05.",
+      "model_surface": {
+        "discovery_tier": "declared",
+        "enumeration": {
+          "available": false,
+          "command": "",
+          "notes": "No listing command in the first-party CLI reference. A gateway deployment can populate the interactive picker from the gateway's model endpoint when its discovery environment variable is set \u2014 a machine-readable source, but not a CLI listing."
+        },
+        "identity": "A documented alias set (each alias names a family and resolves per provider and over time) or a full vendor-namespaced name, with an optional extended-context suffix; third-party platforms use their own identifier forms.",
+        "runtime_model_override": {
+          "kind": "per-spawn",
+          "notes": "The Agent-call model argument, over a documented session/frontmatter/env chain; a hard environment override can win over a per-spawn value."
+        },
+        "effort": {
+          "kind": "separate-key",
+          "vocabulary": "A 5-step depth scale plus a non-model orchestration pseudo-level; the supported set is model-dependent",
+          "clamp": "An unsupported level clamps down",
+          "notes": "Reachable from per-agent frontmatter, a CLI flag, a session command, an environment variable and a settings key; an org can cap the maximum level."
+        },
+        "declared_pool": {
+          "mechanism": "Harness-native `availableModels` plus `enforceAvailableModels` in managed/policy settings; an entry is a family alias, a version prefix or a full id",
+          "enforcement": "fallback",
+          "notes": "Enforcement is per surface and mixed: the interactive switch rejects, a startup-level override is replaced with a warning, a subagent override falls back to another model, and a skill/command override is ignored. The `enforcement` value records the coarsest outcome."
+        },
+        "reported_gaps": [
+          {
+            "item": "Reported (not documented): a session-level subagent-model environment override can win over a per-spawn model argument, and the tool result carries no effective-model field, so the substitution is invisible. Re-verified 2026-09-13: the environment override itself is now first-party documented (with a force variant), so only the missing effective-model reporting remains unverified. Never emitted as a frontmatter key.",
+            "label": "reported-not-documented",
+            "url": "https://github.com/anthropics/claude-code/issues/57718"
+          },
+          {
+            "item": "Reported (not documented): a first-class non-interactive model-listing surface has been requested but is not shipped. Re-verified 2026-09-13 against the first-party CLI reference: no listing command is documented, so the declared tier is this target's first discovery step.",
+            "label": "reported-not-documented",
+            "url": "https://code.claude.com/docs/en/cli-reference"
+          }
+        ],
+        "verified_on": "2026-09-13",
+        "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://code.claude.com/docs/en/model-config ; https://code.claude.com/docs/en/sub-agents ; https://code.claude.com/docs/en/cli-reference"
+      }
     },
     "github-copilot": {
       "agents": true,
       "agents_notes": "Custom agents at `.github/agents/<name>.agent.md` \u2014 note the double extension. Markdown + YAML frontmatter; `tools` accepts canonical names (read, search, edit, execute, web, agent); combined frontmatter+body capped at 30,000 chars. Verified 2026-08-03: https://docs.github.com/en/copilot/reference/custom-agents-configuration",
       "effort": false,
-      "effort_notes": "No per-agent effort field \u2014 reasoning effort is global/session only (open request copilot-cli#2904). Adapter emits nothing rather than invent a key. This static-format gap does not disable runtime model selection: the orchestrator chooses a model at spawn when Copilot supports it, otherwise the session model is inherited. Verified 2026-08-05."
+      "effort_notes": "Adapter emits nothing \u2014 this flag asserts EMISSION, and that is unchanged. Capability differs: the custom-agents reference documents an agent-frontmatter `reasoningEffort` field, plus a `--effort`/`--reasoning-effort` CLI flag and an `effortLevel` settings key, and the three first-party vocabularies do not match. The documented capability is recorded in this entry's `model_surface`; see its `reported_gaps`. Verified 2026-09-13: https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+      "model_surface": {
+        "discovery_tier": "declared",
+        "enumeration": {
+          "available": false,
+          "command": "",
+          "notes": "No non-interactive listing command is documented. The pool is exposed through an interactive picker and a static table in the first-party reference."
+        },
+        "identity": "A flat vendor model id, plus an auto-choose sentinel, plus a BYOK registry of provider/model objects, plus a priority-ordered array an agent may author.",
+        "runtime_model_override": {
+          "kind": "per-spawn",
+          "notes": "A CLI flag, plus a static agent file (a single value, a priority-ordered array and a policy key), plus a settings override map."
+        },
+        "effort": {
+          "kind": "separate-key",
+          "vocabulary": "Three first-party vocabularies that do not match: a 5-name CLI flag, a 4-name settings key, and a free-string agent frontmatter field",
+          "clamp": "Not documented",
+          "notes": "The agent frontmatter field is documented as a free string and the three surfaces disagree, so no single list can validate a value. First-party sources: https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference ; https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference"
+        },
+        "declared_pool": {
+          "mechanism": "A repo-root allow-list file of globs plus exactly one fallback directive, and an agent policy key that locks dispatch to the authored models",
+          "enforcement": "abort",
+          "notes": "The CLI re-evaluates the file and rejects an invalid one with an error before running. Scope limit: BYOK models stay selectable regardless of the patterns. The policy key rejects overrides; an unhonourable model otherwise falls back to the session value."
+        },
+        "reported_gaps": [
+          {
+            "item": "Re-verified 2026-09-13: this entry's older effort note claimed there is no per-agent effort field \u2014 the CLI reference now documents an agent-frontmatter reasoning-effort key (plus a 5-name flag and a 4-name settings key, with mismatched vocabularies). The CI-enforced `effort` flag stays false because that flag asserts adapter emission, which is unchanged.",
+            "label": "reported-not-documented",
+            "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference"
+          },
+          {
+            "item": "Reported (not documented): the CLI is said to reject array syntax for a model field that another client accepts, and an agent-file model is said not to control the model actually used. Not re-checked this pass; recorded as a report, never emitted as a frontmatter key on its strength.",
+            "label": "reported-not-documented",
+            "url": "https://github.com/github/copilot-cli/issues/2564"
+          }
+        ],
+        "verified_on": "2026-09-13",
+        "notes": "Capability, not emission: the `effort` flag above asserts what our adapter emits and stays false; this record asserts what the harness documents. First-party docs checked 2026-09-13: https://docs.github.com/en/copilot/reference/custom-agents-configuration ; https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference ; https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference"
+      }
     },
     "codex": {
       "agents": true,
       "agents_notes": "Subagents GA March 2026. Global `~/.codex/agents/`, project-scoped `.codex/agents/` checked into the repo. Standalone TOML (name, description, developer_instructions, optional model/model_reasoning_effort/sandbox_mode/mcp_servers/skills.config). No documented per-agent tool allowlist, so least privilege is NOT enforced on this target. Verified 2026-08-03: https://learn.chatgpt.com/docs/agent-configuration/subagents",
       "effort": true,
-      "effort_notes": "Per-agent `model_reasoning_effort` TOML key. Verified 2026-08-05."
+      "effort_notes": "Per-agent `model_reasoning_effort` TOML key. Verified 2026-08-05.",
+      "model_surface": {
+        "discovery_tier": "query",
+        "enumeration": {
+          "available": true,
+          "command": "codex debug models",
+          "notes": "Prints the raw model catalog as JSON; `--bundled` restricts it to the catalog bundled with the binary. No non-debug listing command is documented."
+        },
+        "identity": "A flat vendor model id plus a separate provider key selected by the provider setting.",
+        "runtime_model_override": {
+          "kind": "per-spawn",
+          "notes": "An explicit spawn value, an agent-defaults table and a static agent file beneath it; a session config value and a CLI override also apply."
+        },
+        "effort": {
+          "kind": "separate-key",
+          "vocabulary": "A 6-step ordered depth scale",
+          "clamp": "Gated on model support",
+          "notes": "A per-agent key mirrored by a subagent default; an unsupported level is not applied."
+        },
+        "declared_pool": {
+          "mechanism": "None documented",
+          "enforcement": "none",
+          "notes": "No supported way to restrict which models a user can select is documented; an enforceable allow-list of selectable models is an open vendor feature request."
+        },
+        "reported_gaps": [
+          {
+            "item": "No supported allow-list of selectable models (vendor tracker request). Re-verified 2026-09-13 against the CLI reference: still no documented key.",
+            "label": "reported-not-documented",
+            "url": "https://developers.openai.com/codex/cli/reference.md"
+          },
+          {
+            "item": "A first-class listing surface is requested on the vendor tracker. Re-verified 2026-09-13: enumeration IS documented, but only as a debug subcommand that prints the catalog as JSON \u2014 contradicting the earlier claim that no listing exists on this target.",
+            "label": "reported-not-documented",
+            "url": "https://developers.openai.com/codex/cli/reference.md"
+          },
+          {
+            "item": "A reported divergence where one client sends a thread-stored model that overrides the config default while the CLI does not. Not re-checked this pass.",
+            "label": "reported-not-documented",
+            "url": "https://github.com/openai/codex/issues/16984"
+          }
+        ],
+        "verified_on": "2026-09-13",
+        "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://developers.openai.com/codex/cli/reference.md ; https://developers.openai.com/codex/models ; https://learn.chatgpt.com/docs/agent-configuration/subagents"
+      }
     },
     "cursor": {
       "agents": false,
       "agents_notes": "Correctly false: the cursor adapter emits skill-only (0 crew), so the flag matches adapter output. The earlier blocker is now STALE \u2014 Cursor 2.4 first-party-documents named subagents at `.cursor/agents/*.md` (cursor.com/docs/skills, changelog 2-4, 2026-01-22), so the frontmatter schema is no longer undocumented. Cursor is therefore a viable crew-bearing target: adopt the documented `.cursor/agents/` format and flip this to true when the adapter actually emits crew (tracked in #34). Verified 2026-08-03.",
       "effort": false,
-      "effort_notes": "Cursor folds effort into the model string rather than a standalone key, and is skills-only today (no role emission). Blocked on a cursor subagent emitter (#15/#205); adapter emits nothing. Verified 2026-08-05."
+      "effort_notes": "Cursor folds effort into the model string rather than a standalone key, and is skills-only today (no role emission). Blocked on a cursor subagent emitter (#15/#205); adapter emits nothing. Verified 2026-08-05.",
+      "model_surface": {
+        "discovery_tier": "query",
+        "enumeration": {
+          "available": true,
+          "command": "agent --list-models",
+          "notes": "A `models` subcommand lists available models for the account; the SDK also documents a programmatic listing call."
+        },
+        "identity": "A flat vendor model id, optionally parameterised with trailing bracketed id=value pairs.",
+        "runtime_model_override": {
+          "kind": "static-agent-file",
+          "notes": "A per-subagent frontmatter model with `inherit` as the default, plus a session-wide CLI flag. No per-spawn argument is documented."
+        },
+        "effort": {
+          "kind": "folded-into-model-string",
+          "vocabulary": "Model-defined; the accepted values are not enumerated in the docs",
+          "clamp": "Model-defined \u2014 clamping is not documented",
+          "notes": "An effort parameter sits inside the bracketed parameter list alongside context size and a fast/non-fast variant."
+        },
+        "declared_pool": {
+          "mechanism": "No allow-list file or key documented",
+          "enforcement": "fallback",
+          "notes": "What is documented are fallback conditions: an admin block, a plan limitation or a legacy gate cause the configured model to be replaced by a compatible one rather than aborting."
+        },
+        "reported_gaps": [
+          {
+            "item": "A community report states the CLI help advertises the bracket-variant syntax but recent builds reject it and print preset variant names instead. Not re-checked this pass.",
+            "label": "reported-not-documented",
+            "url": "https://forum.cursor.com/t/cursor-cli-agent-doesnt-support-square-bracket-model-name-variants/163905"
+          },
+          {
+            "item": "A second report states the SDK silently discards model parameters written as top-level keys instead of id/value pairs. Not re-checked this pass.",
+            "label": "reported-not-documented",
+            "url": "https://forum.cursor.com/t/modelselection-silently-ignores-unrecognized-fields-and-run-model-echoes-the-request/167612"
+          },
+          {
+            "item": "Reported (not documented): the agent-spawn model parameter is said to accept only a fast variant while agent-file models are ignored, and a model-suffixed subagent type is said to inherit the parent model. Not re-checked this pass, and never emitted as a frontmatter key on the strength of a report.",
+            "label": "reported-not-documented",
+            "url": "https://cursor.com/docs/subagents"
+          }
+        ],
+        "verified_on": "2026-09-13",
+        "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://cursor.com/docs/subagents ; https://cursor.com/docs/cli/reference/parameters ; https://cursor.com/docs/sdk/typescript ; https://cursor.com/docs/models-and-pricing"
+      }
     },
     "antigravity": {
       "agents": true,
       "notes": "Adapter emits both agents and skills under .agents/.",
       "agents_notes": "Workspace agents at `.agents/agents/<name>.md` (`subagent: true`, `mainAgent: false`). Successor to the retired Gemini CLI.",
       "effort": false,
-      "effort_notes": "No per-agent effort field in the agent frontmatter schema. Adapter emits nothing rather than invent a key. Verified 2026-08-05."
+      "effort_notes": "No per-agent effort field in the agent frontmatter schema. Adapter emits nothing rather than invent a key. Verified 2026-08-05.",
+      "model_surface": {
+        "discovery_tier": "query",
+        "enumeration": {
+          "available": true,
+          "command": "agy models",
+          "notes": "Documented as listing the available model slugs. An unknown run-level value exits non-zero and prints the available list."
+        },
+        "identity": "A flat vendor slug with the reasoning tier encoded in the string, listed beside a separate human-readable display label.",
+        "runtime_model_override": {
+          "kind": "session-level",
+          "notes": "A run flag for headless runs plus a session command that persists across sessions. No per-agent model key is documented."
+        },
+        "effort": {
+          "kind": "run-level",
+          "vocabulary": "A 3-value scale",
+          "clamp": "None documented",
+          "notes": "A run-level flag separate from the reasoning tier folded into the model slug; the docs do not reconcile the two."
+        },
+        "declared_pool": {
+          "mechanism": "None documented \u2014 no settings key declares the pool",
+          "enforcement": "abort",
+          "notes": "What is documented is the rejection path: an unknown run value exits non-zero with an error and prints the available list, and headless mode explicitly does not silently fall back."
+        },
+        "reported_gaps": [
+          {
+            "item": "A vendor tracker thread reports that the run-level value takes the model's display name rather than the API slug, and that the available set differs by account and auth type \u2014 which conflicts with the headless page calling the value a slug. Not re-checked this pass.",
+            "label": "reported-not-documented",
+            "url": "https://github.com/google-antigravity/antigravity-cli/issues/83"
+          }
+        ],
+        "verified_on": "2026-09-13",
+        "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://antigravity.google/docs/cli/headless/ ; https://antigravity.google/docs/cli/reference/ ; https://antigravity.google/docs/cli/using/"
+      }
     },
     "windsurf": {
       "agents": false,
       "agents_notes": "TARGET IDENTITY IN DOUBT. Windsurf became Devin Desktop on 2026-06-02; Cascade was deprecated 2026-07-01 and replaced by Devin Local, which does spawn subagents. `.windsurf/` may address a product that no longer uses that name. Needs its own investigation \u2014 rename, retarget, or remove.",
       "effort": false,
-      "effort_notes": "No per-agent effort surface (and skills-only, no role emission). Adapter emits nothing. Verified 2026-08-05."
+      "effort_notes": "No per-agent effort surface (and skills-only, no role emission). Adapter emits nothing. Verified 2026-08-05.",
+      "model_surface": {
+        "discovery_tier": "inherit",
+        "enumeration": {
+          "available": false,
+          "command": "",
+          "notes": "The surface we target documents no enumeration. A companion CLI documents a family-grouped listing with a JSON format, and we do not drive it today."
+        },
+        "identity": "Fuzzy human-facing family names and aliases, not a strict id; some families are presented as effort-tiered variants of one family.",
+        "runtime_model_override": {
+          "kind": "session-level",
+          "notes": "A session flag, a slash command and a config default. The companion CLI documents per-agent frontmatter, which we do not emit (skills-only; see the identity question tracked in #168)."
+        },
+        "effort": {
+          "kind": "none",
+          "vocabulary": "None expressible non-interactively",
+          "clamp": "None",
+          "notes": "The documented mechanism is an interactive cycle of the thinking level bound to a keyboard shortcut, available only on models that support configurable reasoning levels."
+        },
+        "declared_pool": {
+          "mechanism": "Admin-side only \u2014 no user file",
+          "enforcement": "none",
+          "notes": "An admin model filter sets which models teams may access and a team default, with the documented constraint that only enabled models are available as defaults. Enforcement is restriction and filtering of the visible set, not an abort."
+        },
+        "reported_gaps": [
+          {
+            "item": "Branding/doc-surface mismatch: the windsurf docs host serves Devin-branded pages, and the pool page covers both the desktop and the CLI, whose documented command surface is named differently. The adapter identity question is tracked in #168; not re-checked this pass.",
+            "label": "reported-not-documented",
+            "url": "https://docs.devin.ai/desktop/models"
+          }
+        ],
+        "verified_on": "2026-09-13",
+        "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://docs.devin.ai/cli/reference/commands ; https://docs.devin.ai/cli/models ; https://docs.devin.ai/cli/subagents ; https://docs.devin.ai/windsurf/plugins/guide-for-admins"
+      }
     },
     "opencode": {
       "agents": true,
       "agents_notes": "Subagents at `.opencode/agents/<name>.md` with `mode: subagent` and a deny-first `permission` map. Verified against opencode's parsing source.",
       "effort": true,
-      "effort_notes": "Top-level `reasoningEffort` key (provider passthrough), a sibling of `model`/`temperature` in the agent frontmatter. Doc-verified 2026-08-05: https://opencode.ai/docs/agents/"
+      "effort_notes": "Top-level `reasoningEffort` key (provider passthrough), a sibling of `model`/`temperature` in the agent frontmatter. Doc-verified 2026-08-05: https://opencode.ai/docs/agents/",
+      "model_surface": {
+        "discovery_tier": "query",
+        "enumeration": {
+          "available": true,
+          "command": "opencode models [provider]",
+          "notes": "`--refresh` re-fetches the models cache and `--verbose` adds metadata and cost. Output is a two-part provider/model path."
+        },
+        "identity": "`provider_id/model_id` \u2014 a two-part path; the provider key comes from the config provider block, the model key from the catalog or the provider's own model map.",
+        "runtime_model_override": {
+          "kind": "static-agent-file",
+          "notes": "The agent's model key in the config or in agent frontmatter; a global config value and a session flag sit above it."
+        },
+        "effort": {
+          "kind": "separate-key",
+          "vocabulary": "Provider-defined; no fixed enum. The agent/model options key is a pass-through, and a run-level variant flag names a provider preset.",
+          "clamp": "None documented \u2014 the provider decides",
+          "notes": "Two documented surfaces, both provider-defined: an extra key in the agent or model options block is passed verbatim to the provider, and a run-level variant flag selects a provider preset. The static key is the one the orchestrator sets; a variant is a run-level refinement."
+        },
+        "declared_pool": {
+          "mechanism": "Provider-level only: `enabled_providers` / `disabled_providers` in the config, with the denylist winning on conflict",
+          "enforcement": "none",
+          "notes": "A disabled provider is not loaded and its models do not appear in the selection list \u2014 silent exclusion, not an abort. No model-level allow-list is documented."
+        },
+        "reported_gaps": [],
+        "verified_on": "2026-09-13",
+        "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://opencode.ai/docs/cli ; https://opencode.ai/docs/models ; https://opencode.ai/docs/agents/ ; https://opencode.ai/docs/config"
+      }
     },
     "pi": {
       "agents": true,
       "agents_notes": "NOTE THE DEPENDENCY: pi's subagent mechanic is NOT in core pi — it comes from the third-party `pi-subagents` extension (github.com/nicobailon/pi-subagents), and an install without it resolves no crew. With it, crew are pi-native at `.pi/agents/<name>.md` — the extension's canonical project scope, alongside `~/.pi/agent/agents/**/*.md` for user scope. `tools` must be a COMMA-SEPARATED SCALAR, never a YAML list: the reader is a line-based parser that opens a block on an empty value and reads the whole list as one unmatchable name, so a mismatched file leaves the seat with NO tools and no error — that was #437, where Antigravity's crew at the shared legacy `.agents/agents/` (which pi still reads for compatibility) was handed to pi. Shipmates emits to `.pi/agents/`, which outranks the legacy `.agents/` tree within whichever directory pi resolves as its project root (the nearest ancestor carrying `.pi/` or `.agents/`). A project-local install therefore resolves correctly; a `--global` install resolves only when no nearer ancestor carries either, and pi's user scope cannot outrank a foreign `~/.agents/agents/` because legacy is loaded last. Verified 2026-09-13 against the extension's own source and docs.",
       "effort": true,
-      "effort_notes": "Per-agent `thinking:` frontmatter, applied at spawn as a `:<level>` model suffix. The accepted set is first-party in pi-subagents' own source — off, minimal, low, medium, high, xhigh — so the neutral low|medium|high passes through unclamped and unmapped. Unvalidated on parse, so an invented level would reach the model string and fail the spawn. Verified 2026-09-13."
+      "effort_notes": "Per-agent `thinking:` frontmatter, applied at spawn as a `:<level>` model suffix. The accepted set is first-party in pi-subagents' own source — off, minimal, low, medium, high, xhigh — so the neutral low|medium|high passes through unclamped and unmapped. Unvalidated on parse, so an invented level would reach the model string and fail the spawn. Verified 2026-09-13.",
+      "model_surface": {
+        "discovery_tier": "query",
+        "enumeration": {
+          "available": true,
+          "command": "pi --list-models [search]",
+          "notes": "Lists models with valid auth, optionally filtered by a fuzzy search string. The catalog is refreshed by an update subcommand."
+        },
+        "identity": "`provider/id`, with an optional level suffix that folds the thinking level into the same argument.",
+        "runtime_model_override": {
+          "kind": "per-spawn",
+          "notes": "A per-task model (plus thinking and fallback models) on the subagent call, over a per-agent model key in the agent file and a session-level model/provider default. The crew mechanic is the third-party subagent extension, so its own frontmatter is what carries the static layer."
+        },
+        "effort": {
+          "kind": "separate-key",
+          "vocabulary": "A 7-step scale from off through a maximum, plus per-model support maps and token budgets",
+          "clamp": "A per-model tristate map marks a level supported, omitted (provider default) or unsupported; an unsupported level is hidden or clamped away",
+          "notes": "A per-agent thinking key, a per-task override, a session flag, a settings default, per-model level maps and a budget map; a level can also ride the model argument as a suffix, and the resolved level is surfaced read-only to shell tools."
+        },
+        "declared_pool": {
+          "mechanism": "Scoping only: an enabled-models settings key and a models-pattern flag control what cycles; no allow-list with abort semantics is documented",
+          "enforcement": "none",
+          "notes": "The docs do not state that a directly requested unlisted model is rejected, and unknown keys in the model-override map are ignored. Provider/model environment variables are session outputs injected into shell tools, not input overrides."
+        },
+        "reported_gaps": [
+          {
+            "item": "Reported (not documented): a scoping mechanism (an enabled-models key, a models-pattern flag) constrains what cycles, but the docs do not state that a directly requested unlisted model is rejected, and unknown keys in the model-override map are ignored. Verified against the same docs; never emitted as a frontmatter key.",
+            "label": "reported-not-documented",
+            "url": "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md"
+          }
+        ],
+        "verified_on": "2026-09-13",
+        "notes": "Capability, not emission. Checked 2026-09-13 against pi's own repository (model surface) and the third-party subagent extension's own README (the per-agent and per-task override keys, which are not core pi): https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/usage.md ; https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/settings.md ; https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md"
+      }
     }
   },
   "features": {

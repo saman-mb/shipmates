@@ -443,8 +443,9 @@ resumes), ingest the delegated `/ship-issue` **Epic unit record** and update cap
 2. **Append to `<epic-log>`** — one bullet per unit, newest last. Shape: unit index, story numbers, PR
    URL, merge SHA, one-line delivered summary, reviews one-liner, green CI link; when the unit record
    includes `HARDEN: recommended`, append **`/ship-harden` recommended** on the same bullet so the
-   captain sees it on the epic issue and epic PR without opening the unit run. Keep `<epic-log>`
-   scannable — no transcripts, no raw board dumps.
+   captain sees it on the epic issue and epic PR without opening the unit run. Carry the unit's
+   `MODEL ROUTING:` lines (or one line saying every spawn inherited) so routing is visible per unit.
+   Keep `<epic-log>` scannable — no transcripts, no raw board dumps.
 3. **Edit the epic progress comment** on epic `<epic>` — single comment anchored
    `<!-- shipmates-epic-progress -->`. Include: machine-readable `EPIC_BRANCH` / `EPIC_PR` / `MAIN_BRANCH`
    lines; **`SHIPPED_STORIES:`** (all numbers in `<landed>` after this unit); a **Shipped units** section
@@ -511,6 +512,7 @@ One concise summary: epic link, **epic progress comment** link on the epic issue
 link (integration vs `MAIN_BRANCH`), units shipped (`U` invocations for `N` stories), `<epic-log>`
 highlights, **integration board verdicts** (when full closure ran), gate pauses, **owner residuals** (distinct from pauses), integration recovery notes when
 `<mis-merged-to-main>` was reconstructed, capsule highlights, epic close or crew-complete state, and
+the `MODEL ROUTING:` lines for the board's own spawns (or one line saying every spawn inherited), and
 resume command **only if** a hard-limit pause occurred. For each pause, state **which hard-limit row
 fired** — "waiting for captain" without a limit name is a spec violation. Owner-only remainder must
 **not** appear as a pause reason. Include **economy line**: "`N` stories in `U` `/ship-issue` runs" so

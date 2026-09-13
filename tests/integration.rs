@@ -269,6 +269,14 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
             assert_eq!(matches.len(), 1, "{target} must emit one {} command", command.name);
             let (path, content) = matches[0];
             assert!(content.contains("## Cost discipline"), "{target} {path} missed command preamble");
+            // The ruleset is global: the shared preamble carries it, so every
+            // target's every command must render it — not just the ones this repo
+            // happened to wire a marker into.
+            assert_eq!(
+                content.matches("## Model routing").count(),
+                1,
+                "{target} {path} must carry the model-routing ruleset exactly once"
+            );
             assert!(!content.contains("shipmates:command-preamble"), "{target} {path} leaked command marker");
             assert!(!content.contains("shipmates:acceptance-board"), "{target} {path} leaked board marker");
             assert!(
@@ -784,6 +792,371 @@ fn test_matrix_effort_flag_matches_adapter_output() {
             "{name}: harness_matrix.json says effort={claims_effort} but the adapter emits effort={emits_effort}",
         );
     }
+}
+
+/// Every harness's `model_surface` record must be complete, closed-enum and
+/// internally consistent. The issue's "no unstated cells" requirement is a
+/// mechanical invariant, not a prose one: prose in the ADR cannot stop a cell
+/// from going blank, and only a check can — the same lesson the `agents` and
+/// `effort` guards above encode. `enumeration.command` being non-empty exactly
+/// when `available` is true is what stops a blank command from being read
+/// downstream as a usable pool.
+#[test]
+fn test_matrix_model_surface_is_complete() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let matrix: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap(),
+    )
+    .unwrap();
+    let schema = matrix["model_surface_schema"]
+        .as_object()
+        .expect("harness_matrix.json has no model_surface_schema block");
+    assert_eq!(
+        schema["empty_pool_fallback"].as_str(),
+        Some("inherit"),
+        "the schema must record `inherit` as the empty-pool fallback"
+    );
+
+    let harnesses = matrix["harnesses"]
+        .as_object()
+        .expect("harness_matrix.json has no harnesses map");
+
+    const DISCOVERY_TIERS: [&str; 3] = ["query", "declared", "inherit"];
+    const OVERRIDE_KINDS: [&str; 4] = ["per-spawn", "static-agent-file", "session-level", "none"];
+    const EFFORT_KINDS: [&str; 4] = [
+        "separate-key",
+        "folded-into-model-string",
+        "run-level",
+        "none",
+    ];
+    const ENFORCEMENTS: [&str; 4] = ["abort", "warn", "fallback", "none"];
+    const REQUIRED_KEYS: [&str; 9] = [
+        "discovery_tier",
+        "enumeration",
+        "identity",
+        "runtime_model_override",
+        "effort",
+        "declared_pool",
+        "reported_gaps",
+        "verified_on",
+        "notes",
+    ];
+    let date = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
+
+    // A named accessor, so a missing or wrong-typed nested cell names the harness
+    // and the path instead of panicking on an opaque `unwrap()`.
+    fn cell<'a>(name: &str, path: &str, value: &'a serde_json::Value) -> &'a str {
+        value.as_str().unwrap_or_else(|| {
+            panic!(
+                "{name}: model_surface.{path} is missing or not a string — \
+                 every cell is stated, never left blank"
+            )
+        })
+    }
+    fn non_empty(name: &str, path: &str, value: &serde_json::Value) {
+        assert!(
+            !cell(name, path, value).trim().is_empty(),
+            "{name}: model_surface.{path} is blank — a missing feature is a stated finding, \
+             never an empty cell"
+        );
+    }
+
+    // The schema block is the human-readable copy of these enums. If the two ever
+    // disagree, the closed enum is being enforced against a stale list.
+    for (path, expected) in [
+        ("discovery_tier", &DISCOVERY_TIERS[..]),
+        ("runtime_model_override.kind", &OVERRIDE_KINDS[..]),
+        ("effort.kind", &EFFORT_KINDS[..]),
+        ("declared_pool.enforcement", &ENFORCEMENTS[..]),
+    ] {
+        let declared: Vec<&str> = schema["enums"][path]
+            .as_array()
+            .unwrap_or_else(|| panic!("model_surface_schema.enums has no `{path}`"))
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect();
+        assert_eq!(
+            declared, expected,
+            "model_surface_schema.enums[{path}] disagrees with this test's closed enum"
+        );
+    }
+
+    for name in shipmates::adapters::targets() {
+        let surface = harnesses[name]["model_surface"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{name}: harness_matrix.json has no `model_surface`"));
+        for key in REQUIRED_KEYS {
+            assert!(
+                surface.contains_key(key),
+                "{name}: model_surface is missing `{key}` — every cell is stated, never left blank"
+            );
+        }
+        let tier = cell(name, "discovery_tier", &surface["discovery_tier"]);
+        assert!(
+            DISCOVERY_TIERS.contains(&tier),
+            "{name}: discovery_tier `{tier}` is outside the closed enum"
+        );
+        let override_kind = cell(
+            name,
+            "runtime_model_override.kind",
+            &surface["runtime_model_override"]["kind"],
+        );
+        assert!(
+            OVERRIDE_KINDS.contains(&override_kind),
+            "{name}: runtime_model_override.kind `{override_kind}` is outside the closed enum"
+        );
+        let effort_kind = cell(name, "effort.kind", &surface["effort"]["kind"]);
+        assert!(
+            EFFORT_KINDS.contains(&effort_kind),
+            "{name}: effort.kind `{effort_kind}` is outside the closed enum"
+        );
+        let enforcement = cell(
+            name,
+            "declared_pool.enforcement",
+            &surface["declared_pool"]["enforcement"],
+        );
+        assert!(
+            ENFORCEMENTS.contains(&enforcement),
+            "{name}: declared_pool.enforcement `{enforcement}` is outside the closed enum"
+        );
+
+        // Every descriptive cell is a stated finding, never blank.
+        non_empty(name, "identity", &surface["identity"]);
+        non_empty(name, "notes", &surface["notes"]);
+        non_empty(name, "enumeration.notes", &surface["enumeration"]["notes"]);
+        non_empty(
+            name,
+            "runtime_model_override.notes",
+            &surface["runtime_model_override"]["notes"],
+        );
+        non_empty(name, "effort.vocabulary", &surface["effort"]["vocabulary"]);
+        non_empty(name, "effort.clamp", &surface["effort"]["clamp"]);
+        non_empty(name, "effort.notes", &surface["effort"]["notes"]);
+        non_empty(
+            name,
+            "declared_pool.mechanism",
+            &surface["declared_pool"]["mechanism"],
+        );
+        non_empty(name, "declared_pool.notes", &surface["declared_pool"]["notes"]);
+
+        let enumeration = surface["enumeration"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{name}: enumeration is not an object"));
+        let available = enumeration["available"]
+            .as_bool()
+            .unwrap_or_else(|| panic!("{name}: enumeration.available is not a boolean"));
+        let command = enumeration["command"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{name}: enumeration.command is not a string"));
+        assert_eq!(
+            available,
+            !command.trim().is_empty(),
+            "{name}: enumeration.command must be non-empty exactly when available is true — \
+             a blank command must never read downstream as a pool"
+        );
+        let verified_on = cell(name, "verified_on", &surface["verified_on"]);
+        assert!(
+            date.is_match(verified_on),
+            "{name}: verified_on `{verified_on}` is not YYYY-MM-DD"
+        );
+        let gaps = surface["reported_gaps"].as_array().unwrap_or_else(|| {
+            panic!("{name}: reported_gaps must be an array (empty when nothing was reported)")
+        });
+        for (index, gap) in gaps.iter().enumerate() {
+            for field in ["item", "label", "url"] {
+                non_empty(
+                    name,
+                    &format!("reported_gaps[{index}].{field}"),
+                    &gap[field],
+                );
+            }
+            assert_eq!(
+                cell(
+                    name,
+                    &format!("reported_gaps[{index}].label"),
+                    &gap["label"]
+                ),
+                "reported-not-documented",
+                "{name}: a reported gap must be labelled `reported-not-documented` — \
+                 a report is never promoted to a fact"
+            );
+        }
+    }
+}
+
+/// The model-routing ruleset is a *global* one. It is expanded from the shared
+/// cost-discipline preamble, so **every** command carries it — not only the two
+/// that spawn the most subagents. A marker left in a single command would make
+/// the ruleset look installed everywhere while reaching only that command.
+#[test]
+fn test_every_command_carries_the_model_routing_ruleset() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let commands = load_commands(&root.join("commands")).unwrap();
+    assert!(!commands.is_empty());
+    let files = ClaudeCodeAdapter.build(&[], &commands).unwrap();
+
+    // The ruleset is sourced once, from the shared cost-discipline preamble.
+    let doctrine = std::fs::read_to_string(root.join("docs/COST.md")).unwrap();
+    let preamble = doctrine
+        .split_once("<!-- command-preamble:start -->")
+        .expect("cost doctrine has no command-preamble start marker")
+        .1
+        .split_once("<!-- command-preamble:end -->")
+        .expect("cost doctrine has no command-preamble end marker")
+        .0;
+    assert!(
+        preamble.contains("<!-- shipmates:model-routing -->"),
+        "the cost-discipline preamble must expand the model-routing ruleset"
+    );
+
+    for command in &commands {
+        let path = format!(
+            "harnesses/claude-code/.claude/skills/{}/SKILL.md",
+            command.name
+        );
+        let rendered = files
+            .get(&path)
+            .unwrap_or_else(|| panic!("no rendered payload for {path}"));
+        assert_eq!(
+            rendered.matches("## Model routing").count(),
+            1,
+            "{}: every command must carry the model-routing ruleset exactly once",
+            command.name
+        );
+        assert!(
+            !rendered.contains("shipmates:model-routing"),
+            "{}: the marker must not survive into the payload",
+            command.name
+        );
+    }
+}
+
+/// The per-harness facts are hand-written in three places, and only the record is
+/// gated. This checks the copy a captain actually reads: every row of the shipped
+/// `## Model routing` table must agree with `tools/harness_matrix.json`
+/// `model_surface`, for every target, on every axis the table carries. Without it
+/// the shipped table is a fourth opinion that can go stale silently — which is how
+/// the ADR's "three targets" drifted from the record's four.
+#[test]
+fn test_shipped_model_routing_table_matches_the_matrix() {
+    /// The shipped cell leads with prose, then a `·` gloss. Cut the lead segment,
+    /// and map it onto the record's enum by longest-prefix match so a cell may add
+    /// words ("static agent file per subagent") without lying about its kind.
+    fn leading(cell: &str) -> &str {
+        let cut = cell
+            .char_indices()
+            .find(|(_, c)| matches!(c, ',' | ';' | '·'))
+            .map(|(index, _)| index)
+            .unwrap_or(cell.len());
+        cell[..cut].trim()
+    }
+    fn enum_for(cells: &[(&str, &str)], cell: &str, column: &str, target: &str) -> String {
+        let lead = leading(cell);
+        cells
+            .iter()
+            .find(|(prefix, _)| lead.starts_with(prefix))
+            .map(|(_, value)| (*value).to_string())
+            .unwrap_or_else(|| {
+                panic!(
+                    "{target}: the shipped table's {column} cell `{cell}` leads with `{lead}`, which \
+                     names no value in the record's enum — the shipped copy has drifted"
+                )
+            })
+    }
+
+    const OVERRIDE_CELLS: [(&str, &str); 3] = [
+        ("per-spawn", "per-spawn"),
+        ("static agent file", "static-agent-file"),
+        ("session-level", "session-level"),
+    ];
+    const ENFORCEMENT_CELLS: [(&str, &str); 4] = [
+        ("abort", "abort"),
+        ("warn", "warn"),
+        ("fallback", "fallback"),
+        ("none", "none"),
+    ];
+    const EFFORT_CELLS: [(&str, &str); 4] = [
+        ("separate key", "separate-key"),
+        ("run-level", "run-level"),
+        ("folded into the model string", "folded-into-model-string"),
+        ("none", "none"),
+    ];
+
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let doctrine = std::fs::read_to_string(root.join("docs/COST.md")).unwrap();
+    let block = doctrine
+        .split_once("<!-- model-routing:start -->")
+        .expect("the model-routing block has no start marker")
+        .1
+        .split_once("<!-- model-routing:end -->")
+        .expect("the model-routing block has no end marker")
+        .0;
+    let matrix: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap(),
+    )
+    .unwrap();
+    let harnesses = matrix["harnesses"].as_object().unwrap();
+
+    let mut shipped: Vec<String> = Vec::new();
+    for line in block.lines() {
+        let line = line.trim();
+        if !line.starts_with('|') {
+            continue;
+        }
+        let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
+        if cells.len() != 5 || cells[0] == "Target" || cells[0].starts_with("---") {
+            continue;
+        }
+        let target = cells[0];
+        let surface = harnesses
+            .get(target)
+            .unwrap_or_else(|| panic!("the shipped table names `{target}`, which is no target"))["model_surface"]
+            .clone();
+        assert_eq!(
+            cells[1],
+            surface["discovery_tier"].as_str().unwrap(),
+            "{target}: the shipped discovery tier disagrees with the record"
+        );
+        for (column, cell, expected) in [
+            (
+                "override",
+                cells[2],
+                enum_for(&OVERRIDE_CELLS, cells[2], "override", target),
+            ),
+            (
+                "enforcement",
+                cells[3],
+                enum_for(&ENFORCEMENT_CELLS, cells[3], "enforcement", target),
+            ),
+            (
+                "effort",
+                cells[4],
+                enum_for(&EFFORT_CELLS, cells[4], "effort", target),
+            ),
+        ] {
+            let recorded = match column {
+                "override" => surface["runtime_model_override"]["kind"].as_str().unwrap(),
+                "enforcement" => surface["declared_pool"]["enforcement"].as_str().unwrap(),
+                _ => surface["effort"]["kind"].as_str().unwrap(),
+            };
+            assert_eq!(
+                expected, recorded,
+                "{target}: the shipped {column} cell `{cell}` disagrees with the record"
+            );
+        }
+        shipped.push(target.to_string());
+    }
+
+    let mut expected: Vec<String> = shipmates::adapters::targets()
+        .iter()
+        .map(|target| (*target).to_string())
+        .collect();
+    expected.sort();
+    shipped.sort();
+    assert_eq!(
+        shipped, expected,
+        "the shipped per-target table must carry exactly one row per target"
+    );
 }
 
 /// The frontmatter text between the opening and closing `---` lines, for a file

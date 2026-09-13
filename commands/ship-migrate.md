@@ -95,7 +95,7 @@ milestone board that will run the review, and `board=off` is recorded in the rep
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 
-- `sdet` (always): suite green on the PR head; sweep confirmed clean.
+- `sdet` (first convene): suite green on the PR head; sweep confirmed clean. On a retry it follows the shared Retry rule — re-running the gates covers it, so it re-sits only when the delta changes what the gates measure.
 - `senior-engineer` or `architect` (fresh): spot-checks a sample of transformed sites for correctness and
   the non-mechanical sites in full — confirms behaviour is preserved, not just that it compiles.
 

@@ -379,7 +379,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
             ProcessStep(
                 "Land",
-                "Two reviewers sit first; a retry re-selects from the fixer delta. The same flags as /ship-issue pull everyone else.",
+                "Two reviewers sit on the first pushed head. After a fixer, failers sit again and a prior ACCEPT carries unless the delta can invalidate it.",
                 always=("product-manager", "principal-engineer"),
                 also=BOARD_ALSO,
             ),
