@@ -150,7 +150,9 @@ Each round:
    follow-ups) unless the caller asked to resolve nits as well. `REJECT` → continue.
 3. **Fix** — spawn a `senior-engineer` — or, under `EXECUTION=fanout` (default), parallel Builders
    across disjoint components/assets up to `MAX_CONCURRENT_WORKERS` (`EXECUTION=sequential` fixes one
-   at a time) — with the reviewer's exact blocker list; apply the changes where Stage 0 put you — the
+   at a time) — with the reviewer's exact blocker list; each Builder receives a machine-checkable
+   **owned-paths manifest** (diffed against `git status` and `git diff --name-only` upon completion to
+   prevent collision); apply the changes where Stage 0 put you — the
    worktree branch under `MODE=pr`, the working tree under `MODE=edit-in-place`. Keep the change scoped
    to the notes — no unrelated drift.
 4. **Re-produce** — re-run the harness and capture the new artifact.

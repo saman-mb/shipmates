@@ -298,7 +298,9 @@ Spawn **one** `architect` with: the epic title/body, every pending story's title
   and one-line rationale.
 - `<units>`: an **ordered** list of shipping units covering every non-gate pending story exactly
   once. Each unit: `stories` (issue numbers), `batch_rationale` (why together or alone),
-  `expected_files` (non-overlapping ownership across stories in the unit).
+  a machine-checkable **owned-paths manifest** (explicit file lists or directory path prefixes guaranteeing non-overlapping file ownership across stories in the unit and across concurrent wave units).
+- **Plan-time blast-radius grep**: for any unit that introduces, modifies, or replaces a shared provider, interface, or API, run a blast-radius check (`grep -rl` across callers and tests) to identify all affected files and assign them to an owning unit upfront.
+- **Shared repo facts**: record shared tokens, fixture paths, generated-file rules, and CI quirks once in the epic progress notes so units do not spend tokens re-deriving repo facts independently.
 - `<waves>`: an **ordered** list of waves partitioning `<units>`. Disjointness invariant: all units within a wave must have zero mutual dependencies and non-overlapping `expected_files`. Units touching overlapping files or with unmet dependencies are placed into successive waves. A unit flagged `IS_RELEASE_AFFECTING` is treated as touching the version/changelog/lock files: two such units never share a wave, and each ships as a singleton. A `gate`/`manual`-merge unit is its own wave — a wave never mixes `auto` and `manual` merge modes.
 - **Batching rules the planner must enforce:** gate stories → singleton; `complex` or
   `IS_ARCH_SIGNIFICANT` or `IS_SECURITY_SENSITIVE` → singleton; different `area:*` labels → separate

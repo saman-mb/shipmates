@@ -72,9 +72,11 @@ Drafting, the fresh-reader run and every fix round happen inside `<WORKTREE_DIR>
 ## Stage 1 — Draft from the actual code  (agent: `technical-writer`)
 
 Under `EXECUTION=fanout` (default), when the scope covers several file-disjoint docs, spawn one
-`technical-writer` per doc concurrently in a single message (up to `MAX_CONCURRENT_WORKERS`), each owning
-its files; under `EXECUTION=sequential`, draft them one at a time. Each writer works **from the real
-source** — read the actual signatures, flags, paths, config, and outputs first; every command, parameter,
+`technical-writer` per doc concurrently in a single message (up to `MAX_CONCURRENT_WORKERS`), each with
+a machine-checkable **owned-paths manifest** (diffed against `git status` and `git diff --name-only` upon
+return to prevent collision); under `EXECUTION=sequential`, draft them one at a time. Each writer works
+**from the real source** — verify citations (actual signatures, flags, paths, config, and outputs) with
+`grep` or inspection first; every command, parameter,
 and result must match what the repo does *today*. Minimal (least that gets to done), scannable, consistent
 terminology, runnable examples, prerequisites stated up front. Writes in the repo's format.
 

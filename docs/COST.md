@@ -21,7 +21,9 @@ repeated instructions and low-signal output out of the main context.
    and next action. Do not return command logs or a narrative of every step.
 6. **Avoid paid repetition.** Reuse context and results already proven in the current run. Repeat a
    check only when new information or a changed artifact makes it decision-relevant; record what was
-   checked rather than replaying a transcript.
+   checked rather than replaying a transcript. Cut rework before builders run: verify spec citations
+   with grep, emit blast radius for shared APIs at plan time, give units machine-checkable owned-paths
+   manifests, and route empirical questions to whoever can run code.
 
 ## Reusable command preamble
 
@@ -46,6 +48,9 @@ preamble itself, so the substitution order in `render_body` is load-bearing.
   - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.
 - Spend subagent seats only where their decision can change the outcome. Route model and effort at
   spawn by work difficulty; never hardcode a model in canonical content.
+- Cost is seats × model **plus rework**: Before a spec becomes binding, verify its citations. Route
+  empirical questions to whoever can run code. Emit the blast radius of any shared API change at plan
+  time. Give each unit a machine-checkable owned-paths manifest rather than prose fences.
 - Ask every subagent for a compact structured return: decision/status first, criterion findings and
   minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant.
   Return decisions, not transcripts or raw logs.
@@ -84,6 +89,8 @@ Every board that is actually convened keeps the mandatory PE+PO seats and follow
 **Scaled optional seats**
 
 Convene only when the change can plausibly trip the concern. A gated-out seat is **named in the report with its flag or reason** — never silently skipped. **Damp by artifact, not by flag count:** a change confined to one artifact family (one file cluster, one document, one generator) pulls **at most one** specialist beyond PE+PO, and only when that specialist's concern is a genuinely different artifact from the others'. Three flags firing on one prose block is one concern, not three reviews.
+
+**Artifact damping**: when multiple independent `IS_*` flags fire on a change confined to a single artifact family (e.g. documentation-only, build/release metadata, or a single isolated module), pull **at most one** specialist beyond the mandatory PE+PO core. Select the specialist whose concern is distinct from PE/PO on that specific artifact, and gate the others out (naming them in the report). Do not stack redundant specialists on a single artifact.
 
 | Seat | Join when |
 |------|-----------|
