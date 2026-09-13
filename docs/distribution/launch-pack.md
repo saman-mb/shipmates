@@ -27,7 +27,7 @@ How it works:
 6. Opens a clean PR with a concise ledger of decisions.
 
 Multi-harness support:
-Runtime-verified on Claude Code today, with native build adapters for OpenCode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot, and Windsurf.
+Runtime-verified on Claude Code today, with native build adapters for OpenCode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot, Pi, and Windsurf.
 
 Written in Rust as a single binary:
 `brew install saman-mb/tap/shipmates` or `cargo install shipmates`
@@ -42,12 +42,12 @@ Would love your thoughts, feedback, and questions!
 ## 2. Reddit (r/ClaudeAI, r/commandline, r/ChatGPTCoding)
 
 ### Title
-I built Shipmates: Give Claude Code a crew of 12 specialist subagents to ship GitHub tickets autonomously
+I built Shipmates: Give Claude Code a crew of 13 specialist subagents to ship GitHub tickets autonomously
 
 ### Body
 Hey everyone,
 
-I wanted to share **Shipmates** (open source / MIT), an agentic orchestration layer designed to give Claude Code a crew of 12 domain-neutral specialist subagents and 13 command workflows.
+I wanted to share **Shipmates** (open source / MIT), an agentic orchestration layer designed to give Claude Code a crew of 13 domain-neutral specialist subagents and 15 command workflows.
 
 Its flagship command `/ship-issue <issue-number>` does the entire ticket lifecycle:
 - Evaluates complexity (Simple tasks skip overhead; High tasks get the full specialist board)
@@ -75,7 +75,7 @@ Let me know what you think or if you'd like to see more command workflows!
 ### Tweet 1 (Hook + Tagline)
 Announcing Shipmates 🚢 — Give your AI a crew.
 
-An open-source (MIT) crew of 12 specialist subagents and 13 command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request autonomously.
+An open-source (MIT) crew of 13 specialist subagents and 15 command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request autonomously.
 
 Built for Claude Code today.
 
@@ -100,13 +100,14 @@ Run `/ship-issue 42`:
 6. Delivers a PR ready to merge
 
 ### Tweet 4 (Multi-Harness)
-Shipmates is built in Rust with native compilation adapters for 7 harnesses:
+Shipmates is built in Rust with native compilation adapters for 8 harnesses:
 • Claude Code
 • OpenCode
 • Antigravity CLI
 • Codex CLI
 • Cursor
 • GitHub Copilot
+• Pi
 • Windsurf
 
 ### Tweet 5 (Get Started)
@@ -128,7 +129,7 @@ https://saman-mb.github.io/shipmates/
 Give your AI coding harness an autonomous crew of specialist subagents
 
 ### Short Pitch
-Shipmates provides 12 domain-neutral subagents and 13 command workflows for Claude Code and 6 other harnesses. Its flagship, `/ship-issue`, drives a GitHub issue to a reviewed, CI-green pull request autonomously using isolated git worktrees and automated review boards.
+Shipmates provides 13 domain-neutral subagents and 15 command workflows for Claude Code and 7 other harnesses. Its flagship, `/ship-issue`, drives a GitHub issue to a reviewed, CI-green pull request autonomously using isolated git worktrees and automated review boards.
 
 ### Maker Comment
 Hey Product Hunt! 👋
