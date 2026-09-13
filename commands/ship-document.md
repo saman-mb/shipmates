@@ -20,7 +20,7 @@ a migration guide, or the whole repo. If empty, ask what to document and for who
 
 ## Config
 
-- `WRITER` = `technical-writer`. `READER` = a **fresh** `{{general-purpose}}` (or `technical-writer`) agent that
+- `WRITER` = `technical-writer`. `READER` = a **fresh** general-purpose agent (or `technical-writer`) agent that
   has NOT seen the drafting — it only gets the doc + the repo, like a real newcomer.
 - `EXECUTION` = `fanout` — how independent doc surfaces are drafted. `fanout` (default): when the
   scope covers several file-disjoint docs, spawn Writers concurrently up to `MAX_CONCURRENT_WORKERS`.
@@ -117,7 +117,7 @@ the doc type, the fresh-reader's final result (in its words), rounds taken, and 
 - Bounded loop; escalate with the reader's blockers rather than shipping docs that don't work.
 - **Docs are source, so they get a branch.** A doc rewrite lands as a diff a human can read, not as
   a surprise in someone's checkout. `MODE=edit-in-place` is an explicit request, never an assumption.
-- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
+- If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined and note it.
 
 ## Runtime input

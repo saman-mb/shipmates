@@ -132,7 +132,7 @@ the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
 - Minimal, scoped change; unrelated improvements become follow-ups, not part of this PR.
 - Bounded loops; escalate with the log rather than spinning.
 - The reviewer is a **fresh** agent, never the one who wrote the fix.
-- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
+- If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined, and note it.
 
 ## Runtime input

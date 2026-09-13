@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-09-13
+
+### Fixed
+
+- **Every shared-tree command told the model to resolve a crew role from the wrong tree.** Canonical
+  prose named `.agents/agents/*.md` as the crew location, and that claim is rendered *once* and shared
+  by four harnesses whose crews live in four different trees — correct only for Antigravity. pi reads
+  `.pi/agents/`, Codex `.codex/agents/`, Copilot `.github/agents/`. An agent that believed it would
+  conclude the role had not resolved and fall back to a general-purpose agent, quietly downgrading a
+  specialist seat to a generic one (#455).
+
+  The fallback instruction now names a *shipped crew role* and a *general-purpose agent* — true for
+  every harness — instead of asserting a path that can only be right for one. `{{agents-glob}}` and
+  `{{general-purpose}}` remain part of the render vocabulary, because a harness rendering through its
+  own dialect may still use them correctly; what changes is that canonical content may not, and a test
+  enforces it so the next author cannot reintroduce it. Two commands also carried a bare
+  `general-purpose` in the same instruction and are corrected the same way.
+
+- `doctor`'s foreign-crew check is now driven by a documented `FOREIGN_CREW_READS` table rather than a
+  hardcoded `if harness == "pi"`, and it resolves each foreign crew's `tools:` against the *reader's*
+  vocabulary. Ownership was never the hard half — the failure is on the reader's side, and a hardcoded
+  reader is how the next one goes unnoticed (#453).
+
 ## [0.6.3] - 2026-09-13
 
 ### Fixed

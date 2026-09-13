@@ -71,7 +71,7 @@ more signals fire, keep the two with the highest planning impact and note the re
 | Reliability, incidents, rollback, SLOs | `site-reliability-engineer` |
 | Documented behaviour, public API/CLI surface, user-facing docs | `technical-writer` |
 
-Resolve every role name against `{{agents-glob}}`; on miss, fall back to `{{general-purpose}}` with
+Resolve every role name against the crew roster; on miss, fall back to a general-purpose agent with
 that role's brief inlined and note the fallback. Set `<panel-reasons>` to one line per non-PM role
 (`role: why the brief needs them`).
 
@@ -177,7 +177,7 @@ Otherwise, in this order (numbers must exist before they're referenced):
   the attachment plan.
 - Every epic and story must be individually valuable and traceable (`Part of #`), so the backlog is
   ready to hand to `/ship-epic <epic#>` or `/ship-issue` one story at a time.
-- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the
+- If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the
   role brief inlined, and note the fallback.
 
 ## Runtime input
