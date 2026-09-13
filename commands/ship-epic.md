@@ -314,11 +314,12 @@ unit sizes, and **token rationale**: "`N` stories → `U` `/ship-issue` invocati
 
 Skip when Stage 0.5 step 8 sent the run to Stage 4.
 
+`EPIC_EXECUTION=sequential` is the default execution mode; `fanout` is an opt-in mode for independent story sets.
 When `EPIC_EXECUTION=sequential`, preserve existing sequential unit-by-unit behavior: walk `<units>` in order — one `/ship-issue` delegation per unit (not one per story unless the unit is a singleton).
 When `EPIC_EXECUTION=fanout`, iterate over `<waves>`. For each wave:
 - Run the wave's units concurrently (up to `MAX_CONCURRENT_WORKERS`). Each concurrent unit runs in its own dedicated worktree under `.shipmates/worktrees/epic-<epic>-unit-<first-issue-in-unit>`.
 - Wait for all units in the wave to merge (or pause if a unit fails). Green units remain safely merged on `<EPIC_BRANCH>`.
-- **In-flight rebase protocol:** if `<EPIC_BRANCH>` advanced and base drift / merge conflicts occur, worker (or orchestrator fixer worktree) fetches `origin/<EPIC_BRANCH>`, rebases, re-verifies tests pass, and force-pushes with lease.
+- **In-flight rebase protocol:** when base drift occurs, the worker fetches `origin/<EPIC_BRANCH>` and rebases inside its own isolated worktree. The worker force-pushes with lease to **its own feature/story branch** (`git push --force-with-lease origin <BRANCH>`), NOT to the shared integration branch. The merge into `<EPIC_BRANCH>` is executed through `gh pr merge --squash` once CI is confirmed green.
 - **Post-wave integration gate:** after a wave merges, assert CI on `<EPIC_BRANCH>` is green before advancing to next wave. Fix any semantic regression on `<EPIC_BRANCH>` before next wave.
 
 For each `<unit>` (sequentially, or concurrently within a wave):

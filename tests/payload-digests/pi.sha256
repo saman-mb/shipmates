@@ -2,7 +2,7 @@ payload_digest_version=1
 target=pi
 .agents/skills/ship-consolidate-issues/SKILL.md 8e6cb5d208f9473d6cd64e004bcf1226c31bd880d0075177f270ca2661c569b2
 .agents/skills/ship-document/SKILL.md 917dcbf3230db76926a1614200e2928bfc8ba5d44cec3cde1d8901724d71ef72
-.agents/skills/ship-epic/SKILL.md 8311fbeb4020c66e57cfdfabb15aa54873e5a3570701544cb8db6a0f869d2ddf
+.agents/skills/ship-epic/SKILL.md 8902b6ef1f95c54e880e43fbf52fb24759976789f13b14f970f1840e77e58836
 .agents/skills/ship-fix-bug/SKILL.md 40684177fe6a9fc88e13b669b9fb428658f289d3663417894e1067bdfa25387a
 .agents/skills/ship-harden/SKILL.md edf499f4b9b1d535873f5cb4fa49d321a268413f4f4b6340d860d0ccc6186108
 .agents/skills/ship-issue/SKILL.md 24116bdfbe5555bb37edbb06f77bea671592d697c83162be819b3f30230ed246

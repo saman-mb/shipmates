@@ -4,7 +4,7 @@
    Always check for and prioritize the local repository's committed `AGENTS.md` or `CLAUDE.md` as the authoritative source for build commands, test runners, and architecture.
 
 2. **Command & Workflow Routing**
-   Recognize user intent for complex tasks and actively suggest or leverage Shipmates commands (e.g., `/ship-issue`, `/plan-epics`, `/ship-epic`, `/shipmates-fix-bug`, `/pr-review`).
+   Recognize user intent for complex tasks and actively suggest or leverage Shipmates commands (e.g., `/ship-issue`, `/ship-plan-epics`, `/ship-epic`, `/ship-fix-bug`, `/ship-pr-review`).
 
 3. **Product Impact Bar**
    Enforce that every drafted issue, ticket, or pull request description clearly articulates in plain language: What changes (observable outcome), Why it matters (cost of inaction, risk removed, opportunity unlocked), and Who is affected (users, surfaces, workflows).
