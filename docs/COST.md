@@ -63,7 +63,7 @@ Tiered execution may lean the build path on Simple/Medium, but **must not skip P
 **Delegation modes (the only two authorized exceptions to the mandatory seats above)**
 
 - **`board=epic-deferred`** — a *deferral*, never a cancel. Set by an orchestrating command that owns a
-  mandatory milestone board on the integrated artifact (e.g. `/ship-epic`'s Stage 4.5 board on `<EPIC_PR>`).
+  mandatory milestone board on the integrated artifact (e.g. `/ship-epic`'s Stage 4 integration board on `<EPIC_PR>`).
   The unit's own board is skipped, its CI gate still runs, and the milestone board reviews the integrated
   diff. The deferral is valid only while that milestone board is guaranteed; a delegated run must **not**
   convert it to `board=off`.
@@ -111,7 +111,7 @@ If `principal-engineer` or any role does not resolve to an `{{agents-glob}}` fil
 
 ## Reusable epic integration board
 
-The marker below is expanded into `/ship-epic` Stage 4.5 when every checklist story has landed.
+The marker below is expanded into `/ship-epic` Stage 4 (epic closure) when every checklist story has landed.
 It reviews the **combined** epic PR head — not a re-litigation of each unit PR.
 
 <!-- epic-integration-board:start -->

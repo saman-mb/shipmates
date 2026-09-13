@@ -260,7 +260,8 @@ the cohesion bundle widening in step 2.5.
    **`epic-run`**, do not scan the wider backlog or propose bundle widening beyond the passed issue
    numbers. When guidance includes **`epic-base=<branch>`**, the worktree and PR target that branch —
    do not reset `BASE_BRANCH` to the repo default. When guidance includes **`MERGE_MODE=auto`**, Stage 8
-   merges into `BASE_BRANCH` after green CI and board pass. When guidance includes
+   merges into `BASE_BRANCH` after green CI and the Stage 5 board — unless the board was deferred with
+   `board=epic-deferred` or explicitly opted out with `board=off`. When guidance includes
    **`complexity tier: simple`** or **`medium`**, honour the command preamble's tiered execution path for this run. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
@@ -497,7 +498,7 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/ship-issue` so the epic can
 ## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
 
 **Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board
-Delegation modes), skip Stage 5 and Stage 6 and proceed to Stage 7 / Stage 8. A deferral must name the
+delegation modes), skip Stage 5 and Stage 6 and proceed to Stage 7 / Stage 8. A deferral must name the
 milestone board that will review the integrated artifact; without one, treat the token as unset and
 convene the board.
 

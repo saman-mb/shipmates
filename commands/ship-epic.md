@@ -244,9 +244,10 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
 
    - **What this epic delivers** — one plain-language paragraph: epic goal plus which story numbers land
      here (from the epic issue title/body; no jargon).
-   - **Quick review guide** — bullets: review once at epic completion (each unit already passed mandatory
-     PE+PO on its PR head); start with the story checklist; scan the combined diff for cross-story
-     interactions; trust green CI on this head; **the captain merges this PR** — it is never auto-merged.
+   - **Quick review guide** — bullets: review once at epic completion — the integration board below is the
+     acceptance review (unit boards were deferred), and every unit was CI-green before merge; start with
+     the story checklist; scan the combined diff for cross-story interactions; trust green CI on this head;
+     **the captain merges this PR** — it is never auto-merged.
    - **Stories** — copy unchecked checklist lines from the epic body; refresh after each unit in Stage 3.5.
    - **Shipped so far** — placeholder until the first unit lands; then copy from `<epic-log>`. When
      `<mis-merged-to-main>` was reconstructed, note which unit PRs were recovered from `MAIN_BRANCH`.
@@ -298,7 +299,7 @@ Spawn **one** `architect` with: the epic title/body, every pending story's title
 - `<units>`: an **ordered** list of shipping units covering every non-gate pending story exactly
   once. Each unit: `stories` (issue numbers), `batch_rationale` (why together or alone),
   `expected_files` (non-overlapping ownership across stories in the unit).
-- `<waves>`: an **ordered** list of waves partitioning `<units>`. Disjointness invariant: all units within a wave must have zero mutual dependencies and non-overlapping `expected_files`. Units touching overlapping files or with unmet dependencies are placed into successive waves. A unit flagged `IS_RELEASE_AFFECTING` is treated as touching the version/changelog/lock files: two such units never share a wave, and each ships as a singleton.
+- `<waves>`: an **ordered** list of waves partitioning `<units>`. Disjointness invariant: all units within a wave must have zero mutual dependencies and non-overlapping `expected_files`. Units touching overlapping files or with unmet dependencies are placed into successive waves. A unit flagged `IS_RELEASE_AFFECTING` is treated as touching the version/changelog/lock files: two such units never share a wave, and each ships as a singleton. A `gate`/`manual`-merge unit is its own wave — a wave never mixes `auto` and `manual` merge modes.
 - **Batching rules the planner must enforce:** gate stories → singleton; `complex` or
   `IS_ARCH_SIGNIFICANT` or `IS_SECURITY_SENSITIVE` → singleton; different `area:*` labels → separate
   units unless each story is `trivial` and file-disjoint; max `MAX_UNIT_SIZE` stories per multi-story
