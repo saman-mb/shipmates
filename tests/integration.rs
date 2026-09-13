@@ -832,6 +832,44 @@ fn test_matrix_model_surface_is_complete() {
     ];
     let date = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
 
+    // A named accessor, so a missing or wrong-typed nested cell names the harness
+    // and the path instead of panicking on an opaque `unwrap()`.
+    fn cell<'a>(name: &str, path: &str, value: &'a serde_json::Value) -> &'a str {
+        value.as_str().unwrap_or_else(|| {
+            panic!(
+                "{name}: model_surface.{path} is missing or not a string — \
+                 every cell is stated, never left blank"
+            )
+        })
+    }
+    fn non_empty(name: &str, path: &str, value: &serde_json::Value) {
+        assert!(
+            !cell(name, path, value).trim().is_empty(),
+            "{name}: model_surface.{path} is blank — a missing feature is a stated finding, \
+             never an empty cell"
+        );
+    }
+
+    // The schema block is the human-readable copy of these enums. If the two ever
+    // disagree, the closed enum is being enforced against a stale list.
+    for (path, expected) in [
+        ("discovery_tier", &DISCOVERY_TIERS[..]),
+        ("runtime_model_override.kind", &OVERRIDE_KINDS[..]),
+        ("effort.kind", &EFFORT_KINDS[..]),
+        ("declared_pool.enforcement", &ENFORCEMENTS[..]),
+    ] {
+        let declared: Vec<&str> = schema["enums"][path]
+            .as_array()
+            .unwrap_or_else(|| panic!("model_surface_schema.enums has no `{path}`"))
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect();
+        assert_eq!(
+            declared, expected,
+            "model_surface_schema.enums[{path}] disagrees with this test's closed enum"
+        );
+    }
+
     for name in shipmates::adapters::targets() {
         let surface = harnesses[name]["model_surface"]
             .as_object()
@@ -842,26 +880,54 @@ fn test_matrix_model_surface_is_complete() {
                 "{name}: model_surface is missing `{key}` — every cell is stated, never left blank"
             );
         }
-        let tier = surface["discovery_tier"].as_str().unwrap();
+        let tier = cell(name, "discovery_tier", &surface["discovery_tier"]);
         assert!(
             DISCOVERY_TIERS.contains(&tier),
             "{name}: discovery_tier `{tier}` is outside the closed enum"
         );
-        let override_kind = surface["runtime_model_override"]["kind"].as_str().unwrap();
+        let override_kind = cell(
+            name,
+            "runtime_model_override.kind",
+            &surface["runtime_model_override"]["kind"],
+        );
         assert!(
             OVERRIDE_KINDS.contains(&override_kind),
             "{name}: runtime_model_override.kind `{override_kind}` is outside the closed enum"
         );
-        let effort_kind = surface["effort"]["kind"].as_str().unwrap();
+        let effort_kind = cell(name, "effort.kind", &surface["effort"]["kind"]);
         assert!(
             EFFORT_KINDS.contains(&effort_kind),
             "{name}: effort.kind `{effort_kind}` is outside the closed enum"
         );
-        let enforcement = surface["declared_pool"]["enforcement"].as_str().unwrap();
+        let enforcement = cell(
+            name,
+            "declared_pool.enforcement",
+            &surface["declared_pool"]["enforcement"],
+        );
         assert!(
             ENFORCEMENTS.contains(&enforcement),
             "{name}: declared_pool.enforcement `{enforcement}` is outside the closed enum"
         );
+
+        // Every descriptive cell is a stated finding, never blank.
+        non_empty(name, "identity", &surface["identity"]);
+        non_empty(name, "notes", &surface["notes"]);
+        non_empty(name, "enumeration.notes", &surface["enumeration"]["notes"]);
+        non_empty(
+            name,
+            "runtime_model_override.notes",
+            &surface["runtime_model_override"]["notes"],
+        );
+        non_empty(name, "effort.vocabulary", &surface["effort"]["vocabulary"]);
+        non_empty(name, "effort.clamp", &surface["effort"]["clamp"]);
+        non_empty(name, "effort.notes", &surface["effort"]["notes"]);
+        non_empty(
+            name,
+            "declared_pool.mechanism",
+            &surface["declared_pool"]["mechanism"],
+        );
+        non_empty(name, "declared_pool.notes", &surface["declared_pool"]["notes"]);
+
         let enumeration = surface["enumeration"]
             .as_object()
             .unwrap_or_else(|| panic!("{name}: enumeration is not an object"));
@@ -877,20 +943,50 @@ fn test_matrix_model_surface_is_complete() {
             "{name}: enumeration.command must be non-empty exactly when available is true — \
              a blank command must never read downstream as a pool"
         );
-        let verified_on = surface["verified_on"].as_str().unwrap();
+        let verified_on = cell(name, "verified_on", &surface["verified_on"]);
         assert!(
             date.is_match(verified_on),
             "{name}: verified_on `{verified_on}` is not YYYY-MM-DD"
         );
-        assert!(
-            surface["notes"]
-                .as_str()
-                .is_some_and(|s| !s.trim().is_empty()),
-            "{name}: model_surface.notes must name the first-party URL the row was checked against"
-        );
-        assert!(
-            surface["reported_gaps"].is_array(),
-            "{name}: reported_gaps must be an array (empty when nothing was reported)"
+        let gaps = surface["reported_gaps"].as_array().unwrap_or_else(|| {
+            panic!("{name}: reported_gaps must be an array (empty when nothing was reported)")
+        });
+        for (index, gap) in gaps.iter().enumerate() {
+            for field in ["item", "label", "url"] {
+                non_empty(
+                    name,
+                    &format!("reported_gaps[{index}].{field}"),
+                    &gap[field],
+                );
+            }
+            assert_eq!(
+                cell(
+                    name,
+                    &format!("reported_gaps[{index}].label"),
+                    &gap["label"]
+                ),
+                "reported-not-documented",
+                "{name}: a reported gap must be labelled `reported-not-documented` — \
+                 a report is never promoted to a fact"
+            );
+        }
+    }
+}
+
+/// The two commands that route subagent models must carry the marker that expands
+/// the canonical block. Nothing else asserts it, and dropping the line would
+/// silently remove every routing rule from both installed skills while every
+/// other gate stayed green.
+#[test]
+fn test_commands_carry_the_model_routing_marker() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    for name in ["ship-issue", "ship-epic"] {
+        let source = std::fs::read_to_string(root.join("commands").join(format!("{name}.md")))
+            .unwrap_or_else(|err| panic!("cannot read commands/{name}.md: {err}"));
+        assert_eq!(
+            source.matches("<!-- shipmates:model-routing -->").count(),
+            1,
+            "commands/{name}.md must carry exactly one `<!-- shipmates:model-routing -->` marker"
         );
     }
 }

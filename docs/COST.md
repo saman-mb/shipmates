@@ -196,23 +196,38 @@ tier — `complex` moves up, `trivial` moves down, `standard` holds the role's b
 level is chosen at the same time, but as its own decision. Neither tier nor effort is ever baked into
 canonical content: both resolve at spawn time, on the harness in front of you.
 
-**The discovery ladder — three tiers, in order.** Resolve the pool by stopping at the first tier that
-yields one:
+**Which tier.** A role sets the **baseline** tier and the work unit's complexity scales it:
+
+- **`mechanical`** — building, test and validation runs, straightforward fixes: the cheapest capable
+  model, low effort.
+- **`judgment`** — planning, architecture, security review, and the acceptance call: the top model
+  available, higher effort.
+- A `complex` unit moves the tier up and a `trivial` unit moves it down; `standard` holds the baseline,
+  so a hard task on a mechanical role is not left cheap and a trivial task on a judgment role is not
+  overpaid. When a unit's tier is genuinely unclear, inherit the session model rather than guess one.
+
+**The discovery ladder — three tiers, walked in order.** A tier narrows what you may pick from; it ends
+the walk early only if it produced a **ranked** pool:
 
 1. **Query** — where the target documents a non-interactive enumeration command, run it. This yields
-   **candidates only**: it reports which models exist, never which one is cheap or which one is best.
-2. **Declared** — the target's own native allow-list where it documents one, otherwise the user's
-   declared pool. The declared pool is a **ranking over user-chosen patterns**, not a list of names:
-   the project file `<repo>/.shipmates/model-pool.json` wins over the user file
-   `~/.shipmates/model-pool.json`, and its shape is `schema_version` plus `tiers.mechanical[]`,
-   `tiers.judgment[]`, and optional `effort.mechanical` / `effort.judgment`. Entries are patterns the
-   target's own model surface accepts. **Treat every entry as one literal argument** — pass it to the
-   harness surface as a single value, never spliced into a shell string or a command line. Shipmates
-   never writes a value into either file.
+   **candidates only**: it reports which models exist, never which one is cheap or which one is best, so
+   it never terminates the ladder on its own.
+2. **Declared** — a membership **filter** where the target documents a native allow-list of its own (a
+   managed/policy settings allow-list, or a repository-root allow-list file with a single fallback
+   directive), **intersected with the user's declared pool, which supplies the rank**. A filter alone
+   never picks a tier. The declared pool is a **ranking over user-chosen patterns**, not a list of
+   names: the project file `<repo>/.shipmates/model-pool.json` wins over the user file
+   `~/.shipmates/model-pool.json`, and its shape is `schema_version` (`1`), `tiers.mechanical[]`,
+   `tiers.judgment[]`, and optional `effort.mechanical` / `effort.judgment` on the neutral
+   `low` / `medium` / `high` scale. Entries are patterns the target's own model surface accepts.
+   **Treat every entry as one literal argument** — pass it to the harness surface as a single value,
+   never spliced into a shell string or a command line. Shipmates never writes a value into either
+   file. A pool file that is present but unusable — an unrecognised `schema_version`, malformed keys,
+   unreadable — is a reported one-line warning in the run report, never a silent absence.
 3. **`inherit`** — the terminal fallback: run on the parent/session model. This is a deliberate
    answer, not a failure, and it is always available.
 
-**A pool is required even when the pool is enumerable.** Enumeration answers *what exists*; it never
+**A pool is required even when the pool is enumerable.** A query answers *what exists*; it never
 answers *what is cheap* or *what is top*. No harness documents a relative-capability ladder, so with no
 declared tiering the orchestrator falls back to `inherit` — and **never infers a capability order**
 from a listing, a price page, or a naming convention.
@@ -220,8 +235,9 @@ from a listing, a price page, or a naming convention.
 **Resolution order — stated once, for every target.** The levels, in order:
 explicit spawn value → declared default → parent/session value → the model's own effort default.
 A model chosen without an effort gets **that model's own default effort**, never the parent's effort
-carried across a model change: one model's effort scale does not describe another's. Where a level of
-the order does not exist on a target, its row in the per-target table below says so.
+carried across a model change: one model's effort scale does not describe another's. Resolve the pool
+once per run and reuse it for every spawn in that run; re-resolve only when a surface fails. Where a
+level of the order does not exist on a target, its row in the per-target table below says so.
 
 **Never guess.** An unknown, empty, or unreadable pool produces `inherit`, recorded as
 `inherit (no pool)`. A concrete model identifier is never a fallback, never a default, and never an
@@ -229,8 +245,10 @@ example. An enumeration command that exits non-zero, or whose output cannot be p
 unknown: continue down the ladder.
 
 **Enforcement.** An identity outside the resolved pool is **refused**, not quietly clamped — resolve a
-different candidate, or stop and report. Some targets cannot honour strict enforcement because the
-mechanism they document is coarser; their row in the table below names the gap, and the run **states
+different candidate, or stop and report. Not every target's documented mechanism can hold that:
+`abort` refuses · `fallback` means the harness substitutes, which the audit line reports as
+`substituted` · `none` means no native mechanism exists, so the orchestrator self-enforces or falls to
+`inherit`. The enforcement column in the table below carries each target's value, and the run **states
 the discrepancy in the report** instead of pretending enforcement held.
 
 **Audit — one `MODEL ROUTING:` line per spawn.** Every spawn adds one compact line to the run report,
@@ -245,19 +263,20 @@ help output — and treat every step above as degradable: a vanished enumeration
 the declared pool, a missing or unreadable pool falls through to `inherit`, and a target with no row in
 the table below is treated as no-enumeration → declared → `inherit`.
 
-**Per-target surface.** Discovery tier, the override mechanism the harness documents, and the effort
-surface with its clamp. No cell is ever blank: a missing feature is a stated finding.
+**Per-target surface.** Discovery tier, the override mechanism the harness documents, the enforcement
+it can actually hold, and the effort surface with its clamp. No cell is ever blank: a missing feature
+is a stated finding.
 
-| Target | Discovery tier | Override kind | Effort surface and clamp |
-|--------|----------------|---------------|--------------------------|
-| claude-code | declared | per-spawn, over a documented session/frontmatter/env chain | separate key · a 5-step depth scale plus a non-model orchestration pseudo-level; an unsupported level clamps down |
-| opencode | query | static agent file, plus a global config value and a session flag | run-level · provider-defined vocabulary, no fixed enum |
-| antigravity | query | session-level; no per-agent model key | run-level · a 3-value flag, separate from the reasoning tier folded into the model slug |
-| codex | query | per-spawn, with an agent-default layer and a static agent file beneath it | separate key · a 6-step scale, gated on model support |
-| cursor | query | static agent file per subagent, plus a session-wide flag | folded into the model string · a bracketed effort parameter; accepted values are model-defined |
-| github-copilot | declared | per-spawn, plus a static agent file and a settings override map | separate key · three first-party vocabularies that do not match: a 5-name flag, a 4-name settings key, a free-string agent field |
-| pi | query | session-level; the target ships no built-in subagents by design | separate key · a 7-step scale with a per-model tristate support map; an unsupported level is clamped away |
-| windsurf | inherit | session-level on the surface we target | none · only an interactive shortcut-bound cycle, not expressible non-interactively |
+| Target | Discovery tier | Override kind | Enforcement | Effort surface and clamp |
+|--------|----------------|---------------|-------------|--------------------------|
+| claude-code | declared | per-spawn, over a documented session/frontmatter/env chain | fallback · the interactive switch rejects, other surfaces substitute | separate key · a 5-step depth scale plus a non-model orchestration pseudo-level; an unsupported level clamps down |
+| opencode | query | static agent file, plus a global config value and a session flag | none · provider-level exclusion only, silent | run-level · provider-defined vocabulary, no fixed enum |
+| antigravity | query | session-level; no per-agent model key | abort · an unknown run value exits non-zero | run-level · a 3-value flag, separate from the reasoning tier folded into the model slug |
+| codex | query | per-spawn, with an agent-default layer and a static agent file beneath it | none · no documented allow-list | separate key · a 6-step scale, gated on model support |
+| cursor | query | static agent file per subagent, plus a session-wide flag | fallback · admin, plan or legacy gates substitute a compatible model | folded into the model string · a bracketed effort parameter; accepted values are model-defined |
+| github-copilot | declared | per-spawn, plus a static agent file and a settings override map | abort · an invalid allow-list is rejected before the run | separate key · three first-party vocabularies that do not match: a 5-name flag, a 4-name settings key, a free-string agent field |
+| pi | query | session-level; the target ships no built-in subagents by design | none · scoping only, no abort | separate key · a 7-step scale with a per-model tristate support map; an unsupported level is clamped away |
+| windsurf | inherit | session-level on the surface we target | none · admin-side filtering, no user file | none · only an interactive shortcut-bound cycle, not expressible non-interactively |
 
 **Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is
 still the primary cost gate, and pool discovery decides only **which** cheap model runs a mechanical

@@ -41,22 +41,11 @@ gate. Never bundle merely to save tokens; bundle when the tickets genuinely belo
 ## Model selection — dynamic, never baked
 
 Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have
-different access, so the right model is chosen **at spawn, by task complexity, from what is available** —
-not written into any crew file:
-- **Mechanical work** (Builders, the SDET's test/validation runs, straightforward Fixers) → the
-  cheapest capable model, low reasoning effort.
-- **Hard judgment** (the Planner, `architect`, `principal-engineer`, `security-engineer`, and the `product-manager`
-  acceptance call) → the top model available, higher effort.
-- **Unsure** → inherit the session model; never guess a model name.
-
-The role sets the **baseline** tier above; then **scale it by the work unit's complexity** (the
-Planner's signal): a `complex` unit bumps the model to the top tier and the effort
-up; a `trivial` unit drops toward the cheapest model and lowest effort; `standard` holds the baseline —
-so a hard task on a mechanical role is not left cheap, and a trivial task on a judgment role is not overpaid.
-
-The discovery ladder, the resolution order, each target's override and effort surface, and the audit
-line every spawn reports are stated once in the **Model routing** block below — follow it there; do not
-restate it here.
+different access, so the right model is chosen **at spawn, by task complexity, from what is
+available** — not written into any crew file. Which tier a role starts at, which pool it resolves
+against, the resolution order, each target's override and effort surface, and the audit line every
+spawn reports are stated once in the **Model routing** block below — follow it there; do not restate it
+here.
 
 <!-- shipmates:model-routing -->
 

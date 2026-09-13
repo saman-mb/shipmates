@@ -39,6 +39,12 @@
       ]
     },
     "enumeration_rule": "`enumeration.command` is non-empty if and only if `enumeration.available` is true \u2014 a blank command must never be read downstream as a usable pool.",
+    "enforcement_values": {
+      "abort": "An out-of-pool identity is refused",
+      "warn": "The harness reports the identity but proceeds",
+      "fallback": "The harness substitutes a different model; the audit line records `substituted`",
+      "none": "No native mechanism exists, so the orchestrator self-enforces or falls to `inherit`"
+    },
     "axis": "This record asserts TARGET CAPABILITY \u2014 what the harness documents \u2014 not what our adapter emits. That is a different axis from the CI-enforced `agents` and `effort` flags, which assert EMISSION: a harness can document an effort surface and still be `effort: false` because the adapter emits no key.",
     "empty_pool_fallback": "inherit",
     "sibling_relationship": "#296 owns neutral spawn-hint RENDERING and consumes this record, including its `runtime_model_override` sub-key; #434 owns the record itself. One record, one owner \u2014 #296 must not add a second.",
@@ -111,7 +117,7 @@
           "kind": "separate-key",
           "vocabulary": "Three first-party vocabularies that do not match: a 5-name CLI flag, a 4-name settings key, and a free-string agent frontmatter field",
           "clamp": "Not documented",
-          "notes": "The agent frontmatter field is documented as a free string and the three surfaces disagree, so no single list can validate a value."
+          "notes": "The agent frontmatter field is documented as a free string and the three surfaces disagree, so no single list can validate a value. First-party sources: https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference ; https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference"
         },
         "declared_pool": {
           "mechanism": "A repo-root allow-list file of globs plus exactly one fallback directive, and an agent policy key that locks dispatch to the authored models",
@@ -120,9 +126,9 @@
         },
         "reported_gaps": [
           {
-            "item": "Re-verified 2026-09-13: this entry's older effort note claimed there is no per-agent effort field \u2014 the custom-agents reference now documents an agent-frontmatter reasoning-effort key (plus a CLI flag and a settings key, with mismatched vocabularies). The CI-enforced `effort` flag stays false because that flag asserts adapter emission, which is unchanged.",
+            "item": "Re-verified 2026-09-13: this entry's older effort note claimed there is no per-agent effort field \u2014 the CLI reference now documents an agent-frontmatter reasoning-effort key (plus a 5-name flag and a 4-name settings key, with mismatched vocabularies). The CI-enforced `effort` flag stays false because that flag asserts adapter emission, which is unchanged.",
             "label": "reported-not-documented",
-            "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration"
+            "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference"
           },
           {
             "item": "Reported (not documented): the CLI is said to reject array syntax for a model field that another client accepts, and an agent-file model is said not to control the model actually used. Not re-checked this pass; recorded as a report, never emitted as a frontmatter key on its strength.",
