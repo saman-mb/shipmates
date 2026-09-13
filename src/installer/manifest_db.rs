@@ -410,7 +410,7 @@ pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
         // to the shared tree, and their receipts must still load so install can
         // clean the orphans up. Nothing writes there any more.
         "cursor" => &[".agents", ".cursor"],
-        "github-copilot" => &[".agents", ".github"],
+        "github-copilot" => &[".agents", ".copilot", ".github"],
         // `.agents` is legacy-only for pi: every install before the crew moved
         // to `.pi/agents/` shipped skills there, and its receipt must still load
         // so `update` can refresh those files.
@@ -444,6 +444,15 @@ pub(crate) fn global_root(harness: &str) -> Option<&'static str> {
     match harness {
         "antigravity" => Some(".gemini/config"),
         "pi" => Some(".pi/agent"),
+        // Codex's home is `$CODEX_HOME`, defaulting to `~/.codex`, and it
+        // discovers and installs skills at `$CODEX_HOME/skills/<name>`. Its crew
+        // already land at `.codex/agents/`, which this leaves where it is.
+        "codex" => Some(".codex"),
+        // Copilot's configuration directory defaults to `~/.copilot`. Its own
+        // CLI reports "Skills are automatically discovered from:
+        // ~/.copilot/skills/", and resolves a non-project agent to
+        // `<config-dir>/agents`. `.github/` is the *workspace* location only.
+        "github-copilot" => Some(".copilot"),
         _ => None,
     }
 }
@@ -631,6 +640,15 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && root == ".codex"
                     && parts[1] == "agents"
                     && parts[2].ends_with(".toml"))
+                // Global scope: `~/.codex/skills/<name>/…`. Codex discovers
+                // skills from `$CODEX_HOME/skills`, not from the shared
+                // `.agents/skills` tree — that one is its *workspace* location.
+                || (parts.len() >= 4
+                    && root == ".codex"
+                    && parts[1] == "skills"
+                    && !parts[2].is_empty()
+                    && (parts[3] == "SKILL.md"
+                        || (parts.len() == 4 && parts[3].ends_with(".py"))))
                 || is_skill_tree(".agents")
         }
         "cursor" => {
@@ -686,6 +704,19 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && root == ".github"
                     && parts[1] == "agents"
                     && parts[2].ends_with(".agent.md"))
+                // Global scope: `~/.copilot/agents/*.agent.md` and
+                // `~/.copilot/skills/<name>/…`. Copilot's configuration dir is
+                // `~/.copilot`; `.github/` is the workspace location only.
+                || (parts.len() == 3
+                    && root == ".copilot"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".agent.md"))
+                || (parts.len() >= 4
+                    && root == ".copilot"
+                    && parts[1] == "skills"
+                    && !parts[2].is_empty()
+                    && (parts[3] == "SKILL.md"
+                        || (parts.len() == 4 && parts[3].ends_with(".py"))))
                 || is_skill_tree(".agents")
         }
         _ => false,
@@ -830,16 +861,9 @@ mod tests {
             global_relocate("pi", ".agents/skills/ship-issue/SKILL.md").as_deref(),
             Some(".pi/agent/skills/ship-issue/SKILL.md")
         );
-        // A harness whose global tree IS its workspace dotdir at home is left
-        // strictly alone — relocating these would break them.
-        for harness in [
-            "claude-code",
-            "codex",
-            "cursor",
-            "windsurf",
-            "opencode",
-            "github-copilot",
-        ] {
+        // A harness whose global tree IS its workspace dotdir at home keeps no
+        // entry, so relocation is a no-op and stays a no-op.
+        for harness in ["claude-code", "cursor", "windsurf", "opencode"] {
             assert_eq!(global_root(harness), None, "{harness} must declare no global root");
             assert_eq!(
                 global_relocate(harness, ".claude/agents/sdet.md"),
@@ -847,10 +871,32 @@ mod tests {
                 "{harness} must not be relocated"
             );
         }
+        // Codex's crew already live under its own home; only its skills move.
+        assert_eq!(
+            global_relocate("codex", ".codex/agents/sdet.toml").as_deref(),
+            Some(".codex/agents/sdet.toml")
+        );
+        assert_eq!(
+            global_relocate("codex", ".agents/skills/ship-issue/SKILL.md").as_deref(),
+            Some(".codex/skills/ship-issue/SKILL.md")
+        );
+        // Copilot's crew and skills both leave `.github/`/`.agents/` for `~/.copilot`.
+        assert_eq!(
+            global_relocate("github-copilot", ".github/agents/sdet.agent.md").as_deref(),
+            Some(".copilot/agents/sdet.agent.md")
+        );
+        assert_eq!(
+            global_relocate("github-copilot", ".agents/skills/ship-issue/SKILL.md").as_deref(),
+            Some(".copilot/skills/ship-issue/SKILL.md")
+        );
         // Only the two resource subtrees move; steering and anything else stay.
         assert_eq!(global_relocate("pi", ".shipmates/contributor-steering.md"), None);
         assert_eq!(
             global_relocate("antigravity", ".shipmates/contributor-steering.md"),
+            None
+        );
+        assert_eq!(
+            global_relocate("github-copilot", ".github/instructions/shipmates.instructions.md"),
             None
         );
     }
@@ -879,14 +925,30 @@ mod tests {
             "antigravity",
             ".gemini/config/agents/evil.sh"
         ));
-        // And no other harness may claim either tree.
-        for harness in ["codex", "github-copilot", "claude-code", "cursor", "opencode", "windsurf"] {
+        // And no other harness may claim either global tree.
+        for harness in ["codex", "claude-code", "cursor", "opencode", "windsurf"] {
             assert!(!allowed_receipt_path(harness, ".pi/agent/agents/sdet.md"), "{harness}");
             assert!(
                 !allowed_receipt_path(harness, ".gemini/config/agents/sdet/agent.md"),
                 "{harness}"
             );
         }
+        // codex and copilot keep their own global trees, and each is narrow.
+        assert!(allowed_receipt_path("codex", ".codex/skills/ship-issue/SKILL.md"));
+        assert!(!allowed_receipt_path("codex", ".codex/config.toml"));
+        assert!(allowed_receipt_path(
+            "github-copilot",
+            ".copilot/agents/sdet.agent.md"
+        ));
+        assert!(allowed_receipt_path(
+            "github-copilot",
+            ".copilot/skills/ship-issue/SKILL.md"
+        ));
+        assert!(!allowed_receipt_path("github-copilot", ".copilot/settings.json"));
+        assert!(!allowed_receipt_path(
+            "github-copilot",
+            ".copilot/agents/sdet.md"
+        ));
     }
 
     #[test]

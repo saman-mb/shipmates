@@ -138,6 +138,26 @@ assert "global antigravity: writes nothing into the shared .agents tree" test ! 
 assert "global pi: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness pi | grep -q 'All shipshape'"
 assert "global antigravity: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness antigravity | grep -q 'All shipshape'"
 
+# codex and github-copilot are the other two shared-tree harnesses, and their
+# GLOBAL half does not live on the shared tree either: Codex reads
+# `$CODEX_HOME/skills` and Copilot's config dir is `~/.copilot`. Writing their
+# global payload to `.agents/skills/` put it where neither one looks — and where
+# pi *does*, which is what produced a collision warning per skill.
+assert "global codex: exits 0" global_install codex
+assert "global codex: crew at ~/.codex/agents" test -f "$GHOME/.codex/agents/sdet.toml"
+assert "global codex: skills at ~/.codex/skills, not the shared tree" test -f "$GHOME/.codex/skills/ship-issue/SKILL.md"
+assert "global codex: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
+
+assert "global github-copilot: exits 0" global_install github-copilot
+assert "global github-copilot: crew at ~/.copilot/agents" test -f "$GHOME/.copilot/agents/sdet.agent.md"
+assert "global github-copilot: skills at ~/.copilot/skills" test -f "$GHOME/.copilot/skills/ship-issue/SKILL.md"
+assert "global github-copilot: writes nothing to ~/.github" test ! -d "$GHOME/.github"
+assert "global github-copilot: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
+
+assert "global codex: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness codex | grep -q 'All shipshape'"
+assert "global github-copilot: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness github-copilot | grep -q 'All shipshape'"
+assert "all four global installs leave the shared .agents tree untouched" test ! -d "$GHOME/.agents"
+
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"
 

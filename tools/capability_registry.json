@@ -118,7 +118,7 @@
       "global_root": ".gemini/config"
     },
     "codex": {
-      "notes": "Subagents GA March 2026. Project-scoped agents at `.codex/agents/<name>.toml` — standalone TOML, NOT Markdown with frontmatter, and the only target so far that is not. Fields: name, description, developer_instructions. Codex documents no per-agent tool allowlist, so `permission_model` is `none`: least privilege genuinely cannot be expressed on this target and the crew inherit the session's tools. Recorded rather than faked — an invented `tools` key would be ignored at best, rejected at worst. Skills follow the open Agent Skills standard at `.agents/skills/<name>/SKILL.md` (Codex reads `.agents/skills`, NOT `.codex/skills`); only the crew are Codex-native under `.codex/`. Verified 2026-08-03.",
+      "notes": "Subagents GA March 2026. Project-scoped agents at `.codex/agents/<name>.toml` — standalone TOML, NOT Markdown with frontmatter, and the only target so far that is not. Fields: name, description, developer_instructions. Codex documents no per-agent tool allowlist, so `permission_model` is `none`: least privilege genuinely cannot be expressed on this target and the crew inherit the session's tools. Recorded rather than faked — an invented `tools` key would be ignored at best, rejected at worst. Skills follow the open Agent Skills standard at `.agents/skills/<name>/SKILL.md` (Codex reads `.agents/skills`, NOT `.codex/skills`); only the crew are Codex-native under `.codex/`. Verified 2026-08-03. GLOBAL SCOPE: Codex's home is `$CODEX_HOME` (default `~/.codex`), and it discovers and installs skills at `$CODEX_HOME/skills/<name>/SKILL.md` — so a global install relocates the shared-tree skills out of `.agents/skills/` and into `.codex/skills/`. `.agents/skills` remains the WORKSPACE location. Crew already land at `.codex/agents/` in both scopes. Verified 2026-09-13 against the shipped codex binary's own strings.",
       "agent_path": ".codex/agents/{name}.toml",
       "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
@@ -152,7 +152,8 @@
           "fetch": "web_fetch"
         },
         "agent": "task"
-      }
+      },
+      "global_root": ".codex"
     },
     "cursor": {
       "notes": "Cursor ships no subagents, so the adapter emits only the fourteen commands as skills and ignores `roles`. Cursor's slash-command picker only lists skills from its first-party `.cursor/skills/` tree, so skills ship there rather than to the shared `.agents/skills/` location (#405). One copy, not two: a second copy under `.agents/skills/` would list every command twice in the picker and double prompt cost. Verified 2026-09-12.",
@@ -190,7 +191,7 @@
       }
     },
     "github-copilot": {
-      "notes": "Custom agents at `.github/agents/<name>.agent.md` — the double extension is required; a plain `<name>.md` in that directory is never discovered. Markdown + YAML frontmatter; `tools` takes the canonical names (read, search, edit, execute, web, agent) and OMITTING the key enables every tool, so an empty mapping must never silently become an unrestricted agent. Frontmatter + body capped at 30,000 characters. Copilot accepts skills at `.github/skills`, `.claude/skills` AND the open `.agents/skills` (all first-party, since 2025-12-18), so skills ship to the shared `.agents/skills/` tree — byte-identical with codex/antigravity/cursor; only the crew are `.github`-native. Verified 2026-08-03.",
+      "notes": "Custom agents at `.github/agents/<name>.agent.md` — the double extension is required; a plain `<name>.md` in that directory is never discovered. Markdown + YAML frontmatter; `tools` takes the canonical names (read, search, edit, execute, web, agent) and OMITTING the key enables every tool, so an empty mapping must never silently become an unrestricted agent. Frontmatter + body capped at 30,000 characters. Copilot accepts skills at `.github/skills`, `.claude/skills` AND the open `.agents/skills` (all first-party, since 2025-12-18), so skills ship to the shared `.agents/skills/` tree — byte-identical with codex/antigravity/cursor; only the crew are `.github`-native. Verified 2026-08-03. GLOBAL SCOPE: Copilot's configuration directory defaults to `~/.copilot` — its CLI reports \"Skills are automatically discovered from: ~/.copilot/skills/\" and resolves a non-project agent to `<config-dir>/agents`. A global install therefore relocates to `.copilot/skills/` and `.copilot/agents/<name>.agent.md`; `.github/` is the WORKSPACE location only. Verified 2026-09-13 against the shipped copilot package's own strings.",
       "agent_path": ".github/agents/{name}.agent.md",
       "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
@@ -222,7 +223,8 @@
           "fetch": "web_fetch"
         },
         "agent": "agent"
-      }
+      },
+      "global_root": ".copilot"
     },
     "windsurf": {
       "notes": "Windsurf (Cascade) discovers skills under `.windsurf/skills/`. It ships no subagents, so the adapter emits the crew as fourteen skills and ignores `roles`.",
