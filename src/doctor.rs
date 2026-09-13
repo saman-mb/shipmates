@@ -1289,7 +1289,7 @@ fn diagnose_built(
                         name: "Global steering".into(),
                         severity: Severity::Warn,
                         detail: format!(
-                            "drifted from canonical heuristics at {}; run `shipmates configure` to update",
+                            "drifted from canonical heuristics at {}; run `shipmates install` to update",
                             path.display()
                         ),
                         fixable: false,
@@ -1300,7 +1300,7 @@ fn diagnose_built(
                         name: "Global steering".into(),
                         severity: Severity::Ok,
                         detail: format!(
-                            "not installed at {}; run `shipmates configure` to install",
+                            "not installed at {}; run `shipmates install` to install",
                             path.display()
                         ),
                         fixable: false,

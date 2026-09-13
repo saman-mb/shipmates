@@ -675,7 +675,7 @@ fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Configure {
+        Command::Install {
             harness,
             location,
             with_tools,
@@ -693,7 +693,6 @@ fn main() -> Result<()> {
             let install_steering = source.steering_for_target(&target_dir)?;
             let harnesses = resolve_install_harnesses(harness, Some(&target_dir))?;
 
-            println!("Configuring {} harness(es)...", harnesses.len());
             run_install_loop(
                 &target_dir,
                 &harnesses,
@@ -707,7 +706,7 @@ fn main() -> Result<()> {
                 install_steering.is_some(),
             )?;
 
-            // Configure canonical global steering into user home directory
+            // Install canonical global steering into user home directory
             if let Some(home_path) = home::home_dir() {
                 if let Ok(global_content) = source.load_global_steering() {
                     println!("\nInstalling canonical global steering (heuristics and workflow routing)...");
@@ -727,48 +726,8 @@ fn main() -> Result<()> {
                             }
                             Ok(steering::SteeringOutcome::Removed(_)) => {}
                             Err(e) => {
-                                eprintln!("  {} — failed to configure global steering: {}", h, e);
+                                eprintln!("  {} — failed to install global steering: {}", h, e);
                             }
-                        }
-                    }
-                }
-            }
-        }
-        Command::Install {
-            harness,
-            location,
-            with_tools,
-            no_migrate,
-            force,
-            from_cwd,
-        } => {
-            let source = catalog::resolve_source_from_env(from_cwd)?;
-            let roles = source.load_roles()?;
-            let cmds = source.load_commands()?;
-            let available = source.load_tools()?;
-            let available_for_receipt = available.clone();
-            let selected_tools = select_tools(with_tools, available)?;
-            let target_dir = resolve_target_dir(location.local, location.dir)?;
-            let install_steering = source.steering_for_target(&target_dir)?;
-            let harnesses = resolve_install_harnesses(harness, Some(&target_dir))?;
-            run_install_loop(
-                &target_dir,
-                &harnesses,
-                ToolSelection::Explicit(selected_tools),
-                &available_for_receipt,
-                &roles,
-                &cmds,
-                install_steering.as_deref(),
-                no_migrate,
-                force,
-                install_steering.is_some(),
-            )?;
-
-            if location.global {
-                if let Some(home_path) = home::home_dir() {
-                    if let Ok(global_content) = source.load_global_steering() {
-                        for h in &harnesses {
-                            let _ = steering::install_global_steering(h, &home_path, &global_content);
                         }
                     }
                 }
@@ -885,6 +844,15 @@ fn main() -> Result<()> {
                 true,
                 install_steering.is_some(),
             )?;
+
+            // Refresh canonical global steering if home directory is available
+            if let Some(home_path) = home::home_dir() {
+                if let Ok(global_content) = source.load_global_steering() {
+                    for h in &harnesses {
+                        let _ = steering::install_global_steering(h, &home_path, &global_content);
+                    }
+                }
+            }
         }
         Command::Doctor {
             harness,
@@ -1082,24 +1050,10 @@ mod tests {
 
     #[test]
     fn location_flags_share_where_heading_across_user_commands() {
-        for command in ["install", "update", "uninstall", "doctor", "configure"] {
+        for command in ["install", "update", "uninstall", "doctor"] {
             let help = help_for(command);
             assert!(help.contains("Where:"), "{command}:\n{help}");
             assert!(help.contains("--dir <PATH>"), "{command}");
-        }
-    }
-
-    #[test]
-    fn configure_help_documents_flags_and_examples() {
-        let help = help_for("configure");
-        for needle in [
-            "--harness <NAME>",
-            "--dir <PATH>",
-            "--with-tools <NAMES|all|none>",
-            "Examples:",
-            "Where:",
-        ] {
-            assert!(help.contains(needle), "missing `{needle}`:\n{help}");
         }
     }
 

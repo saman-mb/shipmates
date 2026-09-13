@@ -8,13 +8,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- **`shipmates configure` and auto-detection on `shipmates install`:** `shipmates install` without
+- **Intelligent harness auto-detection on `shipmates install`:** `shipmates install` without
   `--harness` now discovers which supported harnesses are actually installed on the system (via
   PATH binaries, home configuration directories, project markers, and install receipts) and
-  configures an optimal native setup for each detected harness. The new `shipmates configure`
-  command orchestrates this detection and writes each harness its native dialect, tool vocabulary,
-  least-privilege permissions, and canonical user-scope steering (#438).
-- **Canonical user-scope steering (`steering/global.md`) installation:** `shipmates configure` installs
+  configures an optimal native setup for each detected harness — native dialect, tool vocabulary,
+  least-privilege permissions, and canonical user-scope steering in 1 command, 1 time, perfectly (#438).
+- **Canonical user-scope steering (`steering/global.md`) installation:** `shipmates install` installs
   domain-neutral global heuristics into user-scope instruction files across supported harnesses:
   Tier A for Cursor (`~/.cursor/rules/shipmates.mdc`) and Tier B for Claude Code (`~/.claude/CLAUDE.md`),
   Codex (`~/.codex/AGENTS.md`), OpenCode (`~/.config/opencode/AGENTS.md`), Antigravity (`~/.gemini/GEMINI.md`),

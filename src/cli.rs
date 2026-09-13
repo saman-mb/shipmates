@@ -40,8 +40,7 @@ into the tree your coding harness already reads (.claude/, .opencode/, .agents/,
 
 Start here:
   shipmates targets              # harness names this binary supports
-  shipmates configure            # detect harnesses and write native setup + steering
-  shipmates install              # first-time install (auto-detects or interactive)
+  shipmates install              # first-time install: auto-detects harnesses, tools & global steering
   shipmates update               # after upgrading the shipmates binary
   shipmates doctor               # check an install; add --fix to repair
   shipmates uninstall            # remove a receipt-owned install
@@ -57,68 +56,21 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Configure installed harnesses: native agents, tools, permissions, and global steering
+    /// First-time install: drop the crew, tools, and global steering into installed harnesses
     #[command(
-        long_about = "Detect which coding harnesses are installed and write each an optimal native setup.
+        long_about = "Install the Shipmates crew, commands, tools, and canonical global steering into one or more harness trees.
 
-Discovers harnesses automatically from binaries on PATH, user config directories,
-and existing project trees. Configures native crew agents, per-role permissions,
-the skill/command tree, and installs canonical global steering into user instruction files.
+When --harness is omitted, shipmates install automatically discovers which coding harnesses
+are installed on your machine (from PATH binaries, config directories, and project markers)
+and installs an optimal native setup for each one. In a terminal where no harnesses are detected,
+it prompts interactively; non-interactive runs default to claude-code.
 
-Omit --harness to configure all detected harnesses automatically. Pass --harness <name>
-for explicit control, or --harness all for every supported target.
+Omit --with-tools to install every bundled tool; pass none for crew + commands only, or name a
+subset (former short names like scrub still select shipmates-scrub).
 
-Where defaults to the global home directory (~). Use --local for . or --dir PATH.
-
-Examples:
-  shipmates configure
-  shipmates configure --harness claude-code
-  shipmates configure --harness all
-  shipmates configure --local
-  shipmates configure --dir ~/proj
-  shipmates configure --with-tools none",
-        after_help = "Tip: run `shipmates doctor` afterwards to verify tool resolution across all harnesses."
-    )]
-    Configure {
-        /// Harness to configure, or `all`. Omit to auto-detect installed harnesses
-        #[arg(long, value_name = "NAME", help_heading = "What")]
-        harness: Option<String>,
-
-        #[command(flatten)]
-        location: LocationOpts,
-
-        /// Tools: omit = all; `none` = crew only; or comma-separated names / `all`
-        #[arg(
-            long = "with-tools",
-            value_name = "NAMES|all|none",
-            value_delimiter = ',',
-            help_heading = "What"
-        )]
-        with_tools: Option<Vec<String>>,
-
-        /// Skip legacy-command and identity-rename sweeps
-        #[arg(long, help_heading = "Safety")]
-        no_migrate: bool,
-
-        /// Overwrite colliding files even when not claimed by a Shipmates receipt
-        #[arg(long, help_heading = "Safety")]
-        force: bool,
-
-        /// Build from this directory's crew/commands/toolbox instead of the embedded payload
-        #[arg(long = "from-cwd", help_heading = "Source")]
-        from_cwd: bool,
-    },
-
-    /// First-time install: drop the crew (+ tools by default) into a harness
-    #[command(
-        long_about = "Install the Shipmates crew and commands into one or more harness trees.
-
-Omit --harness in a terminal to pick harness(es) interactively; non-interactive
-runs default to claude-code. Omit --with-tools to install every bundled tool;
-pass none for crew + commands only, or name a subset (former short names like
-scrub still select shipmates-scrub).
-
-Where defaults to the global home directory (~). Use --local for . or --dir PATH.
+Where defaults to the global home directory (~). Use --local for . or --dir PATH. Canonical global
+steering (heuristics and workflow routing) is installed into user instruction files across all
+configured harnesses.
 
 Examples:
   shipmates install
