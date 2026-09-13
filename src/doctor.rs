@@ -594,6 +594,57 @@ fn expected_at(
         .collect()
 }
 
+/// Split expected payload paths into the ones that can be inspected and the ones
+/// sitting behind a symlink.
+///
+/// A symlinked path is not an error — it is a captain sharing one tree across
+/// harnesses, which is a normal thing to want. Shipmates never writes through
+/// one, so such a path can never match the payload by construction; the honest
+/// move is to leave it out of the comparison and name it, rather than failing the
+/// whole diagnosis because of one path nobody asked us to touch.
+fn partition_symlinked_expected(
+    target_dir: &Path,
+    expected: BTreeMap<String, String>,
+) -> Result<(BTreeMap<String, String>, Vec<String>)> {
+    let mut kept = BTreeMap::new();
+    let mut symlinked = Vec::new();
+    for (rel, content) in expected {
+        match manifest_db::classify_target_path(target_dir, Path::new(&rel))? {
+            Some(manifest_db::Blocked::Symlinked) => symlinked.push(rel),
+            _ => {
+                kept.insert(rel, content);
+            }
+        }
+    }
+    symlinked.sort();
+    Ok((kept, symlinked))
+}
+
+/// The `Symlinked paths` check, reported once per diagnosis.
+fn symlinked_paths_check(symlinked: &[String]) -> Check {
+    if symlinked.is_empty() {
+        Check {
+            name: "Symlinked paths".into(),
+            severity: Severity::Ok,
+            detail: "no installed path sits behind a symlink".into(),
+            fixable: false,
+        }
+    } else {
+        Check {
+            name: "Symlinked paths".into(),
+            severity: Severity::Warn,
+            detail: format!(
+                "{} payload path(s) sit behind a symlink and are left exactly as found — Shipmates \
+                 never writes through one, so these are not installed, not repaired and not \
+                 removed: {}",
+                symlinked.len(),
+                symlinked.join(", ")
+            ),
+            fixable: false,
+        }
+    }
+}
+
 /// The body of `diagnose`, taking an already-built payload so `fix` can reuse the
 /// single `build()` it made rather than paying for two more. `built` is the
 /// container-prefixed map (as `adapter.build` returns, for `migrate::plan`);
@@ -634,9 +685,7 @@ fn diagnose_built(
         }),
     }
 
-    for rel in expected.keys() {
-        manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
-    }
+    let (expected, mut symlinked_expected) = partition_symlinked_expected(target_dir, expected)?;
 
     // 1. Install present — the harness's expected dotdir(s) exist.
     let dotdirs: BTreeSet<&str> = expected
@@ -1025,9 +1074,10 @@ fn diagnose_built(
         &adapter.build_tools(tools),
         adapter.container(),
     );
-    for rel in tool_expected.keys() {
-        manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
-    }
+    let (tool_expected, symlinked_tools) =
+        partition_symlinked_expected(target_dir, tool_expected)?;
+    symlinked_expected.extend(symlinked_tools);
+    checks.push(symlinked_paths_check(&symlinked_expected));
     let mut installed: Vec<String> = Vec::new();
     let mut tool_missing: Vec<String> = Vec::new();
     let mut tool_drift: Vec<String> = Vec::new();
@@ -1402,9 +1452,7 @@ pub fn fix(
         receipt_state = plan::ReceiptState::Missing;
         receipt = None;
     }
-    for rel in expected.keys() {
-        manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
-    }
+    let (expected, _symlinked_expected) = partition_symlinked_expected(target_dir, expected)?;
     manifest_db::resolve_target_relative(target_dir, Path::new(migrate::BACKUP_DIR))?;
     let backup_root = migrate::new_backup_root(target_dir);
     let mut migrated_paths = BTreeSet::new();
@@ -1445,9 +1493,8 @@ pub fn fix(
 
     let tool_expected: BTreeMap<String, String> =
         expected_at(target_dir, harness, &tool_built, adapter.container());
-    for rel in tool_expected.keys() {
-        manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
-    }
+    let (tool_expected, _symlinked_tools) =
+        partition_symlinked_expected(target_dir, tool_expected)?;
     // Classify leftover install backups before anything is repaired, so `--fix`
     // prunes exactly what the preceding report named: a file that is drifted
     // now keeps its sidecar even though the repair below makes it current.
