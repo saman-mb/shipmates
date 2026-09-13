@@ -26,7 +26,9 @@ repeated instructions and low-signal output out of the main context.
 ## Reusable command preamble
 
 The marker below is expanded into every rendered command. Keep this block short and stable: command
-authors reference it instead of copying cost rules into each workflow.
+authors reference it instead of copying cost rules into each workflow. **Model routing** is the one
+deliberately large member: it is policy every command needs — each drives the crew differently — so it
+globalises here rather than being opted into per command, and its size is tracked in #450.
 
 <!-- command-preamble:start -->
 ## Cost discipline
