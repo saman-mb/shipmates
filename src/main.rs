@@ -488,11 +488,20 @@ fn install_harness(
     let built = relocate(built);
     let tools_payload = relocate(adapter.build_tools(selected_tools));
     let payload_prefix = format!("{}/", adapter.container());
-    for key in built.keys() {
-        if let Some(rel) = key.strip_prefix(&payload_prefix) {
-            installer::manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
-        }
-    }
+
+    // A path behind a symlink is SKIPPED — not written through and not fatal.
+    //
+    // Shipmates never writes through a symlink: that containment property is not
+    // negotiable. But refusing one path must not abandon the other forty, which
+    // is what sharing a skills tree across harnesses used to cost a captain —
+    // the whole install aborted on a path that was already correct. Every skipped
+    // path is named below, so a payload that lands incomplete says so rather
+    // than doing it quietly.
+    let (built, mut skipped_symlinked) =
+        partition_symlinked(target_dir, &payload_prefix, built)?;
+    let (tools_payload, skipped_tools) =
+        partition_symlinked(target_dir, &payload_prefix, tools_payload)?;
+    skipped_symlinked.extend(skipped_tools);
     let plan = installer::plan::InstallPlan::from_payload(
         adapter.as_ref(),
         harness,
@@ -654,6 +663,16 @@ fn install_harness(
     for warning in &result.warnings {
         println!("{}", warning);
     }
+    if !skipped_symlinked.is_empty() {
+        skipped_symlinked.sort();
+        skipped_symlinked.dedup();
+        println!(
+            "Warning: {} path(s) sit behind a symlink and were left alone — Shipmates never writes \
+             through one: {}",
+            skipped_symlinked.len(),
+            skipped_symlinked.join(", ")
+        );
+    }
 
     let tool_change = tool_change(selected_tools.len(), previous_tools);
     if selected_tools.is_empty() {
@@ -680,6 +699,37 @@ fn install_harness(
         tools: selected_tools.to_vec(),
         previous_tools,
     })
+}
+
+/// Split a payload into the paths that may be written and those sitting behind a
+/// symlink, which are skipped rather than written through.
+///
+/// Never writes through a symlink; never abandons the rest of the payload because
+/// of one. An *unsafe* path is still a hard error — that is a programming fault,
+/// not a fact about the captain's environment.
+fn partition_symlinked(
+    target_dir: &Path,
+    prefix: &str,
+    payload: std::collections::HashMap<String, String>,
+) -> Result<(std::collections::HashMap<String, String>, Vec<String>)> {
+    let mut kept = std::collections::HashMap::with_capacity(payload.len());
+    let mut skipped = Vec::new();
+    for (key, content) in payload {
+        if let Some(rel) = key.strip_prefix(prefix) {
+            match installer::manifest_db::classify_target_path(target_dir, Path::new(rel))? {
+                Some(installer::manifest_db::Blocked::Unsafe) => {
+                    anyhow::bail!("unsafe install path: {rel}")
+                }
+                Some(installer::manifest_db::Blocked::Symlinked) => {
+                    skipped.push(rel.to_string());
+                    continue;
+                }
+                None => {}
+            }
+        }
+        kept.insert(key, content);
+    }
+    Ok((kept, skipped))
 }
 
 fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
