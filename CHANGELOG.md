@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-13
+
+### Added
+
+- **`/ship-epic` fan-out execution mode:** Added `EPIC_EXECUTION=fanout` and `MAX_CONCURRENT_WORKERS=5` allowing independent, file-disjoint units to run concurrently in dedicated worktrees. Encodes wave-based DAG partitioning, in-flight rebase conflict handling, post-wave integration CI checks on `<EPIC_BRANCH>`, and single final acceptance board review (#432).
+- **Command pipeline streamlining:** Added `board=epic-deferred` / `board=off` support to `/ship-issue` for orchestrator-delegated runs to eliminate redundant intermediate boards, plus multi-builder parallel execution guidance for file-disjoint slices (#432).
+- **Canonical global steering ruleset (`steering/global.md`):** Authored concise, strictly domain-neutral global steering heuristics (repo context precedence, workflow routing, product impact bar, worktree hygiene, multi-perspective acceptance, and execution efficiency / review amortization) for user-scope installation (#430).
+
 ## [0.3.1] - 2026-09-13
 
 ### Fixed

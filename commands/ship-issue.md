@@ -164,6 +164,7 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 **Epic delegation — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
 list) for:
 
+- **`board=epic-deferred`** or **`board=off`** — skips Stage 5 (acceptance board) and Stage 6 (remediation loop); proceed directly to Stage 7 / Stage 8.
 - **`epic-base=<branch>`** — branch name must match `^[a-zA-Z0-9._/-]+$`; anything else, stop and ask.
   Set `BASE_BRANCH` to that branch. Worktree isolation (Stage 1) cuts from `origin/<BASE_BRANCH>`.
 - **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Overridden to
@@ -352,6 +353,7 @@ shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 
 ## Stage 2 — Build  (agents: `senior-engineer` × N, parallel)
 
+- **Multi-builder parallel execution**: when the Planner divides an issue into independent file-disjoint slices (sub-tasks), spawn Builders concurrently.
 - Spawn one **Builder** (`{{role:senior-engineer}}`) per independent work unit from the plan,
   **in a single message** so they run concurrently. Each Builder is told: its exact file ownership,
   the acceptance criteria it must satisfy, the worktree path, to follow {{project-instructions}}
@@ -474,6 +476,8 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/ship-issue` so the epic can
    final report.
 
 ## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
+
+**Skip check**: if runtime guidance includes `board=epic-deferred` or `board=off`, skip Stage 5 (acceptance board) and Stage 6 (remediation loop); proceed directly to Stage 7 / Stage 8.
 
 <!-- shipmates:acceptance-board -->
 
