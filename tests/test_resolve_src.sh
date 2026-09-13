@@ -51,7 +51,8 @@ assert "opencode: agent under .opencode/agents" test -f "$D/.opencode/agents/sde
 D="$WORK/antigravity"
 assert "antigravity: install exits 0" install_to antigravity "$D"
 assert "antigravity: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
-assert "antigravity: agent under .agents/agents" test -f "$D/.agents/agents/sdet.md"
+assert "antigravity: agent is a dir per agent (agent.md)" test -f "$D/.agents/agents/sdet/agent.md"
+assert "antigravity: flat <name>.md is NOT emitted" test ! -f "$D/.agents/agents/sdet.md"
 
 # --- crew-bearing targets whose agent format is not Claude's ---
 # Codex agents are TOML, not Markdown; Copilot needs the .agent.md double
@@ -100,6 +101,62 @@ assert "pi: crew under .pi/agents" test -f "$D/.pi/agents/sdet.md"
 # own crew with an inert one (#437).
 assert "pi: no crew in the shared .agents tree" test ! -d "$D/.agents/agents"
 assert "pi: tools are a comma scalar, not a YAML list" grep -q '^tools: read, grep, find' "$D/.pi/agents/sdet.md"
+
+# --- a GLOBAL install must land in each harness's own user-scope tree ---
+#
+# `--global` (the default) writes into $HOME. For most harnesses the workspace
+# path joined to home is already correct; for antigravity and pi it is not, and
+# the files landed where nothing reads them. This asserts the relocated layout
+# for the crew, the command skills AND the toolbox — the last of which is a
+# separate payload and was missed once already.
+GHOME="$WORK/global-home"
+mkdir -p "$GHOME"
+# Invoke the built binary rather than `cargo run`: cargo needs the real $HOME for
+# ~/.cargo, so overriding HOME inside a cargo invocation fails before the CLI
+# under test ever starts.
+( cd "$REPO" && cargo build --quiet ) || true
+BIN="$REPO/target/debug/shipmates"
+global_install() { # harness
+  HOME="$GHOME" "$BIN" install --harness "$1"
+}
+assert "global pi: exits 0" global_install pi
+assert "global pi: crew at ~/.pi/agent/agents" test -f "$GHOME/.pi/agent/agents/sdet.md"
+assert "global pi: commands at ~/.pi/agent/skills" test -f "$GHOME/.pi/agent/skills/ship-issue/SKILL.md"
+assert "global pi: toolbox at ~/.pi/agent/skills" test -f "$GHOME/.pi/agent/skills/shipmates-badge/SKILL.md"
+assert "global pi: crew is NOT a flat <name>.md in the shared tree" test ! -d "$GHOME/.agents/agents"
+assert "global pi: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
+
+assert "global antigravity: exits 0" global_install antigravity
+assert "global antigravity: crew is a dir per agent" test -f "$GHOME/.gemini/config/agents/sdet/agent.md"
+assert "global antigravity: commands under .gemini/config/skills" test -f "$GHOME/.gemini/config/skills/ship-issue/SKILL.md"
+assert "global antigravity: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
+
+# Both harnesses in one home must be clean — including the toolbox, which doctor
+# compares against the relocated paths. Asserting the layout alone missed that:
+# the files landed correctly while `doctor` still read the workspace paths and
+# reported every installed tool as orphaned.
+assert "global pi: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness pi | grep -q 'All shipshape'"
+assert "global antigravity: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness antigravity | grep -q 'All shipshape'"
+
+# codex and github-copilot are the other two shared-tree harnesses, and their
+# GLOBAL half does not live on the shared tree either: Codex reads
+# `$CODEX_HOME/skills` and Copilot's config dir is `~/.copilot`. Writing their
+# global payload to `.agents/skills/` put it where neither one looks — and where
+# pi *does*, which is what produced a collision warning per skill.
+assert "global codex: exits 0" global_install codex
+assert "global codex: crew at ~/.codex/agents" test -f "$GHOME/.codex/agents/sdet.toml"
+assert "global codex: skills at ~/.codex/skills, not the shared tree" test -f "$GHOME/.codex/skills/ship-issue/SKILL.md"
+assert "global codex: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
+
+assert "global github-copilot: exits 0" global_install github-copilot
+assert "global github-copilot: crew at ~/.copilot/agents" test -f "$GHOME/.copilot/agents/sdet.agent.md"
+assert "global github-copilot: skills at ~/.copilot/skills" test -f "$GHOME/.copilot/skills/ship-issue/SKILL.md"
+assert "global github-copilot: writes nothing to ~/.github" test ! -d "$GHOME/.github"
+assert "global github-copilot: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
+
+assert "global codex: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness codex | grep -q 'All shipshape'"
+assert "global github-copilot: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness github-copilot | grep -q 'All shipshape'"
+assert "all four global installs leave the shared .agents tree untouched" test ! -d "$GHOME/.agents"
 
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"

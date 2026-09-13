@@ -1,6 +1,6 @@
 use super::Adapter;
 use super::render::{
-    CrewFormat, GITHUB_COPILOT, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
+    CrewFormat, CrewLayout, GITHUB_COPILOT, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
     yaml_scalar,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
@@ -160,6 +160,7 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     dialect: &GITHUB_COPILOT,
     map_tools: tools_for,
     serialize,
+    layout: CrewLayout::Flat,
 };
 
 impl Adapter for GithubCopilotAdapter {

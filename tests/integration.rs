@@ -664,12 +664,20 @@ fn test_antigravity_adapter_integration() {
         body: "system prompt body".into(),
     };
     let files = AntigravityAdapter.build(&[role], &[]).unwrap();
+    // Antigravity discovers `{workspace}/.agents/agents/{agent_name}/` and
+    // reads the `agent.md` inside it. A flat `<name>.md` installs cleanly and
+    // is never read, which is why the crew silently never loaded before this
+    // shape was corrected.
     let content = files
-        .get("harnesses/antigravity/.agents/agents/architect.md")
-        .unwrap();
+        .get("harnesses/antigravity/.agents/agents/architect/agent.md")
+        .expect("antigravity must emit a directory per agent holding agent.md");
     assert!(content.contains("name: architect"));
     assert!(content.contains("subagent: true"));
     assert!(content.contains("system prompt body"));
+    assert!(
+        !files.contains_key("harnesses/antigravity/.agents/agents/architect.md"),
+        "the flat shape Antigravity never reads must not be emitted"
+    );
 }
 
 /// Every harness's `agents` flag must match what its adapter actually emits.

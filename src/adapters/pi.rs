@@ -1,6 +1,6 @@
 use super::Adapter;
 use super::render::{
-    CrewFormat, PI, emit_crew_files, emit_shared_skills, emit_shared_tool_skills, yaml_scalar,
+    CrewFormat, CrewLayout, PI, emit_crew_files, emit_shared_skills, emit_shared_tool_skills, yaml_scalar,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
@@ -184,6 +184,7 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     dialect: &PI,
     map_tools: tools_for,
     serialize,
+    layout: CrewLayout::Flat,
 };
 
 impl Adapter for PiAdapter {

@@ -4,6 +4,37 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-09-13
+
+### Fixed
+
+- **Antigravity's crew were never loaded.** The adapter emitted a flat
+  `.agents/agents/<name>.md`, but Antigravity discovers `{workspace}/.agents/agents/{agent_name}/`
+  and reads the `agent.md` inside that directory — so the crew installed cleanly and were invisible,
+  in both scopes. Verified against the shipped `agy` binary, which embeds that path template and whose
+  release notes describe custom agents as `agent.md` files. The legacy flat shape stays loadable on the
+  receipt side, so an existing install remains upgradable and removable (#460).
+- **Global installs wrote workspace paths into `$HOME`.** A global install (`--global`, the default)
+  joined the *workspace* tree to the home directory. For four harnesses that is not where the harness
+  reads: Antigravity's global tree is `~/.gemini/config/`, pi's is `~/.pi/agent/`, Codex's is
+  `$CODEX_HOME` (`~/.codex`), and Copilot's is `~/.copilot`. All four now land there, and the plan, the
+  receipt, the migration table and `doctor` all agree on the relocated paths. The payload and its
+  committed digests stay scope-invariant — relocation happens once, at write time — so no second
+  payload was needed. This also removes the collisions that made the shared tree a hazard: a
+  mis-shaped Antigravity or Codex crew sitting in `~/.agents/` is read by pi as a legacy agent
+  location, where it outranks pi's own crew and yields an empty toolset (#437, #458).
+- Reinstalling a relocated harness now clears the copies the old layout left behind, because a payload
+  path a previous receipt owned and the new payload does not is removed. On a real machine this took
+  `~/.agents/skills` from 34 entries to the captain's own 8, which also ends the skill-collision
+  warning pi printed for every shipmates skill.
+- The `doctor` shared-tree check scanned `.agents/agents/` non-recursively, so it could not see a
+  foreign crew in Antigravity's actual shape — the nest was exactly what it needed to find. It now
+  walks the tree the way the readers do.
+- Two further defects found by verifying rather than trusting a green run: the tool payload was not
+  relocated with the rest of a global install (it is a separate payload, and its files landed where
+  the harness never looks), and `doctor` compared that payload against workspace-shaped paths and so
+  reported every installed tool as orphaned.
+
 ## [0.6.1] - 2026-09-13
 
 ### Added
