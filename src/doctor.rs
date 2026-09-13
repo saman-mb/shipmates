@@ -12,6 +12,7 @@ use crate::digest;
 use crate::installer::{adopt, manifest_db, migrate, plan, rename};
 use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -438,6 +439,94 @@ fn agent_name(rel: &str) -> String {
         .and_then(|s| s.to_str())
         .unwrap_or(rel)
         .to_string()
+}
+
+fn harness_tool_vocabulary(harness: &str) -> Option<&'static [&'static str]> {
+    match harness {
+        "claude-code" => Some(&["Read", "Grep", "Glob", "Write", "Edit", "Bash", "WebSearch", "WebFetch", "Agent"]),
+        "opencode" => Some(&["read", "grep", "glob", "edit", "bash", "websearch", "webfetch", "task"]),
+        "antigravity" => Some(&[
+            "view_file", "grep_search", "list_dir", "write_to_file", "replace_file_content",
+            "run_command", "search_web", "read_url_content", "invoke_subagent"
+        ]),
+        "cursor" => Some(&["read", "search", "glob", "edit", "bash", "web_search", "web_fetch", "agent"]),
+        "github-copilot" => Some(&["read", "search", "edit", "execute", "web", "agent", "bash", "web_search", "web_fetch"]),
+        "pi" => Some(&[
+            "read", "grep", "find", "ls", "bash", "edit", "write", "web_search", "fetch_content", "subagent"
+        ]),
+        "windsurf" => Some(&["read", "search", "glob", "edit", "bash", "web_search", "web_fetch", "agent"]),
+        "codex" => None,
+        _ => None,
+    }
+}
+
+fn parse_frontmatter_tools_and_permissions(content: &str, harness: &str) -> (Vec<String>, bool) {
+    let mut tools = Vec::new();
+    let mut has_deny_first = false;
+
+    if harness == "opencode" {
+        let mut in_permission = false;
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("permission:") {
+                in_permission = true;
+                continue;
+            }
+            if in_permission {
+                if !line.starts_with(' ') && !line.starts_with('\t') && !trimmed.is_empty() {
+                    in_permission = false;
+                    continue;
+                }
+                if (trimmed.starts_with("\"*\"") || trimmed.starts_with("'*'") || trimmed.starts_with('*'))
+                    && trimmed.contains("deny")
+                {
+                    has_deny_first = true;
+                } else if let Some((key, _)) = trimmed.split_once(':') {
+                    let key = key.trim().trim_matches('"').trim_matches('\'');
+                    if key != "*" && !key.is_empty() {
+                        tools.push(key.to_string());
+                    }
+                }
+            }
+        }
+    } else {
+        let mut in_tools_list = false;
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if let Some(rest) = trimmed.strip_prefix("tools:") {
+                let val = rest.trim();
+                if val.is_empty() {
+                    in_tools_list = true;
+                } else if val.starts_with('[') && val.ends_with(']') {
+                    let inner = &val[1..val.len() - 1];
+                    for t in inner.split(',') {
+                        let t = t.trim().trim_matches('"').trim_matches('\'');
+                        if !t.is_empty() {
+                            tools.push(t.to_string());
+                        }
+                    }
+                } else {
+                    for t in val.split(',') {
+                        let t = t.trim().trim_matches('"').trim_matches('\'');
+                        if !t.is_empty() {
+                            tools.push(t.to_string());
+                        }
+                    }
+                }
+            } else if in_tools_list {
+                if let Some(stripped) = trimmed.strip_prefix("- ") {
+                    let t = stripped.trim().trim_matches('"').trim_matches('\'');
+                    if !t.is_empty() {
+                        tools.push(t.to_string());
+                    }
+                } else if !trimmed.is_empty() && !trimmed.starts_with('#') {
+                    in_tools_list = false;
+                }
+            }
+        }
+    }
+
+    (tools, has_deny_first)
 }
 
 /// Diagnose the health of a harness install under `target_dir`. Read-only.
@@ -1078,6 +1167,157 @@ fn diagnose_built(
         detail: ownership_detail.into(),
         fixable: false,
     });
+
+    // 7. Agent tool vocabulary & permissions
+    if expected_agents.is_empty() {
+        checks.push(Check {
+            name: "Agent tools".into(),
+            severity: Severity::Ok,
+            detail: "this harness ships no crew agents".into(),
+            fixable: false,
+        });
+    } else {
+        let mut tool_problems = Vec::new();
+        let vocab = harness_tool_vocabulary(harness);
+        for rel in &expected_agents {
+            let path = target_dir.join(rel);
+            if let Ok(content) = fs::read_to_string(&path) {
+                let (declared_tools, has_deny_first) =
+                    parse_frontmatter_tools_and_permissions(&content, harness);
+                if harness == "opencode" && !has_deny_first {
+                    tool_problems.push(format!(
+                        "agent '{}' missing required catch-all '*: deny' permission",
+                        agent_name(rel)
+                    ));
+                }
+                if let Some(v) = vocab {
+                    let unresolvable: Vec<&String> = declared_tools
+                        .iter()
+                        .filter(|t| !v.contains(&t.as_str()))
+                        .collect();
+                    if !unresolvable.is_empty() {
+                        tool_problems.push(format!(
+                            "agent '{}' declares tool(s) {:?} not in {} vocabulary",
+                            agent_name(rel),
+                            unresolvable,
+                            harness
+                        ));
+                    }
+                }
+            }
+        }
+        if tool_problems.is_empty() {
+            checks.push(Check {
+                name: "Agent tools".into(),
+                severity: Severity::Ok,
+                detail: format!("all declared tools resolve in {} vocabulary", harness),
+                fixable: false,
+            });
+        } else {
+            checks.push(Check {
+                name: "Agent tools".into(),
+                severity: Severity::Problem,
+                detail: tool_problems.join("; "),
+                fixable: true,
+            });
+        }
+    }
+
+    // 8. Shared-tree collision check
+    if harness == "pi" {
+        let shared_agent_dir = target_dir.join(".agents").join("agents");
+        let mut foreign_in_shared = Vec::new();
+        if shared_agent_dir.is_dir() {
+            if let Ok(entries) = fs::read_dir(&shared_agent_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.extension().is_some_and(|e| e == "md") {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            let (tools, _) = parse_frontmatter_tools_and_permissions(&content, "pi");
+                            let pi_vocab = harness_tool_vocabulary("pi").unwrap();
+                            let foreign: Vec<&String> = tools
+                                .iter()
+                                .filter(|t| !pi_vocab.contains(&t.as_str()))
+                                .collect();
+                            if !foreign.is_empty() {
+                                foreign_in_shared.push(format!(
+                                    "{} has foreign tools {:?}",
+                                    path.file_name().and_then(|n| n.to_str()).unwrap_or("agent"),
+                                    foreign
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if foreign_in_shared.is_empty() {
+            checks.push(Check {
+                name: "Shared tree agents".into(),
+                severity: Severity::Ok,
+                detail: "no foreign agent vocabulary detected in shared tree".into(),
+                fixable: false,
+            });
+        } else {
+            checks.push(Check {
+                name: "Shared tree agents".into(),
+                severity: Severity::Problem,
+                detail: format!(
+                    "foreign agent vocabulary in shared .agents/agents tree causes zero-tool seats on pi: {}",
+                    foreign_in_shared.join("; ")
+                ),
+                fixable: false,
+            });
+        }
+    }
+
+    // 9. Global steering check (only when diagnosing user's home directory)
+    if let Some(home_path) = home::home_dir() {
+        if target_dir == home_path {
+            let global_content = crate::catalog::load_global_steering_embedded().unwrap_or_default();
+            match crate::steering::check_global_steering(harness, &home_path, &global_content) {
+                Ok(crate::steering::GlobalSteeringStatus::Installed { path, up_to_date: true }) => {
+                    checks.push(Check {
+                        name: "Global steering".into(),
+                        severity: Severity::Ok,
+                        detail: format!("installed and up to date at {}", path.display()),
+                        fixable: false,
+                    });
+                }
+                Ok(crate::steering::GlobalSteeringStatus::Installed { path, up_to_date: false }) => {
+                    checks.push(Check {
+                        name: "Global steering".into(),
+                        severity: Severity::Warn,
+                        detail: format!(
+                            "drifted from canonical heuristics at {}; run `shipmates configure` to update",
+                            path.display()
+                        ),
+                        fixable: false,
+                    });
+                }
+                Ok(crate::steering::GlobalSteeringStatus::Missing { path }) => {
+                    checks.push(Check {
+                        name: "Global steering".into(),
+                        severity: Severity::Ok,
+                        detail: format!(
+                            "not installed at {}; run `shipmates configure` to install",
+                            path.display()
+                        ),
+                        fixable: false,
+                    });
+                }
+                Ok(crate::steering::GlobalSteeringStatus::Gap(msg)) => {
+                    checks.push(Check {
+                        name: "Global steering".into(),
+                        severity: Severity::Ok,
+                        detail: msg.to_string(),
+                        fixable: false,
+                    });
+                }
+                Err(_) => {}
+            }
+        }
+    }
 
     Ok(Report { checks })
 }
@@ -2583,4 +2823,90 @@ mod tests {
             tools_check.detail
         );
     }
+
+    #[test]
+    fn test_doctor_detects_unresolvable_agent_tool_vocabulary() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+
+        install_healthy(target, &roles, &cmds);
+
+        // Mutate the architect agent file with a foreign / unresolvable tool
+        let agent_file = target.join(".claude/agents/architect.md");
+        let corrupted = "---\nname: architect\ndescription: d\ntools: [view_file, not_a_real_tool]\n---\nbody\n";
+        fs::write(&agent_file, corrupted).unwrap();
+
+        let report = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
+        let check = report.checks.iter().find(|c| c.name == "Agent tools").unwrap();
+        assert_eq!(
+            check.severity,
+            Severity::Problem,
+            "foreign tool vocabulary must be flagged as Problem: {}",
+            check.detail
+        );
+        assert!(check.detail.contains("view_file"));
+    }
+
+    #[test]
+    fn test_doctor_detects_opencode_missing_deny_first() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+
+        let adapter = adapters::select("opencode").unwrap();
+        let built = adapter.build(&roles, &cmds).unwrap();
+        let expected = strip_container(&built, adapter.container());
+        for (rel, content) in &expected {
+            let path = target.join(rel);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            // Write without `"*": deny`
+            let without_deny = content.replace("\"*\": deny\n", "");
+            fs::write(path, without_deny).unwrap();
+        }
+
+        let report = diagnose(target, "opencode", &roles, &cmds, &[]).unwrap();
+        let check = report.checks.iter().find(|c| c.name == "Agent tools").unwrap();
+        assert_eq!(
+            check.severity,
+            Severity::Problem,
+            "missing '*: deny' must be flagged as Problem: {}",
+            check.detail
+        );
+        assert!(check.detail.contains("missing required catch-all '*: deny'"));
+    }
+
+    #[test]
+    fn test_doctor_detects_foreign_agents_in_shared_tree_for_pi() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+
+        // Put an Antigravity agent in .agents/agents
+        let shared_agent = target.join(".agents/agents/architect.md");
+        fs::create_dir_all(shared_agent.parent().unwrap()).unwrap();
+        fs::write(
+            &shared_agent,
+            "---\ntools:\n  - view_file\n  - grep_search\n---\nbody",
+        )
+        .unwrap();
+
+        let report = diagnose(target, "pi", &roles, &cmds, &[]).unwrap();
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "Shared tree agents")
+            .unwrap();
+        assert_eq!(
+            check.severity,
+            Severity::Problem,
+            "foreign tools in shared tree for pi must be Problem: {}",
+            check.detail
+        );
+        assert!(check.detail.contains("view_file"));
+    }
 }
+

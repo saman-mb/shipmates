@@ -40,7 +40,8 @@ into the tree your coding harness already reads (.claude/, .opencode/, .agents/,
 
 Start here:
   shipmates targets              # harness names this binary supports
-  shipmates install              # first-time install (interactive in a terminal)
+  shipmates configure            # detect harnesses and write native setup + steering
+  shipmates install              # first-time install (auto-detects or interactive)
   shipmates update               # after upgrading the shipmates binary
   shipmates doctor               # check an install; add --fix to repair
   shipmates uninstall            # remove a receipt-owned install
@@ -56,6 +57,58 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Configure installed harnesses: native agents, tools, permissions, and global steering
+    #[command(
+        long_about = "Detect which coding harnesses are installed and write each an optimal native setup.
+
+Discovers harnesses automatically from binaries on PATH, user config directories,
+and existing project trees. Configures native crew agents, per-role permissions,
+the skill/command tree, and installs canonical global steering into user instruction files.
+
+Omit --harness to configure all detected harnesses automatically. Pass --harness <name>
+for explicit control, or --harness all for every supported target.
+
+Where defaults to the global home directory (~). Use --local for . or --dir PATH.
+
+Examples:
+  shipmates configure
+  shipmates configure --harness claude-code
+  shipmates configure --harness all
+  shipmates configure --local
+  shipmates configure --dir ~/proj
+  shipmates configure --with-tools none",
+        after_help = "Tip: run `shipmates doctor` afterwards to verify tool resolution across all harnesses."
+    )]
+    Configure {
+        /// Harness to configure, or `all`. Omit to auto-detect installed harnesses
+        #[arg(long, value_name = "NAME", help_heading = "What")]
+        harness: Option<String>,
+
+        #[command(flatten)]
+        location: LocationOpts,
+
+        /// Tools: omit = all; `none` = crew only; or comma-separated names / `all`
+        #[arg(
+            long = "with-tools",
+            value_name = "NAMES|all|none",
+            value_delimiter = ',',
+            help_heading = "What"
+        )]
+        with_tools: Option<Vec<String>>,
+
+        /// Skip legacy-command and identity-rename sweeps
+        #[arg(long, help_heading = "Safety")]
+        no_migrate: bool,
+
+        /// Overwrite colliding files even when not claimed by a Shipmates receipt
+        #[arg(long, help_heading = "Safety")]
+        force: bool,
+
+        /// Build from this directory's crew/commands/toolbox instead of the embedded payload
+        #[arg(long = "from-cwd", help_heading = "Source")]
+        from_cwd: bool,
+    },
+
     /// First-time install: drop the crew (+ tools by default) into a harness
     #[command(
         long_about = "Install the Shipmates crew and commands into one or more harness trees.

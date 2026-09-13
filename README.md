@@ -149,11 +149,15 @@ cargo install shipmates
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
-Then install the crew for a harness. By default it drops into your global home directory. Use
-`--local` for the current directory, or `--dir` to target a specific project:
+Then install the crew. By default it drops into your global home directory. When `--harness` is
+omitted, `shipmates install` automatically detects which harnesses are installed on your machine.
+Use `shipmates configure` to detect installed harnesses and write their native agent dialects,
+least-privilege permissions, tools, and canonical user-scope steering. Use `--local` for the
+current directory, or `--dir` to target a specific project:
 
 ```bash
-shipmates install                           # interactive: pick harness(es); all tools
+shipmates install                           # auto-detects installed harnesses; all tools
+shipmates configure                         # auto-detects harnesses + installs global steering
 shipmates install --harness claude-code     # the proven target
 shipmates install --harness opencode        # format-verified, not runtime-verified
 shipmates install --harness codex
@@ -263,7 +267,8 @@ uninstall.
 against the global home directory and the `claude-code` harness by default. Pass `--harness` to
 check another harness, or use `--local` / `--dir /path/to/project` for another root; doctor does not
 discover harnesses from receipts. It checks the harness tree, receipt ownership, missing files,
-modified or unreadable files, and an old `commands/<name>.md` layout shadowing a skill. A missing receipt
+modified or unreadable files, agent tool vocabulary resolution, shared-tree dialect isolation,
+user-scope global steering status, and an old `commands/<name>.md` layout shadowing a skill. A missing receipt
 warns that ownership is unknown; existing files stay untouched and only
 genuinely missing payload files may be restored. An invalid receipt is a problem, and `doctor --fix`
 refuses ownership-based repair. `doctor --fix` repairs receipt-owned files only, backing up existing

@@ -395,7 +395,7 @@ fn rollback_files(changed: &[(PathBuf, Option<Vec<u8>>)], backups: &[PathBuf]) {
     }
 }
 
-fn backup_existing(path: &Path, bytes: &[u8]) -> Result<Option<PathBuf>> {
+pub(crate) fn backup_existing(path: &Path, bytes: &[u8]) -> Result<Option<PathBuf>> {
     let Some(parent) = path.parent() else {
         return Ok(None);
     };
