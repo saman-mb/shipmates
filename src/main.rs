@@ -466,7 +466,27 @@ fn install_harness(
 ) -> Result<HarnessInstall> {
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
     let adapter = adapters::select(harness)?;
-    let built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
+    let mut built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
+    // A global install (target = $HOME) writes into each harness's own
+    // user-scope tree, which for antigravity and pi is NOT the workspace path
+    // joined to home. Relocate once, here, so the plan, the receipt and the
+    // migration table all describe where the files actually land.
+    //
+    // The tool payload is relocated with the rest: it lands in the same `skills/`
+    // resource tree (pi's toolbox is `.agents/skills/shipmates-*` in the
+    // workspace shape), and leaving it behind would install the tools somewhere
+    // the harness never reads while `doctor` reported them present.
+    let global = installer::manifest_db::is_global_target(target_dir);
+    let container = adapter.container();
+    let relocate = |payload: std::collections::HashMap<String, String>| {
+        if global {
+            installer::manifest_db::relocate_payload(harness, container, &payload)
+        } else {
+            payload
+        }
+    };
+    let built = relocate(built);
+    let tools_payload = relocate(adapter.build_tools(selected_tools));
     let payload_prefix = format!("{}/", adapter.container());
     for key in built.keys() {
         if let Some(rel) = key.strip_prefix(&payload_prefix) {
@@ -477,7 +497,7 @@ fn install_harness(
         adapter.as_ref(),
         harness,
         built.clone(),
-        adapter.build_tools(selected_tools),
+        tools_payload,
     )?;
     let migration_candidates = if force {
         installer::migrate::plan(target_dir, &built, adapter.container())?

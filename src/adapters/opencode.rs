@@ -1,5 +1,5 @@
 use super::Adapter;
-use super::render::{CrewFormat, OPENCODE, emit_crew_files, render_command_body, yaml_scalar};
+use super::render::{CrewFormat, CrewLayout, OPENCODE, emit_crew_files, render_command_body, yaml_scalar};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
 
@@ -144,6 +144,7 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     dialect: &OPENCODE,
     map_tools: tools_for,
     serialize,
+    layout: CrewLayout::Flat,
 };
 
 impl Adapter for OpencodeAdapter {

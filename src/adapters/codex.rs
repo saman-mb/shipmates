@@ -1,6 +1,6 @@
 use super::Adapter;
 use super::render::{
-    CODEX, CrewFormat, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
+    CODEX, CrewFormat, CrewLayout, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
 use std::collections::HashMap;
@@ -91,6 +91,7 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     dialect: &CODEX,
     map_tools: no_tools,
     serialize,
+    layout: CrewLayout::Flat,
 };
 
 impl Adapter for CodexAdapter {

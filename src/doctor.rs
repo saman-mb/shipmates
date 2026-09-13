@@ -441,6 +441,30 @@ fn agent_name(rel: &str) -> String {
         .to_string()
 }
 
+/// Every `.md` file under `dir`, at any depth.
+///
+/// The shared-tree check must walk recursively because the readers do: pi's
+/// agent discovery uses a recursive file walk, and Antigravity's own shape is a
+/// DIRECTORY per agent (`.agents/agents/<name>/agent.md`). A flat scan sees
+/// neither, so it would report a clean shared tree for exactly the collision it
+/// exists to catch.
+fn markdown_files_recursive(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let Ok(entries) = fs::read_dir(dir) else {
+        return out;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            out.extend(markdown_files_recursive(&path));
+        } else if path.extension().is_some_and(|extension| extension == "md") {
+            out.push(path);
+        }
+    }
+    out.sort();
+    out
+}
+
 fn harness_tool_vocabulary(harness: &str) -> Option<&'static [&'static str]> {
     match harness {
         "claude-code" => Some(&["Read", "Grep", "Glob", "Write", "Edit", "Bash", "WebSearch", "WebFetch", "Agent"]),
@@ -544,6 +568,32 @@ pub fn diagnose(
     diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools)
 }
 
+/// `expected`, rewritten into the harness's global layout when `target_dir` is
+/// the user's home directory.
+///
+/// A global install does not land where the workspace-shaped payload says it
+/// will, for the harnesses that declare a `global_root` (antigravity, pi). Doctor
+/// must apply the same relocation the installer applied, or it would report every
+/// correctly-installed global file as missing and every present one as unmanaged.
+fn expected_at(
+    target_dir: &Path,
+    harness: &str,
+    built: &HashMap<String, String>,
+    container: &str,
+) -> BTreeMap<String, String> {
+    let expected = strip_container(built, container);
+    if !manifest_db::is_global_target(target_dir) {
+        return expected;
+    }
+    expected
+        .into_iter()
+        .map(|(rel, content)| {
+            let relocated = manifest_db::global_relocate(harness, &rel).unwrap_or(rel);
+            (relocated, content)
+        })
+        .collect()
+}
+
 /// The body of `diagnose`, taking an already-built payload so `fix` can reuse the
 /// single `build()` it made rather than paying for two more. `built` is the
 /// container-prefixed map (as `adapter.build` returns, for `migrate::plan`);
@@ -555,7 +605,7 @@ fn diagnose_built(
     built: &HashMap<String, String>,
     tools: &[CanonicalTool],
 ) -> Result<Report> {
-    let expected = strip_container(built, adapter.container());
+    let expected = expected_at(target_dir, harness, built, adapter.container());
     let version = env!("CARGO_PKG_VERSION");
     let mut checks = Vec::new();
 
@@ -969,12 +1019,12 @@ fn diagnose_built(
     // 5. Tool status — optional tools are healthy only when every selected
     // file is present and its raw bytes match. A partially present tool is not
     // the same as no tool installed.
-    let prefix = format!("{}/", adapter.container());
-    let tool_expected: BTreeMap<String, String> = adapter
-        .build_tools(tools)
-        .into_iter()
-        .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|r| (r.to_string(), v)))
-        .collect();
+    let tool_expected: BTreeMap<String, String> = expected_at(
+        target_dir,
+        harness,
+        &adapter.build_tools(tools),
+        adapter.container(),
+    );
     for rel in tool_expected.keys() {
         manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
     }
@@ -1227,27 +1277,21 @@ fn diagnose_built(
     if harness == "pi" {
         let shared_agent_dir = target_dir.join(".agents").join("agents");
         let mut foreign_in_shared = Vec::new();
-        if shared_agent_dir.is_dir() {
-            if let Ok(entries) = fs::read_dir(&shared_agent_dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.extension().is_some_and(|e| e == "md") {
-                        if let Ok(content) = fs::read_to_string(&path) {
-                            let (tools, _) = parse_frontmatter_tools_and_permissions(&content, "pi");
-                            let pi_vocab = harness_tool_vocabulary("pi").unwrap();
-                            let foreign: Vec<&String> = tools
-                                .iter()
-                                .filter(|t| !pi_vocab.contains(&t.as_str()))
-                                .collect();
-                            if !foreign.is_empty() {
-                                foreign_in_shared.push(format!(
-                                    "{} has foreign tools {:?}",
-                                    path.file_name().and_then(|n| n.to_str()).unwrap_or("agent"),
-                                    foreign
-                                ));
-                            }
-                        }
-                    }
+        for path in markdown_files_recursive(&shared_agent_dir) {
+            if let Ok(content) = fs::read_to_string(&path) {
+                let (tools, _) = parse_frontmatter_tools_and_permissions(&content, "pi");
+                let pi_vocab = harness_tool_vocabulary("pi").unwrap();
+                let foreign: Vec<&String> = tools
+                    .iter()
+                    .filter(|t| !pi_vocab.contains(&t.as_str()))
+                    .collect();
+                if !foreign.is_empty() {
+                    let name = path
+                        .strip_prefix(&shared_agent_dir)
+                        .unwrap_or(&path)
+                        .to_string_lossy()
+                        .replace('\\', "/");
+                    foreign_in_shared.push(format!("{name} has foreign tools {foreign:?}"));
                 }
             }
         }
@@ -1342,7 +1386,7 @@ pub fn fix(
     let adapter = adapters::select(harness)?;
     let steering = source.steering_for_target(target_dir)?;
     let built = adapters::build_payload(adapter.as_ref(), roles, cmds, steering.as_deref())?;
-    let expected = strip_container(&built, adapter.container());
+    let expected = expected_at(target_dir, harness, &built, adapter.container());
     let repository = manifest_db::ReceiptRepository::new(target_dir);
     repository.load_all()?;
     let (mut receipt_state, mut receipt, receipt_error) = plan::read_receipt(target_dir, harness);
@@ -1399,11 +1443,8 @@ pub fn fix(
         }
     }
 
-    let tool_prefix = format!("{}/", adapter.container());
-    let tool_expected: BTreeMap<String, String> = tool_built
-        .into_iter()
-        .filter_map(|(k, v)| k.strip_prefix(&tool_prefix).map(|r| (r.to_string(), v)))
-        .collect();
+    let tool_expected: BTreeMap<String, String> =
+        expected_at(target_dir, harness, &tool_built, adapter.container());
     for rel in tool_expected.keys() {
         manifest_db::resolve_target_relative(target_dir, Path::new(rel))?;
     }
@@ -2885,12 +2926,16 @@ mod tests {
         let roles = [role("architect")];
         let cmds = [cmd("ship-issue")];
 
-        // Put an Antigravity agent in .agents/agents
-        let shared_agent = target.join(".agents/agents/architect.md");
+        // Put an Antigravity agent in the shared `.agents/agents` tree, in
+        // Antigravity's own shape: a DIRECTORY per agent holding `agent.md`.
+        // pi reads that tree recursively as a legacy location, so the nested
+        // shape is still picked up and still carries a foreign vocabulary —
+        // the detector must fire either way.
+        let shared_agent = target.join(".agents/agents/architect/agent.md");
         fs::create_dir_all(shared_agent.parent().unwrap()).unwrap();
         fs::write(
             &shared_agent,
-            "---\ntools:\n  - view_file\n  - grep_search\n---\nbody",
+            "---\nname: architect\ndescription: foreign\ntools:\n  - view_file\n  - grep_search\n---\nbody",
         )
         .unwrap();
 

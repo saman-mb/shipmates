@@ -333,6 +333,24 @@ pub struct CrewFormat {
     pub dialect: &'static Dialect,
     pub map_tools: fn(&CanonicalRole) -> anyhow::Result<Vec<String>>,
     pub serialize: fn(&CanonicalRole, &str, &[String]) -> anyhow::Result<String>,
+    /// How each role's file is laid out beneath the harness's `agents/`
+    /// directory. Most harnesses take one file per role; Antigravity takes a
+    /// directory per role, and a flat file installs cleanly and is never read.
+    pub layout: CrewLayout,
+}
+
+/// On-disk shape of a harness's crew directory.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CrewLayout {
+    /// `<base>/agents/<role><suffix>` — one file per role.
+    Flat,
+    /// `<base>/agents/<role>/agent.md` — a directory per role.
+    ///
+    /// The Antigravity CLI discovers agents from
+    /// `{workspace}/.agents/agents/{agent_name}/` and reads the `agent.md`
+    /// inside it, so a flat `<role>.md` is invisible to it. Verified against
+    /// the shipped `agy` binary's own path template.
+    DirPerAgent,
 }
 
 /// Quote a scalar for YAML frontmatter.
@@ -377,10 +395,15 @@ pub fn emit_crew_files(
         let tools = (format.map_tools)(role)?;
         let body = render_body(&role.body, format.dialect);
         let content = (format.serialize)(role, &body, &tools)?;
-        files.insert(
-            format!("{}/agents/{}{}", base_dir, role.name, format.file_suffix),
-            content,
-        );
+        let rel = match format.layout {
+            CrewLayout::Flat => {
+                format!("{}/agents/{}{}", base_dir, role.name, format.file_suffix)
+            }
+            CrewLayout::DirPerAgent => {
+                format!("{}/agents/{}/agent.md", base_dir, role.name)
+            }
+        };
+        files.insert(rel, content);
     }
     Ok(files)
 }
