@@ -46,10 +46,10 @@ load helpers
   run "$SHIPMATES_BIN" targets
   assert_success
   local harness
-  for harness in claude-code opencode antigravity codex cursor github-copilot windsurf; do
+  for harness in claude-code opencode antigravity codex cursor github-copilot pi windsurf; do
     assert_output --partial "$harness"
   done
-  [ "$(printf '%s\n' "$output" | wc -w | tr -d ' ')" -eq 7 ]
+  [ "$(printf '%s\n' "$output" | wc -w | tr -d ' ')" -eq 8 ]
 }
 
 @test "an invalid harness name fails and names the value" {

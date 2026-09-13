@@ -90,6 +90,12 @@ for pair in "cursor:.cursor" "windsurf:.windsurf"; do
 done
 assert "cursor: no shared .agents skills tree" test ! -d "$WORK/cursor/.agents/skills"
 
+# pi: skill-only on the open .agents/skills tree
+D="$WORK/pi"
+assert "pi: install exits 0" install_to "pi" "$D"
+assert "pi: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
+assert "pi: no agent files emitted" test ! -d "$D/.agents/agents"
+
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"
 

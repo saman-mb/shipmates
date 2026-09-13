@@ -20,6 +20,7 @@
     "codex",
     "cursor",
     "github-copilot",
+    "pi",
     "windsurf"
   ],
   "target_status": {
@@ -29,6 +30,7 @@
     "codex": "implemented",
     "cursor": "implemented",
     "github-copilot": "implemented",
+    "pi": "implemented",
     "windsurf": "implemented"
   }
 }

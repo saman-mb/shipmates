@@ -6,7 +6,7 @@
       "notes": "Canonical source format. The payload is a byte-for-byte mirror of skills/ and agents/.",
       "agents_notes": "Subagents at `.claude/agents/<name>.md` (Markdown + YAML frontmatter, `tools` allowlist). Verified 2026-08-03: https://code.claude.com/docs/en/skills",
       "effort": true,
-      "effort_notes": "Per-agent `effort:` frontmatter key. Shipmates emits the cross-harness `low|medium|high` set; Claude Code's own key accepts up to `max`. Static only — the adapter stamps it; there is no per-spawn override. Verified 2026-08-05."
+      "effort_notes": "Per-agent `effort:` frontmatter key. Shipmates emits the cross-harness `low|medium|high` set; Claude Code's own key accepts up to `max`. Static only \u2014 the adapter stamps it; there is no per-spawn override. Verified 2026-08-05."
     },
     "github-copilot": {
       "agents": true,
@@ -44,6 +44,12 @@
       "agents_notes": "Subagents at `.opencode/agents/<name>.md` with `mode: subagent` and a deny-first `permission` map. Verified against opencode's parsing source.",
       "effort": true,
       "effort_notes": "Top-level `reasoningEffort` key (provider passthrough), a sibling of `model`/`temperature` in the agent frontmatter. Doc-verified 2026-08-05: https://opencode.ai/docs/agents/"
+    },
+    "pi": {
+      "agents": false,
+      "agents_notes": "Correctly false: Pi ships no subagents, so the adapter emits the 15 commands as skills to `.agents/skills/` and roles are dropped. Pi has no native declarative subagent schema per first-party docs. Verified 2026-09-13: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md",
+      "effort": false,
+      "effort_notes": "No per-agent effort field in Pi agent schema (and skills-only, no role emission). Adapter emits nothing rather than invent a key. Verified 2026-09-13."
     }
   },
   "features": {
@@ -73,6 +79,9 @@
         },
         "opencode": {
           "supported": true
+        },
+        "pi": {
+          "supported": true
         }
       }
     },
@@ -101,6 +110,9 @@
           "supported": true
         },
         "opencode": {
+          "supported": true
+        },
+        "pi": {
           "supported": true
         }
       }
@@ -134,6 +146,10 @@
         "opencode": {
           "supported": false,
           "policy": "drop"
+        },
+        "pi": {
+          "supported": false,
+          "policy": "warn"
         }
       }
     },
@@ -166,6 +182,10 @@
         "opencode": {
           "supported": false,
           "policy": "drop"
+        },
+        "pi": {
+          "supported": false,
+          "policy": "warn"
         }
       }
     },
@@ -198,6 +218,10 @@
         "opencode": {
           "supported": false,
           "policy": "drop"
+        },
+        "pi": {
+          "supported": false,
+          "policy": "warn"
         }
       }
     },
@@ -233,6 +257,10 @@
         "opencode": {
           "supported": false,
           "policy": "drop"
+        },
+        "pi": {
+          "supported": false,
+          "policy": "warn"
         }
       }
     },
@@ -265,6 +293,10 @@
           "policy": "drop"
         },
         "opencode": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "pi": {
           "supported": false,
           "policy": "drop"
         }
@@ -306,6 +338,11 @@
         "opencode": {
           "supported": true,
           "reason": "Honoured structurally rather than as a frontmatter key: the payload ships the fourteen as `/`-invoked entries under .opencode/commands/, and deliberately does NOT use .opencode/skills/, whose entries opencode's model invokes itself through its native `skill` tool and which has no `disable-model-invocation` equivalent."
+        },
+        "pi": {
+          "supported": false,
+          "policy": "drop",
+          "reason": "Shipped as skills carrying only the standard's name/description pair. The harness has no user-invoked-only equivalent, so the model can start one unprompted; the caveat is documented in Scope & honesty."
         }
       }
     },
@@ -341,6 +378,10 @@
         "opencode": {
           "supported": true,
           "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow \u2014 a prompt is not a permission boundary."
+        },
+        "pi": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -374,6 +415,10 @@
         },
         "opencode": {
           "supported": true
+        },
+        "pi": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -407,6 +452,10 @@
           "policy": "drop"
         },
         "opencode": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "pi": {
           "supported": false,
           "policy": "drop"
         }
@@ -444,6 +493,10 @@
         "opencode": {
           "supported": false,
           "policy": "drop"
+        },
+        "pi": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -477,6 +530,10 @@
           "policy": "drop"
         },
         "opencode": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "pi": {
           "supported": false,
           "policy": "drop"
         }
@@ -514,6 +571,10 @@
         "opencode": {
           "supported": false,
           "policy": "drop"
+        },
+        "pi": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -547,6 +608,10 @@
           "policy": "drop"
         },
         "opencode": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "pi": {
           "supported": false,
           "policy": "drop"
         }
@@ -584,6 +649,10 @@
         "opencode": {
           "supported": false,
           "policy": "drop"
+        },
+        "pi": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -619,6 +688,10 @@
         "opencode": {
           "supported": false,
           "policy": "drop"
+        },
+        "pi": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -652,6 +725,10 @@
           "policy": "drop"
         },
         "opencode": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "pi": {
           "supported": false,
           "policy": "drop"
         }
