@@ -123,7 +123,7 @@ When a seat is re-spawned, they review the **pushed SHA**. The report lists `re-
 
 **Harness fallback**
 
-If `principal-engineer` or any role does not resolve to an `{{agents-glob}}` file (skill-only harnesses until crew agents ship), fall back to `{{general-purpose}}` with the role brief inlined and note the fallback — never silently skip a mandatory seat.
+If `principal-engineer` or any role does not resolve to a shipped crew role (skill-only harnesses until crew agents ship), fall back to a general-purpose agent with the role brief inlined and note the fallback — never silently skip a mandatory seat.
 <!-- acceptance-board:end -->
 
 ## Reusable epic integration board

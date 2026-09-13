@@ -465,6 +465,30 @@ fn markdown_files_recursive(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
+/// Trees a harness **reads for crew** that it does not own.
+///
+/// Ownership is the easy half and `allowed_roots` already covers it. The failure
+/// this table exists for is the reader's side: a harness that quietly consumes
+/// another harness's crew tree gets files that are perfectly correct for their
+/// owner and unreadable to it, so every seat it spawns from them resolves zero
+/// tools with no error at discovery time. That is #437, and it is why the
+/// detector asks "who reads this?" rather than "who owns this?".
+///
+/// `pi` is the live entry: it still reads `.agents/**` as a legacy agent
+/// location, which is exactly where Antigravity keeps its crew. Adding another
+/// reader is one line here — the check itself is data-driven, because a
+/// hardcoded `if harness == "pi"` is how the *next* reader goes unnoticed.
+const FOREIGN_CREW_READS: &[(&str, &str)] = &[("pi", ".agents/agents")];
+
+/// The co-owned crew trees `harness` reads, each paired with its own path.
+fn foreign_crew_reads(harness: &str) -> Vec<&'static str> {
+    FOREIGN_CREW_READS
+        .iter()
+        .filter(|(reader, _)| *reader == harness)
+        .map(|(_, read_path)| *read_path)
+        .collect()
+}
+
 fn harness_tool_vocabulary(harness: &str) -> Option<&'static [&'static str]> {
     match harness {
         "claude-code" => Some(&["Read", "Grep", "Glob", "Write", "Edit", "Bash", "WebSearch", "WebFetch", "Agent"]),
@@ -1323,17 +1347,23 @@ fn diagnose_built(
         }
     }
 
-    // 8. Shared-tree collision check
-    if harness == "pi" {
-        let shared_agent_dir = target_dir.join(".agents").join("agents");
+    // 8. Crew this harness READS from a tree it does not own.
+    //
+    // Reported per read path rather than per harness, and the reader's own
+    // vocabulary is what the crew in it must resolve against — the files being
+    // correct for their owner is precisely the trap.
+    for read_path in foreign_crew_reads(harness) {
+        let shared_agent_dir = target_dir.join(read_path);
         let mut foreign_in_shared = Vec::new();
         for path in markdown_files_recursive(&shared_agent_dir) {
             if let Ok(content) = fs::read_to_string(&path) {
-                let (tools, _) = parse_frontmatter_tools_and_permissions(&content, "pi");
-                let pi_vocab = harness_tool_vocabulary("pi").unwrap();
+                let (tools, _) = parse_frontmatter_tools_and_permissions(&content, harness);
+                let Some(vocabulary) = harness_tool_vocabulary(harness) else {
+                    continue;
+                };
                 let foreign: Vec<&String> = tools
                     .iter()
-                    .filter(|t| !pi_vocab.contains(&t.as_str()))
+                    .filter(|tool| !vocabulary.contains(&tool.as_str()))
                     .collect();
                 if !foreign.is_empty() {
                     let name = path
@@ -1349,7 +1379,7 @@ fn diagnose_built(
             checks.push(Check {
                 name: "Shared tree agents".into(),
                 severity: Severity::Ok,
-                detail: "no foreign agent vocabulary detected in shared tree".into(),
+                detail: format!("no foreign agent vocabulary detected in {read_path}"),
                 fixable: false,
             });
         } else {
@@ -1357,7 +1387,8 @@ fn diagnose_built(
                 name: "Shared tree agents".into(),
                 severity: Severity::Problem,
                 detail: format!(
-                    "foreign agent vocabulary in shared .agents/agents tree causes zero-tool seats on pi: {}",
+                    "crew in {read_path} is owned by another harness and its tools do not resolve in \
+                     {harness}'s vocabulary, so seats spawned from it get zero tools silently: {}",
                     foreign_in_shared.join("; ")
                 ),
                 fixable: false,

@@ -271,6 +271,11 @@ mod tests {
         assert!(content.starts_with("---\nname: ship-issue\ndescription: \"desc\"\n---\n"));
         // Shared neutral dialect: `.agents/agents` glob (matches agy's real crew
         // dir) and the neutral `Agent-Session` trailer.
+        // The dialect still resolves `{{agents-glob}}`, and for `agy` the value
+        // is correct — it really does read `.agents/agents/*.md`. Canonical
+        // content no longer uses the token, because one shared file is rendered
+        // for four harnesses whose crews live in four different trees; see the
+        // canonical-content guard in `tests/integration.rs`.
         assert!(content.contains(".agents/agents/*.md"));
         assert!(content.contains("Agent-Session"));
         assert!(!content.contains("disable-model-invocation"));

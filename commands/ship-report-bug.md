@@ -127,5 +127,5 @@ consent.
 - **Meta command** — unlike domain-neutral crew roles, this command may name Shipmates, harnesses, and
   `saman-mb/shipmates` explicitly; that exception is documented in `AGENTS.md`.
 - **Orchestrator owns all `gh` calls** — subagents return drafts only.
-- If a role does not resolve to its installed role file, fall back to `general-purpose` with the brief
+- If a role does not resolve to its installed role file, fall back to a general-purpose agent with the brief
   inlined and note the fallback.

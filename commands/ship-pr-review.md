@@ -167,7 +167,7 @@ verdict — an automated approval carries weight the crew hasn't earned on someo
   `--body-file <file>` — never `--body`, quoted or not.
 - Review the **head commit**, so "reviewed" means "what would merge" — re-run if the author pushes.
 - Don't pad the board. A flag that isn't set means that specialist has nothing to say.
-- If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
+- If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined, and note it.
 
 ## Runtime input

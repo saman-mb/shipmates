@@ -549,6 +549,56 @@ fn normalized_relative_path(path: &std::path::Path, root: &std::path::Path) -> S
         .join("/")
 }
 
+/// Canonical content is rendered **once** and shared by four harnesses whose
+/// crews live in four different trees, so a harness-specific path in it is wrong
+/// for three of the four.
+///
+/// This was live for a long time. Every shared-tree command told the model to
+/// resolve a role from `.agents/agents/*.md` — correct only for Antigravity.
+/// pi reads `.pi/agents/`, Codex `.codex/agents/`, Copilot `.github/agents/`. An
+/// agent that believed the instruction would conclude the role had not resolved
+/// and fall back to a general-purpose agent, quietly downgrading a specialist
+/// seat. The token cannot be fixed by changing its value: the same bytes are
+/// rendered for all four.
+///
+/// The dialect still supports both tokens — a harness rendering through its own
+/// dialect may use them correctly — so this guard is about canonical *content*,
+/// not about the render layer's vocabulary.
+#[test]
+fn canonical_content_names_no_harness_specific_crew_path() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mut sources: Vec<PathBuf> = std::fs::read_dir(root.join("commands"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "md"))
+        .collect();
+    sources.extend(
+        std::fs::read_dir(root.join("steering"))
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| path.extension().is_some_and(|ext| ext == "md")),
+    );
+    sources.push(root.join("docs/COST.md"));
+
+    let mut offenders = Vec::new();
+    for path in sources {
+        let text = std::fs::read_to_string(&path).unwrap();
+        for token in ["{{agents-glob}}", "{{general-purpose}}"] {
+            if text.contains(token) {
+                offenders.push(format!(
+                    "{}: {token}",
+                    path.strip_prefix(&root).unwrap_or(&path).display()
+                ));
+            }
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "canonical content is shared by four harnesses whose crews live in four \
+         different trees, so it must not name one of them: {offenders:?}"
+    );
+}
+
 #[test]
 fn test_codex_adapter_renders_dialect() {
     let command = CanonicalCommand {

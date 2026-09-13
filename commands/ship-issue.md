@@ -115,8 +115,7 @@ session context; do not invent them). At minimum a `Co-Authored-By:` line for th
 
 ### The reviewer/builder pool
 
-Every specialist below is a **named subagent** shipped alongside this command (`{{agents-glob}}`,
-installed globally or per-project) and invoked by its `{{role-reference}}` reference — NOT a `{{general-purpose}}`
+Every specialist below is a **named subagent** shipped alongside this command (installed globally or per-project) and invoked by its `{{role-reference}}` reference — NOT a general-purpose agent
 agent with a persona pasted inline. The pool:
 
 | `{{role-reference}}`           | Used for |
@@ -136,7 +135,7 @@ from your repo's README / {{project-instructions}}, passed at spawn — not bake
 story needs is decided by the Planner's classification flags, so the board is **context-aware to
 the story's domain** (a pure-logic story pulls no designer/art-director; a UI story pulls the designer; a
 rendered-art story pulls the art-director; a schema story pulls the architect). If a referenced role does
-not resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the role's brief inlined,
+not resolve to a shipped crew role, fall back to a general-purpose agent with the role's brief inlined,
 and note the fallback in the final report — never silently skip a gated review.
 
 ---
