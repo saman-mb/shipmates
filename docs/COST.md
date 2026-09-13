@@ -11,7 +11,8 @@ repeated instructions and low-signal output out of the main context.
    decision. A gated-out reviewer is an explicit result, not an omission.
 3. **Route by difficulty.** Use the cheapest capable model and effort for mechanical work; reserve
    stronger reasoning for planning, architecture, security, and acceptance decisions. Choose this at
-   spawn time, never in canonical content.
+   spawn time, never in canonical content. The **Model routing** section below states the mechanism:
+   the discovery ladder, the resolution order, and the audit line every spawn reports.
 4. **Keep prompts cache-friendly.** Put stable instructions and role context first. Put invocation
    arguments, issue bodies, diffs, and other volatile material in one runtime-input section at the
    bottom. Keep a shared stable prefix before role-specific instructions across subagent spawns.
@@ -24,8 +25,14 @@ repeated instructions and low-signal output out of the main context.
 
 ## Reusable command preamble
 
-The marker below is expanded into every rendered command. Keep this block short and stable: command
-authors reference it instead of copying cost rules into each workflow.
+The markers below are expanded into every rendered command. Keep everything except **Model routing**
+short and stable: command authors reference it instead of copying cost rules into each workflow.
+**Model routing** is the one deliberately large member, and it is inlined here rather than opted into
+per command because every command spawns the crew and each drives it differently — a ruleset only some
+commands carry is a ruleset the rest silently route around. Its size is tracked in #450. The
+`<!-- shipmates:model-routing -->` marker at the end of the block below expands the **Model routing**
+section further down this file, which is the only statement of it; that marker is expanded after the
+preamble itself, so the substitution order in `render_body` is load-bearing.
 
 <!-- command-preamble:start -->
 ## Cost discipline
@@ -42,6 +49,8 @@ authors reference it instead of copying cost rules into each workflow.
 - Ask every subagent for a compact structured return: decision/status first, criterion findings and
   minimal evidence, then blockers, changed files with one-line rationale, and next action as relevant.
   Return decisions, not transcripts or raw logs.
+
+<!-- shipmates:model-routing -->
 
 <!-- command-preamble:end -->
 
@@ -74,11 +83,11 @@ Every board that is actually convened keeps the mandatory PE+PO seats and follow
 
 **Scaled optional seats**
 
-Convene only when the change can plausibly trip the concern. A gated-out seat is **named in the report with its flag or reason** — never silently skipped.
+Convene only when the change can plausibly trip the concern. A gated-out seat is **named in the report with its flag or reason** — never silently skipped. **Damp by artifact, not by flag count:** a change confined to one artifact family (one file cluster, one document, one generator) pulls **at most one** specialist beyond PE+PO, and only when that specialist's concern is a genuinely different artifact from the others'. Three flags firing on one prose block is one concern, not three reviews.
 
 | Seat | Join when |
 |------|-----------|
-| `sdet` | Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran. |
+| `sdet` | Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran. Skip it when the pre-PR self-check already ran a full independent pass on the same tree **and** CI re-runs that gate set on the pushed head — name the gate that covers it instead of paying a second run. |
 | `architect` | `IS_ARCH_SIGNIFICANT` |
 | `devops-engineer` | `IS_DELIVERY_SENSITIVE` |
 | `technical-writer` | `IS_DOCS_AFFECTING` — doc copy/staleness (PE covers process compliance; both may run) |
@@ -99,8 +108,9 @@ The `IS_*` flag vocabulary is shared by `/ship-issue` Stage 0 and `/ship-pr-revi
 **Retry (after a fixer)** — do not clone the first-convene roster. Re-select from the **fixer delta** (commits since the last board), not a full Stage 0 redo:
 
 1. **Must sit** — every seat that REJECTED / FAILED last round. They review the new head.
-2. **Reassess, default off** — every seat that ACCEPTED (including PE/PO). Cheap look at the delta with the same `IS_*` flags, scoped to what just changed. Re-spawn only when that delta can invalidate their ACCEPT. Otherwise **carry the ACCEPT forward**.
-3. **May newly sit** — a seat gated out last round joins if the delta newly trips its flag. Do not invent seats the flags never named.
+2. **Carried by default** — a seat that ACCEPTED is carried forward, and a delta that *implements that seat's own finding* is never grounds to re-seat it: asking a reviewer to re-approve the change they requested is a predictable green. Re-spawn an accepting seat only when the delta changes something it did **not** ask for, or perturbs the artefact its verdict actually rests on.
+3. **Gate-covered seats** — a seat whose verdict came from running the gates (tests, digests, CI) is re-covered by re-running them, not by re-seating. Re-spawn it only when the delta changes what the gate measures.
+4. **May newly sit** — a seat gated out last round joins if the delta newly trips its flag. Do not invent seats the flags never named.
 
 When a seat is re-spawned, they review the **pushed SHA**. The report lists `re-run` / `carried ACCEPT` / `newly seated` / `still gated` — never a silent skip.
 
@@ -186,7 +196,112 @@ prefix while preserving harness-neutral role content.
 
 <!-- subagent-preamble:end -->
 
+<!-- model-routing:start -->
+## Model routing — what the orchestrator may pick from
+
+**Tier first, then effort — two separate decisions.** A spawn names one of two neutral tiers:
+`mechanical` (the cheapest capable model) or `judgment` (the top model available). Complexity scales the
+tier — `complex` moves up, `trivial` moves down, `standard` holds the role's baseline — and the effort
+level is chosen at the same time, but as its own decision. Neither tier nor effort is ever baked into
+canonical content: both resolve at spawn time, on the harness in front of you.
+
+**Which tier.** A role sets the **baseline** tier and the work unit's complexity scales it:
+
+- **`mechanical`** — building, test and validation runs, straightforward fixes: the cheapest capable
+  model, low effort.
+- **`judgment`** — planning, architecture, security review, and the acceptance call: the top model
+  available, higher effort.
+- A `complex` unit moves the tier up and a `trivial` unit moves it down; `standard` holds the baseline,
+  so a hard task on a mechanical role is not left cheap and a trivial task on a judgment role is not
+  overpaid. When a unit's tier is genuinely unclear, inherit the session model rather than guess one.
+
+**The discovery ladder — three tiers, walked in order.** A tier narrows what you may pick from; it ends
+the walk early only if it produced a **ranked** pool:
+
+1. **Query** — where the target documents a non-interactive enumeration command, run it. This yields
+   **candidates only**: it reports which models exist, never which one is cheap or which one is best, so
+   it never terminates the ladder on its own.
+2. **Declared** — a membership **filter** where the target documents a native allow-list of its own (a
+   managed/policy settings allow-list, or a repository-root allow-list file with a single fallback
+   directive), **intersected with the user's declared pool, which supplies the rank**. A filter alone
+   never picks a tier. The declared pool is a **ranking over user-chosen patterns**, not a list of
+   names: the project file `<repo>/.shipmates/model-pool.json` wins over the user file
+   `~/.shipmates/model-pool.json`, and its shape is `schema_version` (`1`), `tiers.mechanical[]`,
+   `tiers.judgment[]`, and optional `effort.mechanical` / `effort.judgment` on the neutral
+   `low` / `medium` / `high` scale. Entries are patterns the target's own model surface accepts.
+   **Treat every entry as one literal argument** — pass it to the harness surface as a single value,
+   never spliced into a shell string or a command line. Shipmates never writes a value into either
+   file. A pool file that is present but unusable — an unrecognised `schema_version`, malformed keys,
+   unreadable — is reported as `inherit (pool unusable)`, never a silent absence.
+3. **`inherit`** — the terminal fallback: run on the parent/session model. This is a deliberate
+   answer, not a failure, and it is always available.
+
+**A pool is required even when the pool is enumerable.** A query answers *what exists*; it never
+answers *what is cheap* or *what is top*. No harness documents a relative-capability ladder, so with no
+declared tiering the orchestrator falls back to `inherit` — and **never infers a capability order**
+from a listing, a price page, or a naming convention.
+
+**Resolution order — stated once, for every target.** The levels, in order:
+explicit spawn value → declared default → parent/session value → the model's own effort default.
+A model chosen without an effort gets **that model's own default effort**, never the parent's effort
+carried across a model change: one model's effort scale does not describe another's. Resolve the pool
+once per run and reuse it for every spawn in that run; re-resolve only when a surface fails. Where a
+level of the order does not exist on a target, its row in the per-target table below says so.
+
+**Never guess.** An unknown or empty pool produces `inherit`, recorded as `inherit (no pool)`; a pool
+file that exists but cannot be used is recorded as `inherit (pool unusable)`, so a missing declaration
+and a broken one are never confused in the report. A concrete model identifier is never a fallback,
+never a default, and never an
+example. An enumeration command that exits non-zero, or whose output cannot be parsed, leaves the pool
+unknown: continue down the ladder.
+
+**Enforcement.** An identity outside the resolved pool is **refused**, not quietly clamped — resolve a
+different candidate, or stop and report. Not every target's documented mechanism can hold that:
+`abort` refuses · `warn` reports the identity but proceeds · `fallback` means the harness substitutes,
+which the audit line reports as `substituted` · `none` means no native mechanism exists, so the
+orchestrator self-enforces or falls to
+`inherit`. The enforcement column in the table below carries each target's value, and the run **states
+the discrepancy in the report** instead of pretending enforcement held.
+
+**Audit — one `MODEL ROUTING:` line per spawn.** Every spawn adds one compact line to the run report,
+shaped `MODEL ROUTING: <role> tier=<mechanical|judgment> pool=<project|user|inherit> model=<identity the harness accepts> effort=<requested>→<resolved> <honoured|substituted|inherit>`.
+`<requested>` is the neutral scale (`low` / `medium` / `high`, or `none` when no effort was named) and
+`<resolved>` is what the harness reports for it — the two differ whenever a target maps the request onto
+its own vocabulary, and a clamped level is recorded here rather than dropped. Substitution is reported
+**as** substitution, never as honoured: when the harness's own rules replace
+the requested identity — an admin block, a plan limit, a hard environment override — the line records
+`substituted` and names the condition that fired.
+
+**Drift with no new release.** The installed command is a snapshot; the harness is not. Verify a surface
+exists before relying on it — run the enumeration command once, or check the flag in the target's own
+help output — and treat every step above as degradable: a vanished enumeration command falls through to
+the declared pool, a missing or unreadable pool falls through to `inherit`, and a target with no row in
+the table below is treated as no-enumeration → declared → `inherit`.
+
+**Per-target surface.** Discovery tier, the override mechanism the harness documents, the enforcement
+it can actually hold, and the effort surface with its clamp. No cell is ever blank: a missing feature
+is a stated finding.
+
+| Target | Discovery tier | Override kind | Enforcement | Effort surface and clamp |
+|--------|----------------|---------------|-------------|--------------------------|
+| claude-code | declared | per-spawn, over a documented session/frontmatter/env chain | fallback · the interactive switch rejects, other surfaces substitute | separate key · a 5-step depth scale plus a non-model orchestration pseudo-level; an unsupported level clamps down |
+| opencode | query | static agent file, plus a global config value and a session flag | none · provider-level exclusion only, silent | separate key · provider-defined vocabulary, no fixed enum, plus a run-level variant preset |
+| antigravity | query | session-level; no per-agent model key | abort · an unknown run value exits non-zero | run-level · a 3-value flag, separate from the reasoning tier folded into the model slug |
+| codex | query | per-spawn, with an agent-default layer and a static agent file beneath it | none · no documented allow-list | separate key · a 6-step scale, gated on model support |
+| cursor | query | static agent file per subagent, plus a session-wide flag | fallback · admin, plan or legacy gates substitute a compatible model | folded into the model string · a bracketed effort parameter; accepted values are model-defined |
+| github-copilot | declared | per-spawn, plus a static agent file and a settings override map | abort · an invalid allow-list is rejected before the run | separate key · three first-party vocabularies that do not match: a 5-name flag, a 4-name settings key, a free-string agent field |
+| pi | query | per-spawn, over a per-agent file and a session-level default | none · scoping only, no abort | separate key · a 7-step scale with a per-model tristate support map; an unsupported level is clamped away |
+| windsurf | inherit | session-level on the surface we target | none · admin-side filtering, no user file | none · only an interactive shortcut-bound cycle, not expressible non-interactively |
+
+**Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is
+still the primary cost gate, and pool discovery decides only **which** cheap model runs a mechanical
+unit — never **whether** a lighter execution path is chosen.
+<!-- model-routing:end -->
+
 ## Authoring checklist
+
+- Keep the **Model routing** block the single statement of pool discovery: reference it by its marker
+  instead of restating the ladder, the resolution order, or the per-target table inside a command.
 
 - Put one shared preamble marker near the start of every command and keep its runtime input section at
   the end of the stable workflow.
