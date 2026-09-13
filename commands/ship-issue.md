@@ -251,8 +251,15 @@ the cohesion bundle widening in step 2.5.
    merges into `BASE_BRANCH` after green CI and the Stage 5 board — unless the board was deferred with
    `board=epic-deferred` or explicitly opted out with `board=off`. When guidance includes
    **`complexity tier: simple`** or **`medium`**, honour the command preamble's tiered execution path for this run. Ask it to return, as structured data:
-   - a **build plan** broken into independent work units with **non-overlapping file ownership**
-     (so builders can run in parallel without collisions),
+   - a **build plan** broken into independent work units with a machine-checkable **owned-paths manifest**
+     per unit (explicit file lists or directory path prefixes) guaranteeing non-overlapping file ownership
+     (so builders run in parallel without collisions and without repeated prose scope fences),
+   - a **plan-time blast-radius grep**: for any unit that introduces, modifies, or replaces a shared
+     provider, interface, or API, run a blast-radius check (`grep -rl` across callers and tests) to identify
+     all affected files and assign them explicitly to an owning unit in the build plan,
+   - **shared repo facts**: on multi-unit or High-complexity runs, record a compact shared facts block
+     (shared token/theme names, test fixture/helper paths, generated-file rules, CI quirks) once so
+     builders read it directly rather than rediscovering repo facts independently,
    - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
      project's **Definition of Done** where it states one (tests, docs/changelog, non-functional bars),
    - a **test/validation plan** (the commands the SDET should run: unit tests, lint, type-check,
@@ -321,6 +328,18 @@ its work governs. Skip this stage entirely when none of the flags are set.
 - **`architect`** (only if `IS_ARCH_SIGNIFICANT`) — the structural approach: module boundaries and
   ownership, and the schema/versioning/migration strategy if persisted data changes.
 
+**Citation verification before handoff:** Before a design spec becomes binding or is handed to Builders
+as "implement verbatim", the orchestrator runs a citation check against the codebase: verify every cited
+`file:line` and check counting claims ("written 3x", "N call sites") with `grep`. A spec that fails
+citation checks must be corrected before builders run; never hand unverified citations to builders as
+binding requirements.
+
+**Empirical questions go to whoever can run code:** If answering a design or architecture question
+requires executing code (running tests, measuring layout/offsets, inspecting runtime values), **it is
+not a design question**. Specialist spec authors must not defer it through speculative conditionals
+or "hazard / do not fix blind / report for follow-up" apparatus. Hand it directly to the Builder as an
+empirical measurement task ("measure X, then act on the result").
+
 ## Stage 1 — Isolate  (orchestrator, deterministic — no agent)
 
 1. **Resolve `<WORKTREE_DIR>`** from Config (`WORKTREE_LAYOUT` + single vs bundle). Parse
@@ -363,13 +382,15 @@ shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
     up to `MAX_CONCURRENT_WORKERS`.
   - When `EXECUTION=sequential`, walk the planned work units one at a time serially.
 - Spawn one **Builder** (`{{role:senior-engineer}}`) per independent work unit from the plan,
-  **in a single message** under `fanout` so they run concurrently. Each Builder is told: its exact file ownership,
-  the acceptance criteria it must satisfy, the worktree path, to follow {{project-instructions}}
+  **in a single message** under `fanout` so they run concurrently. Each Builder is told: its machine-checkable
+  **owned-paths manifest** (replacing repeated prose scope fences across prompts and specs), the acceptance criteria
+  it must satisfy, any shared repo facts from Stage 0, the worktree path, to follow {{project-instructions}}
   for project style/conventions, to inspect `git log` and `git blame` on the files it touches for context,
   any Stage 1.5 spec that governs its files, and to match existing code style/idioms.
 - Builders write code only — they do **not** commit, push, or open PRs (the orchestrator owns git).
-- After they report done, **verify the files on disk yourself** (Read/Grep). Never trust a "done"
-  report blindly.
+- After they report done, **verify the files on disk yourself** (Read/Grep) and diff `git status` and
+  `git diff --name-only` against the unit's **owned-paths manifest**. Reject any changes outside its assigned
+  manifest to prevent cross-unit collision before proceeding. Never trust a "done" report blindly.
 - **Do not return while builders are in flight.** A harness that backgrounds subagent work and tells
   you to end the turn for a completion notification (Cursor's Task tool does this) is **not** a
   reason to stop, and it is **not** a `/ship-epic` hard-limit pause. Wait for every Stage 2 builder
@@ -548,6 +569,7 @@ verdicts (`re-run` / `carried ACCEPT` / `newly seated` / `still gated` after any
 gated` seat is named with the flag that gated it), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
 (tier, pool source, the model identity the harness accepted, effort requested and resolved, and
 `honoured` / `substituted` / `inherit`), follow-up issues filed (with links), the confirmed-green CI link,
+
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/ship-harden` recommendation, carried here mechanically rather than decided now. When
 **`IS_RELEASE_AFFECTING=yes`**, state the **new version** and that merge to **`RELEASE_BRANCH`**

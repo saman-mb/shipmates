@@ -47,7 +47,7 @@ Parse runtime guidance: `sequential` sets `EXECUTION=sequential`; `board=epic-de
 `BOARD=deferred` (milestone-board owners only); `board=off` sets `BOARD=off` (explicit captain opt-out).
 
 Name the target precisely (files, module, the seam being introduced) and state the motivation in one
-sentence. Inspect `git log` and `git blame` on the target files to understand historical context, linked issues, and why current boundaries were chosen. Check the escape hatch above. Then decide `IS_ARCH_SIGNIFICANT`: does this cross module
+sentence. Inspect `git log` and `git blame` on the target files to understand historical context, linked issues, and why current boundaries were chosen. Run a plan-time `grep -rl` across callers to discover the full blast radius of the proposed seam changes. Check the escape hatch above. Then decide `IS_ARCH_SIGNIFICANT`: does this cross module
 boundaries, move a public surface, or change who depends on whom? If yes, Stage 1.5 runs.
 
 ## Stage 1 — Characterization tests  ⛔ HARD GATE  (agent: `sdet`)
@@ -68,6 +68,10 @@ so the pinned baseline is visible in the history.
 
 The architect returns the intended shape — new boundaries, what owns what, the dependency direction,
 and which seam to cut first — so the transform implements a decision instead of improvising one.
+**Verify citations:** the orchestrator greps cited `file:line` references to ensure the target structure
+matches the actual codebase before handing it to builders. **Empirical questions go to code executors:**
+if resolving a structural question requires running code or tests, route it as an empirical measurement
+task rather than stalling in speculative design.
 
 ## Stage 2 — Isolate
 
@@ -91,7 +95,8 @@ git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
 **Execution posture**:
 - Under `EXECUTION=fanout` (default), when the Stage 1.5 target structure identifies multiple
   independent, file-disjoint seams or decoupled modules, spawn multiple Builders (`senior-engineer` × N)
-  concurrently in a single message up to `MAX_CONCURRENT_WORKERS`, each with its explicit file ownership.
+  concurrently in a single message up to `MAX_CONCURRENT_WORKERS`, each with a machine-checkable
+  **owned-paths manifest** (diffed against `git status` and `git diff --name-only` upon return to prevent seam collisions).
 - Under `EXECUTION=sequential`, execute refactoring transforms serially one seam at a time.
 - For single-seam refactors, spawn a single `senior-engineer`.
 

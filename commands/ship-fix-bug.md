@@ -88,7 +88,8 @@ grep the codebase for the same defect class elsewhere.
 **Execution posture**:
 - Under `EXECUTION=fanout` (default), when sibling bugs or independent root causes span file-disjoint areas,
   spawn multiple `senior-engineer` Builders concurrently in a single message up to `MAX_CONCURRENT_WORKERS`,
-  each with explicit file ownership.
+  each with a machine-checkable **owned-paths manifest** (diffed against `git status` and `git diff --name-only`
+  upon completion to prevent cross-unit collision).
 - Under `EXECUTION=sequential`, apply fixes one at a time serially.
 
 ## Stage 4 — Prove it  ⛔ HARD GATE  (agent: `sdet`)

@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-09-13
+
+### Added
+
+- **Rework elimination via shared preamble (`docs/COST.md`) and global steering (`steering/global.md`):** Extended the shared command preamble (`<!-- command-preamble:start -->`) and global steering (`steering/global.md`) with the rework cost clause ("Cost is seats × model plus rework"), automatically compiled into all 15 commands to eliminate rework without manual per-command copy-paste. Encoded five core guardrails for complex and multi-unit runs: machine-checkable per-unit owned-paths manifests replacing repeated prose scope fences and diffed against `git status` / `git diff --name-only`, citation verification (`grep` on `file:line` and counting claims) before design specs become binding, routing empirical questions to builders/code-executors rather than speculative design conditionals, plan-time blast-radius greps (`grep -rl`) for shared providers/APIs, and recording shared repo facts once at plan/recon time (#452).
+
 ## [0.6.0] - 2026-09-13
 
 ### Added

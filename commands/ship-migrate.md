@@ -69,8 +69,9 @@ All transforms land in the worktree; the base branch stays clean.
 ## Stage 3 — Transform each batch  (agents: `senior-engineer` × N, parallel, non-overlapping files)
 
 Under `EXECUTION=fanout` (default), spawn one `TRANSFORMER` per batch **in a single message** (concurrent,
-up to `MAX_CONCURRENT_WORKERS`), each owning a disjoint file set (use `isolation: worktree` if they'd
-otherwise collide); under `EXECUTION=sequential`, walk batches one at a time. Each applies the exact
+up to `MAX_CONCURRENT_WORKERS`), each with a machine-checkable **owned-paths manifest** (diffed against
+`git status` and `git diff --name-only` upon completion to prevent collision; use `isolation: worktree` if
+they'd otherwise collide); under `EXECUTION=sequential`, walk batches one at a time. Each applies the exact
 transform to its sites,
 preserves behaviour, matches surrounding style, and reports the sites it changed. **Handle the flagged
 non-mechanical sites individually** — never blind-replace where semantics differ.
