@@ -56,7 +56,8 @@ are correct; which one belongs in a given sentence is set by the
    `cargo run -- check` enforces this over the whole file, fenced or not.
 5. Every catalogue command ships interactive argument intake by default: declare a `## Parameters`
    table (Name / Required / Token / Values / Default / Help) immediately above Runtime input; shared
-   picker rules live in `docs/COST.md`'s command-preamble — do not copy them into the command.
+   picker rules live in `docs/COST.md`'s command-preamble (defaults-first: show proposed defaults,
+   ask OK or type what to change — never a long form) — do not copy them into the command.
 6. Prefer invoking the shared agents by `subagent_type` over inlining personas.
 7. **Read-only, or worktree + PR — in-place only on explicit request.** A workflow that changes a
    repo works on its own branch in its own worktree and proposes the result as a pull request; the

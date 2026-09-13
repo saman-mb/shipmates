@@ -62,9 +62,15 @@ after the preamble itself, so the substitution order in `render_body` is load-be
 - Completeness: Empty = blank/whitespace. Partial = non-empty but ≥1 Required=yes Parameters row
   unresolved. Fully specified = every Required=yes row present/parseable (missing optionals keep
   Defaults).
-- Intake order: collect every Required=yes first; then offer optionals, with one upfront choice
-  **Accept defaults for all optionals** vs walk each optional row.
-- Prefer the harness native ask/choice surface when present; else a numbered chat menu. Never invent
+- **Defaults-first, one turn.** Do **not** walk the captain through a long form. Build the proposed
+  invocation from Parameters Defaults (and any tokens already in `$ARGUMENTS`), show that short
+  defaults summary once, and ask a single question: **OK to proceed, or type what to change?**
+  - **OK / yes / empty reply** → lock the proposal and proceed.
+  - **Typed changes** → apply only what they named (free text or Token phrases from Parameters),
+    restate the updated one-line invocation, then proceed. Do not re-open a full questionnaire.
+  - Ask only for a missing **Required=yes** value when Defaults cannot supply it — one question,
+    then return to the same OK-or-change confirm. Never invent irreversible choices.
+- Prefer the harness native ask/choice surface when present; else a short chat prompt. Never invent
   a TUI outside the session. Canonical prose must NOT name harness-specific tool IDs.
 - Non-interactive / no user-turn: **fail closed** if any required is missing (clear missing-arg
   message); apply Defaults for optionals. Never hang; never invent irreversible choices.
