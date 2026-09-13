@@ -1028,6 +1028,134 @@ fn test_every_command_carries_the_model_routing_ruleset() {
     }
 }
 
+/// The per-harness facts are hand-written in three places, and only the record is
+/// gated. This checks the copy a captain actually reads: every row of the shipped
+/// `## Model routing` table must agree with `tools/harness_matrix.json`
+/// `model_surface`, for every target, on every axis the table carries. Without it
+/// the shipped table is a fourth opinion that can go stale silently — which is how
+/// the ADR's "three targets" drifted from the record's four.
+#[test]
+fn test_shipped_model_routing_table_matches_the_matrix() {
+    /// The shipped cell leads with prose, then a `·` gloss. Cut the lead segment,
+    /// and map it onto the record's enum by longest-prefix match so a cell may add
+    /// words ("static agent file per subagent") without lying about its kind.
+    fn leading(cell: &str) -> &str {
+        let cut = cell
+            .char_indices()
+            .find(|(_, c)| matches!(c, ',' | ';' | '·'))
+            .map(|(index, _)| index)
+            .unwrap_or(cell.len());
+        cell[..cut].trim()
+    }
+    fn enum_for(cells: &[(&str, &str)], cell: &str, column: &str, target: &str) -> String {
+        let lead = leading(cell);
+        cells
+            .iter()
+            .find(|(prefix, _)| lead.starts_with(prefix))
+            .map(|(_, value)| (*value).to_string())
+            .unwrap_or_else(|| {
+                panic!(
+                    "{target}: the shipped table's {column} cell `{cell}` leads with `{lead}`, which \
+                     names no value in the record's enum — the shipped copy has drifted"
+                )
+            })
+    }
+
+    const OVERRIDE_CELLS: [(&str, &str); 3] = [
+        ("per-spawn", "per-spawn"),
+        ("static agent file", "static-agent-file"),
+        ("session-level", "session-level"),
+    ];
+    const ENFORCEMENT_CELLS: [(&str, &str); 4] = [
+        ("abort", "abort"),
+        ("warn", "warn"),
+        ("fallback", "fallback"),
+        ("none", "none"),
+    ];
+    const EFFORT_CELLS: [(&str, &str); 4] = [
+        ("separate key", "separate-key"),
+        ("run-level", "run-level"),
+        ("folded into the model string", "folded-into-model-string"),
+        ("none", "none"),
+    ];
+
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let doctrine = std::fs::read_to_string(root.join("docs/COST.md")).unwrap();
+    let block = doctrine
+        .split_once("<!-- model-routing:start -->")
+        .expect("the model-routing block has no start marker")
+        .1
+        .split_once("<!-- model-routing:end -->")
+        .expect("the model-routing block has no end marker")
+        .0;
+    let matrix: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap(),
+    )
+    .unwrap();
+    let harnesses = matrix["harnesses"].as_object().unwrap();
+
+    let mut shipped: Vec<String> = Vec::new();
+    for line in block.lines() {
+        let line = line.trim();
+        if !line.starts_with('|') {
+            continue;
+        }
+        let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
+        if cells.len() != 5 || cells[0] == "Target" || cells[0].starts_with("---") {
+            continue;
+        }
+        let target = cells[0];
+        let surface = harnesses
+            .get(target)
+            .unwrap_or_else(|| panic!("the shipped table names `{target}`, which is no target"))["model_surface"]
+            .clone();
+        assert_eq!(
+            cells[1],
+            surface["discovery_tier"].as_str().unwrap(),
+            "{target}: the shipped discovery tier disagrees with the record"
+        );
+        for (column, cell, expected) in [
+            (
+                "override",
+                cells[2],
+                enum_for(&OVERRIDE_CELLS, cells[2], "override", target),
+            ),
+            (
+                "enforcement",
+                cells[3],
+                enum_for(&ENFORCEMENT_CELLS, cells[3], "enforcement", target),
+            ),
+            (
+                "effort",
+                cells[4],
+                enum_for(&EFFORT_CELLS, cells[4], "effort", target),
+            ),
+        ] {
+            let recorded = match column {
+                "override" => surface["runtime_model_override"]["kind"].as_str().unwrap(),
+                "enforcement" => surface["declared_pool"]["enforcement"].as_str().unwrap(),
+                _ => surface["effort"]["kind"].as_str().unwrap(),
+            };
+            assert_eq!(
+                expected, recorded,
+                "{target}: the shipped {column} cell `{cell}` disagrees with the record"
+            );
+        }
+        shipped.push(target.to_string());
+    }
+
+    let mut expected: Vec<String> = shipmates::adapters::targets()
+        .iter()
+        .map(|target| (*target).to_string())
+        .collect();
+    expected.sort();
+    shipped.sort();
+    assert_eq!(
+        shipped, expected,
+        "the shipped per-target table must carry exactly one row per target"
+    );
+}
+
 /// The frontmatter text between the opening and closing `---` lines, for a file
 /// that begins with a frontmatter block.
 fn frontmatter_block(content: &str) -> Option<&str> {

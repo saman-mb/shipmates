@@ -42,7 +42,10 @@ is not.
 Every cell below was read from the harness vendor's own documentation (or its own shipped repository)
 on **2026-09-13**. Naming is described as a **scheme**; no document in this ADR contains a concrete
 model identifier. The full per-harness record — with the exact command strings, the enumeration notes
-and the `verified_on` date — lives in `tools/harness_matrix.json` under `model_surface`.
+and the `verified_on` date — lives in `tools/harness_matrix.json` under `model_surface`, and the shipped
+per-target table in `docs/COST.md` is gated against that record by an integration test. The table below
+is a **frozen snapshot** of the evidence at the date above, kept for the reasoning, not a live mirror —
+where it and the record disagree, the record wins.
 
 | Target | Discovery tier | Enumeration (scheme) | Override kind | Effort surface | Declared pool |
 |---|---|---|---|---|---|
@@ -107,8 +110,8 @@ a two-command special case — so no command can drift from it. The repo-side ca
    plus complexity scaling (`trivial` / `standard` / `complex`) and `inherit`. Effort is a **separate**
    decision from tier. No adapter resolves a tier to a concrete model; the tier is resolved at spawn.
 2. **Discovery ladder.** `query` (the target's documented enumeration command — candidates only) →
-   `declared` (the target's own native allow-list where documented, otherwise the user's
-   `model-pool.json`) → `inherit`.
+   `declared` (the target's own native allow-list where documented, **intersected with** the user's
+   `model-pool.json`, which supplies the rank) → `inherit`.
 3. **Declared-pool shape.** The project file `<repo>/.shipmates/model-pool.json` wins over the user file
    `~/.shipmates/model-pool.json`. Keys: `schema_version`, `tiers.mechanical[]`, `tiers.judgment[]`,
    and optional `effort.mechanical` / `effort.judgment`. Entries are **patterns the target's own model
@@ -123,7 +126,8 @@ a two-command special case — so no command can drift from it. The repo-side ca
    (provider-level exclusion, scoping-only, admin-side filtering) have their gap named in the table and
    in the matrix record rather than being papered over.
 6. **Audit.** One compact `MODEL ROUTING:` line per spawn, in the run report: tier, pool source
-   (`project` / `user` / `harness-native` / `inherit`), the identity **as the harness accepts it**,
+   (`project` / `user` / `inherit` — a native allow-list filters candidates, it never supplies the
+   rank, so it is not a pool source of its own), the identity **as the harness accepts it**,
    effort requested and resolved, and `honoured` / `substituted` / `inherit`. Substitution is reported
    **as** substitution. #187 owns the structured cost line; this ADR adds no field to
    `EPIC_UNIT_RECORD`.
@@ -156,10 +160,12 @@ emit; and where a level does not exist, the next level in the order applies.
 ### 4. How is the pool enforced?
 
 **Abort/refuse.** An out-of-pool identity is refused, using the strictest documented semantics in the
-set as the reference shape. Three targets cannot honour strict enforcement, and each is recorded as a
-finding rather than approximated: opencode is provider-granularity only with silent exclusion, pi
+set as the reference shape. Four targets cannot honour strict enforcement, and each is recorded as a
+finding rather than approximated: codex documents no allow-list at all, opencode is provider-granularity
+only with silent exclusion, pi
 documents scoping rather than enforcement, and windsurf's restriction lives in an admin console with no
-user file.
+user file. Two more (`claude-code`, `cursor`) substitute rather than refuse, which the audit line reports
+as `substituted`.
 
 ### 5. How is a routing decision audited?
 
@@ -176,9 +182,11 @@ never ships a model-name default. The per-harness `model_surface` record is repo
 ## Per-target behaviour where a level is absent
 
 - **No enumeration (claude-code, github-copilot).** The ladder starts at the declared tier: the
-  harness-native allow-list where one is documented (both of these document one), else the user's pool.
-- **No declared allow-list (opencode, antigravity, codex, cursor, pi).** Provider-level scoping
-  (opencode) and scoping-only model sets (pi) are not a ranking: they fall through to the user's pool,
+  harness-native allow-list where one is documented (both of these document one), **intersected with**
+  the user's pool, which is what supplies the rank.
+- **No declared allow-list (opencode, antigravity, codex, cursor, pi, windsurf).** Provider-level scoping
+  (opencode) and scoping-only model sets (pi) are not a ranking, and windsurf's restriction is admin-side
+  with no user file: they fall through to the user's pool,
   and a target with neither falls to `inherit`.
 - **No per-spawn argument (opencode, cursor, windsurf).** The override is a static agent file (the first
   two) or session level (the third); the orchestrator uses what the target documents and records the
@@ -204,7 +212,7 @@ never ships a model-name default. The per-harness `model_surface` record is repo
 
 - A user who declares no pool gets `inherit` everywhere: correct, but it means the tiering only pays off
   once a pool exists. That is a deliberate trade — we would rather inherit than guess.
-- Three targets can never honour strict enforcement, so the invariant is "refused *or* the gap is
+- Four targets can never honour strict enforcement, so the invariant is "refused *or* the gap is
   reported", not "always refused". The report carries the honesty the mechanism cannot.
 - The declaration file is user-owned, so its correctness is outside our test surface; the shape is fixed
   and the values are not.

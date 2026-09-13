@@ -83,11 +83,11 @@ Every board that is actually convened keeps the mandatory PE+PO seats and follow
 
 **Scaled optional seats**
 
-Convene only when the change can plausibly trip the concern. A gated-out seat is **named in the report with its flag or reason** — never silently skipped.
+Convene only when the change can plausibly trip the concern. A gated-out seat is **named in the report with its flag or reason** — never silently skipped. **Damp by artifact, not by flag count:** a change confined to one artifact family (one file cluster, one document, one generator) pulls **at most one** specialist beyond PE+PO, and only when that specialist's concern is a genuinely different artifact from the others'. Three flags firing on one prose block is one concern, not three reviews.
 
 | Seat | Join when |
 |------|-----------|
-| `sdet` | Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran. |
+| `sdet` | Medium+ code changes, or any change where validation is non-trivial. On Simple doc-only runs with a trivial validation plan, PE+PO may suffice — state which validation ran. Skip it when the pre-PR self-check already ran a full independent pass on the same tree **and** CI re-runs that gate set on the pushed head — name the gate that covers it instead of paying a second run. |
 | `architect` | `IS_ARCH_SIGNIFICANT` |
 | `devops-engineer` | `IS_DELIVERY_SENSITIVE` |
 | `technical-writer` | `IS_DOCS_AFFECTING` — doc copy/staleness (PE covers process compliance; both may run) |
@@ -108,8 +108,9 @@ The `IS_*` flag vocabulary is shared by `/ship-issue` Stage 0 and `/ship-pr-revi
 **Retry (after a fixer)** — do not clone the first-convene roster. Re-select from the **fixer delta** (commits since the last board), not a full Stage 0 redo:
 
 1. **Must sit** — every seat that REJECTED / FAILED last round. They review the new head.
-2. **Reassess, default off** — every seat that ACCEPTED (including PE/PO). Cheap look at the delta with the same `IS_*` flags, scoped to what just changed. Re-spawn only when that delta can invalidate their ACCEPT. Otherwise **carry the ACCEPT forward**.
-3. **May newly sit** — a seat gated out last round joins if the delta newly trips its flag. Do not invent seats the flags never named.
+2. **Carried by default** — a seat that ACCEPTED is carried forward, and a delta that *implements that seat's own finding* is never grounds to re-seat it: asking a reviewer to re-approve the change they requested is a predictable green. Re-spawn an accepting seat only when the delta changes something it did **not** ask for, or perturbs the artefact its verdict actually rests on.
+3. **Gate-covered seats** — a seat whose verdict came from running the gates (tests, digests, CI) is re-covered by re-running them, not by re-seating. Re-spawn it only when the delta changes what the gate measures.
+4. **May newly sit** — a seat gated out last round joins if the delta newly trips its flag. Do not invent seats the flags never named.
 
 When a seat is re-spawned, they review the **pushed SHA**. The report lists `re-run` / `carried ACCEPT` / `newly seated` / `still gated` — never a silent skip.
 
@@ -231,7 +232,7 @@ the walk early only if it produced a **ranked** pool:
    **Treat every entry as one literal argument** — pass it to the harness surface as a single value,
    never spliced into a shell string or a command line. Shipmates never writes a value into either
    file. A pool file that is present but unusable — an unrecognised `schema_version`, malformed keys,
-   unreadable — is a reported one-line warning in the run report, never a silent absence.
+   unreadable — is reported as `inherit (pool unusable)`, never a silent absence.
 3. **`inherit`** — the terminal fallback: run on the parent/session model. This is a deliberate
    answer, not a failure, and it is always available.
 
@@ -247,21 +248,27 @@ carried across a model change: one model's effort scale does not describe anothe
 once per run and reuse it for every spawn in that run; re-resolve only when a surface fails. Where a
 level of the order does not exist on a target, its row in the per-target table below says so.
 
-**Never guess.** An unknown, empty, or unreadable pool produces `inherit`, recorded as
-`inherit (no pool)`. A concrete model identifier is never a fallback, never a default, and never an
+**Never guess.** An unknown or empty pool produces `inherit`, recorded as `inherit (no pool)`; a pool
+file that exists but cannot be used is recorded as `inherit (pool unusable)`, so a missing declaration
+and a broken one are never confused in the report. A concrete model identifier is never a fallback,
+never a default, and never an
 example. An enumeration command that exits non-zero, or whose output cannot be parsed, leaves the pool
 unknown: continue down the ladder.
 
 **Enforcement.** An identity outside the resolved pool is **refused**, not quietly clamped — resolve a
 different candidate, or stop and report. Not every target's documented mechanism can hold that:
-`abort` refuses · `fallback` means the harness substitutes, which the audit line reports as
-`substituted` · `none` means no native mechanism exists, so the orchestrator self-enforces or falls to
+`abort` refuses · `warn` reports the identity but proceeds · `fallback` means the harness substitutes,
+which the audit line reports as `substituted` · `none` means no native mechanism exists, so the
+orchestrator self-enforces or falls to
 `inherit`. The enforcement column in the table below carries each target's value, and the run **states
 the discrepancy in the report** instead of pretending enforcement held.
 
 **Audit — one `MODEL ROUTING:` line per spawn.** Every spawn adds one compact line to the run report,
-shaped `MODEL ROUTING: <role> tier=<mechanical|judgment> pool=<project|user|harness-native|inherit> model=<identity the harness accepts> effort=<requested>→<resolved> <honoured|substituted|inherit>`.
-Substitution is reported **as** substitution, never as honoured: when the harness's own rules replace
+shaped `MODEL ROUTING: <role> tier=<mechanical|judgment> pool=<project|user|inherit> model=<identity the harness accepts> effort=<requested>→<resolved> <honoured|substituted|inherit>`.
+`<requested>` is the neutral scale (`low` / `medium` / `high`, or `none` when no effort was named) and
+`<resolved>` is what the harness reports for it — the two differ whenever a target maps the request onto
+its own vocabulary, and a clamped level is recorded here rather than dropped. Substitution is reported
+**as** substitution, never as honoured: when the harness's own rules replace
 the requested identity — an admin block, a plan limit, a hard environment override — the line records
 `substituted` and names the condition that fired.
 

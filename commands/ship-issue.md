@@ -544,8 +544,8 @@ Decision:
 One concise summary: PR link (and merge state), commit(s), the absolute **worktree path**
 (`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), fetch outcome, and whether a resume
 sync/rebase ran, which specialists reviewed it and their
-verdicts (`re-run` / `carried ACCEPT` / `newly seated` after any fix round; gated seats named with
-the flag that gated them), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
+verdicts (`re-run` / `carried ACCEPT` / `newly seated` / `still gated` after any fix round — a `still
+gated` seat is named with the flag that gated it), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
 (tier, pool source, the model identity the harness accepted, effort requested and resolved, and
 `honoured` / `substituted` / `inherit`), follow-up issues filed (with links), the confirmed-green CI link,
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
@@ -565,7 +565,7 @@ PR: <PR URL>
 MERGE: auto|manual
 HEAD: <merge commit SHA when auto; PR head SHA when manual>
 DELIVERED: <one plain sentence — what this unit shipped, no jargon>
-REVIEWS: <PO verdict or carried ACCEPT>; <PE verdict or carried ACCEPT>; <scaled: verdict|re-run|carried ACCEPT|newly seated|gated: role (reason)>
+REVIEWS: <PO verdict or carried ACCEPT>; <PE verdict or carried ACCEPT>; <scaled: verdict|re-run|carried ACCEPT|newly seated|still gated: role (reason)>
 HARDEN: recommended|n/a
 CI: <green checks URL>
 FIX_ROUNDS: <n>
@@ -580,7 +580,7 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 
 ### Guardrails
 - The orchestrator owns **all** git/gh actions; agents never push or merge.
-- Reviewers always evaluate the **pushed PR head**, so "accepted" == "what merges".
+- Reviewers always evaluate the **pushed PR head**: for a **seated or re-run** reviewer, "accepted" == "what merges". A **carried ACCEPT** was taken on the delta that reviewer actually saw, so it is only valid while that delta stands.
 - Never skip PE+PO on the **first** board once a PR head exists
   (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a nit — file it.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
