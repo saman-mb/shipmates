@@ -270,7 +270,7 @@ is a stated finding.
 | Target | Discovery tier | Override kind | Enforcement | Effort surface and clamp |
 |--------|----------------|---------------|-------------|--------------------------|
 | claude-code | declared | per-spawn, over a documented session/frontmatter/env chain | fallback · the interactive switch rejects, other surfaces substitute | separate key · a 5-step depth scale plus a non-model orchestration pseudo-level; an unsupported level clamps down |
-| opencode | query | static agent file, plus a global config value and a session flag | none · provider-level exclusion only, silent | run-level · provider-defined vocabulary, no fixed enum |
+| opencode | query | static agent file, plus a global config value and a session flag | none · provider-level exclusion only, silent | separate key · provider-defined vocabulary, no fixed enum, plus a run-level variant preset |
 | antigravity | query | session-level; no per-agent model key | abort · an unknown run value exits non-zero | run-level · a 3-value flag, separate from the reasoning tier folded into the model slug |
 | codex | query | per-spawn, with an agent-default layer and a static agent file beneath it | none · no documented allow-list | separate key · a 6-step scale, gated on model support |
 | cursor | query | static agent file per subagent, plus a session-wide flag | fallback · admin, plan or legacy gates substitute a compatible model | folded into the model string · a bracketed effort parameter; accepted values are model-defined |

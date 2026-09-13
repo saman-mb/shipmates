@@ -335,10 +335,10 @@
           "notes": "The agent's model key in the config or in agent frontmatter; a global config value and a session flag sit above it."
         },
         "effort": {
-          "kind": "run-level",
-          "vocabulary": "Provider-defined; no fixed enum. A variant flag plus provider pass-through keys.",
+          "kind": "separate-key",
+          "vocabulary": "Provider-defined; no fixed enum. The agent/model options key is a pass-through, and a run-level variant flag names a provider preset.",
           "clamp": "None documented \u2014 the provider decides",
-          "notes": "A variant is folded into the model argument; any extra key in the agent or model options block is passed verbatim to the provider."
+          "notes": "Two documented surfaces, both provider-defined: an extra key in the agent or model options block is passed verbatim to the provider, and a run-level variant flag selects a provider preset. The static key is the one the orchestrator sets; a variant is a run-level refinement."
         },
         "declared_pool": {
           "mechanism": "Provider-level only: `enabled_providers` / `disabled_providers` in the config, with the denylist winning on conflict",
