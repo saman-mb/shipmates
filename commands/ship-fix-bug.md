@@ -109,7 +109,7 @@ the review, and `board=off` is recorded in the report and PR body.
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 
-- `sdet` (always on first convene; retries follow the shared Retry rule): re-runs the suite on the PR head; confirms the regression test is present and green.
+- `sdet` (first convene): re-runs the suite on the PR head; confirms the regression test is present and green. On a retry it follows the shared Retry rule — re-running the gates covers it, so it re-sits only when the delta changes what the gates measure.
 - `senior-engineer` or `site-reliability-engineer` (fresh — not the one who fixed it): confirms the fix
   addresses the root cause, not the symptom, and adds no regression risk.
 

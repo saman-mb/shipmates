@@ -4,12 +4,48 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.1] - 2026-09-13
+## [0.6.1] - 2026-09-13
 
 ### Added
 
 - **Rework elimination via shared preamble (`docs/COST.md`) and global steering (`steering/global.md`):** Extended the shared command preamble (`<!-- command-preamble:start -->`) and global steering (`steering/global.md`) with the rework cost clause ("Cost is seats × model plus rework"), automatically compiled into all 15 commands to eliminate rework without manual per-command copy-paste. Encoded five core guardrails for complex and multi-unit runs: machine-checkable per-unit owned-paths manifests replacing repeated prose scope fences and diffed against `git status` / `git diff --name-only`, citation verification (`grep` on `file:line` and counting claims) before design specs become binding, routing empirical questions to builders/code-executors rather than speculative design conditionals, plan-time blast-radius greps (`grep -rl`) for shared providers/APIs, and recording shared repo facts once at plan/recon time (#452).
-- **Acceptance board efficiency and retry damping (`docs/COST.md`):** Fixed acceptance board seat waste by carrying `ACCEPT` forward by default on retries when the fixer delta implements that seat's finding without expanding scope, adding artifact damping to pull at most one specialist beyond PE+PO on single-artifact changes, skipping board `sdet` when Stage 3 and CI already cover full verification on the same tree, and aligning retry reporting tokens (`still gated`) across `/ship-issue`, `/ship-fix-bug`, and `/ship-migrate` (#445, #370, #372).
+
+## [0.6.0] - 2026-09-13
+
+### Added
+
+- **Model-pool discovery and spawn-time routing.** The orchestrator now resolves a spawn's model
+  tier against a pool it can actually see, instead of falling back to `inherit` for want of one. A
+  three-tier ladder — query the harness's documented enumeration command, then a declared pool, then
+  `inherit` — is stated once in `docs/COST.md` (`## Model routing`) and expanded from the shared
+  cost-discipline preamble into **every** command, so the ruleset is global rather than a two-command
+  special case and no command can drift from it. The ladder
+  records that enumeration answers *what exists*, never *what is cheap*, so a declared ranking is
+  required even where the pool is enumerable, and an unknown or empty pool always produces a named
+  `inherit` — never a guessed model name (#434).
+- **A declared-pool shape the captain owns.** `model-pool.json` (project `.shipmates/`, then user
+  `~/.shipmates/`) maps the neutral `mechanical` / `judgment` tiers to patterns the harness's own
+  model surface accepts. Shipmates never writes a value into it and ships no model-name default,
+  example or fallback (#434).
+- **A `MODEL ROUTING:` audit line per spawn** in the run report, carrying the pool source, the
+  identity the harness accepted, the effort requested and resolved, and `honoured` / `substituted` /
+  `inherit` — so a model the harness silently substituted is visible as substituted (#434).
+- **A per-harness model-surface record** in `tools/harness_matrix.json` (`model_surface`):
+  enumeration command or an explicit "none", the model-identity scheme, the per-spawn vs static
+  override, the effort surface with its clamp, and the declared-pool mechanism — every cell stated,
+  with a `verified_on` date and a mechanical completeness guard in the test suite (#434).
+- **ADR 0002 — discovering the available model pool before routing a tier to a model**, recording
+  the verified per-harness evidence, the corrections it forced against the story's own table, and
+  the six design answers behind the decision (#434).
+- **Acceptance-board retry costs less and reports consistently.** A seat that accepted is carried when
+  the fixer delta implements that seat's own finding — asking a reviewer to re-approve the change they
+  requested is a predictable green — and a seat whose verdict came from running the gates is re-covered
+  by re-running them rather than by re-seating. Scaled seats now damp by artifact rather than by flag
+  count, so a change confined to one file cluster pulls at most one specialist beyond the mandatory
+  PE+PO core, and the board's SDET seat is skipped outright when the pre-PR pass already covered the
+  same tree and CI re-runs those gates. The retry report vocabulary is uniform (`re-run` / `carried
+  ACCEPT` / `newly seated` / `still gated`), and the "accepted == what merges" guardrail is scoped to
+  seated or re-run reviewers so it no longer contradicts a carried ACCEPT (#370 #372 #445).
 
 ## [0.5.0] - 2026-09-13
 

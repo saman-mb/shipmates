@@ -28,6 +28,7 @@ const COMMAND_PREAMBLE_MARKER: &str = "<!-- shipmates:command-preamble -->";
 const ACCEPTANCE_BOARD_MARKER: &str = "<!-- shipmates:acceptance-board -->";
 const EPIC_INTEGRATION_BOARD_MARKER: &str = "<!-- shipmates:epic-integration-board -->";
 const SUBAGENT_PREAMBLE_MARKER: &str = "<!-- shipmates:subagent-preamble -->";
+const MODEL_ROUTING_MARKER: &str = "<!-- shipmates:model-routing -->";
 const COST_DOCTRINE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/COST.md"));
 
 fn render_token(text: &str, token: &str, value: &str) -> String {
@@ -65,6 +66,14 @@ fn subagent_preamble() -> &'static str {
     doctrine_section("<!-- subagent-preamble:start -->", "<!-- subagent-preamble:end -->")
 }
 
+/// The one canonical statement of pool discovery, the resolution order and the
+/// audit line. The marker that expands it lives inside the shared cost-discipline
+/// preamble, so every rendered command carries it and none can drift from the
+/// doctrine — no command opts in, and none can be left out.
+fn model_routing() -> &'static str {
+    doctrine_section("<!-- model-routing:start -->", "<!-- model-routing:end -->")
+}
+
 /// Resolve explicit repo-instructions tokens in neutral prose.
 ///
 /// Primary and fallback remain separate, so literal filenames in prose are not
@@ -76,11 +85,19 @@ fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
 }
 
 /// Render a harness-neutral command body into a harness's dialect.
+///
+/// Order matters, and only here: the command preamble is expanded first, and the
+/// model-routing ruleset is expanded last, because the preamble's own text carries
+/// the ruleset's marker. Reordering those two substitutions silently drops the
+/// ruleset from every command — `test_every_command_carries_the_model_routing_ruleset`
+/// and the preamble unit test both fail loudly if it happens, so treat this list
+/// as ordered rather than as a set.
 pub fn render_body(text: &str, d: &Dialect) -> String {
     let mut out = text.replace(COMMAND_PREAMBLE_MARKER, command_preamble());
     out = out.replace(ACCEPTANCE_BOARD_MARKER, acceptance_board());
     out = out.replace(EPIC_INTEGRATION_BOARD_MARKER, epic_integration_board());
     out = out.replace(SUBAGENT_PREAMBLE_MARKER, subagent_preamble());
+    out = out.replace(MODEL_ROUTING_MARKER, model_routing());
     out = render_instructions(&out, d.instructions_primary, d.instructions_fallback);
     out = render_token(&out, "{{agents-glob}}", &format!("{}/*.md", d.agents_glob));
     out = render_token(&out, "{{session-key}}", d.session_key);
@@ -639,10 +656,41 @@ mod tests {
         assert!(command.contains("## Cost discipline"));
         assert!(command.contains("Mandatory seats"));
         assert!(command.contains("Integration questions"));
+        // The model-routing ruleset is part of the shared cost-discipline
+        // preamble, so a command carrying only that one marker still gets it —
+        // which is what makes the ruleset global rather than per-command.
+        assert!(command.contains("## Model routing"));
+        // Agents carry the subagent preamble, not the command preamble, so the
+        // ruleset reaches commands only — never every crew file.
+        assert!(!role.contains("## Model routing"));
         assert!(role.contains("## Return discipline"));
         assert!(!command.contains("shipmates:command-preamble"));
         assert!(!command.contains("shipmates:acceptance-board"));
         assert!(!command.contains("shipmates:epic-integration-board"));
+        assert!(!command.contains("shipmates:model-routing"));
         assert!(!role.contains("shipmates:subagent-preamble"));
+    }
+
+    /// The model-routing block ships into user repos, so it carries none of the
+    /// tokens or shapes that only make sense inside this repo: no HTML comment,
+    /// no `{{…}}` placeholder, no `$`-plus-digit (a command file is scanned for
+    /// one and a fence would not protect it), and no leftover marker. The
+    /// resolution order must be stated exactly once, in this block.
+    #[test]
+    fn test_model_routing_block_is_canonical_and_self_contained() {
+        let out = render_body("<!-- shipmates:model-routing -->", &CLAUDE_CODE);
+        assert!(
+            out.contains(
+                "explicit spawn value → declared default → parent/session value → the model's own effort default"
+            ),
+            "model routing must state the resolution order verbatim"
+        );
+        assert!(!out.contains("<!--"), "block must carry no HTML comment");
+        assert!(!out.contains("{{"), "block must carry no exporter token");
+        assert!(!out.contains("shipmates:model-routing"));
+        assert!(
+            !Regex::new(r"\$[0-9]").unwrap().is_match(&out),
+            "block must carry no `$` followed by a digit — a command file is scanned whole"
+        );
     }
 }
