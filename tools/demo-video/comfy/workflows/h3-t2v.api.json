@@ -1,0 +1,102 @@
+{
+  "6": {
+    "class_type": "UNETLoader",
+    "_meta": { "title": "H3 packed-DiT (fl2va, int8+convrot)" },
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "13": {
+    "class_type": "CLIPLoader",
+    "_meta": { "title": "Qwen3-VL-32B text encoder (minimax)" },
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "11": {
+    "class_type": "VAELoader",
+    "_meta": { "title": "H3 video VAE" },
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    }
+  },
+  "104": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "_meta": { "title": "t2va conditioning — UNCONTROLLED, never cut next to UI" },
+    "inputs": {
+      "clip": ["13", 0],
+      "vae": ["11", 0],
+      "prompt": "PROMPT",
+      "width": 1344,
+      "height": 768,
+      "length": 124
+    }
+  },
+  "16": {
+    "class_type": "BasicGuider",
+    "_meta": { "title": "Guider (no CFG — H3 has no negative branch)" },
+    "inputs": {
+      "model": ["6", 0],
+      "conditioning": ["104", 0]
+    }
+  },
+  "17": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "9": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": ["6", 0],
+      "scheduler": "simple",
+      "steps": 20,
+      "denoise": 1
+    }
+  },
+  "15": {
+    "class_type": "RandomNoise",
+    "_meta": { "title": "Fixed per-shot seed" },
+    "inputs": {
+      "noise_seed": 1
+    }
+  },
+  "14": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["15", 0],
+      "guider": ["16", 0],
+      "sampler": ["17", 0],
+      "sigmas": ["9", 0],
+      "latent_image": ["104", 1]
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["14", 0],
+      "vae": ["11", 0]
+    }
+  },
+  "91": {
+    "class_type": "CreateVideo",
+    "_meta": { "title": "Silent b-roll — audio bed is authored in the mix" },
+    "inputs": {
+      "images": ["10", 0],
+      "fps": 24
+    }
+  },
+  "92": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": ["91", 0],
+      "filename_prefix": "shipmates/broll",
+      "format": "mp4",
+      "codec": "h264"
+    }
+  }
+}
