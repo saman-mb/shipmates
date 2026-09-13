@@ -742,11 +742,14 @@ fn test_matrix_effort_flag_matches_adapter_output() {
 
     // Detect a reasoning-effort key across every dialect: claude-code's
     // `effort:` line, codex's `model_reasoning_effort` TOML key, opencode's
-    // top-level `reasoningEffort`.
+    // top-level `reasoningEffort`, and pi's `thinking:` line.
     fn carries_effort(content: &str) -> bool {
         content
             .lines()
-            .any(|l| l.trim_start().starts_with("effort:"))
+            .any(|l| {
+                let l = l.trim_start();
+                l.starts_with("effort:") || l.starts_with("thinking:")
+            })
             || content.contains("model_reasoning_effort")
             || content.contains("reasoningEffort")
     }

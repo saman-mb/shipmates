@@ -90,11 +90,16 @@ for pair in "cursor:.cursor" "windsurf:.windsurf"; do
 done
 assert "cursor: no shared .agents skills tree" test ! -d "$WORK/cursor/.agents/skills"
 
-# pi: skill-only on the open .agents/skills tree
+# pi: crew are pi-native under .pi/agents, skills stay on the shared tree
 D="$WORK/pi"
 assert "pi: install exits 0" install_to "pi" "$D"
 assert "pi: skill under .agents/skills" test -f "$D/.agents/skills/ship-issue/SKILL.md"
-assert "pi: no agent files emitted" test ! -d "$D/.agents/agents"
+assert "pi: crew under .pi/agents" test -f "$D/.pi/agents/sdet.md"
+# The shared crew tree belongs to Antigravity. pi reads it as a legacy location
+# and cannot resolve its tool vocabulary, so shipping there would shadow pi's
+# own crew with an inert one (#437).
+assert "pi: no crew in the shared .agents tree" test ! -d "$D/.agents/agents"
+assert "pi: tools are a comma scalar, not a YAML list" grep -q '^tools: read, grep, find' "$D/.pi/agents/sdet.md"
 
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"

@@ -410,7 +410,10 @@ pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
         // clean the orphans up. Nothing writes there any more.
         "cursor" => &[".agents", ".cursor"],
         "github-copilot" => &[".agents", ".github"],
-        "pi" => &[".agents", ".shipmates"],
+        // `.agents` is legacy-only for pi: every install before the crew moved
+        // to `.pi/agents/` shipped skills there, and its receipt must still load
+        // so `update` can refresh those files.
+        "pi" => &[".pi", ".agents", ".shipmates"],
         "windsurf" => &[".windsurf", ".shipmates"],
         _ => &[],
     }
@@ -521,7 +524,13 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                 || is_shipmates_steering_path(path)
                 || is_skill_tree(".windsurf")
         }
-        "pi" => is_skill_tree(".agents"),
+        "pi" => {
+            is_skill_tree(".agents")
+                || (parts.len() == 3
+                    && root == ".pi"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
+        }
         "github-copilot" => {
             is_steering_receipt_path(harness, path)
                 || (parts.len() == 3
@@ -652,6 +661,38 @@ mod tests {
         }
         assert!(!allowed_receipt_path("cursor", ".cursor/mcp.json"));
         assert!(!allowed_receipt_path("cursor", ".cursor/skills/evil.sh"));
+    }
+
+    #[test]
+    fn pi_receipt_owns_its_crew_tree_and_still_loads_legacy_skill_paths() {
+        // #437: pi's crew moved to `.pi/agents/` in pi's own dialect. It cannot
+        // live in the shared `.agents/agents/` tree, which is Antigravity's and
+        // which pi reads as a legacy location — the two harnesses need
+        // incompatible `tools:` shapes, so one file cannot serve both.
+        assert!(allowed_receipt_path("pi", ".pi/agents/sdet.md"));
+        // A pre-#437 receipt recorded only `.agents/` paths. It must still
+        // validate, so `update` can refresh that install and `uninstall` can
+        // clear it rather than failing closed on a tree nobody can manage.
+        assert!(allowed_receipt_path(
+            "pi",
+            ".agents/skills/ship-issue/SKILL.md"
+        ));
+        // The new tree is pi-specific and `.agents` is legacy-only for pi: no
+        // other harness may claim a `.pi` path, and pi may not claim arbitrary
+        // ones under it.
+        for harness in [
+            "codex",
+            "github-copilot",
+            "antigravity",
+            "claude-code",
+            "cursor",
+            "opencode",
+        ] {
+            assert!(!allowed_receipt_path(harness, ".pi/agents/sdet.md"));
+        }
+        assert!(!allowed_receipt_path("pi", ".pi/settings.json"));
+        assert!(!allowed_receipt_path("pi", ".pi/agents/evil.sh"));
+        assert!(!allowed_receipt_path("pi", ".pi/agents/nested/sdet.md"));
     }
 
     #[test]
