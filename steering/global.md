@@ -9,6 +9,7 @@ Recognize user intent and recommend the right command — these are **user-invok
 - **Ship a ticket** → `/ship-issue`; **ship a whole epic** → `/ship-epic`
 - **Plan epics and stories** → `/ship-plan-epics`; **groom the backlog** → `/ship-consolidate-issues`
 - **Fix a defect** → `/ship-fix-bug`; **review someone's PR** → `/ship-pr-review`
+- **Interactive local QA of a running build** → `/ship-qa`
 - **Restructure safely** → `/ship-refactor`; **sweep a migration** → `/ship-migrate`
 - **Harden security** → `/ship-harden`; **write or refresh docs** → `/ship-document`
 - **Refine a visual/UI artifact** → `/ship-polish`; **spike a decision** → `/ship-spike`

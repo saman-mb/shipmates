@@ -494,6 +494,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         when_to_use=(
             "A pull request needs an adversarial pass and you do not own the branch.",
             "You are delivering the work? /ship-issue, not this.",
+            "Human eyes on a running build? /ship-qa — local interactive QA, not the board.",
         ),
         process=(
             ProcessStep(
@@ -516,6 +517,44 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
                 "Verdict",
                 "One ranked accept-or-block, with reasons attributed to the role that raised them.",
                 solo="You synthesise — no extra spawn.",
+            ),
+        ),
+    ),
+    "ship-qa": CommandPageCopy(
+        guide_blurb="Interactive local QA — one check per turn on a PR, issue branch, or named branch.",
+        process_lead=(
+            "You drive the checklist; the captain operates the simulator, emulator, or device. "
+            "No specialist board — this is human verification of a running build, not a diff review."
+        ),
+        when_to_use=(
+            "A change needs human eyes on a running build (offline states, chrome collisions, cold-start races).",
+            "Diff / board review? /ship-pr-review. Automated gates? CI. Known defect repair? /ship-fix-bug.",
+        ),
+        process=(
+            ProcessStep(
+                "Intake",
+                "Parse PR, issue, or branch plus risk vs smoke and an optional platform hint. Announce the one-step-per-turn contract.",
+                solo="No spawn — parse and confirm the target.",
+            ),
+            ProcessStep(
+                "Context",
+                "Boot from the diff, acceptance criteria, and the repo's run docs. Confirm how the captain will run the build.",
+                solo="Still the run — read the change, do not rewrite it.",
+            ),
+            ProcessStep(
+                "Checklist",
+                "Build an ordered risk or smoke checklist privately. Gate out checks the named platform cannot run; prefer in-app toggles over OS network hacks.",
+                solo="The checklist stays in working memory — never dump it once one-at-a-time is in force.",
+            ),
+            ProcessStep(
+                "Walk",
+                "Announce step N of M only. Wait for pass, fail notes, screenshot, or logs before advancing.",
+                solo="Captain operates the device; you log findings and do not repair.",
+            ),
+            ProcessStep(
+                "Summarize",
+                "Per-step PASS/FAIL/DEFERRED plus product-impact-ready findings. Optional handoff and re-QA reuse the same checklist.",
+                solo="Report only unless the captain asks to file or re-QA.",
             ),
         ),
     ),

@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.7.0] - 2026-09-13
+
+### Added
+
+- **`/ship-qa` — interactive local QA walkthrough.** A sixteenth command that walks a captain
+  through one-step-at-a-time human QA of a PR, issue branch, or named branch — risk-targeted by
+  default, optional blind smoke — with simulator/emulator environment gates, in-app toggle
+  preference, product-impact-ready findings, and re-QA that reuses the same checklist. Complements
+  `/ship-pr-review` and CI; it guides and reports, it never repairs (#463).
+
 ## [0.6.4] - 2026-09-13
 
 ### Fixed

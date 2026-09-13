@@ -61,6 +61,7 @@ SLUGS = (
     "ship-release",
     "ship-polish",
     "ship-pr-review",
+    "ship-qa",
     "ship-onboard",
     "ship-refactor",
 )
