@@ -30,7 +30,7 @@ load helpers
   # The removed payload is backed up as a sidecar (the undo a captain can ask
   # for), but no live tool file remains.
   [ "$(find "$SANDBOX/.claude/skills" -path '*shipmates-*' -type f ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
-  [ "$(find "$SANDBOX/.claude/skills" -mindepth 2 -maxdepth 2 -name 'SKILL.md' ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 15 ]
+  [ "$(find "$SANDBOX/.claude/skills" -mindepth 2 -maxdepth 2 -name 'SKILL.md' ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 16 ]
 }
 
 @test "update without --with-tools keeps opencode native tools and their receipt claims" {

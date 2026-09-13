@@ -25,6 +25,7 @@ target=claude-code
 .claude/skills/ship-plan-epics/SKILL.md c9e44cd9cc25ca7a99480947700358f04b766a0e411ba49ac371bff6b573ac76
 .claude/skills/ship-polish/SKILL.md 47239eae7c0337eb996346fcd7e9ff156d00499754ef2b67eefe38f12dda2d39
 .claude/skills/ship-pr-review/SKILL.md e588765e5e0df0b309717a7f3d7101e667cf4a390f31e3818fa3e98b4f972e0f
+.claude/skills/ship-qa/SKILL.md d7becafa89e484b944c73448f1ade1254e1bbe2fc3b74b1941a7192c2869ea57
 .claude/skills/ship-refactor/SKILL.md 46460c52066253ceb5c1e06a8dfe770b6cc637eb87e180d8efbf75a40521dc12
 .claude/skills/ship-release/SKILL.md 02379f317c03ce12217761203c460d96d21f7c58cd3faa01ea4b457aa880e988
 .claude/skills/ship-report-bug/SKILL.md 9da6162340a07272be1928485f3c2455ac60ffae74de398ddef012675b41306d
