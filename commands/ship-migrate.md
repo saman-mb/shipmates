@@ -116,7 +116,7 @@ and the PR link. Be explicit about anything deliberately left behind.
 - **No silent truncation.** Excluded/skipped sites are listed loudly, never quietly dropped.
 - Mechanical ≠ semantic: sites where meaning (not just syntax) changes get individual human-grade handling.
 - Isolated worktrees + non-overlapping ownership so parallel transforms don't corrupt each other.
-- Bounded loops; never advance a red PR; the reviewer is a **fresh** agent.
+- Bounded loops; the reviewer is a **fresh** agent.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.
 

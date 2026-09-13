@@ -141,8 +141,6 @@ in place with the PR open for a human to merge.
   (deleting them from the diff does not un-leak them).
 - Every Critical/High ends as fixed or explicitly accepted — never silently dropped.
 - Bounded loop; escalate with open findings rather than rubber-stamping.
-- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
-  than erroring or duplicating work.
 - **Security review lives here, not in `/ship-issue`.** `/ship-issue` doesn't seat `security-engineer`
   on its acceptance board — when a story it's shipping touches a security-sensitive surface, it
   classifies the change as such and **recommends** a `/ship-harden` pass rather than convening the review

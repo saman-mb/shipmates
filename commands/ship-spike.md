@@ -128,8 +128,6 @@ review on — and offer the next step: `/ship-plan-epics` to turn the chosen dir
   governs the throwaway prototype worktrees.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.
-- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
-  than erroring or duplicating work.
 
 ## Runtime input
 

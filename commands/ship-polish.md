@@ -192,8 +192,6 @@ remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with th
 - A reviewer that `ACCEPT`s round 0 with zero changes gets a sanity check — make sure it actually
   inspected the artifact and isn't rubber-stamping.
 - Bounded by `MAX_ROUNDS` — escalate rather than loop forever.
-- **Be resumable.** A re-run may find the worktree, branch, or PR for this slug already exists —
-  reuse them rather than erroring or duplicating work.
 - Scope each fix round to the reviewer's notes; the `senior-engineer` doesn't refactor or wander.
 - The sign-off is the REVIEWER's to give, and the final report states what the reviewer actually said
   — not an optimistic paraphrase. A "needs a human visual pass" fallback is a real outcome, not a fail.

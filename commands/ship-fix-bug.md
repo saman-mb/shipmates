@@ -129,7 +129,7 @@ the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
   and it stops the bug ever coming back silently.
 - Root cause over symptom — name the mechanism; don't patch where it surfaced.
 - Minimal, scoped change; unrelated improvements become follow-ups, not part of this PR.
-- Bounded loops; escalate with the log rather than spinning. Never advance a red PR.
+- Bounded loops; escalate with the log rather than spinning.
 - The reviewer is a **fresh** agent, never the one who wrote the fix.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined, and note it.

@@ -591,7 +591,7 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 ### Guardrails
 - The orchestrator owns **all** git/gh actions; agents never push or merge.
 - Reviewers always evaluate the **pushed PR head**, so "accepted" == "what merges".
-- Never open or advance a red PR. Never skip PE+PO on the **first** board once a PR head exists
+- Never skip PE+PO on the **first** board once a PR head exists
   (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a nit — file it.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
@@ -614,8 +614,6 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
   is **blocking** — same severity as a missing digest or unstaged generated page. Never tell the
   captain to run `/ship-release` or open a follow-up PR instead; that is how features merge without
   publishing.
-- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
-  than erroring or duplicating work. Every stage should be safe to repeat.
 - Static review cannot verify pixels, and no reviewer can verify what it didn't examine. When neither
   the `ux-ui-designer` (UI) nor the `art-director` (visual-art) could actually render and inspect the
   result, surface their **"needs human visual pass"** flag in the final report rather than implying

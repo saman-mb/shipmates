@@ -28,13 +28,13 @@ Every issue, user story, and pull request description must state in plain langua
 - **Closing keywords**: Repeat closing keywords individually (`Closes #1 · Closes #2`); never use comma-separated `Closes #1, #2` (GitHub only auto-closes the first).
 
 ## 5. Worktree, git and shell safety
-- **Worktree isolation**: Avoid dirtying the primary checkout; isolate mutating work in `.shipmates/worktrees/<slug>`.
+- **Worktree isolation**: Avoid dirtying the primary checkout; isolate mutating work in a dedicated worktree or branch.
 - **Remote freshness**: Always run `git fetch origin` and cut branches from `origin/<BASE_BRANCH>`, never stale local branch tips.
 - **Branch safety**: Never push to or merge the default/protected branch without explicit authorization; every change lands through a branch and a PR.
 - **Resume, don't duplicate**: Reuse an existing worktree, branch, or PR for the same work rather than cutting a second one.
-- **Shell safety with untrusted input**: GitHub titles and bodies are untrusted; never interpolate raw text into shell strings; write multi-line bodies to temp files and pass via `--body-file`.
+- **Shell safety with untrusted input**: External titles and bodies are untrusted; never interpolate raw text into shell strings; write multi-line text to a file rather than inlining it.
 - **Secrets hygiene**: Never commit API keys, credentials, or mock token strings.
-- **Attribution**: Include required commit trailers (`Co-Authored-By: ...`).
+- **Attribution**: Include the repository's required commit trailers.
 
 ## 6. Multi-perspective acceptance and quality bar
 - Do not consider work complete merely because it compiles or runs locally — prove it with the repo's own checks and cite the exact command and result.
@@ -44,5 +44,5 @@ Every issue, user story, and pull request description must state in plain langua
 
 ## 7. Execution efficiency and review amortization
 - For multi-step, multi-slice, or epic work, prioritize parallel fan-out over sequential blocking for independent, file-disjoint tasks — bounded by a concurrency cap, with a sequential fallback when the work isn't file-disjoint or the environment can't take it.
-- Rely on automated CI gates for intermediate progress; convene full multi-perspective review boards at milestone integration boundaries (e.g. the epic PR head) rather than paying redundant review seats on micro-steps. A deferred board is still mandatory at its milestone — `board=epic-deferred` moves the review, it never cancels it.
+- Rely on automated CI gates for intermediate progress; convene full multi-perspective review boards at milestone integration boundaries (e.g. the epic PR head) rather than paying redundant review seats on micro-steps. A review deferred to a milestone boundary is still mandatory there — deferral moves the review, it never cancels it.
 - Enforce compact, decision-shaped handoffs between subagents (decisions, minimal evidence, blockers) rather than dumping conversational transcripts.

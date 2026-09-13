@@ -115,8 +115,6 @@ the doc type, the fresh-reader's final result (in its words), rounds taken, and 
 - Bounded loop; escalate with the reader's blockers rather than shipping docs that don't work.
 - **Docs are source, so they get a branch.** A doc rewrite lands as a diff a human can read, not as
   a surprise in someone's checkout. `MODE=edit-in-place` is an explicit request, never an assumption.
-- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
-  than erroring or duplicating work.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.
 
