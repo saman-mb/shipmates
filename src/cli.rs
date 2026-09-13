@@ -111,14 +111,19 @@ Examples:
         long_about = "Refresh files from the payload embedded in this shipmates binary.
 
 Requires at least one install receipt. Omit --harness to refresh every installed
-harness (or pick interactively when several exist). Omit --with-tools to keep the
-tools each receipt already claims.
+receipt without a prompt when stdin is not a terminal (the piped/agent path), or
+pick interactively when several exist in a terminal; `--harness all` refreshes
+every receipt without the prompt either way. Omit --with-tools to keep the tools
+each receipt already claims, in every install form (skill directories and
+opencode's native .opencode/tools/*.ts). Pass `--with-tools none` to remove the
+tools or name a subset to replace them.
 
 Where defaults to the global home directory (~). Use --local for . or --dir PATH.
 
 Examples:
   shipmates update
   shipmates update --harness claude-code
+  shipmates update --harness all
   shipmates update --harness opencode --local
   shipmates update --with-tools all
   shipmates update --with-tools none

@@ -90,29 +90,41 @@ pub fn apply_with_preserved_paths(
             .and_then(|receipt| receipt.file(&rel_string))
             .is_some();
         if sibling_claims.contains(&rel_string) {
-            let current = fs::read(&path).ok();
-            if current.as_deref() == Some(want.as_bytes()) {
-                managed.push(rel.clone());
-            } else if let (Some(old_file), Some(current)) = (
-                old.as_ref().and_then(|receipt| receipt.file(&rel_string)),
-                current.as_deref(),
-            ) {
-                if crate::digest::hash_bytes(current) == old_file.sha256 {
+            // A shared payload tree is co-owned, not mutex-guarded: any harness
+            // may advance bytes it can attribute to a recorded receipt digest.
+            // Bytes no receipt vouches for are the user's own edit and stay
+            // byte-identical, `--force` or not.
+            let known = recorded_digests(&all_receipts, &rel_string);
+            match fs::read(&path) {
+                Ok(current) if current == want.as_bytes() => {
+                    managed.push(rel.clone());
+                }
+                Ok(current) if known.contains(&crate::digest::hash_bytes(&current)) => {
+                    pending.push(PendingWrite {
+                        rel: rel.clone(),
+                        path,
+                        content: want.as_bytes().to_vec(),
+                        previous: Some(current),
+                    });
+                }
+                Ok(_) => {
                     report.warnings.push(format!(
-                        "Warning: shared-managed file left untouched; preserving existing ownership: {}",
-                        rel.display()
-                    ));
-                } else {
-                    report.warnings.push(format!(
-                        "Warning: shared-managed file left untouched; current bytes match neither desired nor existing ownership: {}",
+                        "Warning: shared-managed file left untouched; current bytes match neither desired nor any recorded ownership: {}",
                         rel.display()
                     ));
                 }
-            } else {
-                report.warnings.push(format!(
-                    "Warning: shared-managed file left untouched; current install does not claim it: {}",
-                    rel.display()
-                ));
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    pending.push(PendingWrite {
+                        rel: rel.clone(),
+                        path,
+                        content: want.as_bytes().to_vec(),
+                        previous: None,
+                    });
+                }
+                Err(error) => {
+                    return Err(error)
+                        .with_context(|| format!("preflighting installed file {}", path.display()));
+                }
             }
             continue;
         }
@@ -263,9 +275,15 @@ pub fn apply_with_preserved_paths(
             )
             .map(|bytes| crate::digest::hash_bytes(&bytes) == old_file.sha256)
             .unwrap_or(false);
+            // A shared path this receipt claimed before stays claimed even when
+            // its unattributable bytes were preserved rather than overwritten:
+            // ownership lapses silently otherwise. Uninstall stays fail-closed
+            // for the mismatched bytes, so the claim is not deletion authority.
+            let shared_claim_before =
+                sibling_claims.contains(&old_file.path) && install.files.contains_key(path);
             if (preserve || install.files.contains_key(path))
                 && !receipt.files.iter().any(|file| file.path == old_file.path)
-                && (preserve || unchanged_on_disk)
+                && (preserve || unchanged_on_disk || shared_claim_before)
             {
                 receipt.files.push(old_file.clone());
             }
@@ -320,6 +338,17 @@ pub fn apply_with_preserved_paths(
     }
     report.receipt = Some(receipt);
     Ok(report)
+}
+
+/// Every digest any receipt has recorded for `rel`. Bytes matching one are
+/// known payload bytes — a stale copy a sibling harness wrote — not a user
+/// edit, so a co-owner may advance them.
+fn recorded_digests(receipts: &[Receipt], rel: &str) -> BTreeSet<String> {
+    receipts
+        .iter()
+        .filter_map(|receipt| receipt.file(rel))
+        .map(|file| file.sha256.clone())
+        .collect()
 }
 
 fn compare_receipts(old: &Receipt, new: &Receipt) -> UpgradeSummary {
@@ -415,6 +444,30 @@ mod tests {
                 .map(|(p, c)| (PathBuf::from(p), (*c).into()))
                 .collect::<BTreeMap<_, _>>(),
         }
+    }
+
+    /// A plan for one of the harnesses that co-own the shared `.agents/skills`
+    /// tree (codex, antigravity, github-copilot).
+    fn shared_install(harness: &str, version: &str, files: &[(&str, &str)]) -> InstallPlan {
+        InstallPlan {
+            harness: harness.into(),
+            version: version.into(),
+            layout: "skills".into(),
+            roots: vec![".agents".into()],
+            files: files
+                .iter()
+                .map(|(p, c)| (PathBuf::from(p), (*c).into()))
+                .collect::<BTreeMap<_, _>>(),
+        }
+    }
+
+    fn deferral_warnings(report: &ApplyReport) -> Vec<&str> {
+        report
+            .warnings
+            .iter()
+            .filter(|warning| warning.contains("shared-managed file left untouched"))
+            .map(String::as_str)
+            .collect()
     }
 
     #[test]
@@ -550,6 +603,134 @@ mod tests {
             receipt
                 .file(".claude/skills/ship-polish/SKILL.md")
                 .is_some()
+        );
+    }
+
+    const SHARED_SKILL: &str = ".agents/skills/ship-polish/SKILL.md";
+
+    /// Two shared-tree receipts at the same bytes, then a codex update.
+    fn two_receipt_shared_fixture(dir: &Path) {
+        apply(
+            dir,
+            &shared_install("codex", "one", &[(SHARED_SKILL, "v1")]),
+            false,
+        )
+        .unwrap();
+        apply(
+            dir,
+            &shared_install("github-copilot", "one", &[(SHARED_SKILL, "v1")]),
+            false,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn shared_bytes_attributable_to_a_receipt_are_advanced() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        two_receipt_shared_fixture(target);
+
+        // `update` passes force=true; stale v1 bytes belong to codex's own
+        // receipt and the sibling's, so they are ours to refresh.
+        let report = apply(
+            target,
+            &shared_install("codex", "two", &[(SHARED_SKILL, "v2")]),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(report.written, 1, "stale attributable bytes must refresh");
+        assert!(
+            deferral_warnings(&report).is_empty(),
+            "attributable shared bytes must not defer: {:?}",
+            report.warnings
+        );
+        assert_eq!(fs::read_to_string(target.join(SHARED_SKILL)).unwrap(), "v2");
+        assert_eq!(
+            fs::read_to_string(report.backups.first().expect("superseded bytes backed up"))
+                .unwrap(),
+            "v1"
+        );
+        let codex = plan::read_receipt(target, "codex").1.unwrap();
+        assert_eq!(
+            codex.file(SHARED_SKILL).map(|file| file.sha256.as_str()),
+            Some(crate::digest::hash("v2").as_str()),
+            "codex claims the bytes it just wrote"
+        );
+        let copilot = plan::read_receipt(target, "github-copilot").1.unwrap();
+        assert!(
+            copilot.file(SHARED_SKILL).is_some(),
+            "the sibling's ownership survives codex's write"
+        );
+    }
+
+    #[test]
+    fn shared_bytes_attributable_to_no_receipt_are_preserved_even_under_force() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        two_receipt_shared_fixture(target);
+        crate::installer::atomic_write(&target.join(SHARED_SKILL), "user edit").unwrap();
+
+        let report = apply(
+            target,
+            &shared_install("codex", "two", &[(SHARED_SKILL, "v2")]),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(target.join(SHARED_SKILL)).unwrap(),
+            "user edit",
+            "unattributable shared bytes are never overwritten"
+        );
+        assert_eq!(report.written, 0);
+        assert_eq!(
+            deferral_warnings(&report).len(),
+            1,
+            "the preserved path warns once: {:?}",
+            report.warnings
+        );
+        let codex = plan::read_receipt(target, "codex").1.unwrap();
+        assert_eq!(
+            codex.file(SHARED_SKILL).map(|file| file.sha256.as_str()),
+            Some(crate::digest::hash("v1").as_str()),
+            "the receipt keeps the claim it had before the update"
+        );
+    }
+
+    #[test]
+    fn identical_shared_bytes_stay_managed_without_backup() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        apply(
+            target,
+            &shared_install("codex", "one", &[(SHARED_SKILL, "v1")]),
+            false,
+        )
+        .unwrap();
+
+        let report = apply(
+            target,
+            &shared_install("github-copilot", "one", &[(SHARED_SKILL, "v1")]),
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(report.written, 0);
+        assert!(
+            report.backups.is_empty(),
+            "identical bytes need no backup: {:?}",
+            report.backups
+        );
+        assert!(
+            deferral_warnings(&report).is_empty(),
+            "{:?}",
+            report.warnings
+        );
+        let copilot = plan::read_receipt(target, "github-copilot").1.unwrap();
+        assert!(
+            copilot.file(SHARED_SKILL).is_some(),
+            "the second harness manages the shared path it found already correct"
         );
     }
 }

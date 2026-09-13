@@ -60,7 +60,10 @@ assert_exit() {
   local desc="$2"
   shift 2
   local rc
-  rc=$(cmd_run "$@")
+  set +e
+  "$@" >/dev/null 2>&1
+  rc=$?
+  set -e
   if [ "$rc" -eq "$expected" ]; then
     ok "$desc (exit $rc)"
   else
@@ -445,6 +448,84 @@ mkdir -p "$TMPDIR/empty-update"
 cmd_capture "update without receipt" "$BIN" update --dir "$TMPDIR/empty-update"
 [ "$CMD_RC" -ne 0 ] && ok "update without receipt fails closed" || fail "update without receipt unexpectedly succeeded"
 assert_contains "No install receipt" "$CMD_OUT" "update without receipt names the cause"
+
+# ---------------------------------------------------------------------------
+# Segment 22 — update keeps opencode native tools (#412)
+# ---------------------------------------------------------------------------
+echo "=== Segment 22: update keeps opencode native tools ==="
+PROJ="$TMPDIR/proj-opencode-update"
+mkdir -p "$PROJ"
+cmd_run "$BIN" install --harness opencode --dir "$PROJ" --with-tools all >/dev/null 2>&1
+TOOLS_BEFORE=$(find "$PROJ/.opencode/tools" -type f ! -name '*.bak-*' | wc -l | tr -d ' ')
+[ "$TOOLS_BEFORE" -ge 11 ] && ok "opencode installed native tools ($TOOLS_BEFORE files)" || fail "opencode native tools missing ($TOOLS_BEFORE files)"
+cmd_capture "opencode bare update" "$BIN" update --harness opencode --dir "$PROJ"
+[ "$CMD_RC" -eq 0 ] && ok "update --harness opencode exits 0" || fail "update --harness opencode exited $CMD_RC (expected 0)"
+TOOLS_AFTER=$(find "$PROJ/.opencode/tools" -type f ! -name '*.bak-*' | wc -l | tr -d ' ')
+[ "$TOOLS_AFTER" -eq "$TOOLS_BEFORE" ] && ok "bare update kept every native tool ($TOOLS_AFTER)" || fail "bare update changed the native tool count: $TOOLS_BEFORE -> $TOOLS_AFTER"
+if printf '%s' "$CMD_OUT" | grep -qF "Removed dropped file"; then
+  fail "bare update removed dropped files"
+else
+  ok "bare update reported no removed dropped files"
+fi
+if grep -qF '.opencode/tools/shipmates-termgif.ts' "$PROJ/.shipmates/receipts/opencode.json"; then
+  ok "receipt still claims the native tools"
+else
+  fail "receipt no longer claims .opencode/tools/shipmates-termgif.ts"
+fi
+
+# ---------------------------------------------------------------------------
+# Segment 23 — update advances a drifted shared .agents skill (#428)
+# ---------------------------------------------------------------------------
+echo "=== Segment 23: shared .agents skill across sibling receipts ==="
+PROJ="$TMPDIR/proj-shared-update"
+mkdir -p "$PROJ"
+for h in codex antigravity github-copilot; do
+  cmd_run "$BIN" install --harness "$h" --dir "$PROJ" --with-tools all >/dev/null 2>&1
+done
+SKILL="$PROJ/.agents/skills/ship-issue/SKILL.md"
+printf '%s\n' '---' 'name: ship-issue' 'description: stale shared generation' '---' 'stale shared body' > "$SKILL"
+STALE_SHA=$(python3 - "$SKILL" <<'PY'
+import hashlib, sys
+print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())
+PY
+)
+python3 - "$PROJ" "$STALE_SHA" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+stale = sys.argv[2]
+rel = ".agents/skills/ship-issue/SKILL.md"
+for receipt in sorted((root / ".shipmates/receipts").glob("*.json")):
+    data = json.loads(receipt.read_text())
+    for entry in data["files"]:
+        if entry["path"] == rel:
+            entry["sha256"] = stale
+    data["files"].sort(key=lambda entry: entry["path"])
+    receipt.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+PY
+SHARED_OK=1
+for h in codex antigravity github-copilot; do
+  cmd_capture "shared update $h" "$BIN" update --harness "$h" --dir "$PROJ"
+  if [ "$CMD_RC" -ne 0 ]; then
+    fail "update --harness $h exited $CMD_RC (expected 0)"
+    SHARED_OK=0
+  fi
+  if printf '%s' "$CMD_OUT" | grep -qF "shared-managed file left untouched"; then
+    fail "update --harness $h deferred the attributable shared skill"
+    SHARED_OK=0
+  fi
+done
+[ "$SHARED_OK" -eq 1 ] && ok "every sibling update advanced the shared skill" || true
+FRESH="$TMPDIR/proj-shared-update-fresh"
+mkdir -p "$FRESH"
+cmd_run "$BIN" install --harness codex --dir "$FRESH" --with-tools all >/dev/null 2>&1
+if cmp -s "$SKILL" "$FRESH/.agents/skills/ship-issue/SKILL.md"; then
+  ok "updated shared skill matches a fresh install"
+else
+  fail "updated shared skill differs from a fresh install"
+fi
+for h in codex antigravity github-copilot; do
+  assert_exit 0 "doctor $h healthy after shared update" "$BIN" doctor --harness "$h" --dir "$PROJ"
+done
 
 # ---------------------------------------------------------------------------
 # Summary
