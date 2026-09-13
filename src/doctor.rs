@@ -895,13 +895,11 @@ fn diagnose_built(
     let mut tool_unreadable: Vec<String> = Vec::new();
     let mut tool_unfixable: Vec<String> = Vec::new();
     let mut tool_orphaned: Vec<String> = Vec::new();
+    let mut tool_removed: Vec<String> = Vec::new();
     for t in tools {
         let files: Vec<(&String, &String)> = tool_expected
             .iter()
-            .filter(|(k, _)| {
-                k.split('/').any(|s| s == t.name)
-                    || Path::new(k).file_stem().and_then(|s| s.to_str()) == Some(t.name.as_str())
-            })
+            .filter(|(k, _)| t.owns_path(Path::new(k)))
             .collect();
         if files.is_empty() {
             continue;
@@ -914,6 +912,17 @@ fn diagnose_built(
                 .is_some()
         };
         if !any_on_disk && !files.iter().any(|(k, _)| claimed(k)) {
+            // No live file, no receipt claim — but if installer sidecars survive
+            // beside the missing path, a previous install/update removed this
+            // tool (with a backup as the undo). The receipt cannot record that
+            // intent, so report the evidence instead of reading the gap as a
+            // deliberate crew-only install (#412).
+            if files
+                .iter()
+                .any(|(k, _)| !sibling_install_backups(&target_dir.join(k)).is_empty())
+            {
+                tool_removed.push(t.name.clone());
+            }
             continue;
         }
         if any_on_disk && receipt.is_some() && !files.iter().any(|(k, _)| claimed(k)) {
@@ -969,6 +978,8 @@ fn diagnose_built(
     tool_unfixable.dedup();
     tool_orphaned.sort();
     tool_orphaned.dedup();
+    tool_removed.sort();
+    tool_removed.dedup();
     let (severity, detail) =
         if !tool_missing.is_empty() || !tool_unreadable.is_empty() || !tool_orphaned.is_empty() {
             let mut detail = format!(
@@ -992,33 +1003,40 @@ fn diagnose_built(
                 detail.push_str(&format!("; orphaned: {}", tool_orphaned.join(", ")));
             }
             (Severity::Problem, detail)
-        } else if installed.is_empty() && tool_drift.is_empty() {
+        } else if installed.is_empty() && tool_drift.is_empty() && tool_removed.is_empty() {
             (
                 Severity::Ok,
                 "no optional tools installed — use `--with-tools none` for crew-only".to_string(),
             )
-        } else if tool_drift.is_empty() {
+        } else if tool_drift.is_empty() && tool_removed.is_empty() {
             (
                 Severity::Ok,
                 format!("installed and current: {}", installed.join(", ")),
             )
         } else {
-            (
-                Severity::Warn,
-                format!(
-                    "installed: {}; drifted: {}{}",
-                    installed.join(", "),
-                    tool_drift.join(", "),
-                    if tool_unfixable.is_empty() {
-                        String::new()
-                    } else {
-                        format!(
-                            "; cannot repair without receipt ownership: {}",
-                            tool_unfixable.join(", ")
-                        )
-                    }
-                ),
-            )
+            let mut parts: Vec<String> = Vec::new();
+            if !installed.is_empty() {
+                parts.push(format!("installed and current: {}", installed.join(", ")));
+            }
+            if !tool_drift.is_empty() {
+                parts.push(format!("drifted: {}", tool_drift.join(", ")));
+            }
+            if !tool_removed.is_empty() {
+                parts.push(format!(
+                    "{} removed by a previous install/update, with installer backups left \
+                     behind: {} — restore them with `shipmates update --with-tools all` \
+                     (`shipmates doctor --fix` repairs tools the receipt still claims)",
+                    tool_removed.len(),
+                    tool_removed.join(", ")
+                ));
+            }
+            if !tool_unfixable.is_empty() {
+                parts.push(format!(
+                    "cannot repair without receipt ownership: {}",
+                    tool_unfixable.join(", ")
+                ));
+            }
+            (Severity::Warn, parts.join("; "))
         };
     checks.push(Check {
         name: "Tools".into(),
@@ -2426,6 +2444,97 @@ mod tests {
             "doctor must detect opencode tool by file stem: {}",
             tools_check.detail
         );
+    }
+
+    #[test]
+    fn test_diagnose_warns_when_removed_tool_backups_remain() {
+        // #412: `update --with-tools none` removes the live tool files but leaves
+        // installer sidecars and rewrites the receipt without them. Doctor must
+        // not greenwash that loss as "no optional tools installed".
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        let tools = [tool("shipmates-scrub")];
+        install_healthy(target, &roles, &cmds);
+        install_tools(target, &tools);
+        // The post-wipe receipt claims only the core payload.
+        write_receipt(target, &roles, &cmds, &[]);
+
+        let adapter = adapters::select("claude-code").unwrap();
+        for (rel, content) in strip_container(&adapter.build_tools(&tools), adapter.container()) {
+            let path = target.join(&rel);
+            atomic_write(
+                &target.join(format!("{rel}.bak-1788191317-3827013-0")),
+                &content,
+            )
+            .unwrap();
+            std::fs::remove_file(&path).unwrap();
+        }
+
+        let report = diagnose(target, "claude-code", &roles, &cmds, &tools).unwrap();
+        let tools_check = report.checks.iter().find(|c| c.name == "Tools").unwrap();
+        assert_eq!(tools_check.severity, Severity::Warn);
+        assert!(
+            tools_check.detail.contains("shipmates-scrub"),
+            "the removed tool must be named: {}",
+            tools_check.detail
+        );
+        assert!(
+            tools_check.detail.contains("--with-tools"),
+            "the reinstall command must be named: {}",
+            tools_check.detail
+        );
+        assert!(
+            !tools_check.detail.contains("no optional tools installed"),
+            "a wipe must never read as a deliberate crew-only install: {}",
+            tools_check.detail
+        );
+        assert!(
+            !report.has_problems(),
+            "a loss repairable by reinstall is a warn, not a problem: {report:?}"
+        );
+    }
+
+    #[test]
+    fn test_diagnose_claimed_missing_tool_is_a_problem() {
+        // A tool file the receipt still claims but which is gone is a hard
+        // Problem — doctor exits non-zero. Opencode's native `.ts` form also
+        // proves the shared path predicate maps it back to its tool.
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        let tools = [tool("shipmates-termgif")];
+
+        let adapter = adapters::select("opencode").unwrap();
+        let built = adapter.build(&roles, &cmds).unwrap();
+        for (rel, content) in strip_container(&built, adapter.container()) {
+            atomic_write(&target.join(rel), &content).unwrap();
+        }
+        let tool_built = adapter.build_tools(&tools);
+        for (rel, content) in strip_container(&tool_built, adapter.container()) {
+            atomic_write(&target.join(&rel), &content).unwrap();
+        }
+        let install = crate::installer::plan::InstallPlan::from_payload(
+            adapter.as_ref(),
+            "opencode",
+            built,
+            tool_built,
+        )
+        .unwrap();
+        let receipt = install.receipt_for(install.files.keys().cloned()).unwrap();
+        crate::installer::plan::save_receipt(target, &receipt).unwrap();
+
+        let path = strip_container(&adapter.build_tools(&tools), adapter.container())
+            .into_keys()
+            .next()
+            .unwrap();
+        std::fs::remove_file(target.join(&path)).unwrap();
+
+        let report = diagnose(target, "opencode", &roles, &cmds, &tools).unwrap();
+        assert_eq!(sev(&report, "Tools"), Severity::Problem);
+        assert!(report.has_problems(), "{report:?}");
     }
 
     #[test]

@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-09-13
+
+### Fixed
+
+- `update` no longer removes a harness's optional tools when `--with-tools` is
+  omitted. Native tool payloads (for example opencode's `.opencode/tools/*.ts`)
+  now map back to their tool identity, so the documented "omit = keep what the
+  receipt claims" contract holds, and the completion line reports the tool
+  count and delta (#412).
+- `doctor` no longer reports a clean "no optional tools installed" state over
+  tool files a previous update removed leaving only installer backups; it names
+  the removed tools and the repair command. A receipt-claimed tool file that is
+  missing is a problem, not a shrug (#412).
+- `update` now refreshes drifted files in the shared `.agents/skills/` tree
+  (codex, antigravity, github-copilot). A co-owned path advances when its bytes
+  match any claiming receipt's recorded digest, so the latest payload lands
+  without waiting for `doctor --fix`; bytes that match no recorded digest — a
+  captain's edit — are still preserved byte-identical with a warning (#428).
+
 ## [0.3.0] - 2026-09-13
 
 ### Added

@@ -1,7 +1,7 @@
 use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -55,6 +55,20 @@ pub struct CanonicalTool {
     /// works without the user pip-installing anything.
     pub requires: Vec<String>,
     pub source: PathBuf,
+}
+
+impl CanonicalTool {
+    /// True when an installed path belongs to this tool, in either form an
+    /// adapter can emit: the skill-directory form, where the tool name is a path
+    /// component (`…/shipmates-termgif/SKILL.md`), or the native single-file
+    /// form, where the file stem is the tool name (`.opencode/tools/shipmates-termgif.ts`,
+    /// `.py`, `.js`, …). Adapter-neutral by design: each adapter decides the path
+    /// shape, this only recognises the tool's name on it.
+    pub fn owns_path(&self, path: &Path) -> bool {
+        path.components().any(|component| {
+            matches!(component, Component::Normal(value) if value == self.name.as_str())
+        }) || path.file_stem().and_then(|stem| stem.to_str()) == Some(self.name.as_str())
+    }
 }
 
 pub fn reject_positional(label: &str, text: &str) -> Result<(), String> {
@@ -613,6 +627,33 @@ pub fn is_shipmates_contributor_tree(dir: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn canonical_tool(name: &str) -> CanonicalTool {
+        CanonicalTool {
+            name: name.into(),
+            description: String::new(),
+            body: String::new(),
+            assets: Vec::new(),
+            requires: Vec::new(),
+            source: PathBuf::new(),
+        }
+    }
+
+    #[test]
+    fn test_tool_owns_path_matches_skill_dir_and_native_file_forms() {
+        let tool = canonical_tool("shipmates-termgif");
+        // Skill-directory form: the tool name is a path component.
+        assert!(tool.owns_path(Path::new(".claude/skills/shipmates-termgif/SKILL.md")));
+        assert!(tool.owns_path(Path::new(".agents/skills/shipmates-termgif/termgif.py")));
+        // Native single-file form: the file stem is the tool name.
+        assert!(tool.owns_path(Path::new(".opencode/tools/shipmates-termgif.ts")));
+        assert!(tool.owns_path(Path::new(".opencode/tools/shipmates-termgif.py")));
+        assert!(tool.owns_path(Path::new(".opencode/tools/shipmates-termgif.js")));
+        // Another tool or a command never matches.
+        assert!(!tool.owns_path(Path::new(".claude/skills/ship-issue/SKILL.md")));
+        assert!(!tool.owns_path(Path::new(".opencode/tools/termgif.ts")));
+        assert!(!tool.owns_path(Path::new(".opencode/tools/shipmates-termgif.py.bak-1-2-3")));
+    }
 
     #[test]
     fn test_reject_positional() {

@@ -43,6 +43,32 @@ receipt_files() {
   find "$1/.shipmates/receipts" -mindepth 1 -maxdepth 1 -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' '
 }
 
+# SHA-256 of a file, lowercase hex. python3 hashlib keeps the helper portable.
+sha256_of() {
+  python3 -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$1"
+}
+
+# Rewrite an installed shared `.agents` skill to stale bytes and update its
+# sha256 in every receipt that claims the path — the attributable-staleness
+# fixture for the shared-tree update: each harness recorded the bytes now on
+# disk, so a sibling's update may advance them. Receipt file lists stay sorted
+# by path.
+stale_shared_skill() {
+  local dir="$1" skill="$2"
+  local rel=".agents/skills/$skill/SKILL.md"
+  printf '%s\n' '---' "name: $skill" 'description: stale shared generation' '---' 'stale shared body' \
+    > "$dir/$rel"
+  local stale
+  stale="$(sha256_of "$dir/$rel")"
+  local receipt
+  for receipt in "$dir"/.shipmates/receipts/*.json; do
+    jq --arg rel "$rel" --arg sha "$stale" \
+      '(.files[] | select(.path == $rel) | .sha256) = $sha | .files |= sort_by(.path)' \
+      "$receipt" > "$receipt.tmp"
+    mv "$receipt.tmp" "$receipt"
+  done
+}
+
 # Rewrite an installed claude-code tree into an older name generation: move one
 # skill directory and rewrite the receipt so it claims the old path (the
 # receipt writer requires its files sorted by path, so re-sort after the move).
