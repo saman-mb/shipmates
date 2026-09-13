@@ -1,0 +1,31 @@
+# Built-in commands: Pi
+# Source: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/usage.md
+# Last updated: 2026-09-13
+#
+# This list is manually maintained. Refresh when Pi ships new built-ins.
+
+/login
+/logout
+/llama
+/model
+/thinking
+/scoped-models
+/settings
+/resume
+/new
+/name
+/session
+/tree
+/trust
+/fork
+/clone
+/compact
+/copy
+/export
+/import
+/share
+/reload
+/hotkeys
+/changelog
+/quit
+/skill

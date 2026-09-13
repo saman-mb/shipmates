@@ -70,6 +70,15 @@
       "expect_absent": [],
       "verified_on": "2026-08-03",
       "note": "Canonical location is .windsurf/skills; .agents/skills is only a SECONDARY compat scan, so we deliberately keep windsurf OFF the shared tree. Now Devin Desktop — docs.windsurf.com 307-redirects to docs.devin.ai. If the canonical path moves to .agents/skills, windsurf could join the shared tree."
+    },
+    "pi": {
+      "docs_url": "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md",
+      "tree": "shared",
+      "adapter_skill_path": ".agents/skills/<name>/SKILL.md",
+      "expect_contains": [".agents/skills"],
+      "expect_absent": [],
+      "verified_on": "2026-09-13",
+      "note": "Reads the open .agents/skills tree natively. Pi has no native subagent schema."
     }
   }
 }

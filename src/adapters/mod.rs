@@ -7,6 +7,7 @@ pub mod codex;
 pub mod cursor;
 pub mod github_copilot;
 pub mod opencode;
+pub mod pi;
 pub mod render;
 pub mod windsurf;
 
@@ -90,6 +91,7 @@ pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
         "codex" => Box::new(codex::CodexAdapter),
         "cursor" => Box::new(cursor::CursorAdapter),
         "github-copilot" => Box::new(github_copilot::GithubCopilotAdapter),
+        "pi" => Box::new(pi::PiAdapter),
         "windsurf" => Box::new(windsurf::WindsurfAdapter),
         other => anyhow::bail!("Unsupported target: {}", other),
     };
@@ -111,7 +113,7 @@ pub fn build_payload(
 }
 
 /// The harnesses a user can `shipmates install --harness <name>` for.
-pub fn targets() -> [&'static str; 7] {
+pub fn targets() -> [&'static str; 8] {
     [
         "claude-code",
         "opencode",
@@ -119,6 +121,7 @@ pub fn targets() -> [&'static str; 7] {
         "codex",
         "cursor",
         "github-copilot",
+        "pi",
         "windsurf",
     ]
 }
@@ -156,7 +159,7 @@ mod tests {
             "cursor must not double-ship into the shared tree"
         );
 
-        for target in ["codex", "github-copilot", "antigravity"] {
+        for target in ["codex", "github-copilot", "antigravity", "pi"] {
             let adapter = select(target).unwrap();
             let files = adapter.build(&[], &commands).unwrap();
             assert!(

@@ -41,7 +41,7 @@ jobs:
       # Gates every target payload against its reference digest
       - name: Check target payload digests
         run: |
-          for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
+          for target in claude-code opencode antigravity codex cursor github-copilot pi windsurf; do
             cargo run -- check --target "$target"
           done
       - name: Run opencode golden and embedded install-fidelity tests
@@ -126,7 +126,7 @@ jobs:
           python-version: "3.9"
       - name: Build and check every target payload
         run: |
-          for target in claude-code opencode antigravity codex cursor github-copilot windsurf; do
+          for target in claude-code opencode antigravity codex cursor github-copilot pi windsurf; do
             cargo run -- check --target "$target"
             cargo run -- build --target "$target" --out "$RUNNER_TEMP/floor"
           done

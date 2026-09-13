@@ -130,8 +130,8 @@ echo "=== Segment 2: Targets ==="
 cmd_capture "targets" "$BIN" targets
 TARGETS_OUT="$CMD_OUT"
 TARGET_COUNT=$(echo "$TARGETS_OUT" | wc -l)
-[ "$TARGET_COUNT" -eq 7 ] && ok "Targets lists 7 harnesses" || fail "Targets lists $TARGET_COUNT (expected 7)"
-for t in claude-code opencode antigravity codex cursor github-copilot windsurf; do
+[ "$TARGET_COUNT" -eq 8 ] && ok "Targets lists 8 harnesses" || fail "Targets lists $TARGET_COUNT (expected 8)"
+for t in claude-code opencode antigravity codex cursor github-copilot pi windsurf; do
   if printf '%s' "$TARGETS_OUT" | grep -qF "$t" || true; then
     ok "Target '$t' present"
   else

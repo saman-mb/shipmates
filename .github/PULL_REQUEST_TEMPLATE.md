@@ -17,6 +17,7 @@ _Please check all harnesses that this change affects, or "All" if it's a general
 - [ ] codex
 - [ ] cursor
 - [ ] github-copilot
+- [ ] pi
 - [ ] windsurf
 
 ## How Has This Been Tested?

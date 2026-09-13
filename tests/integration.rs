@@ -428,6 +428,7 @@ fn test_cli_targets() {
         "codex",
         "cursor",
         "github-copilot",
+        "pi",
         "windsurf",
     ] {
         assert!(stdout.contains(target), "targets output missing {target}");
@@ -437,7 +438,7 @@ fn test_cli_targets() {
 #[test]
 fn test_non_claude_targets_build_via_cli() {
     let temp_dir = tempfile::tempdir().unwrap();
-    for target in ["codex", "cursor", "github-copilot", "windsurf"] {
+    for target in ["codex", "cursor", "github-copilot", "pi", "windsurf"] {
         let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
             .args([
                 "build",
@@ -467,12 +468,21 @@ fn test_non_claude_targets_build_via_cli() {
         copilot_skill.is_file(),
         "copilot ship-issue skill not emitted"
     );
+    let pi_skill = temp_dir
+        .path()
+        .join("harnesses/pi/.agents/skills/ship-issue/SKILL.md");
+    assert!(pi_skill.is_file(), "pi ship-issue skill not emitted");
     // ...and the shared rendering is byte-identical across those harnesses.
     let codex_bytes = std::fs::read(&codex_skill).unwrap();
     let copilot_bytes = std::fs::read(&copilot_skill).unwrap();
+    let pi_bytes = std::fs::read(&pi_skill).unwrap();
     assert_eq!(
         codex_bytes, copilot_bytes,
         "shared skill must be identical across harnesses"
+    );
+    assert_eq!(
+        codex_bytes, pi_bytes,
+        "pi shared skill must be identical across harnesses"
     );
 }
 

@@ -258,6 +258,16 @@
         },
         "agent": "agent"
       }
+    },
+    "pi": {
+      "notes": "Pi ships no subagents, so the adapter emits the crew as fifteen skills and ignores `roles`. Pi reads the open `.agents/skills/` tree.",
+      "agent_path": null,
+      "skill_path": ".agents/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "steering_install_path": null,
+      "permission_model": "none",
+      "scopes": {},
+      "tools": {}
     }
   }
 }
