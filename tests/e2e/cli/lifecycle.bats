@@ -52,22 +52,86 @@ load helpers
 
 @test "update migrates the previous shipmates- prefix in a claimed tree" {
   install_claude_code "$SANDBOX"
-  local receipt="$SANDBOX/.shipmates/receipts/claude-code.json"
-
-  mv "$SANDBOX/.claude/skills/ship-harden" "$SANDBOX/.claude/skills/shipmates-harden"
-  jq --arg old ".claude/skills/ship-harden/" --arg new ".claude/skills/shipmates-harden/" \
-    '(.files[] | select(.path | startswith($old)) | .path) |= sub($old; $new) | .files |= sort_by(.path)' \
-    "$receipt" > "$receipt.tmp"
-  mv "$receipt.tmp" "$receipt"
+  make_previous_generation "$SANDBOX" ship-harden shipmates-harden
 
   run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX"
   assert_success
 
   [ ! -e "$SANDBOX/.claude/skills/shipmates-harden" ]
   [ -f "$SANDBOX/.claude/skills/ship-harden/SKILL.md" ]
-  run jq -e '[.files[].path] | index(".claude/skills/ship-harden/SKILL.md") != null' "$receipt"
+  run jq -e '[.files[].path] | index(".claude/skills/ship-harden/SKILL.md") != null' "$SANDBOX/.shipmates/receipts/claude-code.json"
   assert_success
   run bash -c "find '$SANDBOX/.shipmates-backup' -name 'SKILL.md' | head -1"
   assert_success
   [ -n "$output" ]
+}
+
+@test "update migrates the pre-prefix bare verb in a claimed tree" {
+  install_claude_code "$SANDBOX"
+  make_previous_generation "$SANDBOX" ship-harden harden
+
+  run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX"
+  assert_success
+
+  [ ! -e "$SANDBOX/.claude/skills/harden" ]
+  [ -f "$SANDBOX/.claude/skills/ship-harden/SKILL.md" ]
+}
+
+@test "update --from-cwd refreshes from the checkout" {
+  install_claude_code "$SANDBOX"
+  cd "$REPO_ROOT"
+  run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX" --from-cwd
+  assert_success
+}
+
+@test "update --local and --global refresh the receipt in that root" {
+  run "$SHIPMATES_BIN" install --harness claude-code --local --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" update --local
+  assert_success
+
+  run "$SHIPMATES_BIN" install --harness claude-code --global --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" update --global
+  assert_success
+}
+
+@test "uninstall --local and --global remove that root's receipt-owned files" {
+  run "$SHIPMATES_BIN" install --harness claude-code --local --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" uninstall --harness claude-code --local
+  assert_success
+  [ ! -e "$SANDBOX/.claude/skills/ship-issue" ]
+
+  run "$SHIPMATES_BIN" install --harness claude-code --global --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" uninstall --harness claude-code --global
+  assert_success
+  [ ! -e "$HOME/.claude/skills/ship-issue" ]
+}
+
+@test "uninstall --from-cwd removes the install and uninstall without --harness is ambiguous" {
+  install_claude_code "$SANDBOX"
+  run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools none
+  assert_success
+
+  run "$SHIPMATES_BIN" uninstall --dir "$SANDBOX"
+  assert_failure
+
+  cd "$REPO_ROOT"
+  run "$SHIPMATES_BIN" uninstall --harness claude-code --dir "$SANDBOX" --from-cwd
+  assert_success
+  [ ! -e "$SANDBOX/.claude/skills/ship-issue" ]
+}
+
+@test "an installed tool runs from its installed location" {
+  run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools scrub
+  assert_success
+  local tool="$SANDBOX/.claude/skills/shipmates-scrub/scrub.py"
+  printf 'api_key=abc123xyz\nmail dev@example.com\n' > "$BATS_TEST_TMPDIR/in.txt"
+
+  run python3 "$tool" --in "$BATS_TEST_TMPDIR/in.txt"
+  assert_success
+  assert_output --partial "[REDACTED_TOKEN]"
+  assert_output --partial "[REDACTED_EMAIL]"
 }

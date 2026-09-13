@@ -24,12 +24,32 @@ load helpers
   [ "$(skill_dirs "$SANDBOX")" -eq 15 ]
 }
 
-@test "--with-tools all installs every tool; the default install includes them" {
-  run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools all
+@test "omitting --with-tools installs every tool; --with-tools all matches" {
+  run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX"
   assert_success
   [ "$(tool_dirs "$SANDBOX")" -eq 11 ]
   [ "$(skill_dirs "$SANDBOX")" -eq 26 ]
   [ -d "$SANDBOX/.claude/skills/shipmates-termgif" ]
+
+  run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX/all" --with-tools all
+  assert_success
+  [ "$(tool_dirs "$SANDBOX/all")" -eq 11 ]
+}
+
+@test "omitting --harness installs claude-code non-interactively" {
+  run "$SHIPMATES_BIN" install --dir "$SANDBOX" --with-tools none
+  assert_success
+  [ "$(skill_dirs "$SANDBOX")" -eq 15 ]
+  [ -f "$SANDBOX/.shipmates/receipts/claude-code.json" ]
+}
+
+@test "--no-migrate leaves a superseded generation name in place" {
+  install_claude_code "$SANDBOX"
+  make_previous_generation "$SANDBOX" ship-harden shipmates-harden
+
+  run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools none --no-migrate
+  assert_success
+  [ -d "$SANDBOX/.claude/skills/shipmates-harden" ]
 }
 
 @test "--with-tools selects a subset and accepts a legacy tool name" {

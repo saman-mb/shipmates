@@ -41,3 +41,42 @@ load helpers
   run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX" --no-migrate
   assert_failure
 }
+
+@test "doctor --fix --no-migrate skips the rename sweep a plain --fix performs" {
+  install_claude_code "$SANDBOX"
+  make_previous_generation "$SANDBOX" ship-harden shipmates-harden
+
+  # The sweep is skipped on purpose, so doctor restores the payload but still
+  # reports the leftover identity as a problem (non-zero), never greenwashing it.
+  run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX" --fix --no-migrate
+  assert_failure
+  assert_output --partial "leftover superseded"
+  [ -d "$SANDBOX/.claude/skills/shipmates-harden" ]
+
+  run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX" --fix
+  assert_success
+  [ ! -e "$SANDBOX/.claude/skills/shipmates-harden" ]
+  [ -f "$SANDBOX/.claude/skills/ship-harden/SKILL.md" ]
+
+  run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX"
+  assert_success
+}
+
+@test "doctor --from-cwd diagnoses against the checkout" {
+  install_claude_code "$SANDBOX"
+  cd "$REPO_ROOT"
+  run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX" --from-cwd
+  assert_success
+}
+
+@test "doctor --local and --global diagnose that root" {
+  run "$SHIPMATES_BIN" install --harness claude-code --local --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" doctor --harness claude-code --local
+  assert_success
+
+  run "$SHIPMATES_BIN" install --harness claude-code --global --with-tools none
+  assert_success
+  run "$SHIPMATES_BIN" doctor --harness claude-code --global
+  assert_success
+}

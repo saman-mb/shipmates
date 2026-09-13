@@ -42,3 +42,17 @@ agent_files() {
 receipt_files() {
   find "$1/.shipmates/receipts" -mindepth 1 -maxdepth 1 -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' '
 }
+
+# Rewrite an installed claude-code tree into an older name generation: move one
+# skill directory and rewrite the receipt so it claims the old path (the
+# receipt writer requires its files sorted by path, so re-sort after the move).
+# `previous` is the older identity: `shipmates-<verb>` or the bare verb.
+make_previous_generation() {
+  local dir="$1" current="$2" previous="$3"
+  local receipt="$dir/.shipmates/receipts/claude-code.json"
+  mv "$dir/.claude/skills/$current" "$dir/.claude/skills/$previous"
+  jq --arg old ".claude/skills/$current/" --arg new ".claude/skills/$previous/" \
+    '(.files[] | select(.path | startswith($old)) | .path) |= sub($old; $new) | .files |= sort_by(.path)' \
+    "$receipt" > "$receipt.tmp"
+  mv "$receipt.tmp" "$receipt"
+}
