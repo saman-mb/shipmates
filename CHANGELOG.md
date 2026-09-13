@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-09-13
+
+### Fixed
+
+- **One symlinked config path no longer aborts the whole install.** Sharing a single skills or agents
+  tree across harnesses is a normal thing to want, and it is exactly what a dotfiles repo or a skills
+  manager produces. Shipmates refused to write *through* a symlink — a containment property that is
+  not negotiable — but it refused the entire payload to do it, so an install that could place forty
+  files placed none, on a path the captain had deliberately linked and that was already correct
+  (#462).
+
+  A symlinked payload path is now skipped and named in the install summary, and the rest of the
+  payload installs normally. `doctor` reports them under a `Symlinked paths` check instead of failing
+  the whole diagnosis, and `doctor --fix` leaves them exactly as found — never written, never
+  repaired, never removed. An *unsafe* path (absolute, or containing `..`) is still a hard error: that
+  is a programming fault, not a fact about the captain's environment.
+
 ## [0.6.2] - 2026-09-13
 
 ### Fixed

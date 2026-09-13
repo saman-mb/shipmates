@@ -158,6 +158,23 @@ assert "global codex: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --ha
 assert "global github-copilot: doctor is clean" bash -c "HOME='$GHOME' '$BIN' doctor --harness github-copilot | grep -q 'All shipshape'"
 assert "all four global installs leave the shared .agents tree untouched" test ! -d "$GHOME/.agents"
 
+# --- a symlinked config path is SKIPPED and reported, never fatal (#462) ---
+#
+# Sharing one skills tree across harnesses is a normal thing to want, and it is
+# what a symlink farm (a dotfiles repo, a skills manager) produces. Refusing to
+# write *through* one is a containment property; abandoning the other forty files
+# because of it is not.
+SHOME="$WORK/symlinked-home"
+mkdir -p "$SHOME/.agents/skills/ship-issue" "$SHOME/.gemini/config/skills"
+printf -- '---\nname: ship-issue\ndescription: mine\n---\nbody\n' > "$SHOME/.agents/skills/ship-issue/SKILL.md"
+ln -s "$SHOME/.agents/skills/ship-issue" "$SHOME/.gemini/config/skills/ship-issue"
+assert "symlinked path: install still exits 0" bash -c "HOME='$SHOME' '$BIN' install --harness antigravity --with-tools none"
+assert "symlinked path: the rest of the crew still lands" test -f "$SHOME/.gemini/config/agents/sdet/agent.md"
+assert "symlinked path: the user's own file is untouched" grep -q 'description: mine' "$SHOME/.gemini/config/skills/ship-issue/SKILL.md"
+assert "symlinked path: install names what it skipped" bash -c "HOME='$SHOME' '$BIN' install --harness antigravity --with-tools none | grep -q 'sit behind a symlink'"
+assert "symlinked path: doctor reports it instead of failing" bash -c "HOME='$SHOME' '$BIN' doctor --harness antigravity | grep -q 'Symlinked paths'"
+assert "symlinked path: doctor --fix leaves it alone" bash -c "HOME='$SHOME' '$BIN' doctor --fix --harness antigravity >/dev/null; grep -q 'description: mine' '$SHOME/.gemini/config/skills/ship-issue/SKILL.md'"
+
 # --- unknown target is refused, not silently ignored ---
 assert "unknown target exits non-zero" bash -c "cd '$REPO' && ! cargo run --quiet -- install --harness nope --dir '$WORK/nope' 2>/dev/null"
 

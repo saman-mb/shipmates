@@ -317,41 +317,74 @@ pub type ManifestEntry = ReceiptFile;
 /// Missing final components are allowed for installs, but every existing
 /// component is inspected with `symlink_metadata`, including target roots,
 /// receipt directories, harness roots, and the final path.
-pub fn resolve_target_relative(target_dir: &Path, relative: &Path) -> Result<PathBuf> {
+/// Why a target-relative path cannot be written, if it cannot be.
+///
+/// The distinction is load-bearing because the two cases deserve different
+/// responses. An unsafe path is a programming error and must stop the run. A
+/// symlink in the way is a fact about the captain's environment: Shipmates never
+/// writes *through* one — that containment property is not negotiable — but one
+/// symlinked path must not take the whole payload down with it, because the
+/// captain may be sharing a skills tree across harnesses, which is a normal
+/// thing to want.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Blocked {
+    /// A component of the path is a symlink.
+    Symlinked,
+    /// The path is absolute, empty, or contains a non-normal component.
+    Unsafe,
+}
+
+/// Classify a target-relative path without writing anything.
+///
+/// `Ok(None)` means the path is free to write.
+pub fn classify_target_path(target_dir: &Path, relative: &Path) -> Result<Option<Blocked>> {
     if relative.as_os_str().is_empty() || relative.is_absolute() {
-        bail!("unsafe target-relative path: {}", relative.display());
+        return Ok(Some(Blocked::Unsafe));
     }
     for component in relative.components() {
         if !matches!(component, Component::Normal(_)) {
-            bail!("unsafe target-relative path: {}", relative.display());
+            return Ok(Some(Blocked::Unsafe));
         }
     }
 
     // The target itself must not be a symlink. Parent components belong to the
     // caller's path namespace (for example, macOS `/var`), while components
-    // below this target are checked one by one below.
-    reject_symlink(target_dir)?;
+    // below this target are checked one by one.
+    if inspect_is_symlink(target_dir)? {
+        return Ok(Some(Blocked::Symlinked));
+    }
     let mut current = target_dir.to_path_buf();
     for component in relative.components() {
         current.push(component.as_os_str());
-        reject_symlink(&current)?;
+        if inspect_is_symlink(&current)? {
+            return Ok(Some(Blocked::Symlinked));
+        }
     }
-    Ok(current)
+    Ok(None)
 }
 
-fn reject_symlink(path: &Path) -> Result<()> {
+/// Whether `path` is a symlink. A path that does not exist is not one; a path
+/// that cannot be inspected at all is an error, not a silent `false`.
+fn inspect_is_symlink(path: &Path) -> Result<bool> {
     match fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.file_type().is_symlink() => {
-            bail!(
-                "refusing symlink component in target path {}",
-                path.display()
-            )
-        }
-        Ok(_) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Ok(metadata) => Ok(metadata.file_type().is_symlink()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(error) => {
             Err(error).with_context(|| format!("inspecting target path {}", path.display()))
         }
+    }
+}
+
+pub fn resolve_target_relative(target_dir: &Path, relative: &Path) -> Result<PathBuf> {
+    match classify_target_path(target_dir, relative)? {
+        Some(Blocked::Unsafe) => {
+            bail!("unsafe target-relative path: {}", relative.display())
+        }
+        Some(Blocked::Symlinked) => bail!(
+            "refusing symlink component in target path {}",
+            target_dir.join(relative).display()
+        ),
+        None => Ok(target_dir.join(relative)),
     }
 }
 
@@ -949,6 +982,60 @@ mod tests {
             "github-copilot",
             ".copilot/agents/sdet.md"
         ));
+    }
+
+    #[test]
+    fn classify_separates_a_symlinked_path_from_an_unsafe_one() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+
+        // Unsafe shapes are programming faults and always hard errors.
+        assert_eq!(
+            classify_target_path(target, Path::new("../escape.md")).unwrap(),
+            Some(Blocked::Unsafe)
+        );
+        assert_eq!(
+            classify_target_path(target, Path::new("/absolute.md")).unwrap(),
+            Some(Blocked::Unsafe)
+        );
+        // A plain, not-yet-existing path is free to write.
+        assert_eq!(
+            classify_target_path(target, Path::new(".agents/skills/mine/SKILL.md")).unwrap(),
+            None
+        );
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let outside = tempfile::tempdir().unwrap();
+            fs::write(outside.path().join("SKILL.md"), "theirs").unwrap();
+            fs::create_dir_all(target.join(".agents/skills")).unwrap();
+            symlink(
+                outside.path(),
+                target.join(".agents/skills/ship-issue"),
+            )
+            .unwrap();
+
+            // A symlinked component is skippable — and still never resolved to a
+            // path outside the target, which is why the install skips it rather
+            // than following it.
+            assert_eq!(
+                classify_target_path(target, Path::new(".agents/skills/ship-issue/SKILL.md"))
+                    .unwrap(),
+                Some(Blocked::Symlinked)
+            );
+            assert!(
+                resolve_target_relative(target, Path::new(".agents/skills/ship-issue/SKILL.md"))
+                    .is_err(),
+                "resolve_target_relative must keep refusing to write through a symlink"
+            );
+            // A sibling that is not symlinked is unaffected.
+            assert_eq!(
+                classify_target_path(target, Path::new(".agents/skills/other/SKILL.md"))
+                    .unwrap(),
+                None
+            );
+        }
     }
 
     #[test]
