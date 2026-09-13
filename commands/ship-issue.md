@@ -1,7 +1,7 @@
 ---
 name: ship-issue
 description: Shipmates: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
-argument-hint: <issue-number>... | next [epic <epic-number>] [optional extra guidance]
+argument-hint: <issue-number>... | next [epic <epic-number>] [sequential] [board=epic-deferred | board=off] [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -93,6 +93,15 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   auto-bundle**: bundling from a recommendation (a single ticket, or a `next` pick) always requires
   consent. An explicitly-passed multi-issue invocation (`/ship-issue 1 2 3`) is already that consent — it
   proceeds as a bundle (with the cohesion warning if it is a poor fit).
+- `EXECUTION` = `fanout` — how file-disjoint work units/slices execute within the issue or bundle.
+  `fanout` (default): when the plan identifies independent file-disjoint slices, spawn Builders
+  concurrently up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential` to
+  walk work units serially.
+- `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
+- `BOARD` = `full` (default) — Stage 5 acceptance board. `board=epic-deferred` defers it to the
+  orchestrator's milestone board (with `epic-base`, review still happens once on the epic PR);
+  `board=off` is an explicit captain opt-out with no deferral target. Both are the shared
+  acceptance-board delegation modes.
 - `WORKTREE_LAYOUT` = `nested` (default) — isolated checkouts live under `<repo>/.shipmates/worktrees/`.
   Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…` next to
   the repo).
@@ -161,9 +170,15 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 
 `ISSUES_CLOSES` (Stage 4) is built from the validated `<issues>` list, not raw runtime input tokens.
 
-**Epic delegation — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
+**Guidance — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
 list) for:
 
+- **`sequential`** — sets `EXECUTION=sequential` to force serial execution of work units/slices instead of the default parallel fan-out.
+- **`board=epic-deferred`** — defers the Stage 5 board (and its Stage 6 remediation loop) to the
+  orchestrator's milestone board. Valid only when the caller owns that milestone board (`epic-base` is
+  set — e.g. a `/ship-epic` unit); otherwise treat the token as unset and convene the board.
+- **`board=off`** — explicit captain opt-out: skip Stage 5 and Stage 6 with no deferral target, and
+  record it in the report and PR body. Agents never choose it on their own.
 - **`epic-base=<branch>`** — branch name must match `^[a-zA-Z0-9._/-]+$`; anything else, stop and ask.
   Set `BASE_BRANCH` to that branch. Worktree isolation (Stage 1) cuts from `origin/<BASE_BRANCH>`.
 - **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Overridden to
@@ -245,7 +260,8 @@ the cohesion bundle widening in step 2.5.
    **`epic-run`**, do not scan the wider backlog or propose bundle widening beyond the passed issue
    numbers. When guidance includes **`epic-base=<branch>`**, the worktree and PR target that branch —
    do not reset `BASE_BRANCH` to the repo default. When guidance includes **`MERGE_MODE=auto`**, Stage 8
-   merges into `BASE_BRANCH` after green CI and board pass. When guidance includes
+   merges into `BASE_BRANCH` after green CI and the Stage 5 board — unless the board was deferred with
+   `board=epic-deferred` or explicitly opted out with `board=off`. When guidance includes
    **`complexity tier: simple`** or **`medium`**, honour the command preamble's tiered execution path for this run. Ask it to return, as structured data:
    - a **build plan** broken into independent work units with **non-overlapping file ownership**
      (so builders can run in parallel without collisions),
@@ -350,10 +366,16 @@ Immediately after creating the worktree, install selected harness payload there:
 shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
 ```
 
-## Stage 2 — Build  (agents: `senior-engineer` × N, parallel)
+## Stage 2 — Build  (agents: `senior-engineer` × N, parallel when fan-out)
 
+- **Execution mode**: `EXECUTION=fanout` is the default execution posture; `sequential` is an opt-in mode
+  to force serial execution.
+  - When `EXECUTION=fanout` (default), and the Planner divides an issue or bundle into independent
+    file-disjoint slices (sub-tasks), spawn Builders (`senior-engineer` × N) concurrently in a single message
+    up to `MAX_CONCURRENT_WORKERS`.
+  - When `EXECUTION=sequential`, walk the planned work units one at a time serially.
 - Spawn one **Builder** (`{{role:senior-engineer}}`) per independent work unit from the plan,
-  **in a single message** so they run concurrently. Each Builder is told: its exact file ownership,
+  **in a single message** under `fanout` so they run concurrently. Each Builder is told: its exact file ownership,
   the acceptance criteria it must satisfy, the worktree path, to follow {{project-instructions}}
   for project style/conventions, to inspect `git log` and `git blame` on the files it touches for context,
   any Stage 1.5 spec that governs its files, and to match existing code style/idioms.
@@ -475,6 +497,11 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/ship-issue` so the epic can
 
 ## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
 
+**Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board
+delegation modes), skip Stage 5 and Stage 6 and proceed to Stage 7 / Stage 8. A deferral must name the
+milestone board that will review the integrated artifact; without one, treat the token as unset and
+convene the board.
+
 <!-- shipmates:acceptance-board -->
 
 Use the Stage 0 classification flags to decide which **scaled optional seats** join the mandatory
@@ -564,7 +591,7 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 ### Guardrails
 - The orchestrator owns **all** git/gh actions; agents never push or merge.
 - Reviewers always evaluate the **pushed PR head**, so "accepted" == "what merges".
-- Never open or advance a red PR. Never skip PE+PO on the **first** board once a PR head exists
+- Never skip PE+PO on the **first** board once a PR head exists
   (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a nit — file it.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
@@ -587,8 +614,6 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
   is **blocking** — same severity as a missing digest or unstaged generated page. Never tell the
   captain to run `/ship-release` or open a follow-up PR instead; that is how features merge without
   publishing.
-- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
-  than erroring or duplicating work. Every stage should be safe to repeat.
 - Static review cannot verify pixels, and no reviewer can verify what it didn't examine. When neither
   the `ux-ui-designer` (UI) nor the `art-director` (visual-art) could actually render and inspect the
   result, surface their **"needs human visual pass"** flag in the final report rather than implying

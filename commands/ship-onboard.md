@@ -152,8 +152,6 @@ passed on.
 - **One context file, never two.** Two sources of truth for the quality bar is the problem, not a
   tidy outcome.
 - Proven over plausible: a command that wasn't run is labelled unverified, never presented as fact.
-- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
-  than erroring or duplicating work.
 - Preserve hand-written rules on a refresh. You are augmenting someone's judgement, not replacing it.
 - Don't write a README. If the content is for humans, it belongs in `/ship-document`.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief

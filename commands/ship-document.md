@@ -1,7 +1,7 @@
 ---
 name: ship-document
 description: Shipmates: Write or refresh documentation that actually works — the technical-writer drafts it from the real code, then a fresh reader agent follows the steps against the repo and must reach the stated result. Loops until the docs are drift-free and completable.
-argument-hint: <what to document — a module, a feature, a public API, the README, the whole repo>
+argument-hint: <what to document — a module, a feature, a public API, the README, the whole repo> [sequential]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -22,6 +22,10 @@ a migration guide, or the whole repo. If empty, ask what to document and for who
 
 - `WRITER` = `technical-writer`. `READER` = a **fresh** `{{general-purpose}}` (or `technical-writer`) agent that
   has NOT seen the drafting — it only gets the doc + the repo, like a real newcomer.
+- `EXECUTION` = `fanout` — how independent doc surfaces are drafted. `fanout` (default): when the
+  scope covers several file-disjoint docs, spawn Writers concurrently up to `MAX_CONCURRENT_WORKERS`.
+  Guidance `sequential` sets `EXECUTION=sequential` to draft them one at a time.
+- `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
 - `MAX_ROUNDS` = `3` — the fresh-reader fix loop cap (Stage 3). `MODE` = `pr` (default) — a worktree,
   a branch and a CI-gated PR, reusing `/ship-issue`'s isolate stage and its commit-push-PR stage;
   your checkout is left exactly as you left it. `edit-in-place` writes the docs straight into the
@@ -67,10 +71,12 @@ Drafting, the fresh-reader run and every fix round happen inside `<WORKTREE_DIR>
 
 ## Stage 1 — Draft from the actual code  (agent: `technical-writer`)
 
-Spawn the `technical-writer` to write/refresh the doc **from the real source** — read the actual
-signatures, flags, paths, config, and outputs first; every command, parameter, and result must match what
-the repo does *today*. Minimal (least that gets to done), scannable, consistent terminology, runnable
-examples, prerequisites stated up front. Writes in the repo's format.
+Under `EXECUTION=fanout` (default), when the scope covers several file-disjoint docs, spawn one
+`technical-writer` per doc concurrently in a single message (up to `MAX_CONCURRENT_WORKERS`), each owning
+its files; under `EXECUTION=sequential`, draft them one at a time. Each writer works **from the real
+source** — read the actual signatures, flags, paths, config, and outputs first; every command, parameter,
+and result must match what the repo does *today*. Minimal (least that gets to done), scannable, consistent
+terminology, runnable examples, prerequisites stated up front. Writes in the repo's format.
 
 ## Stage 2 — Fresh-reader test  ⛔ HARD GATE  (agent: fresh `READER`)
 
@@ -109,12 +115,10 @@ the doc type, the fresh-reader's final result (in its words), rounds taken, and 
 - Bounded loop; escalate with the reader's blockers rather than shipping docs that don't work.
 - **Docs are source, so they get a branch.** A doc rewrite lands as a diff a human can read, not as
   a surprise in someone's checkout. `MODE=edit-in-place` is an explicit request, never an assumption.
-- **Be resumable.** A re-run may find the worktree, branch, or PR already exists — reuse them rather
-  than erroring or duplicating work.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined and note it.
 
 ## Runtime input
 
-`$ARGUMENTS` is the complete invocation text. Use it as the documentation target and audience hint;
-if empty, ask what to document and for whom.
+`$ARGUMENTS` is the complete invocation text. Use it as the documentation target and audience hint,
+plus optional `sequential` guidance; if empty, ask what to document and for whom.

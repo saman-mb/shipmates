@@ -65,7 +65,7 @@ from anything hardcoded into the role.
 | Command | What it does |
 |---|---|
 | `/ship-issue <n>...` | Drives GitHub issue `#n` — or several at once, bundled into one PR — from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
-| `/ship-epic <n>` | Loops `/ship-issue` over an epic's unchecked stories in dependency order — gate stories pause for sign-off; failures pause with state |
+| `/ship-epic <n>` | Ships an epic's unchecked stories in dependency-ordered waves — independent units fan out concurrently; gate stories pause for sign-off; failures pause with state |
 | `/ship-fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
 | `/ship-report-bug [symptom] [apply]` | Files a structured bug report on `saman-mb/shipmates` from a live run — preview by default; `apply` creates the issue |
 | `/ship-plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |

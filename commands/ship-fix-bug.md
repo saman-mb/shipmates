@@ -1,7 +1,7 @@
 ---
 name: ship-fix-bug
 description: Shipmates: Fix a bug the honest way — reproduce it as a failing test first, root-cause it, apply the minimal fix, and prove it with the test flipping red→green while the suite stays green. Worktree-isolated, CI-gated, opens a PR.
-argument-hint: <issue-number or a description of the bug> [optional repro hints]
+argument-hint: <issue-number or a description of the bug> [sequential] [board=epic-deferred | board=off] [optional repro hints]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -22,12 +22,27 @@ The bug description and reproduction hints come from the Runtime input section a
   `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
   `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/bug-<slug>`;
   **sibling:** `../<repo>--bug-<slug>`. Re-runs reuse the same path. `BRANCH` = `fix/<slug>`.
+- `EXECUTION` = `fanout` — how sibling bug fixes or independent reproduction/fix targets execute.
+  `fanout` (default): when multiple sibling bugs or disjoint files are identified, spawn Builders/SDETs
+  concurrently up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential` to
+  force serial execution.
+- `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
+- `BOARD` = `full` (default) — Stage 5 acceptance board. `board=epic-deferred` defers it to an
+  orchestrator's milestone board (the deferred board still runs there); `board=off` is an explicit
+  captain opt-out with no deferral target. Both are the shared acceptance-board delegation modes.
 - `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in).
 - **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states. Read it first.
 - Reuse required trailers from the session context (a `Co-Authored-By:` line at minimum); the
   orchestrator owns all git/gh — agents never push.
 
 ## Stage 0 — Reproduce as a FAILING test  ⛔ HARD GATE
+
+Parse runtime input: the leading issue number or bug description is `<target>`; scan remaining tokens
+for guidance:
+- **`sequential`** — sets `EXECUTION=sequential` to force serial fix execution instead of default fan-out.
+- **`board=epic-deferred`** — sets `BOARD=deferred` to defer Stage 5 to the milestone board named by the
+  caller (valid only when that board is guaranteed). **`board=off`** — explicit captain opt-out, `BOARD=off`,
+  no deferral target. With either, skip Stage 5 and proceed directly to delivery.
 
 Spawn the `sdet` (with `site-reliability-engineer` if the bug is a runtime/reliability failure) to
 find the **smallest deterministic reproduction** and encode it as a test in the repo's existing test
@@ -64,12 +79,17 @@ last-known-good, and `git log` / `git blame` on the affected lines to understand
 named, why it produces the symptom, and the minimal change that addresses it. Reject "add a null
 check where it crashed" when the real cause is upstream.
 
-## Stage 3 — Fix (minimal & scoped)  (agent: `senior-engineer`)
+## Stage 3 — Fix (minimal & scoped)  (agents: `senior-engineer` × N, parallel when fan-out)
 
 Apply the smallest change that fixes the named root cause. **No unrelated refactors or scope creep** —
 this is a bug fix, not a redesign (file anything else as a follow-up). Then check for **sibling bugs**:
-grep the codebase for the same defect class elsewhere and fix those in the same pass if trivial, or
-file them.
+grep the codebase for the same defect class elsewhere.
+
+**Execution posture**:
+- Under `EXECUTION=fanout` (default), when sibling bugs or independent root causes span file-disjoint areas,
+  spawn multiple `senior-engineer` Builders concurrently in a single message up to `MAX_CONCURRENT_WORKERS`,
+  each with explicit file ownership.
+- Under `EXECUTION=sequential`, apply fixes one at a time serially.
 
 ## Stage 4 — Prove it  ⛔ HARD GATE  (agent: `sdet`)
 
@@ -81,6 +101,10 @@ nothing). Then push and run the **CI gate**: poll `gh pr checks` until done; if 
 ## Stage 5 — Review  (agents, on the pushed PR head)
 
 <!-- shipmates:acceptance-board -->
+
+**Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
+modes), skip Stage 5 and proceed to Stage 6; `epic-deferred` must name the milestone board that will run
+the review, and `board=off` is recorded in the report and PR body.
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 
@@ -105,7 +129,7 @@ the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
   and it stops the bug ever coming back silently.
 - Root cause over symptom — name the mechanism; don't patch where it surfaced.
 - Minimal, scoped change; unrelated improvements become follow-ups, not part of this PR.
-- Bounded loops; escalate with the log rather than spinning. Never advance a red PR.
+- Bounded loops; escalate with the log rather than spinning.
 - The reviewer is a **fresh** agent, never the one who wrote the fix.
 - If a role doesn't resolve to an `{{agents-glob}}`, fall back to `{{general-purpose}}` with the brief
   inlined, and note it.
@@ -113,5 +137,5 @@ the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
 ## Runtime input
 
 `$ARGUMENTS` is the complete invocation text: a GitHub issue number or plain-text bug description,
-plus optional reproduction hints. If it is a number, pull it with `gh issue view`; if empty, ask
-what is broken.
+plus optional guidance (`sequential`, `board=epic-deferred`, `board=off`) and reproduction hints.
+If it is a number, pull it with `gh issue view`; if empty, ask what is broken.
