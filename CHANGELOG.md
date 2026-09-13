@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-13
+
+### Added
+
+- **`/ship-epic` fan-out execution mode (default):** Added `EPIC_EXECUTION=fanout` by default (`sequential` available as opt-in) and `MAX_CONCURRENT_WORKERS=5`, allowing independent, file-disjoint units to run concurrently in dedicated worktrees. Encodes wave-based DAG partitioning, in-flight rebase conflict handling, post-wave integration CI checks on `<EPIC_BRANCH>`, and single final acceptance board review over the integrated epic PR. A rebased unit waits for green CI on the post-rebase head before it merges, and shared-branch regressions are fixed through CI-gated fixer PRs rather than direct commits (#432).
+- **Cross-command fan-out execution mode:** File-disjoint work units run concurrently up to `MAX_CONCURRENT_WORKERS` (5), with a `sequential` opt-out, across `/ship-issue`, `/ship-fix-bug`, `/ship-refactor`, `/ship-harden`, `/ship-migrate`, `/ship-document`, and `/ship-polish`. `/ship-issue`, `/ship-fix-bug`, `/ship-refactor`, and `/ship-migrate` accept the two shared acceptance-board delegation modes — `board=epic-deferred` (a deferral to a guaranteed milestone board, never a cancel) and `board=off` (explicit captain opt-out with no deferral target) — defined once in `docs/COST.md` (#432).
+- **Canonical global steering ruleset (`steering/global.md`):** Authored the strictly domain-neutral steering content — repo-context precedence, routing across all 15 commands, the product impact bar, backlog/ticket hygiene, worktree, git and shell safety, multi-perspective acceptance, and execution efficiency / review amortization. The file is the payload for the user-scope install tracked in #417 and is **not yet wired into the installer** — that wiring (and its automated domain-neutrality gate) is tracked in #417 / #438 (#430).
+
 ## [0.3.1] - 2026-09-13
 
 ### Fixed

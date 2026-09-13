@@ -35,7 +35,7 @@ authors reference it instead of copying cost rules into each workflow.
   output through this prefix.
 - **Complexity-Based Tiered Execution**: Before starting the workflow, evaluate the task complexity based on the input and repository context to select one of three execution paths:
   - **Simple**: Minor/straightforward changes (e.g. documentation, typos, single config line, small edits affecting <= 2 files and <= 15 lines of code, no specialist flags). The main agent (you) executes, validates, and delivers the PR directly — but **must still convene the mandatory PE+PO acceptance board** on the pushed head (see shared board below). Cost savings come from skipping Planner/Builder spawns and optional specialists, not from skipping review.
-  - **Medium**: Moderate changes (<= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single Builder and single SDET; skip Stage 1.5 design specs when no flags apply. **Must convene PE+PO** (and SDET on the board when validation is non-trivial) — not main-agent review.
+  - **Medium**: Moderate changes (<= 5 files, no major module boundaries, no architectural/security/delivery flags). Spawn a Planner and a single SDET and a Builder — one Builder per independent file-disjoint slice when the plan has them (see the command's execution-mode config), a single Builder otherwise; skip Stage 1.5 design specs when no flags apply. **Must convene PE+PO** (and SDET on the board when validation is non-trivial) — not main-agent review.
   - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.
 - Spend subagent seats only where their decision can change the outcome. Route model and effort at
   spawn by work difficulty; never hardcode a model in canonical content.
@@ -59,6 +59,18 @@ Spawn reviewers **in parallel** against the PR head commit — they review exact
 - **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/ship-harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
 
 Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** on the **first** board once a PR head exists. Later rounds follow **Retry** below — a PE/PO ACCEPT may be carried when the fixer delta cannot invalidate it.
+
+**Delegation modes (the only two authorized exceptions to the mandatory seats above)**
+
+- **`board=epic-deferred`** — a *deferral*, never a cancel. Set by an orchestrating command that owns a
+  mandatory milestone board on the integrated artifact (e.g. `/ship-epic`'s Stage 4 integration board on `<EPIC_PR>`).
+  The unit's own board is skipped, its CI gate still runs, and the milestone board reviews the integrated
+  diff. The deferral is valid only while that milestone board is guaranteed; a delegated run must **not**
+  convert it to `board=off`.
+- **`board=off`** — an explicit captain opt-out: no board here and none deferred. The run records it loudly
+  in the report and the PR body. Agents never choose it on their own.
+
+Every board that is actually convened keeps the mandatory PE+PO seats and follows Retry below.
 
 **Scaled optional seats**
 
@@ -99,13 +111,18 @@ If `principal-engineer` or any role does not resolve to an `{{agents-glob}}` fil
 
 ## Reusable epic integration board
 
-The marker below is expanded into `/ship-epic` Stage 4.5 when every checklist story has landed.
+The marker below is expanded into `/ship-epic` Stage 4 (epic closure) when every checklist story has landed.
 It reviews the **combined** epic PR head — not a re-litigation of each unit PR.
 
 <!-- epic-integration-board:start -->
 Spawn reviewers **in parallel** against epic PR `<EPIC_PR>` head — the integration artifact that
 would merge into `MAIN_BRANCH`. Pass each reviewer: the epic issue title/body, `<epic-log>`,
 Stage 1.5 plan (when present), `<epic-capsule>`, and the full integration diff.
+
+**This board is the deferral target.** Unit runs delegated with `board=epic-deferred` gate on green CI
+and merge into `<EPIC_BRANCH>` without their own board; the mandatory PE+PO core (plus scaled seats)
+convenes here, once, on the integrated diff. Never skip it on full closure — a deferral without this
+board running is not a deferral, it is an unauthorised skip.
 
 **Integration questions (mandatory lens — answer explicitly)**
 
