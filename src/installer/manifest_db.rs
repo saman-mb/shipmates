@@ -421,7 +421,7 @@ fn is_steering_receipt_path(harness: &str, path: &str) -> bool {
         "claude-code" => path == ".claude/rules/shipmates-contributor.md",
         "cursor" => path == ".cursor/rules/shipmates-contributor.mdc",
         "github-copilot" => path == ".github/instructions/shipmates.instructions.md",
-        "opencode" | "codex" | "antigravity" | "pi" | "windsurf" => {
+        "opencode" | "codex" | "antigravity" | "windsurf" => {
             path == ".shipmates/contributor-steering.md"
         }
         _ => false,
@@ -521,11 +521,7 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                 || is_shipmates_steering_path(path)
                 || is_skill_tree(".windsurf")
         }
-        "pi" => {
-            is_steering_receipt_path(harness, path)
-                || is_shipmates_steering_path(path)
-                || is_skill_tree(".agents")
-        }
+        "pi" => is_skill_tree(".agents"),
         "github-copilot" => {
             is_steering_receipt_path(harness, path)
                 || (parts.len() == 3

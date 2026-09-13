@@ -47,9 +47,9 @@
     },
     "pi": {
       "agents": false,
-      "agents_notes": "...",
+      "agents_notes": "Correctly false: Pi ships no subagents, so the adapter emits the 15 commands as skills to `.agents/skills/` and roles are dropped. Pi has no native declarative subagent schema per first-party docs. Verified 2026-09-13: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md",
       "effort": false,
-      "effort_notes": "..."
+      "effort_notes": "No per-agent effort field in Pi agent schema (and skills-only, no role emission). Adapter emits nothing rather than invent a key. Verified 2026-09-13."
     }
   },
   "features": {

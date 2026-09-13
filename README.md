@@ -192,10 +192,10 @@ windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
 Every harness compiles the same canonical crew and commands. Five have a native subagent directory
-and receive the thirteen specialists as agents; the other two ship the fifteen commands as skills only.
-Three harnesses (codex, antigravity, github-copilot) read the open [Agent Skills](https://agentskills.io)
+and receive the thirteen specialists as agents; the other three ship the fifteen commands as skills only.
+Four harnesses (codex, antigravity, github-copilot, pi) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
-one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of four colliding
+one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of colliding
 ones. Their crew still land in each harness's own native format. `cursor` reads that open tree too, but
 only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and
 nowhere else — one copy, never two. `windsurf` keeps its canonical `.windsurf/skills/` (its docs make
