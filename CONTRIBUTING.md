@@ -129,3 +129,23 @@ general-purpose" notes in the report).
 ## PRs
 
 Keep changes focused, explain the intent, and make sure `shipmates install` still installs cleanly.
+
+### Never push to a branch whose PR has already merged
+
+This repo **squash-merges**. Once a PR is merged its branch is a dead end: a commit pushed
+afterwards reaches no open PR and never lands on `main`. GitHub surfaces it nowhere, so it is lost
+silently — most often to work that continued *while* the PR was being merged.
+
+Check the state before pushing to a branch that already has a PR:
+
+```bash
+gh pr view <number> --json state -q .state    # MERGED → cut a new branch instead
+```
+
+If it has merged, branch from the current `origin/main` and **cherry-pick** the stranded commit
+(`git cherry-pick <sha>`) rather than rebasing the old branch: a squash merge rewrites SHAs, so the
+original branch looks like it diverges from `main` even when every change in it already landed.
+
+A stale branch also makes `git diff origin/main` lie — commits merged into `main` while you were
+working show up as large deletions of *your own*, which reads like someone reverted your work. Run
+`git log --oneline HEAD..origin/main` before concluding anything was lost.
