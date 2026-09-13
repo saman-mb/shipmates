@@ -1,7 +1,7 @@
 ---
 name: ship-migrate
 description: Shipmates: Run a mechanical migration across a whole codebase — discover every call site, transform each in isolation, verify per-site, and gate on a clean sweep (no old-pattern remnants) with the suite green. For API/dependency/pattern/framework migrations.
-argument-hint: <from → to — e.g. "moment.js → date-fns" or "callback API → async/await"> [sequential]
+argument-hint: <from → to — e.g. "moment.js → date-fns" or "callback API → async/await"> [sequential] [board=epic-deferred | board=off]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -28,6 +28,9 @@ The migration comes from the Runtime input section at the end of this workflow.
   concurrently up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential`
   to transform batches one at a time.
 - `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
+- `BOARD` = `full` (default) — Stage 5 acceptance board. `board=epic-deferred` defers it to an
+  orchestrator's milestone board (the deferred board still runs there); `board=off` is an explicit
+  captain opt-out with no deferral target. Both are the shared acceptance-board delegation modes.
 - `BATCH` = group call sites by module/ownership so parallel transformers don't touch the same files.
 - **Correctness bar / test commands** = the repo's own. Read them first. Orchestrator owns all git/gh.
 
@@ -46,8 +49,9 @@ them for careful individual handling rather than a blind sweep. Batch the invent
 
 ## Stage 2 — Isolate
 
-1. **Resolve `<WORKTREE_DIR>`** from Config. Parse **`worktree-root=sibling`** and **`sequential`**
-   (sets `EXECUTION=sequential`) from runtime guidance before resolving.
+1. **Resolve `<WORKTREE_DIR>`** from Config. Parse **`worktree-root=sibling`**, **`sequential`**
+   (sets `EXECUTION=sequential`), and the **board tokens** (`board=epic-deferred` / `board=off`, the
+   shared acceptance-board delegation modes) from runtime guidance before resolving.
 2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — idempotently ensure
    `.shipmates/worktrees/` is in `<repo>/.gitignore` (append only when missing; create with a one-line
    Shipmates comment if absent). Never rewrite unrelated rules.
@@ -85,8 +89,9 @@ non-mechanical sites individually** — never blind-replace where semantics diff
 
 <!-- shipmates:acceptance-board -->
 
-**Skip check**: if runtime guidance includes `board=epic-deferred` or `board=off` (or `BOARD=off`),
-skip the board and proceed directly to opening (or, `auto`, merging) the PR.
+**Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
+modes), skip the board and proceed to opening (or, `auto`, merging) the PR; `epic-deferred` must name the
+milestone board that will run the review, and `board=off` is recorded in the report and PR body.
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 

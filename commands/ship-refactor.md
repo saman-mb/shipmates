@@ -34,16 +34,17 @@ no such grep, which is exactly why it needs behaviour pinned first.
   up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential` to force
   serial execution.
 - `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
-- `BOARD` = `full` (default) — Stage 5 acceptance board. Delegated runs support `board=epic-deferred` or
-  `board=off` to defer review to the milestone PR.
+- `BOARD` = `full` (default) — Stage 5 acceptance board. `board=epic-deferred` defers it to an
+  orchestrator's milestone board (the deferred board still runs there); `board=off` is an explicit
+  captain opt-out with no deferral target. Both are the shared acceptance-board delegation modes.
 - `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in).
 - **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states.
 - The orchestrator owns all git/gh; agents never push.
 
 ## Stage 0 — Scope, motivation, and the `/ship-migrate` escape hatch
 
-Parse runtime guidance: `sequential` sets `EXECUTION=sequential`; `board=epic-deferred` or `board=off`
-sets `BOARD=off`.
+Parse runtime guidance: `sequential` sets `EXECUTION=sequential`; `board=epic-deferred` sets
+`BOARD=deferred` (milestone-board owners only); `board=off` sets `BOARD=off` (explicit captain opt-out).
 
 Name the target precisely (files, module, the seam being introduced) and state the motivation in one
 sentence. Inspect `git log` and `git blame` on the target files to understand historical context, linked issues, and why current boundaries were chosen. Check the escape hatch above. Then decide `IS_ARCH_SIGNIFICANT`: does this cross module
@@ -123,8 +124,9 @@ Then the full suite green, and the **CI gate**: poll `gh pr checks` until done; 
 
 <!-- shipmates:acceptance-board -->
 
-**Skip check**: if runtime guidance includes `board=epic-deferred` or `board=off` (or `BOARD=off`),
-skip Stage 5 (acceptance board) and proceed directly to Stage 6 (Deliver).
+**Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
+modes), skip Stage 5 and proceed to Stage 6; `epic-deferred` must name the milestone board that will run
+the review, and `board=off` is recorded in the report and PR body.
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 

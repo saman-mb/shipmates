@@ -1,7 +1,7 @@
 ---
 name: ship-issue
 description: Shipmates: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
-argument-hint: <issue-number>... | next [epic <epic-number>] [sequential] [optional extra guidance]
+argument-hint: <issue-number>... | next [epic <epic-number>] [sequential] [board=epic-deferred | board=off] [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -98,6 +98,10 @@ Cursor); on the others the role's static effort (from its crew file, #204) stand
   concurrently up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential` to
   walk work units serially.
 - `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
+- `BOARD` = `full` (default) — Stage 5 acceptance board. `board=epic-deferred` defers it to the
+  orchestrator's milestone board (with `epic-base`, review still happens once on the epic PR);
+  `board=off` is an explicit captain opt-out with no deferral target. Both are the shared
+  acceptance-board delegation modes.
 - `WORKTREE_LAYOUT` = `nested` (default) — isolated checkouts live under `<repo>/.shipmates/worktrees/`.
   Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…` next to
   the repo).
@@ -166,11 +170,15 @@ and this command pipes them into shell commands. Apply these rules at every `gh`
 
 `ISSUES_CLOSES` (Stage 4) is built from the validated `<issues>` list, not raw runtime input tokens.
 
-**Epic delegation — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
+**Guidance — parse before Stage 0 planning.** Scan runtime guidance (all tokens after the issue
 list) for:
 
 - **`sequential`** — sets `EXECUTION=sequential` to force serial execution of work units/slices instead of the default parallel fan-out.
-- **`board=epic-deferred`** or **`board=off`** — skips Stage 5 (acceptance board) and Stage 6 (remediation loop); proceed directly to Stage 7 / Stage 8.
+- **`board=epic-deferred`** — defers the Stage 5 board (and its Stage 6 remediation loop) to the
+  orchestrator's milestone board. Valid only when the caller owns that milestone board (`epic-base` is
+  set — e.g. a `/ship-epic` unit); otherwise treat the token as unset and convene the board.
+- **`board=off`** — explicit captain opt-out: skip Stage 5 and Stage 6 with no deferral target, and
+  record it in the report and PR body. Agents never choose it on their own.
 - **`epic-base=<branch>`** — branch name must match `^[a-zA-Z0-9._/-]+$`; anything else, stop and ask.
   Set `BASE_BRANCH` to that branch. Worktree isolation (Stage 1) cuts from `origin/<BASE_BRANCH>`.
 - **`MERGE_MODE=auto`** — honour when present (typical for `/ship-epic` units). Overridden to
@@ -488,7 +496,10 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/ship-issue` so the epic can
 
 ## Stage 5 — Acceptance board  (specialist agents, reviewing the PUSHED PR head)
 
-**Skip check**: if runtime guidance includes `board=epic-deferred` or `board=off`, skip Stage 5 (acceptance board) and Stage 6 (remediation loop); proceed directly to Stage 7 / Stage 8.
+**Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board
+Delegation modes), skip Stage 5 and Stage 6 and proceed to Stage 7 / Stage 8. A deferral must name the
+milestone board that will review the integrated artifact; without one, treat the token as unset and
+convene the board.
 
 <!-- shipmates:acceptance-board -->
 

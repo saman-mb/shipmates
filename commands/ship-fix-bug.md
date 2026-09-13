@@ -1,7 +1,7 @@
 ---
 name: ship-fix-bug
 description: Shipmates: Fix a bug the honest way — reproduce it as a failing test first, root-cause it, apply the minimal fix, and prove it with the test flipping red→green while the suite stays green. Worktree-isolated, CI-gated, opens a PR.
-argument-hint: <issue-number or a description of the bug> [sequential] [optional repro hints]
+argument-hint: <issue-number or a description of the bug> [sequential] [board=epic-deferred | board=off] [optional repro hints]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
@@ -27,8 +27,9 @@ The bug description and reproduction hints come from the Runtime input section a
   concurrently up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential` to
   force serial execution.
 - `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
-- `BOARD` = `full` (default) — Stage 5 acceptance board. Delegated runs support `board=epic-deferred` or
-  `board=off` to defer review to the milestone PR.
+- `BOARD` = `full` (default) — Stage 5 acceptance board. `board=epic-deferred` defers it to an
+  orchestrator's milestone board (the deferred board still runs there); `board=off` is an explicit
+  captain opt-out with no deferral target. Both are the shared acceptance-board delegation modes.
 - `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (stop at a reviewed PR; `auto` opt-in).
 - **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states. Read it first.
 - Reuse required trailers from the session context (a `Co-Authored-By:` line at minimum); the
@@ -39,7 +40,9 @@ The bug description and reproduction hints come from the Runtime input section a
 Parse runtime input: the leading issue number or bug description is `<target>`; scan remaining tokens
 for guidance:
 - **`sequential`** — sets `EXECUTION=sequential` to force serial fix execution instead of default fan-out.
-- **`board=epic-deferred`** or **`board=off`** — sets `BOARD=off` to skip Stage 5 acceptance board and proceed directly to delivery.
+- **`board=epic-deferred`** — sets `BOARD=deferred` to defer Stage 5 to the milestone board named by the
+  caller (valid only when that board is guaranteed). **`board=off`** — explicit captain opt-out, `BOARD=off`,
+  no deferral target. With either, skip Stage 5 and proceed directly to delivery.
 
 Spawn the `sdet` (with `site-reliability-engineer` if the bug is a runtime/reliability failure) to
 find the **smallest deterministic reproduction** and encode it as a test in the repo's existing test
@@ -99,8 +102,9 @@ nothing). Then push and run the **CI gate**: poll `gh pr checks` until done; if 
 
 <!-- shipmates:acceptance-board -->
 
-**Skip check**: if runtime guidance includes `board=epic-deferred` or `board=off` (or `BOARD=off`),
-skip Stage 5 (acceptance board) and proceed directly to Stage 6 (Deliver).
+**Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
+modes), skip Stage 5 and proceed to Stage 6; `epic-deferred` must name the milestone board that will run
+the review, and `board=off` is recorded in the report and PR body.
 
 **Command-specific seats** (in addition to the mandatory PE+PO core):
 
