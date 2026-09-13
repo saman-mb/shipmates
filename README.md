@@ -5,7 +5,7 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, and Windsurf.</b><br/>
+  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, and Windsurf.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
@@ -187,6 +187,7 @@ antigravity      .agents/          agents + skills   (agy — the successor to t
 codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
 cursor           .cursor/          skills only (first-party tree; slash picker reads it)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
+pi               .agents/          skills only (open tree; natively supported)
 windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
@@ -521,11 +522,11 @@ question is whether it's been *run*.
 
 - **Runtime-verified** — Claude Code: the full crew and all 15 commands, and the only harness
   Shipmates has actually been run on.
-- **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot
-  and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
+- **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot,
+  Pi, and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
   verified against that harness's parsing source and first-party docs. opencode, Antigravity, Codex CLI and
-  GitHub Copilot get the full crew + all 15 commands; the other two — Cursor and Windsurf — have no native
-  subagent directory, so they ship the 13 skills only. A live run has not been done on any of them; opencode's open questions are tracked in
+  GitHub Copilot get the full crew + all 15 commands; the other three — Cursor, Pi, and Windsurf — have no native
+  subagent directory, so they ship the 15 skills only. A live run has not been done on any of them; opencode's open questions are tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
   CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates builds for.
@@ -546,7 +547,7 @@ commands keep shipping. Want a role or a workflow aboard? Open an issue — idea
 A ready-made crew of **subagents** and **command workflows**. Instead of you playing
 planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
 `/ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It ships for
-seven harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, and Windsurf;
+eight harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, and Windsurf;
 see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**

@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-13
+
+### Added
+
+- **Pi Agent harness support:** Added adapter to emit the 15 commands as skills to `.agents/skills/`.
+
 ## [0.2.1] - 2026-09-12
 
 ### Fixed

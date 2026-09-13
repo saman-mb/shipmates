@@ -387,6 +387,7 @@ fn validate_harness(harness: &str) -> Result<()> {
             | "codex"
             | "cursor"
             | "github-copilot"
+            | "pi"
             | "windsurf"
     ) {
         bail!("unsupported harness {:?}", harness);
@@ -409,6 +410,7 @@ pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
         // clean the orphans up. Nothing writes there any more.
         "cursor" => &[".agents", ".cursor"],
         "github-copilot" => &[".agents", ".github"],
+        "pi" => &[".agents", ".shipmates"],
         "windsurf" => &[".windsurf", ".shipmates"],
         _ => &[],
     }
@@ -419,7 +421,7 @@ fn is_steering_receipt_path(harness: &str, path: &str) -> bool {
         "claude-code" => path == ".claude/rules/shipmates-contributor.md",
         "cursor" => path == ".cursor/rules/shipmates-contributor.mdc",
         "github-copilot" => path == ".github/instructions/shipmates.instructions.md",
-        "opencode" | "codex" | "antigravity" | "windsurf" => {
+        "opencode" | "codex" | "antigravity" | "pi" | "windsurf" => {
             path == ".shipmates/contributor-steering.md"
         }
         _ => false,
@@ -519,6 +521,11 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                 || is_shipmates_steering_path(path)
                 || is_skill_tree(".windsurf")
         }
+        "pi" => {
+            is_steering_receipt_path(harness, path)
+                || is_shipmates_steering_path(path)
+                || is_skill_tree(".agents")
+        }
         "github-copilot" => {
             is_steering_receipt_path(harness, path)
                 || (parts.len() == 3
@@ -593,7 +600,7 @@ fn is_legacy_instructions_root(root: &str) -> bool {
 fn is_legacy_steering_receipt_path(harness: &str, path: &str) -> bool {
     match harness {
         "claude-code" => path == "CLAUDE.md",
-        "opencode" | "codex" | "cursor" | "github-copilot" | "antigravity" | "windsurf" => {
+        "opencode" | "codex" | "cursor" | "github-copilot" | "antigravity" | "pi" | "windsurf" => {
             path == "AGENTS.md"
         }
         _ => false,
