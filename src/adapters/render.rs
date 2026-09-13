@@ -253,6 +253,38 @@ pub const CODEX: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
+/// Pi's crew dialect.
+///
+/// Pi's crew mechanic comes from the third-party `pi-subagents` extension
+/// (github.com/nicobailon/pi-subagents) — core pi documents no declarative
+/// subagent schema. It reads agent
+/// definitions from `.pi/agents/**/*.md` as its canonical project scope and from
+/// `~/.pi/agent/agents/**/*.md` as its canonical user scope. Pi also still reads
+/// the legacy `.agents/**` tree "for compatibility", and that is the path
+/// shipmates installs Antigravity's crew to.
+///
+/// Pi's *commands and tools* are unaffected and stay on the shared neutral
+/// `.agents/skills/` tree — only the crew are pi-native, the same split Codex
+/// and Copilot use. Note what that implies: pi's command skills are rendered
+/// through `AGENT_SKILLS`, so the command-only tokens below (`agents_glob`,
+/// `session_key`, `general_purpose`, `planner`, `args_token`) reach *no emitted
+/// pi byte* — only `instructions_primary`/`instructions_fallback` do, through the
+/// crew bodies. They are set to pi's real values anyway, so the dialect is
+/// correct if pi's commands ever stop sharing the neutral tree;
+/// `general_purpose` is `worker` because pi ships that builtin and would resolve
+/// the neutral `general-purpose` to nothing. And `.pi/agents/` wins only within
+/// the directory pi resolves as its project root — see `pi.rs` for the scope
+/// caveat.
+pub const PI: Dialect = Dialect {
+    agents_glob: ".pi/agents",
+    session_key: "Pi-Session",
+    instructions_primary: "AGENTS.md",
+    instructions_fallback: "CLAUDE.md",
+    general_purpose: "worker",
+    planner: "architect",
+    args_token: "$ARGUMENTS",
+};
+
 // Cursor has no crew mechanic here, so it renders no personas of its own; its
 // commands ship to the shared `.agents/skills/` tree via AGENT_SKILLS. (Cursor
 // reads `.agents/skills/` natively, first-party — see cursor.rs.)

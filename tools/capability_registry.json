@@ -260,14 +260,40 @@
       }
     },
     "pi": {
-      "notes": "Pi ships no subagents, so the adapter emits the crew as fifteen skills and ignores `roles`. Pi reads the open `.agents/skills/` tree.",
-      "agent_path": null,
+      "notes": "Pi's crew mechanic comes from the third-party `pi-subagents` extension (github.com/nicobailon/pi-subagents) — core pi documents no declarative subagent schema, which is why this target once claimed `agents: false`. pi-subagents reads crew from `.pi/agents/{name}.md` (canonical project scope) and `~/.pi/agent/agents/` (user scope), and still reads the legacy `.agents/**` tree for compatibility — which is the path Antigravity's crew installs to. Shipmates emits to the project-scope `.pi/agents/`, which outranks the legacy `.agents/` tree *within whichever directory pi resolves as the project root* — the nearest ancestor carrying `.pi/` or `.agents/`. A project-local install therefore resolves correctly (the normal case). A `--global` install lands in the home directory, which is the resolved root only when no ancestor between the working directory and `~` carries `.pi/` or `.agents/`; where one does, pi reads that one and the home install is invisible. Pi's user scope cannot rescue that case: `~/.pi/agent/agents/` is loaded *before* legacy `~/.agents/` and the later write wins, so no user-scope path can outrank a foreign `~/.agents/agents/`. `tools` is a COMMA-SEPARATED SCALAR, never a YAML list: pi's frontmatter reader is line-based, so a list opens a block and is read as one unmatchable name, leaving the seat with no tools and no error (#437). `permission_model` is `allowlist` because an unresolvable name yields zero tools rather than being ignored. Skills stay on the shared `.agents/skills/` tree. Known gap: `web_search` / `fetch_content` come from a separate extension (`pi-web-access`), not pi core, so the two crew roles declaring the `web` capability name tools a bare pi install does not have. Verified 2026-09-13 against pi-subagents' own source and docs.",
+      "agent_path": ".pi/agents/{name}.md",
       "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
       "steering_install_path": null,
-      "permission_model": "none",
-      "scopes": {},
-      "tools": {}
+      "permission_model": "allowlist",
+      "scopes": {
+        "read": "read",
+        "search": "grep",
+        "glob": "find",
+        "write": "write",
+        "edit": "edit",
+        "bash": "bash",
+        "web-search": "web_search",
+        "web-fetch": "fetch_content",
+        "agent": "subagent"
+      },
+      "tools": {
+        "read": [
+          "read",
+          "grep",
+          "find"
+        ],
+        "edit": [
+          "write",
+          "edit"
+        ],
+        "bash": "bash",
+        "web": {
+          "search": "web_search",
+          "fetch": "fetch_content"
+        },
+        "agent": "subagent"
+      }
     }
   }
 }

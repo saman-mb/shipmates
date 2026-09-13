@@ -34,7 +34,7 @@ fn harness_blurb(name: &str) -> &'static str {
         "codex" => "TOML crew in .codex + skills in .agents",
         "cursor" => "skills in .agents (shared Agent Skills tree)",
         "github-copilot" => "crew in .github/agents + skills in .agents",
-        "pi" => "skills in .agents (shared Agent Skills tree)",
+        "pi" => "agents in .pi + skills in .agents",
         "windsurf" => "skills in .windsurf",
         _ => "harness payload",
     }

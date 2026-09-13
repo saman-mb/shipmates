@@ -46,10 +46,10 @@
       "effort_notes": "Top-level `reasoningEffort` key (provider passthrough), a sibling of `model`/`temperature` in the agent frontmatter. Doc-verified 2026-08-05: https://opencode.ai/docs/agents/"
     },
     "pi": {
-      "agents": false,
-      "agents_notes": "Correctly false: Pi ships no subagents, so the adapter emits the 15 commands as skills to `.agents/skills/` and roles are dropped. Pi has no native declarative subagent schema per first-party docs. Verified 2026-09-13: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md",
-      "effort": false,
-      "effort_notes": "No per-agent effort field in Pi agent schema (and skills-only, no role emission). Adapter emits nothing rather than invent a key. Verified 2026-09-13."
+      "agents": true,
+      "agents_notes": "NOTE THE DEPENDENCY: pi's subagent mechanic is NOT in core pi — it comes from the third-party `pi-subagents` extension (github.com/nicobailon/pi-subagents), and an install without it resolves no crew. With it, crew are pi-native at `.pi/agents/<name>.md` — the extension's canonical project scope, alongside `~/.pi/agent/agents/**/*.md` for user scope. `tools` must be a COMMA-SEPARATED SCALAR, never a YAML list: the reader is a line-based parser that opens a block on an empty value and reads the whole list as one unmatchable name, so a mismatched file leaves the seat with NO tools and no error — that was #437, where Antigravity's crew at the shared legacy `.agents/agents/` (which pi still reads for compatibility) was handed to pi. Shipmates emits to `.pi/agents/`, which outranks the legacy `.agents/` tree within whichever directory pi resolves as its project root (the nearest ancestor carrying `.pi/` or `.agents/`). A project-local install therefore resolves correctly; a `--global` install resolves only when no nearer ancestor carries either, and pi's user scope cannot outrank a foreign `~/.agents/agents/` because legacy is loaded last. Verified 2026-09-13 against the extension's own source and docs.",
+      "effort": true,
+      "effort_notes": "Per-agent `thinking:` frontmatter, applied at spawn as a `:<level>` model suffix. The accepted set is first-party in pi-subagents' own source — off, minimal, low, medium, high, xhigh — so the neutral low|medium|high passes through unclamped and unmapped. Unvalidated on parse, so an invented level would reach the model string and fail the spawn. Verified 2026-09-13."
     }
   },
   "features": {
