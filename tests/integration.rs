@@ -269,6 +269,14 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
             assert_eq!(matches.len(), 1, "{target} must emit one {} command", command.name);
             let (path, content) = matches[0];
             assert!(content.contains("## Cost discipline"), "{target} {path} missed command preamble");
+            // The ruleset is global: the shared preamble carries it, so every
+            // target's every command must render it — not just the ones this repo
+            // happened to wire a marker into.
+            assert_eq!(
+                content.matches("## Model routing").count(),
+                1,
+                "{target} {path} must carry the model-routing ruleset exactly once"
+            );
             assert!(!content.contains("shipmates:command-preamble"), "{target} {path} leaked command marker");
             assert!(!content.contains("shipmates:acceptance-board"), "{target} {path} leaked board marker");
             assert!(
@@ -974,7 +982,7 @@ fn test_matrix_model_surface_is_complete() {
 }
 
 /// The model-routing ruleset is a *global* one. It is expanded from the shared
-/// cost-discidence preamble, so **every** command carries it — not only the two
+/// cost-discipline preamble, so **every** command carries it — not only the two
 /// that spawn the most subagents. A marker left in a single command would make
 /// the ruleset look installed everywhere while reaching only that command.
 #[test]

@@ -25,10 +25,14 @@ repeated instructions and low-signal output out of the main context.
 
 ## Reusable command preamble
 
-The marker below is expanded into every rendered command. Keep this block short and stable: command
-authors reference it instead of copying cost rules into each workflow. **Model routing** is the one
-deliberately large member: it is policy every command needs — each drives the crew differently — so it
-globalises here rather than being opted into per command, and its size is tracked in #450.
+The markers below are expanded into every rendered command. Keep everything except **Model routing**
+short and stable: command authors reference it instead of copying cost rules into each workflow.
+**Model routing** is the one deliberately large member, and it is inlined here rather than opted into
+per command because every command spawns the crew and each drives it differently — a ruleset only some
+commands carry is a ruleset the rest silently route around. Its size is tracked in #450. The
+`<!-- shipmates:model-routing -->` marker at the end of the block below expands the **Model routing**
+section further down this file, which is the only statement of it; that marker is expanded after the
+preamble itself, so the substitution order in `render_body` is load-bearing.
 
 <!-- command-preamble:start -->
 ## Cost discipline

@@ -67,8 +67,9 @@ fn subagent_preamble() -> &'static str {
 }
 
 /// The one canonical statement of pool discovery, the resolution order and the
-/// audit line. `ship-issue` and `ship-epic` carry only the marker, so the
-/// algorithm has a single source and cannot drift between the two commands.
+/// audit line. The marker that expands it lives inside the shared cost-discipline
+/// preamble, so every rendered command carries it and none can drift from the
+/// doctrine — no command opts in, and none can be left out.
 fn model_routing() -> &'static str {
     doctrine_section("<!-- model-routing:start -->", "<!-- model-routing:end -->")
 }
@@ -84,6 +85,13 @@ fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
 }
 
 /// Render a harness-neutral command body into a harness's dialect.
+///
+/// Order matters, and only here: the command preamble is expanded first, and the
+/// model-routing ruleset is expanded last, because the preamble's own text carries
+/// the ruleset's marker. Reordering those two substitutions silently drops the
+/// ruleset from every command — `test_every_command_carries_the_model_routing_ruleset`
+/// and the preamble unit test both fail loudly if it happens, so treat this list
+/// as ordered rather than as a set.
 pub fn render_body(text: &str, d: &Dialect) -> String {
     let mut out = text.replace(COMMAND_PREAMBLE_MARKER, command_preamble());
     out = out.replace(ACCEPTANCE_BOARD_MARKER, acceptance_board());

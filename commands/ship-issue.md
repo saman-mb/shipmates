@@ -44,8 +44,8 @@ Never assume or hardcode a model for a subagent. Harnesses offer different model
 different access, so the right model is chosen **at spawn, by task complexity, from what is
 available** — not written into any crew file. Which tier a role starts at, which pool it resolves
 against, the resolution order, each target's override and effort surface, and the audit line every
-spawn reports are stated once in the **Model routing** section of the cost-discipline preamble above —
-follow it there; do not restate it here.
+spawn reports are stated once in the **Model routing** section above — follow it there; do not restate
+it here.
 
 ---
 

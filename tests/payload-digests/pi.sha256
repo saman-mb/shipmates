@@ -5,7 +5,7 @@ target=pi
 .agents/skills/ship-epic/SKILL.md 3e4370b538eb033bc4b3a1c1cc3200c0bcf9c13a14f63c6e46f1770db0a2b975
 .agents/skills/ship-fix-bug/SKILL.md c3ae9d302ed76a822bb52e93cdb5dad197a7ec3e45165214c7c6546e68f8e515
 .agents/skills/ship-harden/SKILL.md 33bf3ec547aab09fef0580aa9329b10ecfea85779d6900c9f6a1bbee56d0988d
-.agents/skills/ship-issue/SKILL.md fdb196f85e8449fce1e037aa1c4e57f17119381b8ba5bdcb1930928a328a5587
+.agents/skills/ship-issue/SKILL.md f2dc6d3e74c2a0e1ccac9c823b2f13ea4e93284e897f90943fc3ceac0e6bba18
 .agents/skills/ship-migrate/SKILL.md 5ef689532ec7d9c795dfa99d99b1464ab6d04e8b9b8587b395906c8d75db75fa
 .agents/skills/ship-onboard/SKILL.md 0f0bb8b828de94d2482506604d22d11f1e225422537fafd333659ddcf93d6285
 .agents/skills/ship-plan-epics/SKILL.md 86d3fb61bfe1db1323b83b290bae61d768ecd04b801ccc3cbc50824ffccd2b4c

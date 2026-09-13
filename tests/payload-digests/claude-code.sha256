@@ -19,7 +19,7 @@ target=claude-code
 .claude/skills/ship-epic/SKILL.md 1c88765158be9d6c34e3a9c7ac91807ceee2d3dffca2a522f37206304866aea5
 .claude/skills/ship-fix-bug/SKILL.md 8e8f554ccb5baa72288c76b3c982954858744741a0afb81db7a1b5d00e8066db
 .claude/skills/ship-harden/SKILL.md 03f770f57d5fd01754686485c2fe0910a13350a5dd83cb9e4c62844c4aa11686
-.claude/skills/ship-issue/SKILL.md 9e87c1f3858023461e070ae9bd1f4cc8ec1adaec8b1a2bc0e81af36e187030eb
+.claude/skills/ship-issue/SKILL.md 77ca97afacb1669773b079167da8fdb40b7d4f5f8c00219874d55b41a1668498
 .claude/skills/ship-migrate/SKILL.md 688c5c88efbeaeb6e3f37f36e89738f598b98dac672b1ed9ac20ea0eee7160a4
 .claude/skills/ship-onboard/SKILL.md 848e6bcf2a6d455447965dcf800ab37d685a3afe9efa36341df675a7535ef821
 .claude/skills/ship-plan-epics/SKILL.md 9f86dc4c9b255f5bd4d01c41efb101fd8a6fe4bf6436c9d5a713fd08e91acf27
