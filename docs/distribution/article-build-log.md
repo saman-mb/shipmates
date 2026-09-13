@@ -82,20 +82,21 @@ Instead, every specialist enforces whatever standard is documented in **your** r
 
 ## Multi-Harness Portability
 
-While Shipmates is runtime-verified on **Claude Code** today, the CLI compiles native adapters for six additional harnesses:
+While Shipmates is runtime-verified on **Claude Code** today, the CLI compiles native adapters for seven additional harnesses:
 - **Claude Code**: `.claude/skills/` and `.claude/agents/`
 - **OpenCode**: `.opencode/commands/`, `.opencode/agents/`, and native TypeScript `.opencode/tools/`
 - **Antigravity CLI**: `.agents/skills/` and `.agents/agents/`
 - **Codex CLI**: `.agents/skills/` and standalone TOML `.codex/agents/`
-- **Cursor**: `.agents/skills/`
+- **Cursor**: `.cursor/skills/`
 - **GitHub Copilot**: `.agents/skills/` and `.github/agents/`
+- **Pi**: `.agents/skills/` and `.pi/agents/`
 - **Windsurf**: `.windsurf/skills/`
 
 ---
 
 ## Built-in Developer Toolbox
 
-Shipmates also includes an opt-in suite of 10 self-contained developer tools that subagents can reach for automatically:
+Shipmates also includes an opt-in suite of 11 self-contained developer tools that subagents can reach for automatically:
 - `scrub`: Redacts API keys, credentials, and tokens from logs before committing.
 - `domaincheck`: Checks domain availability via RDAP (registry-authoritative, not DNS guesswork).
 - `badge`: Generates SVG status badges for READMEs.
@@ -106,6 +107,7 @@ Shipmates also includes an opt-in suite of 10 self-contained developer tools tha
 - `sparkline`: Generates lightweight SVG trendlines.
 - `svgflow`: Renders SVG workflow state diagrams.
 - `termgif`: Converts terminal sessions into optimized demo GIFs.
+- `gh`: Automates GitHub issue triage, releases, and PR workflows without interactive auth prompts.
 
 ---
 

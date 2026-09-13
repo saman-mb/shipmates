@@ -55,7 +55,7 @@ where it and the record disagree, the record wins.
 | codex | query | a debug subcommand that prints the raw catalog as JSON | per-spawn, with an agent-defaults table and a static agent file beneath | separate key; 6-step scale, gated on model support | none documented (open vendor request) |
 | cursor | query | a session flag that lists all models, plus a listing subcommand | static agent file per subagent (`inherit` is the default), plus a session-wide flag | folded into the model string as a bracketed parameter; values are model-defined | none documented; documented instead are fallback conditions → the model is substituted |
 | github-copilot | declared | none documented as a command; an interactive picker plus a static reference table | per-spawn, plus a static agent file and a settings override map | separate key with three mismatched first-party vocabularies (flag / settings key / free-string agent field) | repo-root allow-list file (globs plus one fallback directive) and an agent policy key; abort |
-| pi | query | a listing flag with an optional fuzzy search; a catalog-refresh subcommand | session-level; the target ships no built-in subagents by design | separate key; 7-step scale with a per-model tristate support map | scoping, not enforcement (an enabled-models key and a models-pattern flag) |
+| pi | query | a listing flag with an optional fuzzy search; a catalog-refresh subcommand | per-spawn, over a per-agent file and a session-level default | separate key; 7-step scale with a per-model tristate support map | scoping, not enforcement (an enabled-models key and a models-pattern flag) |
 | windsurf | inherit | none on the surface we target; a companion CLI documents a family-grouped JSON listing we do not drive | session-level on the surface we target | none; only an interactive shortcut-bound cycle | admin-side only; restriction and a team default, no abort |
 
 Reading: **five `query`, two `declared`, one `inherit`** — and every one of the five query targets still
@@ -73,7 +73,7 @@ needs a declared tiering, because enumeration answers *what exists*, never *what
 | claude-code declared pool | not mentioned | **contradicted** — a harness-native allow-list key pair with per-surface enforcement | `code.claude.com/docs/en/model-config` |
 | antigravity / github-copilot / windsurf effort | absent | **conflated** — static per-agent effort is absent on all three (the CI-enforced `effort` flag stays `false`), but a routing-usable override is documented on the first two: a run-level flag on antigravity, a separate agent-frontmatter key with three mismatched vocabularies on github-copilot; only the third has none | `antigravity.google/docs/cli/headless`; `docs.github.com/en/copilot/reference/copilot-cli-reference/{cli-command-reference,cli-config-dir-reference}`; `docs.devin.ai/cli/models` |
 | opencode / pi effort surface | a separate static key on opencode; a run-level override on pi | **partly confirmed, partly reclassified** — opencode does document a separate per-agent pass-through key (the story's mapping holds), with a run-level variant preset on top; pi's effort is a separate per-session key on a 7-step scale, not the run-level override the story lists | `opencode.ai/docs/models`; `opencode.ai/docs/agents`; `opencode.ai/docs/cli`; pi's own `docs/usage.md`, `docs/settings.md`, `docs/models.md` |
-| pi declared pool | a document-enforced allow-list that **aborts** (`enforce: true`, `allow: [...]`) — the story's reference semantics | **contradicted** — scoping is documented (`enabledModels` / a models-pattern flag) and an unknown override key is **ignored**; no allow-list with abort semantics is documented for the shipped product. The aborting shape the story cites is a *subagent example extension* in the vendor repo, not a built-in surface | pi's own `docs/usage.md`, `docs/settings.md`, `docs/models.md`; the extension README in the vendor repository |
+| pi declared pool | a document-enforced allow-list that **aborts** (`enforce: true`, `allow: [...]`) — the story's reference semantics | **contradicted** — scoping is documented (`enabledModels` / a models-pattern flag) and an unknown override key is **ignored**; no allow-list with abort semantics is documented. The aborting shape the story cites lives in the third-party extension pi's crew depends on (#437), not in the product's own documented surface | pi's own `docs/usage.md`, `docs/settings.md`, `docs/models.md`; the extension's own README |
 | claude-code subagent-model environment override | reported, not documented | **re-verified** — the environment override is first-party documented (with a force variant), so the mechanism is no longer a report; only the reported absence of an effective-model field in the tool result remains unverified | `code.claude.com/docs/en/model-config`; `code.claude.com/docs/en/sub-agents` |
 | github-copilot agent `model` property | no `model` property in the custom-agents reference | **contradicted** — the CLI reference documents a `model` property that inherits the default when unset, alongside a priority-ordered array form and an agent policy key | `docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference` |
 | windsurf enumeration | queryable | **qualified** — the listing belongs to a companion CLI whose surface we do not target | `docs.devin.ai/cli/reference/commands` |
@@ -154,8 +154,9 @@ rank. Paths and keys are in the Decision above. The adapter layer never resolves
 
 One order, every target: explicit spawn value → declared default → parent/session value → the model's
 own effort default. Per-target absences are stated in the record rather than assumed: opencode, cursor
-and windsurf document no per-spawn argument; pi, antigravity and windsurf document no per-agent file we
-emit; and where a level does not exist, the next level in the order applies.
+and windsurf document no per-spawn argument; antigravity and windsurf document no per-agent model key we
+can rely on. Pi's per-agent and per-task keys arrive with the third-party extension its crew comes from
+(#437), so its row records them as that surface's, not the core product's.
 
 ### 4. How is the pool enforced?
 
@@ -191,8 +192,9 @@ never ships a model-name default. The per-harness `model_surface` record is repo
 - **No per-spawn argument (opencode, cursor, windsurf).** The override is a static agent file (the first
   two) or session level (the third); the orchestrator uses what the target documents and records the
   substitution when the harness's own rules win.
-- **No per-agent file we emit (pi, antigravity, windsurf).** Session-level resolution, stated in the
-  record — never invented as a frontmatter key.
+- **No per-agent model key in the product we target (antigravity, windsurf).** Session-level
+  resolution, stated in the record — never invented as a frontmatter key. Pi is the counter-example: its
+  per-agent key comes from the extension its crew depends on, and sits at a different layer.
 - **No routing-usable effort (windsurf).** Effort is `none`; the tier still applies to the model, and the
   audit line records the effort as unresolved rather than guessing a value.
 - **No row at all (a harness newer than the installed payload).** Treated as no-enumeration → declared →

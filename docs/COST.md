@@ -290,7 +290,7 @@ is a stated finding.
 | codex | query | per-spawn, with an agent-default layer and a static agent file beneath it | none · no documented allow-list | separate key · a 6-step scale, gated on model support |
 | cursor | query | static agent file per subagent, plus a session-wide flag | fallback · admin, plan or legacy gates substitute a compatible model | folded into the model string · a bracketed effort parameter; accepted values are model-defined |
 | github-copilot | declared | per-spawn, plus a static agent file and a settings override map | abort · an invalid allow-list is rejected before the run | separate key · three first-party vocabularies that do not match: a 5-name flag, a 4-name settings key, a free-string agent field |
-| pi | query | session-level; the target ships no built-in subagents by design | none · scoping only, no abort | separate key · a 7-step scale with a per-model tristate support map; an unsupported level is clamped away |
+| pi | query | per-spawn, over a per-agent file and a session-level default | none · scoping only, no abort | separate key · a 7-step scale with a per-model tristate support map; an unsupported level is clamped away |
 | windsurf | inherit | session-level on the surface we target | none · admin-side filtering, no user file | none · only an interactive shortcut-bound cycle, not expressible non-interactively |
 
 **Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is

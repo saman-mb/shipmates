@@ -351,10 +351,10 @@
       }
     },
     "pi": {
-      "agents": false,
-      "agents_notes": "Correctly false: Pi ships no subagents, so the adapter emits the 15 commands as skills to `.agents/skills/` and roles are dropped. Pi has no native declarative subagent schema per first-party docs. Verified 2026-09-13: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md",
-      "effort": false,
-      "effort_notes": "No per-agent effort field in Pi agent schema (and skills-only, no role emission). Adapter emits nothing rather than invent a key. Verified 2026-09-13.",
+      "agents": true,
+      "agents_notes": "NOTE THE DEPENDENCY: pi's subagent mechanic is NOT in core pi — it comes from the third-party `pi-subagents` extension (github.com/nicobailon/pi-subagents), and an install without it resolves no crew. With it, crew are pi-native at `.pi/agents/<name>.md` — the extension's canonical project scope, alongside `~/.pi/agent/agents/**/*.md` for user scope. `tools` must be a COMMA-SEPARATED SCALAR, never a YAML list: the reader is a line-based parser that opens a block on an empty value and reads the whole list as one unmatchable name, so a mismatched file leaves the seat with NO tools and no error — that was #437, where Antigravity's crew at the shared legacy `.agents/agents/` (which pi still reads for compatibility) was handed to pi. Shipmates emits to `.pi/agents/`, which outranks the legacy `.agents/` tree within whichever directory pi resolves as its project root (the nearest ancestor carrying `.pi/` or `.agents/`). A project-local install therefore resolves correctly; a `--global` install resolves only when no nearer ancestor carries either, and pi's user scope cannot outrank a foreign `~/.agents/agents/` because legacy is loaded last. Verified 2026-09-13 against the extension's own source and docs.",
+      "effort": true,
+      "effort_notes": "Per-agent `thinking:` frontmatter, applied at spawn as a `:<level>` model suffix. The accepted set is first-party in pi-subagents' own source — off, minimal, low, medium, high, xhigh — so the neutral low|medium|high passes through unclamped and unmapped. Unvalidated on parse, so an invented level would reach the model string and fail the spawn. Verified 2026-09-13.",
       "model_surface": {
         "discovery_tier": "query",
         "enumeration": {
@@ -364,23 +364,29 @@
         },
         "identity": "`provider/id`, with an optional level suffix that folds the thinking level into the same argument.",
         "runtime_model_override": {
-          "kind": "session-level",
-          "notes": "A CLI model/provider pair and settings defaults. The target documents that it intentionally ships no built-in subagents, so there is no per-agent model key to set."
+          "kind": "per-spawn",
+          "notes": "A per-task model (plus thinking and fallback models) on the subagent call, over a per-agent model key in the agent file and a session-level model/provider default. The crew mechanic is the third-party subagent extension, so its own frontmatter is what carries the static layer."
         },
         "effort": {
           "kind": "separate-key",
           "vocabulary": "A 7-step scale from off through a maximum, plus per-model support maps and token budgets",
           "clamp": "A per-model tristate map marks a level supported, omitted (provider default) or unsupported; an unsupported level is hidden or clamped away",
-          "notes": "A session flag, a settings default, per-model level maps and a budget map; the level is also surfaced read-only to shell tools."
+          "notes": "A per-agent thinking key, a per-task override, a session flag, a settings default, per-model level maps and a budget map; a level can also ride the model argument as a suffix, and the resolved level is surfaced read-only to shell tools."
         },
         "declared_pool": {
           "mechanism": "Scoping only: an enabled-models settings key and a models-pattern flag control what cycles; no allow-list with abort semantics is documented",
           "enforcement": "none",
           "notes": "The docs do not state that a directly requested unlisted model is rejected, and unknown keys in the model-override map are ignored. Provider/model environment variables are session outputs injected into shell tools, not input overrides."
         },
-        "reported_gaps": [],
+        "reported_gaps": [
+          {
+            "item": "Reported (not documented): a scoping mechanism (an enabled-models key, a models-pattern flag) constrains what cycles, but the docs do not state that a directly requested unlisted model is rejected, and unknown keys in the model-override map are ignored. Verified against the same docs; never emitted as a frontmatter key.",
+            "label": "reported-not-documented",
+            "url": "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md"
+          }
+        ],
         "verified_on": "2026-09-13",
-        "notes": "Capability, not emission. First-party docs (the vendor's own repository) checked 2026-09-13: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/usage.md ; https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/settings.md ; https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md"
+        "notes": "Capability, not emission. Checked 2026-09-13 against pi's own repository (model surface) and the third-party subagent extension's own README (the per-agent and per-task override keys, which are not core pi): https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/usage.md ; https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/settings.md ; https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md"
       }
     }
   },

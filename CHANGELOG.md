@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - 2026-09-13
+## [0.6.0] - 2026-09-13
 
 ### Added
 
@@ -31,6 +31,63 @@ All notable changes to this project are documented here. The format follows
 - **ADR 0002 — discovering the available model pool before routing a tier to a model**, recording
   the verified per-harness evidence, the corrections it forced against the story's own table, and
   the six design answers behind the decision (#434).
+- **Acceptance-board retry costs less and reports consistently.** A seat that accepted is carried when
+  the fixer delta implements that seat's own finding — asking a reviewer to re-approve the change they
+  requested is a predictable green — and a seat whose verdict came from running the gates is re-covered
+  by re-running them rather than by re-seating. Scaled seats now damp by artifact rather than by flag
+  count, so a change confined to one file cluster pulls at most one specialist beyond the mandatory
+  PE+PO core, and the board's SDET seat is skipped outright when the pre-PR pass already covered the
+  same tree and CI re-runs those gates. The retry report vocabulary is uniform (`re-run` / `carried
+  ACCEPT` / `newly seated` / `still gated`), and the "accepted == what merges" guardrail is scoped to
+  seated or re-run reviewers so it no longer contradicts a carried ACCEPT (#370 #372 #445).
+
+## [0.5.0] - 2026-09-13
+
+### Added
+
+- **Intelligent harness auto-detection on `shipmates install`:** `shipmates install` without
+  `--harness` now discovers which supported harnesses are actually installed on the system (via
+  PATH binaries, home configuration directories, project markers, and install receipts) and
+  configures an optimal native setup for each detected harness — native dialect, tool vocabulary,
+  least-privilege permissions, and canonical user-scope steering in 1 command, 1 time, perfectly (#438).
+- **Canonical user-scope steering (`steering/global.md`) installation:** `shipmates install` installs
+  domain-neutral global heuristics into user-scope instruction files across supported harnesses:
+  Tier A for Cursor (`~/.cursor/rules/shipmates.mdc`) and Tier B for Claude Code (`~/.claude/CLAUDE.md`),
+  Codex (`~/.codex/AGENTS.md`), OpenCode (`~/.config/opencode/AGENTS.md`), Antigravity (`~/.gemini/GEMINI.md`),
+  and Pi (`~/.pi/agent/AGENTS.md`) using `<!-- shipmates:global-steering -->` managed blocks with atomic
+  writes and idempotency (#417, #430, #438).
+- **`shipmates doctor` vocabulary and foreign agent checks:** Doctor now validates that every installed
+  agent's declared tools resolve within that harness's first-party tool vocabulary, verifies required
+  least-privilege keys (such as OpenCode's catch-all `*: deny`), flags foreign agent vocabularies in
+  shared trees (`.agents/agents/`) that would cause silent zero-tool seats on Pi, and reports user-scope
+  global steering status (#438).
+
+## [0.4.1] - 2026-09-13
+
+### Added
+
+- **Pi receives the crew.** `shipmates install --harness pi` now installs the thirteen specialists as
+  pi-native agents at `.pi/agents/<name>.md`, alongside the fifteen commands on the shared
+  `.agents/skills/` tree. Pi's crew mechanic comes from the third-party `pi-subagents` extension rather
+  than core pi, so that dependency is recorded in `tools/harness_matrix.json` and stated in the README
+  instead of being glossed over. Pi's per-role reasoning effort is emitted as `thinking:` (#437).
+
+### Fixed
+
+- **Pi crew seats spawned with no tools at all, silently.** Pi reads the shared `.agents/agents/` tree
+  as a *legacy* agent location, and its frontmatter reader is a line-based parser rather than a YAML
+  loader — so Antigravity's YAML-list `tools:` was read as a single unmatchable tool name. On any
+  machine where the Antigravity crew was installed, every pi crew seat resolved with an empty toolset:
+  reviewers could not read the diff, builders could not edit, and nothing errored at discovery time.
+  Pi's crew now ship to `.pi/agents/` in pi's own dialect, with `tools:` as the comma-separated scalar
+  its parser expects — the path that outranks the legacy `.agents/` tree within whichever directory pi
+  resolves as its project root, so a project-local install resolves correctly. A keyless regression
+  test asserts the path, the scalar shape, and that pi never writes crew into the shared tree (#437).
+  A `--global` install resolves only when no nearer ancestor carries `.pi/` or `.agents/`; that
+  residual is tracked separately rather than papered over.
+- `tools/harness_matrix.json` no longer claims Pi ships no subagents; the `agents` and `effort` flags
+  are now enforced against the adapter's real output, and Pi's registry entry records its tool
+  vocabulary and the `pi-web-access` dependency its `web` capability names (#437).
 
 ## [0.4.0] - 2026-09-13
 

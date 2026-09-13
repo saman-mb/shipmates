@@ -149,11 +149,15 @@ cargo install shipmates
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
-Then install the crew for a harness. By default it drops into your global home directory. Use
-`--local` for the current directory, or `--dir` to target a specific project:
+Then install the crew. By default it drops into your global home directory. When `--harness` is
+omitted, `shipmates install` automatically detects which harnesses are installed on your machine
+and sets up each one with its native agent dialect, least-privilege permissions, tools, and
+canonical user-scope global steering in your home directory instruction files. One command installs
+everything 1 time, perfectly. Use `--local` for the current directory, or `--dir` to target a
+specific project:
 
 ```bash
-shipmates install                           # interactive: pick harness(es); all tools
+shipmates install                           # auto-detects harnesses + installs tools & global steering
 shipmates install --harness claude-code     # the proven target
 shipmates install --harness opencode        # format-verified, not runtime-verified
 shipmates install --harness codex
@@ -187,12 +191,16 @@ antigravity      .agents/          agents + skills   (agy — the successor to t
 codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
 cursor           .cursor/          skills only (first-party tree; slash picker reads it)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
-pi               .agents/          skills only (open tree; natively supported)
+pi               .pi/ + .agents/     crew (.md) at .pi/agents, skills at .agents/skills
 windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
-Every harness compiles the same canonical crew and commands. Five have a native subagent directory
-and receive the thirteen specialists as agents; the other three ship the fifteen commands as skills only.
+Every harness compiles the same canonical crew and commands. Six receive the thirteen specialists as
+agents; the other two ship the fifteen commands as skills only. Pi's crew resolve through the
+third-party `pi-subagents` extension — core pi documents no subagent schema of its own — so a pi
+install without that extension resolves no crew. Pi reads its crew from the nearest ancestor directory
+carrying `.pi/` or `.agents/`, so install into your project: a home-directory install only takes effect
+when no nearer ancestor carries either.
 Four harnesses (codex, antigravity, github-copilot, pi) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
 one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of colliding
@@ -259,7 +267,8 @@ uninstall.
 against the global home directory and the `claude-code` harness by default. Pass `--harness` to
 check another harness, or use `--local` / `--dir /path/to/project` for another root; doctor does not
 discover harnesses from receipts. It checks the harness tree, receipt ownership, missing files,
-modified or unreadable files, and an old `commands/<name>.md` layout shadowing a skill. A missing receipt
+modified or unreadable files, agent tool vocabulary resolution, shared-tree dialect isolation,
+user-scope global steering status, and an old `commands/<name>.md` layout shadowing a skill. A missing receipt
 warns that ownership is unknown; existing files stay untouched and only
 genuinely missing payload files may be restored. An invalid receipt is a problem, and `doctor --fix`
 refuses ownership-based repair. `doctor --fix` repairs receipt-owned files only, backing up existing
@@ -525,8 +534,10 @@ question is whether it's been *run*.
 - **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot,
   Pi, and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
   verified against that harness's parsing source and first-party docs. opencode, Antigravity, Codex CLI and
-  GitHub Copilot get the full crew + all 15 commands; the other three — Cursor, Pi, and Windsurf — have no native
-  subagent directory, so they ship the 15 skills only. A live run has not been done on any of them; opencode's open questions are tracked in
+  GitHub Copilot get the full crew + all 15 commands; the other two — Cursor and Windsurf — have no native
+  subagent directory, so they ship the 15 skills only. Pi's crew land at `.pi/agents/` and resolve through
+  the third-party `pi-subagents` extension, not core pi — and against the nearest ancestor directory
+  carrying `.pi/` or `.agents/`, so they take effect for a project-local install. A live run has not been done on any of them; opencode's open questions are tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
   CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates builds for.
