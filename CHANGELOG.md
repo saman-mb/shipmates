@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-09-13
+
+### Added
+
+- **Pi receives the crew.** `shipmates install --harness pi` now installs the thirteen specialists as
+  pi-native agents at `.pi/agents/<name>.md`, alongside the fifteen commands on the shared
+  `.agents/skills/` tree. Pi's crew mechanic comes from the third-party `pi-subagents` extension rather
+  than core pi, so that dependency is recorded in `tools/harness_matrix.json` and stated in the README
+  instead of being glossed over. Pi's per-role reasoning effort is emitted as `thinking:` (#437).
+
+### Fixed
+
+- **Pi crew seats spawned with no tools at all, silently.** Pi reads the shared `.agents/agents/` tree
+  as a *legacy* agent location, and its frontmatter reader is a line-based parser rather than a YAML
+  loader — so Antigravity's YAML-list `tools:` was read as a single unmatchable tool name. On any
+  machine where the Antigravity crew was installed, every pi crew seat resolved with an empty toolset:
+  reviewers could not read the diff, builders could not edit, and nothing errored at discovery time.
+  Pi's crew now ship to `.pi/agents/` in pi's own dialect, with `tools:` as the comma-separated scalar
+  its parser expects — the path that outranks the legacy `.agents/` tree within whichever directory pi
+  resolves as its project root, so a project-local install resolves correctly. A keyless regression
+  test asserts the path, the scalar shape, and that pi never writes crew into the shared tree (#437).
+  A `--global` install resolves only when no nearer ancestor carries `.pi/` or `.agents/`; that
+  residual is tracked separately rather than papered over.
+- `tools/harness_matrix.json` no longer claims Pi ships no subagents; the `agents` and `effort` flags
+  are now enforced against the adapter's real output, and Pi's registry entry records its tool
+  vocabulary and the `pi-web-access` dependency its `web` capability names (#437).
+
 ## [0.4.0] - 2026-09-13
 
 ### Added
