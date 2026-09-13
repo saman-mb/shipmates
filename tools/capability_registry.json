@@ -44,7 +44,7 @@
       }
     },
     "opencode": {
-      "notes": "skill_path targets .opencode/commands/ rather than .opencode/skills/ as a safety property, not a preference: opencode skills are model-invoked through its native `skill` tool and have no `disable-model-invocation` equivalent, so shipping sixteen worktree-creating, branch-pushing workflows as skills would make them auto-startable. Commands are `/`-invoked only. Subdirectories under .opencode take their plural names.",
+      "notes": "skill_path targets .opencode/commands/ rather than .opencode/skills/ as a safety property, not a preference: opencode skills are model-invoked through its native `skill` tool and have no `disable-model-invocation` equivalent, so shipping sixteen worktree-creating, branch-pushing workflows as skills would make them auto-startable. Commands are `/`-invoked only. Subdirectories under .opencode take their plural names. opencode's `write` tool is first-class alongside `edit` (verified 2026-09-13 against the shipped binary, which defines both in the same tool table alongside `bash`), and the `edit` capability maps to BOTH — `edit` alone cannot create a file.",
       "agent_path": ".opencode/agents/{name}.md",
       "skill_path": ".opencode/commands/{name}.md",
       "project_instructions": "AGENTS.md",
@@ -55,7 +55,7 @@
         "read": "read",
         "search": "grep",
         "glob": "glob",
-        "write": "edit",
+        "write": "write",
         "edit": "edit",
         "bash": "bash",
         "web-search": "websearch",
@@ -69,6 +69,7 @@
           "glob"
         ],
         "edit": [
+          "write",
           "edit"
         ],
         "bash": "bash",
