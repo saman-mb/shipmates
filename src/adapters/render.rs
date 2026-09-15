@@ -699,7 +699,11 @@ mod tests {
     /// tokens or shapes that only make sense inside this repo: no HTML comment,
     /// no `{{…}}` placeholder, no `$`-plus-digit (a command file is scanned for
     /// one and a fence would not protect it), and no leftover marker. The
-    /// resolution order must be stated exactly once, in this block.
+    /// resolution order must be stated exactly once, in this block. The pool's
+    /// location and its resolution root are a **contract** a captain relies on,
+    /// not prose, so they are asserted here: exactly one project-pool path, the
+    /// run's repository root as the root it resolves against, the closed
+    /// three-value condition vocabulary, and no copy of the path #449 retired.
     #[test]
     fn test_model_routing_block_is_canonical_and_self_contained() {
         let out = render_body("<!-- shipmates:model-routing -->", &CLAUDE_CODE);
@@ -709,6 +713,25 @@ mod tests {
             ),
             "model routing must state the resolution order verbatim"
         );
+        assert!(
+            out.contains("run's repository root"),
+            "the block must define `<repo>` as the run's repository root"
+        );
+        assert!(
+            out.contains("`<repo>/model-pool.json`"),
+            "the block must name the project pool by its one shipped path"
+        );
+        assert!(
+            !out.contains("<repo>/.shipmates/model-pool.json"),
+            "the retired project-pool path must not survive in the block"
+        );
+        for condition in ["no pool", "pool unusable", "pool out of scope"] {
+            assert!(
+                out.contains(condition),
+                "the block must name the `{condition}` pool condition — a condition a captain \
+                 cannot see in the report is a silent one"
+            );
+        }
         assert!(!out.contains("<!--"), "block must carry no HTML comment");
         assert!(!out.contains("{{"), "block must carry no exporter token");
         assert!(!out.contains("shipmates:model-routing"));

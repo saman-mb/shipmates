@@ -1,6 +1,6 @@
 # ADR 0002 — Discovering the available model pool before routing a tier to a model
 
-**Status:** Accepted
+**Status:** Accepted (amended 2026-09-15)
 **Date:** 2026-09-13
 **Decided by:** `/ship-issue` #434
 **Bundles:** #434 (pool discovery + resolution order + audit), sibling to #296 (neutral spawn-hint rendering)
@@ -134,6 +134,44 @@ a two-command special case — so no command can drift from it. The repo-side ca
 7. **Ownership.** The pool **shape** (paths, keys, ladder, resolution order, enforcement, audit) is
    install-time canonical content. The pool **values** are runtime and per-user, and Shipmates never
    writes one into an installed file. The per-harness record is repo-side only and is never installed.
+
+---
+
+## Amendment — 2026-09-15
+
+It supersedes the project-pool **path and resolution root** in the Decision above (item 3). Everything
+else — the ladder, the precedence order, the enforcement contract, the audit line, the per-harness
+record — stands as written on 2026-09-13. The Context, Evidence and Options above are that day's record
+and are not rewritten.
+
+**The decision that moved (#449).** The project pool is `<run-root>/model-pool.json`, and `<repo>` in the
+canonical block is the **run's repository root**: the checkout the run was started from — the one its
+spawn worktrees are cut from — never a worktree its spawns run in. A spawn's working directory
+decides nothing, and isolation decides nothing either: an isolated checkout does not change the pool,
+and a project file at a root this run does not resolve is never the pool in force. The user file is
+unchanged at `~/.shipmates/model-pool.json`.
+
+**Retired path.** `<repo>/.shipmates/model-pool.json`. It put a captain-authored config inside
+Shipmates' own install-state namespace — the tree the installer owns and never scans, alongside
+`.shipmates/receipts/` — which made it per-machine wherever a repository ignores its install state, and
+why it could not reliably travel to a clone or to a worktree cut from one. It was therefore never effective on the flagship worktree path.
+The story swapped the path rather than adding a compat read: a second path is ambiguity in a block
+whose whole job is to have exactly one answer, and two paths for one artifact would have to be
+reconciled on every target.
+
+**Reporting.** The `pool` field of the `MODEL ROUTING:` line carries the source in force (`project` /
+`user` / `inherit`) plus exactly one condition from a **closed three-value vocabulary**: `no pool`
+(neither file present), `pool unusable` (the selected file exists but cannot be read or parsed — no
+fall-through to the other file, the semantics unchanged and now unambiguous), and `pool out of scope`
+(a project file exists at a root this run does not resolve, the retired path above included, and was
+therefore not consulted). No pool state is silent and none aborts a run, so a captain upgrading with a
+file on the retired path gets a named line instead of a silent ignore.
+
+**Residual risk.** A repository could already own a root `model-pool.json` meaning something else. If
+it is not a valid pool, the run reports `pool unusable` and continues — reported, non-fatal, one line.
+If it is a valid pool, that is the feature. The route is a one-way door for a captain who declared a
+pool under v0.7.x: the breakage is real and intended to be *reported* rather than silent, and the
+migration story is this amendment plus the release note.
 
 ## Design questions — answered
 

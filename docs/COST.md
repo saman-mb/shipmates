@@ -31,10 +31,13 @@ The markers below are expanded into every rendered command. Keep everything exce
 short and stable: command authors reference it instead of copying cost or argument-intake rules into
 each workflow. **Model routing** is the one deliberately large member, and it is inlined here rather
 than opted into per command because every command spawns the crew and each drives it differently — a
-ruleset only some commands carry is a ruleset the rest silently route around. Its size is tracked in
-#450. The `<!-- shipmates:model-routing -->` marker at the end of the block below expands the **Model
-routing** section further down this file, which is the only statement of it; that marker is expanded
-after the preamble itself, so the substitution order in `render_body` is load-bearing.
+ruleset only some commands carry is a ruleset the rest silently route around. Its size is bounded: the
+per-target table is trimmed to the actionable cells (#450) and a guard fails the build if it grows past
+its byte ceiling or restates a capability the record already holds, because these bytes are inlined
+into every command on every target. The `<!-- shipmates:model-routing -->` marker at the end of the
+block below expands the **Model routing** section further down this file, which is the only statement
+of it; that marker is expanded after the preamble itself, so the substitution order in `render_body`
+is load-bearing.
 
 <!-- command-preamble:start -->
 ## Cost discipline
@@ -263,10 +266,12 @@ the walk early only if it produced a **ranked** pool:
    managed/policy settings allow-list, or a repository-root allow-list file with a single fallback
    directive), **intersected with the user's declared pool, which supplies the rank**. A filter alone
    never picks a tier. The declared pool is a **ranking over user-chosen patterns**, not a list of
-   names: the project file `<repo>/.shipmates/model-pool.json` wins over the user file
+   names: the project file `<repo>/model-pool.json` wins over the user file
    `~/.shipmates/model-pool.json`, and its shape is `schema_version` (`1`), `tiers.mechanical[]`,
    `tiers.judgment[]`, and optional `effort.mechanical` / `effort.judgment` on the neutral
-   `low` / `medium` / `high` scale. Entries are patterns the target's own model surface accepts.
+   `low` / `medium` / `high` scale. `<repo>` is the **run's repository root** — the checkout the run was
+   started from, never the worktree cut from it. Entries are patterns the target's own model surface
+   accepts.
    **Treat every entry as one literal argument** — pass it to the harness surface as a single value,
    never spliced into a shell string or a command line. Shipmates never writes a value into either
    file. A pool file that is present but unusable — an unrecognised `schema_version`, malformed keys,
@@ -287,11 +292,13 @@ once per run and reuse it for every spawn in that run; re-resolve only when a su
 level of the order does not exist on a target, its row in the per-target table below says so.
 
 **Never guess.** An unknown or empty pool produces `inherit`, recorded as `inherit (no pool)`; a pool
-file that exists but cannot be used is recorded as `inherit (pool unusable)`, so a missing declaration
-and a broken one are never confused in the report. A concrete model identifier is never a fallback,
-never a default, and never an
-example. An enumeration command that exits non-zero, or whose output cannot be parsed, leaves the pool
-unknown: continue down the ladder.
+file that exists but cannot be used is recorded as `inherit (pool unusable)`, with no fall-through to
+the other file, so a missing declaration and a broken one are never confused. A project file at a root
+this run does not resolve — a worktree's own copy, or one left at the old in-tree `.shipmates/` path —
+is never the pool in force, and is reported as `pool out of scope`, the third tag its `pool` field may
+carry, a closed set of three; no pool state is silent or fatal. A concrete model identifier is never
+a fallback, never a default, and never an example. An enumeration command that exits non-zero, or whose
+output cannot be parsed, leaves the pool unknown: continue down the ladder.
 
 **Enforcement.** An identity outside the resolved pool is **refused**, not quietly clamped — resolve a
 different candidate, or stop and report. Not every target's documented mechanism can hold that:
@@ -302,7 +309,7 @@ orchestrator self-enforces or falls to
 the discrepancy in the report** instead of pretending enforcement held.
 
 **Audit — one `MODEL ROUTING:` line per spawn.** Every spawn adds one compact line to the run report,
-shaped `MODEL ROUTING: <role> tier=<mechanical|judgment> pool=<project|user|inherit> model=<identity the harness accepts> effort=<requested>→<resolved> <honoured|substituted|inherit>`.
+shaped `MODEL ROUTING: <role> tier=<mechanical|judgment> pool=<project|user|inherit>[ (<condition>)] model=<identity the harness accepts> effort=<requested>→<resolved> <honoured|substituted|inherit>`.
 `<requested>` is the neutral scale (`low` / `medium` / `high`, or `none` when no effort was named) and
 `<resolved>` is what the harness reports for it — the two differ whenever a target maps the request onto
 its own vocabulary, and a clamped level is recorded here rather than dropped. Substitution is reported
@@ -316,20 +323,19 @@ help output — and treat every step above as degradable: a vanished enumeration
 the declared pool, a missing or unreadable pool falls through to `inherit`, and a target with no row in
 the table below is treated as no-enumeration → declared → `inherit`.
 
-**Per-target surface.** Discovery tier, the override mechanism the harness documents, the enforcement
-it can actually hold, and the effort surface with its clamp. No cell is ever blank: a missing feature
-is a stated finding.
+**Per-target surface.** Discovery tier, override kind, the enforcement it can actually hold, and the
+effort surface with its clamp. No cell is ever blank: a missing feature is a stated finding.
 
 | Target | Discovery tier | Override kind | Enforcement | Effort surface and clamp |
 |--------|----------------|---------------|-------------|--------------------------|
-| claude-code | declared | per-spawn, over a documented session/frontmatter/env chain | fallback · the interactive switch rejects, other surfaces substitute | separate key · a 5-step depth scale plus a non-model orchestration pseudo-level; an unsupported level clamps down |
-| opencode | query | static agent file, plus a global config value and a session flag | none · provider-level exclusion only, silent | separate key · provider-defined vocabulary, no fixed enum, plus a run-level variant preset |
-| antigravity | query | session-level; no per-agent model key | abort · an unknown run value exits non-zero | run-level · a 3-value flag, separate from the reasoning tier folded into the model slug |
-| codex | query | per-spawn, with an agent-default layer and a static agent file beneath it | none · no documented allow-list | separate key · a 6-step scale, gated on model support |
-| cursor | query | static agent file per subagent, plus a session-wide flag | fallback · admin, plan or legacy gates substitute a compatible model | folded into the model string · a bracketed effort parameter; accepted values are model-defined |
-| github-copilot | declared | per-spawn, plus a static agent file and a settings override map | abort · an invalid allow-list is rejected before the run | separate key · three first-party vocabularies that do not match: a 5-name flag, a 4-name settings key, a free-string agent field |
-| pi | query | per-spawn, over a per-agent file and a session-level default | none · scoping only, no abort | separate key · a 7-step scale with a per-model tristate support map; an unsupported level is clamped away |
-| windsurf | inherit | session-level on the surface we target | none · admin-side filtering, no user file | none · only an interactive shortcut-bound cycle, not expressible non-interactively |
+| claude-code | declared | per-spawn | fallback | separate key · unsupported level clamps down |
+| opencode | query | static agent file | none | separate key · no clamp |
+| antigravity | query | session-level | abort | run-level · no clamp |
+| codex | query | per-spawn | none | separate key · gated on model support |
+| cursor | query | static agent file | fallback | folded into the model string · model-defined |
+| github-copilot | declared | per-spawn | abort | separate key · no clamp |
+| pi | query | per-spawn | none | separate key · per-model map, unsupported clamped away |
+| windsurf | inherit | session-level | none | none · only an interactive cycle |
 
 **Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is
 still the primary cost gate, and pool discovery decides only **which** cheap model runs a mechanical
