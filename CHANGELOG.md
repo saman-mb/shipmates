@@ -5,6 +5,16 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.7.3] - 2026-09-15
+
+### Fixed
+
+- **Gated command composition mid-run.** `/ship-epic` (and other orchestrators) compose `/ship-issue`
+  and `/ship-report-bug` by Reading the installed command file and executing its stages in-session —
+  not via Skill / `skill` (which Claude Code delists when `disable-model-invocation: true`). The
+  user-invoked-only gate stays on; the contradictory "never reimplement stages inline" guardrail is
+  rewritten so Stage 2 is implementable (#473).
+
 ## [0.7.2] - 2026-09-15
 
 ### Added

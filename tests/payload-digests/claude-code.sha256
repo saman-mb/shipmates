@@ -16,10 +16,10 @@ target=claude-code
 .claude/rules/shipmates-contributor.md 894f9df740624c1a873786bb6d55d7f7ec144c84c06a6e9ed3b0c8ab6551bc90
 .claude/skills/ship-consolidate-issues/SKILL.md 7a83166bac60c2f1e46c56b46378ee08039e29784bbc5f62f14252b07fcab42e
 .claude/skills/ship-document/SKILL.md 7b0914c97df78956b28d5ae5eec393de9dcf24fd74fb1c44d60b233be75d40ae
-.claude/skills/ship-epic/SKILL.md 7632f66cdb9d33de068a1db68c91219bbad2eafb209d76e6c725b168862c745f
+.claude/skills/ship-epic/SKILL.md 2c18e5e30fff8d15b5aa726fec0d786d71e870bbd45c8918b58b976c8bdf6a19
 .claude/skills/ship-fix-bug/SKILL.md fad66a5a0744c039781800ad2edbe208b5425ba3733c8f75f0dbaf87a8556b38
 .claude/skills/ship-harden/SKILL.md 76276ce872630a59777ff13d2dc6dfd5737380ac281a6a0def1a8dc47fa204bc
-.claude/skills/ship-issue/SKILL.md 558d6a5899a787562690db495b27e8042d32fdc2380f95488434d8d5e07cbddc
+.claude/skills/ship-issue/SKILL.md 974b6d8f1e912e196cc7e576a7176accd455318512acf9d290757b28fb890967
 .claude/skills/ship-migrate/SKILL.md 29d91e685537b0f53cf851c8b3deaa828116fcec1e922f3e44975781e800bf1e
 .claude/skills/ship-onboard/SKILL.md 880a886efb0b8a62cd8be987d22796c51a85f8a39d4682ac20110987544cbb49
 .claude/skills/ship-plan-epics/SKILL.md 889abe6b5e210d9e01959af96fcc66111d67dfa492b3a31764eda104e5c7ae8e
@@ -28,5 +28,5 @@ target=claude-code
 .claude/skills/ship-qa/SKILL.md 953582332bbc68fb5320c81730be3cc80acc9bb9794121b6dbd69e5b12d9a4a8
 .claude/skills/ship-refactor/SKILL.md bf8f2ae0de9bd97be76782cc5cca1f08bf04f968e863c459db4cea30391ad677
 .claude/skills/ship-release/SKILL.md 61993959e2a685c9f4aed43b8978b96a4d9eaa168ff4bfc7122dc463e7c19de6
-.claude/skills/ship-report-bug/SKILL.md 5c5db18a01c28509404bd943a5968a479ed92c619bebd4fd652798b4c7597e2b
+.claude/skills/ship-report-bug/SKILL.md e3e887b37a43b8e62a81d96340e549961093bf28417ddf79cfd762a1ca623ddc
 .claude/skills/ship-spike/SKILL.md 8366f7b8904bb11e1289e98aab26798393fb37dbf2629d03675acee6d3e79ded

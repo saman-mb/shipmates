@@ -20,7 +20,8 @@ cost of one run for little extra diff. This command **amortizes** that overhead 
 1. **One epic plan for all stories** — a single `architect` pass (Stage 1.5) classifies every pending
    story and groups them into `<units>` before any build. No re-planning the epic shape per story.
 2. **Batch cohesive units** — when Stage 1.5 groups two–four small, same-area stories with
-   non-overlapping file ownership, invoke `/ship-issue` **once** with every story number in the unit.
+   non-overlapping file ownership, compose `/ship-issue` **once** (Read the installed command file;
+   execute its stages in-session) with every story number in the unit.
    Multi-issue input is already bundle consent in `/ship-issue`.
 3. **Pre-classification passthrough** — pass the epic plan's complexity and domain flags into each
    delegation as guidance so `/ship-issue`'s tiered execution (Simple / Medium / High) fires without
@@ -71,7 +72,7 @@ dependency is not a license to end the turn.
 you should **end the turn** so it can deliver their completion later (Cursor's Task tool says this
 when builders run in the background), is **not** a hard-limit row. The current `/ship-issue` unit is
 still in Stage 2. Stay in that unit until every builder returns (or fails), or **immediately
-re-delegate the same unit**. Ending the turn here is a silent stop.
+re-compose the same unit**. Ending the turn here is a silent stop.
 
 **Confirmed-green CI** is a per-unit requirement inside `/ship-issue` Stage 4.5; remediate there, not
 by stopping `/ship-epic` early. Pause is **not** a substitute for the Fixer loop.
@@ -321,31 +322,31 @@ Skip when Stage 0.5 step 8 sent the run to Stage 4.
 
 `EPIC_EXECUTION=fanout` is the default execution mode; `sequential` is an opt-in mode to force serial execution.
 When `EPIC_EXECUTION=fanout` (default), iterate over `<waves>`. For each wave:
-- Run the wave's units concurrently (up to `MAX_CONCURRENT_WORKERS`). Each unit runs in the worktree its `/ship-issue` delegation resolves — `/ship-issue` owns the worktree layout; the epic orchestrator does not predetermine or reuse paths.
+- Run the wave's units concurrently (up to `MAX_CONCURRENT_WORKERS`). Each unit runs in the worktree its `/ship-issue` composition resolves — `/ship-issue` owns the worktree layout; the epic orchestrator does not predetermine or reuse paths.
 - A wave completes when its units have merged, or pauses when a unit fails. A `manual`-merge unit (a `gate` story or explicit `unit merge manual`) pauses at its own PR; a wave must not mix `auto` and `manual` merge modes.
 - **In-flight rebase protocol:** when base drift occurs, the worker fetches `origin/<EPIC_BRANCH>` and rebases inside its own isolated worktree. The worker force-pushes with lease to **its own feature/story branch** (`git push --force-with-lease origin <BRANCH>`), NOT to the shared integration branch. After the rebase it **re-runs the local suite in its worktree and the CI gate, waiting for green on the post-rebase head**; the squash merge (`gh pr merge --squash`) then runs against that same SHA — green from before the rebase does not authorize the merge.
 - **Post-wave integration gate:** after a wave merges, assert CI on `<EPIC_BRANCH>` is green before advancing to the next wave. A semantic regression is fixed in a **dedicated fixer worktree** (a branch and a PR into `<EPIC_BRANCH>`, CI-gated) — never by pushing unreviewed commits straight to `<EPIC_BRANCH>`; bounded by `MAX_FIX_ROUNDS`.
 
-When `EPIC_EXECUTION=sequential`, walk `<units>` in order — one `/ship-issue` delegation per unit (not one per story unless the unit is a singleton).
+When `EPIC_EXECUTION=sequential`, walk `<units>` in order — one `/ship-issue` composition per unit (not one per story unless the unit is a singleton).
 
 For each `<unit>` (sequentially, or concurrently within a wave):
 
 1. **Stories already landed** — skip the whole unit when every story in the unit is in `<landed>`,
    ticked, or closed. When the unit is **mixed** (some landed, some not), drop landed stories from the
-   unit scope and delegate only the remainder — never re-open a merged unit PR for an already-landed
+   unit scope and compose only the remainder — never re-open a merged unit PR for an already-landed
    story. If guidance includes `retry-story <n>`, remove `<n>` from `<landed>` for this run only before
    evaluating skip rules.
-2. **Pre-delegate guard** — immediately before step 6, assert **no** story in the unit scope appears
+2. **Pre-compose guard** — immediately before step 6, assert **no** story in the unit scope appears
    in `<landed>` or `<epic-log>` as merged (unless `retry-story <n>`). Violation means reconcile failed —
-   stop and report; do not open a duplicate unit PR. Assert delegated runs will use
+   stop and report; do not open a duplicate unit PR. Assert composed runs will use
    `epic-base=<EPIC_BRANCH>` — unit PR base **must not** be `MAIN_BRANCH`.
 3. **Gate unit** — if any story in the unit is in `<gates>` and still open: **pause** with
-   **awaiting sign-off**. Do **not** invoke `/ship-issue`. **Stop** — this is the only deliberate
+   **awaiting sign-off**. Do **not** compose `/ship-issue`. **Stop** — this is the only deliberate
    human gate in the loop.
 4. **External / mixed blocker** — for each story in the unit blocked by an open external issue:
 
    a. **Shippable slice** — if the story body (or Stage 1.5 `blocker_class: partial`) names work that
-      does **not** require the blocker to close, treat that slice as the **unit scope**. Invoke
+      does **not** require the blocker to close, treat that slice as the **unit scope**. Compose
       `/ship-issue` on that slice; in the PR body note the residual owner action and link the blocker.
       **Do not pause the epic.**
 
@@ -383,10 +384,14 @@ For each `<unit>` (sequentially, or concurrently within a wave):
      include `complexity tier: simple` so `/ship-issue` takes the Simple path. When all are
      `trivial` or `standard` with no arch/security/delivery flags, include `complexity tier: medium`.
      Otherwise omit (full High path).
-6. **Delegate** — invoke `/ship-issue` with **all story numbers in the unit scope** (after step 1
-   trimming) as the leading numeric tokens, then the guidance from step 5. Example shape:
-   `/ship-issue 101 102 epic-run …` for a two-story unit. Singleton: `/ship-issue 103 epic-run …`.
-   Do **not** set `BUNDLE=off` — explicit multi-story tokens **are** the bundle; singletons behave as today.
+6. **Delegate (compose)** — Read the installed `/ship-issue` command file for this harness; execute
+   its stages in-session for **all story numbers in the unit scope** (after step 1 trimming), with
+   the guidance from step 5 as that run's arguments/context. Example shape: story numbers `101 102`
+   plus `epic-run …` for a two-story unit; singleton: `103` plus `epic-run …`. Do **not** set
+   `BUNDLE=off` — explicit multi-story tokens **are** the bundle; singletons behave as today. Do
+   **not** call Skill/`skill` for `ship-issue` unless that name appears in the harness's available
+   Skill / `skill` listing. Do **not** author a parallel unit pipeline. Keep `epic-run` /
+   `epic-base` / `MERGE_MODE` guidance semantics from step 5.
 7. **Outcome:**
    - **Success (auto-merged)** — unit used `MERGE_MODE=auto` and landed on `<EPIC_BRANCH>` → Stage 3 for
      **each** story in the unit (tick every checklist line the unit closed), **Stage 3.5** (append unit
@@ -400,8 +405,8 @@ For each `<unit>` (sequentially, or concurrently within a wave):
    - **`/ship-issue` escalated after `MAX_FIX_ROUNDS`** → **pause the epic loop** with state report
      (epic, `EPIC_BRANCH`, `EPIC_PR`, completed units, current unit, PR link, failure summary,
      `/ship-epic <epic> resume`). **Stop.**
-   - **Red CI / fix in progress** → **not** an epic pause. The delegation must finish Stage 4.5
-     inside `/ship-issue` before returning. If it returned early, **re-delegate** with explicit
+   - **Red CI / fix in progress** → **not** an epic pause. The composition must finish Stage 4.5
+     inside `/ship-issue` before returning. If it returned early, **re-compose** with explicit
      guidance `finish-ci-gate` — do not end the epic turn.
    - **Gate mid-run** → pause and stop (same as step 3).
 
@@ -524,7 +529,10 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
 
 ### Guardrails
 
-- **Compose, don't duplicate** — each unit is a `/ship-issue` run; never reimplement its stages inline.
+- **Compose, don't duplicate** — each unit is one full `/ship-issue` pipeline taken from the
+  **installed** command file (Read → execute stages in-session). Never invent a rival stage list,
+  skip mandatory `/ship-issue` stages, or approximate the unit run from memory. Skill/`skill` is
+  not the composition path when the target is gated off the listing.
 - **One epic planner** — Stage 1.5 runs once per `/ship-epic` invocation; do not spawn a second
   epic-wide planner inside the loop.
 - **Batch only on merit** — cohesion, file ownership, and flags gate batching; never merge unrelated
@@ -545,7 +553,7 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   fired. If none fired, you are **not allowed** to stop on a pause/resume handshake. Owner-only
   remainder uses **crew-complete** (Stage 4) — a normal terminal report, not a pause. Harness
   backgrounding / "end your turn for notifications" is **not** a pause — see **Not a pause —
-  harness backgrounding** above; keep or re-delegate the in-flight `/ship-issue` unit.
+  harness backgrounding** above; keep or re-compose the in-flight `/ship-issue` unit.
 - **Owner-only remainder is not a pause** — DNS, registrar, deploy-console attach, or any AC only the
   captain can satisfy with zero in-repo slice left: record residual, continue or crew-complete; never
   post `/ship-epic <epic> resume` for it.

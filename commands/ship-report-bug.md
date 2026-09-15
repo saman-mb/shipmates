@@ -15,6 +15,11 @@ repairs bugs **in the user's repo**.
 
 The symptom text and mode (`report` vs `apply`) come from the Runtime input section at the end.
 
+**Composition target.** Mid-run filing from inside another gated command Reads **this installed
+file** and executes these stages in-session — Skill may be unavailable because
+`disable-model-invocation` is on. Frontmatter stays gated; behaviour matches a standalone run with
+the same arguments.
+
 ---
 
 ## Config

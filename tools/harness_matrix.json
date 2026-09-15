@@ -684,6 +684,46 @@
         }
       }
     },
+    "gated-command-composition": {
+      "applies_to": [
+        "skills"
+      ],
+      "definition": "Mid-run reuse of a captain-gated command by Read of the installed/rendered target file and in-session stage execution. Not Skill/skill-tool subroutine. Frontmatter disable-model-invocation stays true where emitted.",
+      "harnesses": {
+        "claude-code": {
+          "supported": true,
+          "reason": "Gated skills are out of the Skill listing; compose by Read of `.claude/skills/<name>/SKILL.md`, then execute stages in-session."
+        },
+        "github-copilot": {
+          "supported": true,
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+        },
+        "codex": {
+          "supported": true,
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+        },
+        "cursor": {
+          "supported": true,
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+        },
+        "antigravity": {
+          "supported": true,
+          "reason": "disable-model-invocation is not supported; Read of the installed skill path still works — contracted path is Read→execute."
+        },
+        "windsurf": {
+          "supported": true,
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+        },
+        "opencode": {
+          "supported": true,
+          "reason": "Structural gate via `.opencode/commands/`; compose by Read of that path, then execute stages in-session."
+        },
+        "pi": {
+          "supported": true,
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+        }
+      }
+    },
     "tools": {
       "applies_to": [
         "agents"
