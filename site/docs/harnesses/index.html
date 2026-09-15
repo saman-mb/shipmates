@@ -133,6 +133,20 @@
       </div>
     </section>
 
+    <section class="section" id="gated-composition" aria-labelledby="gated-composition-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="gated-composition-title">Composing gated commands mid-run</h2>
+        </div>
+        <div class="order-prose">
+          <p>Captain-gated commands stay captain-started. Once one is running, mid-run reuse of another gated command is not a Skill / <code>skill</code>-tool subroutine and does not flip the gate — see <a href="https://github.com/saman-mb/shipmates/issues/473">#473</a>.</p>
+          <p><strong>Claude Code delists them from Skill.</strong> <code>disable-model-invocation: true</code> keeps gated skills out of the model&#x27;s Skill listing, so an orchestrator cannot call them by name through that tool. Composition reads the installed file at <code>.claude/skills/&lt;name&gt;/SKILL.md</code> and executes its stages in the same session.</p>
+          <p><strong>opencode gates by directory.</strong> The sixteen land under <code>.opencode/commands/</code> (<code>/</code>-invoked only), not <code>.opencode/skills/</code>. Mid-run reuse Reads that installed command file and runs its stages the same way.</p>
+          <p><strong>Read + execute is the contract everywhere.</strong> On every target, the source of truth is the <em>installed, harness-rendered</em> file for the active harness — not a stage list recalled from memory, and not a parallel rewrite of the command. Call Skill / <code>skill</code> only when the name appears in that harness&#x27;s listing; if it is absent, Read the file and execute. Frontmatter <code>disable-model-invocation</code> stays true where a harness emits it.</p>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="codex" aria-labelledby="codex-title">
       <div class="container container--prose">
         <div class="section__head">
