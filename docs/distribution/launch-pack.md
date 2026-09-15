@@ -47,7 +47,7 @@ I built Shipmates: Give Claude Code a crew of 13 specialist subagents to ship Gi
 ### Body
 Hey everyone,
 
-I wanted to share **Shipmates** (open source / MIT), an agentic orchestration layer designed to give Claude Code a crew of 13 domain-neutral specialist subagents and 16 command workflows.
+I wanted to share **Shipmates** (open source / MIT), an agentic orchestration layer designed to give Claude Code a crew of 13 domain-neutral specialist subagents and 17 command workflows.
 
 Its flagship command `/ship-issue <issue-number>` does the entire ticket lifecycle:
 - Evaluates complexity (Simple tasks skip overhead; High tasks get the full specialist board)
@@ -75,7 +75,7 @@ Let me know what you think or if you'd like to see more command workflows!
 ### Tweet 1 (Hook + Tagline)
 Announcing Shipmates 🚢 — Give your AI a crew.
 
-An open-source (MIT) crew of 13 specialist subagents and 16 command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request autonomously.
+An open-source (MIT) crew of 13 specialist subagents and 17 command workflows that drive a GitHub issue from open to a reviewed, CI-green pull request autonomously.
 
 Built for Claude Code today.
 
@@ -129,7 +129,7 @@ https://saman-mb.github.io/shipmates/
 Give your AI coding harness an autonomous crew of specialist subagents
 
 ### Short Pitch
-Shipmates provides 13 domain-neutral subagents and 16 command workflows for Claude Code and 7 other harnesses. Its flagship, `/ship-issue`, drives a GitHub issue to a reviewed, CI-green pull request autonomously using isolated git worktrees and automated review boards.
+Shipmates provides 13 domain-neutral subagents and 17 command workflows for Claude Code and 7 other harnesses. Its flagship, `/ship-issue`, drives a GitHub issue to a reviewed, CI-green pull request autonomously using isolated git worktrees and automated review boards.
 
 ### Maker Comment
 Hey Product Hunt! 👋

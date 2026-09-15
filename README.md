@@ -80,6 +80,7 @@ from anything hardcoded into the role.
 | `/ship-qa <pr|issue|branch>` | Interactive local human QA walkthrough — complements the board and CI |
 | `/ship-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/ship-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
+| `/ship-cleanup [target] [apply]` | Audits the codebase for health debt — dead code, duplication, inconsistency, dependency and config rot — grades each finding by risk, and fixes the safe ones on a branch, opt-in |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
 worktree, and hands you a pull request — your checkout is left as you left it. `/ship-report-bug` writes to
@@ -197,7 +198,7 @@ windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
 Every harness compiles the same canonical crew and commands. Six receive the thirteen specialists as
-agents; the other two ship the sixteen commands as skills only. Pi's crew resolve through the
+agents; the other two ship the seventeen commands as skills only. Pi's crew resolve through the
 third-party `pi-subagents` extension — core pi documents no subagent schema of its own — so a pi
 install without that extension resolves no crew. Pi reads its crew from the nearest ancestor directory
 carrying `.pi/` or `.agents/`, so install into your project: a home-directory install only takes effect
@@ -300,7 +301,7 @@ The CI smoke is deliberately layout/install-only; neither path proves Codex runt
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
 `disable-model-invocation` is not a frontmatter key a `SKILL.md` recognises there, so declaring it
-would be silently dropped. The sixteen create worktrees, push branches and open pull requests, so
+would be silently dropped. The seventeen create worktrees, push branches and open pull requests, so
 shipping them as skills would let the model start one unprompted. `commands/` is `/`-invoked only,
 which keeps user-invoked-only structural rather than dependent on a key the target ignores.
 
@@ -531,20 +532,20 @@ universal one.
 **Where each harness stands.** Every target's payload is compiled and digest-checked in CI; the
 question is whether it's been *run*.
 
-- **Runtime-verified** — Claude Code: the full crew and all 16 commands, and the only harness
+- **Runtime-verified** — Claude Code: the full crew and all 17 commands, and the only harness
   Shipmates has actually been run on.
 - **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot,
   Pi, and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
   verified against that harness's parsing source and first-party docs. opencode, Antigravity, Codex CLI and
-  GitHub Copilot get the full crew + all 16 commands; the other two — Cursor and Windsurf — have no native
-  subagent directory, so they ship the 16 skills only. Pi's crew land at `.pi/agents/` and resolve through
+  GitHub Copilot get the full crew + all 17 commands; the other two — Cursor and Windsurf — have no native
+  subagent directory, so they ship the 17 skills only. Pi's crew land at `.pi/agents/` and resolve through
   the third-party `pi-subagents` extension, not core pi — and against the nearest ancestor directory
   carrying `.pi/` or `.agents/`, so they take effect for a project-local install. A live run has not been done on any of them; opencode's open questions are tracked in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
   CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates builds for.
 
-Why that's credible: the crew's system prompts name no harness, and the sixteen commands ship in the
+Why that's credible: the crew's system prompts name no harness, and the seventeen commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
 of a port is mapping frontmatter fields and rendering dialect tokens, not rewriting the crew. The
 opencode adapter is the first test of that claim: it reused every persona and workflow body unchanged,
@@ -566,7 +567,7 @@ see [on the horizon](#-on-the-horizon) for where each harness stands.
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
 in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/ship-issue`. Shipmates ships 13 agents
-and 16 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
+and 17 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
 `.codex/` for codex, and so on). See [install](#-come-aboard-install).
 
 **Is this an official Anthropic project?**

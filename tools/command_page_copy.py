@@ -627,4 +627,48 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
+    "ship-cleanup": CommandPageCopy(
+        guide_blurb="Audits the codebase for dead code, duplication and rot, then fixes the safe part behind hard gates.",
+        process_lead=(
+            "Discovery grades every finding safe, review, architectural or protected. A green baseline "
+            "and a coverage contract gate every deletion; the PO signs off anything risky."
+        ),
+        when_to_use=(
+            "The repo feels heavier than it needs to be and no issue tracks why.",
+            "Replacing an API across the codebase? /ship-migrate. Same behaviour, new shape? /ship-refactor.",
+        ),
+        process=(
+            ProcessStep(
+                "Survey",
+                "Bound the scope, fix the mode, and inventory which analysers the repo already has — nothing is scanned until the scope is named.",
+                solo="The run does this itself — no specialist.",
+            ),
+            ProcessStep(
+                "Census",
+                "Inventory every finding with a stable ID and its evidence, then grade each one by the risk of touching it.",
+                solo="Discovery workers fan out; every row names its evidence and its grade.",
+            ),
+            ProcessStep(
+                "Fix",
+                "Under apply, the safe findings come out one theme per commit, each one independently revertible.",
+                always=("senior-engineer",),
+            ),
+            ProcessStep(
+                "Extract",
+                "Near-duplicates get a semantic diff before a shared helper is built, so no variant quietly loses its edge case.",
+                always=("architect", "senior-engineer"),
+            ),
+            ProcessStep(
+                "Prove",
+                "A fresh SDET re-runs the suite and the analysers: surviving coverage must not fall, and no safe finding may remain.",
+                always=("sdet",),
+            ),
+            ProcessStep(
+                "Land",
+                "Architect checks each deletion respected a boundary; PE and PO accept, and the PO signs off the feature impact.",
+                always=("architect", "principal-engineer", "product-manager"),
+                also=(_also("performance-engineer", "a deleted wrapper held caching, batching or pooling"),),
+            ),
+        ),
+    ),
 }

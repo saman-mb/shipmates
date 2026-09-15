@@ -185,7 +185,7 @@ mkdir -p "$EMBED"
 assert "embedded: install from empty cwd exits 0" bash -c "cd '$EMBED' && cargo run --quiet --manifest-path '$REPO/Cargo.toml' -- install --harness claude-code --dir '$EMBED'"
 assert "embedded: skill from embedded payload" test -f "$EMBED/.claude/skills/ship-issue/SKILL.md"
 assert "embedded: agent from embedded payload" test -f "$EMBED/.claude/agents/sdet.md"
-assert "embedded: twenty-seven skills emitted (commands + tools)" test "$(ls "$EMBED/.claude/skills" | wc -l | tr -d ' ')" -eq 27
+assert "embedded: twenty-eight skills emitted (commands + tools)" test "$(ls "$EMBED/.claude/skills" | wc -l | tr -d ' ')" -eq 28
 assert "embedded: thirteen agents emitted" test "$(ls "$EMBED/.claude/agents" | wc -l | tr -d ' ')" -eq 13
 
 # --- summary ---
