@@ -217,22 +217,22 @@ echo "=== Segment 8: Install file counts ==="
 PROJ="$TMPDIR/proj-counts"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none >/dev/null 2>&1
-assert_file_count "$PROJ" 30 "claude-code no-tools: 29 files + receipt"
+assert_file_count "$PROJ" 31 "claude-code no-tools: 30 files + receipt"
 
 PROJ="$TMPDIR/proj-counts-default"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" >/dev/null 2>&1
-assert_file_count "$PROJ" 52 "claude-code default: all tools (52 files)"
+assert_file_count "$PROJ" 53 "claude-code default: all tools (53 files)"
 
 PROJ="$TMPDIR/proj-counts-tools"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools all >/dev/null 2>&1
-assert_file_count "$PROJ" 52 "claude-code all-tools: 52 files"
+assert_file_count "$PROJ" 53 "claude-code all-tools: 53 files"
 
 PROJ="$TMPDIR/proj-counts-scrub"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools scrub >/dev/null 2>&1
-assert_file_count "$PROJ" 32 "claude-code scrub tool: 32 files"
+assert_file_count "$PROJ" 33 "claude-code scrub tool: 33 files"
 
 # ---------------------------------------------------------------------------
 # Segment 9 — Install --with-tools nonexistent fails
@@ -253,7 +253,7 @@ cmd_run "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none >/d
 cmd_capture "reinstall" "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none
 REINSTALL_RC="$CMD_RC"
 [ "$REINSTALL_RC" -eq 0 ] && ok "Re-install exits 0" || fail "Re-install exited $REINSTALL_RC (expected 0)"
-assert_file_count "$PROJ" 30 "Files unchanged after re-install"
+assert_file_count "$PROJ" 31 "Files unchanged after re-install"
 
 # ---------------------------------------------------------------------------
 # Segment 11 — Conflicting flags
@@ -272,14 +272,14 @@ PROJ="$TMPDIR/proj-shared"
 mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness codex --dir "$PROJ" --with-tools none >/dev/null 2>&1
 CODEX_FILES=$(find "$PROJ" -type f | wc -l)
-[ "$CODEX_FILES" -eq 30 ] && ok "Codex install: 30 files" || fail "Codex install: $CODEX_FILES files (expected 30)"
+[ "$CODEX_FILES" -eq 31 ] && ok "Codex install: 31 files" || fail "Codex install: $CODEX_FILES files (expected 31)"
 assert_file_exists "$PROJ/.agents/skills/ship-issue/SKILL.md" "Shared skill present after codex"
 assert_file_exists "$PROJ/.codex/agents/architect.toml" "Codex agent present"
 
 cmd_run "$BIN" install --harness github-copilot --dir "$PROJ" --with-tools none >/dev/null 2>&1
 SHARED_FILES=$(find "$PROJ" -type f | wc -l)
-# 29 (codex) + 13 (github-copilot agents) + 1 receipt = 43
-[ "$SHARED_FILES" -eq 44 ] && ok "After github-copilot: 44 files" || fail "After github-copilot: $SHARED_FILES files (expected 44)"
+# 31 (codex) + 13 (github-copilot agents) + 1 receipt = 45
+[ "$SHARED_FILES" -eq 45 ] && ok "After github-copilot: 45 files" || fail "After github-copilot: $SHARED_FILES files (expected 45)"
 assert_file_exists "$PROJ/.github/agents/architect.agent.md" "GitHub agent present"
 assert_file_exists "$PROJ/.agents/skills/ship-issue/SKILL.md" "Shared skill still present"
 
@@ -294,7 +294,7 @@ printf '%s\n' '---' 'name: architect' 'description: leftover' '---' 'legacy arch
 cmd_capture "migrate plain" "$BIN" install --harness claude-code --dir "$PROJ" --with-tools none
 MIGRATE_RC="$CMD_RC"
 [ "$MIGRATE_RC" -eq 0 ] && ok "Adopt install exits 0" || fail "Adopt install exited $MIGRATE_RC (expected 0)"
-assert_contains "29 files written" "$CMD_OUT" "Adopt install writes the full payload"
+assert_contains "30 files written" "$CMD_OUT" "Adopt install writes the full payload"
 if grep -q "legacy architect" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
   fail "Matching leftover was not adopted"
 else
@@ -311,7 +311,7 @@ echo "legacy architect" > "$PROJ/.claude/agents/architect.md"
 cmd_capture "migrate force" "$BIN" install --harness claude-code --dir "$PROJ" --force --with-tools none
 FORCE_RC="$CMD_RC"
 [ "$FORCE_RC" -eq 0 ] && ok "--force install exits 0" || fail "--force install exited $FORCE_RC (expected 0)"
-assert_contains "29 files written" "$CMD_OUT" "--force reports 29 files (overwrote legacy)"
+assert_contains "30 files written" "$CMD_OUT" "--force reports 30 files (overwrote legacy)"
 # Force-overwritten file should match shipmates version
 if ! grep -q "legacy architect" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
   ok "Force migration overwrites legacy"
