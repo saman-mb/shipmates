@@ -146,8 +146,9 @@ Each round:
    "make it nicer"), blockers separated from nits, and a statement of which capture-matrix cells it
    actually reviewed this round — the verdict covers only those. Instruct it explicitly not to
    rubber-stamp to end the loop.
-2. **Signed off?** `ACCEPT` → leave the loop. `ACCEPT-WITH-NITS` → leave the loop too (the nits become
-   follow-ups) unless the caller asked to resolve nits as well. `REJECT` → continue.
+2. **Signed off?** `ACCEPT` → leave the loop. `ACCEPT-WITH-NITS` → leave the loop too unless the
+   caller asked to resolve nits as well; dispose remaining nits with the `/ship-issue` Stage 7
+   ladder (absorb-first by default — not automatic per-nit issues). `REJECT` → continue.
 3. **Fix** — spawn a `senior-engineer` — or, under `EXECUTION=fanout` (default), parallel Builders
    across disjoint components/assets up to `MAX_CONCURRENT_WORKERS` (`EXECUTION=sequential` fixes one
    at a time) — with the reviewer's exact blocker list; each Builder receives a machine-checkable
@@ -165,8 +166,9 @@ reviewer's remaining notes. Escalate; don't spin.
 ## Stage 4 — Report
 
 Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the
-number of rounds, and a short before → after of what changed. Optionally file any allowed nits as
-follow-up issues. Under `MODE=pr`, commit the rounds — staging only the paths the rounds actually
+number of rounds, and a short before → after of what changed. Dispose allowed nits with the
+`/ship-issue` Stage 7 ladder (absorb when cheap; else PR-note or capped/batched issues — never one
+ticket per nit by default). Under `MODE=pr`, commit the rounds — staging only the paths the rounds actually
 touched, never `git add -A`, since the tree may hold unrelated uncommitted work — then push per
 `DESTINATION`:
 - `reused-worktree` / `existing-pr`: push onto that branch and add a comment on its existing PR

@@ -123,7 +123,10 @@ role do the rest. See `RUN_TESTS` before the `sdet` executes anything.
 **You** synthesise; don't delegate it. Merge the reports, dedupe findings several reviewers raised,
 and rank them: **blocking** (correctness, security, data loss, a criterion the PR itself claims and
 misses) above **nits** (style, naming, taste). Attribute each finding to the role that raised it so
-the author can weigh it. One verdict for the PR: `APPROVE` / `APPROVE-WITH-NITS` / `REQUEST-CHANGES`.
+the author can weigh it. For nits, recommend the `/ship-issue` Stage 7 disposition (absorb in a
+follow-on fix when cheap and in-scope; PR-comment otherwise; file only when cross-cutting or
+decision-shaped) — do not urge opening one backlog ticket per nit. One verdict for the PR:
+`APPROVE` / `APPROVE-WITH-NITS` / `REQUEST-CHANGES`.
 
 If a visual specialist could not actually render the change, carry its **"needs a human visual pass"**
 flag into the output rather than implying the visuals were confirmed. The same rule holds for any

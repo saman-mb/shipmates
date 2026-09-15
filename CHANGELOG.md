@@ -5,6 +5,19 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.2] - 2026-09-15
+
+### Changed
+
+- **Non-blocking review nits are absorbed into the shipping PR by default.** `/ship-issue` Stage 7 is
+  now **nit disposition** (`NITS_MODE=absorb`): cheap in-scope findings are fixed on the same branch
+  (bounded by `MAX_ABSORB_NITS` / `MAX_ABSORB_LOC` / `ABSORB_FIX_ROUNDS`), taste items become PR notes,
+  and backlog tickets are capped (`MAX_FOLLOWUP_ISSUES`) and theme-batched with dedupe — not one issue
+  per nit. Captain overrides: `nits absorb` / `nits file` / `nits pr-comment`. Sibling PR-raising
+  commands (`/ship-fix-bug`, `/ship-harden`, `/ship-refactor`, `/ship-polish`, `/ship-pr-review`) and
+  `/ship-epic` unit accounting follow the same ladder so captains stop drowning in `priority:low`
+  tech-debt tickets that never get picked up (#490).
+
 ## [0.8.1] - 2026-09-15
 
 ### Fixed
