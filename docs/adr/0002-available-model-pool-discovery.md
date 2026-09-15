@@ -1,6 +1,6 @@
 # ADR 0002 — Discovering the available model pool before routing a tier to a model
 
-**Status:** Accepted
+**Status:** Accepted (amended 2026-09-15)
 **Date:** 2026-09-13
 **Decided by:** `/ship-issue` #434
 **Bundles:** #434 (pool discovery + resolution order + audit), sibling to #296 (neutral spawn-hint rendering)
@@ -112,11 +112,12 @@ a two-command special case — so no command can drift from it. The repo-side ca
 2. **Discovery ladder.** `query` (the target's documented enumeration command — candidates only) →
    `declared` (the target's own native allow-list where documented, **intersected with** the user's
    `model-pool.json`, which supplies the rank) → `inherit`.
-3. **Declared-pool shape.** The project file `<repo>/.shipmates/model-pool.json` wins over the user file
-   `~/.shipmates/model-pool.json`. Keys: `schema_version`, `tiers.mechanical[]`, `tiers.judgment[]`,
-   and optional `effort.mechanical` / `effort.judgment`. Entries are **patterns the target's own model
-   surface accepts**, never a Shipmates-owned identifier. **Shipmates never writes a value into either
-   file**, and no key has a model-name default, example or illustration.
+3. **Declared-pool shape.** The project file `<repo>/.shipmates/model-pool.json` (superseded — see the
+   2026-09-15 amendment) wins over the user file `~/.shipmates/model-pool.json`. Keys:
+   `schema_version`, `tiers.mechanical[]`, `tiers.judgment[]`, and optional `effort.mechanical` /
+   `effort.judgment`. Entries are **patterns the target's own model surface accepts**, never a
+   Shipmates-owned identifier. **Shipmates never writes a value into either file**, and no key has a
+   model-name default, example or illustration.
 4. **Resolution order, stated once** — explicit spawn value → declared default → parent/session value →
    the model's own effort default. A model chosen without an effort gets **that model's own default
    effort**; the parent's effort is never carried across a model change, because one model's effort
@@ -135,6 +136,54 @@ a two-command special case — so no command can drift from it. The repo-side ca
    install-time canonical content. The pool **values** are runtime and per-user, and Shipmates never
    writes one into an installed file. The per-harness record is repo-side only and is never installed.
 
+---
+
+## Amendment — 2026-09-15
+
+It supersedes the project-pool **path and resolution root** in the Decision above (item 3). Everything
+else — the ladder, the precedence order, the enforcement contract, the audit line, the per-harness
+record — stands as written on 2026-09-13; the one exception is the `pool` field's condition vocabulary,
+which the Reporting note below replaces (at most one, in precedence order). The Context, Evidence and
+Options above are that day's record
+and are not rewritten.
+
+**The decision that moved (#449).** The project pool is `<repo>/model-pool.json`, and `<repo>` in the
+canonical block is the **run's repository root**: the checkout the run was started from — the one its
+spawn worktrees are cut from — never a worktree its spawns run in. A spawn's working directory decides
+nothing, and isolation decides nothing either: an isolated checkout does not change the pool, and a
+project file found only where this run does not resolve it is never the pool in force. A run started
+inside a linked worktree is its own run root, so that checkout's committed pool is the pool in force —
+not the primary checkout's. The user file is unchanged at `~/.shipmates/model-pool.json`.
+
+**Retired path.** `<repo>/.shipmates/model-pool.json`. It put a captain-authored config inside
+Shipmates' own install-state namespace — which pool discovery never scans, alongside
+`.shipmates/receipts/` — and that made it per-machine wherever a repository ignores its install state,
+and is why it could not reliably travel to a clone or to a worktree cut from one. It was therefore
+never effective on the `/ship-issue` worktree path.
+The story swapped the path rather than adding a compat read: a second path is ambiguity in a block
+whose whole job is to have exactly one answer, and two paths for one artifact would have to be
+reconciled on every target.
+
+**Reporting.** The `pool` field of the `MODEL ROUTING:` line carries the source in force (`project` /
+`user` / `inherit`) and, only when no project pool supplied the rank, **at most one** condition from a
+**closed three-value vocabulary**, chosen in this order: `pool unusable` (the selected file exists but
+cannot be read or parsed — no fall-through to the other file, the semantics unchanged and now
+unambiguous), `pool out of scope` (a project file at a path this run does not resolve, the retired path
+above included, is never used), and `no pool` (no usable declaration: neither file present, or nothing
+to rank). No two conditions combine: the field carries one condition or none. No pool state is silent and
+none aborts a run, so a captain upgrading with a file on the retired path gets a named line instead of a
+silent ignore.
+
+**Residual risk.** A repository could already own a root `model-pool.json` meaning something else. If
+it is not a valid pool, the run reports `pool unusable` and continues — reported, non-fatal, one line.
+If it is a valid pool, that is the feature. One consequence is deliberate: with no fall-through, that
+same run does not consult the user file at all — falling through with the condition named is a
+behaviour change deferred to its own follow-up (#486), not an accident. The route is a one-way door for a
+captain who declared a pool under v0.7.x: the breakage is real and intended to be *reported* rather than
+silent, and the migration story is this amendment plus the release note.
+
+---
+
 ## Design questions — answered
 
 ### 1. What is the source of truth per harness?
@@ -148,7 +197,8 @@ harness with no discoverable tiering is a stated verdict (`inherit`), never an u
 
 The pool is a **ranking over user-declared patterns**, keyed by the neutral tiers, not a list of owned
 identifiers. Listing is orthogonal to ranking: enumeration narrows candidates, the declared pool supplies
-rank. Paths and keys are in the Decision above. The adapter layer never resolves a tier to a model.
+rank. Paths and keys are in the Decision above, as amended on 2026-09-15. The adapter layer never
+resolves a tier to a model.
 
 ### 3. What is the precedence order?
 
