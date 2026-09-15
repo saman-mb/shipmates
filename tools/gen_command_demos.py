@@ -227,6 +227,20 @@ COMMANDS = {
         ],
         "closer": "Refactored — behaviour proven unchanged. ⚓",
     },
+    "ship-cleanup": {
+        "arg": "src/orders apply",
+        "stages": [
+            ("SCOPE", "target, mode, analysers"),
+            ("SCAN", "census: dead, dup, rot"),
+            ("GRADE", "safe / review / protected"),
+            ("PLAN", "report, or isolate a branch"),
+            ("FIX", "safe first, per theme"),
+            ("EXTRACT", "semantic diff, one helper"),
+            ("PROVE", "coverage held, suite green"),
+            ("DELIVER", "PR — reviewed, CI-green"),
+        ],
+        "closer": "Cleaner — proven safe, reviewed, CI-green. ⚓",
+    },
 }
 
 

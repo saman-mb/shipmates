@@ -13,6 +13,7 @@ target=antigravity
 .agents/agents/site-reliability-engineer/agent.md 87fb84a1d0cf658bbae544aa70257c43cebf694c6036260323e6523875369fb1
 .agents/agents/technical-writer/agent.md ff1ddfe59c2cf5d6c6160a23b4c930d082ca43b7929fa5785e7f08a7ac14e3f0
 .agents/agents/ux-ui-designer/agent.md c5157f9931e522d6211d88120bf89c9f4c6f10f886121aee1670fb2bfeaa7af6
+.agents/skills/ship-cleanup/SKILL.md f8694f9557eeaa7181481477b1dd986f79fed9f97a46fafc7d97c2927ca6b5d8
 .agents/skills/ship-consolidate-issues/SKILL.md 574f7b7d428fdd667ad2514eceae1871daaaf4c063c9fee4db8f5876d03047b1
 .agents/skills/ship-document/SKILL.md 8a2e222a339b2bbbdd5343192a7237ea6b933ffd911a8f7fdb1513c29a1dc4cf
 .agents/skills/ship-epic/SKILL.md c3bed53f486826b465cfe42725c8ef0990233e47be84b460111fc3ad58683ebf

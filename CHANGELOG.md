@@ -5,6 +5,19 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.9.0] - 2026-09-15
+
+### Added
+
+- **`/ship-cleanup` — discovery-driven codebase simplification.** A seventeenth command
+  that audits a repo for the health debt a linter alone misses: dead code, duplication,
+  redundancy, inconsistent patterns, complexity hotspots, dependency and config rot, and
+  documentation drift. Every finding is graded `safe` / `review` / `architectural` /
+  `protected`, so nothing reachable by reflection, a migration, an error path or a public
+  API is deleted on the strength of a grep. Read-only by default; `apply` fixes the safe
+  findings on a branch behind a coverage contract, a feature-impact summary and a
+  mandatory product-owner sign-off (#488).
+
 ## [0.8.1] - 2026-09-15
 
 ### Fixed
