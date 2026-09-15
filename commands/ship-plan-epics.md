@@ -180,8 +180,17 @@ Otherwise, in this order (numbers must exist before they're referenced):
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the
   role brief inlined, and note the fallback.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| brief | yes | free text / path(s) | text  /  path  /  multi | — | One or more briefs: inline text, a file or directory path, or several separated by `---` or numbering. |
+| area_hints | no | free text | area/label names | — | Optional area or label hints for the backlog. |
+| dry_run | no | `dry-run` / `dry run` / `preview` | on  /  off | off | Print the full plan (panel, tree, attachment plan) and create nothing. |
+| role_hints | no | `also involve …` free text | crew role names | — | Explicit planning-panel roles; overrides auto selection. |
+
 ## Runtime input
 
-`$ARGUMENTS` contains one or more briefs. A brief may be inline text, a path to a file or directory,
-or several briefs separated by `---` or numbering. Optional role hints ("also involve …") are part
-of the brief text — they override auto panel selection. If empty, ask for the brief before doing anything.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+A brief may be inline text, a path to a file or directory, or several briefs separated by `---` or numbering. Optional role hints ("also involve …") travel with the brief text and override auto panel selection. `dry-run` / `dry run` / `preview` sets `DRY_RUN`.

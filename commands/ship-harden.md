@@ -148,8 +148,19 @@ in place with the PR open for a human to merge.
   itself. If the `security-engineer` role doesn't resolve to a shipped crew role here, fall back
   to a general-purpose agent with the brief inlined and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| surface | yes | free text | module  /  endpoint  /  auth flow  /  dependency set  /  whole app  /  … | — | What to harden — do not silently pick the whole repo when unspecified. |
+| sequential | no | `sequential` | sequential  /  (absent→fanout) | fanout | Apply remediations one at a time instead of fan-out. |
+| mode | no | `pr` / inferred from request | report  /  pr | report | `report` is read-only findings; `pr` remediates in a worktree and opens a PR. |
+| worktree_root | no | `worktree-root=sibling` | nested  /  sibling | nested | Under `MODE=pr`, use legacy sibling worktree paths. |
+| sync_base | no | `sync-base` | on  /  off | off | Under `MODE=pr`, cut the worktree from `origin/<BASE_BRANCH>` instead of local `HEAD`. |
+| merge_mode | no | `MERGE_MODE=auto` / `auto` | manual  /  auto | manual | Under `MODE=pr`, merge the PR when CI is green. |
+
 ## Runtime input
 
-`$ARGUMENTS` names the surface to harden: a module, endpoint/route, auth or payment flow, dependency
-set, or whole app, plus optional `sequential` guidance. If empty, ask which surface; do not silently
-pick the whole repo.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Surface is free text (module, endpoint/route, auth or payment flow, dependency set, or whole app). Infer `MODE=pr` vs `report` from the request when the captain does not name a mode; when ambiguous, default to `report`.

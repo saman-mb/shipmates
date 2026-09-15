@@ -206,7 +206,17 @@ remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with th
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the role's
   brief inlined, and note the fallback.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| artifact | yes | free text | screen / asset / rendered surface | — | What to polish (screen, panel, generated art, rendered view, chart, or other output). |
+| reviewer | no | `art-director`  /  `ux-ui-designer`  /  `product-manager` | `art-director`  /  `ux-ui-designer`  /  `product-manager` | infer from domain | Specialist who must sign off; omit to choose from the artifact's domain. |
+| sequential | no | `sequential` | `sequential` | fanout (omit) | Fix one blocker at a time instead of concurrent fan-out. |
+
 ## Runtime input
 
-`$ARGUMENTS` names the artifact to polish (screen/panel, generated art, rendered view, chart, or
-other output) and may name a reviewer, plus optional `sequential` guidance. If empty, ask what to polish.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Tokens name the artifact to polish and may name a reviewer, plus optional `sequential` guidance.
+Remaining free text after known tokens is part of the artifact description.

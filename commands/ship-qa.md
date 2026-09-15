@@ -182,9 +182,21 @@ Only when the captain asks after Stage 5 (`FIX_HANDOFF=yes` for this turn):
   general-purpose agent with the brief inlined, and note it. Prefer running Stages 0–5 yourself —
   specialists are optional for narrow judgment calls, not required for the walk.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| target | yes | first recognizable token | PR number / issue number / branch name | — | What to QA locally (PR, issue branch, or named branch). |
+| qa_mode | no | `risk` / `smoke` | `risk` / `smoke` | `risk` | `risk` builds checks from the diff; `smoke` is a short blind path. |
+| platform | no | remaining words | free text | — | Simulator, emulator, device, desktop, or web hint for the walk. |
+| filing | no | (session only; default report) | report | report | Return the QA summary only; do not file issues mid-pass unless the captain asks later. |
+| fix_handoff | no | (after Stage 5, captain ask) | no / yes | no | Opt-in handoff to a fix command after findings; never invent a fix inside this command. |
+
 ## Runtime input
 
-`$ARGUMENTS` is a PR number, issue number, or branch name, plus an optional `risk` / `smoke` mode
-token and an optional platform hint. If empty, ask which target to QA. Parse the first recognizable
-target token as the subject; treat a bare `smoke` or `risk` word as `QA_MODE`; treat remaining
-words as the platform hint.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse
+Tokens/Values from that table (required then optionals). If intake ran, treat the restated
+invocation as authoritative for this run.
+
+Parse the first recognizable target token as the subject; treat a bare `smoke` or `risk` word as
+`QA_MODE`; treat remaining words as the platform hint.

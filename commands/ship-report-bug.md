@@ -111,11 +111,19 @@ pivots to fixing Shipmates itself), and which mode ran.
 
 ---
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| symptom | no | free text | symptom prose | — (harvest from session) | Optional symptom context for the draft; omit to harvest from the current session alone. |
+| apply | no | `apply` | `apply` | omit (`MODE=report`) | File on GitHub after captain approval; default is report-only preview. |
+
 ## Runtime input
 
-`$ARGUMENTS` is optional symptom prose plus optional `apply`. Empty invocation still runs context
-harvest and drafts from the current session. Default is **`MODE=report`** — never file without captain
-consent.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Tokens are optional symptom prose plus optional `apply`. Empty invocation still runs context harvest
+and drafts from the current session. Default is **`MODE=report`** — never file without captain consent.
 
 ### Guardrails
 

@@ -88,7 +88,16 @@ command if manual), plus any human follow-ups (secret/config changes, migration 
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| version | no | version or bump keyword | `vX.Y.Z` / `patch` / `minor` / `major` | infer from change set | Explicit tag version or SemVer bump; omit to derive from merges since the last release and propose it. |
+| publish_mode | no | `PUBLISH_MODE=auto` / `auto` | manual / auto | manual | Prepare changelog/bump/tag candidate and stop (`manual`), or publish the tag/release (`auto`). |
+
 ## Runtime input
 
-`$ARGUMENTS` contains the requested version or bump keyword. If empty, infer the bump from the change
-set and propose it.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Tokens are the requested version or bump keyword. Empty means infer the bump from the change set and
+propose it.

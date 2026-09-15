@@ -14,7 +14,7 @@ Docs that drift from the code or can't be completed are rejected and fixed. The 
 actually follow this," not "it reads well."
 
 Input: what to document — a module, a feature, a public API/CLI, the README/getting-started,
-a migration guide, or the whole repo. If empty, ask what to document and for whom.
+a migration guide, or the whole repo — and for whom (see Parameters).
 
 ---
 
@@ -120,7 +120,19 @@ the doc type, the fresh-reader's final result (in its words), rounds taken, and 
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| target_and_audience | yes | free text | text | — | What to document and for whom — module, feature, public API/CLI, README, migration guide, or whole repo, plus audience. |
+| sequential | no | `sequential` | sequential  /  (absent→fanout) | fanout | Draft independent doc surfaces one at a time instead of fan-out. |
+| mode | no | `edit-in-place` / `MODE=edit-in-place` | pr  /  edit-in-place | pr | `pr` drafts in a worktree and opens a PR; `edit-in-place` writes into the working tree. |
+| worktree_root | no | `worktree-root=sibling` | nested  /  sibling | nested | Under `MODE=pr`, use legacy sibling worktree paths. |
+| sync_base | no | `sync-base` | on  /  off | off | Under `MODE=pr`, cut the worktree from `origin/<BASE_BRANCH>` instead of local `HEAD`. |
+| merge_mode | no | `MERGE_MODE=auto` / `auto` | manual  /  auto | manual | Under `MODE=pr`, merge the PR when CI is green. |
+
 ## Runtime input
 
-`$ARGUMENTS` is the complete invocation text. Use it as the documentation target and audience hint,
-plus optional `sequential` guidance; if empty, ask what to document and for whom.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Treat the free-text remainder as the documentation target and audience hint; strip guidance tokens (`sequential`, `edit-in-place`, `worktree-root=sibling`, `sync-base`) when present.

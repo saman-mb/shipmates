@@ -129,6 +129,17 @@ review on — and offer the next step: `/ship-plan-epics` to turn the chosen dir
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| question | yes | free text | open question / decision | — | The decision the spike must answer with evidence. |
+| mode | no | `edit-in-place` / `MODE=edit-in-place` | `pr` / `edit-in-place` | `pr` | Where the ADR lands — PR (default) or write in the calling tree. |
+| merge_mode | no | `MERGE_MODE=auto` / `auto` | manual / auto | manual | Under `MODE=pr`, merge the ADR PR when CI is green. |
+| sync_base | no | `sync-base` | on / off | off | Under `MODE=pr`, cut the ADR worktree from `origin/<BASE_BRANCH>` instead of local `HEAD`. |
+
 ## Runtime input
 
-`$ARGUMENTS` is the open question or decision to resolve. If empty, ask what decision is blocked.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Tokens are the open question or decision to resolve.
