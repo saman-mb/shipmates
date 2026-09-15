@@ -143,7 +143,8 @@ a two-command special case — so no command can drift from it. The repo-side ca
 It supersedes the project-pool **path and resolution root** in the Decision above (item 3). Everything
 else — the ladder, the precedence order, the enforcement contract, the audit line, the per-harness
 record — stands as written on 2026-09-13; the one exception is the `pool` field's condition vocabulary,
-which the Reporting note below extends. The Context, Evidence and Options above are that day's record
+which the Reporting note below replaces (at most one, in precedence order). The Context, Evidence and
+Options above are that day's record
 and are not rewritten.
 
 **The decision that moved (#449).** The project pool is `<repo>/model-pool.json`, and `<repo>` in the
@@ -169,7 +170,7 @@ reconciled on every target.
 cannot be read or parsed — no fall-through to the other file, the semantics unchanged and now
 unambiguous), `pool out of scope` (a project file at a path this run does not resolve, the retired path
 above included, is never used), and `no pool` (no usable declaration: neither file present, or nothing
-to rank). The two never combine: the field carries one condition or none. No pool state is silent and
+to rank). No two conditions combine: the field carries one condition or none. No pool state is silent and
 none aborts a run, so a captain upgrading with a file on the retired path gets a named line instead of a
 silent ignore.
 
@@ -177,7 +178,7 @@ silent ignore.
 it is not a valid pool, the run reports `pool unusable` and continues — reported, non-fatal, one line.
 If it is a valid pool, that is the feature. One consequence is deliberate: with no fall-through, that
 same run does not consult the user file at all — falling through with the condition named is a
-behaviour change deferred to its own follow-up, not an accident. The route is a one-way door for a
+behaviour change deferred to its own follow-up (#486), not an accident. The route is a one-way door for a
 captain who declared a pool under v0.7.x: the breakage is real and intended to be *reported* rather than
 silent, and the migration story is this amendment plus the release note.
 

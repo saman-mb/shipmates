@@ -703,7 +703,8 @@ mod tests {
     /// location and its resolution root are a **contract** a captain relies on,
     /// not prose, so they are asserted here: exactly one project-pool path, the
     /// run's repository root as the root it resolves against, the closed
-    /// three-value condition vocabulary with its exclusivity rule, and exactly
+    /// three-value condition vocabulary with its exclusivity and precedence
+    /// rule, and exactly
     /// one mention of the retired path — the out-of-scope clause that names it.
     /// The block is inlined into every command on every target, so its ceiling
     /// is asserted here too, beside the table ceiling in the integration suite.
@@ -733,13 +734,23 @@ mod tests {
             out.contains("retired `<repo>/.shipmates/model-pool.json`"),
             "the retired mention must be the retired-path clause"
         );
+        // The block wraps at ~100 columns, so the clauses that may cross a line
+        // break are asserted on a whitespace-normalised copy.
+        let flat = out.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(
-            out.contains("When no project pool is in force"),
+            flat.contains("when no project pool is in force"),
             "the out-of-scope condition must be scoped to the runs where no project pool is in force"
         );
         assert!(
-            out.contains("at most one condition"),
-            "the block must state that the `pool` field carries at most one condition"
+            flat.contains("carries at most one condition from a closed set of three"),
+            "the block must state that the `pool` field carries at most one condition from a closed set"
+        );
+        assert!(
+            flat.contains(
+                "chosen in this order: `pool unusable`, then `pool out of scope`, then `no pool`"
+            ),
+            "the block must state the condition precedence — the order is what resolves two true \
+             conditions to one"
         );
         assert!(
             out.contains("pool=<project|user|inherit>[ (<condition>)]"),
@@ -754,8 +765,8 @@ mod tests {
         }
         assert!(
             out.len() <= 8_400,
-            "the model-routing block is {} bytes, past its #450 ceiling of 8,400 — it is inlined \
-             into every command on every target",
+            "the model-routing block is {} bytes, past the 8,400-byte ceiling set for the #450 trim \
+             — it is inlined into every command on every target",
             out.len()
         );
         assert!(!out.contains("<!--"), "block must carry no HTML comment");

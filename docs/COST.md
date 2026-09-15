@@ -32,7 +32,7 @@ short and stable: command authors reference it instead of copying cost or argume
 each workflow. **Model routing** is the one deliberately large member, and it is inlined here rather
 than opted into per command because every command spawns the crew and each drives it differently — a
 ruleset only some commands carry is a ruleset the rest silently route around. Its size is bounded: the
-per-target table is trimmed to the capability record's own cells, and guards fail the build if the
+per-target table is trimmed to the capability record's own cells, and guards fail CI if the
 table passes its 1,200-byte ceiling, if the block passes its 8,400-byte ceiling, or if a cell drifts
 from the record — because these bytes are inlined into every command on every target. The
 `<!-- shipmates:model-routing -->` marker at the end of the block below expands the **Model routing**
@@ -293,14 +293,13 @@ level of the order does not exist on a target, its row in the per-target table b
 
 **Never guess.** An unknown or empty pool produces `inherit`, recorded as `inherit (no pool)`; a pool
 file that exists but cannot be used is recorded as `inherit (pool unusable)`, with no fall-through to
-the other file, so a missing declaration and a broken one are never confused.
-When no project pool is in force, one found only where this run does not resolve it is never used,
-and is reported as `pool out of scope` — a worktree's own copy and
-the retired `<repo>/.shipmates/model-pool.json` alike.
-The `pool` field carries at most one condition, chosen in this order: `pool unusable`, then
-`pool out of scope`, then `no pool`. No pool state is silent or fatal. A concrete model identifier is never
-a fallback, never a default, and never an example. An enumeration command that exits non-zero, or whose
-output cannot be parsed, leaves the pool unknown: continue down the ladder.
+the other file, so a missing declaration and a broken one are never confused. A project pool at a path
+this run does not resolve is never the pool in force; when no project pool is in force, that is reported
+as `pool out of scope` — a worktree's own copy and the retired `<repo>/.shipmates/model-pool.json`
+alike. The `pool` field carries at most one condition from a closed set of three, chosen in this order:
+`pool unusable`, then `pool out of scope`, then `no pool`. No pool state is silent or fatal. A concrete
+model identifier is never a fallback, never a default, and never an example. An enumeration command that
+exits non-zero, or whose output cannot be parsed, leaves the pool unknown: continue down the ladder.
 
 **Enforcement.** An identity outside the resolved pool is **refused**, not quietly clamped — resolve a
 different candidate, or stop and report. Not every target's documented mechanism can hold that:
