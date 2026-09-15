@@ -647,6 +647,73 @@ fn test_cli_build_and_install() {
     assert!(stdout.contains("Installed harness: claude-code"));
 }
 
+/// #454: a home/global pi install prints project-local guidance; a `--dir`
+/// project install must not.
+#[test]
+fn test_pi_global_install_prints_project_local_guidance() {
+    let home = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+
+    let global = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .env("HOME", home.path())
+        .args([
+            "install",
+            "--harness",
+            "pi",
+            "--global",
+            "--with-tools",
+            "none",
+        ])
+        .output()
+        .expect("failed to execute shipmates install --global pi");
+    assert!(
+        global.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&global.stdout),
+        String::from_utf8_lossy(&global.stderr)
+    );
+    let global_out = String::from_utf8_lossy(&global.stdout);
+    assert!(
+        global_out.contains("Installed harness: pi"),
+        "missing install line: {global_out}"
+    );
+    assert!(
+        global_out.contains("nearest ancestor")
+            && global_out.contains("~/.pi/agent/")
+            && global_out.contains("--local"),
+        "missing #454 home-install guidance: {global_out}"
+    );
+
+    let local = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .env("HOME", home.path())
+        .args([
+            "install",
+            "--harness",
+            "pi",
+            "--dir",
+            project.path().to_str().unwrap(),
+            "--with-tools",
+            "none",
+        ])
+        .output()
+        .expect("failed to execute shipmates install --dir pi");
+    assert!(
+        local.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&local.stdout),
+        String::from_utf8_lossy(&local.stderr)
+    );
+    let local_out = String::from_utf8_lossy(&local.stdout);
+    assert!(
+        local_out.contains("Installed harness: pi"),
+        "missing install line: {local_out}"
+    );
+    assert!(
+        !local_out.contains("nearest ancestor") && !local_out.contains("shadowed"),
+        "project-local pi install must not print the home-shadow hint: {local_out}"
+    );
+}
+
 /// No adapter may stamp a model into a crew agent file — a model is a runtime
 /// decision the orchestrator makes at spawn (#205), so an install-time value
 /// would be wrong across harnesses and user access tiers. Effort (#204) IS

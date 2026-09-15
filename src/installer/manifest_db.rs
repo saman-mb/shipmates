@@ -566,7 +566,7 @@ fn is_steering_receipt_path(harness: &str, path: &str) -> bool {
         "claude-code" => path == ".claude/rules/shipmates-contributor.md",
         "cursor" => path == ".cursor/rules/shipmates-contributor.mdc",
         "github-copilot" => path == ".github/instructions/shipmates.instructions.md",
-        "opencode" | "codex" | "antigravity" | "windsurf" => {
+        "opencode" | "codex" | "antigravity" | "windsurf" | "pi" => {
             path == ".shipmates/contributor-steering.md"
         }
         _ => false,
@@ -704,7 +704,9 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                 || is_skill_tree(".windsurf")
         }
         "pi" => {
-            is_skill_tree(".agents")
+            is_steering_receipt_path(harness, path)
+                || is_shipmates_steering_path(path)
+                || is_skill_tree(".agents")
                 || (parts.len() == 3
                     && root == ".pi"
                     && parts[1] == "agents"
@@ -1085,6 +1087,12 @@ mod tests {
         // which pi reads as a legacy location — the two harnesses need
         // incompatible `tools:` shapes, so one file cannot serve both.
         assert!(allowed_receipt_path("pi", ".pi/agents/sdet.md"));
+        // Shared plain-markdown steering, same path as windsurf/codex/opencode/
+        // antigravity — doctor/receipt must accept it once the adapter emits it.
+        assert!(allowed_receipt_path(
+            "pi",
+            ".shipmates/contributor-steering.md"
+        ));
         // A pre-#437 receipt recorded only `.agents/` paths. It must still
         // validate, so `update` can refresh that install and `uninstall` can
         // clear it rather than failing closed on a tree nobody can manage.
