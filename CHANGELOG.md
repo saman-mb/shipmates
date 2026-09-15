@@ -5,6 +5,16 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.7.4] - 2026-09-15
+
+### Fixed
+
+- **pi contributor steering parity.** The pi adapter now emits `.shipmates/contributor-steering.md`
+  like the other seven harnesses, and receipts/doctor accept that path for pi (#442).
+- **pi home-install guidance.** A `--global` / `$HOME` pi install prints a project-local preference
+  note: pi resolves the nearest ancestor with `.pi/` or `.agents/`, so a home install can be shadowed
+  (#454). Doctor-side detection remains #453.
+
 ## [0.7.3] - 2026-09-15
 
 ### Fixed

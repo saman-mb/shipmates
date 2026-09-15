@@ -204,7 +204,10 @@ impl Adapter for PiAdapter {
     }
 
     fn steering_target(&self) -> Option<super::render::SteeringTarget> {
-        None
+        Some(super::render::SteeringTarget {
+            rel_path: super::render::SHIPMATES_STEERING_REL,
+            format: super::render::SteeringFormat::PlainMarkdown,
+        })
     }
 
     fn build(
@@ -254,6 +257,19 @@ mod tests {
             board: String::new(),
             source: std::path::PathBuf::from(""),
         }
+    }
+
+    #[test]
+    fn test_pi_steering_target_is_shared_plain_markdown() {
+        let target = PiAdapter.steering_target().expect("pi must emit steering");
+        assert_eq!(
+            target.rel_path,
+            crate::adapters::render::SHIPMATES_STEERING_REL
+        );
+        assert!(matches!(
+            target.format,
+            crate::adapters::render::SteeringFormat::PlainMarkdown
+        ));
     }
 
     #[test]
