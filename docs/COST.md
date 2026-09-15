@@ -32,12 +32,12 @@ short and stable: command authors reference it instead of copying cost or argume
 each workflow. **Model routing** is the one deliberately large member, and it is inlined here rather
 than opted into per command because every command spawns the crew and each drives it differently — a
 ruleset only some commands carry is a ruleset the rest silently route around. Its size is bounded: the
-per-target table is trimmed to the actionable cells (#450) and a guard fails the build if it grows past
-its byte ceiling or restates a capability the record already holds, because these bytes are inlined
-into every command on every target. The `<!-- shipmates:model-routing -->` marker at the end of the
-block below expands the **Model routing** section further down this file, which is the only statement
-of it; that marker is expanded after the preamble itself, so the substitution order in `render_body`
-is load-bearing.
+per-target table is trimmed to the capability record's own cells, and guards fail the build if the
+table passes its 1,200-byte ceiling, if the block passes its 8,400-byte ceiling, or if a cell drifts
+from the record — because these bytes are inlined into every command on every target. The
+`<!-- shipmates:model-routing -->` marker at the end of the block below expands the **Model routing**
+section further down this file, which is the only statement of it; that marker is expanded after the
+preamble itself, so the substitution order in `render_body` is load-bearing.
 
 <!-- command-preamble:start -->
 ## Cost discipline
@@ -293,10 +293,12 @@ level of the order does not exist on a target, its row in the per-target table b
 
 **Never guess.** An unknown or empty pool produces `inherit`, recorded as `inherit (no pool)`; a pool
 file that exists but cannot be used is recorded as `inherit (pool unusable)`, with no fall-through to
-the other file, so a missing declaration and a broken one are never confused. A project file at a root
-this run does not resolve — a worktree's own copy, or one left at the old in-tree `.shipmates/` path —
-is never the pool in force, and is reported as `pool out of scope`, the third tag its `pool` field may
-carry, a closed set of three; no pool state is silent or fatal. A concrete model identifier is never
+the other file, so a missing declaration and a broken one are never confused.
+When no project pool is in force, one found only where this run does not resolve it is never used,
+and is reported as `pool out of scope` — a worktree's own copy and
+the retired `<repo>/.shipmates/model-pool.json` alike.
+The `pool` field carries at most one condition, chosen in this order: `pool unusable`, then
+`pool out of scope`, then `no pool`. No pool state is silent or fatal. A concrete model identifier is never
 a fallback, never a default, and never an example. An enumeration command that exits non-zero, or whose
 output cannot be parsed, leaves the pool unknown: continue down the ladder.
 
@@ -329,11 +331,11 @@ effort surface with its clamp. No cell is ever blank: a missing feature is a sta
 | Target | Discovery tier | Override kind | Enforcement | Effort surface and clamp |
 |--------|----------------|---------------|-------------|--------------------------|
 | claude-code | declared | per-spawn | fallback | separate key · unsupported level clamps down |
-| opencode | query | static agent file | none | separate key · no clamp |
-| antigravity | query | session-level | abort | run-level · no clamp |
+| opencode | query | static agent file | none | separate key · no clamp documented, provider decides |
+| antigravity | query | session-level | abort | run-level · no clamp documented |
 | codex | query | per-spawn | none | separate key · gated on model support |
-| cursor | query | static agent file | fallback | folded into the model string · model-defined |
-| github-copilot | declared | per-spawn | abort | separate key · no clamp |
+| cursor | query | static agent file | fallback | folded into the model string · model-defined, clamping undocumented |
+| github-copilot | declared | per-spawn | abort | separate key · no clamp documented |
 | pi | query | per-spawn | none | separate key · per-model map, unsupported clamped away |
 | windsurf | inherit | session-level | none | none · only an interactive cycle |
 

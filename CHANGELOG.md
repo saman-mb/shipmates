@@ -11,28 +11,30 @@ All notable changes to this project are documented here. The format follows
 
 - **The project model pool moved to the repository root.** The project file is now
   `<repo>/model-pool.json`, and `<repo>` is defined as the **run's repository root** — the checkout the
-  run was started from, so the spawns in a cut worktree still read the run's checkout, never their own.
-  A captain's pool becomes a file the repository can commit, which is what lets it reach every clone and
-  every worktree cut from one; the retired `<repo>/.shipmates/model-pool.json` sat under the project's
-  `.shipmates/` tree, which is Shipmates' own install state — per-machine wherever a repository ignores
-  it, as this one does. The user file is unchanged at `~/.shipmates/model-pool.json` (#449).
-- **The `MODEL ROUTING:` line names a pool it did not consult.** Its `pool` field now carries the source
-  in force (`project` / `user` / `inherit`) plus exactly one condition from a closed three-value set —
-  `no pool`, `pool unusable`, `pool out of scope` — so a project pool at a root the run does not
-  resolve, a worktree's own copy included, is a named line rather than a silent absence (#449).
+  run was started from, so a spawn running in a cut worktree still reads the run's checkout, never its
+  own. A captain's pool becomes a file the repository can commit, which is what lets it reach every clone
+  and every worktree cut from one; the retired `<repo>/.shipmates/model-pool.json` sat under the
+  project's `.shipmates/` tree, which is Shipmates' own install state — per-machine wherever a repository
+  ignores it, as this one does. The user file is unchanged at `~/.shipmates/model-pool.json`. Captains
+  upgrading from v0.7.x: move `model-pool.json` to the repository root (#449).
+- **The `MODEL ROUTING:` line names a pool it did not consult.** Its `pool` field carries the source in
+  force (`project` / `user` / `inherit`) and, only when no project pool is in force, **at most one**
+  condition, chosen in the stated order — `pool unusable`, `pool out of scope`, `no pool` — so a project
+  pool the run does not resolve, a worktree's own copy included, is a named line rather than a silent
+  absence (#449).
 - **The per-target table in `## Model routing` is trimmed to the cells the orchestrator acts on.** Each
   row's discovery tier, override kind and enforcement are the capability record's own values, and the
   effort cell is the record's effort kind plus at most one clamp clause; the restated glosses are gone.
-  The rendered block drops from 8,809 to 8,041 bytes on every command on all eight targets, and a new
-  guard caps the table so the glosses cannot creep back (#450).
+  The rendered block drops from 8,809 to 8,218 bytes on every command on all eight targets, and guards
+  now cap both the block and its table so the glosses cannot creep back (#450).
 
 ### Fixed
 
 - **A project model pool the run did not resolve was ignored in silence.** A pool declared inside a
-  worktree, or left at the project's old in-tree `.shipmates/` path, was simply not read and the report
-  said nothing about it. Every such case is now `pool out of scope` on the spawn's audit line — never
-  fatal, never quiet — and a selected file that cannot be read stays `inherit (pool unusable)` with no
-  fall-through to the other file (#449).
+  worktree, or left at the project's old in-tree `.shipmates/` path, was never the pool in force and the
+  report said nothing about it. Every such case is now `pool out of scope` on the spawn's audit line —
+  never fatal, never quiet — and a selected file that cannot be read stays `inherit (pool unusable)` with
+  no fall-through to the other file (#449).
 
 ## [0.7.4] - 2026-09-15
 

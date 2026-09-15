@@ -1220,16 +1220,23 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
             .map(|(_, value)| (*value).to_string())
             .unwrap_or_else(|| {
                 panic!(
-                    "{target}: the shipped table's effort cell `{cell}` does not lead with a value \
-                     in the record's enum"
+                    "{target}: the shipped table's effort cell `{cell}` does not lead with one of \
+                     the record's enum spellings — the kind before any ` · ` clause must match one \
+                     exactly ({})",
+                    cells
+                        .iter()
+                        .map(|(shown, _)| format!("`{shown}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 )
             })
     }
 
-    const OVERRIDE_CELLS: [(&str, &str); 3] = [
+    const OVERRIDE_CELLS: [(&str, &str); 4] = [
         ("per-spawn", "per-spawn"),
         ("static agent file", "static-agent-file"),
         ("session-level", "session-level"),
+        ("none", "none"),
     ];
     const ENFORCEMENT_CELLS: [(&str, &str); 4] = [
         ("abort", "abort"),

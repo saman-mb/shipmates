@@ -571,7 +571,7 @@ One concise summary: PR link (and merge state), commit(s), the absolute **worktr
 sync/rebase ran, which specialists reviewed it and their
 verdicts (`re-run` / `carried ACCEPT` / `newly seated` / `still gated` after any fix round — a `still
 gated` seat is named with the flag that gated it), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
-(tier, pool source, the model identity the harness accepted, effort requested and resolved, and
+(tier, pool source, with its condition when one fired, the model identity the harness accepted, effort requested and resolved, and
 `honoured` / `substituted` / `inherit`), follow-up issues filed (with links), the confirmed-green CI link,
 
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at

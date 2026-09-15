@@ -703,7 +703,10 @@ mod tests {
     /// location and its resolution root are a **contract** a captain relies on,
     /// not prose, so they are asserted here: exactly one project-pool path, the
     /// run's repository root as the root it resolves against, the closed
-    /// three-value condition vocabulary, and no copy of the path #449 retired.
+    /// three-value condition vocabulary with its exclusivity rule, and exactly
+    /// one mention of the retired path — the out-of-scope clause that names it.
+    /// The block is inlined into every command on every target, so its ceiling
+    /// is asserted here too, beside the table ceiling in the integration suite.
     #[test]
     fn test_model_routing_block_is_canonical_and_self_contained() {
         let out = render_body("<!-- shipmates:model-routing -->", &CLAUDE_CODE);
@@ -721,9 +724,26 @@ mod tests {
             out.contains("`<repo>/model-pool.json`"),
             "the block must name the project pool by its one shipped path"
         );
+        assert_eq!(
+            out.matches("<repo>/.shipmates/model-pool.json").count(),
+            1,
+            "the retired path may appear exactly once — in the out-of-scope clause"
+        );
         assert!(
-            !out.contains("<repo>/.shipmates/model-pool.json"),
-            "the retired project-pool path must not survive in the block"
+            out.contains("retired `<repo>/.shipmates/model-pool.json`"),
+            "the retired mention must be the retired-path clause"
+        );
+        assert!(
+            out.contains("When no project pool is in force"),
+            "the out-of-scope condition must be scoped to the runs where no project pool is in force"
+        );
+        assert!(
+            out.contains("at most one condition"),
+            "the block must state that the `pool` field carries at most one condition"
+        );
+        assert!(
+            out.contains("pool=<project|user|inherit>[ (<condition>)]"),
+            "the audit template must expose the `pool` field's optional condition slot"
         );
         for condition in ["no pool", "pool unusable", "pool out of scope"] {
             assert!(
@@ -732,6 +752,12 @@ mod tests {
                  cannot see in the report is a silent one"
             );
         }
+        assert!(
+            out.len() <= 8_400,
+            "the model-routing block is {} bytes, past its #450 ceiling of 8,400 — it is inlined \
+             into every command on every target",
+            out.len()
+        );
         assert!(!out.contains("<!--"), "block must carry no HTML comment");
         assert!(!out.contains("{{"), "block must carry no exporter token");
         assert!(!out.contains("shipmates:model-routing"));
