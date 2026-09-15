@@ -131,6 +131,28 @@ shipmates install --harness claude-code --dir /tmp/some-test-repo
 Then run the command in Claude Code and confirm the agents resolve (no "falling back to
 general-purpose" notes in the report).
 
+### Required status checks on `main`
+
+Branch protection and rulesets are repository settings, so no pull request can change them: a
+workflow edit proposes the jobs, never the gate that blocks on them. The desired state is committed
+in `.github/rulesets/main.json`, next to the workflows it gates.
+
+A maintainer applies it:
+
+```bash
+# update the existing `main` ruleset (id 19800250) in place
+gh api --method PUT repos/saman-mb/shipmates/rulesets/19800250 --input .github/rulesets/main.json
+# or, when no ruleset named main exists yet
+gh api --method POST repos/saman-mb/shipmates/rulesets --input .github/rulesets/main.json
+```
+
+It requires four checks before a pull request can merge — **Validate site**, **Exporter on minimum
+environment**, **CLI e2e**, and **Sandbox install + CLI e2e** — each the job name a PR-triggered
+workflow declares, since GitHub matches a required check on that name. It also blocks branch
+deletion and force-pushes to `main`. The `Deploy to GitHub Pages` job and the Release workflow's
+matrix-expanded jobs are deliberately not required: they either run only on a push to `main` or
+rename themselves with the release plan, so requiring one would block every merge.
+
 ## PRs
 
 Keep changes focused, explain the intent, and make sure `shipmates install` still installs cleanly.
