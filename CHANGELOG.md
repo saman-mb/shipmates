@@ -25,7 +25,7 @@ All notable changes to this project are documented here. The format follows
 - **The per-target table in `## Model routing` is trimmed to the cells the orchestrator acts on.** Each
   row's discovery tier, override kind and enforcement are the capability record's own values, and the
   effort cell is the record's effort kind plus at most one clamp clause; the restated glosses are gone.
-  The rendered block drops from 8,809 to 8,218 bytes on every command on all eight targets, and guards
+  The rendered block drops from 8,809 to 8,260 bytes on every command on all eight targets, and guards
   now cap both the block and its table so the glosses cannot creep back (#450).
 
 ### Fixed
