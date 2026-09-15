@@ -693,12 +693,35 @@ fn install_harness(
             names.join(", ")
         );
     }
+    // #454: guidance only — do not remap the target or invent a doctor check.
+    // Global pi crew lands under ~/.pi/agent/; a nearer ancestor carrying
+    // `.pi/` or `.agents/` still shadows that home tree from a nested cwd.
+    if let Some(hint) = pi_global_install_hint(harness, global) {
+        println!("{hint}");
+    }
     Ok(HarnessInstall {
         version: plan.version,
         provision_scripts,
         tools: selected_tools.to_vec(),
         previous_tools,
     })
+}
+
+/// Post-install guidance for a home/global pi install (#454).
+///
+/// Returns `Some` only when `harness` is `pi` and the install target is the
+/// user's home directory (`--global` / `$HOME`). Project-local installs
+/// (`--local`, `--dir <project>`) must stay quiet — they are the preferred shape.
+fn pi_global_install_hint(harness: &str, global: bool) -> Option<&'static str> {
+    if harness == "pi" && global {
+        Some(
+            "Note: pi resolves its project root to the nearest ancestor carrying `.pi/` or \
+             `.agents/`, so a home install under ~/.pi/agent/ can be shadowed. Prefer \
+             `--local` or `--dir <project>` for pi.",
+        )
+    } else {
+        None
+    }
 }
 
 /// Split a payload into the paths that may be written and those sitting behind a
@@ -1206,5 +1229,21 @@ mod tests {
         assert_eq!(tool_change(11, None), "tools: 11");
         assert_eq!(tool_change(11, Some(11)), "tools: 11");
         assert_eq!(tool_change(0, Some(11)), "tools: 11 → 0");
+    }
+
+    #[test]
+    fn test_pi_global_install_hint_only_for_home_pi() {
+        // #454: home/global pi install prefers project-local; other cases stay quiet.
+        let hint = pi_global_install_hint("pi", true).expect("pi + global must hint");
+        assert!(hint.contains("nearest ancestor"), "{hint}");
+        assert!(hint.contains("~/.pi/agent/"), "{hint}");
+        assert!(hint.contains("shadowed"), "{hint}");
+        assert!(hint.contains("--local"), "{hint}");
+        assert!(hint.contains("--dir <project>"), "{hint}");
+
+        assert!(pi_global_install_hint("pi", false).is_none());
+        assert!(pi_global_install_hint("claude-code", true).is_none());
+        assert!(pi_global_install_hint("antigravity", true).is_none());
+        assert!(pi_global_install_hint("codex", true).is_none());
     }
 }
