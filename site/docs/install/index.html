@@ -105,13 +105,13 @@
           <p class="section__lead">One command drops the crew and the sixteen commands into a harness&#x27;s own tree.</p>
         </div>
         <div class="order-prose">
-          <pre class="order-code" tabindex="0"><code>shipmates install                            # auto-detects installed harnesses; all tools
+          <pre class="order-code" tabindex="0"><code>shipmates install                            # prompt / default claude-code; all tools
 shipmates install --harness claude-code
 shipmates install --harness opencode --local
 shipmates install --harness all --dir /path/to/project
 shipmates update                             # refresh installed harnesses in place
 shipmates update --harness claude-code</code></pre>
-          <p>Installs into your global home directory by default. Use <code>--local</code> for the current directory, or <code>--dir /path/to/project</code> for a specific root. When <code>--harness</code> is omitted, <code>shipmates install</code> automatically detects which harnesses are installed on your machine (falling back to interactive selection in a terminal, or <code>claude-code</code> in non-interactive runs). It sets up each one with its native agent setups, least-privilege permissions, tools, and canonical user-scope global steering in your home directory instruction files — one command installs everything 1 time, perfectly. The crew and the sixteen commands land in the exact tree your harness reads, in its own native format — nothing is downloaded; the CLI compiles the payload from sources built into the binary. Full per-harness paths are in the <a href="#harness-paths">table below</a>.</p>
+          <p>Installs into your global home directory by default. Use <code>--local</code> for the current directory, or <code>--dir /path/to/project</code> for a specific root. When <code>--harness</code> is omitted, <code>shipmates install</code> reports any detected harnesses as a hint, then prompts in a terminal (Enter defaults to <code>claude-code</code>) or installs <code>claude-code</code> only in non-interactive runs — pass <code>--harness NAME</code> or <code>--harness all</code> to opt in. Canonical user-scope global steering is written into home instruction files only when the install target is the home directory (default / <code>--global</code>), not on <code>--local</code> or <code>--dir</code>. The crew and the sixteen commands land in the exact tree your harness reads, in its own native format — nothing is downloaded; the CLI compiles the payload from sources built into the binary. Full per-harness paths are in the <a href="#harness-paths">table below</a>.</p>
           <p>After you upgrade the <code>shipmates</code> binary, run <code>shipmates update</code> to refresh an existing install. It overwrites payload files to match the new binary, keeps previously installed tools unless you pass <code>--with-tools</code>, and prints an upgrade summary.</p>
           <p>One thing to know up front: six harnesses take the full crew (<code>claude-code</code>, <code>opencode</code>, <code>antigravity</code>, <code>codex</code>, <code>github-copilot</code>, <code>pi</code>). The two skill-only harnesses (<code>cursor</code>, <code>windsurf</code>) have no native subagent directory, so only the sixteen commands land — the workflows still run, just without the named specialists.</p>
         </div>
@@ -178,7 +178,7 @@ shipmates install --harness claude-code --dir /path/to/project</code></pre>
         </div>
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>shipmates targets                 # harness names for --harness / --target
-shipmates install                 # first-time install (auto-detects or interactive)
+shipmates install                 # first-time install (prompt / default claude-code)
 shipmates update                  # refresh after upgrading the shipmates binary
 shipmates doctor [--fix]          # health check; --fix repairs drift
 shipmates uninstall               # remove a receipt-owned install
@@ -189,9 +189,9 @@ shipmates build|check             # contributor digest / payload tooling</code><
           <table>
             <thead><tr><th scope="col">Command</th><th scope="col">Flag</th><th scope="col">Default</th><th scope="col">Effect</th></tr></thead>
             <tbody>
-              <tr><td rowspan="6"><code>install</code></td><td><code>--harness NAME</code></td><td>auto-detected / <code>claude-code</code></td><td>Harness tree to install (<code>all</code> = every target). Omit to auto-detect installed harnesses.</td></tr>
+              <tr><td rowspan="6"><code>install</code></td><td><code>--harness NAME</code></td><td>prompt / <code>claude-code</code></td><td>Harness tree to install (<code>all</code> = every target). Omit to prompt (TTY) or default to <code>claude-code</code> (non-interactive); detection is a hint only.</td></tr>
               <tr><td><code>--with-tools NAMES|all|none</code></td><td>all bundled tools</td><td>Omit for every tool; <code>none</code> for crew-only; names or <code>all</code> for a subset.</td></tr>
-              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code></td><td>global home</td><td>Install root (see Where above). Global steering always lands in home dir.</td></tr>
+              <tr><td><code>--global</code> / <code>--local</code> / <code>--dir PATH</code></td><td>global home</td><td>Install root (see Where above). Global steering lands in home dir only on a global target.</td></tr>
               <tr><td><code>--force</code></td><td>off</td><td>Overwrite colliding files even when not receipt-owned.</td></tr>
               <tr><td><code>--no-migrate</code></td><td>off</td><td>Skip layout-migrate and identity-rename sweeps.</td></tr>
               <tr><td><code>--from-cwd</code></td><td>off</td><td>Build from this directory&#x27;s <code>crew/</code>, <code>commands/</code>, <code>toolbox/</code> instead of the embedded payload.</td></tr>

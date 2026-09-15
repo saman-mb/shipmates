@@ -242,6 +242,13 @@ pub fn uninstall_with_payload(
                         break;
                     }
                 }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    // A sibling path already removed this directory — keep walking up.
+                    dir = dir
+                        .parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_else(|| target_dir.to_path_buf());
+                }
                 Err(error) => {
                     report.warnings.push(format!(
                         "Warning: cannot read dir {}: {}",
