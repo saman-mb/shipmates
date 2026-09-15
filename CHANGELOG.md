@@ -5,6 +5,27 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.1] - 2026-09-15
+
+### Fixed
+
+- **`shipmates install` no longer auto-installs every detected harness.** Omitting `--harness`
+  prints any detections as a hint, then prompts in a terminal (Enter = `claude-code`) or installs
+  `claude-code` only when non-interactive. Pass `--harness NAME` or `--harness all` to opt in (#489).
+- **Detection markers no longer treat every GitHub repo as Copilot, or a shared skills tree as
+  Antigravity.** Project detection requires `.github/agents` and `.agents/agents` respectively;
+  home detection dropped bare `~/.github` and bare `~/.gemini` in favour of harness-owned config
+  roots. Receipts are read from `.shipmates/receipts/` (the path install actually writes) (#489).
+- **Project `--local` / `--dir` installs no longer rewrite home instruction files.** Canonical
+  global steering installs only when the target is the home directory (default / `--global`).
+  `shipmates uninstall` now strips the managed steering block / Tier-A file for that harness (#489).
+- **Symlink skips no longer claim a full tool install.** Skipped paths are reported as an incomplete
+  install, and the tools count / returned tool set match what was actually written (#489).
+- **Cursor's install picker blurb names `.cursor/skills`**, matching where the payload lands (#405,
+  #489).
+- **Uninstall no longer spam-warns `cannot read dir` after a sibling already removed that directory**
+  (#489).
+
 ## [0.8.0] - 2026-09-15
 
 ### Changed

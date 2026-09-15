@@ -33,7 +33,7 @@ fn harness_blurb(name: &str) -> &'static str {
         "opencode" => "agents + commands in .opencode",
         "antigravity" => "agents + skills in .agents (agy)",
         "codex" => "TOML crew in .codex + skills in .agents",
-        "cursor" => "skills in .agents (shared Agent Skills tree)",
+        "cursor" => "skills in .cursor/skills (first-party slash picker)",
         "github-copilot" => "crew in .github/agents + skills in .agents",
         "pi" => "agents in .pi + skills in .agents",
         "windsurf" => "skills in .windsurf",
@@ -153,16 +153,28 @@ fn resolve_install_harnesses(
             }
             Ok(vec![name])
         }
+        // Detection is a hint only (#489). Never auto-install every detected
+        // harness: a loose marker used to silently install the wrong tree.
+        None if std::io::stdin().is_terminal() => {
+            let detected = detector::detect_installed_harness_names(target_dir);
+            if !detected.is_empty() {
+                println!(
+                    "Detected installed harness(es): {} — confirm below (Enter = claude-code).",
+                    detected.join(", ")
+                );
+            }
+            Ok(prompt_for_harnesses(&available))
+        }
         None => {
             let detected = detector::detect_installed_harness_names(target_dir);
             if !detected.is_empty() {
-                println!("Detected installed harness(es): {}", detected.join(", "));
-                Ok(detected)
-            } else if std::io::stdin().is_terminal() {
-                Ok(prompt_for_harnesses(&available))
-            } else {
-                Ok(vec!["claude-code".into()])
+                println!(
+                    "Detected installed harness(es): {} — non-interactive install defaults to \
+                     claude-code. Pass --harness NAME (or --harness all) to override.",
+                    detected.join(", ")
+                );
             }
+            Ok(vec!["claude-code".into()])
         }
     }
 }
@@ -495,13 +507,22 @@ fn install_harness(
     // negotiable. But refusing one path must not abandon the other forty, which
     // is what sharing a skills tree across harnesses used to cost a captain —
     // the whole install aborted on a path that was already correct. Every skipped
-    // path is named below, so a payload that lands incomplete says so rather
-    // than doing it quietly.
+    // path is named below, and the tools summary / returned tool list reflect
+    // what actually landed — never the requested set (#489).
     let (built, mut skipped_symlinked) =
         partition_symlinked(target_dir, &payload_prefix, built)?;
     let (tools_payload, skipped_tools) =
         partition_symlinked(target_dir, &payload_prefix, tools_payload)?;
     skipped_symlinked.extend(skipped_tools);
+    let landed_tools: Vec<catalog::CanonicalTool> = selected_tools
+        .iter()
+        .filter(|tool| {
+            tools_payload
+                .keys()
+                .any(|key| tool.owns_path(Path::new(key)))
+        })
+        .cloned()
+        .collect();
     let plan = installer::plan::InstallPlan::from_payload(
         adapter.as_ref(),
         harness,
@@ -667,21 +688,29 @@ fn install_harness(
         skipped_symlinked.sort();
         skipped_symlinked.dedup();
         println!(
-            "Warning: {} path(s) sit behind a symlink and were left alone — Shipmates never writes \
-             through one: {}",
+            "Warning: incomplete install — {} path(s) sit behind a symlink and were left alone \
+             (Shipmates never writes through one): {}",
             skipped_symlinked.len(),
             skipped_symlinked.join(", ")
         );
+        if landed_tools.len() != selected_tools.len() {
+            println!(
+                "  Tools that landed: {} of {} requested — receipt and summary count only what \
+                 was written.",
+                landed_tools.len(),
+                selected_tools.len()
+            );
+        }
     }
 
-    let tool_change = tool_change(selected_tools.len(), previous_tools);
-    if selected_tools.is_empty() {
+    let tool_change = tool_change(landed_tools.len(), previous_tools);
+    if landed_tools.is_empty() {
         println!(
             "Installed harness: {} ({} files written, {})",
             harness, result.written, tool_change
         );
     } else {
-        let names: Vec<&str> = selected_tools
+        let names: Vec<&str> = landed_tools
             .iter()
             .map(|tool| tool.name.as_str())
             .collect();
@@ -702,7 +731,7 @@ fn install_harness(
     Ok(HarnessInstall {
         version: plan.version,
         provision_scripts,
-        tools: selected_tools.to_vec(),
+        tools: landed_tools,
         previous_tools,
     })
 }
@@ -799,28 +828,33 @@ fn main() -> Result<()> {
                 install_steering.is_some(),
             )?;
 
-            // Install canonical global steering into user home directory
-            if let Some(home_path) = home::home_dir() {
-                if let Ok(global_content) = source.load_global_steering() {
-                    println!("\nInstalling canonical global steering (heuristics and workflow routing)...");
-                    for h in &harnesses {
-                        match steering::install_global_steering(h, &home_path, &global_content) {
-                            Ok(steering::SteeringOutcome::Created(p)) => {
-                                println!("  {} — installed global steering at {}", h, p.display());
-                            }
-                            Ok(steering::SteeringOutcome::Updated(p)) => {
-                                println!("  {} — updated global steering at {}", h, p.display());
-                            }
-                            Ok(steering::SteeringOutcome::Unchanged(p)) => {
-                                println!("  {} — global steering up to date at {}", h, p.display());
-                            }
-                            Ok(steering::SteeringOutcome::Gap(msg)) => {
-                                println!("  {} — note: {}", h, msg);
-                            }
-                            Ok(steering::SteeringOutcome::Removed(_)) => {}
-                            Err(e) => {
-                                eprintln!("  {} — failed to install global steering: {}", h, e);
-                            }
+            // Global steering is user-scope only (#489). A project --local/--dir
+            // install must not rewrite ~/.claude/CLAUDE.md (and friends); that
+            // used to fire on every install after #438.
+            if installer::manifest_db::is_global_target(&target_dir)
+                && let Some(home_path) = home::home_dir()
+                && let Ok(global_content) = source.load_global_steering()
+            {
+                println!(
+                    "\nInstalling canonical global steering (heuristics and workflow routing)..."
+                );
+                for h in &harnesses {
+                    match steering::install_global_steering(h, &home_path, &global_content) {
+                        Ok(steering::SteeringOutcome::Created(p)) => {
+                            println!("  {} — installed global steering at {}", h, p.display());
+                        }
+                        Ok(steering::SteeringOutcome::Updated(p)) => {
+                            println!("  {} — updated global steering at {}", h, p.display());
+                        }
+                        Ok(steering::SteeringOutcome::Unchanged(p)) => {
+                            println!("  {} — global steering up to date at {}", h, p.display());
+                        }
+                        Ok(steering::SteeringOutcome::Gap(msg)) => {
+                            println!("  {} — note: {}", h, msg);
+                        }
+                        Ok(steering::SteeringOutcome::Removed(_)) => {}
+                        Err(e) => {
+                            eprintln!("  {} — failed to install global steering: {}", h, e);
                         }
                     }
                 }
@@ -837,6 +871,7 @@ fn main() -> Result<()> {
                 println!("No install receipt found; nothing to uninstall.");
                 return Ok(());
             };
+            let harness_name = selected.receipt.harness.clone();
             let source = catalog::resolve_source_from_env(from_cwd)?;
             let roles = source.load_roles()?;
             let cmds = source.load_commands()?;
@@ -859,6 +894,23 @@ fn main() -> Result<()> {
             );
             for warning in report.warnings {
                 println!("{}", warning);
+            }
+            // Always strip user-scope steering for this harness on uninstall so
+            // a prior local install that wrote home files (#489) can still be
+            // cleaned up, and a global install does not leave the managed block.
+            if let Some(home_path) = home::home_dir() {
+                match steering::uninstall_global_steering(&harness_name, &home_path) {
+                    Ok(steering::SteeringOutcome::Removed(p)) => {
+                        println!("  removed global steering at {}", p.display());
+                    }
+                    Ok(steering::SteeringOutcome::Unchanged(_))
+                    | Ok(steering::SteeringOutcome::Gap(_))
+                    | Ok(steering::SteeringOutcome::Created(_))
+                    | Ok(steering::SteeringOutcome::Updated(_)) => {}
+                    Err(e) => {
+                        eprintln!("  failed to remove global steering: {e}");
+                    }
+                }
             }
         }
         Command::Build {
@@ -938,12 +990,13 @@ fn main() -> Result<()> {
                 install_steering.is_some(),
             )?;
 
-            // Refresh canonical global steering if home directory is available
-            if let Some(home_path) = home::home_dir() {
-                if let Ok(global_content) = source.load_global_steering() {
-                    for h in &harnesses {
-                        let _ = steering::install_global_steering(h, &home_path, &global_content);
-                    }
+            // Refresh canonical global steering only on a global/$HOME target (#489).
+            if installer::manifest_db::is_global_target(&target_dir)
+                && let Some(home_path) = home::home_dir()
+                && let Ok(global_content) = source.load_global_steering()
+            {
+                for h in &harnesses {
+                    let _ = steering::install_global_steering(h, &home_path, &global_content);
                 }
             }
         }
@@ -1156,6 +1209,19 @@ mod tests {
         assert_eq!(
             select_harnesses_from_line("", &avail),
             Some(vec!["claude-code".into()])
+        );
+    }
+
+    #[test]
+    fn cursor_blurb_names_first_party_skills_tree() {
+        assert!(
+            harness_blurb("cursor").contains(".cursor/skills"),
+            "cursor blurb must name the first-party skills tree, got {}",
+            harness_blurb("cursor")
+        );
+        assert!(
+            !harness_blurb("cursor").contains(".agents"),
+            "cursor no longer ships skills into the shared .agents tree"
         );
     }
 
