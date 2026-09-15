@@ -67,6 +67,10 @@ after the preamble itself, so the substitution order in `render_body` is load-be
   captain can see knobs like `board`, `merge_mode`, `dry_run`, or `mode` without memorizing tokens.
   Never hide captain-facing knobs inside a catch-all `guidance` row; free-text focus may be a
   separate optional row after the named knobs.
+- **Enums show default and the other choices.** When a row's Values is a finite set (e.g.
+  `full / epic-deferred / off`), print the active/default value **and** the remaining options in
+  that same line — e.g. `board  full  (also: epic-deferred, off)`. Free-text / open Values stay a
+  single default (or `—`); do not invent an enum that Parameters did not declare.
 - **Defaults-first, one turn.** Do **not** walk the captain through a long form. Show that full
   defaults summary once, and ask a single question: **OK to proceed, or type what to change?**
   - **OK / yes / empty reply** → lock the proposal and proceed.
