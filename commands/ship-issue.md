@@ -26,6 +26,11 @@ Stage 0 picks the next ticket(s) from the backlog for you (see Stage 0, *Selecti
 mutually exclusive with explicit issue numbers; tokens after it are guidance. **`next epic <n>`** scopes
 selection to epic `<n>`'s unchecked story checklist only (see *Selection mode*).
 
+**Composition target.** When another gated command (e.g. `/ship-epic`) composes this mid-run, it
+Reads **this installed file** and executes these stages in-session with the same guidance tokens —
+do not expect a Skill listing while `disable-model-invocation` is on. Behaviour is identical to a
+standalone run with the same arguments.
+
 ## Bundling — the token-efficient default
 
 Most of a run's token cost is **fixed overhead paid once per invocation**: the Planner pass, the

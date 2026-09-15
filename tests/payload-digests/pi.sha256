@@ -2,10 +2,10 @@ payload_digest_version=1
 target=pi
 .agents/skills/ship-consolidate-issues/SKILL.md 5217c10906e006f58f0be70653acece2f44cfedf0283df3d9899e43f8dd51c53
 .agents/skills/ship-document/SKILL.md 66022d3a5a9a1ae079579f34b0350d2d3652a0a5bd7b91ab4b252cf627c77f7d
-.agents/skills/ship-epic/SKILL.md 69bdbdf6610b010542481dfa332a5424970af803af61822e42009dba547ab0a7
+.agents/skills/ship-epic/SKILL.md 6fb3fd75d4da1094daf5f06fb53d7cf4d3c11f40867fc683ec48c9931772e188
 .agents/skills/ship-fix-bug/SKILL.md 79be391892b1cf5798a6661a5f20d59344921298f77fa2534abcb4f4d5b40d74
 .agents/skills/ship-harden/SKILL.md 89c33bf87ea092741c231724fef23106b6a9fb5777cbef7207cd6172c4c3aee4
-.agents/skills/ship-issue/SKILL.md 33c53ccf2aa7b8d5352caa61422c7b7ad14ce6ec6b66d41a707a1531199db40a
+.agents/skills/ship-issue/SKILL.md 0894830516b56ad7ee64905b119d197cbd9032a48f395bf0e45b339653c7e0e3
 .agents/skills/ship-migrate/SKILL.md 1afd50b8607ce46dc588df3df31bead083cd572e47c51166aa9073f67b269026
 .agents/skills/ship-onboard/SKILL.md 1974a535191fcbf64e26e0d556e26fa7af984254d1092b705ecde88181c44bc3
 .agents/skills/ship-plan-epics/SKILL.md ed7c408e2ab250d721a3184c986e90bc059147aa5400f9fc884feb5698903833
@@ -14,7 +14,7 @@ target=pi
 .agents/skills/ship-qa/SKILL.md c0408a8e9b5703adcb50d1b5c9885b774334eec646f908e13c25aa788bdf4734
 .agents/skills/ship-refactor/SKILL.md ace44b0d91d5185344fa461e072d90efdc48591bed6e2045e2077663c14e7c89
 .agents/skills/ship-release/SKILL.md 9f64779032d68f431254135cdac44df822ed1212263bf5169f56be622341b27b
-.agents/skills/ship-report-bug/SKILL.md fdf230770952bb5e8022dbdb4cf31c977bdf0417d30fa778982634ef29b3292b
+.agents/skills/ship-report-bug/SKILL.md f5afd724c620b005fd161874a2a9013b54186a517af3f721727e3781b9779d4b
 .agents/skills/ship-spike/SKILL.md 66fc55d80e22f74bab8ce78d0779f283dba9799e0e35f30fc0996e74d8bf0733
 .pi/agents/architect.md 7c05490d12d7ea4d7135d2483f738711d9af923c40b78f484e5aff337e6ee25f
 .pi/agents/art-director.md b4c25efc51d35041dd909575d5ce99e3ddb080897271ddda5c12448f753078c9
