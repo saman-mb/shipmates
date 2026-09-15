@@ -1161,38 +1161,82 @@ fn test_every_command_carries_the_model_routing_ruleset() {
 /// `## Model routing` table must agree with `tools/harness_matrix.json`
 /// `model_surface`, for every target, on every axis the table carries. Without it
 /// the shipped table is a fourth opinion that can go stale silently — which is how
-/// the ADR's "three targets" drifted from the record's four.
+/// the ADR's "three targets" drifted from the record's four. The match is on the
+/// record's own enums, exactly: the table's job is the *level the orchestrator
+/// acts on*, and a gloss restating the record is bytes inlined into every command
+/// on every target (#450).
 #[test]
 fn test_shipped_model_routing_table_matches_the_matrix() {
-    /// The shipped cell leads with prose, then a `·` gloss. Cut the lead segment,
-    /// and map it onto the record's enum by longest-prefix match so a cell may add
-    /// words ("static agent file per subagent") without lying about its kind.
-    fn leading(cell: &str) -> &str {
-        let cut = cell
-            .char_indices()
-            .find(|(_, c)| matches!(c, ',' | ';' | '·'))
-            .map(|(index, _)| index)
-            .unwrap_or(cell.len());
-        cell[..cut].trim()
-    }
-    fn enum_for(cells: &[(&str, &str)], cell: &str, column: &str, target: &str) -> String {
-        let lead = leading(cell);
+    /// Map a shipped cell onto the record's enum by **exact** match on the
+    /// display spelling. A cell that grew a `·`-joined gloss no longer equals
+    /// any spelling, so it fails here rather than passing on a prefix.
+    fn record_value(cells: &[(&str, &str)], cell: &str, column: &str, target: &str) -> String {
         cells
             .iter()
-            .find(|(prefix, _)| lead.starts_with(prefix))
+            .find(|(shown, _)| *shown == cell)
             .map(|(_, value)| (*value).to_string())
             .unwrap_or_else(|| {
                 panic!(
-                    "{target}: the shipped table's {column} cell `{cell}` leads with `{lead}`, which \
-                     names no value in the record's enum — the shipped copy has drifted"
+                    "{target}: the shipped table's {column} cell `{cell}` is not one of the record's \
+                     enums ({}) — a gloss has crept back in, or the shipped copy has drifted",
+                    cells
+                        .iter()
+                        .map(|(shown, _)| format!("`{shown}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 )
             })
     }
 
-    const OVERRIDE_CELLS: [(&str, &str); 3] = [
+    /// The effort cell is the record's effort kind plus **at most one** ` · `
+    /// clamp clause. The clamp changes the `requested→resolved` audit field, so
+    /// the orchestrator acts on it; the record's remaining effort prose is not
+    /// worth inlining 128 times, because it changes no decision (#450).
+    fn effort_value(cells: &[(&str, &str)], cell: &str, target: &str) -> String {
+        assert!(
+            cell.matches('·').count() <= 1,
+            "{target}: the shipped effort cell `{cell}` carries more than one ` · ` clause"
+        );
+        let (kind, clamp) = match cell.split_once(" · ") {
+            Some((kind, clamp)) => (kind, Some(clamp)),
+            None => (cell, None),
+        };
+        if let Some(clamp) = clamp {
+            assert!(
+                !clamp.contains(';'),
+                "{target}: the shipped effort cell's clamp clause `{clamp}` carries a `;` \
+                 continuation"
+            );
+            assert!(
+                clamp.len() <= 72,
+                "{target}: the shipped effort cell's clamp clause `{clamp}` is {} bytes — long \
+                 enough to be a second opinion on the record again (#450)",
+                clamp.len()
+            );
+        }
+        cells
+            .iter()
+            .find(|(shown, _)| *shown == kind)
+            .map(|(_, value)| (*value).to_string())
+            .unwrap_or_else(|| {
+                panic!(
+                    "{target}: the shipped table's effort cell `{cell}` does not lead with one of \
+                     the record's enum spellings — the kind before any ` · ` clause must match one \
+                     exactly ({})",
+                    cells
+                        .iter()
+                        .map(|(shown, _)| format!("`{shown}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            })
+    }
+
+    const OVERRIDE_CELLS: [(&str, &str); 4] = [
         ("per-spawn", "per-spawn"),
         ("static agent file", "static-agent-file"),
         ("session-level", "session-level"),
+        ("none", "none"),
     ];
     const ENFORCEMENT_CELLS: [(&str, &str); 4] = [
         ("abort", "abort"),
@@ -1223,11 +1267,13 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
     let harnesses = matrix["harnesses"].as_object().unwrap();
 
     let mut shipped: Vec<String> = Vec::new();
+    let mut table: Vec<&str> = Vec::new();
     for line in block.lines() {
         let line = line.trim();
         if !line.starts_with('|') {
             continue;
         }
+        table.push(line);
         let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
         if cells.len() != 5 || cells[0] == "Target" || cells[0].starts_with("---") {
             continue;
@@ -1246,17 +1292,17 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
             (
                 "override",
                 cells[2],
-                enum_for(&OVERRIDE_CELLS, cells[2], "override", target),
+                record_value(&OVERRIDE_CELLS, cells[2], "override", target),
             ),
             (
                 "enforcement",
                 cells[3],
-                enum_for(&ENFORCEMENT_CELLS, cells[3], "enforcement", target),
+                record_value(&ENFORCEMENT_CELLS, cells[3], "enforcement", target),
             ),
             (
                 "effort",
                 cells[4],
-                enum_for(&EFFORT_CELLS, cells[4], "effort", target),
+                effort_value(&EFFORT_CELLS, cells[4], target),
             ),
         ] {
             let recorded = match column {
@@ -1271,6 +1317,17 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
         }
         shipped.push(target.to_string());
     }
+
+    // This table is inlined into every command on every target (16 commands × 8
+    // targets), so its size is a cost decision, not a formatting one. #450
+    // trimmed it to the record's enums plus the one clamp clause the orchestrator
+    // acts on; this ceiling is what stops a gloss growing back silently.
+    let table_bytes = table.join("\n").len();
+    assert!(
+        table_bytes <= 1200,
+        "the shipped per-target table is {table_bytes} bytes, past its #450 ceiling of 1,200 — \
+         trim a cell back to the record's own value"
+    );
 
     let mut expected: Vec<String> = shipmates::adapters::targets()
         .iter()

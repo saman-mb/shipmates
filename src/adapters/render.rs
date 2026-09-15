@@ -699,7 +699,15 @@ mod tests {
     /// tokens or shapes that only make sense inside this repo: no HTML comment,
     /// no `{{…}}` placeholder, no `$`-plus-digit (a command file is scanned for
     /// one and a fence would not protect it), and no leftover marker. The
-    /// resolution order must be stated exactly once, in this block.
+    /// resolution order must be stated exactly once, in this block. The pool's
+    /// location and its resolution root are a **contract** a captain relies on,
+    /// not prose, so they are asserted here: exactly one project-pool path, the
+    /// run's repository root as the root it resolves against, the closed
+    /// three-value condition vocabulary with its exclusivity and precedence
+    /// rule, and exactly
+    /// one mention of the retired path — the out-of-scope clause that names it.
+    /// The block is inlined into every command on every target, so its ceiling
+    /// is asserted here too, beside the table ceiling in the integration suite.
     #[test]
     fn test_model_routing_block_is_canonical_and_self_contained() {
         let out = render_body("<!-- shipmates:model-routing -->", &CLAUDE_CODE);
@@ -708,6 +716,58 @@ mod tests {
                 "explicit spawn value → declared default → parent/session value → the model's own effort default"
             ),
             "model routing must state the resolution order verbatim"
+        );
+        assert!(
+            out.contains("run's repository root"),
+            "the block must define `<repo>` as the run's repository root"
+        );
+        assert!(
+            out.contains("`<repo>/model-pool.json`"),
+            "the block must name the project pool by its one shipped path"
+        );
+        assert_eq!(
+            out.matches("<repo>/.shipmates/model-pool.json").count(),
+            1,
+            "the retired path may appear exactly once — in the out-of-scope clause"
+        );
+        assert!(
+            out.contains("retired `<repo>/.shipmates/model-pool.json`"),
+            "the retired mention must be the retired-path clause"
+        );
+        // The block wraps at ~100 columns, so the clauses that may cross a line
+        // break are asserted on a whitespace-normalised copy.
+        let flat = out.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(
+            flat.contains("when no project pool is in force"),
+            "the out-of-scope condition must be scoped to the runs where no project pool is in force"
+        );
+        assert!(
+            flat.contains("carries at most one condition from a closed set of three"),
+            "the block must state that the `pool` field carries at most one condition from a closed set"
+        );
+        assert!(
+            flat.contains(
+                "chosen in this order: `pool unusable`, then `pool out of scope`, then `no pool`"
+            ),
+            "the block must state the condition precedence — the order is what resolves two true \
+             conditions to one"
+        );
+        assert!(
+            out.contains("pool=<project|user|inherit>[ (<condition>)]"),
+            "the audit template must expose the `pool` field's optional condition slot"
+        );
+        for condition in ["no pool", "pool unusable", "pool out of scope"] {
+            assert!(
+                out.contains(condition),
+                "the block must name the `{condition}` pool condition — a condition a captain \
+                 cannot see in the report is a silent one"
+            );
+        }
+        assert!(
+            out.len() <= 8_400,
+            "the model-routing block is {} bytes, past the 8,400-byte ceiling set for the #450 trim \
+             — it is inlined into every command on every target",
+            out.len()
         );
         assert!(!out.contains("<!--"), "block must carry no HTML comment");
         assert!(!out.contains("{{"), "block must carry no exporter token");
