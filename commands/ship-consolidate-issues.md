@@ -122,13 +122,23 @@ tree ready to hand to `/ship-issue` — one bundle at a time.
 
 ---
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| scope | no | label/area filter | label, area, owner, or age filter | whole open backlog | Narrow which open issues to triage. |
+| apply | no | `apply` | `apply` | report | When present, execute closes/migrations/labels; otherwise `MODE=report` only. |
+
 ## Runtime input
 
-`$ARGUMENTS` is the complete invocation text. **Empty means the whole open-issue set**: run in
-`MODE=report` over the repo's entire backlog — every open issue, no scope filter. Otherwise the
-first word is usually a scope filter (a label or area) or the word `apply`; parse it in prose and
-treat anything unstated as `MODE=report`. When in doubt, report only — closing other people's issues
-is a decision the captain makes, not the default.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse
+Tokens/Values from that table (required then optionals). If intake ran, treat the restated
+invocation as authoritative for this run.
+
+Empty means the whole open-issue set in `MODE=report` — every open issue, no scope filter. Otherwise
+tokens are usually a scope filter and/or the word `apply`; parse in prose and treat anything unstated
+as `MODE=report`. When in doubt, report only — closing other people's issues is a decision the captain
+makes, not the default.
 
 ### Guardrails
 - **Evidence or nothing.** An issue is `DONE` only with a merged PR/commit to point at; it is `STALE`

@@ -121,8 +121,18 @@ and the PR link. Be explicit about anything deliberately left behind.
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| migration | yes | `from → to` free text | text | — | The mechanical migration — e.g. dependency swap, API/signature change, idiom, config format, or renamed symbol. |
+| sequential | no | `sequential` | sequential  /  (absent→fanout) | fanout | Transform batches one at a time instead of fan-out. |
+| board | no | `board=epic-deferred`  /  `board=off` | full  /  epic-deferred  /  off | full | Defer the acceptance board to a milestone, or captain opt-out with no deferral target. |
+| worktree_root | no | `worktree-root=sibling` | nested  /  sibling | nested | Use legacy sibling worktree paths. |
+| merge_mode | no | `MERGE_MODE=auto` / `auto` | manual  /  auto | manual | Merge the PR when CI is green. |
+
 ## Runtime input
 
-`$ARGUMENTS` describes the `from → to` migration: an API/signature change, dependency swap,
-language/framework idiom, config format, or renamed symbol, plus optional guidance (`sequential`,
-`board=epic-deferred`, `board=off`). If empty, ask what is migrating to what.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Parse the `from → to` migration description from the free-text remainder (API/signature change, dependency swap, language/framework idiom, config format, or renamed symbol). Guidance tokens `sequential`, `board=epic-deferred`, `board=off`, and `worktree-root=sibling` are stripped from that description when present.

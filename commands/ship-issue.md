@@ -633,7 +633,28 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
   didn't see. Both visual roles are auto-gated by the Planner's `IS_UI_STORY` / `IS_VISUAL_STORY`
   flags, as `architect` is by `IS_ARCH_SIGNIFICANT`.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| issues | yes | `<n>…` or `next` | leading numeric issue run / `next` | — | Issue/story numbers to ship, or `next` for backlog selection (mutually exclusive). |
+| epic_scope | no | `epic <n>` | `epic` + epic number | — | After `next` only: restrict selection to that epic's unchecked checklist. |
+| board | no | `board=full` / `board=epic-deferred` / `board=off` | full / epic-deferred / off | full | Acceptance board: full (default), defer to an epic milestone board, or skip (`board=off`). |
+| sequential | no | `sequential` | fanout / sequential | fanout | Force serial work-unit execution instead of parallel fan-out. |
+| merge_mode | no | `MERGE_MODE=manual` / `MERGE_MODE=auto` | manual / auto | manual | Stop with an open PR (`manual`) or squash-merge when gates pass (`auto`). |
+| worktree_root | no | `worktree-root=sibling` | nested / sibling | nested | Nested worktrees under `.shipmates/worktrees/` (default) or legacy sibling paths. |
+| guidance | no | remaining prose | free text | — | Extra focus text after knobs (not a place to hide knobs — use the rows above). |
+
 ## Runtime input
 
-`$ARGUMENTS` contains the issue/story tokens and optional guidance. Parse the leading numeric run as
-issues, or use `next` for selection mode, exactly as described in Stage 0; all remaining text is guidance.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse
+Tokens/Values from that table (required then optionals). If intake ran, treat the restated
+invocation as authoritative for this run.
+
+Parse Stage 0 as follows: the issue/story numbers are the **leading run** of numeric tokens; the
+first non-numeric token begins guidance (through end of the invocation). `next` as the first token
+is selection mode (no explicit issue numbers); tokens after it are guidance. **`next epic <n>`**
+scopes selection to epic `<n>`'s unchecked story checklist (see Stage 0, *Selection mode*). Never
+extend the issue run past the first non-numeric token — a digit later in guidance is guidance, not
+an issue. When guidance itself starts with a number, separate it with `--`, which ends the issue
+list wherever it appears (e.g. `104 -- 2 fix rounds max`).

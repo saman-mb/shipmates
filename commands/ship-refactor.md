@@ -165,7 +165,18 @@ touched and why, and the green-CI link. File the bugs you found and didn't fix a
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined, and note it.
 
+## Parameters
+
+| Name | Required | Token | Values | Default | Help |
+|------|----------|-------|--------|---------|------|
+| target_and_why | yes | free text | text | — | What to restructure and why — motivation is required so Stage 5 can judge improvement. |
+| sequential | no | `sequential` | sequential  /  (absent→fanout) | fanout | Execute refactoring seams one at a time instead of fan-out. |
+| board | no | `board=epic-deferred`  /  `board=off` | full  /  epic-deferred  /  off | full | Defer the acceptance board to a milestone, or captain opt-out with no deferral target. |
+| worktree_root | no | `worktree-root=sibling` | nested  /  sibling | nested | Use legacy sibling worktree paths. |
+| merge_mode | no | `MERGE_MODE=auto` / `auto` | manual  /  auto | manual | Merge the PR when CI is green. |
+
 ## Runtime input
 
-`$ARGUMENTS` names what to restructure and why, plus optional guidance (`sequential`, `board=epic-deferred`, `board=off`).
-If empty, ask what hurts and what it costs.
+Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
+
+Parse what to restructure and why from the free-text remainder; strip guidance tokens (`sequential`, `board=epic-deferred`, `board=off`, `worktree-root=sibling`) when present. Motivation must stay reviewable — "it's cleaner" is not enough.
