@@ -117,6 +117,30 @@ gh pr review <PR#> --comment --body-file "$(gh pr view <PR#> --json title -q .ti
 ```
 MD
 
+# --- spawn binding: a fan-out command must name its crew role (#495) ---
+# The defect this guards is silent: a command fans work out to "workers", names no
+# role, and the harness resolves nothing — every finding comes from a general-purpose
+# agent while the payload, digests and CI all look healthy. Both accepted forms are
+# how the shipped commands already do it.
+rejects "fan-out with no crew role named" <<'EOF'
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Split the survey across workers up to `MAX_CONCURRENT_WORKERS`.
+EOF
+accepts "fan-out naming a role at the spawn" <<'EOF'
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Spawn a `security-engineer` per class, up to `MAX_CONCURRENT_WORKERS`.
+EOF
+accepts "fan-out binding a role in Config" <<'EOF'
+- `BUILDER` = `senior-engineer`. `MAX_CONCURRENT_WORKERS` = `5`.
+
+Spawn one builder per batch.
+EOF
+accepts "no fan-out at all needs no role" <<'EOF'
+This command runs its analysis itself and spawns nothing.
+EOF
+
 # --- forms that must be accepted ---
 
 accepts '--body-file with a quoted variable path (the sanctioned form)' <<'MD'

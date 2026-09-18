@@ -58,6 +58,25 @@ ALLOWED_KEYS = REQUIRED_KEYS + STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS
 # note describes, but only the REQUIRED_KEYS prefix is enforced.
 FRONTMATTER_KEYS = REQUIRED_KEYS + EXTENSION_KEYS
 
+# The shipped crew roles, for the spawn-binding check. Kept here rather than read
+# from crew/*.md so a command naming a role that was renamed or deleted still fails:
+# a spawn that resolves to nothing is the exact defect this guards.
+CREW_ROLES = (
+    "architect",
+    "art-director",
+    "data-scientist",
+    "devops-engineer",
+    "performance-engineer",
+    "principal-engineer",
+    "product-manager",
+    "sdet",
+    "security-engineer",
+    "senior-engineer",
+    "site-reliability-engineer",
+    "technical-writer",
+    "ux-ui-designer",
+)
+
 # `metadata:` is the one standard key defined as a nested mapping, so its value
 # may live on indented continuation lines. They are opaque here (this is a
 # line-oriented reader, not a YAML parser) but still scanned for placeholders.
@@ -421,6 +440,49 @@ def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
             )
 
 
+def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
+    """A command that fans work out to workers must say which crew role does the work.
+
+    The failure this guards is silent and expensive: a command declares
+    `MAX_CONCURRENT_WORKERS` and tells the reader to "spawn workers", naming no role.
+    The harness has nothing to resolve, falls back to a general-purpose agent, and the
+    run looks healthy while every finding was produced by a generic agent instead of the
+    specialist the class needed. Nothing else in the pipeline notices — the payload is
+    well-formed, the digests match, CI is green.
+
+    Two ways to satisfy it, matching how the shipped commands already do it: bind a role
+    in Config (`BUILDER = senior-engineer`, `TRANSFORMER = senior-engineer`), or name a
+    role on the same line as the spawn instruction (or the line it wraps onto). A command
+    that neither binds nor names is the defect.
+    """
+    text = "\n".join(lines)
+    if "MAX_CONCURRENT_WORKERS" not in text:
+        return
+
+    role_alt = "|".join(re.escape(role) for role in CREW_ROLES)
+    bind = re.compile(r"`?[A-Z][A-Z_]+`?\s*=\s*[^.\n]*?(?:" + role_alt + r")")
+    spawn = re.compile(r"\b(?:spawn|dispatch)\b", re.IGNORECASE)
+    names_role = re.compile(role_alt)
+
+    if bind.search(text):
+        return
+    for offset, raw in enumerate(lines[start:]):
+        if not spawn.search(raw):
+            continue
+        # A spawn sentence routinely wraps; the role is on the next line.
+        nxt = lines[start + offset + 1] if start + offset + 1 < len(lines) else ""
+        if names_role.search(raw + " " + nxt):
+            return
+    fail(
+        f"{rel}:{start + 1}: fans out to workers (`MAX_CONCURRENT_WORKERS`) but never names "
+        "a crew role to do the work — a harness has nothing to resolve and silently falls "
+        "back to a general-purpose agent, discarding the specialism the findings need. "
+        "Bind the role in Config (e.g. `BUILDER` = `senior-engineer`) or name it at the "
+        "spawn (e.g. 'Spawn a `security-engineer` per class'); if a role genuinely cannot "
+        "resolve, say so and state the inlined-brief fallback in the report"
+    )
+
+
 def check_command(path: Path) -> None:
     slug = path.stem
     rel = f"commands/{path.name}"
@@ -435,12 +497,13 @@ def check_command(path: Path) -> None:
     check_frontmatter(rel, lines, start)
     check_body(rel, lines, start)
     check_no_inline_body(rel, lines, start)
+    check_spawn_binds_crew_role(rel, lines, start)
 
     if len(failures) == before:
         ok(
             f"{rel}: frontmatter opens with {REQUIRED_LIST}, every key known and non-empty, "
             "name matches filename, no unescaped '$n' anywhere, fences closed, no inline "
-            "--body in a shell fence"
+            "--body in a shell fence, every fan-out names its crew role"
         )
 
 
