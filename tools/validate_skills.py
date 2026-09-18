@@ -452,12 +452,12 @@ def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
     role in the section that declares the fan-out. A command that neither binds nor names
     is the defect.
 
-    **Scoped deliberately.** The role must be named in the *section* carrying the
-    `MAX_CONCURRENT_WORKERS` declaration, or bound in Config — not anywhere in the file.
-    A file-wide scan is trivially satisfied by an unrelated heading or a roster table
-    elsewhere, which leaves the incident this guards unenforced: a command could strip
-    the role from its fan-out stage and still pass. Scoping is what makes the check mean
-    "the fan-out says who does the work".
+    **One scoped predicate, no file-wide escape hatches.** Every anchor is evaluated
+    against the section that declares the fan-out (plus the Config block, which is where a
+    binding legitimately lives). This matters: an earlier revision scoped two of its four
+    anchors and left the other two file-wide, so a single word inserted anywhere in the
+    document — "compose `/ship-migrate`" in an unrelated stage — satisfied the check while
+    the fan-out still named nobody. A gate with an escape hatch that wide is decorative.
     """
     text = "\n".join(lines)
     if "MAX_CONCURRENT_WORKERS" not in text:
@@ -475,22 +475,8 @@ def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
     role_alt = "|".join(re.escape(role) for role in roles)
     role_re = re.compile(role_alt)
 
-    # (a) a Config binding anywhere — an ALLCAPS knob set to a crew role. Config is one
-    # block, so a file-wide search is correct for this anchor.
-    if re.search(r"`?[A-Z][A-Z_]+`?\s*=\s*[^.]*?(?:" + role_alt + r")", text):
-        return
-
-    # (a2) the command composes another command per worker instead of spawning a role
-    # itself — `ship-epic` runs one `/ship-issue` per unit, and that composed command
-    # owns the crew. Naming the composed command is a complete answer to "who does the
-    # work", so it satisfies the check; a generic worker with no role AND no composed
-    # command is still the defect.
-    compose = re.compile(r"compos(?:e|es|ing)\s+`?/[a-z]", re.IGNORECASE)
-    if compose.search(text) and re.search(r"/ship-[a-z-]+", text):
-        return
-
-    # (b)/(c) scoped to the section that declares the fan-out, so a role named
-    # somewhere else in the file cannot stand in for naming the workers.
+    # Split the body into sections on markdown headings, so every anchor below can be
+    # scoped rather than scanning the whole file.
     body = lines[start:]
     section_of: list[int] = []
     current = 0
@@ -501,13 +487,46 @@ def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
     knob_sections = {
         section_of[i] for i, raw in enumerate(body) if "MAX_CONCURRENT_WORKERS" in raw
     }
-    anchor = re.compile(r"MAX_CONCURRENT_WORKERS|\b(?:spawn|dispatch)\b", re.IGNORECASE)
+    scoped = [raw for i, raw in enumerate(body) if section_of[i] in knob_sections]
+
+    # (a) a genuine Config binding: an ALLCAPS knob whose value IS a crew role. Tested
+    # against the Config block and the fan-out sections only — a stage sentence that
+    # happens to contain `EXECUTION=fanout` is not a binding, and a file-wide search for
+    # `ALLCAPS=…` followed later by any role name would treat one as the other.
+    binding = re.compile(
+        r"`?[A-Z][A-Z_]+`?\s*=\s*`?(?:" + role_alt + r")`?(?![\w-])"
+    )
+    config_block = [
+        raw for i, raw in enumerate(body) if section_of[i] == 0 and not raw.startswith("#")
+    ]
+    for chunk in (config_block, scoped):
+        if any(binding.search(raw) for raw in chunk):
+            return
+
     for section in sorted(knob_sections):
         chunk = [raw for i, raw in enumerate(body) if section_of[i] == section]
         # (b) a heading naming a role — the catalogue's `(agent: \`role\`)` form.
         if any(raw.startswith("#") and role_re.search(raw) for raw in chunk):
             return
+        # (b2) the section names a composed command as the thing that does the work —
+        # `ship-epic` runs one `/ship-issue` per unit, and that command owns the crew.
+        # Matches the noun as well as the verb (the shipped command writes "its
+        # `/ship-issue` composition", not "composing `/ship-issue`"), and spans a line
+        # wrap, since a sentence naming the command routinely breaks across two lines.
+        # Scoped, so mentioning an unrelated command elsewhere is not an exemption.
+        section_text = "\n".join(chunk)
+        if re.search(
+            r"compos(?:e|es|ing|ition|itions)\b[^.\n]{0,40}?\n?[^.\n]{0,40}?/ship-",
+            section_text,
+            re.IGNORECASE,
+        ) or re.search(
+            r"/ship-[a-z-]+[^.\n]{0,40}?compos(?:e|es|ing|ition)\b",
+            section_text,
+            re.IGNORECASE,
+        ):
+            return
         # (c) a role named near a spawn verb or the knob, within that section.
+        anchor = re.compile(r"MAX_CONCURRENT_WORKERS|\b(?:spawn|dispatch)\b", re.IGNORECASE)
         for idx, raw in enumerate(chunk):
             if not anchor.search(raw):
                 continue
