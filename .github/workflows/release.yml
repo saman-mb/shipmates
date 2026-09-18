@@ -12,6 +12,27 @@
 #
 # Note that the GitHub Release will be created with a generated
 # title/body based on your changelogs.
+#
+# ---------------------------------------------------------------------------
+# RELEASE PIPELINE GATES (issue-499)
+# A path-filter gate skips expensive work when only docs/site/tests change.
+#
+# binary-affected — true when ANY path that changes the compiled binary or
+# release configuration changed:
+#   src/*, Cargo.toml, Cargo.lock, build.rs, crew/*, commands/*, toolbox/*,
+#   docs/COST.md, steering/*, dist-workspace.toml
+#
+# Test scenarios:
+#   site/index.html only     → binary-affected=false → skip build, e2e, publish
+#   docs/BRAND.md only       → binary-affected=false → skip build, e2e, publish
+#   crew/architect.md only   → binary-affected=true  → build + publish
+#   src/main.rs only         → binary-affected=true  → build + publish
+#   Empty diff               → binary-affected=false → skip build, e2e, publish
+#   First push / force-push  → binary-affected=true  → fail-open, full pipeline
+#
+# NOTE: Any new include_str! references in Rust source that resolve outside
+# the above list must be added to the case statement in the `resolve` step.
+# ---------------------------------------------------------------------------
 
 name: Release
 permissions:
@@ -39,6 +60,7 @@ jobs:
       tag: ${{ steps.resolve.outputs.tag }}
       tag-flag: ${{ steps.resolve.outputs.tag-flag }}
       publishing: ${{ steps.resolve.outputs.publishing }}
+      binary-affected: ${{ steps.resolve.outputs.binary-affected }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -74,10 +96,42 @@ jobs:
               PUBLISH="true"
             fi
           fi
+          # Path-filter gate: skip binary builds when only docs/site/tests change.
+          # PRs always run the full pipeline for CI feedback.
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BINARY_AFFECTED="true"
+          else
+            if [[ "${{ github.ref_type }}" == "tag" ]]; then
+              # Ensure tag history is available in the shallow clone for base resolution.
+              git fetch --tags --depth=1 origin 2>/dev/null || true
+              BASE_REF=$(git describe --tags --abbrev=0 ${{ github.sha }}^ 2>/dev/null || echo "")
+            else
+              BASE_REF="${{ github.event.before }}"
+            fi
+            if [[ -z "$BASE_REF" || "$BASE_REF" == "0000000000000000000000000000000000000000" ]]; then
+              BINARY_AFFECTED="true"
+            else
+              # Ensure the base commit is available in the shallow clone.
+              git fetch --depth=1 origin "$BASE_REF" 2>/dev/null || true
+              if ! CHANGED_FILES=$(git diff --name-only "$BASE_REF" "${{ github.sha }}" 2>/dev/null); then
+                # Fail-open: if diff fails (e.g. unreachable base), run the full pipeline.
+                BINARY_AFFECTED="true"
+              else
+                BINARY_AFFECTED="false"
+                while IFS= read -r file; do
+                  case "$file" in
+                    src/*|Cargo.toml|Cargo.lock|build.rs|crew/*|commands/*|toolbox/*|docs/COST.md|steering/*|dist-workspace.toml)
+                      BINARY_AFFECTED="true" ;;
+                  esac
+                done <<< "$CHANGED_FILES"
+              fi
+            fi
+          fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "tag-flag=${FLAG}" >> "$GITHUB_OUTPUT"
           echo "publishing=${PUBLISH}" >> "$GITHUB_OUTPUT"
-          echo "resolved tag=${TAG:-<none>} publishing=${PUBLISH}"
+          echo "binary-affected=${BINARY_AFFECTED}" >> "$GITHUB_OUTPUT"
+          echo "resolved tag=${TAG:-<none>} publishing=${PUBLISH} binary-affected=${BINARY_AFFECTED}"
       - name: Install dist
         # we specify bash to get pipefail, and the script sets `set -euo pipefail`
         # itself, so a failed `curl` or a failing checksum aborts the step instead
@@ -119,7 +173,7 @@ jobs:
     # Let the initial task tell us to not run (currently very blunt)
     needs:
       - plan
-    if: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix.include != null && (needs.plan.outputs.publishing == 'true' || fromJson(needs.plan.outputs.val).ci.github.pr_run_mode == 'upload') }}
+    if: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix.include != null && (needs.plan.outputs.publishing == 'true' || fromJson(needs.plan.outputs.val).ci.github.pr_run_mode == 'upload') && needs.plan.outputs.binary-affected == 'true' }}
     strategy:
       fail-fast: false
       # Target platforms/runners are computed by dist in create-release.
@@ -200,6 +254,7 @@ jobs:
     needs:
       - plan
       - build-local-artifacts
+    if: ${{ needs.plan.outputs.binary-affected == 'true' }}
     runs-on: "ubuntu-22.04"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -246,7 +301,7 @@ jobs:
   e2e-cli:
     needs:
       - plan
-    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    if: ${{ needs.plan.outputs.publishing == 'true' && needs.plan.outputs.binary-affected == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -267,7 +322,7 @@ jobs:
       - build-global-artifacts
       - e2e-cli
     # Only run if we're "publishing", and only if plan, local, global and e2e didn't fail (skipped is fine)
-    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.e2e-cli.result == 'skipped' || needs.e2e-cli.result == 'success') }}
+    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && needs.plan.outputs.binary-affected == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.e2e-cli.result == 'skipped' || needs.e2e-cli.result == 'success') }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: "ubuntu-22.04"
@@ -338,7 +393,7 @@ jobs:
       PLAN: ${{ needs.plan.outputs.val }}
       GITHUB_USER: "axo bot"
       GITHUB_EMAIL: "admin+bot@axo.dev"
-    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
+    if: ${{ needs.plan.outputs.binary-affected == 'true' && (!fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -379,7 +434,7 @@ jobs:
       - plan
       - host
       - e2e-cli
-    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
+    if: ${{ needs.plan.outputs.binary-affected == 'true' && (!fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases) }}
     uses: ./.github/workflows/publish-cargo.yml
     with:
       plan: ${{ needs.plan.outputs.val }}
