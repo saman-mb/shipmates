@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Runtime verification is structured, not prose-only.** `tools/harness_matrix.json`
+  now carries a per-harness `runtime_verified` record (`full` / `partial` / `none`) with
+  distinct cells for crew resolve, argument passing, command E2E, and the commands
+  exercised. Claude Code stays `full`; antigravity, cursor, pi and opencode are captain-
+  attested `partial` live runs (#497); codex, GitHub Copilot and windsurf remain `none`.
+  Scope & honesty, README, and the site roadmap read from that record instead of claiming
+  only Claude Code has ever been run.
 
 ## [0.9.0] - 2026-09-15
 
