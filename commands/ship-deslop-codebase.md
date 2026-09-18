@@ -64,8 +64,9 @@ scope and how far to go come from the Runtime input section at the end of this w
 ### The crew this command spawns — and why it is named at every spawn
 
 This command's workers are **named crew subagents**, invoked by their `{{role-reference}}` — never a
-general-purpose agent with a persona pasted inline. Every role below is read-only in this command, which
-is what lets the read-only promise hold while the analysis is still parallel and specialist:
+general-purpose agent with a persona pasted inline. Every role below works read-only here: six by their
+own definition, the seventh by an explicit brief — which is what lets the read-only promise hold while
+the analysis is still parallel and specialist:
 
 | Role | Sits for | Stage |
 |---|---|---|

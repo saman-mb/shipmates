@@ -47,8 +47,8 @@ All notable changes to this project are documented here. The format follows
 - **`/ship-deslop-codebase` now names its crew at every spawn.** A live run resolved its workers to
   general-purpose agents instead of the crew, because the command described "workers" without ever
   naming a role — the harness had no identity to look up. The command now carries a crew roster and
-  names the role at each spawn, and `validate_skills.py` fails any command that declares a fan-out
-  without binding or naming a crew role, so the defect cannot recur silently. The command's
+  names the role at each spawn, and `validate_skills.py` fails any command whose fan-out section binds
+  no crew role and names none — so the defect cannot recur silently. The command's
   `technical-writer` seat is explicitly briefed to report only: unlike the other six roles it is a
   writing role by trade, and an audit must not carry a write path.
 
