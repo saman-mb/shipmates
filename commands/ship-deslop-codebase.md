@@ -64,19 +64,28 @@ scope and how far to go come from the Runtime input section at the end of this w
 ### The crew this command spawns — and why it is named at every spawn
 
 This command's workers are **named crew subagents**, invoked by their `{{role-reference}}` — never a
-general-purpose agent with a persona pasted inline. The roles are read-only by construction (none of
-them carries `writes: true`), which is what lets the read-only promise hold while the analysis is still
-parallel and specialist:
+general-purpose agent with a persona pasted inline. Every role below is read-only in this command, which
+is what lets the read-only promise hold while the analysis is still parallel and specialist:
 
 | Role | Sits for | Stage |
 |---|---|---|
-| `architect` | the semantic diff on near-duplicate candidates; structural impact of a boundary-crossing deletion | 2, 4 |
+| `architect` | the semantic diff on near-duplicate candidates; structural impact of a boundary-crossing deletion | 1, 2, 4 |
 | `sdet` | test-coverage and test-validity evidence — which tests actually pin the code a finding would touch | 1, 2 |
 | `product-manager` | the feature-impact summary and the sign-off a `review` or `architectural` sub-issue carries as a criterion | 2, 4 |
 | `site-reliability-engineer` | the `failure-path` four questions — hazard provenance, execution evidence, blast radius, upstream elimination | 2 |
 | `performance-engineer` | the measurement behind a `performance-sensitive` finding, in the project's own units | 2 |
 | `security-engineer` | dependency and supply-chain findings, and anything touching secrets, authz or untrusted input | 1, 2 |
 | `technical-writer` | documentation-rot findings — docs describing code that has moved | 1 |
+
+**Read-only is structural for six of those seven; the seventh needs its brief to say so.** `architect`,
+`sdet`, `product-manager`, `site-reliability-engineer`, `performance-engineer` and `security-engineer`
+carry no write capability in their role definition, so none of them can write whatever the brief says.
+**`technical-writer` does carry one** — it is a writing role by trade — so when it sits for a
+reported-only audit its brief must state plainly that it reports findings and writes nothing. Never spawn
+it here with its default posture: a role that *can* write will, and a captain auditing a repository
+read-only would have an unguarded write path they had no reason to look for. The orchestrator carries no
+`Write` and no `Edit` of its own, so the command's headline promise holds only while every spawn's
+effective permissions do.
 
 **Every spawn names its role explicitly.** A spawn that says only "workers" or "the agents" resolves to
 no crew at all: the harness has nothing to look up and falls back to a general-purpose agent, silently
@@ -133,7 +142,8 @@ reason. Silent truncation is a failure of the run, not a smaller run.
   split the survey by finding class (or by subtree for a large repo) across named crew subagents up to
   `MAX_CONCURRENT_WORKERS` — spawn each with its role's `{{role-reference}}`, one `sdet` for the
   test-coverage and test-validity classes, one `security-engineer` for dependency and supply-chain
-  classes, one `technical-writer` for documentation rot, an `architect` per structural or
+  classes, one `technical-writer` for documentation rot (briefed to report only — see the roster
+  above), an `architect` per structural or
   near-duplicate class — each returning rows in the one shape below. **A generic worker is not a
   substitute for a named role here**: the class a worker is assigned is the specialism it must bring.
 - Every finding is one row: **stable ID**, `file:line`, **class**, a one-line rationale, the evidence
@@ -432,7 +442,7 @@ is `/ship-harden`; a genericisation needing a new abstraction with no precedent 
 
 ### Guardrails
 
-- **This command cannot edit the codebase, and that is structural.** `allowed-tools` carries no `Write` and no `Edit`, and no working-tree write goes through `Bash` either. The read-only promise is enforced by what the command *can do*, not by a mode agreeing to honour it. Every role it spawns is read-only too — the crew roster above names only roles that carry no `writes: true`, so a worker cannot break the promise even if its brief is wrong.
+- **This command cannot edit the codebase, and that is structural.** `allowed-tools` carries no `Write` and no `Edit`, and no working-tree write goes through `Bash` either. The read-only promise is enforced by what the command *can do*, not by a mode agreeing to honour it. Six of the seven crew roles it spawns are read-only by their own definition; the seventh (`technical-writer`) is a writing role by trade and must be briefed to report only — see the roster above. A spawn's effective permissions are part of this promise, not a detail beside it.
 - **Every spawn names its crew role.** A spawn that says only "workers" or "the agents" has nothing for the harness to resolve and lands on a general-purpose agent, silently discarding the specialism the finding class needs. Name the role at the point of spawn; where a role genuinely does not resolve to a shipped crew role, inline that role's brief and **say so in the report**. Never let a fallback pass unremarked — the run's whole value is that a specialist read the thing.
 - **Two write surfaces, named separately.** The working tree is never written, in any mode. The tracker is written under `file` and `ship` only, and that is its own opt-in.
 - **Nothing is proposed for deletion without a caller audit** — reflection, dynamic import, serialization, config keys, and framework entry points are all checked, even for `safe` findings.
