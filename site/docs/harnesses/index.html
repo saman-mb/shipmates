@@ -71,7 +71,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">🌊</span> Harnesses</p>
           <h1 class="order-detail__title" id="harnesses-title">Harness matrix</h1>
           <p class="order-detail__tagline">Which harnesses the crew runs on, and what's coming next.</p>
-          <p class="order-detail__desc">The installer builds payloads for eight harnesses. Only one has been run for real — the rest are format-verified against each harness&#x27;s own parsing source and first-party docs, but not exercised against a running harness.</p>
+          <p class="order-detail__desc">The installer builds payloads for eight harnesses. Claude Code is fully runtime-verified; antigravity, cursor, pi and opencode have captain-attested live runs; codex, GitHub Copilot and windsurf remain format-only. Live status is recorded per harness in <code>tools/harness_matrix.json</code> under <code>runtime_verified</code>.</p>
         </div>
       </div>
     </section>
@@ -85,20 +85,21 @@
           <table>
             <thead><tr><th scope="col">Harness</th><th scope="col">Status</th><th scope="col">Tracking epic</th></tr></thead>
             <tbody>
-              <tr><td><code>claude-code</code></td><td><span class="chip">Runtime-verified</span></td><td>—</td></tr>
-              <tr><td><code>opencode</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a></td></tr>
-              <tr><td><code>antigravity</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>claude-code</code></td><td><span class="chip">Runtime-verified (full)</span></td><td>—</td></tr>
+              <tr><td><code>opencode</code></td><td><span class="chip">Live run (partial)</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/31">#31</a>, <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>, <a href="https://github.com/saman-mb/shipmates/issues/497">#497</a></td></tr>
+              <tr><td><code>antigravity</code></td><td><span class="chip">Live run (partial)</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/497">#497</a></td></tr>
               <tr><td><code>github-copilot</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="../github-copilot/">Quickstart</a></td></tr>
               <tr><td><code>codex</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/46">#46</a>, <a href="https://github.com/saman-mb/shipmates/issues/47">#47</a></td></tr>
-              <tr><td><code>cursor</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
-              <tr><td><code>pi</code></td><td><span class="chip">Builds, not runtime-verified</span></td><td>—</td></tr>
+              <tr><td><code>cursor</code></td><td><span class="chip">Live run (partial, skills only)</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/497">#497</a></td></tr>
+              <tr><td><code>pi</code></td><td><span class="chip">Live run (partial)</span></td><td><a href="https://github.com/saman-mb/shipmates/issues/497">#497</a></td></tr>
               <tr><td><code>windsurf</code></td><td><span class="chip">Builds (skills only)</span></td><td>—</td></tr>
             </tbody>
           </table>
         </div>
         <div class="order-prose">
-          <p><strong>Runtime-verified</strong> means the payload is compiled from neutral canonical sources, byte-compared against its committed reference digest, and the harness is one Shipmates has actually been run on. Only <code>claude-code</code> meets all of that.</p>
-          <p><strong>Builds, not runtime-verified</strong> is every other harness. <code>shipmates install --harness &lt;name&gt;</code> produces the payload, and each format was verified against the harness's own parsing source and first-party docs. None has been exercised against a running harness — whether agents resolve, whether argument passing behaves, and whether <code>/ship-issue</code> completes end to end are open questions, tracked for opencode in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>. Nothing on this site should be read as &#x201C;tested on <em>&lt;harness&gt;</em>&#x201D; until those close.</p>
+          <p><strong>Runtime-verified (<code>full</code>)</strong> means the payload is compiled from neutral canonical sources, byte-compared against its committed reference digest, and live evidence shows crew resolve (or N/A), argument passing, and a named command end to end. Only <code>claude-code</code> is <code>full</code> today.</p>
+          <p><strong>Live run (<code>partial</code>)</strong> means a captain-attested live run is recorded in <code>tools/harness_matrix.json</code> under <code>runtime_verified</code>, but at least one of <code>crew_resolve</code>, <code>argument_passing</code>, or <code>command_e2e</code> is still <code>unknown</code> or <code>no</code>. Antigravity, cursor, pi and opencode are <code>partial</code> per <a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>. Opencode&#x27;s Tier-A checklist remains open in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>. Never promote an <code>unknown</code> cell to a &#x201C;tested on <em>&lt;harness&gt;</em>&#x201D; claim.</p>
+          <p><strong>Builds, not runtime-verified (<code>none</code>)</strong> means <code>shipmates install --harness &lt;name&gt;</code> produces the payload and the format was verified against the harness&#x27;s own parsing source and first-party docs, but no live run is recorded. That is currently <code>codex</code>, <code>github-copilot</code>, and <code>windsurf</code>.</p>
           <p>GitHub Copilot has a <a href="../github-copilot/">dedicated quickstart</a> with its payload checks, safe smoke-test command, and the current <code>/ship-issue</code> Tier B boundary.</p>
           <p><strong>Builds (skills only)</strong> marks harnesses where the crew has nowhere to go and only the seventeen skills land. That is now <code>cursor</code> and <code>windsurf</code>. <code>cursor</code> is unconfirmed rather than absent: <code>.cursor/agents/*.md</code> is widely reported and Cursor describes delegating to named subagents, but no first-party page documents the frontmatter schema, so emitting one would be guesswork. <code>windsurf</code> is under review — Windsurf became Devin Desktop in June 2026 and that target may no longer address a live product. <code>pi</code> receives the crew at <code>.pi/agents/&lt;name&gt;.md</code>, resolved by the third-party <code>pi-subagents</code> extension — core pi documents no subagent schema, so a pi install without that extension resolves no crew. Each harness now carries its evidence and the date it was checked in <code>tools/harness_matrix.json</code>.</p>
         </div>
@@ -108,11 +109,11 @@
     <section class="section" id="not-verified" aria-labelledby="not-verified-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="not-verified-title">Why only one runtime-verified?</h2>
+          <h2 class="section__title" id="not-verified-title">Why is only one <code>full</code>?</h2>
         </div>
         <div class="order-prose">
-          <p>Building a payload is the easy half — the format is documented and the CLI validates each target's output against a committed reference digest on every build. Verifying it <em>works</em> means installing into a running harness and exercising <code>/ship-issue</code> end to end: subagents resolve, argument passing behaves, worktrees, CI gates, the review board. That is real work per harness, and it hasn't been done yet for any of the seven.</p>
-          <p>Until it has, treat every non-Claude payload as format-correct-but-unproven. The tracking for the harnesses we plan to exercise first lives in the issue list; opencode's is <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</p>
+          <p>Building a payload is the easy half — the format is documented and the CLI validates each target&#x27;s output against a committed reference digest on every build. A <code>full</code> runtime row means installing into a running harness and proving the distinct claims: crew resolve (or N/A for skills-only), argument passing, and a named command end to end. Four harnesses now have captain-attested live runs (<code>partial</code>); promoting them to <code>full</code> still needs those cells filled from evidence, not inference.</p>
+          <p>Ground every claim in <code>tools/harness_matrix.json</code> <code>runtime_verified</code>. Opencode&#x27;s Tier-A checklist is <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>; the structured record landed in <a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>.</p>
         </div>
       </div>
     </section>
@@ -185,7 +186,7 @@ opencode run --command ship-harden --format json \
   "Review this project in report mode. Do not modify files."</code></pre>
           <p>The install places thirteen Markdown subagents under <code>.opencode/agents/</code> and seventeen user-invoked commands under <code>.opencode/commands/</code>. <code>agent list</code> should include all thirteen Shipmates roles; the report-only <code>ship-harden</code> order is a narrow manual probe of command loading. Keep <code>--auto</code> off.</p>
           <p>CI runs deterministic install-fidelity checks without network or model credentials: it builds against the committed opencode golden file, installs from the embedded payload into a temporary directory, checks all thirteen crew files and seventeen commands, and verifies the report-only <code>/ship-harden</code> rendering. This proves exporter and installer fidelity, not opencode runtime behaviour.</p>
-          <p><strong>Fidelity caveat.</strong> The current status remains <em>Builds, not runtime-verified</em>. These checks do not prove all thirteen agents spawn, argument substitution, permission enforcement, parallel acceptance-board subagents, CI polling, or the full <code>/ship-issue</code> workflow. Those remain the explicit follow-up for <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</p>
+          <p><strong>Fidelity caveat.</strong> The current status is <em>Live run (partial)</em> per #497. These checks do not prove all thirteen agents spawn, argument substitution, permission enforcement, parallel acceptance-board subagents, CI polling, or the full <code>/ship-issue</code> workflow. Those remain the explicit follow-up for <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</p>
         </div>
       </div>
     </section>

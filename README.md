@@ -162,7 +162,7 @@ to target a specific project:
 ```bash
 shipmates install                           # prompt / default claude-code; tools on a global target
 shipmates install --harness claude-code     # the proven target
-shipmates install --harness opencode        # format-verified, not runtime-verified
+shipmates install --harness opencode        # live run recorded (partial); see harness_matrix
 shipmates install --harness codex
 shipmates install --harness claude-code --local
 shipmates install --harness claude-code --dir /path/to/project
@@ -312,11 +312,11 @@ a `"*": deny` catch-all first and its specific allows after; opencode resolves p
 last-match-wins, so the ordering is the mechanism. The result is marginally stronger than Claude's
 allowlist: a tool a wildcard denies is hidden from the model rather than refused at call time.
 
-> ⚠️ **Only Claude Code is runtime-verified.** Every other target's payload and registration shape was checked against the
-> harness's own parsing source and first-party docs, not by installing and running it. Whether agents
-> resolve, whether argument passing behaves, and whether `/ship-issue` completes end to end are open
-> on those targets — for opencode, tracked in
-> [#31](https://github.com/saman-mb/shipmates/issues/31) and
+> ⚠️ **Runtime status is per harness in `tools/harness_matrix.json` → `runtime_verified`.** Claude Code
+> is `full` (crew, arguments, `/ship-issue` end to end). Antigravity, Cursor, Pi and opencode have
+> captain-attested live runs (`partial` — granular criteria may still be `unknown`). Codex CLI,
+> GitHub Copilot and Windsurf remain format/digest-verified only. Opencode's Tier-A checklist is
+> still tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
 > [#32](https://github.com/saman-mb/shipmates/issues/32).
 
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart your harness so it spots them.
@@ -533,18 +533,21 @@ universal one.
 **Where each harness stands.** Every target's payload is compiled and digest-checked in CI; the
 question is whether it's been *run*.
 
-- **Runtime-verified** — Claude Code: the full crew and all 17 commands, and the only harness
-  Shipmates has actually been run on.
-- **Builds, not runtime-verified** — opencode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot,
-  Pi, and Windsurf all build from `shipmates install --harness <name>`, and each payload's format was
-  verified against that harness's parsing source and first-party docs. opencode, Antigravity, Codex CLI and
-  GitHub Copilot get the full crew + all 17 commands; the other two — Cursor and Windsurf — have no native
-  subagent directory, so they ship the 17 skills only. Pi's crew land at `.pi/agents/` and resolve through
-  the third-party `pi-subagents` extension, not core pi — and against the nearest ancestor directory
-  carrying `.pi/` or `.agents/`, so they take effect for a project-local install. A live run has not been done on any of them; opencode's open questions are tracked in
+- **Runtime-verified (`full`)** — Claude Code: the full crew and all 17 commands, with crew resolve,
+  argument passing, and `/ship-issue` proven end to end.
+- **Live run (`partial`)** — Antigravity CLI, Cursor, Pi, and opencode: captain-attested live runs
+  recorded in `tools/harness_matrix.json` under `runtime_verified` (2026-09-18, #497). Granular cells
+  (`crew_resolve`, `argument_passing`, `command_e2e`) stay `unknown` where they were not separately
+  logged — attestation is not Tier-A proof. Opencode's Tier-A / sandbox checklist remains open in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
-  [#32](https://github.com/saman-mb/shipmates/issues/32). The Gemini CLI is retired — the Antigravity
-  CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates builds for.
+  [#32](https://github.com/saman-mb/shipmates/issues/32).
+- **Builds, not runtime-verified (`none`)** — Codex CLI, GitHub Copilot, and Windsurf build from
+  `shipmates install --harness <name>`, and each payload's format was verified against that harness's
+  parsing source and first-party docs, but no live run is recorded. Crew vs skills: opencode,
+  Antigravity, Codex CLI, GitHub Copilot and Pi get the full crew + all 17 commands (Pi's crew land at
+  `.pi/agents/` and resolve through the third-party `pi-subagents` extension); Cursor and Windsurf
+  ship the 17 skills only. The Gemini CLI is retired — the Antigravity CLI (`agy`) is its successor
+  and reads `.agents/`, so that is the target Shipmates builds for.
 
 Why that's credible: the crew's system prompts name no harness, and the seventeen commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most

@@ -1,17 +1,17 @@
 {
   "version": 1,
   "model_surface_schema": {
-    "purpose": "Per-harness record of the model-selection surface the harness documents for #434. Repo-side only; never installed. Every cell is stated — a missing feature is a finding, never a blank.",
+    "purpose": "Per-harness record of the model-selection surface the harness documents for #434. Repo-side only; never installed. Every cell is stated \u2014 a missing feature is a finding, never a blank.",
     "keys": {
       "discovery_tier": "query | declared | inherit",
       "enumeration": "{ available: bool, command: string, notes: string }",
-      "identity": "string — the naming SCHEME only; never a concrete model id",
+      "identity": "string \u2014 the naming SCHEME only; never a concrete model id",
       "runtime_model_override": "{ kind: per-spawn | static-agent-file | session-level | none, notes: string }",
       "effort": "{ kind: separate-key | folded-into-model-string | run-level | none, vocabulary: string, clamp: string, notes: string }",
       "declared_pool": "{ mechanism: string, enforcement: abort | warn | fallback | none, notes: string }",
       "reported_gaps": "[{ item: string, label: reported-not-documented, url: string }]",
       "verified_on": "YYYY-MM-DD",
-      "notes": "string — must name the first-party URL the row was checked against"
+      "notes": "string \u2014 must name the first-party URL the row was checked against"
     },
     "enums": {
       "discovery_tier": [
@@ -38,17 +38,55 @@
         "none"
       ]
     },
-    "enumeration_rule": "`enumeration.command` is non-empty if and only if `enumeration.available` is true — a blank command must never be read downstream as a usable pool.",
+    "enumeration_rule": "`enumeration.command` is non-empty if and only if `enumeration.available` is true \u2014 a blank command must never be read downstream as a usable pool.",
     "enforcement_values": {
       "abort": "An out-of-pool identity is refused",
       "warn": "The harness reports the identity but proceeds",
       "fallback": "The harness substitutes a different model; the audit line records `substituted`",
       "none": "No native mechanism exists, so the orchestrator self-enforces or falls to `inherit`"
     },
-    "axis": "This record asserts TARGET CAPABILITY — what the harness documents — not what our adapter emits. That is a different axis from the CI-enforced `agents` and `effort` flags, which assert EMISSION: a harness can document an effort surface and still be `effort: false` because the adapter emits no key.",
+    "axis": "This record asserts TARGET CAPABILITY \u2014 what the harness documents \u2014 not what our adapter emits. That is a different axis from the CI-enforced `agents` and `effort` flags, which assert EMISSION: a harness can document an effort surface and still be `effort: false` because the adapter emits no key.",
     "empty_pool_fallback": "inherit",
-    "sibling_relationship": "#296 owns neutral spawn-hint RENDERING and consumes this record, including its `runtime_model_override` sub-key; #434 owns the record itself. One record, one owner — #296 must not add a second.",
+    "sibling_relationship": "#296 owns neutral spawn-hint RENDERING and consumes this record, including its `runtime_model_override` sub-key; #434 owns the record itself. One record, one owner \u2014 #296 must not add a second.",
     "verified_on": "2026-09-13"
+  },
+  "runtime_verified_schema": {
+    "purpose": "Per-harness record of whether Shipmates has been exercised against a running harness (#497). Repo-side only; never installed. Every cell is stated \u2014 unknown is a finding, never a blank. Distinct from format/digest verification and from the agents/effort emission flags.",
+    "keys": {
+      "status": "full | partial | none \u2014 full = crew_resolve is yes|n/a AND argument_passing=yes AND command_e2e=yes with at least one command named; partial = a live run is recorded but at least one criterion is unknown or no; none = no live run recorded",
+      "verified_on": "YYYY-MM-DD, or empty string when status is none",
+      "crew_resolve": "yes | no | n/a | unknown \u2014 n/a when the adapter ships skills-only (no crew to resolve)",
+      "argument_passing": "yes | no | unknown",
+      "command_e2e": "yes | no | unknown \u2014 whether a named command completed end to end on that harness",
+      "commands_exercised": "[string] \u2014 command names proven end-to-end; empty when unknown or none",
+      "notes": "string \u2014 evidence source (issue, date); never promote an unknown cell to yes"
+    },
+    "enums": {
+      "status": [
+        "full",
+        "partial",
+        "none"
+      ],
+      "crew_resolve": [
+        "yes",
+        "no",
+        "n/a",
+        "unknown"
+      ],
+      "argument_passing": [
+        "yes",
+        "no",
+        "unknown"
+      ],
+      "command_e2e": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    },
+    "status_rule": "`status` is full only when crew_resolve\u2208{yes,n/a}, argument_passing=yes, command_e2e=yes, commands_exercised is non-empty, and verified_on is a date. status is none only when verified_on is empty and commands_exercised is empty. Otherwise status is partial.",
+    "axis": "This record asserts LIVE RUNTIME evidence \u2014 what was actually run \u2014 not payload format checks. Format/digest verification lives in agents_notes and CI digests; model-selection surfaces live in model_surface.",
+    "verified_on": "2026-09-18"
   },
   "harnesses": {
     "claude-code": {
@@ -56,13 +94,13 @@
       "notes": "Canonical source format. The payload is a byte-for-byte mirror of skills/ and agents/.",
       "agents_notes": "Subagents at `.claude/agents/<name>.md` (Markdown + YAML frontmatter, `tools` allowlist). Verified 2026-08-03: https://code.claude.com/docs/en/skills",
       "effort": true,
-      "effort_notes": "Per-agent `effort:` frontmatter key. Shipmates emits the cross-harness `low|medium|high` set; Claude Code's own key accepts up to `max`. Static only — the adapter stamps it; there is no per-spawn override. Verified 2026-08-05.",
+      "effort_notes": "Per-agent `effort:` frontmatter key. Shipmates emits the cross-harness `low|medium|high` set; Claude Code's own key accepts up to `max`. Static only \u2014 the adapter stamps it; there is no per-spawn override. Verified 2026-08-05.",
       "model_surface": {
         "discovery_tier": "declared",
         "enumeration": {
           "available": false,
           "command": "",
-          "notes": "No listing command in the first-party CLI reference. A gateway deployment can populate the interactive picker from the gateway's model endpoint when its discovery environment variable is set — a machine-readable source, but not a CLI listing."
+          "notes": "No listing command in the first-party CLI reference. A gateway deployment can populate the interactive picker from the gateway's model endpoint when its discovery environment variable is set \u2014 a machine-readable source, but not a CLI listing."
         },
         "identity": "A documented alias set (each alias names a family and resolves per provider and over time) or a full vendor-namespaced name, with an optional extended-context suffix; third-party platforms use their own identifier forms.",
         "runtime_model_override": {
@@ -94,13 +132,24 @@
         ],
         "verified_on": "2026-09-13",
         "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://code.claude.com/docs/en/model-config ; https://code.claude.com/docs/en/sub-agents ; https://code.claude.com/docs/en/cli-reference"
+      },
+      "runtime_verified": {
+        "status": "full",
+        "verified_on": "2026-08-03",
+        "crew_resolve": "yes",
+        "argument_passing": "yes",
+        "command_e2e": "yes",
+        "commands_exercised": [
+          "/ship-issue"
+        ],
+        "notes": "Primary development harness. Full flagship workflow runtime-verified: crew resolve, argument passing, and /ship-issue end to end."
       }
     },
     "github-copilot": {
       "agents": true,
-      "agents_notes": "Custom agents at `.github/agents/<name>.agent.md` — note the double extension. Markdown + YAML frontmatter; `tools` accepts canonical names (read, search, edit, execute, web, agent); combined frontmatter+body capped at 30,000 chars. Verified 2026-08-03: https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+      "agents_notes": "Custom agents at `.github/agents/<name>.agent.md` \u2014 note the double extension. Markdown + YAML frontmatter; `tools` accepts canonical names (read, search, edit, execute, web, agent); combined frontmatter+body capped at 30,000 chars. Verified 2026-08-03: https://docs.github.com/en/copilot/reference/custom-agents-configuration",
       "effort": false,
-      "effort_notes": "Adapter emits nothing — this flag asserts EMISSION, and that is unchanged. Capability differs: the custom-agents reference documents an agent-frontmatter `reasoningEffort` field, plus a `--effort`/`--reasoning-effort` CLI flag and an `effortLevel` settings key, and the three first-party vocabularies do not match. The documented capability is recorded in this entry's `model_surface`; see its `reported_gaps`. Verified 2026-09-13: https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+      "effort_notes": "Adapter emits nothing \u2014 this flag asserts EMISSION, and that is unchanged. Capability differs: the custom-agents reference documents an agent-frontmatter `reasoningEffort` field, plus a `--effort`/`--reasoning-effort` CLI flag and an `effortLevel` settings key, and the three first-party vocabularies do not match. The documented capability is recorded in this entry's `model_surface`; see its `reported_gaps`. Verified 2026-09-13: https://docs.github.com/en/copilot/reference/custom-agents-configuration",
       "model_surface": {
         "discovery_tier": "declared",
         "enumeration": {
@@ -126,7 +175,7 @@
         },
         "reported_gaps": [
           {
-            "item": "Re-verified 2026-09-13: this entry's older effort note claimed there is no per-agent effort field — the CLI reference now documents an agent-frontmatter reasoning-effort key (plus a 5-name flag and a 4-name settings key, with mismatched vocabularies). The CI-enforced `effort` flag stays false because that flag asserts adapter emission, which is unchanged.",
+            "item": "Re-verified 2026-09-13: this entry's older effort note claimed there is no per-agent effort field \u2014 the CLI reference now documents an agent-frontmatter reasoning-effort key (plus a 5-name flag and a 4-name settings key, with mismatched vocabularies). The CI-enforced `effort` flag stays false because that flag asserts adapter emission, which is unchanged.",
             "label": "reported-not-documented",
             "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference"
           },
@@ -138,6 +187,15 @@
         ],
         "verified_on": "2026-09-13",
         "notes": "Capability, not emission: the `effort` flag above asserts what our adapter emits and stays false; this record asserts what the harness documents. First-party docs checked 2026-09-13: https://docs.github.com/en/copilot/reference/custom-agents-configuration ; https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference ; https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference"
+      },
+      "runtime_verified": {
+        "status": "none",
+        "verified_on": "",
+        "crew_resolve": "no",
+        "argument_passing": "no",
+        "command_e2e": "no",
+        "commands_exercised": [],
+        "notes": "No live harness run recorded. Payload format and digest verification only."
       }
     },
     "codex": {
@@ -175,7 +233,7 @@
             "url": "https://developers.openai.com/codex/cli/reference.md"
           },
           {
-            "item": "A first-class listing surface is requested on the vendor tracker. Re-verified 2026-09-13: enumeration IS documented, but only as a debug subcommand that prints the catalog as JSON — contradicting the earlier claim that no listing exists on this target.",
+            "item": "A first-class listing surface is requested on the vendor tracker. Re-verified 2026-09-13: enumeration IS documented, but only as a debug subcommand that prints the catalog as JSON \u2014 contradicting the earlier claim that no listing exists on this target.",
             "label": "reported-not-documented",
             "url": "https://developers.openai.com/codex/cli/reference.md"
           },
@@ -187,11 +245,20 @@
         ],
         "verified_on": "2026-09-13",
         "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://developers.openai.com/codex/cli/reference.md ; https://developers.openai.com/codex/models ; https://learn.chatgpt.com/docs/agent-configuration/subagents"
+      },
+      "runtime_verified": {
+        "status": "none",
+        "verified_on": "",
+        "crew_resolve": "no",
+        "argument_passing": "no",
+        "command_e2e": "no",
+        "commands_exercised": [],
+        "notes": "No live harness run recorded. Payload format and digest verification only."
       }
     },
     "cursor": {
       "agents": false,
-      "agents_notes": "Correctly false: the cursor adapter emits skill-only (0 crew), so the flag matches adapter output. The earlier blocker is now STALE — Cursor 2.4 first-party-documents named subagents at `.cursor/agents/*.md` (cursor.com/docs/skills, changelog 2-4, 2026-01-22), so the frontmatter schema is no longer undocumented. Cursor is therefore a viable crew-bearing target: adopt the documented `.cursor/agents/` format and flip this to true when the adapter actually emits crew (tracked in #34). Verified 2026-08-03.",
+      "agents_notes": "Correctly false: the cursor adapter emits skill-only (0 crew), so the flag matches adapter output. The earlier blocker is now STALE \u2014 Cursor 2.4 first-party-documents named subagents at `.cursor/agents/*.md` (cursor.com/docs/skills, changelog 2-4, 2026-01-22), so the frontmatter schema is no longer undocumented. Cursor is therefore a viable crew-bearing target: adopt the documented `.cursor/agents/` format and flip this to true when the adapter actually emits crew (tracked in #34). Verified 2026-08-03.",
       "effort": false,
       "effort_notes": "Cursor folds effort into the model string rather than a standalone key, and is skills-only today (no role emission). Blocked on a cursor subagent emitter (#15/#205); adapter emits nothing. Verified 2026-08-05.",
       "model_surface": {
@@ -209,7 +276,7 @@
         "effort": {
           "kind": "folded-into-model-string",
           "vocabulary": "Model-defined; the accepted values are not enumerated in the docs",
-          "clamp": "Model-defined — clamping is not documented",
+          "clamp": "Model-defined \u2014 clamping is not documented",
           "notes": "An effort parameter sits inside the bracketed parameter list alongside context size and a fast/non-fast variant."
         },
         "declared_pool": {
@@ -236,12 +303,21 @@
         ],
         "verified_on": "2026-09-13",
         "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://cursor.com/docs/subagents ; https://cursor.com/docs/cli/reference/parameters ; https://cursor.com/docs/sdk/typescript ; https://cursor.com/docs/models-and-pricing"
+      },
+      "runtime_verified": {
+        "status": "partial",
+        "verified_on": "2026-09-18",
+        "argument_passing": "unknown",
+        "command_e2e": "unknown",
+        "commands_exercised": [],
+        "crew_resolve": "n/a",
+        "notes": "Captain-attested live run (#497, 2026-09-18). Skills-only adapter \u2014 crew resolve is N/A. Argument passing and command E2E not separately logged (unknown). Not a claim that every skill completed end to end."
       }
     },
     "antigravity": {
       "agents": true,
       "notes": "Adapter emits both agents and skills under .agents/.",
-      "agents_notes": "Workspace agents are a DIRECTORY per agent at `.agents/agents/<name>/agent.md`, NOT a flat `.agents/agents/<name>.md`. Verified 2026-09-13 against the shipped `agy` binary, whose embedded path template is `{workspace}/.agents/agents/{agent_name}/`, and its release notes (\"custom agents using Markdown files (`agent.md`)\"). The flat shape the adapter emitted before this date installs cleanly and Antigravity never reads it — the crew never loaded, in either scope. Global scope is `~/.gemini/config/agents/<name>/agent.md`; see `global_root` in capability_registry.json. Frontmatter keys `subagent`, `mainAgent`, `commandExecutionPolicy` are all first-party (the same release notes list `mainAgent`, `subagent`, `hidden`, `inheritMcp`, `commandExecutionPolicy`). Successor to the retired Gemini CLI.",
+      "agents_notes": "Workspace agents are a DIRECTORY per agent at `.agents/agents/<name>/agent.md`, NOT a flat `.agents/agents/<name>.md`. Verified 2026-09-13 against the shipped `agy` binary, whose embedded path template is `{workspace}/.agents/agents/{agent_name}/`, and its release notes (\"custom agents using Markdown files (`agent.md`)\"). The flat shape the adapter emitted before this date installs cleanly and Antigravity never reads it \u2014 the crew never loaded, in either scope. Global scope is `~/.gemini/config/agents/<name>/agent.md`; see `global_root` in capability_registry.json. Frontmatter keys `subagent`, `mainAgent`, `commandExecutionPolicy` are all first-party (the same release notes list `mainAgent`, `subagent`, `hidden`, `inheritMcp`, `commandExecutionPolicy`). Successor to the retired Gemini CLI.",
       "effort": false,
       "effort_notes": "No per-agent effort field in the agent frontmatter schema. Adapter emits nothing rather than invent a key. Verified 2026-08-05.",
       "model_surface": {
@@ -263,24 +339,33 @@
           "notes": "A run-level flag separate from the reasoning tier folded into the model slug; the docs do not reconcile the two."
         },
         "declared_pool": {
-          "mechanism": "None documented — no settings key declares the pool",
+          "mechanism": "None documented \u2014 no settings key declares the pool",
           "enforcement": "abort",
           "notes": "What is documented is the rejection path: an unknown run value exits non-zero with an error and prints the available list, and headless mode explicitly does not silently fall back."
         },
         "reported_gaps": [
           {
-            "item": "A vendor tracker thread reports that the run-level value takes the model's display name rather than the API slug, and that the available set differs by account and auth type — which conflicts with the headless page calling the value a slug. Not re-checked this pass.",
+            "item": "A vendor tracker thread reports that the run-level value takes the model's display name rather than the API slug, and that the available set differs by account and auth type \u2014 which conflicts with the headless page calling the value a slug. Not re-checked this pass.",
             "label": "reported-not-documented",
             "url": "https://github.com/google-antigravity/antigravity-cli/issues/83"
           }
         ],
         "verified_on": "2026-09-13",
         "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://antigravity.google/docs/cli/headless/ ; https://antigravity.google/docs/cli/reference/ ; https://antigravity.google/docs/cli/using/"
+      },
+      "runtime_verified": {
+        "status": "partial",
+        "verified_on": "2026-09-18",
+        "argument_passing": "unknown",
+        "command_e2e": "unknown",
+        "commands_exercised": [],
+        "crew_resolve": "unknown",
+        "notes": "Captain-attested live run (#497, 2026-09-18). Granular criteria (crew resolve, argument passing, command E2E) were not separately logged \u2014 recorded as unknown rather than inferred. Not a Tier-A /ship-issue proof."
       }
     },
     "windsurf": {
       "agents": false,
-      "agents_notes": "TARGET IDENTITY IN DOUBT. Windsurf became Devin Desktop on 2026-06-02; Cascade was deprecated 2026-07-01 and replaced by Devin Local, which does spawn subagents. `.windsurf/` may address a product that no longer uses that name. Needs its own investigation — rename, retarget, or remove.",
+      "agents_notes": "TARGET IDENTITY IN DOUBT. Windsurf became Devin Desktop on 2026-06-02; Cascade was deprecated 2026-07-01 and replaced by Devin Local, which does spawn subagents. `.windsurf/` may address a product that no longer uses that name. Needs its own investigation \u2014 rename, retarget, or remove.",
       "effort": false,
       "effort_notes": "No per-agent effort surface (and skills-only, no role emission). Adapter emits nothing. Verified 2026-08-05.",
       "model_surface": {
@@ -302,7 +387,7 @@
           "notes": "The documented mechanism is an interactive cycle of the thinking level bound to a keyboard shortcut, available only on models that support configurable reasoning levels."
         },
         "declared_pool": {
-          "mechanism": "Admin-side only — no user file",
+          "mechanism": "Admin-side only \u2014 no user file",
           "enforcement": "none",
           "notes": "An admin model filter sets which models teams may access and a team default, with the documented constraint that only enabled models are available as defaults. Enforcement is restriction and filtering of the visible set, not an abort."
         },
@@ -315,6 +400,15 @@
         ],
         "verified_on": "2026-09-13",
         "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://docs.devin.ai/cli/reference/commands ; https://docs.devin.ai/cli/models ; https://docs.devin.ai/cli/subagents ; https://docs.devin.ai/windsurf/plugins/guide-for-admins"
+      },
+      "runtime_verified": {
+        "status": "none",
+        "verified_on": "",
+        "crew_resolve": "n/a",
+        "argument_passing": "no",
+        "command_e2e": "no",
+        "commands_exercised": [],
+        "notes": "No live harness run recorded. Skills-only adapter \u2014 crew resolve is N/A. Payload format and digest verification only."
       }
     },
     "opencode": {
@@ -329,7 +423,7 @@
           "command": "opencode models [provider]",
           "notes": "`--refresh` re-fetches the models cache and `--verbose` adds metadata and cost. Output is a two-part provider/model path."
         },
-        "identity": "`provider_id/model_id` — a two-part path; the provider key comes from the config provider block, the model key from the catalog or the provider's own model map.",
+        "identity": "`provider_id/model_id` \u2014 a two-part path; the provider key comes from the config provider block, the model key from the catalog or the provider's own model map.",
         "runtime_model_override": {
           "kind": "static-agent-file",
           "notes": "The agent's model key in the config or in agent frontmatter; a global config value and a session flag sit above it."
@@ -337,24 +431,33 @@
         "effort": {
           "kind": "separate-key",
           "vocabulary": "Provider-defined; no fixed enum. The agent/model options key is a pass-through, and a run-level variant flag names a provider preset.",
-          "clamp": "None documented — the provider decides",
+          "clamp": "None documented \u2014 the provider decides",
           "notes": "Two documented surfaces, both provider-defined: an extra key in the agent or model options block is passed verbatim to the provider, and a run-level variant flag selects a provider preset. The static key is the one the orchestrator sets; a variant is a run-level refinement."
         },
         "declared_pool": {
           "mechanism": "Provider-level only: `enabled_providers` / `disabled_providers` in the config, with the denylist winning on conflict",
           "enforcement": "none",
-          "notes": "A disabled provider is not loaded and its models do not appear in the selection list — silent exclusion, not an abort. No model-level allow-list is documented."
+          "notes": "A disabled provider is not loaded and its models do not appear in the selection list \u2014 silent exclusion, not an abort. No model-level allow-list is documented."
         },
         "reported_gaps": [],
         "verified_on": "2026-09-13",
         "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://opencode.ai/docs/cli ; https://opencode.ai/docs/models ; https://opencode.ai/docs/agents/ ; https://opencode.ai/docs/config"
+      },
+      "runtime_verified": {
+        "status": "partial",
+        "verified_on": "2026-09-18",
+        "argument_passing": "unknown",
+        "command_e2e": "unknown",
+        "commands_exercised": [],
+        "crew_resolve": "unknown",
+        "notes": "Captain-attested live run (#497, 2026-09-18). Granular criteria not separately logged (unknown). Does not close #31/#32 \u2014 those track explicit Tier-A / sandbox checklist ticks, not attestation alone."
       }
     },
     "pi": {
       "agents": true,
-      "agents_notes": "NOTE THE DEPENDENCY: pi's subagent mechanic is NOT in core pi — it comes from the third-party `pi-subagents` extension (github.com/nicobailon/pi-subagents), and an install without it resolves no crew. With it, crew are pi-native at `.pi/agents/<name>.md` — the extension's canonical project scope, alongside `~/.pi/agent/agents/**/*.md` for user scope. `tools` must be a COMMA-SEPARATED SCALAR, never a YAML list: the reader is a line-based parser that opens a block on an empty value and reads the whole list as one unmatchable name, so a mismatched file leaves the seat with NO tools and no error — that was #437, where Antigravity's crew at the shared legacy `.agents/agents/` (which pi still reads for compatibility) was handed to pi. Shipmates emits to `.pi/agents/`, which outranks the legacy `.agents/` tree within whichever directory pi resolves as its project root (the nearest ancestor carrying `.pi/` or `.agents/`). A project-local install therefore resolves correctly; a `--global` install resolves only when no nearer ancestor carries either, and pi's user scope cannot outrank a foreign `~/.agents/agents/` because legacy is loaded last. Verified 2026-09-13 against the extension's own source and docs.",
+      "agents_notes": "NOTE THE DEPENDENCY: pi's subagent mechanic is NOT in core pi \u2014 it comes from the third-party `pi-subagents` extension (github.com/nicobailon/pi-subagents), and an install without it resolves no crew. With it, crew are pi-native at `.pi/agents/<name>.md` \u2014 the extension's canonical project scope, alongside `~/.pi/agent/agents/**/*.md` for user scope. `tools` must be a COMMA-SEPARATED SCALAR, never a YAML list: the reader is a line-based parser that opens a block on an empty value and reads the whole list as one unmatchable name, so a mismatched file leaves the seat with NO tools and no error \u2014 that was #437, where Antigravity's crew at the shared legacy `.agents/agents/` (which pi still reads for compatibility) was handed to pi. Shipmates emits to `.pi/agents/`, which outranks the legacy `.agents/` tree within whichever directory pi resolves as its project root (the nearest ancestor carrying `.pi/` or `.agents/`). A project-local install therefore resolves correctly; a `--global` install resolves only when no nearer ancestor carries either, and pi's user scope cannot outrank a foreign `~/.agents/agents/` because legacy is loaded last. Verified 2026-09-13 against the extension's own source and docs.",
       "effort": true,
-      "effort_notes": "Per-agent `thinking:` frontmatter, applied at spawn as a `:<level>` model suffix. The accepted set is first-party in pi-subagents' own source — off, minimal, low, medium, high, xhigh — so the neutral low|medium|high passes through unclamped and unmapped. Unvalidated on parse, so an invented level would reach the model string and fail the spawn. Verified 2026-09-13.",
+      "effort_notes": "Per-agent `thinking:` frontmatter, applied at spawn as a `:<level>` model suffix. The accepted set is first-party in pi-subagents' own source \u2014 off, minimal, low, medium, high, xhigh \u2014 so the neutral low|medium|high passes through unclamped and unmapped. Unvalidated on parse, so an invented level would reach the model string and fail the spawn. Verified 2026-09-13.",
       "model_surface": {
         "discovery_tier": "query",
         "enumeration": {
@@ -387,6 +490,15 @@
         ],
         "verified_on": "2026-09-13",
         "notes": "Capability, not emission. Checked 2026-09-13 against pi's own repository (model surface) and the third-party subagent extension's own README (the per-agent and per-task override keys, which are not core pi): https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/usage.md ; https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/settings.md ; https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md"
+      },
+      "runtime_verified": {
+        "status": "partial",
+        "verified_on": "2026-09-18",
+        "argument_passing": "unknown",
+        "command_e2e": "unknown",
+        "commands_exercised": [],
+        "crew_resolve": "unknown",
+        "notes": "Captain-attested live run (#497, 2026-09-18). Pi crew resolve depends on the third-party pi-subagents extension; granular criteria not separately logged (unknown). Not a Tier-A /ship-issue proof."
       }
     }
   },
@@ -666,7 +778,7 @@
         "antigravity": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The seventeen commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them — refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The seventeen commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "windsurf": {
           "supported": false,
@@ -696,23 +808,23 @@
         },
         "github-copilot": {
           "supported": true,
-          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works \u2014 contracted path is Read\u2192execute."
         },
         "codex": {
           "supported": true,
-          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works \u2014 contracted path is Read\u2192execute."
         },
         "cursor": {
           "supported": true,
-          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works \u2014 contracted path is Read\u2192execute."
         },
         "antigravity": {
           "supported": true,
-          "reason": "disable-model-invocation is not supported; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is not supported; Read of the installed skill path still works \u2014 contracted path is Read\u2192execute."
         },
         "windsurf": {
           "supported": true,
-          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works \u2014 contracted path is Read\u2192execute."
         },
         "opencode": {
           "supported": true,
@@ -720,7 +832,7 @@
         },
         "pi": {
           "supported": true,
-          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works \u2014 contracted path is Read\u2192execute."
         }
       }
     },
@@ -755,7 +867,7 @@
         },
         "opencode": {
           "supported": true,
-          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow — a prompt is not a permission boundary."
+          "reason": "opencode enforces a per-agent `permission` map natively, so the allowlist survives as a real boundary. The previous 'emulate' cell restated it as prose in the agent body, which a model can simply not follow \u2014 a prompt is not a permission boundary."
         },
         "pi": {
           "supported": false,
