@@ -454,27 +454,32 @@
           <div class="section__head">
             <p class="section__eyebrow"><span aria-hidden="true">🌊</span> What's next</p>
             <h2 class="section__title" id="next-title">Which harnesses the crew runs on</h2>
-            <p class="section__lead">Claude Code runtime-verified, seven more buildable today, none of the seven verified against a running harness yet. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> rather than a promise.</p>
+            <p class="section__lead">Claude Code is fully runtime-verified; antigravity, cursor, pi and opencode have captain-attested live runs; codex, GitHub Copilot and windsurf remain format-only. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> <code>runtime_verified</code> record rather than a promise.</p>
           </div>
           <div class="order-prose">
             <ul>
-              <li><strong>Runtime-verified</strong>
+              <li><strong>Runtime-verified (<code>full</code>)</strong>
                 <ul>
-                  <li>Claude Code — the full crew and all 17 commands, and the only harness Shipmates has actually been run on.</li>
+                  <li>Claude Code — the full crew and all 17 commands; crew resolve, argument passing, and <code>/ship-issue</code> end to end.</li>
                 </ul>
               </li>
-              <li><strong>Builds, not runtime-verified</strong> — <code>shipmates install --harness &lt;name&gt;</code> produces a payload, and every format was verified against the harness's own parsing source and first-party docs.
+              <li><strong>Live run (<code>partial</code>)</strong> — captain-attested live runs in <code>tools/harness_matrix.json</code> (<a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>). Granular criteria stay <code>unknown</code> until separately logged.
                 <ul>
-                  <li>opencode — full crew + all 17 commands as <code>.opencode/</code>; live verification tracked in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
+                  <li>opencode — full crew + all 17 commands as <code>.opencode/</code>; Tier-A checklist still open in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
                   <li>antigravity (the Antigravity CLI, <code>agy</code> — successor to the retired Gemini CLI) — full crew + all 17 commands as <code>.agents/</code>.</li>
-                  <li>codex, github-copilot — the full crew and all 17 commands. Codex is the one target whose agents are TOML rather than Markdown, and it documents no per-agent tool allowlist, so its crew inherit the session's tools rather than a restricted set.</li>
-                  <li>pi — the full crew and all 17 commands. Pi's crew land at <code>.pi/agents/</code> and resolve through the third-party <code>pi-subagents</code> extension; core pi documents no subagent schema of its own.</li>
-                  <li>cursor, windsurf — the 17 skills only. Cursor's is reported but its schema is undocumented, so we do not guess at it; Windsurf is under review since the Devin Desktop rename.</li>
+                  <li>pi — full crew + all 17 commands at <code>.pi/agents/</code> via <code>pi-subagents</code>.</li>
+                  <li>cursor — the 17 skills only (crew resolve N/A).</li>
+                </ul>
+              </li>
+              <li><strong>Builds, not runtime-verified (<code>none</code>)</strong>
+                <ul>
+                  <li>codex, github-copilot — the full crew and all 17 commands. Codex agents are TOML and inherit the session's tools (no per-agent allowlist).</li>
+                  <li>windsurf — the 17 skills only; under review since the Devin Desktop rename.</li>
                 </ul>
               </li>
               <li><strong>Next</strong>
                 <ul>
-                  <li>Runtime verification for the other seven harnesses, starting with opencode — see <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
+                  <li>Promote <code>partial</code> rows to <code>full</code> by logging crew resolve, argument passing, and a named command E2E — opencode Tier-A in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>; live runs for codex and GitHub Copilot.</li>
                 </ul>
               </li>
             </ul>

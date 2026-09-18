@@ -1109,6 +1109,164 @@ fn test_matrix_model_surface_is_complete() {
     }
 }
 
+/// Every harness must carry a complete `runtime_verified` record (#497). Live
+/// runtime status used to live only in prose, so it went stale silently — the
+/// same failure mode the `agents` / `effort` / `model_surface` guards already
+/// prevent. `unknown` is a stated finding; promoting it to `yes` without
+/// evidence is the defect this check exists to catch at the schema layer.
+#[test]
+fn test_matrix_runtime_verified_is_complete() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let matrix: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap(),
+    )
+    .unwrap();
+    let schema = matrix["runtime_verified_schema"]
+        .as_object()
+        .expect("harness_matrix.json has no runtime_verified_schema block");
+
+    let harnesses = matrix["harnesses"]
+        .as_object()
+        .expect("harness_matrix.json has no harnesses map");
+
+    const STATUSES: [&str; 3] = ["full", "partial", "none"];
+    const CREW: [&str; 4] = ["yes", "no", "n/a", "unknown"];
+    const TRI: [&str; 3] = ["yes", "no", "unknown"];
+    const REQUIRED_KEYS: [&str; 7] = [
+        "status",
+        "verified_on",
+        "crew_resolve",
+        "argument_passing",
+        "command_e2e",
+        "commands_exercised",
+        "notes",
+    ];
+    let date = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
+
+    for (path, expected) in [
+        ("status", &STATUSES[..]),
+        ("crew_resolve", &CREW[..]),
+        ("argument_passing", &TRI[..]),
+        ("command_e2e", &TRI[..]),
+    ] {
+        let declared: Vec<&str> = schema["enums"][path]
+            .as_array()
+            .unwrap_or_else(|| panic!("runtime_verified_schema.enums has no `{path}`"))
+            .iter()
+            .map(|value| value.as_str().unwrap())
+            .collect();
+        assert_eq!(
+            declared, expected,
+            "runtime_verified_schema.enums[{path}] disagrees with this test's closed enum"
+        );
+    }
+
+    for name in shipmates::adapters::targets() {
+        let row = harnesses[name]["runtime_verified"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{name}: harness_matrix.json has no `runtime_verified`"));
+        for key in REQUIRED_KEYS {
+            assert!(
+                row.contains_key(key),
+                "{name}: runtime_verified is missing `{key}` — every cell is stated, never left blank"
+            );
+        }
+
+        let status = row["status"].as_str().unwrap_or_else(|| {
+            panic!("{name}: runtime_verified.status is missing or not a string")
+        });
+        assert!(
+            STATUSES.contains(&status),
+            "{name}: status `{status}` is outside the closed enum"
+        );
+
+        let crew = row["crew_resolve"].as_str().unwrap_or_else(|| {
+            panic!("{name}: runtime_verified.crew_resolve is missing or not a string")
+        });
+        assert!(
+            CREW.contains(&crew),
+            "{name}: crew_resolve `{crew}` is outside the closed enum"
+        );
+
+        let args = row["argument_passing"].as_str().unwrap_or_else(|| {
+            panic!("{name}: runtime_verified.argument_passing is missing or not a string")
+        });
+        assert!(
+            TRI.contains(&args),
+            "{name}: argument_passing `{args}` is outside the closed enum"
+        );
+
+        let e2e = row["command_e2e"].as_str().unwrap_or_else(|| {
+            panic!("{name}: runtime_verified.command_e2e is missing or not a string")
+        });
+        assert!(
+            TRI.contains(&e2e),
+            "{name}: command_e2e `{e2e}` is outside the closed enum"
+        );
+
+        let verified_on = row["verified_on"].as_str().unwrap_or_else(|| {
+            panic!("{name}: runtime_verified.verified_on is missing or not a string")
+        });
+        let commands = row["commands_exercised"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{name}: commands_exercised must be an array"));
+        let notes = row["notes"].as_str().unwrap_or_else(|| {
+            panic!("{name}: runtime_verified.notes is missing or not a string")
+        });
+        assert!(
+            !notes.trim().is_empty(),
+            "{name}: runtime_verified.notes is blank"
+        );
+
+        // Skills-only adapters cannot claim crew_resolve=yes.
+        let agents = harnesses[name]["agents"]
+            .as_bool()
+            .unwrap_or_else(|| panic!("{name}: agents flag missing"));
+        if !agents {
+            assert_eq!(
+                crew, "n/a",
+                "{name}: skills-only adapter must set crew_resolve=n/a, not `{crew}`"
+            );
+        }
+
+        match status {
+            "none" => {
+                assert!(
+                    verified_on.is_empty(),
+                    "{name}: status=none requires empty verified_on, got `{verified_on}`"
+                );
+                assert!(
+                    commands.is_empty(),
+                    "{name}: status=none requires empty commands_exercised"
+                );
+            }
+            "full" => {
+                assert!(
+                    date.is_match(verified_on),
+                    "{name}: status=full requires YYYY-MM-DD verified_on, got `{verified_on}`"
+                );
+                assert!(
+                    matches!(crew, "yes" | "n/a"),
+                    "{name}: status=full requires crew_resolve yes|n/a, got `{crew}`"
+                );
+                assert_eq!(args, "yes", "{name}: status=full requires argument_passing=yes");
+                assert_eq!(e2e, "yes", "{name}: status=full requires command_e2e=yes");
+                assert!(
+                    !commands.is_empty(),
+                    "{name}: status=full requires at least one commands_exercised entry"
+                );
+            }
+            "partial" => {
+                assert!(
+                    date.is_match(verified_on),
+                    "{name}: status=partial requires YYYY-MM-DD verified_on, got `{verified_on}`"
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// The model-routing ruleset is a *global* one. It is expanded from the shared
 /// cost-discipline preamble, so **every** command carries it — not only the two
 /// that spawn the most subagents. A marker left in a single command would make
