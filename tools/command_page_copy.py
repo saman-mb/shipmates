@@ -646,7 +646,8 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ProcessStep(
                 "Census",
                 "Inventory every finding with a stable ID and its evidence, then grade each one by the risk of touching it.",
-                solo="Discovery workers fan out; every row names its evidence and its grade.",
+                always=("sdet", "security-engineer", "technical-writer"),
+                also=(_also("architect", "near-duplicate and structural classes"),),
             ),
             ProcessStep(
                 "Weigh",
@@ -656,7 +657,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ProcessStep(
                 "Map",
                 "Every risky finding is traced back to the features that depend on it — and a missing feature can only raise a grade, never lower one.",
-                always=("product-manager",),
+                always=("product-manager", "site-reliability-engineer", "performance-engineer"),
             ),
             ProcessStep(
                 "File",

@@ -41,9 +41,16 @@ All notable changes to this project are documented here. The format follows
   modules `src/lib.rs` already exposes, so every unit test ran twice and fourteen dead-code warnings
   came from the library's copy of items only the binary calls. The binary now consumes the library
   instead of duplicating it: unit tests run once (the duplicated 184-run set is gone), warnings drop
-  from 14 to 2, and rendered payloads are byte-identical — all eight target digests are unchanged.
-  Two items in `src/installer/manifest_db.rs` widened from `pub(crate)` to `pub`, since
+  from 14 to 2, and the refactor changed no rendered output — all eight target digests were unmoved by
+  it. Two items in `src/installer/manifest_db.rs` widened from `pub(crate)` to `pub`, since
   `pub(crate)` does not cross the lib/bin boundary (#495).
+- **`/ship-deslop-codebase` now names its crew at every spawn.** A live run resolved its workers to
+  general-purpose agents instead of the crew, because the command described "workers" without ever
+  naming a role — the harness had no identity to look up. The command now carries a crew roster and
+  names the role at each spawn, and `validate_skills.py` fails any command that declares a fan-out
+  without binding or naming a crew role, so the defect cannot recur silently. The command's
+  `technical-writer` seat is explicitly briefed to report only: unlike the other six roles it is a
+  writing role by trade, and an audit must not carry a write path.
 
 ## [0.9.0] - 2026-09-15
 

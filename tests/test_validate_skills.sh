@@ -25,9 +25,12 @@ bad() { FAIL=$((FAIL+1)); printf 'FAIL %s\n' "$1"; }
 
 # The validator resolves the repo root from its own __file__, so a copy in a
 # sandbox lints the sandbox's commands/ — no --root flag needed, and the real
-# tree is never touched.
-mkdir -p "$WORK/tools" "$WORK/commands"
+# tree is never touched. crew/ comes along because the spawn-binding check reads
+# the roster from it; without it that check would degrade to a no-op here and
+# the negative control below would pass vacuously.
+mkdir -p "$WORK/tools" "$WORK/commands" "$WORK/crew"
 cp "$REPO/tools/validate_skills.py" "$WORK/tools/"
+cp "$REPO"/crew/*.md "$WORK/crew/"
 
 # Run the validator over a fixture command built from the body on stdin.
 # Prints nothing; returns the validator's exit status.
@@ -117,7 +120,7 @@ gh pr review <PR#> --comment --body-file "$(gh pr view <PR#> --json title -q .ti
 ```
 MD
 
-# --- spawn binding: a fan-out command must name its crew role (#495) ---
+# --- spawn binding: a fan-out command must name its crew role (#488) ---
 # The defect this guards is silent: a command fans work out to "workers", names no
 # role, and the harness resolves nothing — every finding comes from a general-purpose
 # agent while the payload, digests and CI all look healthy. Both accepted forms are
@@ -127,10 +130,26 @@ rejects "fan-out with no crew role named" <<'EOF'
 
 Split the survey across workers up to `MAX_CONCURRENT_WORKERS`.
 EOF
+rejects "fan-out naming no role even with a spawn verb" <<'EOF'
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Spawn workers across the classes.
+EOF
 accepts "fan-out naming a role at the spawn" <<'EOF'
 - `MAX_CONCURRENT_WORKERS` = `5`.
 
 Spawn a `security-engineer` per class, up to `MAX_CONCURRENT_WORKERS`.
+EOF
+accepts "role named on a wrapped continuation line" <<'EOF'
+- `MAX_CONCURRENT_WORKERS` = `5`.
+- Split the survey across workers up to `MAX_CONCURRENT_WORKERS` — one per
+  class, chosen by what the census finds, and each
+  `security-engineer` owns the dependency classes.
+EOF
+accepts "role named in a stage heading" <<'EOF'
+## Stage 1 — Census  (agent: `sdet`)
+
+- `MAX_CONCURRENT_WORKERS` = `5`. Spawn workers.
 EOF
 accepts "fan-out binding a role in Config" <<'EOF'
 - `BUILDER` = `senior-engineer`. `MAX_CONCURRENT_WORKERS` = `5`.

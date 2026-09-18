@@ -58,24 +58,8 @@ ALLOWED_KEYS = REQUIRED_KEYS + STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS
 # note describes, but only the REQUIRED_KEYS prefix is enforced.
 FRONTMATTER_KEYS = REQUIRED_KEYS + EXTENSION_KEYS
 
-# The shipped crew roles, for the spawn-binding check. Kept here rather than read
-# from crew/*.md so a command naming a role that was renamed or deleted still fails:
-# a spawn that resolves to nothing is the exact defect this guards.
-CREW_ROLES = (
-    "architect",
-    "art-director",
-    "data-scientist",
-    "devops-engineer",
-    "performance-engineer",
-    "principal-engineer",
-    "product-manager",
-    "sdet",
-    "security-engineer",
-    "senior-engineer",
-    "site-reliability-engineer",
-    "technical-writer",
-    "ux-ui-designer",
-)
+# crew/*.md — the source of truth for role names (see crew_roles()).
+CREW = ROOT / "crew"
 
 # `metadata:` is the one standard key defined as a nested mapping, so its value
 # may live on indented continuation lines. They are opaque here (this is a
@@ -440,6 +424,19 @@ def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
             )
 
 
+def crew_roles() -> tuple:
+    """The shipped crew role names, read from crew/*.md.
+
+    Read from disk rather than hardcoded: a second hand-maintained copy of the
+    roster would drift, and a spawn naming a role that was renamed or deleted
+    must fail this check — that is the defect it guards. Returns () when crew/
+    is absent, which degrades the check rather than failing the tree.
+    """
+    if not CREW.is_dir():
+        return ()
+    return tuple(sorted(p.stem for p in CREW.glob("*.md")))
+
+
 def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
     """A command that fans work out to workers must say which crew role does the work.
 
@@ -459,19 +456,31 @@ def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
     if "MAX_CONCURRENT_WORKERS" not in text:
         return
 
-    role_alt = "|".join(re.escape(role) for role in CREW_ROLES)
-    bind = re.compile(r"`?[A-Z][A-Z_]+`?\s*=\s*[^.\n]*?(?:" + role_alt + r")")
-    spawn = re.compile(r"\b(?:spawn|dispatch)\b", re.IGNORECASE)
-    names_role = re.compile(role_alt)
-
-    if bind.search(text):
+    roles = crew_roles()
+    if not roles:
         return
-    for offset, raw in enumerate(lines[start:]):
-        if not spawn.search(raw):
+    role_alt = "|".join(re.escape(role) for role in roles)
+    role_re = re.compile(role_alt)
+
+    # Four anchors, any one of which satisfies the check. Deliberately not
+    # verb-dependent: the incident this guards described its fan-out as "split
+    # the survey across workers", with no spawn/dispatch verb at all, so a
+    # verb-triggered scan would have read it as clean.
+    #
+    # (a) a Config binding — an ALLCAPS knob set to a crew role.
+    if re.search(r"`?[A-Z][A-Z_]+`?\s*=\s*[^.\n]*?(?:" + role_alt + r")", text):
+        return
+    # (b) a stage heading naming a role, the catalogue's `(agent: \`role\`)` form.
+    for raw in lines:
+        if raw.startswith("#") and role_re.search(raw):
+            return
+    # (c) a role named within a short window of the fan-out knob or of a spawn verb.
+    anchor = re.compile(r"MAX_CONCURRENT_WORKERS|\b(?:spawn|dispatch)\b", re.IGNORECASE)
+    for idx, raw in enumerate(lines):
+        if not anchor.search(raw):
             continue
-        # A spawn sentence routinely wraps; the role is on the next line.
-        nxt = lines[start + offset + 1] if start + offset + 1 < len(lines) else ""
-        if names_role.search(raw + " " + nxt):
+        window = "\n".join(lines[max(0, idx - 2) : idx + 4])
+        if role_re.search(window):
             return
     fail(
         f"{rel}:{start + 1}: fans out to workers (`MAX_CONCURRENT_WORKERS`) but never names "
