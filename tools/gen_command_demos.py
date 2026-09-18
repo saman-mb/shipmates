@@ -227,6 +227,19 @@ COMMANDS = {
         ],
         "closer": "Refactored — behaviour proven unchanged. ⚓",
     },
+    "ship-deslop-codebase": {
+        "arg": "src/orders file",
+        "stages": [
+            ("SCOPE", "target, mode, analysers"),
+            ("SCAN", "census: dead, dup, slop"),
+            ("GRADE", "four risk grades"),
+            ("REPORT", "ledger, stable IDs"),
+            ("FILE", "epic + sub-issues"),
+            ("GATE", "captain confirms breakdown"),
+            ("HAND OFF", "epic, one, or a bundle"),
+        ],
+        "closer": "Filed — graded, grouped, yours to choose. ⚓",
+    },
 }
 
 
