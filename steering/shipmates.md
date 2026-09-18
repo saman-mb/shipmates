@@ -22,7 +22,8 @@ then cut from `origin/<BASE>`; resume re-fetches and rebases when behind. `HEAD`
 **`sync-base`** guidance for remote-latest instead of local `HEAD`.
 When you change one command's isolate stage, keep all nine mutating commands in sync:
 `/ship-issue`, `/ship-fix-bug`, `/ship-polish`, `/ship-harden`, `/ship-migrate`, `/ship-document`, `/ship-onboard`, `/ship-refactor`,
-`/ship-spike`.
+`/ship-spike` — plus `/ship-epic`'s transient `epic-kickoff-<epic>` worktree,
+which shares the same nested layout without owning an isolate stage.
 
 ## New command
 

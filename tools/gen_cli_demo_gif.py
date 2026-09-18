@@ -5,7 +5,7 @@ shipmates CLI and bringing the crew aboard.
 Honest by construction: every command shown is a real one and every line of
 output matches what the CLI actually prints — `cargo install shipmates`, then
 `shipmates install --harness claude-code` printing its real
-"Installed harness: … (29 files written)" line (13 crew + 16 commands), then
+"Installed harness: … (30 files written)" line (13 crew + 17 commands), then
 `ls .claude` showing the two trees it writes.
 
 Writes two artifacts from one set of frames:
@@ -52,7 +52,7 @@ def build_reel():
     reel.type_command(prompt, "shipmates install --harness claude-code")
     reel.reveal([("Installed harness: ", dt.WHITE, False),
                  ("claude-code", dt.BLUE, True),
-                 (" (29 files written)", dt.GREY, False)])
+                 (" (30 files written)", dt.GREY, False)])
     reel.blank()
 
     # 3) show what landed

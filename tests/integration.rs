@@ -160,7 +160,7 @@ fn test_opencode_embedded_install_fidelity() {
         assert!(content.contains("permission:\n"), "{path:?} has no permission map");
     }
     assert_eq!(file_count(&agents), expected_roles.len());
-    assert_eq!(file_count(&commands), 16);
+    assert_eq!(file_count(&commands), 17);
 
     let report_order = std::fs::read_to_string(commands.join("ship-harden.md")).unwrap();
     assert!(report_order.contains("report"), "harden order lost report-only mode");
@@ -185,7 +185,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
     let commands = load_commands(&root.join("commands")).unwrap();
     let roles = load_roles(&root.join("crew")).unwrap();
 
-    assert_eq!(commands.len(), 16, "cost preamble must cover every command");
+    assert_eq!(commands.len(), 17, "cost preamble must cover every command");
     let re_tokens = regex::Regex::new(r"\{\{[a-zA-Z:-]+\}\}").unwrap();
     for command in &commands {
         assert_eq!(
@@ -320,7 +320,7 @@ fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
     let roles = load_roles(&root.join("crew")).unwrap();
     let commands = load_commands(&root.join("commands")).unwrap();
     let tools = load_tools(&root.join("toolbox")).unwrap();
-    assert_eq!(commands.len(), 16);
+    assert_eq!(commands.len(), 17);
     assert!(!tools.is_empty(), "toolbox/ must hold tools for build_tools");
 
     // Negative control: `description: Shipmates: take an issue` is a nested
@@ -347,7 +347,7 @@ fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
         let mut files = adapter.build(&roles, &commands).unwrap();
         files.extend(adapter.build_tools(&tools));
 
-        // All sixteen commands must arrive exactly once, as a skill or as
+        // All seventeen commands must arrive exactly once, as a skill or as
         // opencode's command file — the path shape every harness resolves.
         for command in &commands {
             let emitted = files
@@ -1318,7 +1318,7 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
         shipped.push(target.to_string());
     }
 
-    // This table is inlined into every command on every target (16 commands × 8
+    // This table is inlined into every command on every target (17 commands × 8
     // targets), so its size is a cost decision, not a formatting one. #450
     // trimmed it to the record's enums plus the one clamp clause the orchestrator
     // acts on; this ceiling is what stops a gloss growing back silently.

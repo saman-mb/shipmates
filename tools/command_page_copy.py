@@ -627,4 +627,47 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
+    "ship-deslop-codebase": CommandPageCopy(
+        guide_blurb="Audit the codebase for dead code, duplication, over-engineering and rot — filed as an epic you approve.",
+        process_lead=(
+            "Discovery grades every finding safe, review, architectural or protected, then files the work "
+            "as an epic with sub-issues. Nothing is edited: you review the breakdown and choose what ships."
+        ),
+        when_to_use=(
+            "The repo feels heavier than it needs to be and no issue tracks why.",
+            "Replacing an API across the codebase? /ship-migrate. Same behaviour, new shape? /ship-refactor.",
+        ),
+        process=(
+            ProcessStep(
+                "Survey",
+                "Bound the scope, fix the mode, and inventory which analysers the repo already has — nothing is scanned until the scope is named.",
+                solo="The run does this itself — no specialist.",
+            ),
+            ProcessStep(
+                "Census",
+                "Inventory every finding with a stable ID and its evidence, then grade each one by the risk of touching it.",
+                solo="Discovery workers fan out; every row names its evidence and its grade.",
+            ),
+            ProcessStep(
+                "Weigh",
+                "Near-duplicates get a semantic diff and over-built machinery gets a state-versus-consumer count, so nothing is filed as an impression.",
+                always=("architect",),
+            ),
+            ProcessStep(
+                "Map",
+                "Every risky finding is traced back to the features that depend on it — and a missing feature can only raise a grade, never lower one.",
+                always=("product-manager",),
+            ),
+            ProcessStep(
+                "File",
+                "Findings become an epic with sub-issues, grouped one reviewable diff and one owner at a time, each carrying its evidence and its acceptance criteria.",
+                solo="The run files these itself; the tracker is the only thing it writes.",
+            ),
+            ProcessStep(
+                "Choose",
+                "You review the epic, confirm the breakdown, then take the whole thing, a single sub-issue, or a bundle — and it hands off to the workflow that ships.",
+                solo="Your gate. Nothing proceeds until you say so.",
+            ),
+        ),
+    ),
 }
