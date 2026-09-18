@@ -82,7 +82,8 @@ check where it crashed" when the real cause is upstream.
 ## Stage 3 — Fix (minimal & scoped)  (agents: `senior-engineer` × N, parallel when fan-out)
 
 Apply the smallest change that fixes the named root cause. **No unrelated refactors or scope creep** —
-this is a bug fix, not a redesign (file anything else as a follow-up). Then check for **sibling bugs**:
+this is a bug fix, not a redesign (dispose anything else with nit disposition — absorb when cheap
+and in-scope, else PR-note or a capped/batched follow-up). Then check for **sibling bugs**:
 grep the codebase for the same defect class elsewhere.
 
 **Execution posture**:
@@ -119,9 +120,11 @@ the board from the fixer delta (shared rule), bounded by `MAX_FIX_ROUNDS`, then 
 ## Stage 6 — Deliver
 
 Open (or, if `MERGE_MODE=auto`, merge) the PR. Body: the root cause in one paragraph, the fix, the
-regression test, `Closes #<issue>`, and the green-CI link. File sibling bugs / deferred cleanups as
-follow-up issues. Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, and
-the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
+regression test, `Closes #<issue>`, and the green-CI link. Dispose sibling bugs / deferred cleanups
+with the same **nit disposition** ladder as `/ship-issue` Stage 7 (default absorb-first for cheap
+in-scope leftovers; cap and batch any filed issues; never open one ticket per trivial leftover).
+Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, disposition counts,
+and the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
 
 ---
 
@@ -129,7 +132,8 @@ the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
 - **The failing test comes first and is non-negotiable.** It's what distinguishes a fix from a guess,
   and it stops the bug ever coming back silently.
 - Root cause over symptom — name the mechanism; don't patch where it surfaced.
-- Minimal, scoped change; unrelated improvements become follow-ups, not part of this PR.
+- Minimal, scoped change; unrelated improvements use nit disposition (absorb when cheap and in-scope,
+  else PR-note or a capped/batched follow-up) — do not open one issue per leftover.
 - Bounded loops; escalate with the log rather than spinning.
 - The reviewer is a **fresh** agent, never the one who wrote the fix.
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief

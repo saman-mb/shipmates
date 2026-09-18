@@ -397,7 +397,9 @@ For each `<unit>` (sequentially, or concurrently within a wave):
      **each** story in the unit (tick every checklist line the unit closed), **Stage 3.5** (append unit
      delivery + review summary to `<epic-log>` and refresh epic PR notes), extend `<epic-capsule>` with
      validation commands used, key paths touched, and any convention a review enforced — keep the
-     capsule **short** (bullet list, not a narrative). Continue to the next unit.
+     capsule **short** (bullet list, not a narrative). Nit disposition is owned entirely by the
+     composed `/ship-issue` Stage 7 — do **not** open additional per-nit issues at the epic layer;
+     carry disposition counts from the unit record into `<epic-log>` when present. Continue to the next unit.
    - **Success (manual merge required)** — unit finished with `MERGE_MODE=manual` and a green PR open →
      **pause the epic loop** (hard limit **Manual unit merge**): post state (`EPIC_BRANCH`, `EPIC_PR`,
      unit PR link, `/ship-epic <epic> resume`). **Stop** — captain merges the unit PR into
