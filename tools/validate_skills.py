@@ -516,13 +516,20 @@ def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
             if composes.match(raw):
                 return
 
-    # (2) A Config binding whose value IS a role — how a command that composes another
-    # command, or names its worker through a knob, declares who owns the work. Config is
-    # one block, so a file-wide search is correct for this anchor.
+    # (2) A Config binding whose value IS a role — how a command that names its worker
+    # through a knob declares who owns the work. Scoped to the Config block and the
+    # fan-out stages, like the heading anchors: a file-wide search here would be the last
+    # escape hatch of the same class this check exists to close, since any unrelated knob
+    # bound to a role name anywhere in the document would satisfy it.
     binding = re.compile(
         r"`?[A-Z][A-Z_]+`?\s*=\s*`?(?:" + role_alt + r")`?(?![\w-])"
     )
-    if binding.search(text):
+    config_lines = [
+        raw
+        for i, raw in enumerate(body_lines)
+        if section_of[i] == 0 or section_of[i] in knob_sections
+    ]
+    if any(binding.search(raw) for raw in config_lines):
         return
 
     fail(
