@@ -5,6 +5,23 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.9.1] - 2026-09-18
+
+### Changed
+
+- **Pruned the dependency set.** `flate2`, `reqwest` and `tar` were declared but never referenced
+  anywhere in the source, and `serde_yaml` was reachable only from the test suite. The first three
+  are removed and `serde_yaml` moved to `[dev-dependencies]`, shrinking the published dependency
+  closure by roughly 150 packages and dropping an async HTTP stack from a CLI that never makes a
+  network request (#496).
+- **The binary no longer compiles the module tree a second time.** `src/main.rs` re-declared the ten
+  modules `src/lib.rs` already exposes, so every unit test ran twice and fourteen dead-code warnings
+  came from the library's copy of items only the binary calls. The binary now consumes the library
+  instead of duplicating it: unit tests run once (the duplicated 184-run set is gone), warnings drop
+  from 14 to 2, and rendered payloads are byte-identical — all eight target digests are unchanged.
+  Two items in `src/installer/manifest_db.rs` widened from `pub(crate)` to `pub`, since
+  `pub(crate)` does not cross the lib/bin boundary (#495).
+
 ## [0.9.0] - 2026-09-15
 
 ### Added
