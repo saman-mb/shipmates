@@ -65,10 +65,13 @@ scope and how far to go come from the Runtime input section at the end of this w
 
 ## Stage 0 — Scope, mode, and analyser detection
 
-Parse the runtime input first, then bound the survey. Nothing is scanned until the scope is named — a
-report that silently widened to the whole repo is a report nobody can act on.
+Parse the runtime input first, then bound the survey. **No arguments means the whole repository** — that
+is this command's documented default, not a silent widening, and it is stated back on the first line of
+the report alongside the mode. What must never happen is a run that *drifts*: once a path, package or
+module is named, the survey stays inside it, and anything outside that was still scanned is reported as
+out of scope rather than quietly included.
 
-1. **Scope.** A path, package, or module token narrows the survey to that subtree; an optional `language=` token narrows a multi-language repo to one language's files. Empty means the whole repository. Write the resolved scope down — every later stage prints it back.
+1. **Scope.** Empty means the **whole repository** — the default when the captain supplies nothing, and the common case. A path, package, or module token narrows the survey to that subtree; an optional `language=` token narrows a multi-language repo to one language's files. When either is given the survey stays inside it. Write the resolved scope down — every later stage prints it back.
 2. **Mode.** The word `file` sets `MODE=file`; `ship` sets `MODE=ship`; anything else is `MODE=report`. State the resolved mode on the first line of the report, so nobody reads an audit as a change.
 3. **Tracker check** (`file` and `ship` only). Confirm the issue tracker is reachable and its labels readable *before* the survey begins — discovering at filing time that there is nowhere to file wastes the whole run. Confirm too whether the host offers a parent/child sub-issue relationship; Stage 4 degrades explicitly where it does not.
 4. **Detect the analysers the repo already has.** Read the manifests, CI config, task runner, and the repo's own instructions, and inventory which analyser classes are present. **Never install an analyser silently**, and never stand up coverage tooling as a side effect of a scan — Stage 2's honesty rule depends on knowing whether the tooling exists. Run `--help` on unfamiliar tools.

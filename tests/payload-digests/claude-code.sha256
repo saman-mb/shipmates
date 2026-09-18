@@ -15,7 +15,7 @@ target=claude-code
 .claude/agents/ux-ui-designer.md 838731e5695aa7b44cc4c50a687a411ace99475618c018f1f7a249a6faf48260
 .claude/rules/shipmates-contributor.md 6161a4adcf8a861c0ca9c33eb91edfc9c0e314e39a5d803f50619b3ce2d2f7ea
 .claude/skills/ship-consolidate-issues/SKILL.md 430b7eab6b884c9211d02e046d12c59ca3d1b63ec0006c5d2678ecb0a0170801
-.claude/skills/ship-deslop-codebase/SKILL.md 870b6d9738dd93c5427f27d594add646f7dd8dfa0580fc4f4eee009c1128db10
+.claude/skills/ship-deslop-codebase/SKILL.md 12211ce0bd5631c78985569de75e6fe60f48c5b1552a5d4861125a3b7224a625
 .claude/skills/ship-document/SKILL.md 10ffcd06d279e9c1e7fc3c8ecf29d3ee0a7cdc7ddb479211ecdd50ec2752f332
 .claude/skills/ship-epic/SKILL.md 7fa26a110591eddbb75d4f7538222e80244230a133c95db7a32dc02759e54e7e
 .claude/skills/ship-fix-bug/SKILL.md a67369544eac15aa667dc526295d7adc224628262f1480c879d6f7f4a491328d
