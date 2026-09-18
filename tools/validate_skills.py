@@ -449,8 +449,15 @@ def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
 
     Two ways to satisfy it, matching how the shipped commands already do it: bind a role
     in Config (`BUILDER = senior-engineer`, `TRANSFORMER = senior-engineer`), or name a
-    role on the same line as the spawn instruction (or the line it wraps onto). A command
-    that neither binds nor names is the defect.
+    role in the section that declares the fan-out. A command that neither binds nor names
+    is the defect.
+
+    **Scoped deliberately.** The role must be named in the *section* carrying the
+    `MAX_CONCURRENT_WORKERS` declaration, or bound in Config — not anywhere in the file.
+    A file-wide scan is trivially satisfied by an unrelated heading or a roster table
+    elsewhere, which leaves the incident this guards unenforced: a command could strip
+    the role from its fan-out stage and still pass. Scoping is what makes the check mean
+    "the fan-out says who does the work".
     """
     text = "\n".join(lines)
     if "MAX_CONCURRENT_WORKERS" not in text:
@@ -458,30 +465,54 @@ def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
 
     roles = crew_roles()
     if not roles:
+        fail(
+            f"{rel}:{start + 1}: cannot check that this fan-out names a crew role — "
+            "crew/*.md is missing or unreadable, so the roster is unknown. A broken "
+            "environment is not a pass: restore crew/ (or run the validator from the "
+            "repository root) so the check can see the roles"
+        )
         return
     role_alt = "|".join(re.escape(role) for role in roles)
     role_re = re.compile(role_alt)
 
-    # Four anchors, any one of which satisfies the check. Deliberately not
-    # verb-dependent: the incident this guards described its fan-out as "split
-    # the survey across workers", with no spawn/dispatch verb at all, so a
-    # verb-triggered scan would have read it as clean.
-    #
-    # (a) a Config binding — an ALLCAPS knob set to a crew role.
-    if re.search(r"`?[A-Z][A-Z_]+`?\s*=\s*[^.\n]*?(?:" + role_alt + r")", text):
+    # (a) a Config binding anywhere — an ALLCAPS knob set to a crew role. Config is one
+    # block, so a file-wide search is correct for this anchor.
+    if re.search(r"`?[A-Z][A-Z_]+`?\s*=\s*[^.]*?(?:" + role_alt + r")", text):
         return
-    # (b) a stage heading naming a role, the catalogue's `(agent: \`role\`)` form.
-    for raw in lines:
-        if raw.startswith("#") and role_re.search(raw):
-            return
-    # (c) a role named within a short window of the fan-out knob or of a spawn verb.
+
+    # (a2) the command composes another command per worker instead of spawning a role
+    # itself — `ship-epic` runs one `/ship-issue` per unit, and that composed command
+    # owns the crew. Naming the composed command is a complete answer to "who does the
+    # work", so it satisfies the check; a generic worker with no role AND no composed
+    # command is still the defect.
+    compose = re.compile(r"compos(?:e|es|ing)\s+`?/[a-z]", re.IGNORECASE)
+    if compose.search(text) and re.search(r"/ship-[a-z-]+", text):
+        return
+
+    # (b)/(c) scoped to the section that declares the fan-out, so a role named
+    # somewhere else in the file cannot stand in for naming the workers.
+    body = lines[start:]
+    section_of: list[int] = []
+    current = 0
+    for raw in body:
+        if raw.startswith("#"):
+            current += 1
+        section_of.append(current)
+    knob_sections = {
+        section_of[i] for i, raw in enumerate(body) if "MAX_CONCURRENT_WORKERS" in raw
+    }
     anchor = re.compile(r"MAX_CONCURRENT_WORKERS|\b(?:spawn|dispatch)\b", re.IGNORECASE)
-    for idx, raw in enumerate(lines):
-        if not anchor.search(raw):
-            continue
-        window = "\n".join(lines[max(0, idx - 2) : idx + 4])
-        if role_re.search(window):
+    for section in sorted(knob_sections):
+        chunk = [raw for i, raw in enumerate(body) if section_of[i] == section]
+        # (b) a heading naming a role — the catalogue's `(agent: \`role\`)` form.
+        if any(raw.startswith("#") and role_re.search(raw) for raw in chunk):
             return
+        # (c) a role named near a spawn verb or the knob, within that section.
+        for idx, raw in enumerate(chunk):
+            if not anchor.search(raw):
+                continue
+            if role_re.search("\n".join(chunk[max(0, idx - 3) : idx + 5])):
+                return
     fail(
         f"{rel}:{start + 1}: fans out to workers (`MAX_CONCURRENT_WORKERS`) but never names "
         "a crew role to do the work — a harness has nothing to resolve and silently falls "

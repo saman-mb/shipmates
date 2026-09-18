@@ -159,6 +159,23 @@ EOF
 accepts "no fan-out at all needs no role" <<'EOF'
 This command runs its analysis itself and spawns nothing.
 EOF
+accepts "fan-out that composes another command per worker" <<'EOF'
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Run the wave's units concurrently (up to `MAX_CONCURRENT_WORKERS`), composing
+`/ship-issue` once per unit — that command owns the crew.
+EOF
+rejects "role named only outside the fan-out section" <<'EOF'
+## Stage 0 — Scope
+
+Nothing about who works here, though an `sdet` is mentioned.
+
+## Stage 1 — Census
+
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Split the survey across workers.
+EOF
 
 # --- forms that must be accepted ---
 
