@@ -627,8 +627,8 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-cleanup": CommandPageCopy(
-        guide_blurb="Audits the codebase for dead code, duplication and rot, then fixes the safe part behind hard gates.",
+    "ship-deslop-codebase": CommandPageCopy(
+        guide_blurb="Audit the codebase for dead code, duplication and rot — fix the safe part, opt-in.",
         process_lead=(
             "Discovery grades every finding safe, review, architectural or protected. A green baseline "
             "and a coverage contract gate every deletion; the PO signs off anything risky."

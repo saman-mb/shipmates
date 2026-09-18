@@ -1,17 +1,17 @@
 ---
-name: ship-cleanup
+name: ship-deslop-codebase
 description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, inconsistency, bad patterns, dependency and config rot — grade every finding by risk, then optionally fix the safe findings in a worktree and open a CI-green PR. Read-only by default — it reports; fixes happen on a branch, opt-in, behind coverage, feature-impact and product-owner gates.
 argument-hint: <path-or-module> [apply] — no args: whole repo, report-only
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 ---
-# /ship-cleanup — discover → grade → report, or fix the safe part behind gates
+# /ship-deslop-codebase — discover → grade → report, or fix the safe part behind gates
 <!-- shipmates:command-preamble -->
 
 Every repository carries debt no issue tracks: an import nothing imports, two copies of one function
 that have quietly drifted apart, a wrapper that only passes its arguments through, a feature flag that
 has read `true` since the release after it shipped, a TODO older than the test runner around it. No
-analyser sees all of it and no human wants to read the whole tree to find it. `/ship-cleanup`
+analyser sees all of it and no human wants to read the whole tree to find it. `/ship-deslop-codebase`
 inventories that debt, grades every finding by the risk of touching it, and either **reports** it or
 **fixes the safe part** on a branch.
 
@@ -39,8 +39,8 @@ workflow.
   worktree is cut from `origin/<BASE_BRANCH>`, the clean mergeable baseline a codebase-wide change
   wants. `WORKTREE_LAYOUT` = `nested` (default) — `<repo>/.shipmates/worktrees/`; **`worktree-root=sibling`**
   selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
-  `<repo>/.shipmates/worktrees/ship-cleanup-<slug>`; **sibling:** `../<repo>--cleanup-<slug>`. Re-runs
-  reuse the same path. `BRANCH` = `chore/ship-cleanup-<slug>`.
+  `<repo>/.shipmates/worktrees/ship-deslop-codebase-<slug>`; **sibling:** `../<repo>--deslop-codebase-<slug>`. Re-runs
+  reuse the same path. `BRANCH` = `chore/ship-deslop-codebase-<slug>`.
 - `EXECUTION` = `fanout` — how discovery shards and per-theme fix batches run. `fanout` (default):
   independent, file-disjoint units run concurrently up to `MAX_CONCURRENT_WORKERS`; guidance
   `sequential` sets `EXECUTION=sequential` to run them one at a time.
@@ -188,19 +188,23 @@ finding they cover.
 
 ## Stage 3 — Report (default) or plan and isolate (apply)
 
-`MODE=report` — orchestrator only, writes nothing:
+`MODE=report` — orchestrator only, writes nothing to the repository, not even a deletion that looks
+obviously safe:
 
-- **The report**, grouped by theme, leading with the finding count per risk grade.
-- **The JSON ledger** as a sibling of the markdown report — the same findings and stable IDs, machine
+- **The report**, grouped by theme, leading with the finding count per risk grade. It is an artifact you
+  hand back to the captain — printed in the session, posted on the run's issue or PR, or written to a path
+  outside the repository (`$TMPDIR`, the worktree root). Never a write into the tree under audit.
+- **The JSON ledger** carried alongside the markdown report — the same findings and stable IDs, machine
   readable, so two runs can be diffed, CI can consume them, and a later issue can reference a finding ID
-  directly. Emitting it is what makes Stage 1's determinism checkable rather than aspirational.
+  directly. It travels with the report and obeys the same rule: it is produced, not committed. Emitting it
+  is what makes Stage 1's determinism checkable rather than aspirational.
 - **The run diff** against the previous report: new, resolved, carried-over.
 - **The confidence header** — whether coverage tooling exists, whether the repo has tests at all, and
   whether integration tests cover the affected areas. Any absence is stated before any finding, because
   it changes how every grade below should be read.
 - **The coverage-of-the-scan footer** and the unscanned remainder from Stage 1.
 
-Then **STOP**. Report mode changes nothing on disk.
+Then **STOP**. Report mode changes nothing in the tree it audited — no file, no branch, no index entry.
 
 `MODE=apply` — plan, then isolate:
 
@@ -237,6 +241,15 @@ Nothing is deleted until this contract is satisfied. It is the command's central
 7. **Bounded mutation testing, where the repo has it** — a bounded subset on the changed modules. A test that passes with a constant flipped or a branch inverted is not a safety net.
 8. **Flaky is not evidence.** A test that flips cannot verify a deletion; the deletion it covers drops to `review` at best. A green gate resting on a coin flip is worse than a red one.
 
+**Protected classes are restated here on purpose**, because this is the stage that deletes: no finding in
+the protected list below may be applied by you, whatever its grade, whatever the evidence, whatever the
+brief. If a protected finding reached your manifest, stop and report it rather than acting on it.
+
+- Database migrations; error-path, fallback and graceful-degradation handlers; version-compatibility
+  shims; feature-flagged code for unreleased work; public API with external consumers; framework entry
+  points and lifecycle hooks; targets of dynamic dispatch (`eval`, reflection, string-keyed dispatch,
+  serialization, config); and code referenced only from docs, issue templates or CI config.
+
 Then apply:
 
 - Under `EXECUTION=fanout` (default), spawn one `senior-engineer` per theme **in a single message** —
@@ -252,11 +265,13 @@ Then apply:
 - After each theme, re-run the suite and the coverage snapshot. A theme that lowers surviving-code
   coverage, or that a flaky test is the only thing vouching for, is **reverted and its finding downgraded
   to `review`** — never softened to make green.
-- **Commit per theme.** Each commit is independently revertible and green alone, so one objection costs one
-  `git revert` and not the rest of the PR. Every message names the finding ID, the risk grade, and a
+- **Commit per theme.** Each commit covers one theme, so one objection costs one `git revert` and not the
+  rest of the PR. Every message names the finding ID, the risk grade, and a
   one-line rationale, e.g. `cleanup(dead-code): drop unused <symbol> (safe; no callers, no dynamic
   reachability) — finding <ID>`. Record every applied finding, and every theme the builders refused, with
-  the reason.
+  the reason. Under the default fan-out the themes share one branch, so "green alone" is claimed only where
+  the run verified it: when a theme's revert is clean against the branch, say so; when the themes interlock,
+  record that too and treat the revert as a whole-branch operation.
 
 ---
 
@@ -268,6 +283,14 @@ to-do list — and the half best able to hide a behaviour change, so it is gated
 **Review-grade fixes, one at a time.** Apply each `review` finding on its own with a justification comment
 in its commit. Anything the builder is unsure about **stays out of the PR** and is listed in the
 intentionally-skipped log with its reason. A skipped finding is a valid outcome; a silent one is not.
+
+**`architectural` findings — the procedure, stated once.** An `architectural` finding is applied only when
+all three hold: the `architect` has specified the change to the boundary or contract it crosses, the
+`product-manager` has signed off its feature impact, and the change carries its migration or deprecation
+plan where one applies (a public-surface removal gets the deprecation cycle above, not a deletion). Where
+those cannot all be met inside this run, the finding is **reported and left in place** — that is the
+expected outcome for most `architectural` findings, and it is why Stage 6 treats a surviving
+`architectural` finding as correct rather than as a miss.
 
 **Near-duplicate genericisation — semantic diff before any extraction.** The single most dangerous cleanup
 action is hoisting "duplicated" code into a shared helper when the copies only *look* alike: one handles a
@@ -296,11 +319,16 @@ removal; a deletion that would violate that is `architectural` and needs a versi
 "which features depend on this?" — a **call-graph reverse lookup** from the symbol to its entry points
 (request handler, command, event consumer, public API), each mapped to a feature name from the README, the
 tracker, or the repo's optional feature-map file. The resulting **feature-impact summary** is mandatory in
-the PR body, grouped by affected feature: a deletion touching zero identifiable features is `safe`, one
-touching several is `review`, one touching a revenue-critical feature is `architectural`. The
-`product-manager` must then explicitly sign off — "the listed features are acceptable to risk" — for every
-`review` and `architectural` finding, or those findings stay out of the PR. No sign-off is a removal, not a
-warning.
+the PR body, grouped by affected feature: a deletion touching several features is `review`, one touching a
+revenue-critical feature is `architectural`.
+
+**The mapping may only raise a grade, never lower one.** A finding that arrives graded `review` or
+`architectural` stays there even when the reverse lookup finds no feature — the lookup reads the repository,
+which is exactly the evidence that was already missing when the finding was graded. "No identifiable
+feature" is a *gap in the map*, not a proof of safety, and a re-grade to `safe` must therefore also
+re-satisfy the coverage rule that gates `safe` in the first place. The `product-manager` must explicitly
+sign off — "the listed features are acceptable to risk" — for every `review` and `architectural` finding,
+or those findings stay out of the PR. No sign-off is a removal, not a warning.
 
 **Stop and route rather than improvise.** Discovery finds things that are not cleanup; each ends the finding
 here and is handed off with the evidence already gathered, so the captain does not re-discover it: a
@@ -368,9 +396,10 @@ any branch is pushed — that artifact is what lets the captain narrow the scope
 it once green). The PR body carries: counts by theme and risk grade; what was deleted; what was genericised
 and the semantic differences that became parameters; the feature-impact summary; the
 **intentionally-skipped log** — every finding not applied, with its grade and its reason; every
-`integration-gap` and `doc-follow-up`; baseline vs post coverage; and the green-CI link. Then **the CI
-gate**: poll `gh pr checks` until nothing is pending. A red check means pulling the failing log, fixing,
-re-pushing, re-polling — bounded by `MAX_FIX_ROUNDS`, then escalate with the log. Never advance a red PR.
+`integration-gap` and `doc-follow-up`; every `architectural` finding reported and left in place; baseline vs
+post coverage; and the green-CI link. Then **the CI gate**: poll `gh pr checks` until nothing is pending. A
+red check means pulling the failing log, fixing, re-pushing, re-polling — bounded by `MAX_FIX_ROUNDS`, then
+escalate with the log. Never advance a red PR.
 
 **Post-merge watch** (opt-in `watch`). Re-run the smoke suite on the merged commit on the default branch,
 and compare error-rate and log-severity metrics for the affected entry points where the project has them. If
@@ -408,8 +437,8 @@ against it:
    as evidence, and their presence downgrades a finding's grade.
 6. **Feature impact is stated before the PO signs.** Every `review`/`architectural` finding names the
    features it can affect.
-7. **The PO seat is mandatory** for `review` and `architectural` findings; no sign-off means the finding
-   stays out.
+7. **The PO seat is mandatory** for `review` and `architectural` findings, and the feature-impact mapping
+   may only raise a grade — never lower one; no sign-off means the finding stays out.
 8. **Every commit is independently revertible** — one theme per commit, each green alone.
 9. **Nothing is dropped silently.** Intentional skips, integration gaps, doc follow-ups, unscanned paths and
    flaky-test caveats are all listed loudly in the PR body.
