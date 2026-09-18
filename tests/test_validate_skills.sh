@@ -120,61 +120,74 @@ gh pr review <PR#> --comment --body-file "$(gh pr view <PR#> --json title -q .ti
 ```
 MD
 
-# --- spawn binding: a fan-out command must name its crew role (#488) ---
+# --- spawn binding: a fan-out command must declare its crew role (#488) ---
 # The defect this guards is silent: a command fans work out to "workers", names no
 # role, and the harness resolves nothing — every finding comes from a general-purpose
-# agent while the payload, digests and CI all look healthy. Both accepted forms are
-# how the shipped commands already do it.
-rejects "fan-out with no crew role named" <<'EOF'
-- `MAX_CONCURRENT_WORKERS` = `5`.
-
-Split the survey across workers up to `MAX_CONCURRENT_WORKERS`.
-EOF
-rejects "fan-out naming no role even with a spawn verb" <<'EOF'
-- `MAX_CONCURRENT_WORKERS` = `5`.
-
-Spawn workers across the classes.
-EOF
-accepts "fan-out naming a role at the spawn" <<'EOF'
-- `MAX_CONCURRENT_WORKERS` = `5`.
-
-Spawn a `security-engineer` per class, up to `MAX_CONCURRENT_WORKERS`.
-EOF
-accepts "role named on a wrapped continuation line" <<'EOF'
-- `MAX_CONCURRENT_WORKERS` = `5`.
-- Split the survey across workers up to `MAX_CONCURRENT_WORKERS` — one per
-  class, chosen by what the census finds, and each
-  `security-engineer` owns the dependency classes.
-EOF
-accepts "role named in a stage heading" <<'EOF'
-## Stage 1 — Census  (agent: `sdet`)
-
-- `MAX_CONCURRENT_WORKERS` = `5`. Spawn workers.
-EOF
-accepts "fan-out binding a role in Config" <<'EOF'
-- `BUILDER` = `senior-engineer`. `MAX_CONCURRENT_WORKERS` = `5`.
-
-Spawn one builder per batch.
-EOF
-accepts "no fan-out at all needs no role" <<'EOF'
-This command runs its analysis itself and spawns nothing.
-EOF
-accepts "fan-out that composes another command per worker" <<'EOF'
-- `MAX_CONCURRENT_WORKERS` = `5`.
-
-Run the wave's units concurrently (up to `MAX_CONCURRENT_WORKERS`), composing
-`/ship-issue` once per unit — that command owns the crew.
-EOF
-rejects "role named only outside the fan-out section" <<'EOF'
-## Stage 0 — Scope
-
-Nothing about who works here, though an `sdet` is mentioned.
-
+# agent while the payload, digests and CI all look healthy. The check reads
+# DECLARATIONS, not sentences: an earlier prose-scanning version was defeated four
+# times in review (a file-wide anchor, a one-word insert in an unrelated stage, the
+# substring `architect` inside `architectural`, and a negative mention satisfying it).
+# These cases pin the structural behaviour, including each of those defeats.
+rejects "fan-out with no role declared anywhere" <<'EOF'
 ## Stage 1 — Census
 
 - `MAX_CONCURRENT_WORKERS` = `5`.
 
 Split the survey across workers.
+EOF
+rejects "role named in prose but never declared" <<'EOF'
+## Stage 1 — Census
+
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Spawn a `security-engineer` per class.
+EOF
+rejects "role name hidden inside a longer word" <<'EOF'
+## Stage 1 — Audit the architecture
+
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Spawn workers across the layers.
+EOF
+rejects "a negative mention of a composed command" <<'EOF'
+## Stage 1 — Census
+
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Run units concurrently. Do not compose `/ship-issue` yourself.
+EOF
+rejects "annotation on an unrelated stage" <<'EOF'
+## Stage 0 — Plan  (agent: `architect`)
+
+Nothing here.
+
+## Stage 1 — Census
+
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Spawn workers.
+EOF
+accepts "fan-out stage annotated with its role" <<'EOF'
+## Stage 1 — Census  (agent: `sdet`)
+
+- `MAX_CONCURRENT_WORKERS` = `5`.
+
+Spawn workers.
+EOF
+accepts "role declared through a Config binding" <<'EOF'
+## Config
+
+- `BUILDER` = `senior-engineer`. `MAX_CONCURRENT_WORKERS` = `5`.
+
+Spawn builders.
+EOF
+accepts "fan-out stage declaring a composed command" <<'EOF'
+## Stage 2 — Loop  (composes: /ship-issue, one per unit)
+
+- `MAX_CONCURRENT_WORKERS` = `5`.
+EOF
+accepts "no fan-out at all needs no declaration" <<'EOF'
+This command runs its analysis itself and spawns nothing.
 EOF
 
 # --- forms that must be accepted ---

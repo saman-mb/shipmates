@@ -17,7 +17,7 @@ target=claude-code
 .claude/skills/ship-consolidate-issues/SKILL.md 430b7eab6b884c9211d02e046d12c59ca3d1b63ec0006c5d2678ecb0a0170801
 .claude/skills/ship-deslop-codebase/SKILL.md 795f3d8ab8b43cedd3758548d95dc8d70b8b3fbb7912d087ea640bcd6a07616f
 .claude/skills/ship-document/SKILL.md 10ffcd06d279e9c1e7fc3c8ecf29d3ee0a7cdc7ddb479211ecdd50ec2752f332
-.claude/skills/ship-epic/SKILL.md 7fa26a110591eddbb75d4f7538222e80244230a133c95db7a32dc02759e54e7e
+.claude/skills/ship-epic/SKILL.md c20c1409fd6a91498718787cb5daf8403c2878ab6783398ae57f90d7fc3ba2e7
 .claude/skills/ship-fix-bug/SKILL.md a67369544eac15aa667dc526295d7adc224628262f1480c879d6f7f4a491328d
 .claude/skills/ship-harden/SKILL.md 238a21716c0cc667f3787d12e268f2b1c8d68c6a20bfc39786dd71bf93fc20af
 .claude/skills/ship-issue/SKILL.md 48d09c4ba0348ee86264863779000e771d16d3bc883b7c20f8d66ea62c9beac0
