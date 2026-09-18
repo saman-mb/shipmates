@@ -13,8 +13,8 @@ that have quietly drifted apart, a wrapper that only passes its arguments throug
 has read `true` since the release after it shipped, a TODO older than the test runner around it. No
 analyser sees all of it and no human wants to read the whole tree to find it. `/ship-deslop-codebase`
 inventories that debt, grades every finding by the risk of touching it, and either **reports** it or
-**fixes the safe part** on a branch. "Slop" here is any of it — code that is dead, duplicated,
-redundant or inconsistent — whatever wrote it; the command judges the debt, not its author.
+**fixes the safe part** on a branch. "Slop" here is any of the debt below — whatever wrote it; the
+command judges the debt, not its author.
 
 **Reporting is the default. Deleting is a decision.** Under `MODE=report` the working tree is left
 exactly as found. Under `MODE=apply` the safe findings are fixed in a worktree and offered as a
@@ -106,7 +106,12 @@ The survey covers these classes — the list is the whole of what "cleanup" mean
 - **Dead code** — unused functions, imports, variables, unreachable branches, private symbols with no internal callers, and a state or guard unreachable by construction rather than by control flow.
 - **Duplication** — exact clones and near-duplicates that could become one shared helper; read-aware, not a token hash, so two blocks that merely look alike are a *candidate group* proven out in Stage 5.
 - **Redundancy** — unnecessary abstractions, wrappers that only pass arguments through, indirection that adds no name value, intermediate variables that restate their expression, a seam with exactly one implementation, and an extension point nothing registers against.
-- **Over-engineering beyond product need** — machinery that distinguishes more internal states, options or outcomes than any consumer acts on. The signal is the ratio, not the size: count the distinct states, modes or outputs a unit produces, then count the distinct behaviours those states actually cause at a consumer; a unit producing many where consumers branch on one or none is a candidate. Its shapes are an optimisation with no measurement behind it, an in-house rebuild of a capability the platform already provides, and data modelled richer than any use — the cases a consumer could never observe being removed belong to the three classes above, which already contain them. Evidence is the count on both sides and the consumer sites that produced it, never an impression that the code feels heavy. This class is subordinate to the protected list, never a way around it.
+- **Over-engineering beyond product need** — machinery that distinguishes more internal states, options or
+  outcomes than any consumer acts on. The signal is a ratio: count the distinct states, modes or outputs a
+  unit produces, then count the distinct behaviours consumers actually branch on. Its shapes are an
+  optimisation with no measurement behind it, an in-house rebuild of a capability the platform already
+  provides, and data modelled richer than any use. Evidence is both counts and the consumer sites, never an
+  impression that the code feels heavy — and the protected list still outranks this class.
 - **Inconsistency** — mixed concurrency or callback styles in one codebase, naming drift, error handling that throws at one call site, returns at another, and logs-and-continues at a third.
 - **Bad patterns, by class** — resource leaks (acquisition with no matching release on every path), blocking calls inside an asynchronous context, N+1-style repeated access in a loop, repeated work a single pass would do.
 - **Complexity hotspots** — functions and classes over `COMPLEXITY_LIMIT`, deep nesting.
@@ -194,11 +199,11 @@ finding they cover.
 obviously safe:
 
 - **The report**, grouped by theme, leading with the finding count per risk grade. It is an artifact you
-  hand back to the captain — printed in the session, posted on the run's issue or PR, or written to a
-  scratch path that is not part of the repository's tracked content. Never a write into the tree under audit:
-  `MODE=report` runs no worktree, so there is no isolated checkout to write into, and a gitignored path
-  under the repository is still the repository. When you want the run diff to survive between runs, write it
-  where it persists (`$TMPDIR` is not durable) and name that location in the report.
+  hand back to the captain — printed in the session, posted on the run's issue or PR, or written outside the
+  repository entirely. Never a write into the tree under audit: `MODE=report` runs no worktree, so there is
+  no isolated checkout to write into, and a gitignored path under the repository is still the repository.
+  When you want the run diff to survive between runs, write it somewhere durable (`$TMPDIR` is not) and name
+  that location in the report.
 - **The JSON ledger** carried alongside the markdown report — the same findings and stable IDs, machine
   readable, so two runs can be diffed, CI can consume them, and a later issue can reference a finding ID
   directly. It travels with the report and obeys the same rule: it is produced, not committed. Emitting it
@@ -445,8 +450,9 @@ against it:
    features it can affect.
 7. **The PO seat is mandatory** for `review` and `architectural` findings, and the feature-impact mapping
    may only raise a grade — never lower one; no sign-off means the finding stays out.
-8. **Every commit covers one theme and is independently revertible**, so one objection costs one `git revert`
-   rather than the rest of the PR; "green alone" is claimed only where the run verified it.
+8. **Every commit covers one theme**, so one objection costs one `git revert` rather than the rest of the PR.
+   Independent revertibility and "green alone" are claimed only where the run verified them — themes that
+   interlock share the branch, and saying so is part of the report.
 9. **Nothing is dropped silently.** Intentional skips, integration gaps, doc follow-ups, unscanned paths and
    flaky-test caveats are all listed loudly in the PR body.
 10. **The command stops at its hand-off boundaries** — bugs, behaviour changes, new abstractions and
