@@ -61,6 +61,35 @@ scope and how far to go come from the Runtime input section at the end of this w
   `{{project-instructions}}` / CI config states. Read them before Stage 0 grades anything. The
   orchestrator owns all `gh`; agents never file, comment, or push.
 
+### The crew this command spawns — and why it is named at every spawn
+
+This command's workers are **named crew subagents**, invoked by their `{{role-reference}}` — never a
+general-purpose agent with a persona pasted inline. The roles are read-only by construction (none of
+them carries `writes: true`), which is what lets the read-only promise hold while the analysis is still
+parallel and specialist:
+
+| Role | Sits for | Stage |
+|---|---|---|
+| `architect` | the semantic diff on near-duplicate candidates; structural impact of a boundary-crossing deletion | 2, 4 |
+| `sdet` | test-coverage and test-validity evidence — which tests actually pin the code a finding would touch | 1, 2 |
+| `product-manager` | the feature-impact summary and the sign-off a `review` or `architectural` sub-issue carries as a criterion | 2, 4 |
+| `site-reliability-engineer` | the `failure-path` four questions — hazard provenance, execution evidence, blast radius, upstream elimination | 2 |
+| `performance-engineer` | the measurement behind a `performance-sensitive` finding, in the project's own units | 2 |
+| `security-engineer` | dependency and supply-chain findings, and anything touching secrets, authz or untrusted input | 1, 2 |
+| `technical-writer` | documentation-rot findings — docs describing code that has moved | 1 |
+
+**Every spawn names its role explicitly.** A spawn that says only "workers" or "the agents" resolves to
+no crew at all: the harness has nothing to look up and falls back to a general-purpose agent, silently
+losing the specialism this command depends on. Write the role at the point of spawn, as the siblings do —
+`(agent: \`sdet\`)` on the stage, `Spawn a \`security-engineer\`` in the step — and when a role does not
+resolve to a shipped crew role, fall back to a general-purpose agent with that role's brief inlined and
+**name the fallback in the report**, never silently.
+
+Which roles a run actually needs is decided by what the census finds: a repository with no dependency
+manifest pulls no `security-engineer`; a census with no `failure-path` findings pulls no
+`site-reliability-engineer`. Name the ones that sit in the report, and name the ones that did not with the
+reason — a seat gated out is a stated finding, never a blank.
+
 ---
 
 ## Stage 0 — Scope, mode, and analyser detection
@@ -88,21 +117,25 @@ What to look for, and what each analyser class feeds:
 | Dependency audit + import-graph analysis | unused declarations, lockfile version skew, circular module dependencies | the package manager's audit surface, a graph tool, or agent reading |
 | Comment, marker, and docs scanning | zombie blocks, stale TODOs, docs describing moved code | grep-shaped scans plus `git blame` for age |
 
-Whatever the tools do not cover, the agents read for: pattern inconsistency, architectural redundancy,
-dead feature flags, machinery out of proportion to what it delivers, and comments describing code that
-has moved. Never reimplement a mature analyser — orchestrate the ones that exist, and say which ones
-were missing.
+Whatever the tools do not cover, the crew read for — each finding class to the role named in the roster
+above: pattern inconsistency and architectural redundancy, dead feature flags, machinery out of proportion
+to what it delivers, and comments describing code that has moved. Never reimplement a mature analyser —
+orchestrate the ones that exist, and say which ones were missing.
 
 ---
 
-## Stage 1 — Discovery census  ⛔ the contract
+## Stage 1 — Discovery census  ⛔ the contract  (agents: `sdet`, `security-engineer`, `technical-writer`, `architect` × N, parallel across classes)
 
 **This census is the contract.** Every finding it records ends filed or explicitly excluded, with a
 reason. Silent truncation is a failure of the run, not a smaller run.
 
 - Run the Stage 0 analysers and complement them with agent-driven reading. Under `EXECUTION=fanout`,
-  split the survey by finding class (or by subtree for a large repo) across workers up to
-  `MAX_CONCURRENT_WORKERS`, each returning rows in the one shape below.
+  split the survey by finding class (or by subtree for a large repo) across named crew subagents up to
+  `MAX_CONCURRENT_WORKERS` — spawn each with its role's `{{role-reference}}`, one `sdet` for the
+  test-coverage and test-validity classes, one `security-engineer` for dependency and supply-chain
+  classes, one `technical-writer` for documentation rot, an `architect` per structural or
+  near-duplicate class — each returning rows in the one shape below. **A generic worker is not a
+  substitute for a named role here**: the class a worker is assigned is the specialism it must bring.
 - Every finding is one row: **stable ID**, `file:line`, **class**, a one-line rationale, the evidence
   that produced it, and the proposed action. A row without evidence is a hunch, not a finding.
 
@@ -138,7 +171,7 @@ analysed, which were skipped — and recording what `BUDGET` left unscanned. Bot
 
 ---
 
-## Stage 2 — Risk grade and protected classes
+## Stage 2 — Risk grade and protected classes  (agents: `sdet`, `product-manager`, `site-reliability-engineer`, `performance-engineer` — each only for the classes below)
 
 Every finding gets exactly one grade, assigned mechanically where it can be and by judgement where it
 cannot. The grade decides where the finding goes, so it is assigned here and nowhere else.
@@ -228,7 +261,7 @@ downgrade the finding they cover.
 **Near-duplicate candidates need a semantic diff before they are reportable.** The single most dangerous
 cleanup action is hoisting "duplicated" code into a shared helper when the copies only *look* alike: one
 handles a null and the other throws, one trims whitespace and the other does not, one retries and the other
-does not. So an `architect` produces a **semantic diff** for every candidate group — inputs, boundary
+does not. So **spawn an `architect`** to produce a **semantic diff** for every candidate group — inputs, boundary
 conditions, error handling, side effects, and ordering — and the finding carries it, with each difference
 named as an explicit parameter the eventual helper must take. Never propose silently collapsing a
 difference: a genericisation that drops a null check is a behaviour change wearing a cleanup badge, and no
@@ -280,7 +313,7 @@ what it would take to make them so.
 
 ---
 
-## Stage 4 — Decompose into an epic with sub-issues
+## Stage 4 — Decompose into an epic with sub-issues  (agent: `product-manager` for the feature-impact sign-off)
 
 `MODE=file` and `MODE=ship`. This is where the census becomes tracked work, or evaporates.
 
@@ -399,7 +432,8 @@ is `/ship-harden`; a genericisation needing a new abstraction with no precedent 
 
 ### Guardrails
 
-- **This command cannot edit the codebase, and that is structural.** `allowed-tools` carries no `Write` and no `Edit`, and no working-tree write goes through `Bash` either. The read-only promise is enforced by what the command *can do*, not by a mode agreeing to honour it.
+- **This command cannot edit the codebase, and that is structural.** `allowed-tools` carries no `Write` and no `Edit`, and no working-tree write goes through `Bash` either. The read-only promise is enforced by what the command *can do*, not by a mode agreeing to honour it. Every role it spawns is read-only too — the crew roster above names only roles that carry no `writes: true`, so a worker cannot break the promise even if its brief is wrong.
+- **Every spawn names its crew role.** A spawn that says only "workers" or "the agents" has nothing for the harness to resolve and lands on a general-purpose agent, silently discarding the specialism the finding class needs. Name the role at the point of spawn; where a role genuinely does not resolve to a shipped crew role, inline that role's brief and **say so in the report**. Never let a fallback pass unremarked — the run's whole value is that a specialist read the thing.
 - **Two write surfaces, named separately.** The working tree is never written, in any mode. The tracker is written under `file` and `ship` only, and that is its own opt-in.
 - **Nothing is proposed for deletion without a caller audit** — reflection, dynamic import, serialization, config keys, and framework entry points are all checked, even for `safe` findings.
 - **Verdicts are evidence, not impressions.** Every finding row names its evidence; every grade names the rule that produced it.
