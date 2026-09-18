@@ -316,7 +316,7 @@ Apply `EPIC_BATCH`:
 Record `<units>`, `<waves>`, and `<story-classification>`. In `DRY_RUN`, print `<waves>` and `<units>` with story titles,
 unit sizes, and **token rationale**: "`N` stories → `U` `/ship-issue` invocations".
 
-## Stage 2 — Loop  (orchestrator)
+## Stage 2 — Loop  (composes: /ship-issue, one per unit)
 
 Skip when Stage 0.5 step 8 sent the run to Stage 4.
 
