@@ -1,6 +1,6 @@
 ---
 name: ship-issue
-description: Shipmates: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, follow-up issues.
+description: Shipmates: Take one or more GitHub issues/stories from open → reviewed PR (→ merged, opt-in) autonomously — worktree, subagent build, CI gate, specialist acceptance board, absorb-first nit disposition.
 argument-hint: <issue-number>... | next [epic <epic-number>] [sequential] [board=epic-deferred | board=off] [optional extra guidance]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
@@ -79,6 +79,18 @@ it here.
   `/ship-epic`-only guidance tokens — the caller passes `MERGE_MODE=manual` when a human merge gate
   is required.
 - `MAX_FIX_ROUNDS` = `3`  (acceptance→fix→re-acceptance loops before escalating to the user)
+- `NITS_MODE` = `absorb` — how Stage 7 disposes non-blocking findings. `absorb` (default): fix cheap
+  in-scope nits on this PR; `file`: legacy always-open-an-issue path; `pr-comment`: absorb what fits,
+  note the rest on the PR, never open issues. Override with guidance `nits absorb` / `nits file` /
+  `nits pr-comment`.
+- `MAX_ABSORB_NITS` = `5` — max non-blocking findings absorbed into this PR per run under `absorb` /
+  `pr-comment`.
+- `MAX_ABSORB_LOC` = `40` — soft cap on total lines changed by absorb fixes in one run.
+- `MAX_FOLLOWUP_ISSUES` = `2` — hard cap on new GitHub issues opened from Stage 7 in one run; prefer
+  one theme-batched issue over many micro-tickets; overflow becomes PR notes.
+- `ABSORB_FIX_ROUNDS` = `1` — at most one extra fixer push for absorb work. If that push leaves CI
+  red, revert the absorb commit(s) and demote those items to `file` / `pr-note` — never burn the
+  story on polish.
 - `BUNDLE` = `recommend` — the token-efficient default (see **Bundling** above). `recommend`: when the
   leading issue is small/low-risk, Stage 0 scans for cohesive sibling issues, **proposes** a bundle, and
   **always asks before widening the run** — a recommended bundle never proceeds without the user's
@@ -184,6 +196,8 @@ list) for:
   gitignore append).
 - **`sync-base`** — on resume when `BASE_REF` may have advanced (typical for `/ship-epic` units after
   another unit merged); Stage 1 step 4 applies with `BASE_REF=origin/<BASE_BRANCH>`.
+- **`nits absorb`** / **`nits file`** / **`nits pr-comment`** — set `NITS_MODE` (see Config). Default
+  when unset is `absorb`.
 
 ## Stage 0 — Intake & plan  (agent: `planner`)
 
@@ -534,19 +548,47 @@ Decision:
 - Repeat up to `MAX_FIX_ROUNDS`. If still not green after that, **stop and escalate to the user** with
   the outstanding blockers — do not merge a failing PR.
 
-## Stage 7 — Follow-up issues  (orchestrator)
+## Stage 7 — Nit disposition  (orchestrator)
 
-- Take every **non-blocking nit** (from any "WITH-NITS" verdict and low-severity SDET findings) and
-  file each as its own GitHub issue: capture title and body into quoted variables / a body file per
-  **Shell safety** above (titles may quote text from the source issues — untrusted), then
-  `gh issue create --title "$ISSUE_TITLE" --body-file "$ISSUE_BODY_FILE"` with a `priority:low` /
-  `tech-debt` label (create the label if missing), a clear title, context, and a link back to this PR.
-- Do NOT let nits block delivery; they become tracked follow-ups.
+Do **not** open one GitHub issue per non-blocking finding by default. Classify every non-blocking nit
+(from any WITH-NITS verdict and low-severity SDET findings) and dispose it — never silently drop one.
+
+**1. Classify** each finding as `absorb` | `pr-note` | `file`:
+
+| Disposition | When | Action |
+|-------------|------|--------|
+| **absorb** | Cheap and in owned / already-touched paths (or a clear one-file sibling such as docs next to changed code); roughly ≤15 LOC and ≤2 files; no new module boundary; not security-sensitive; not a product decision | Fix on **this branch** before Stage 8; counts toward `MAX_ABSORB_NITS` / `MAX_ABSORB_LOC` |
+| **pr-note** | Taste / optional / no clear acceptance criteria; or absorb budget exhausted for remaining trivia | Bullet on the PR completion comment only — **no issue** |
+| **file** | Cross-cutting beyond owned paths; remaining user-visible gap; needs a human decision; medium+ residual risk; or would re-open material board/CI risk | Open issue(s) under the caps below |
+
+Under `NITS_MODE=file`, treat every finding as `file` (legacy). Under `NITS_MODE=pr-comment`, never
+open issues — absorb what fits the budgets, demote the rest to `pr-note`. Under `NITS_MODE=absorb`
+(default), use the table.
+
+**2. Absorb path.** Spawn a short Fixer (`{{role:senior-engineer}}`) for the absorb set (or fold into
+an in-flight Stage 6 fixer when still remediating). Commit + push. Re-run the Stage 4.5 CI gate.
+At most `ABSORB_FIX_ROUNDS` absorb pushes. If CI goes red, **revert the absorb commit(s)**, demote
+those items to `file` or `pr-note`, and continue with a green head — never leave the story red for
+polish. List absorbed items under **Absorbed nits** in the completion comment.
+
+**3. Filing path (when disposition is `file`).** Prefer **one theme-batched issue** over many
+micro-tickets. Hard cap: `MAX_FOLLOWUP_ISSUES` new issues this run; overflow → `pr-note` or a single
+"misc leftovers" batch that still counts as one issue. **Dedup** before create: search open issues for
+the same leftover / path. Capture title and body per **Shell safety**, then
+`gh issue create --title "$ISSUE_TITLE" --body-file "$ISSUE_BODY_FILE"` with `priority:low` /
+`tech-debt` when those labels exist (create only if the repo already uses that convention, or create
+them when missing and the captain's repo clearly uses labelled follow-ups). Link back to this PR.
+Do **not** let nits block delivery.
+
+**4. Audit.** Completion comment and final report must show counts: absorbed / pr-noted / filed
+(with links). Security findings are never silent-absorbed — name them in the report and keep the
+`/ship-harden` path when `IS_SECURITY_SENSITIVE`.
 
 ## Stage 8 — Deliver  (orchestrator)
 
 - **If `MERGE_MODE=manual`** (default): stop here. Post a completion comment on the PR (what shipped,
-  how validated, the green CI link, follow-ups filed) and hand the user the PR link to merge into
+  how validated, the green CI link, nit disposition counts — absorbed / pr-noted / filed with links)
+  and hand the user the PR link to merge into
   **`BASE_BRANCH`**. Leave
   the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
   the issues on this path: the repeated `Closes` keywords in the PR body do that when a human merges,
@@ -572,7 +614,7 @@ sync/rebase ran, which specialists reviewed it and their
 verdicts (`re-run` / `carried ACCEPT` / `newly seated` / `still gated` after any fix round — a `still
 gated` seat is named with the flag that gated it), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
 (tier, pool source, with its condition when one fired, the model identity the harness accepted, effort requested and resolved, and
-`honoured` / `substituted` / `inherit`), follow-up issues filed (with links), the confirmed-green CI link,
+`honoured` / `substituted` / `inherit`), nit disposition counts (absorbed / pr-noted / filed with links), the confirmed-green CI link,
 
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/ship-harden` recommendation, carried here mechanically rather than decided now. When
@@ -608,7 +650,8 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 - The orchestrator owns **all** git/gh actions; agents never push or merge.
 - Reviewers always evaluate the **pushed PR head**: for a **seated or re-run** reviewer, "accepted" == "what merges". A **carried ACCEPT** was taken on the delta that reviewer actually saw, so it is only valid while that delta stands.
 - Never skip PE+PO on the **first** board once a PR head exists
-  (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a nit — file it.
+  (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a
+  nit — absorb it, note it on the PR, or file it (with reason); report the disposition counts.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
   re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.
@@ -648,6 +691,7 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 | sequential | no | `sequential` | fanout / sequential | fanout | Force serial work-unit execution instead of parallel fan-out. |
 | merge_mode | no | `MERGE_MODE=manual` / `MERGE_MODE=auto` | manual / auto | manual | Stop with an open PR (`manual`) or squash-merge when gates pass (`auto`). |
 | worktree_root | no | `worktree-root=sibling` | nested / sibling | nested | Nested worktrees under `.shipmates/worktrees/` (default) or legacy sibling paths. |
+| nits_mode | no | `nits absorb` / `nits file` / `nits pr-comment` | absorb / file / pr-comment | absorb | How Stage 7 disposes non-blocking nits: fix in-PR (`absorb`), always open issues (`file`), or PR notes only (`pr-comment`). |
 | guidance | no | remaining prose | free text | — | Extra focus text after knobs (not a place to hide knobs — use the rows above). |
 
 ## Runtime input

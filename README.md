@@ -370,7 +370,8 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 6. **Acceptance board** ⚖️ — `product-manager` + `sdet` (+ gated `ux-ui-designer` / `art-director` /
    `architect`) review the *pushed PR head*, independently and adversarially.
 7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-reviews. Bounded, then escalates.
-8. **Deliver** 🏁 — files the non-blocking nits as follow-ups, names a `/ship-harden` follow-up if the
+8. **Deliver** 🏁 — disposes non-blocking nits absorb-first (fix cheap ones in the same PR; file
+   only capped/batched leftovers), names a `/ship-harden` follow-up if the
    change touched a security-relevant surface (this board doesn't threat-model), and opens (or,
    opt-in, merges) the PR.
 
