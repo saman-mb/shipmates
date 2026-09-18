@@ -228,7 +228,9 @@ opencode run --command ship-harden --format json \
 The agent list should include all thirteen Shipmates roles. The report-mode command is a narrow manual
 probe; keep `--auto` disabled. Deterministic CI install-fidelity tests check all thirteen installed agents
 and commands, the exact opencode golden payload, and the translated report-only `/ship-harden` order. They do
-not use model credentials and do not claim that opencode runtime behavior is verified. Full crew resolution,
+not use model credentials and do not claim that opencode runtime behavior is fully verified. A
+captain-attested live run is recorded as `runtime_verified.status = partial` (#497); those CI smokes
+do not fill the `unknown` cells or promote past `partial`. Full crew resolution,
 argument passing, permission enforcement,
 parallel board execution, and `/ship-issue` end-to-end remain open for [#31](https://github.com/saman-mb/shipmates/issues/31)
 and [#32](https://github.com/saman-mb/shipmates/issues/32).
@@ -543,11 +545,13 @@ question is whether it's been *run*.
   [#32](https://github.com/saman-mb/shipmates/issues/32).
 - **Builds, not runtime-verified (`none`)** — Codex CLI, GitHub Copilot, and Windsurf build from
   `shipmates install --harness <name>`, and each payload's format was verified against that harness's
-  parsing source and first-party docs, but no live run is recorded. Crew vs skills: opencode,
-  Antigravity, Codex CLI, GitHub Copilot and Pi get the full crew + all 17 commands (Pi's crew land at
-  `.pi/agents/` and resolve through the third-party `pi-subagents` extension); Cursor and Windsurf
-  ship the 17 skills only. The Gemini CLI is retired — the Antigravity CLI (`agy`) is its successor
-  and reads `.agents/`, so that is the target Shipmates builds for.
+  parsing source and first-party docs, but no live run is recorded. The Gemini CLI is retired — the
+  Antigravity CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates
+  builds for.
+
+**Crew vs skills (payload shape, independent of runtime status).** opencode, Antigravity, Codex CLI,
+GitHub Copilot and Pi get the full crew + all 17 commands (Pi's crew land at `.pi/agents/` and resolve
+through the third-party `pi-subagents` extension); Cursor and Windsurf ship the 17 skills only.
 
 Why that's credible: the crew's system prompts name no harness, and the seventeen commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most

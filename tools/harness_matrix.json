@@ -86,7 +86,7 @@
     },
     "status_rule": "`status` is full only when crew_resolve\u2208{yes,n/a}, argument_passing=yes, command_e2e=yes, commands_exercised is non-empty, and verified_on is a date. status is none only when verified_on is empty and commands_exercised is empty. Otherwise status is partial.",
     "axis": "This record asserts LIVE RUNTIME evidence \u2014 what was actually run \u2014 not payload format checks. Format/digest verification lives in agents_notes and CI digests; model-selection surfaces live in model_surface.",
-    "verified_on": "2026-09-18"
+    "schema_updated": "2026-09-18"
   },
   "harnesses": {
     "claude-code": {
