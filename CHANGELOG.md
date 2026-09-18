@@ -11,12 +11,13 @@ All notable changes to this project are documented here. The format follows
 
 - **`/ship-deslop-codebase` — discovery-driven codebase simplification.** A seventeenth command
   that audits a repo for the health debt a linter alone misses: dead code, duplication,
-  redundancy, inconsistent patterns, complexity hotspots, dependency and config rot, and
-  documentation drift. Every finding is graded `safe` / `review` / `architectural` /
-  `protected`, so nothing reachable by reflection, a migration, an error path or a public
-  API is deleted on the strength of a grep. Read-only by default; `apply` fixes the safe
-  findings on a branch behind a coverage contract, a feature-impact summary and a
-  mandatory product-owner sign-off (#488).
+  redundancy, machinery built far beyond what the product actually needs, inconsistent
+  patterns, complexity hotspots, dependency and config rot, and documentation drift. Every
+  finding is graded `safe` / `review` / `architectural` / `protected`, so nothing reachable by
+  reflection, a migration, an error path or a public API is deleted on the strength of a grep.
+  The command never edits your code: it files the findings as an epic with sub-issues, stops at
+  a human gate where you confirm the breakdown is sound, and then hands the scope you pick —
+  the whole epic, a single sub-issue, or a bundle — to the workflow that ships it (#488).
 
 ## [0.8.2] - 2026-09-15
 

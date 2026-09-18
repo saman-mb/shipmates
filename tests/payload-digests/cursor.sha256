@@ -1,8 +1,8 @@
 payload_digest_version=1
 target=cursor
-.cursor/rules/shipmates-contributor.mdc b0faf343210f7d52c90c4205701f3843bf93c843af3f4ea352dfc2b2dbda746f
+.cursor/rules/shipmates-contributor.mdc 093895486efd306b1708d130c8b3bf4410aa301da7712c69c418729d39b794e8
 .cursor/skills/ship-consolidate-issues/SKILL.md 574f7b7d428fdd667ad2514eceae1871daaaf4c063c9fee4db8f5876d03047b1
-.cursor/skills/ship-deslop-codebase/SKILL.md 4881a5bae84232bd55c60e101ce7b2d558a6828322214f0d5e4ef5098ade725e
+.cursor/skills/ship-deslop-codebase/SKILL.md f355e8f44771a702572ee6051d92891b8421b4bcf7db2e66932b5fd4071add7a
 .cursor/skills/ship-document/SKILL.md 8a2e222a339b2bbbdd5343192a7237ea6b933ffd911a8f7fdb1513c29a1dc4cf
 .cursor/skills/ship-epic/SKILL.md 06c9ea0c463855c136f1eaeb125c84d2eb479e4d0fe6780cf77aadd562e5514e
 .cursor/skills/ship-fix-bug/SKILL.md d9bf8b0cf3bf447f54c1d20a78486e39de2a86a0765978052198d34fa95d0f71

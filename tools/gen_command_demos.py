@@ -228,18 +228,17 @@ COMMANDS = {
         "closer": "Refactored — behaviour proven unchanged. ⚓",
     },
     "ship-deslop-codebase": {
-        "arg": "src/orders apply",
+        "arg": "src/orders file",
         "stages": [
             ("SCOPE", "target, mode, analysers"),
-            ("SCAN", "census: dead, dup, rot"),
+            ("SCAN", "census: dead, dup, slop"),
             ("GRADE", "four risk grades"),
-            ("PLAN", "report, or isolate a branch"),
-            ("FIX", "safe first, per theme"),
-            ("EXTRACT", "semantic diff, one helper"),
-            ("PROVE", "coverage held, suite green"),
-            ("DELIVER", "PR — reviewed, CI-green"),
+            ("REPORT", "ledger, stable IDs"),
+            ("FILE", "epic + sub-issues"),
+            ("GATE", "captain confirms breakdown"),
+            ("HAND OFF", "epic, one, or a bundle"),
         ],
-        "closer": "Cleaner — proven safe, reviewed, CI-green. ⚓",
+        "closer": "Filed — graded, grouped, yours to choose. ⚓",
     },
 }
 

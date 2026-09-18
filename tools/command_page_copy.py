@@ -628,10 +628,10 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
     ),
     "ship-deslop-codebase": CommandPageCopy(
-        guide_blurb="Audit the codebase for dead code, duplication and rot — fix the safe part, opt-in.",
+        guide_blurb="Audit the codebase for dead code, duplication, over-engineering and rot — filed as an epic you approve.",
         process_lead=(
-            "Discovery grades every finding safe, review, architectural or protected. A green baseline "
-            "and a coverage contract gate every deletion; the PO signs off anything risky."
+            "Discovery grades every finding safe, review, architectural or protected, then files the work "
+            "as an epic with sub-issues. Nothing is edited: you review the breakdown and choose what ships."
         ),
         when_to_use=(
             "The repo feels heavier than it needs to be and no issue tracks why.",
@@ -649,25 +649,24 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
                 solo="Discovery workers fan out; every row names its evidence and its grade.",
             ),
             ProcessStep(
-                "Fix",
-                "Under apply, the safe findings come out one theme per commit, each one independently revertible.",
-                always=("senior-engineer",),
+                "Weigh",
+                "Near-duplicates get a semantic diff and over-built machinery gets a state-versus-consumer count, so nothing is filed as an impression.",
+                always=("architect",),
             ),
             ProcessStep(
-                "Extract",
-                "Near-duplicates get a semantic diff before a shared helper is built, so no variant quietly loses its edge case.",
-                always=("architect", "senior-engineer"),
+                "Map",
+                "Every risky finding is traced back to the features that depend on it — and a missing feature can only raise a grade, never lower one.",
+                always=("product-manager",),
             ),
             ProcessStep(
-                "Prove",
-                "A fresh SDET re-runs the suite and the analysers: surviving coverage must not fall, and no safe finding may remain.",
-                always=("sdet",),
+                "File",
+                "Findings become an epic with sub-issues, grouped one reviewable diff and one owner at a time, each carrying its evidence and its acceptance criteria.",
+                solo="The run files these itself; the tracker is the only thing it writes.",
             ),
             ProcessStep(
-                "Land",
-                "Architect checks each deletion respected a boundary; PE and PO accept, and the PO signs off the feature impact.",
-                always=("architect", "principal-engineer", "product-manager"),
-                also=(_also("performance-engineer", "a deleted wrapper held caching, batching or pooling"),),
+                "Choose",
+                "You review the epic, confirm the breakdown, then take the whole thing, a single sub-issue, or a bundle — and it hands off to the workflow that ships.",
+                solo="Your gate. Nothing proceeds until you say so.",
             ),
         ),
     ),
