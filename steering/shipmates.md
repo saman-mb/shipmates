@@ -20,9 +20,9 @@ Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (
 Remote-base commands (`/ship-issue`, `/ship-fix-bug`, `/ship-refactor`, `/ship-migrate`) require **`git fetch origin`**
 then cut from `origin/<BASE>`; resume re-fetches and rebases when behind. `HEAD`-based commands accept
 **`sync-base`** guidance for remote-latest instead of local `HEAD`.
-When you change one command's isolate stage, keep all nine mutating commands in sync:
+When you change one command's isolate stage, keep all ten mutating commands in sync:
 `/ship-issue`, `/ship-fix-bug`, `/ship-polish`, `/ship-harden`, `/ship-migrate`, `/ship-document`, `/ship-onboard`, `/ship-refactor`,
-`/ship-spike`.
+`/ship-spike`, `/ship-deslop-codebase`.
 
 ## New command
 

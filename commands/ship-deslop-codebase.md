@@ -13,7 +13,8 @@ that have quietly drifted apart, a wrapper that only passes its arguments throug
 has read `true` since the release after it shipped, a TODO older than the test runner around it. No
 analyser sees all of it and no human wants to read the whole tree to find it. `/ship-deslop-codebase`
 inventories that debt, grades every finding by the risk of touching it, and either **reports** it or
-**fixes the safe part** on a branch.
+**fixes the safe part** on a branch. "Slop" here is any of it — code that is dead, duplicated,
+redundant or inconsistent — whatever wrote it; the command judges the debt, not its author.
 
 **Reporting is the default. Deleting is a decision.** Under `MODE=report` the working tree is left
 exactly as found. Under `MODE=apply` the safe findings are fixed in a worktree and offered as a
@@ -52,7 +53,7 @@ workflow.
 - `BUDGET` = the run's ceiling on findings applied (or wall-clock, when the repo prefers). The run stops
   cleanly at it and reports what was **not** scanned — cleanup is an infinite well, and an unbounded
   sweep is this command's default failure mode.
-- Thresholds — repo overrides come from `{{project-instructions}}` or `.shipmates/cleanup.toml`:
+- Thresholds — repo overrides come from `{{project-instructions}}` or `.shipmates/deslop-codebase.toml`:
   `COMPLEXITY_LIMIT` = `15`; `DUP_SIMILARITY` = `80%`; `TODO_HORIZON` = `180d`; `ZOMBIE_HORIZON` = `90d`
   (commented-out blocks older than this with no linked issue).
 - **Quality bar / test commands / coverage tooling** = whatever the repo's README /
@@ -102,14 +103,15 @@ reason. Silent truncation is a failure of the run, not a smaller run.
 
 The survey covers these classes — the list is the whole of what "cleanup" means here:
 
-- **Dead code** — unused functions, imports, variables, unreachable branches, private symbols with no internal callers.
+- **Dead code** — unused functions, imports, variables, unreachable branches, private symbols with no internal callers, and a state or guard unreachable by construction rather than by control flow.
 - **Duplication** — exact clones and near-duplicates that could become one shared helper; read-aware, not a token hash, so two blocks that merely look alike are a *candidate group* proven out in Stage 5.
-- **Redundancy** — unnecessary abstractions, wrappers that only pass arguments through, indirection that adds no name value, intermediate variables that restate their expression.
+- **Redundancy** — unnecessary abstractions, wrappers that only pass arguments through, indirection that adds no name value, intermediate variables that restate their expression, a seam with exactly one implementation, and an extension point nothing registers against.
+- **Over-engineering beyond product need** — machinery that distinguishes more internal states, options or outcomes than any consumer acts on. The signal is the ratio, not the size: count the distinct states, modes or outputs a unit produces, then count the distinct behaviours those states actually cause at a consumer; a unit producing many where consumers branch on one or none is a candidate. Its shapes are an optimisation with no measurement behind it, an in-house rebuild of a capability the platform already provides, and data modelled richer than any use — the cases a consumer could never observe being removed belong to the three classes above, which already contain them. Evidence is the count on both sides and the consumer sites that produced it, never an impression that the code feels heavy. This class is subordinate to the protected list, never a way around it.
 - **Inconsistency** — mixed concurrency or callback styles in one codebase, naming drift, error handling that throws at one call site, returns at another, and logs-and-continues at a third.
 - **Bad patterns, by class** — resource leaks (acquisition with no matching release on every path), blocking calls inside an asynchronous context, N+1-style repeated access in a loop, repeated work a single pass would do.
 - **Complexity hotspots** — functions and classes over `COMPLEXITY_LIMIT`, deep nesting.
 - **Dependency health** — declared-but-unused dependencies, several versions of one transitive dependency in the lockfile, import cycles that interface extraction would break.
-- **Repository rot** — commented-out blocks older than `ZOMBIE_HORIZON` with no linked issue; a stale TODO/FIXME inventory with age and whether the surrounding code was since rewritten; feature flags and configuration always one value or with no consumer; duplicated CI work; docs describing moved code.
+- **Repository rot** — commented-out blocks older than `ZOMBIE_HORIZON` with no linked issue; a stale TODO/FIXME inventory with age and whether the surrounding code was since rewritten; flags and settings with only one reachable value, whether or not anything reads them; duplicated CI work; docs describing moved code.
 - **Type and contract health** — overly broad types, missing strictness (implicit returns, unchecked null paths, absent exhaustiveness), public surface with no caller in the repo or its consumers.
 - **Constants and literals** — repeated magic numbers and strings that should be named once, and regex or format strings recompiled at every use.
 
@@ -192,8 +194,11 @@ finding they cover.
 obviously safe:
 
 - **The report**, grouped by theme, leading with the finding count per risk grade. It is an artifact you
-  hand back to the captain — printed in the session, posted on the run's issue or PR, or written to a path
-  outside the repository (`$TMPDIR`, the worktree root). Never a write into the tree under audit.
+  hand back to the captain — printed in the session, posted on the run's issue or PR, or written to a
+  scratch path that is not part of the repository's tracked content. Never a write into the tree under audit:
+  `MODE=report` runs no worktree, so there is no isolated checkout to write into, and a gitignored path
+  under the repository is still the repository. When you want the run diff to survive between runs, write it
+  where it persists (`$TMPDIR` is not durable) and name that location in the report.
 - **The JSON ledger** carried alongside the markdown report — the same findings and stable IDs, machine
   readable, so two runs can be diffed, CI can consume them, and a later issue can reference a finding ID
   directly. It travels with the report and obeys the same rule: it is produced, not committed. Emitting it
@@ -267,7 +272,7 @@ Then apply:
   to `review`** — never softened to make green.
 - **Commit per theme.** Each commit covers one theme, so one objection costs one `git revert` and not the
   rest of the PR. Every message names the finding ID, the risk grade, and a
-  one-line rationale, e.g. `cleanup(dead-code): drop unused <symbol> (safe; no callers, no dynamic
+  one-line rationale, e.g. `chore(dead-code): drop unused <symbol> (safe; no callers, no dynamic
   reachability) — finding <ID>`. Record every applied finding, and every theme the builders refused, with
   the reason. Under the default fan-out the themes share one branch, so "green alone" is claimed only where
   the run verified it: when a theme's revert is clean against the branch, say so; when the themes interlock,
@@ -287,7 +292,7 @@ intentionally-skipped log with its reason. A skipped finding is a valid outcome;
 **`architectural` findings — the procedure, stated once.** An `architectural` finding is applied only when
 all three hold: the `architect` has specified the change to the boundary or contract it crosses, the
 `product-manager` has signed off its feature impact, and the change carries its migration or deprecation
-plan where one applies (a public-surface removal gets the deprecation cycle above, not a deletion). Where
+plan where one applies (a public-surface removal gets the deprecation cycle below, not a deletion). Where
 those cannot all be met inside this run, the finding is **reported and left in place** — that is the
 expected outcome for most `architectural` findings, and it is why Stage 6 treats a surviving
 `architectural` finding as correct rather than as a miss.
@@ -325,8 +330,8 @@ revenue-critical feature is `architectural`.
 **The mapping may only raise a grade, never lower one.** A finding that arrives graded `review` or
 `architectural` stays there even when the reverse lookup finds no feature — the lookup reads the repository,
 which is exactly the evidence that was already missing when the finding was graded. "No identifiable
-feature" is a *gap in the map*, not a proof of safety, and a re-grade to `safe` must therefore also
-re-satisfy the coverage rule that gates `safe` in the first place. The `product-manager` must explicitly
+feature" is a *gap in the map*, not a proof of safety: `safe` is assigned in Stage 2 and nowhere else, so
+there is no grade here for the mapping to lower. The `product-manager` must explicitly
 sign off — "the listed features are acceptable to risk" — for every `review` and `architectural` finding,
 or those findings stay out of the PR. No sign-off is a removal, not a warning.
 
@@ -396,7 +401,8 @@ any branch is pushed — that artifact is what lets the captain narrow the scope
 it once green). The PR body carries: counts by theme and risk grade; what was deleted; what was genericised
 and the semantic differences that became parameters; the feature-impact summary; the
 **intentionally-skipped log** — every finding not applied, with its grade and its reason; every
-`integration-gap` and `doc-follow-up`; every `architectural` finding reported and left in place; baseline vs
+`integration-gap` and `doc-follow-up`; every `architectural` finding, marked applied under the Stage 5
+procedure or reported and left in place; baseline vs
 post coverage; and the green-CI link. Then **the CI gate**: poll `gh pr checks` until nothing is pending. A
 red check means pulling the failing log, fixing, re-pushing, re-polling — bounded by `MAX_FIX_ROUNDS`, then
 escalate with the log. Never advance a red PR.
@@ -414,7 +420,7 @@ not fixed as follow-up issues.
 
 ### Guardrails
 
-- **`report` is read-only, and that is the whole point.** No writes of any kind — no `Write`, no `Edit`, no `git` mutation, and no working-tree write via `Bash` either. `allowed-tools` still carries `Write`, `Edit` and `Bash` because `apply` needs them — the mode is the gate.
+- **`report` is read-only, and that is the whole point.** No write into the tree under audit of any kind — no `Write`, no `Edit`, no `git` mutation, and no working-tree write via `Bash` either; the report and its ledger are produced and handed back, never committed. `allowed-tools` still carries `Write`, `Edit` and `Bash` because `apply` needs them — the mode is the gate.
 - **`apply` is opt-in, and the worktree is the isolation.** Edits land on a branch in a worktree; the caller's checkout is left as they left it. Staging is per-path (never `git add -A`), since the tree may hold unrelated work.
 - **Nothing is deleted without a caller audit** — reflection, dynamic import, serialization, config keys, and framework entry points are all checked, even for `safe` findings.
 - **Verdicts are evidence, not impressions.** Every finding row names its evidence; every grade names the rule that produced it.
@@ -439,7 +445,8 @@ against it:
    features it can affect.
 7. **The PO seat is mandatory** for `review` and `architectural` findings, and the feature-impact mapping
    may only raise a grade — never lower one; no sign-off means the finding stays out.
-8. **Every commit is independently revertible** — one theme per commit, each green alone.
+8. **Every commit covers one theme and is independently revertible**, so one objection costs one `git revert`
+   rather than the rest of the PR; "green alone" is claimed only where the run verified it.
 9. **Nothing is dropped silently.** Intentional skips, integration gaps, doc follow-ups, unscanned paths and
    flaky-test caveats are all listed loudly in the PR body.
 10. **The command stops at its hand-off boundaries** — bugs, behaviour changes, new abstractions and

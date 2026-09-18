@@ -1,7 +1,7 @@
 payload_digest_version=1
 target=codex
 .agents/skills/ship-consolidate-issues/SKILL.md 574f7b7d428fdd667ad2514eceae1871daaaf4c063c9fee4db8f5876d03047b1
-.agents/skills/ship-deslop-codebase/SKILL.md 68f7a88be4752ef233b6609af1573d48aa0ca0499688f81ad9420732c9a910f6
+.agents/skills/ship-deslop-codebase/SKILL.md 2826ccb42711cafb5ab4d092ed71f8473cd680bcbc8eaa0cedbbc7011a8c484a
 .agents/skills/ship-document/SKILL.md 8a2e222a339b2bbbdd5343192a7237ea6b933ffd911a8f7fdb1513c29a1dc4cf
 .agents/skills/ship-epic/SKILL.md 06c9ea0c463855c136f1eaeb125c84d2eb479e4d0fe6780cf77aadd562e5514e
 .agents/skills/ship-fix-bug/SKILL.md d9bf8b0cf3bf447f54c1d20a78486e39de2a86a0765978052198d34fa95d0f71
@@ -30,4 +30,4 @@ target=codex
 .codex/agents/site-reliability-engineer.toml c46fe9dc474af50b60a1eac8170fbdbca7eea3422fa8eb9d355b9e52c3600d40
 .codex/agents/technical-writer.toml 83a092b72fe46e22f546da3a549b4bd62ab0ecdb239f11f31cc66e6cc4e94a40
 .codex/agents/ux-ui-designer.toml e0da0075f683a0169ddadcd20251224cb09a1f306d2d977570d58aaa98d6130d
-.shipmates/contributor-steering.md 894f9df740624c1a873786bb6d55d7f7ec144c84c06a6e9ed3b0c8ab6551bc90
+.shipmates/contributor-steering.md 2f066c9e63cf84e56a4b9452c4f05a260ef6c4a75130fa8d97798a35904232eb
