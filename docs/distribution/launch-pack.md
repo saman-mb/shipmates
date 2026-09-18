@@ -7,13 +7,13 @@ Pre-formatted, copy-paste ready promotional copy for launch channels.
 ## 1. Hacker News (Show HN)
 
 ### Title
-Show HN: Shipmates – A crew of 12 specialist AI subagents for Claude Code
+Show HN: Shipmates – A crew of 13 specialist AI subagents for Claude Code
 
 ### URL
 https://github.com/saman-mb/shipmates
 
 ### First Comment (Maker Post)
-Hey HN! I built Shipmates (MIT): a crew of 12 domain-neutral specialist AI subagents (architect, senior-engineer, sdet, security-engineer, sre, etc.) and 13 command workflows that drive GitHub issues from open to a reviewed, CI-green pull request autonomously.
+Hey HN! I built Shipmates (MIT): a crew of 13 domain-neutral specialist AI subagents (architect, senior-engineer, sdet, security-engineer, sre, etc.) and 17 command workflows that drive GitHub issues from open to a reviewed, CI-green pull request autonomously.
 
 Why build this?
 Single-turn prompts work well for single functions, but real engineering tickets need a disciplined lifecycle: planning, isolated worktree builds, test coverage, CI verification, and adversarial review.

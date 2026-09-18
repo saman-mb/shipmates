@@ -64,7 +64,7 @@ SLUGS = (
     "ship-qa",
     "ship-onboard",
     "ship-refactor",
-    "ship-cleanup",
+    "ship-deslop-codebase",
 )
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted

@@ -9,7 +9,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- **`/ship-cleanup` — discovery-driven codebase simplification.** A seventeenth command
+- **`/ship-deslop-codebase` — discovery-driven codebase simplification.** A seventeenth command
   that audits a repo for the health debt a linter alone misses: dead code, duplication,
   redundancy, inconsistent patterns, complexity hotspots, dependency and config rot, and
   documentation drift. Every finding is graded `safe` / `review` / `architectural` /

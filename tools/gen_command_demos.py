@@ -227,12 +227,12 @@ COMMANDS = {
         ],
         "closer": "Refactored — behaviour proven unchanged. ⚓",
     },
-    "ship-cleanup": {
+    "ship-deslop-codebase": {
         "arg": "src/orders apply",
         "stages": [
             ("SCOPE", "target, mode, analysers"),
             ("SCAN", "census: dead, dup, rot"),
-            ("GRADE", "safe / review / protected"),
+            ("GRADE", "four risk grades"),
             ("PLAN", "report, or isolate a branch"),
             ("FIX", "safe first, per theme"),
             ("EXTRACT", "semantic diff, one helper"),

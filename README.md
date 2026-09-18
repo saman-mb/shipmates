@@ -80,14 +80,15 @@ from anything hardcoded into the role.
 | `/ship-qa <pr|issue|branch>` | Interactive local human QA walkthrough — complements the board and CI |
 | `/ship-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/ship-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
-| `/ship-cleanup [target] [apply]` | Audits the codebase for health debt — dead code, duplication, inconsistency, dependency and config rot — grades each finding by risk, and fixes the safe ones on a branch, opt-in |
+| `/ship-deslop-codebase [target] [apply]` | Audits the codebase for health debt — dead code, duplication, inconsistency, dependency and config rot — grades each finding by risk, and fixes the safe ones on a branch, opt-in |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
 worktree, and hands you a pull request — your checkout is left as you left it. `/ship-report-bug` writes to
 the upstream Shipmates repo (preview by default), not your project. `/ship-release` is the one
 exception: the release commit has to land on the branch being tagged, so it commits, pushes and tags
-straight in your checkout instead of an unmerged side branch. `/ship-pr-review` and `/ship-harden`'s default
-`report` mode write nothing at all. Writing straight into the working tree is opt-in
+straight in your checkout instead of an unmerged side branch. `/ship-pr-review` and the default
+`report` mode of `/ship-harden`, `/ship-consolidate-issues` and `/ship-deslop-codebase` write nothing at
+all. Writing straight into the working tree is opt-in
 (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
 **There's deliberately no `code-reviewer`.** Review is split by discipline instead of pooled into one
