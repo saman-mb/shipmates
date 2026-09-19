@@ -284,15 +284,39 @@ what it would take to make them so.
 
 `MODE=file` and `MODE=ship`. This is where the census becomes tracked work, or evaporates.
 
-**Compose the filing stage; do not rebuild it.** `/ship-plan-epics` already owns epic-and-sub-issue
-filing: label creation, epic-before-story ordering, the parent/child graph, the idempotent pre-read of
-existing children, checklist backfill, graph re-verification, and the degradation path when the host
-offers no sub-issue mechanic. **Read that command's installed, harness-rendered file and execute its
-filing stage in this session**, with the tree below in hand. Never re-spell the tracker mechanics from
-memory — the silent failure there (checklist written, parent/child graph missing, downstream workflow
-appears to work) is exactly what a second implementation gets wrong. Do not compose the whole of that
-command either: its planning panel re-derives scope from a brief, which would launder this census's
-evidence into prose and drop the stable IDs.
+**File the epic and its sub-issues yourself, and attach the graph with `gh` — spell the mechanics out
+here, never delegate them by reference.** `/ship-plan-epics` documents the same sequence; composing
+its *planning panel* would re-derive scope from a brief and launder this census's evidence into prose,
+so execute the filing steps below directly. The failure to guard against is silent: an epic body with
+a tidy `- [ ] #N` checklist and **no parent/child graph** reads as filed, yet every downstream walk
+that reads `subIssues` sees an empty parent.
+
+1. **Labels** — `gh label create epic` / `gh label create user-story` when missing.
+2. **Epic first** — `gh issue create` the epic (counts by grade and area, recommended build order,
+   scan-coverage footer, unscanned remainder, finding-ID manifest, checklist placeholder). Capture
+   `<epic>`.
+3. **Sub-issues next** — `gh issue create` each sub-issue (finding IDs, evidence, grade and overlays,
+   the acceptance criteria below, the per-ID trailer). Capture each `<sub>`. Validate every captured
+   number against `^[0-9]+$` before it reaches a command.
+4. **Attach every sub-issue to its epic with `gh`** — this step creates the parent/child
+   relationship, and nothing else does. A body mention is a mention; a checklist line is display:
+   ```bash
+   gh issue edit <epic> --add-sub-issue <sub>
+   ```
+   Several children may be attached in one call as a comma-separated list. Read the parent's current
+   children first (`gh issue view <epic> --json subIssues`; child numbers live at
+   `subIssues.nodes[].number` — `subIssues` is a connection object, not a list) and skip any already
+   attached, so a re-run adds nothing twice.
+5. **Backfill the epic checklist** — replace the placeholder with `- [ ] #<sub>` lines for its
+   sub-issues.
+6. **Verify the graph** — re-fetch `gh issue view <epic> --json subIssues,subIssuesSummary` and
+   confirm the child numbers are exactly the sub-issues filed. A missing child means step 4 did not
+   land: retry it **once**, re-verify, then report the gap — never report the epic as fully filed on
+   a checklist alone.
+
+If the host has no parent/child sub-issue mechanic (the `--add-sub-issue` flag is rejected), keep the
+checklist plus a `Part of #<epic>` back-reference on each sub-issue, and say plainly in the report
+that the graph is missing — never fake it.
 
 **How findings group into sub-issues.** One sub-issue = **one reviewable diff, one owner, one rollback
 scope**, partitioned primarily **by subsystem or ownership boundary**. Tie-breakers in order: never mix

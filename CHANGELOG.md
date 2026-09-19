@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.2] - 2026-09-19
 
 ### Changed
 
@@ -15,6 +15,18 @@ All notable changes to this project are documented here. The format follows
   attested `partial` live runs (#497); codex, GitHub Copilot and windsurf remain `none`.
   Scope & honesty, README, and the site roadmap read from that record instead of claiming
   only Claude Code has ever been run.
+
+### Fixed
+
+- **Every command that files an epic now spells out the `gh` sub-issue attach step.**
+  `/ship-deslop-codebase` delegated its filing mechanics to `/ship-plan-epics` by reference,
+  so a run could produce an epic body with a tidy `- [ ] #N` checklist and **no parent/child
+  graph** — the epic reads as filed, but `/ship-epic` and every dependency walk that reads
+  `subIssues` sees an empty parent. The command now states the sequence inline (`gh issue
+  create` the epic, `gh issue create` each sub-issue, `gh issue edit <epic> --add-sub-issue
+  <sub>`, then re-fetch `subIssues` to verify), and `/ship-consolidate-issues` carries the
+  same explicit attach-and-verify step when a migration turns an issue into an epic with
+  stories. The sub-issue graph is the relationship source of truth; the checklist is display.
 
 ## [0.9.0] - 2026-09-15
 
