@@ -831,6 +831,8 @@ mod tests {
             ("pr-review", "ship-pr-review"),
             ("report-bug", "ship-report-bug"),
             ("consolidate-issues", "ship-consolidate-issues"),
+            // The command that shipped, then shortened its name.
+            ("ship-deslop-codebase", "ship-deslop"),
         ] {
             assert_eq!(rows.get(old), Some(&new), "{old} → {new}");
         }
