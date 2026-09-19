@@ -1,11 +1,11 @@
 ---
-name: ship-deslop-codebase
+name: ship-deslop
 description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, over-engineering beyond product need, inconsistency, bad patterns, dependency and config rot — grade every finding by risk, then file the work as an epic with sub-issues. Never edits the codebase: it analyses, files tracked work, and stops at a human gate where the captain chooses what ships now and what waits.
 argument-hint: <path-or-module> [file|ship] — no args: whole repo, analysis only
 allowed-tools: Bash, Read, Agent, Grep, Glob
 disable-model-invocation: true
 ---
-# /ship-deslop-codebase — audit the debt, file it as an epic, let the captain choose what ships
+# /ship-deslop — audit the debt, file it as an epic, let the captain choose what ships
 <!-- shipmates:command-preamble -->
 
 Every repository carries debt no issue tracks: an import nothing imports, two copies of one function
@@ -15,7 +15,7 @@ release after it shipped, a TODO older than the test runner around it. No analys
 no human wants to read the whole tree to find it. "Slop" here is any of the debt below — whatever
 wrote it; the command judges the debt, not its author.
 
-`/ship-deslop-codebase` inventories that debt, grades every finding by the risk of touching it, and
+`/ship-deslop` inventories that debt, grades every finding by the risk of touching it, and
 then **files it as an epic with sub-issues** — durable tracked work, not a report that dies with the
 session. The captain reviews that epic, confirms the breakdown is sound, and only then chooses what to
 fix now and what to leave for later.
@@ -162,6 +162,7 @@ The survey covers these classes — the list is the whole of what "cleanup" mean
   provides, and data modelled richer than any use. Evidence is both counts and the consumer sites, never an
   impression that the code feels heavy — and the protected list still outranks this class.
 - **Inconsistency** — mixed concurrency or callback styles in one codebase, naming drift, error handling that throws at one call site, returns at another, and logs-and-continues at a third.
+- **Structural placement** — symbols and files in the wrong module, layer or folder for the repository's own stated architecture: a layer importing inward past its boundary, logic in a presentation or entrypoint file that belongs in the application layer, cross-cutting policy parked inside one feature, a catch-all `utils` / `helpers` / `common` bucket, single-file folders and folders one level deeper than anything needs, and sibling modules that disagree about their own internal layout. **The repository's committed convention is the oracle — never a general taste for how trees should look.** Two guards keep it honest: quote the convention from a committed file (`{{project-instructions}}`, an ADR, a lint rule, a codeowners entry) before recording any placement finding, and where no convention is committed the class degrades to *observed-majority-layout* findings, reported as such — this class never invents a folder taxonomy the project did not choose. Evidence is the convention it violates plus the import or call that proves the misplacement.
 - **Bad patterns, by class** — resource leaks (acquisition with no matching release on every path), blocking calls inside an asynchronous context, N+1-style repeated access in a loop, repeated work a single pass would do.
 - **Complexity hotspots** — functions and classes over `COMPLEXITY_LIMIT`, deep nesting.
 - **Dependency health** — declared-but-unused dependencies, several versions of one transitive dependency in the lockfile, import cycles that interface extraction would break.
@@ -178,7 +179,11 @@ Two properties make the census usable as a tracker:
   a progress tracker.
 
 Close the stage by printing the coverage-of-the-scan footer — which paths, languages, and file types were
-analysed, which were skipped — and recording what `BUDGET` left unscanned. Both carry into Stage 3.
+analysed, which were skipped, and **which classes were not looked for at all**. That last part matters
+more than it looks: a footer that reports only *paths scanned* lets a run read as a clean bill of health
+for classes it never asked about. When a class is gated out — no committed architecture convention for
+structural placement, no dependency manifest for dependency health, no coverage tooling for the grades
+below — say so by name. What `BUDGET` left unscanned carries into Stage 3 alongside it.
 
 ---
 
@@ -207,6 +212,13 @@ Grading rules:
 - An unused **exported** symbol, or one with no internal callers, grades `review`: nothing inside the
   repo can prove who imports a published package.
 - A deletion that crosses a module boundary or changes a contract grades `architectural`.
+- **A move is not a delete, so the grading differs.** A relocation that crosses a module boundary already
+  grades `architectural`; state plainly that **a pure relocation with no call-site change still grades at
+  least `review`**, because a move breaks downstream patches, `git blame` continuity and every path-based
+  tool — CI path filters, codeowners, coverage config. Before proposing any move, **grep the moved path
+  across CI config, codeowners, coverage config and docs**, so the blast radius is in the finding rather
+  than discovered in CI. Relocating a file that external consumers import is a breaking change even when
+  nothing inside it changed, so a public or exported path is a protected class *for moves specifically*.
 - **No coverage tooling means nothing grades `safe`.** Every finding degrades to `review` at minimum and
   the report says so plainly — a confidence grade is a claim about verification, and without the tooling
   the honest claim is "unverified". Standing up coverage tooling is an explicit, opt-in prerequisite,
@@ -248,6 +260,7 @@ Grading rules:
 - **Framework entry points and lifecycle hooks** — called by the framework, never by your code: route handlers, dependency providers, command registration, test fixtures, plugin hooks.
 - **Targets of dynamic dispatch** — anything reached through `eval`, reflection, string-keyed dispatch, serialization, or a configuration file.
 - **Code referenced only from docs, issue templates, or CI config** — grep is unreliable there, so treat a hit as `review`.
+- **Public or exported paths, for moves specifically** — relocating a file external consumers import breaks them even when its contents are unchanged, so a move is never proposed for one on internal evidence alone.
 - **Machinery whose failure is silent rather than loud** — integrity checks, idempotency keys, deduplication, reconciliation. Its absence does not announce itself, so no test going red will tell you it mattered.
 - **Anything on a path that cannot be rolled back** — a destructive migration, an external side effect, a payment, an irreversible publish.
 - **Load-shedding, rate limiting, and backpressure** — removing them harms a third party, which never appears anywhere in this repository's feature map.
