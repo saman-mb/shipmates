@@ -80,7 +80,7 @@ from anything hardcoded into the role.
 | `/ship-qa <pr|issue|branch>` | Interactive local human QA walkthrough — complements the board and CI |
 | `/ship-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/ship-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
-| `/ship-deslop [target] [apply]` | Audits the codebase for health debt — dead code, duplication, inconsistency, dependency and config rot — grades each finding by risk, and fixes the safe ones on a branch, opt-in |
+| `/ship-deslop [target] [file|ship]` | Audits the codebase for health debt — dead code, duplication, misplaced layers, dependency and config rot — grades each finding by risk, and files it as an epic behind a human gate |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
 worktree, and hands you a pull request — your checkout is left as you left it. `/ship-report-bug` writes to

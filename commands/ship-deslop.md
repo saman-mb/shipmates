@@ -1,6 +1,6 @@
 ---
 name: ship-deslop
-description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, over-engineering beyond product need, inconsistency, bad patterns, dependency and config rot — grade every finding by risk, then file the work as an epic with sub-issues. Never edits the codebase: it analyses, files tracked work, and stops at a human gate where the captain chooses what ships now and what waits.
+description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, over-engineering beyond product need, inconsistency, bad patterns, misplaced files and layers, dependency and config rot — grade every finding by risk, then file the work as an epic with sub-issues. Never edits the codebase: it analyses, files tracked work, and stops at a human gate where the captain chooses what ships now and what waits.
 argument-hint: <path-or-module> [file|ship] — no args: whole repo, analysis only
 allowed-tools: Bash, Read, Agent, Grep, Glob
 disable-model-invocation: true
@@ -54,7 +54,9 @@ scope and how far to go come from the Runtime input section at the end of this w
 - `MAX_SUB_ISSUES` = `12` — the ceiling on sub-issues filed in one run. A gate the captain cannot read
   is not a gate: past the ceiling the lowest-priority areas are summarised in the epic body and left in
   the ledger for a later run, and the report says so.
-- Thresholds — repo overrides come from `{{project-instructions}}` or `.shipmates/deslop-codebase.toml`:
+- Thresholds — repo overrides come from `{{project-instructions}}` or `.shipmates/deslop.toml`
+  (`.shipmates/deslop-codebase.toml` is still read when the new file is absent, since it shipped under
+  the command's previous name):
   `COMPLEXITY_LIMIT` = `15`; `DUP_SIMILARITY` = `80%`; `TODO_HORIZON` = `180d`; `ZOMBIE_HORIZON` = `90d`
   (commented-out blocks older than this with no linked issue).
 - **Quality bar / test commands / coverage tooling** = whatever the repo's README /
@@ -70,7 +72,7 @@ the analysis is still parallel and specialist:
 
 | Role | Sits for | Stage |
 |---|---|---|
-| `architect` | the semantic diff on near-duplicate candidates; structural impact of a boundary-crossing deletion | 1, 2, 4 |
+| `architect` | the semantic diff on near-duplicate candidates; structural impact of a boundary-crossing deletion; the placement census and its convention oracle | 1, 2, 4 |
 | `sdet` | test-coverage and test-validity evidence — which tests actually pin the code a finding would touch | 1, 2 |
 | `product-manager` | the feature-impact summary and the sign-off a `review` or `architectural` sub-issue carries as a criterion | 2, 4 |
 | `site-reliability-engineer` | the `failure-path` four questions — hazard provenance, execution evidence, blast radius, upstream elimination | 2 |
@@ -181,7 +183,9 @@ Two properties make the census usable as a tracker:
 Close the stage by printing the coverage-of-the-scan footer — which paths, languages, and file types were
 analysed, which were skipped, and **which classes were not looked for at all**. That last part matters
 more than it looks: a footer that reports only *paths scanned* lets a run read as a clean bill of health
-for classes it never asked about. When a class is gated out — no committed architecture convention for
+for classes it never asked about. When a class is narrowed or unavailable — no committed architecture
+convention for structural placement, so it falls back to observed-majority-layout findings; no dependency
+manifest, so dependency health has nothing to read — say which, by name, and say what the fallback was.
 structural placement, no dependency manifest for dependency health, no coverage tooling for the grades
 below — say so by name. What `BUDGET` left unscanned carries into Stage 3 alongside it.
 
@@ -250,7 +254,7 @@ Grading rules:
   on it. Theatre has no hazard provenance *and* no execution evidence *and* recoverable blast radius;
   anything with a named hazard, or observed execution, or unrecoverable blast radius is load-bearing.
 
-**Protected classes — never proposed for deletion, reported with rationale instead:**
+**Protected classes — never proposed for deletion, and never proposed for relocation, reported with rationale instead:**
 
 - **Database migrations** — an "unused" migration may be the only path that upgrades a deployed instance, and deleting it strands every environment that has not run it yet.
 - **Error-path, fallback, and graceful-degradation handlers** — catch blocks, retries, circuit breakers and defaults look dead precisely because they only run when something goes wrong.
