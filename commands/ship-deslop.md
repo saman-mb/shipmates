@@ -186,8 +186,7 @@ more than it looks: a footer that reports only *paths scanned* lets a run read a
 for classes it never asked about. When a class is narrowed or unavailable — no committed architecture
 convention for structural placement, so it falls back to observed-majority-layout findings; no dependency
 manifest, so dependency health has nothing to read — say which, by name, and say what the fallback was.
-structural placement, no dependency manifest for dependency health, no coverage tooling for the grades
-below — say so by name. What `BUDGET` left unscanned carries into Stage 3 alongside it.
+What `BUDGET` left unscanned carries into Stage 3 alongside it.
 
 ---
 

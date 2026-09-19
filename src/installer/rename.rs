@@ -864,6 +864,44 @@ mod tests {
     }
 
     #[test]
+    fn plan_migrates_a_released_command_that_was_renamed() {
+        // `ship-deslop-codebase` shipped in v0.9.0 and was shortened to
+        // `ship-deslop`. Unlike the earlier generations this is not a prefix
+        // change but a rename of a live command, so the row must still reclaim
+        // the installed skill folder and the leftover flat command file.
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        atomic_write(
+            &target.join(".claude/skills/ship-deslop-codebase/SKILL.md"),
+            "---\nname: ship-deslop-codebase\n---\nold\n",
+        )
+        .unwrap();
+        // The leftover flat command file is derived from the *skill* path's own
+        // prefix, so a `.claude/…` payload looks for `.claude/commands/<old>.md`.
+        // This is the generation that shipped skills and flat commands side by side.
+        atomic_write(
+            &target.join(".claude/commands/ship-deslop-codebase.md"),
+            "---\nname: ship-deslop-codebase\n---\nold\n",
+        )
+        .unwrap();
+        let payload = payload_skill(".claude/skills/ship-deslop/SKILL.md", "new deslop");
+        let items = plan(target, &payload, "").unwrap();
+        let olds: Vec<_> = items
+            .iter()
+            .map(|item| item.old_path.to_string_lossy().into_owned())
+            .collect();
+        assert!(
+            olds.contains(&".claude/skills/ship-deslop-codebase/SKILL.md".to_string()),
+            "installed skill folder not reclaimed: {olds:?}"
+        );
+        assert!(
+            olds.contains(&".claude/commands/ship-deslop-codebase.md".to_string()),
+            "leftover flat command file not reclaimed: {olds:?}"
+        );
+        assert!(items.iter().all(|item| item.new_name == "ship-deslop"));
+    }
+
+    #[test]
     fn with_tools_matches_old_and_new_names() {
         assert!(matches_requested_tool("scrub", "shipmates-scrub"));
         assert!(matches_requested_tool("shipmates-scrub", "scrub"));
