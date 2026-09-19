@@ -627,8 +627,8 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-deslop-codebase": CommandPageCopy(
-        guide_blurb="Audit the codebase for dead code, duplication, over-engineering and rot — filed as an epic you approve.",
+    "ship-deslop": CommandPageCopy(
+        guide_blurb="Audit the codebase for dead code, duplication, misplacement and rot — filed as an epic you approve.",
         process_lead=(
             "Discovery grades every finding safe, review, architectural or protected, then files the work "
             "as an epic with sub-issues. Nothing is edited: you review the breakdown and choose what ships."
@@ -645,7 +645,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
             ProcessStep(
                 "Census",
-                "Inventory every finding with a stable ID and its evidence, then grade each one by the risk of touching it.",
+                "Inventory every finding — including files sitting in the wrong layer for the repo's own stated architecture — then grade each by the risk of touching it.",
                 always=("sdet", "security-engineer", "technical-writer"),
                 also=(_also("architect", "near-duplicate and structural classes"),),
             ),

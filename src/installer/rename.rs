@@ -63,6 +63,8 @@ pub const COMMAND_RENAMES: &[(&str, &str)] = &[
     ("pr-review", "ship-pr-review"),
     ("report-bug", "ship-report-bug"),
     ("consolidate-issues", "ship-consolidate-issues"),
+    // The one command that shipped and was then shortened (v0.9.0 → v0.9.1).
+    ("ship-deslop-codebase", "ship-deslop"),
 ];
 
 /// Every tool occupies the same skill tree as commands; `gh` is the collision

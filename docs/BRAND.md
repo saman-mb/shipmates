@@ -364,7 +364,7 @@ Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
 The seventeen that exist: `/ship-issue` · `/ship-epic` · `/ship-fix-bug` · `/ship-report-bug` · `/ship-plan-epics` · `/ship-consolidate-issues` · `/ship-harden` · `/ship-spike` ·
-`/ship-migrate` · `/ship-document` · `/ship-release` · `/ship-polish` · `/ship-pr-review` · `/ship-qa` · `/ship-onboard` · `/ship-refactor` · `/ship-deslop-codebase`.
+`/ship-migrate` · `/ship-document` · `/ship-release` · `/ship-polish` · `/ship-pr-review` · `/ship-qa` · `/ship-onboard` · `/ship-refactor` · `/ship-deslop`.
 
 ---
 

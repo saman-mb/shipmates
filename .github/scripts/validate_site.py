@@ -109,6 +109,8 @@ REDIRECTS = {
     "pr-review": "ship-pr-review",
     "report-bug": "ship-report-bug",
     "consolidate-issues": "ship-consolidate-issues",
+    # A command that shipped, then shortened its name.
+    "ship-deslop-codebase": "ship-deslop",
 }
 TOOL_REDIRECTS = {
     "gh": "shipmates-gh",
