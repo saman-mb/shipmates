@@ -521,7 +521,10 @@ pub(crate) fn global_relocate(harness: &str, rel: &str) -> Option<String> {
 /// Scope is inferred from the destination rather than threaded through as a flag,
 /// because the destination is the thing that decides which tree the harness will
 /// actually read.
-pub(crate) fn is_global_target(target_dir: &Path) -> bool {
+///
+/// `pub` because the binary calls it across the lib/bin boundary, where
+/// `pub(crate)` does not reach.
+pub fn is_global_target(target_dir: &Path) -> bool {
     let Some(home) = home::home_dir() else {
         return false;
     };
@@ -538,7 +541,10 @@ pub(crate) fn is_global_target(target_dir: &Path) -> bool {
 /// and the migration table are derived from it — everything downstream then
 /// agrees, which is the point: a receipt claiming workspace paths while the files
 /// sat in the global tree is exactly the drift `doctor` exists to catch.
-pub(crate) fn relocate_payload(
+///
+/// `pub` because the binary calls it across the lib/bin boundary, where
+/// `pub(crate)` does not reach.
+pub fn relocate_payload(
     harness: &str,
     container: &str,
     built: &HashMap<String, String>,

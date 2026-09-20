@@ -16,7 +16,7 @@ Developers who want to hand off whole *tickets* — not just single prompts — 
 
 ## The commands (17)
 
-`/ship-issue` · `/ship-epic` · `/ship-fix-bug` · `/ship-report-bug` · `/ship-plan-epics` · `/ship-consolidate-issues` · `/ship-harden` · `/ship-spike` · `/ship-migrate` · `/ship-document` · `/ship-release` · `/ship-polish` · `/ship-pr-review` · `/ship-qa` · `/ship-onboard` · `/ship-refactor` · `/ship-deslop-codebase` — each defined in `commands/<name>.md`.
+`/ship-issue` · `/ship-epic` · `/ship-fix-bug` · `/ship-report-bug` · `/ship-plan-epics` · `/ship-consolidate-issues` · `/ship-harden` · `/ship-spike` · `/ship-migrate` · `/ship-document` · `/ship-release` · `/ship-polish` · `/ship-pr-review` · `/ship-qa` · `/ship-onboard` · `/ship-refactor` · `/ship-deslop` — each defined in `commands/<name>.md`.
 
 ## Install
 

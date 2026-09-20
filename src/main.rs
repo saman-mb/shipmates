@@ -1,23 +1,13 @@
-mod adapters;
-mod catalog;
-mod cli;
-mod detector;
-mod digest;
-mod doctor;
-mod embedded;
-mod installer;
-mod manifest;
-mod steering;
-
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use cli::{Cli, Command};
-use installer::manifest_db::InstallReceipt;
+use shipmates::cli::{Cli, Command};
+use shipmates::installer::manifest_db::InstallReceipt;
+use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering};
 use std::fs;
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
-use catalog::CanonicalTool;
+use shipmates::catalog::CanonicalTool;
 
 /// How optional tools are chosen for an install/update run.
 enum ToolSelection {
