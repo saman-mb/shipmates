@@ -40,8 +40,8 @@ PROMPT = (86, 214, 122)    # $ prompt
 CURSOR = (200, 220, 235)
 
 STAGE_COLORS = {
-    "PLAN":       (130, 170, 255),
-    "ISOLATE":    (170, 150, 255),
+    "PLAN":       (130, 170, 255),  # sky / sunset start
+    "ISOLATE":    (90, 175, 230),   # sea blue (no purple lead)
     "BUILD":      (255, 180, 90),
     "SELF-CHECK": (95, 210, 220),
     "CI GATE":    (255, 145, 130),
@@ -52,14 +52,14 @@ STAGE_COLORS = {
 
 # (label, running detail, done detail)
 STAGES = [
-    ("PLAN",       "reading the issue + your docs …",   "work units · acceptance criteria · validation plan"),
-    ("ISOLATE",    "creating a throwaway git worktree …","feat/issue-142  (sandbox — base stays clean)"),
-    ("BUILD",      "senior-engineer ×3, in parallel …","built to the plan"),
-    ("SELF-CHECK", "sdet runs the real test/build …",   "tests pass"),
-    ("CI GATE",    "waiting for CI to go green …",       "CI green on the pushed PR"),
-    ("REVIEW",     "board reviews the PR head …",        "product-manager · sdet · flagged specialists — accept"),
-    ("REMEDIATE",  "apply fixes, re-review …",           "0 blockers · nits filed as follow-ups"),
-    ("DELIVER",    "",                                        "PR #143 — reviewed, CI-green, yours to merge"),
+    ("PLAN",       "reading the issue + your docs …",   "work units · acceptance criteria"),
+    ("ISOLATE",    "creating a throwaway git worktree …","throwaway git worktree"),
+    ("BUILD",      "senior-engineer, in parallel …",    "senior-engineer, in parallel"),
+    ("SELF-CHECK", "sdet runs the real suite …",        "tests pass"),
+    ("CI GATE",    "waiting for CI to go green …",       "wait for green on the PR"),
+    ("REVIEW",     "board reviews the PR head …",        "acceptance board on the PR head"),
+    ("REMEDIATE",  "apply fixes, re-review …",           "fix blockers · file nits"),
+    ("DELIVER",    "",                                        "reviewed, CI-green PR"),
 ]
 
 W, H = 940, 604
@@ -215,7 +215,7 @@ def render_frames(font_dir=None):
 
     # footer
     log = log + [[("", GREY, False)],
-                 [("  ✓ ", GREEN, True), ("Done — a reviewed PR, handed to you. You stay the captain. ⚓", GREEN, False)]]
+                 [("  ✓ ", GREEN, True), ("Handed to you — you stay the captain. ⚓", GREEN, False)]]
     for _ in range(6):
         frames.append(render(log)); durations.append(300)
 
