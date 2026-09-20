@@ -41,7 +41,11 @@ The scope and the go-ahead to change anything come from the Runtime input sectio
    `gh label list` and the project's `README` / `AGENTS.md` (conventions, quality bar, where work is
    tracked) so triage uses the project's own standards.
 2. Apply `SCOPE` if set; otherwise take the full set.
-3. Snapshot the baseline count and, per issue, its age, last activity, labels, and milestone. These
+3. From that set, pull out the **open epic set** — issues labeled `epic` or matching the project's
+   own epic convention — with each epic's story checklist (`- [ ] #<story>`) and sub-issue graph
+   (`gh issue view <epic> --json subIssues`). This is the reconciliation target for Stage 2/3: every
+   dangling task/story/bug is checked against it before it is left to Stage 4's fresh bundling.
+4. Snapshot the baseline count and, per issue, its age, last activity, labels, and milestone. These
    numbers feed the report; record them before anything is touched.
 
 ## Stage 1 — Cross-check against git history  (orchestrator, evidence first)
@@ -69,10 +73,14 @@ First the orchestrator applies the **hard, mechanical rules** (no judgment neede
   Don't guess at these alone — send them to the `product-manager` review pass.
 
 Then spawn ONE `product-manager` with the remaining borderline set: the `DONE`-adjacent, the
-`STALE`-candidates, and the clearly duplicate-looking pairs. It returns **structured verdicts only**
-(no `gh` calls): per issue a verdict of `close` / `keep` / `migrate` with a one-line reason, plus a
-dedupe map (issue → canonical issue) only where the overlap is unmistakable. It never closes
-anything itself.
+`STALE`-candidates, and the clearly duplicate-looking pairs — **plus every issue not already
+`Part of #<epic>`** and not itself an epic, checked against the Stage 0 **open epic set**. It returns
+**structured verdicts only** (no `gh` calls): per issue a verdict of `close` / `keep` / `migrate` with
+a one-line reason, and for a `migrate` verdict that's a dangling-into-epic match, a `target_epic`
+number naming which one — never `keep` an issue that clearly belongs under an existing epic, since
+`keep` routes straight into Stage 4's fresh bundling and would leave it homeless there. It also
+returns a dedupe map (issue → canonical issue) only where the overlap is unmistakable. It never
+closes, migrates, or attaches anything itself.
 
 The orchestrator merges the two: mechanical rules are final; the subagent's judgment calls are
 adopted as its recommendation, and every recommendation the user would want to veto is surfaced
@@ -83,7 +91,9 @@ prominently in the report.
 `MIGRATE` applies to issues whose **shape** is obsolete even though the work is still wanted:
 - wrong tracker conventions (missing labels/structure the project now requires, body not in the
   current template, no acceptance criteria where the project mandates them),
-- issues that should be an epic with stories, or a story inside an existing epic (`Part of #…`),
+- issues that should be an epic with stories, or a **dangling task/story/bug that Stage 2 matched to
+  an existing open epic** (its `target_epic`) — reattach it there rather than leave it as a standalone
+  `keep`,
 - issues blocked by a fixed/unneeded parent (remove the stale `Blocked by` or dependency note).
 
 Migrating means rewriting to the project's current shape — never inventing new scope. If a
@@ -111,7 +121,9 @@ the host has no sub-issue mechanic (the flag is rejected), fall back to the epic
 
 ## Stage 4 — Bundle the survivors  (ONE `product-manager`, parallel by area)
 
-Group every `keep` issue into **bundles**: coherent themes, each sized for a single `/shipmates-issue`
+An issue Stage 2 matched to an existing epic is `migrate`, not `keep` — it never reaches this stage;
+Stage 3 reattaches it instead. Group every remaining `keep` issue into **bundles**: coherent themes,
+each sized for a single `/shipmates-issue`
 run. Spawn one `product-manager` per **area** (from the project's existing area labels) so the
 theming runs in parallel; give each its area's issues, the repo context, and the rule that bundles
 are **thematic + dependency-ordered + individually shippable** — never a grab-bag of unrelated
@@ -137,8 +149,10 @@ If `MODE=apply`, execute in this order, re-verifying each before acting:
 
 Then verify (re-fetch and grep; don't assume): every planned close happened, every migration landed,
 every bundle label is on exactly its issue set. Report the before/after: how many issues were in
-scope, how many closed (with the count that were already done), how many migrated, and the bundle
-tree ready to hand to `/shipmates-issue` — one bundle at a time.
+scope, how many closed (with the count that were already done), how many migrated — broken out as
+**how many were reattached to an existing epic** vs. other shape migrations — vs. how many remaining
+`keep` issues were bundled fresh, and the bundle tree ready to hand to `/shipmates-issue` — one
+bundle at a time.
 
 ---
 
@@ -167,6 +181,10 @@ makes, not the default.
   verdicts and bundles — they never close, migrate, or edit issues themselves.
 - **Never lose intent.** Migrating preserves the issue's substance; a migration that would change
   meaning is reported, not performed. Dedupe only on unmistakable overlap, and always cross-link.
+- **A dangling issue with a matching epic is never left standalone.** Stage 2 checks every
+  non-epic, non-`Part of #…` issue against the Stage 0 open-epic set before verdicting `keep`; a
+  clear match is `migrate` with a `target_epic`, reattached in Stage 3 — not swept into a Stage 4
+  bundle instead.
 - **Don't over-close or over-bundle.** A `STALE` verdict with any live signal goes to the user.
   Bundles are thematic and shippable — never arbitrary groupings to make the count look better.
 - **Respect `MODE`.** In `report` mode, the tracker is never modified, not even a label.
