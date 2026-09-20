@@ -268,7 +268,7 @@
       "agent_path": ".pi/agents/{name}.md",
       "skill_path": ".agents/skills/{name}/SKILL.md",
       "project_instructions": "AGENTS.md",
-      "steering_install_path": null,
+      "steering_install_path": ".shipmates/contributor-steering.md",
       "permission_model": "allowlist",
       "scopes": {
         "read": "read",

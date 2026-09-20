@@ -111,20 +111,59 @@ const NEVER_SCANNED: &[&str] = &[".shipmates", ".shipmates-backup", "node_module
 ///
 /// Matched by shape alone — all three trailing fields must be numeric — so a
 /// user's own `notes.md.bak-mine` is still a file Shipmates does not own and is
-/// still reported. `doctor` keeps a stricter parser anchored to a known
-/// original name; unifying the two is follow-up work, not this fix.
+/// still reported. Listing siblings uses the same shape via `parse_backup_key`
+/// and sorts newest-first by the numeric triple (not lexicographic paths).
 pub fn is_install_backup_name(name: &str) -> bool {
-    let Some((original, rest)) = name.rsplit_once(".bak-") else {
+    let Some((original, _)) = name.rsplit_once(".bak-") else {
         return false;
     };
-    if original.is_empty() {
-        return false;
+    !original.is_empty() && parse_backup_key(name, original).is_some()
+}
+
+/// Parse `{original}.bak-<secs>-<pid>-<n>` into its numeric key, or `None`.
+fn parse_backup_key(filename: &str, original: &str) -> Option<(u64, u32, u32)> {
+    let rest = filename.strip_prefix(&format!("{original}.bak-"))?;
+    let mut parts = rest.split('-');
+    let secs: u64 = parts.next()?.parse().ok()?;
+    let pid: u32 = parts.next()?.parse().ok()?;
+    let n: u32 = parts.next()?.parse().ok()?;
+    if parts.next().is_some() {
+        return None;
     }
-    let mut fields = rest.split('-');
-    let numeric = fields.next().is_some_and(|f| f.parse::<u64>().is_ok())
-        && fields.next().is_some_and(|f| f.parse::<u32>().is_ok())
-        && fields.next().is_some_and(|f| f.parse::<u32>().is_ok());
-    numeric && fields.next().is_none()
+    Some((secs, pid, n))
+}
+
+/// Sibling `{name}.bak-<secs>-<pid>-<n>` files next to `path`, newest first
+/// (numeric secs/pid/n — not lexicographic path sort, which mis-orders across
+/// digit widths).
+pub fn sibling_install_backups(path: &Path) -> Vec<PathBuf> {
+    let Some(parent) = path.parent() else {
+        return Vec::new();
+    };
+    let Some(original) = path.file_name().and_then(|n| n.to_str()) else {
+        return Vec::new();
+    };
+    let Ok(entries) = fs::read_dir(parent) else {
+        return Vec::new();
+    };
+    let mut found: Vec<(u64, u32, u32, PathBuf)> = Vec::new();
+    for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() {
+            continue;
+        }
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if let Some(key) = parse_backup_key(name, original) {
+            found.push((key.0, key.1, key.2, entry.path()));
+        }
+    }
+    found.sort_by(|a, b| (b.0, b.1, b.2).cmp(&(a.0, a.1, a.2)));
+    found.into_iter().map(|(_, _, _, p)| p).collect()
 }
 
 /// Return regular files inside the payload's own subtrees that a receipt does

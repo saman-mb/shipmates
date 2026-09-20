@@ -51,7 +51,9 @@ preamble itself, so the substitution order in `render_body` is load-bearing.
   - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.
 - Spend subagent seats only where their decision can change the outcome. Route model and effort at
   spawn by work difficulty; never hardcode a model in canonical content.
-- Cost is seats × model **plus rework**: Before a spec becomes binding, verify its citations. Route
+- Cost is seats × model **plus rework**: Before a spec becomes binding, verify its citations —
+  including claims about third-party platform behaviour (CI trigger resolution, harness internals),
+  not only `file:line` references in this repo. An unverified platform claim is not a fact. Route
   empirical questions to whoever can run code. Emit the blast radius of any shared API change at plan
   time. Give each unit a machine-checkable owned-paths manifest rather than prose fences.
 - Ask every subagent for a compact structured return: decision/status first, criterion findings and
@@ -344,10 +346,29 @@ still the primary cost gate, and pool discovery decides only **which** cheap mod
 unit — never **whether** a lighter execution path is chosen.
 <!-- model-routing:end -->
 
+## Why merge this (PR body)
+
+The marker below expands into every command that opens a pull request. Command authors place
+`<!-- shipmates:why-merge-pr -->` where PR body requirements are stated — once per PR-opening
+command — instead of copying maintainer-facing impact prose into each workflow.
+
+<!-- why-merge-pr:start -->
+**Why merge this**
+
+Any pull request this command opens — and any completion comment it posts on that PR — must open
+with or include a short maintainer-facing block under this heading. Write it for the human who owns
+the tool: why should they care that this lands? Answer the product-impact bar already required of
+every pull request description — **What changes**, **Why it matters**, **Who is affected**. Do not
+invent a second template. A file list, a ticket dump, or a bare `Closes #<n>` is not a reason to
+merge.
+<!-- why-merge-pr:end -->
+
 ## Authoring checklist
 
 - Keep the **Model routing** block the single statement of pool discovery: reference it by its marker
   instead of restating the ladder, the resolution order, or the per-target table inside a command.
+- Place `<!-- shipmates:why-merge-pr -->` once, next to PR-body requirements, on every command that
+  opens a pull request — never copy the Why-merge prose into the command by hand.
 
 - Put one shared preamble marker near the start of every command and keep its runtime input section at
   the end of the stable workflow.

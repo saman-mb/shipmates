@@ -583,14 +583,31 @@ fn has_catalog(root: &Path) -> bool {
     root.join("crew").is_dir() && root.join("commands").is_dir()
 }
 
+/// Walk `start` and its ancestors until a catalog root (`crew/` + `commands/`)
+/// is found, or the filesystem root is reached.
+fn find_catalog_root(start: &Path) -> Option<PathBuf> {
+    let mut cursor = start.to_path_buf();
+    loop {
+        if has_catalog(&cursor) {
+            return Some(cursor);
+        }
+        if !cursor.pop() {
+            return None;
+        }
+    }
+}
+
 /// Resolve which payload a run installs, in strict precedence order:
 ///
-/// 1. An explicit source — `--from-cwd` or `SHIPMATES_SRC=<dir>` — which is a
-///    hard error when that directory is not a catalog. An explicit request must
-///    never quietly become an embedded install.
-/// 2. A run from this crate's own manifest directory (`cargo run -- install` in
-///    the checkout), the documented contributor loop. Both sides are
-///    canonicalized so a symlinked checkout still matches.
+/// 1. An explicit source — `--from-cwd` or `SHIPMATES_SRC=<dir>`. Setting both
+///    is a hard error (two explicit sources). An explicit request that is not a
+///    catalog is also a hard error and never quietly becomes an embedded install.
+///    For `--from-cwd`, a cwd *inside* a checkout walks up until `has_catalog`
+///    (or the filesystem root).
+/// 2. A run from this crate's own checkout (`cargo run -- install`), including
+///    a cwd nested inside it: walk up to the catalog root, then exact-match that
+///    root against `CARGO_MANIFEST_DIR` (canonicalized). A foreign checkout that
+///    merely has `crew/` / `commands/` stays on Embedded (#385).
 /// 3. Otherwise the embedded payload, with one loud warning when the current
 ///    directory holds a `crew/` or `commands/` tree that is now being ignored.
 pub fn resolve_source(
@@ -598,16 +615,31 @@ pub fn resolve_source(
     env_src: Option<&str>,
     cwd: &Path,
 ) -> anyhow::Result<CatalogSource> {
-    if from_cwd || env_src.is_some() {
-        let (root, origin) = if from_cwd {
-            (cwd.to_path_buf(), "--from-cwd".to_string())
-        } else {
-            let raw = env_src.unwrap_or_default();
-            (PathBuf::from(raw), format!("SHIPMATES_SRC={raw}"))
-        };
+    let env_src = env_src.filter(|value| !value.trim().is_empty());
+    if from_cwd && env_src.is_some() {
+        anyhow::bail!(
+            "refusing two explicit sources: --from-cwd and SHIPMATES_SRC are both set; \
+             pick one"
+        );
+    }
+
+    if from_cwd {
+        let root = find_catalog_root(cwd).ok_or_else(|| {
+            anyhow::anyhow!(
+                "--from-cwd points at {}, which is not inside a shipmates source tree \
+                 (needs crew/ and commands/)",
+                cwd.display()
+            )
+        })?;
+        return Ok(CatalogSource::Disk(root));
+    }
+
+    if let Some(raw) = env_src {
+        let root = PathBuf::from(raw);
         if !has_catalog(&root) {
             anyhow::bail!(
-                "{origin} points at {}, which is not a shipmates source tree (needs crew/ and commands/)",
+                "SHIPMATES_SRC={raw} points at {}, which is not a shipmates source tree \
+                 (needs crew/ and commands/)",
                 root.display()
             );
         }
@@ -615,12 +647,14 @@ pub fn resolve_source(
     }
 
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let in_checkout = match (cwd.canonicalize(), manifest_dir.canonicalize()) {
-        (Ok(cwd), Ok(manifest)) => cwd == manifest,
-        _ => cwd == manifest_dir,
-    };
-    if in_checkout && has_catalog(cwd) {
-        return Ok(CatalogSource::Disk(cwd.to_path_buf()));
+    if let Some(root) = find_catalog_root(cwd) {
+        let in_checkout = match (root.canonicalize(), manifest_dir.canonicalize()) {
+            (Ok(root), Ok(manifest)) => root == manifest,
+            _ => root == manifest_dir,
+        };
+        if in_checkout {
+            return Ok(CatalogSource::Disk(root));
+        }
     }
 
     if cwd.join("crew").is_dir() || cwd.join("commands").is_dir() {
@@ -793,6 +827,32 @@ mod tests {
     }
 
     #[test]
+    fn test_resolve_source_rejects_both_from_cwd_and_shipmates_src() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("crew")).unwrap();
+        fs::create_dir_all(dir.path().join("commands")).unwrap();
+        let error = resolve_source(true, dir.path().to_str(), dir.path()).unwrap_err();
+        assert!(
+            error.to_string().contains("--from-cwd") && error.to_string().contains("SHIPMATES_SRC"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn test_resolve_source_from_cwd_walks_up_to_catalog_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("crew")).unwrap();
+        fs::create_dir_all(root.join("commands")).unwrap();
+        let nested = root.join("src").join("installer");
+        fs::create_dir_all(&nested).unwrap();
+        assert_eq!(
+            resolve_source(true, None, &nested).unwrap(),
+            CatalogSource::Disk(root.to_path_buf())
+        );
+    }
+
+    #[test]
     fn test_resolve_source_explicit_missing_catalog_is_an_error_not_a_fallback() {
         let dir = tempfile::tempdir().unwrap();
         let error = resolve_source(true, None, dir.path()).unwrap_err();
@@ -806,12 +866,19 @@ mod tests {
     #[test]
     fn test_resolve_source_uses_embed_from_a_stale_checkout() {
         // A checkout that is not this binary's own manifest dir must not shadow
-        // the embedded payload (#385).
+        // the embedded payload (#385). Walk-up finds its catalog, then the
+        // exact-match against CARGO_MANIFEST_DIR rejects it.
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir_all(dir.path().join("crew")).unwrap();
         fs::create_dir_all(dir.path().join("commands")).unwrap();
         assert_eq!(
             resolve_source(false, None, dir.path()).unwrap(),
+            CatalogSource::Embedded
+        );
+        let nested = dir.path().join("src");
+        fs::create_dir_all(&nested).unwrap();
+        assert_eq!(
+            resolve_source(false, None, &nested).unwrap(),
             CatalogSource::Embedded
         );
     }
@@ -821,6 +888,12 @@ mod tests {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         assert_eq!(
             resolve_source(false, None, manifest).unwrap(),
+            CatalogSource::Disk(manifest.to_path_buf())
+        );
+        // Nested cwd walks up, then exact-matches the catalog root (#394).
+        let nested = manifest.join("src");
+        assert_eq!(
+            resolve_source(false, None, &nested).unwrap(),
             CatalogSource::Disk(manifest.to_path_buf())
         );
     }

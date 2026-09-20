@@ -106,6 +106,8 @@ looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`, in which c
 remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with the PR open. Under
 `MODE=edit-in-place`, there's nothing to deliver — the ADR is already in the tree.
 
+<!-- shipmates:why-merge-pr -->
+
 ## Stage 4 — Report & hand off
 
 Summarise the recommendation and why, link the ADR — and, under `MODE=pr`, the PR it's waiting for

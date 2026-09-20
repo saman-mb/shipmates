@@ -5,7 +5,7 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, and Windsurf.</b><br/>
+  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, Grok Build, and Windsurf.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
@@ -194,7 +194,7 @@ antigravity      .agents/          agents + skills   (agy — the successor to t
 codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
 cursor           .cursor/          skills only (first-party tree; slash picker reads it)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
-pi               .pi/ + .agents/     crew (.md) at .pi/agents, skills at .agents/skills
+pi               .pi/ + .agents/     crew (.md) at .pi/agents, skills at .agents/skills (global: crew only)
 grok-build       .grok/            agents + skills
 windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
@@ -208,9 +208,10 @@ when no nearer ancestor carries either.
 Four harnesses (codex, antigravity, github-copilot, pi) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
 one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of colliding
-ones. Their crew still land in each harness's own native format. `cursor` reads that open tree too, but
-only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and
-nowhere else — one copy, never two. `windsurf` keeps its canonical `.windsurf/skills/` (its docs make
+ones. Their crew still land in each harness's own native format. A **global** Pi install is the
+exception: Pi also always loads `~/.pi/agent/skills/`, so that install writes crew only — command
+skills stay project-local on the shared tree, or Pi prints `[Skill conflicts]` for every duplicated
+name. `cursor` reads that open tree too, but only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and nowhere else — one copy, never two. `windsurf` keeps its canonical `.windsurf/skills/` (its docs make
 `.agents/skills/` only a secondary scan) and `claude-code` its own `.claude/skills/`. `grok-build`
 keeps its own `.grok/skills/` for a different reason: its commands ship the native
 `disable-model-invocation` guard, which the neutral dialect the shared tree carries does not express.
@@ -377,7 +378,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
    before anything moves on. Red? It reads the logs and fixes — bounded to a few rounds.
 6. **Acceptance board** ⚖️ — `product-manager` + `sdet` (+ gated `ux-ui-designer` / `art-director` /
    `architect`) review the *pushed PR head*, independently and adversarially.
-7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-reviews. Bounded, then escalates.
+7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-selects the board from that delta: failers sit again, prior ACCEPTs carry unless the delta can invalidate them, and a seat the delta newly trips may join. Bounded, then escalates.
 8. **Deliver** 🏁 — disposes non-blocking nits absorb-first (fix cheap ones in the same PR; file
    only capped/batched leftovers), names a `/shipmates-harden` follow-up if the
    change touched a security-relevant surface (this board doesn't threat-model), and opens (or,

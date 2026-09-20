@@ -104,6 +104,8 @@ Any `REJECT`/`FAIL` → fixer loop, re-push, re-gate (bounded), then **Retry** t
 fixer delta (shared rule), then escalate. Open (or, `auto`, merge) the
 PR: body lists the census counts, sites migrated, sites excluded (with reasons), and the green-CI link.
 
+<!-- shipmates:why-merge-pr -->
+
 ## Stage 6 — Report
 
 The inventory (found / migrated / excluded), the clean-sweep confirmation, review verdicts, fix rounds,

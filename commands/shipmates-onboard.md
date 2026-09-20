@@ -132,7 +132,11 @@ then escalate with the unanswerable questions listed.
 Write to `TARGET` — inside `<WORKTREE_DIR>` under `MODE=pr` (the default), in the repo itself under
 `MODE=edit-in-place`. If a file was replaced, **show the diff** — a human must be able to see what was
 changed on their behalf. Under `MODE=pr`, commit on the branch — staging only the paths this run
-produced, never `git add -A` — push, and open the PR against `BASE_BRANCH`. Then gate on CI: poll
+produced, never `git add -A` — push, and open the PR against `BASE_BRANCH`.
+
+<!-- shipmates:why-merge-pr -->
+
+Then gate on CI: poll
 `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing it,
 re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and escalate to the
 user with the failing log rather than looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`,

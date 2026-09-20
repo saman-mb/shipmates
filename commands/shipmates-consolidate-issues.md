@@ -44,7 +44,7 @@ The scope and the go-ahead to change anything come from the Runtime input sectio
 3. From that set, pull out the **open epic set** — issues labeled `epic` or matching the project's
    own epic convention — with each epic's story checklist (`- [ ] #<story>`) and sub-issue graph
    (`gh issue view <epic> --json subIssues`). This is the reconciliation target for Stage 2/3: every
-   dangling task/story/bug gets checked against it before it is left to Stage 4's fresh bundling.
+   dangling task/story/bug is checked against it before it is left to Stage 4's fresh bundling.
 4. Snapshot the baseline count and, per issue, its age, last activity, labels, and milestone. These
    numbers feed the report; record them before anything is touched.
 
@@ -164,8 +164,9 @@ If `MODE=apply`, execute in this order, re-verifying each before acting:
 Then verify (re-fetch and grep; don't assume): every planned close happened, every migration landed,
 every bundle label is on exactly its issue set. Report the before/after: how many issues were in
 scope, how many closed (with the count that were already done), how many migrated — broken out as
-**how many were reattached to an existing epic** vs. other shape migrations — and the bundle tree
-ready to hand to `/shipmates-issue` — one bundle at a time.
+**how many were reattached to an existing epic** vs. other shape migrations — vs. how many remaining
+`keep` issues were bundled fresh, and the bundle tree ready to hand to `/shipmates-issue` — one
+bundle at a time.
 
 ---
 

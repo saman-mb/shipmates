@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use shipmates::cli::{Cli, Command};
+use shipmates::cli::{Cli, Command, install_force_hint};
 use shipmates::installer::manifest_db::InstallReceipt;
 use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering};
 use std::fs;
@@ -25,7 +25,7 @@ fn harness_blurb(name: &str) -> &'static str {
         "codex" => "TOML crew in .codex + skills in .agents",
         "cursor" => "skills in .cursor/skills (first-party slash picker)",
         "github-copilot" => "crew in .github/agents + skills in .agents",
-        "pi" => "agents in .pi + skills in .agents",
+        "pi" => "crew in .pi/agents + skills in .agents (global: crew only)",
         "grok-build" => "agents + skills in .grok",
         "windsurf" => "skills in .windsurf",
         _ => "harness payload",
@@ -273,6 +273,7 @@ fn run_install_loop(
     no_migrate: bool,
     force: bool,
     migrate_steering: bool,
+    force_hint_for: &dyn Fn(&str) -> String,
 ) -> Result<()> {
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
     let install_all = harnesses.len() > 1;
@@ -316,6 +317,7 @@ fn run_install_loop(
             no_migrate,
             force,
             previous_tools,
+            &force_hint_for(harness),
         ) {
             Ok(outcome) => {
                 for script in &outcome.provision_scripts {
@@ -466,19 +468,19 @@ fn install_harness(
     no_migrate: bool,
     force: bool,
     previous_tools: Option<usize>,
+    force_hint: &str,
 ) -> Result<HarnessInstall> {
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
     let adapter = adapters::select(harness)?;
-    let mut built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
+    let built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
     // A global install (target = $HOME) writes into each harness's own
     // user-scope tree, which for antigravity and pi is NOT the workspace path
     // joined to home. Relocate once, here, so the plan, the receipt and the
     // migration table all describe where the files actually land.
     //
-    // The tool payload is relocated with the rest: it lands in the same `skills/`
-    // resource tree (pi's toolbox is `.agents/skills/shipmates-*` in the
-    // workspace shape), and leaving it behind would install the tools somewhere
-    // the harness never reads while `doctor` reported them present.
+    // The tool payload is relocated with the rest, except global pi, which omits
+    // command/tool skills so they cannot collide with a project tree Pi also
+    // loads (#513).
     let global = installer::manifest_db::is_global_target(target_dir);
     let container = adapter.container();
     let relocate = |payload: std::collections::HashMap<String, String>| {
@@ -626,9 +628,15 @@ fn install_harness(
     }
 
     let apply_result = if preserved_paths.is_empty() {
-        installer::apply::apply(target_dir, &plan, force)
+        installer::apply::apply(target_dir, &plan, force, force_hint)
     } else {
-        installer::apply::apply_with_preserved_paths(target_dir, &plan, force, &preserved_paths)
+        installer::apply::apply_with_preserved_paths(
+            target_dir,
+            &plan,
+            force,
+            &preserved_paths,
+            force_hint,
+        )
     };
     let result = match apply_result {
         Ok(result) => result,
@@ -735,9 +743,10 @@ fn install_harness(
 fn pi_global_install_hint(harness: &str, global: bool) -> Option<&'static str> {
     if harness == "pi" && global {
         Some(
-            "Note: pi resolves its project root to the nearest ancestor carrying `.pi/` or \
-             `.agents/`, so a home install under ~/.pi/agent/ can be shadowed. Prefer \
-             `--local` or `--dir <project>` for pi.",
+            "Note: pi loads ~/.pi/agent/skills and project .agents/skills in the same session, \
+             so a global install does not write command skills (that dual tree is what printed \
+             [Skill conflicts]). Crew land at ~/.pi/agent/agents/. Prefer `--local` or \
+             `--dir <project>` for pi — skills install to .agents/skills.",
         )
     } else {
         None
@@ -775,6 +784,10 @@ fn partition_symlinked(
     Ok((kept, skipped))
 }
 
+fn format_with_tools_flag(with_tools: Option<&Vec<String>>) -> Option<String> {
+    with_tools.map(|names| names.join(","))
+}
+
 fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
     if let Some(dir) = dir {
         Ok(PathBuf::from(dir))
@@ -783,6 +796,27 @@ fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
     } else {
         home::home_dir().context("Failed to determine home directory")
     }
+}
+
+/// Reconstruct `--with-tools` for a doctor force hint from what the receipt
+/// still claims. `none` when no tool paths remain; `all` when any do. `None`
+/// when there is no readable receipt (omit the flag — install default applies).
+fn with_tools_flag_from_receipt(
+    target_dir: &Path,
+    harness: &str,
+    tools: &[catalog::CanonicalTool],
+) -> Option<String> {
+    let (_, receipt, _) = installer::plan::read_receipt(target_dir, harness);
+    let receipt = receipt?;
+    let has_tool = receipt.files.iter().any(|file| {
+        let path = Path::new(&file.path);
+        tools.iter().any(|tool| tool.owns_path(path))
+    });
+    Some(if has_tool {
+        "all".to_string()
+    } else {
+        "none".to_string()
+    })
 }
 
 fn main() -> Result<()> {
@@ -801,8 +835,9 @@ fn main() -> Result<()> {
             let cmds = source.load_commands()?;
             let available = source.load_tools()?;
             let available_for_receipt = available.clone();
+            let with_tools_flag = format_with_tools_flag(with_tools.as_ref());
             let selected_tools = select_tools(with_tools, available)?;
-            let target_dir = resolve_target_dir(location.local, location.dir)?;
+            let target_dir = resolve_target_dir(location.local, location.dir.clone())?;
             let install_steering = source.steering_for_target(&target_dir)?;
             let harnesses = resolve_install_harnesses(harness, Some(&target_dir))?;
 
@@ -817,6 +852,7 @@ fn main() -> Result<()> {
                 no_migrate,
                 force,
                 install_steering.is_some(),
+                &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
             )?;
 
             // Global steering is user-scope only (#489). A project --local/--dir
@@ -957,12 +993,13 @@ fn main() -> Result<()> {
             no_migrate,
             from_cwd,
         } => {
-            let target_dir = resolve_target_dir(location.local, location.dir)?;
+            let target_dir = resolve_target_dir(location.local, location.dir.clone())?;
             let harnesses = resolve_update_harnesses(&target_dir, harness)?;
             let source = catalog::resolve_source_from_env(from_cwd)?;
             let roles = source.load_roles()?;
             let cmds = source.load_commands()?;
             let available = source.load_tools()?;
+            let with_tools_flag = format_with_tools_flag(with_tools.as_ref());
             let tools = match with_tools {
                 Some(_) => ToolSelection::Explicit(select_tools(with_tools, available.clone())?),
                 None => ToolSelection::FromReceipt,
@@ -979,6 +1016,7 @@ fn main() -> Result<()> {
                 no_migrate,
                 true,
                 install_steering.is_some(),
+                &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
             )?;
 
             // Refresh canonical global steering only on a global/$HOME target (#489).
@@ -1002,7 +1040,12 @@ fn main() -> Result<()> {
             let roles = source.load_roles()?;
             let cmds = source.load_commands()?;
             let tools = source.load_tools()?;
-            let target_dir = resolve_target_dir(location.local, location.dir)?;
+            let target_dir = resolve_target_dir(location.local, location.dir.clone())?;
+            // Replay the tools posture the receipt claims so a foreign-collision
+            // force hint does not silently broaden a crew-only install (#392 nit).
+            let with_tools = with_tools_flag_from_receipt(&target_dir, &harness, &tools);
+            let force_hint =
+                install_force_hint(&harness, &location, with_tools.as_deref());
 
             let report = if fix {
                 doctor::fix(
@@ -1013,9 +1056,18 @@ fn main() -> Result<()> {
                     &tools,
                     no_migrate,
                     &source,
+                    &force_hint,
                 )?
             } else {
-                doctor::diagnose(&target_dir, &harness, &roles, &cmds, &tools, &source)?
+                doctor::diagnose(
+                    &target_dir,
+                    &harness,
+                    &roles,
+                    &cmds,
+                    &tools,
+                    &source,
+                    &force_hint,
+                )?
             };
             doctor::print_report(&report);
             if report.has_problems() {
@@ -1217,6 +1269,20 @@ mod tests {
     }
 
     #[test]
+    fn pi_blurb_names_shared_skills_and_global_crew_only() {
+        assert!(
+            harness_blurb("pi").contains("skills in .agents"),
+            "project pi shares .agents/skills with sibling harnesses, got {}",
+            harness_blurb("pi")
+        );
+        assert!(
+            harness_blurb("pi").contains("global: crew only"),
+            "global pi must not advertise command skills (#513), got {}",
+            harness_blurb("pi")
+        );
+    }
+
+    #[test]
     fn test_harness_line_all_and_names() {
         let avail = ["claude-code", "opencode", "cursor"];
         assert_eq!(
@@ -1292,9 +1358,9 @@ mod tests {
     fn test_pi_global_install_hint_only_for_home_pi() {
         // #454: home/global pi install prefers project-local; other cases stay quiet.
         let hint = pi_global_install_hint("pi", true).expect("pi + global must hint");
-        assert!(hint.contains("nearest ancestor"), "{hint}");
-        assert!(hint.contains("~/.pi/agent/"), "{hint}");
-        assert!(hint.contains("shadowed"), "{hint}");
+        assert!(hint.contains("command skills"), "{hint}");
+        assert!(hint.contains("~/.pi/agent/agents"), "{hint}");
+        assert!(hint.contains(".agents/skills"), "{hint}");
         assert!(hint.contains("--local"), "{hint}");
         assert!(hint.contains("--dir <project>"), "{hint}");
 
@@ -1302,5 +1368,41 @@ mod tests {
         assert!(pi_global_install_hint("claude-code", true).is_none());
         assert!(pi_global_install_hint("antigravity", true).is_none());
         assert!(pi_global_install_hint("codex", true).is_none());
+    }
+
+    #[test]
+    fn test_install_force_hint_replays_cli_flags() {
+        use shipmates::cli::LocationOpts;
+        let dir = LocationOpts {
+            global: false,
+            local: false,
+            dir: Some("/tmp/proj".into()),
+        };
+        let hint = install_force_hint("codex", &dir, Some("none"));
+        assert_eq!(
+            hint,
+            "shipmates install --harness codex --dir /tmp/proj --with-tools none --force"
+        );
+        let spaced = LocationOpts {
+            global: false,
+            local: false,
+            dir: Some("/tmp/my project".into()),
+        };
+        let hint = install_force_hint("claude-code", &spaced, Some("none"));
+        assert_eq!(
+            hint,
+            "shipmates install --harness claude-code --dir '/tmp/my project' --with-tools none --force"
+        );
+        let local = LocationOpts {
+            global: false,
+            local: true,
+            dir: None,
+        };
+        let hint = install_force_hint("claude-code", &local, None);
+        assert_eq!(
+            hint,
+            "shipmates install --harness claude-code --local --force"
+        );
+        assert!(!hint.contains("shipmates install --force"));
     }
 }

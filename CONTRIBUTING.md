@@ -137,6 +137,18 @@ Branch protection and rulesets are repository settings, so no pull request can c
 workflow edit proposes the jobs, never the gate that blocks on them. The desired state is committed
 in `.github/rulesets/main.json`, next to the workflows it gates.
 
+Decision: gate everyone — `bypass_actors: []` (not omitted). Why: #416's bug was
+advisory gates; the live ruleset still has an admin RepositoryRole actor_id 5
+bypass always, and repo mergers are admins, so keeping bypass leaves merge
+ungated. Rejected: keep the admin bypass; a named release-automation actor
+(releases use `GITHUB_TOKEN` and need no PR-merge bypass); omitting the key (a
+PUT replaces the whole object, so omission is a silent clear). JSON cannot carry
+comments, so this lives in prose.
+
+Apply is still a manual maintainer PUT; re-GET after PUT to confirm. The
+emergency path is another PUT (temporarily disable enforcement or restore an
+admin actor), not an implicit merge bypass.
+
 A maintainer applies it:
 
 ```bash

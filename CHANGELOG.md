@@ -4,15 +4,80 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.1] - 2026-09-20
+## [0.10.4] - 2026-09-21
 
 ### Fixed
 
-- **`/shipmates-consolidate-issues` reconciles dangling tasks/stories/bugs against existing open
-  epics before bundling.** Stage 0 now pulls the open-epic set with its story checklists; Stage 2's
-  `product-manager` pass checks every non-epic issue against it and returns `migrate` with a
-  `target_epic` on a clear match instead of `keep`, so it gets reattached in Stage 3 rather than
-  swept into a brand-new Stage 4 bundle and left duplicating the epic's own tracked scope (#516).
+- **`/shipmates-consolidate-issues` Stage 3 reattach is symmetric for existing epics.** Checklist
+  backfill and `Part of #<epic>` on the child are unconditional (not fallback-only); post-attach
+  verification checks membership in the epic's pre-existing child set rather than exact equality;
+  and a story already labeled `Part of #<epic>` but not yet graph-linked stays a migrate case
+  (#517, follow-up to #519 / #516).
+
+## [0.10.3] - 2026-09-21
+
+### Added
+
+- **PR bodies require a maintainer-facing Why merge this block** on every command
+  that opens a pull request. The block answers the product-impact bar (What
+  changes / Why it matters / Who is affected) — not a file list or bare
+  `Closes #n` — and is shared from `docs/COST.md` via
+  `<!-- shipmates:why-merge-pr -->` (#530).
+
+## [0.10.2] - 2026-09-21
+
+### Fixed
+
+- **`--from-cwd` and `SHIPMATES_SRC` together are a hard error** (two explicit
+  sources). `--from-cwd` and the contributor loop walk up from a nested cwd to
+  the catalog root; the contributor loop still exact-matches that root against
+  this binary's checkout (#394).
+- **Intentional `update --with-tools none` no longer leaves tool bak sidecars or
+  empty husk dirs** that doctor would treat as an interrupted update forever.
+  Mid-write overwrite backups are unchanged (#418).
+- **Collision refuse and doctor foreign-collision messages replay the captain's
+  install flags** (`--harness`, `--dir`/`--local`/`--global`, `--with-tools`)
+  plus `--force` — never a bare `shipmates install --force` (#392).
+- **Foreign collisions are advisory (`warn`, unfixable)** so doctor can go
+  green without implying `doctor --fix` will overwrite the captain's file; the
+  detail line still names the force hint (#393).
+- **`doctor --fix` skip stdout includes `mv <bak> <dest>`** when a non-matching
+  sibling bak blocks restore of an unowned missing path (#361).
+- **Pi contributor steering** is recorded in the capability registry and
+  steering path table; contributor-tree `install --harness pi` writes
+  `.shipmates/contributor-steering.md` and claims it on the receipt (#482, #483).
+
+### Changed
+
+- Identity-rename delete-after-write keeps the safer rename rollback (delete the
+  half-written new path); documented in code, with CLI lifecycle coverage for
+  install and `doctor --fix` identity paths (#379).
+- Install and troubleshooting docs describe interrupted-update bak restore and
+  the non-matching `mv` hint (#362).
+
+## [0.10.1] - 2026-09-21
+
+### Fixed
+
+- **Verifying a CI or config fix must not use a merge to a shared branch as the
+  test.** `/shipmates-issue` and `/shipmates-epic` now say a merge is never itself
+  the verification step — use a local simulation or a disposable branch/PR that is
+  never merged. Stage 4.5 names a permanently empty check suite as its own failure
+  mode (not pending, not red). Stage 0.5 cheaply confirms a `pull_request` event
+  actually produces checks on the epic branch. Citation verification covers
+  third-party platform claims, not only in-repo `file:line` citations (#480).
+- **`/shipmates-consolidate-issues` reattaches dangling issues to existing open epics
+  before inventing a new bundle.** Stage 0 inventories the open-epic set; Stage 2
+  matches unmatched keep-candidates against it (`target_epic`); Stage 3 reattaches;
+  only the leftovers reach Stage 4's themed bundles. The report counts reattachments
+  vs fresh bundles (#516).
+- **A global Pi install no longer writes command skills.** Pi loads `~/.pi/agent/skills`
+  and project `.agents/skills` in the same session, so a home install plus a project
+  (or sibling shared-tree) install printed `[Skill conflicts]` for every `ship-*`
+  name. Project Pi still shares `.agents/skills` with sibling harnesses (one copy).
+  A home install keeps crew at `~/.pi/agent/agents/` and omits command/tool skills.
+  `doctor --harness pi` warns when the same Shipmates skill name is present in more
+  than one tree Pi would load (#513).
 
 ## [0.10.0] - 2026-09-20
 

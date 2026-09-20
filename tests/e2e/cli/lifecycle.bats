@@ -27,9 +27,12 @@ load helpers
 
   run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX" --with-tools none
   assert_success
-  # The removed payload is backed up as a sidecar (the undo a captain can ask
-  # for), but no live tool file remains.
+  # Intentional tool drop must not leave bak sidecars or empty tool husk dirs —
+  # those would look like an interrupted update to doctor forever (#418).
+  # Command skills also use the shipmates-* prefix; assert via toolbox list.
   [ "$(tool_files "$SANDBOX")" -eq 0 ]
+  [ "$(tool_dirs "$SANDBOX")" -eq 0 ]
+  [ "$(find "$SANDBOX/.claude/skills" -path '*shipmates-*' -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
   [ "$(find "$SANDBOX/.claude/skills" -mindepth 2 -maxdepth 2 -name 'SKILL.md' ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 17 ]
 }
 

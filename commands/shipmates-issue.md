@@ -483,10 +483,13 @@ gh pr create --base <BASE_BRANCH> --head <BRANCH> \
   --title "$TITLE" \
   --body-file "$BODY_FILE"
 ```
-The PR body must include: summary, the acceptance criteria as a checklist, how it was validated
-(and any validation that could NOT be run locally), and a `Closes #<issue>` keyword repeated for
-every issue in `<issues>` — GitHub only auto-closes the ones it's told individually, so a single
-comma-separated `Closes #1, #2, #3` silently leaves all but the first open.
+The PR body must include: the maintainer-facing impact block required below, summary, the acceptance
+criteria as a checklist, how it was validated (and any validation that could NOT be run locally), and
+a `Closes #<issue>` keyword repeated for every issue in `<issues>` — GitHub only auto-closes the ones
+it's told individually, so a single comma-separated `Closes #1, #2, #3` silently leaves all but the
+first open.
+
+<!-- shipmates:why-merge-pr -->
 
 ## Stage 4.5 — CI gate: wait for green, fix if red  (orchestrator + Fixer)  ⛔ HARD GATE
 
@@ -500,13 +503,33 @@ reduced assurance.)
 is remediated **here** on this unit's branch. Do **not** return to the epic orchestrator to pause;
 exhaust `MAX_FIX_ROUNDS` first, then escalate from `/shipmates-issue` so the epic can pause with cause.
 
-1. **Wait for the checks to finish** on the PR head (poll, don't guess):
+1. **Wait for the checks to finish** on the PR head (poll, don't guess). Three outcomes, not two:
+   pending → green, pending → red, **or no check suite appears**. Empty is not “not pending” — it is
+   its own failure mode. Bound the **empty** wait (eight polls, 15s apart — not an open loop). Pending is not empty: keep
+   waiting until it resolves (green or red). If `gh pr
+   checks <PR#>` still reports no checks after that bound — no suite, not pending, not red — **stop
+   polling**. Root-cause why the `pull_request` trigger never fired (a `branches:` glob that drops
+   slash-containing **base** names is the usual class) rather than waiting longer, and rather than
+   merging a workflow tweak to the default branch to “see if that was it”.
    ```bash
-   until s=$(gh pr checks <PR#> 2>&1 | head -1); st=$(echo "$s" | cut -f2); \
-     [ "$st" != "pending" ]; do sleep 15; done; echo "$s"
+   n=0
+   while :; do
+     s=$(gh pr checks <PR#> 2>&1 | head -1)
+     case "$s" in
+       *"no checks reported"*) st= ;;
+       *$'	'*) st=$(printf '%s\n' "$s" | cut -f2) ;;
+       *) st= ;;
+     esac
+     if [ "$st" = "pending" ]; then sleep 15; continue; fi
+     if [ -n "$st" ]; then echo "$s"; break; fi
+     n=$((n + 1))
+     if [ "$n" -ge 8 ]; then echo empty-check-suite; break; fi
+     sleep 15
+   done
    ```
-   (Long-running: launch as a background command / until-loop so you're notified on completion — do
-   not chain foreground sleeps.)
+   Treat `empty-check-suite` (or a loop that hits the bound still empty) as the named failure mode
+   above — do not continue to step 2 as if the suite had finished. (Long-running: launch as a
+   background command / until-loop so you're notified on completion — do not chain foreground sleeps.)
 2. **If any check FAILS**, pull the actual failure log — do not speculate:
    ```bash
    gh run view <run-id> --log-failed | grep -iE "FAIL|error|Parse|::error" | head -60
@@ -655,6 +678,11 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
   re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.
+- **A merge is never itself the verification step.** To check whether a CI/config/harness fix works,
+  use the cheapest reversible method: local simulation, or a disposable branch/PR that is explicitly
+  never merged. Do not merge to a shared, default, or integration branch “just to see if the theory
+  was right”. A merge to shared state needs its own, separately considered captain authorization —
+  never inferred from “yes, merge it once green” answering a different question.
 - Keep the base branch and the user's working tree untouched throughout (all work in the worktree).
   Default nested layout lives under `.shipmates/worktrees/` (gitignored); `worktree-root=sibling`
   restores legacy `../<repo>--…` paths.

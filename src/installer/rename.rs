@@ -472,7 +472,10 @@ fn apply_one(
     }
 
     // New is valid on disk. Record before delete so a delete error still
-    // rolls back.
+    // rolls back — including deleting the half-written new path. Leaving the
+    // new file behind (and relying on a later `--fix` to retry the delete)
+    // would risk a tree with both identities present after a partial failure;
+    // rolling back the new write is the safer recovery (#379).
     report.renamed.push(RenamedFile {
         old_path: item.old_path.clone(),
         new_path: item.new_path.clone(),
@@ -780,6 +783,8 @@ fn combine_rollback_error(error: anyhow::Error, rollback: Result<()>) -> anyhow:
 mod tests {
     use super::*;
     use crate::installer::apply::{self, apply_with_preserved_paths};
+
+    const FORCE_HINT: &str = "shipmates install --harness claude-code --dir /tmp --force";
     use crate::installer::atomic_write;
     use crate::installer::plan::InstallPlan;
     use std::collections::BTreeMap;
@@ -1272,14 +1277,14 @@ mod tests {
         let old = ".claude/skills/polish/SKILL.md";
         let new = ".claude/skills/shipmates-polish/SKILL.md";
         let first = install_plan(&[(old, "old polish")]);
-        apply::apply(target, &first, false).unwrap();
+        apply::apply(target, &first, false, FORCE_HINT).unwrap();
 
         let payload = payload_skill(new, "new polish");
         let items = plan(target, &payload, "").unwrap();
         assert!(!items.is_empty());
         let preserved = preserved_old_paths(&items);
         let second = install_plan(&[(new, "new polish")]);
-        apply_with_preserved_paths(target, &second, false, &preserved).unwrap();
+        apply_with_preserved_paths(target, &second, false, &preserved, FORCE_HINT).unwrap();
 
         assert_eq!(
             fs::read_to_string(target.join(old)).unwrap(),
