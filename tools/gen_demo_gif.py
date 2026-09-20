@@ -53,12 +53,12 @@ STAGE_COLORS = {
 # (label, running detail, done detail)
 STAGES = [
     ("PLAN",       "reading the issue + your docs …",   "work units · acceptance criteria"),
-    ("ISOLATE",    "creating a throwaway git worktree …","throwaway git worktree"),
-    ("BUILD",      "senior-engineer, in parallel …",    "senior-engineer, in parallel"),
+    ("ISOLATE",    "creating a throwaway git worktree …","throwaway git worktree ready"),
+    ("BUILD",      "senior-engineer, in parallel …",    "built to the plan"),
     ("SELF-CHECK", "sdet runs the real suite …",        "tests pass"),
-    ("CI GATE",    "waiting for CI to go green …",       "wait for green on the PR"),
-    ("REVIEW",     "board reviews the PR head …",        "acceptance board on the PR head"),
-    ("REMEDIATE",  "apply fixes, re-review …",           "fix blockers · file nits"),
+    ("CI GATE",    "waiting for CI to go green …",       "CI green on the PR"),
+    ("REVIEW",     "board reviews the PR head …",        "acceptance board accepted"),
+    ("REMEDIATE",  "apply fixes, re-review …",           "blockers fixed · nits filed"),
     ("DELIVER",    "",                                        "reviewed, CI-green PR"),
 ]
 

@@ -38,8 +38,10 @@ GREEN  = (126, 231, 135)   # ✓ / success / cargo status word
 PROMPT = (86, 214, 122)    # $ prompt
 CURSOR = (200, 220, 235)
 
-# Stage accent colours, shared with gen_demo_gif.py's STAGE_COLORS so a command
-# reel that reuses a stage name paints it the same hue the /ship-issue reel does.
+# Stage accent colours — same *slot order* as gen_demo_gif.py's STAGE_COLORS so
+# command reels stay coherent. Exact RGB may diverge when the flagship reel
+# tunes a stage (e.g. ISOLATE sea-blue); regenerate command demos if you need
+# pixel lockstep again.
 BLUE   = (130, 170, 255)
 PURPLE = (170, 150, 255)
 ORANGE = (255, 180, 90)
