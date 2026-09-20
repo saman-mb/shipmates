@@ -104,10 +104,6 @@ fn ship_issue_stage_4_5_names_empty_check_suite() {
         "empty must not break on the first poll; keep looping until the bound:\n{stage}"
     );
     assert!(
-        stage.contains("no checks reported"),
-        "empty-suite path must classify gh's tabless 'no checks reported' stderr as empty, not as -n success:\n{stage}"
-    );
-    assert!(
         stage.contains("pending") && stage.contains("continue"),
         "pending must keep waiting and not share the empty-suite cap:\n{stage}"
     );

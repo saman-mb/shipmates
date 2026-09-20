@@ -502,19 +502,21 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/shipmates-issue` so the epi
 
 1. **Wait for the checks to finish** on the PR head (poll, don't guess). Three outcomes, not two:
    pending → green, pending → red, **or no check suite appears**. Empty is not “not pending” — it is
-   its own failure mode. Bound the wait (eight polls, 15s apart — not an open loop). If `gh pr
+   its own failure mode. Bound the **empty** wait (eight polls, 15s apart — not an open loop). Pending is not empty: keep
+   waiting until it resolves (green or red). If `gh pr
    checks <PR#>` still reports no checks after that bound — no suite, not pending, not red — **stop
    polling**. Root-cause why the `pull_request` trigger never fired (a `branches:` glob that drops
    slash-containing **base** names is the usual class) rather than waiting longer, and rather than
    merging a workflow tweak to the default branch to “see if that was it”.
    ```bash
    n=0
-   while [ "$n" -lt 8 ]; do
+   while :; do
      s=$(gh pr checks <PR#> 2>&1 | head -1)
      st=$(printf '%s\n' "$s" | cut -f2)
-     if [ -z "$st" ]; then echo empty-check-suite; break; fi
-     if [ "$st" != "pending" ]; then echo "$s"; break; fi
+     if [ "$st" = "pending" ]; then sleep 15; continue; fi
+     if [ -n "$st" ]; then echo "$s"; break; fi
      n=$((n + 1))
+     if [ "$n" -ge 8 ]; then echo empty-check-suite; break; fi
      sleep 15
    done
    ```
