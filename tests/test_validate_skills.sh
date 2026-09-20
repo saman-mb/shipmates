@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Regression test for the shell-injection lint in tools/validate_skills.py
-# (#82 in ship-issue, #138 in ship-pr-review).
+# (#82 in ship-issue, #138 in ship-pr-review), the prose --body gate (#150),
+# and strictly-read-only commands seating a write-capable role (#504).
 #
 # The lint is a negative control, so it can rot silently: a regex "cleanup"
 # that stops matching still leaves every suite green. This pins both halves —
@@ -50,6 +51,26 @@ rejects() {
 # $1 = description, stdin = SKILL.md body that must be ACCEPTED.
 accepts() {
   if lint_body; then ok "accepts: $1"; else bad "accepts: $1"; fi
+}
+
+# Like lint_body, but the fixture declares allowed-tools (needed to infer
+# strictly-read-only vs mixed-mode for the write-capable seating gate).
+lint_with_tools() {
+  {
+    printf -- '---\nname: fixture\ndescription: A fixture command used by the lint regression suite.\nallowed-tools: %s\n---\n\n# /fixture\n\n' "$1"
+    cat
+  } > "$WORK/commands/fixture.md"
+  python3 "$WORK/tools/validate_skills.py" >/dev/null 2>&1
+}
+
+# $1 = description, $2 = allowed-tools, stdin = body that must be REJECTED.
+rejects_tools() {
+  if lint_with_tools "$2"; then bad "rejects: $1"; else ok "rejects: $1"; fi
+}
+
+# $1 = description, $2 = allowed-tools, stdin = body that must be ACCEPTED.
+accepts_tools() {
+  if lint_with_tools "$2"; then ok "accepts: $1"; else bad "accepts: $1"; fi
 }
 
 # --- forms that must be rejected ---
@@ -217,6 +238,47 @@ accepts 'a non-shell fence that happens to contain --body' <<'MD'
 ```
 MD
 
+# --- prose / inline-backticks --body (#150) ---
+
+rejects 'prose/backticks: gh pr review --comment --body "<findings>"' <<'MD'
+gh pr review --comment --body "<findings>"
+MD
+
+accepts "never/don't line that names --body without invoking it" <<'MD'
+Don't reach for --body with a value; never `--body`, even for text you wrote.
+MD
+
+accepts '--body-file in prose' <<'MD'
+Write the review to a temp file and use --body-file "$REVIEW_BODY_FILE".
+MD
+
+accepts 'same-line <!-- shipmates:body-ok --> on an invocation-shaped prose line' <<'MD'
+gh pr review --comment --body "<findings>" <!-- shipmates:body-ok -->
+MD
+
+# --- strictly-read-only command seating a write-capable role (#504) ---
+
+rejects_tools 'strictly-read-only fixture seating technical-writer without the marker' \
+  'Bash, Read, Agent, Grep, Glob' <<'MD'
+Spawn a `technical-writer` to review docs.
+MD
+
+accepts_tools 'strictly-read-only fixture seating technical-writer WITH the marker' \
+  'Bash, Read, Agent, Grep, Glob' <<'MD'
+Spawn a `technical-writer` to review docs.
+<!-- shipmates:briefed-read-only:technical-writer -->
+MD
+
+accepts_tools 'read-only fixture seating only architect' \
+  'Bash, Read, Agent, Grep, Glob' <<'MD'
+Spawn an `architect` to review structure.
+MD
+
+accepts_tools 'Write+Edit fixture seating senior-engineer (not this hole)' \
+  'Bash, Read, Write, Edit, Agent' <<'MD'
+Spawn a `senior-engineer` to apply the fix.
+MD
+
 # --- positive control: the real tree, and the fix #138 actually shipped ---
 
 real_rc=0
@@ -230,6 +292,25 @@ for f in commands/shipmates-pr-review.md; do
     bad "$f still posts via --body-file (#138 fix present)"
   fi
 done
+
+# Historical /ship-deslop-codebase (4127dfb) seats technical-writer, claims a
+# read-only allowlist, and carries no briefed-read-only marker — the hole #504
+# closes. Skip when the commit is not in this clone (GitHub Actions fetch is
+# shallow); the rejects_tools fixture above is the clone-independent gate.
+rm -f "$WORK/commands"/*.md
+if git -C "$REPO" cat-file -e 4127dfb^{commit} 2>/dev/null \
+    && git -C "$REPO" show 4127dfb:commands/ship-deslop-codebase.md \
+      > "$WORK/commands/ship-deslop-codebase.md" 2>/dev/null; then
+  hist_rc=0
+  python3 "$WORK/tools/validate_skills.py" >/dev/null 2>&1 || hist_rc=$?
+  if [ "$hist_rc" -ne 0 ]; then
+    ok "4127dfb ship-deslop-codebase.md is rejected without the marker"
+  else
+    bad "4127dfb ship-deslop-codebase.md is rejected without the marker"
+  fi
+else
+  ok "4127dfb not in this clone; fixture coverage is the gate"
+fi
 
 # --- summary ---
 

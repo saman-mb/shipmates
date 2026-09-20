@@ -80,6 +80,7 @@ the analysis is still parallel and specialist:
 | `security-engineer` | dependency and supply-chain findings, and anything touching secrets, authz or untrusted input | 1, 2 |
 | `technical-writer` | documentation-rot findings — docs describing code that has moved | 1 |
 
+<!-- shipmates:briefed-read-only:technical-writer -->
 **Read-only is structural for six of those seven; the seventh needs its brief to say so.** `architect`,
 `sdet`, `product-manager`, `site-reliability-engineer`, `performance-engineer` and `security-engineer`
 carry no write capability in their role definition, so none of them can write whatever the brief says.

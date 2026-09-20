@@ -7,7 +7,7 @@ use shipmates::catalog::{
     load_commands, load_roles, load_tools, reject_positional, CanonicalCommand, CanonicalRole,
 };
 use shipmates::digest;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use regex::Regex;
 
@@ -315,9 +315,10 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
 /// the identity its install path implies (what `adopt::frontmatter_name_matches`
 /// reads), and pin the failure mode with a negative control.
 ///
-/// Codex is the one target whose crew is TOML rather than Markdown — those bytes
-/// are digest-gated and exercised by `tests/test_codex_smoke.sh`, so they are
-/// skipped here.
+/// Codex crew are standalone TOML (`name = "architect"`), not YAML frontmatter.
+/// Those files are parsed by the emitted shape (toml_basic keys + a toml_literal
+/// `developer_instructions`) rather than skipped — a toml-only regression cannot
+/// hide behind YAML `parsed_blocks`.
 #[test]
 fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -349,6 +350,7 @@ fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
     for target in shipmates::adapters::targets() {
         let adapter = shipmates::adapters::select(target).unwrap();
         let mut files = adapter.build(&roles, &commands).unwrap();
+        files.extend(adapter.build_steering("steer"));
         files.extend(adapter.build_tools(&tools));
 
         // All seventeen commands must arrive exactly once, as a skill or as
@@ -365,15 +367,37 @@ fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
         }
 
         let mut parsed_blocks = 0;
+        let mut parsed_toml = 0;
+        let toml_emitted = files.keys().filter(|path| path.ends_with(".toml")).count();
         for (path, content) in &files {
-            // Codex crew are standalone TOML (`name = "architect"`), not YAML
-            // frontmatter: their bytes are digest-gated in
-            // tests/payload-digests/codex.sha256 and run through
-            // tests/test_codex_smoke.sh, so strict-YAML parsing does not apply.
             if path.ends_with(".toml") {
+                let parsed = parse_emitted_codex_toml(content).unwrap_or_else(|error| {
+                    panic!("{target} {path}: Codex TOML is not the emitted shape: {error}\n{content}")
+                });
+                for key in ["name", "description", "developer_instructions"] {
+                    assert!(
+                        parsed.get(key).is_some_and(|value| !value.is_empty()),
+                        "{target} {path}: required TOML key `{key}` missing or empty"
+                    );
+                }
+                parsed_toml += 1;
+                if let Some(identity) =
+                    shipmates::installer::adopt::artifact_name(std::path::Path::new(path))
+                {
+                    assert_eq!(
+                        parsed.get("name").map(String::as_str),
+                        Some(identity.as_str()),
+                        "{target} {path}: TOML `name` must equal the path identity"
+                    );
+                }
                 continue;
             }
-            if !(path.ends_with(".md") || path.ends_with(".mdc")) {
+            // Cursor steering is `.mdc`; Copilot steering is `.instructions.md`.
+            // Both carry YAML frontmatter and must parse the same way as `.md`.
+            if !(path.ends_with(".md")
+                || path.ends_with(".mdc")
+                || path.ends_with(".instructions.md"))
+            {
                 continue;
             }
             let Some(frontmatter) = frontmatter_block(content) else {
@@ -416,6 +440,10 @@ fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
         assert!(
             parsed_blocks > 0,
             "{target} emitted no parseable YAML frontmatter block"
+        );
+        assert_eq!(
+            parsed_toml, toml_emitted,
+            "{target} skipped a .toml agent ({parsed_toml} parsed, {toml_emitted} emitted)"
         );
     }
     assert!(
@@ -1833,6 +1861,60 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
         shipped, expected,
         "the shipped per-target table must carry exactly one row per target"
     );
+}
+
+/// Parse a Codex crew file by the shape `codex::serialize` emits: `name`,
+/// `description`, and optional `model_reasoning_effort` as toml_basic strings,
+/// then `developer_instructions` as a toml_literal (`'''\n…'''`). No toml crate.
+fn parse_emitted_codex_toml(content: &str) -> Result<HashMap<String, String>, String> {
+    const LITERAL: &str = "developer_instructions = '''\n";
+    let Some(literal_at) = content.find(LITERAL) else {
+        return Err("missing developer_instructions toml_literal".into());
+    };
+    let header = &content[..literal_at];
+    let after = &content[literal_at + LITERAL.len()..];
+    let Some(end) = after.find("'''") else {
+        return Err("unterminated developer_instructions toml_literal".into());
+    };
+    if !after[end + 3..].trim().is_empty() {
+        return Err("trailing bytes after developer_instructions".into());
+    }
+    let mut keys = HashMap::new();
+    keys.insert("developer_instructions".into(), after[..end].to_string());
+    for line in header.lines() {
+        if line.is_empty() {
+            continue;
+        }
+        let Some((key, raw)) = line.split_once(" = ") else {
+            return Err(format!("expected `key = value`, got {line:?}"));
+        };
+        keys.insert(key.to_string(), parse_emitted_toml_basic(raw)?);
+    }
+    Ok(keys)
+}
+
+fn parse_emitted_toml_basic(raw: &str) -> Result<String, String> {
+    let inner = raw
+        .strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .ok_or_else(|| format!("expected toml_basic double quotes, got {raw:?}"))?;
+    let mut out = String::with_capacity(inner.len());
+    let mut chars = inner.chars();
+    while let Some(character) = chars.next() {
+        if character != '\\' {
+            out.push(character);
+            continue;
+        }
+        match chars.next() {
+            Some('\\') => out.push('\\'),
+            Some('"') => out.push('"'),
+            Some('n') => out.push('\n'),
+            Some('t') => out.push('\t'),
+            Some('r') => out.push('\r'),
+            other => return Err(format!("unknown toml_basic escape {other:?} in {raw}")),
+        }
+    }
+    Ok(out)
 }
 
 /// The frontmatter text between the opening and closing `---` lines, for a file

@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.5] - 2026-09-21
+
+### Fixed
+
+- **The `--body` lint now covers prose, inline backticks, and `crew/` — not only
+  fenced shell in `commands/`.** An instruction a model will follow is live
+  whether or not it sits in a fence. Invocation-shaped `--body` in running text
+  fails the gate; naming the flag inside a never/don't sentence does not.
+  `skills/` and `harnesses/` trees are gone; the checker does not recreate them
+  (#150).
+- **A strictly-read-only command that seats a write-capable role fails CI unless
+  it carries a checkable brief.** `allowed-tools` with neither Write nor Edit is
+  the posture; `<!-- shipmates:briefed-read-only:<role> -->` is the marker.
+  Prose in the brief is not enough. `/ship-deslop` and `/shipmates-pr-review`
+  mark `technical-writer`; mixed-mode commands that keep Write/Edit are out of
+  this hole (#504).
+- **`shipmates check --target` fails when a built payload file is missing from
+  the digest**, not only when a digest entry is missing from the payload or a
+  hash mismatches. `build --update` is the only way a new file enters the
+  payload (#415).
+
+### Changed
+
+- **Site generator and site validator share one stdlib `_yaml_unquote` helper.**
+  The escape table lives in `tools/yaml_unquote.py`; both former copies are
+  gone (#414).
+- **Emitted-frontmatter tests now strict-parse steering YAML and Codex TOML,**
+  and property-test that `unquote(yaml_scalar(s))` round-trips quotes,
+  backslashes, and C0 controls (#413).
+
 ## [0.10.4] - 2026-09-21
 
 ### Fixed

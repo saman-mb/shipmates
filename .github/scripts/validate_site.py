@@ -40,6 +40,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+_TOOLS = ROOT / "tools"
+if str(_TOOLS) not in sys.path:
+    sys.path.insert(0, str(_TOOLS))
+from yaml_unquote import yaml_unquote as _yaml_unquote
 SITE = ROOT / "site"
 INDEX = SITE / "index.html"
 CSS = SITE / "styles.css"
@@ -897,48 +901,11 @@ def check_command_is_guide(page: Page) -> None:
 
 _PUNCT_SPACE = re.compile(r"\s+([,.;:!?])")
 
-# The double-quoted escapes the renderer writes, mirroring `yaml_scalar` in
-# src/adapters/render.rs (#407): backslash, double quote, newline/CR/tab, and
-# every other control character as `\uXXXX` (lowercase hex).
-YAML_UNQUOTE_ESCAPES = {"\\": "\\", '"': '"', "n": "\n", "r": "\r", "t": "\t"}
-YAML_UNICODE_ESCAPE_RE = re.compile(r"[0-9a-fA-F]{4}")
-
 
 def _prose_norm(s: str) -> str:
     """_tokens plus punctuation tightening, so a value split across inline tags
     ("Read</code>, <code>Grep") still matches its single-string source."""
     return _PUNCT_SPACE.sub(r"\1", _tokens(s))
-
-
-def _yaml_unquote(value: str) -> str:
-    """Undo the renderer's `yaml_scalar` quoting on one frontmatter value.
-
-    The renderer double-quotes free-text scalars (#407) and escapes `\\`, `\"`,
-    `\n`, `\r`, `\t` and other control characters as `\\uXXXX`; the reference
-    card shows the authored string, not its YAML spelling. Values not wrapped
-    in double quotes pass through byte-identical.
-
-    Scanned left to right: sequential replaces would unescape `\\\\n` twice.
-    Mirrors `_yaml_unquote` in tools/gen_command_pages.py.
-    """
-    if len(value) < 2 or value[0] != '"' or value[-1] != '"':
-        return value
-    inner = value[1:-1]
-    out = []
-    i = 0
-    while i < len(inner):
-        char = inner[i]
-        escape = inner[i + 1] if char == "\\" and i + 1 < len(inner) else ""
-        if escape in YAML_UNQUOTE_ESCAPES:
-            out.append(YAML_UNQUOTE_ESCAPES[escape])
-            i += 2
-        elif escape == "u" and YAML_UNICODE_ESCAPE_RE.match(inner, i + 2):
-            out.append(chr(int(inner[i + 2 : i + 6], 16)))
-            i += 6
-        else:
-            out.append(char)
-            i += 1
-    return "".join(out)
 
 
 def agent_frontmatter(src: Path) -> dict[str, str]:
