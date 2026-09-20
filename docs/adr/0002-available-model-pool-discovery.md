@@ -1,6 +1,6 @@
 # ADR 0002 — Discovering the available model pool before routing a tier to a model
 
-**Status:** Accepted (amended 2026-09-15)
+**Status:** Superseded in part by [ADR 0003](0003-the-orchestrator-judges-the-model.md) (2026-09-21) — the captain-authored declared pool file is removed. The discovery ladder, the per-harness evidence, the enforcement contract and the `tools/harness_matrix.json` record all stand.
 **Date:** 2026-09-13
 **Decided by:** `/ship-issue` #434
 **Bundles:** #434 (pool discovery + resolution order + audit), sibling to #296 (neutral spawn-hint rendering)
@@ -170,8 +170,8 @@ reconciled on every target.
 **Reporting.** The `pool` field of the `MODEL ROUTING:` line carries the source in force (`project` /
 `user` / `inherit`) and, only when no project pool supplied the rank, **at most one** condition from a
 **closed three-value vocabulary**, chosen in this order: `pool unusable` (the selected file exists but
-cannot be read or parsed — no fall-through to the other file, the semantics unchanged and now
-unambiguous), `pool out of scope` (a project file at a path this run does not resolve, the retired path
+cannot be read or parsed — skipped for the next level, the condition still reported and the semantics
+now unambiguous), `pool out of scope` (a project file at a path this run does not resolve, the retired path
 above included, is never used), and `no pool` (no usable declaration: neither file present, or nothing
 to rank). No two conditions combine: the field carries one condition or none. No pool state is silent and
 none aborts a run, so a captain upgrading with a file on the retired path gets a named line instead of a
@@ -179,11 +179,47 @@ silent ignore.
 
 **Residual risk.** A repository could already own a root `model-pool.json` meaning something else. If
 it is not a valid pool, the run reports `pool unusable` and continues — reported, non-fatal, one line.
-If it is a valid pool, that is the feature. One consequence is deliberate: with no fall-through, that
-same run does not consult the user file at all — falling through with the condition named is a
-behaviour change deferred to its own follow-up (#486), not an accident. The route is a one-way door for a
+If it is a valid pool, that is the feature. One consequence was deliberate: with no fall-through, that
+same run did not consult the user file at all — falling through with the condition named was a
+behaviour change deferred to its own follow-up (#486), which took it on 2026-09-21 (see the amendment
+below). The route is a one-way door for a
 captain who declared a pool under v0.7.x: the breakage is real and intended to be *reported* rather than
 silent, and the migration story is this amendment plus the release note.
+
+---
+
+## Amendment — 2026-09-21
+
+It supersedes one clause of the 2026-09-15 amendment: the **no-fall-through** rule for a project pool
+that exists but cannot be read or parsed. The ladder, the precedence order, the enforcement contract,
+the audit line, the retired path and the per-harness record all stand as written above; only the
+`pool unusable` behaviour moves.
+
+**The decision (#486).** An unusable project pool is **skipped for the next level**, and the run keeps
+consulting the user file `~/.shipmates/model-pool.json`. The condition `pool unusable` is still
+reported — `pool=user (pool unusable)`, or `inherit (pool unusable)` when no user pool exists either —
+so the condition vocabulary, its exclusivity and its precedence are untouched, and no new tag is added.
+
+**Why the rule moved.** It was written when the project pool lived in Shipmates' own `.shipmates/`
+namespace, where a name collision was implausible. #449 moved the path to `<repo>/model-pool.json`, and
+a repository that already owns a file by that name — meaning something else entirely — now makes the
+project candidate unusable. Under no-fall-through that same run also stopped consulting the user file,
+so a captain's declared ranking was discarded to honour a file the captain never opted into. The ladder
+already falls *through* when a level's mechanism is absent ("they fall through to the user's pool",
+*Per-target behaviour where a level is absent*, above); falling through when a present file cannot be
+read makes the ladder uniform rather than exceptional.
+
+**What the honesty rule still buys.** "A missing declaration and a broken one are never confused" is
+not weakened: the condition keeps distinguishing them. `inherit (pool unusable)` and `inherit (no pool)`
+remain different lines, and `pool=user (pool unusable)` says exactly what happened — the project level
+was found, was not usable, and the user level supplied the rank. Exactly one pool is still in force, so
+the *exactly one answer* principle that rejected a compat read for the retired path is intact: this is
+one answer **plus** the reason the level above it was skipped, not two competing answers.
+
+**Cost.** The block grew by 16 bytes (8,361 → 8,377 against the 8,400-byte ceiling the #450 trim set),
+and all nine payload digests were regenerated in the same PR. The guard in `src/adapters/render.rs` now
+asserts both halves of the new rule — the fall-through and the still-reported condition — and asserts
+that the retired no-fall-through sentence is gone.
 
 ---
 

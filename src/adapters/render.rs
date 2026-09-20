@@ -840,74 +840,77 @@ mod tests {
     /// tokens or shapes that only make sense inside this repo: no HTML comment,
     /// no `{{…}}` placeholder, no `$`-plus-digit (a command file is scanned for
     /// one and a fence would not protect it), and no leftover marker. The
-    /// resolution order must be stated exactly once, in this block. The pool's
-    /// location and its resolution root are a **contract** a captain relies on,
-    /// not prose, so they are asserted here: exactly one project-pool path, the
-    /// run's repository root as the root it resolves against, the closed
-    /// three-value condition vocabulary with its exclusivity and precedence
-    /// rule, and exactly
-    /// one mention of the retired path — the out-of-scope clause that names it.
-    /// The block is inlined into every command on every target, so its ceiling
-    /// is asserted here too, beside the table ceiling in the integration suite.
+    /// resolution order must be stated exactly once, in this block.
+    ///
+    /// The block's one mechanism is the orchestrator's own judgment (#531), so
+    /// that is asserted both ways: the judgment rule is present in its stated
+    /// order, and **no** declared-config concept survives anywhere in the block
+    /// — the retired word included, because a feature that lingers in the
+    /// doctrine is a captain still being told to maintain a file that no longer
+    /// does anything. The block is inlined into every command on every target,
+    /// so its ceiling is asserted here too, beside the table ceiling in the
+    /// integration suite.
     #[test]
     fn test_model_routing_block_is_canonical_and_self_contained() {
         let out = render_body("<!-- shipmates:model-routing -->", &CLAUDE_CODE);
         assert!(
             out.contains(
-                "explicit spawn value → declared default → parent/session value → the model's own effort default"
+                "explicit spawn value → parent/session value → the model's own effort default"
             ),
             "model routing must state the resolution order verbatim"
         );
-        assert!(
-            out.contains("run's repository root"),
-            "the block must define `<repo>` as the run's repository root"
-        );
-        assert!(
-            out.contains("`<repo>/model-pool.json`"),
-            "the block must name the project pool by its one shipped path"
-        );
-        assert_eq!(
-            out.matches("<repo>/.shipmates/model-pool.json").count(),
-            1,
-            "the retired path may appear exactly once — in the out-of-scope clause"
-        );
-        assert!(
-            out.contains("retired `<repo>/.shipmates/model-pool.json`"),
-            "the retired mention must be the retired-path clause"
-        );
-        // The block wraps at ~100 columns, so the clauses that may cross a line
+        // The block wraps at ~100 columns, so clauses that may cross a line
         // break are asserted on a whitespace-normalised copy.
         let flat = out.split_whitespace().collect::<Vec<_>>().join(" ");
-        assert!(
-            flat.contains("when no project pool is in force"),
-            "the out-of-scope condition must be scoped to the runs where no project pool is in force"
-        );
-        assert!(
-            flat.contains("carries at most one condition from a closed set of three"),
-            "the block must state that the `pool` field carries at most one condition from a closed set"
-        );
-        assert!(
-            flat.contains(
-                "chosen in this order: `pool unusable`, then `pool out of scope`, then `no pool`"
-            ),
-            "the block must state the condition precedence — the order is what resolves two true \
-             conditions to one"
-        );
-        assert!(
-            out.contains("pool=<project|user|inherit>[ (<condition>)]"),
-            "the audit template must expose the `pool` field's optional condition slot"
-        );
-        for condition in ["no pool", "pool unusable", "pool out of scope"] {
+
+        // #531 — the judgment rule, in the order it must be exercised. Each step
+        // is load-bearing: drop `Record the call` and a wrong pick becomes
+        // uncorrectable; drop `inherit` and an unreadable target dead-ends.
+        for step in [
+            "The main agent makes the call — nothing is configured in advance.",
+            "Ask the target what exists.",
+            "Where there is no listing command, read what the target documents.",
+            "Then judge.",
+            "Record the call.",
+            "`inherit` when you cannot decide.",
+        ] {
             assert!(
-                out.contains(condition),
-                "the block must name the `{condition}` pool condition — a condition a captain \
-                 cannot see in the report is a silent one"
+                flat.contains(step),
+                "the block must state the judgment rule's step `{step}` — the orchestrator's own \
+                 call is the only mechanism left (#531)"
             );
         }
         assert!(
-            out.len() <= 8_400,
-            "the model-routing block is {} bytes, past the 8,400-byte ceiling set for the #450 trim \
-             — it is inlined into every command on every target",
+            flat.contains("Name only an identity the target itself offered"),
+            "the block must forbid an identity the target did not offer — that restriction is what \
+             makes an agent's judgment safe (#531)"
+        );
+        assert!(
+            flat.contains("source=<observed|inherit>"),
+            "the audit template must carry where the identity came from (#531)"
+        );
+
+        // #531 — the declared config is gone and must stay gone. The word itself
+        // is retired here: every mention that used to be in this block was an
+        // instruction to maintain a file that no longer exists, so a residue
+        // would send a captain looking for it. Re-using the word for something
+        // else is a deliberate act that updates this assertion.
+        assert!(
+            !flat.contains("pool"),
+            "the block still carries the retired declared-config vocabulary — it is removed and the \
+             doctrine must not describe it (#531)"
+        );
+        for residue in ["model-pool", "declared pool", "pool unusable", "pool out of scope"] {
+            assert!(
+                !flat.contains(residue),
+                "the block still carries the retired declared-config concept `{residue}` (#531)"
+            );
+        }
+        assert!(
+            out.len() <= 7_500,
+            "the model-routing block is {} bytes, past the 7,500-byte ceiling — it is inlined into \
+             every command on every target, and the ceiling came down when the declared config was \
+             removed (#531): trim a cell or a clause rather than raising it",
             out.len()
         );
         assert!(!out.contains("<!--"), "block must carry no HTML comment");

@@ -7,8 +7,8 @@
       "enumeration": "{ available: bool, command: string, notes: string }",
       "identity": "string \u2014 the naming SCHEME only; never a concrete model id",
       "runtime_model_override": "{ kind: per-spawn | static-agent-file | session-level | none, notes: string }",
-      "effort": "{ kind: separate-key | folded-into-model-string | run-level | none, vocabulary: string, clamp: string, notes: string }",
-      "declared_pool": "{ mechanism: string, enforcement: abort | warn | fallback | none, notes: string }",
+      "effort": "{ kind: separate-key | folded-into-model-string | run-level | none, vocabulary: string, clamp: string, clamp_kind: clamps-down | not-documented | no-surface, notes: string }",
+      "declared_pool": "{ mechanism: string, enforcement: abort | warn | fallback | none, notes: string } \u2014 the TARGET's own native allow-list or denylist, never a captain-authored file: the declared pool file a captain used to maintain was removed in #531, and the orchestrator now supplies the ranking itself",
       "reported_gaps": "[{ item: string, label: reported-not-documented, url: string }]",
       "verified_on": "YYYY-MM-DD",
       "notes": "string \u2014 must name the first-party URL the row was checked against"
@@ -31,6 +31,11 @@
         "run-level",
         "none"
       ],
+      "effort.clamp_kind": [
+        "clamps-down",
+        "not-documented",
+        "no-surface"
+      ],
       "declared_pool.enforcement": [
         "abort",
         "warn",
@@ -45,8 +50,14 @@
       "fallback": "The harness substitutes a different model; the audit line records `substituted`",
       "none": "No native mechanism exists, so the orchestrator self-enforces or falls to `inherit`"
     },
+    "clamp_kind_values": {
+      "clamps-down": "The record documents that a level the model does not support is reduced, skipped, gated away or otherwise not honoured at full strength",
+      "not-documented": "The record documents no clamp behaviour either way \u2014 the docs are silent, so a shipped clause must hedge to the same degree",
+      "no-surface": "The record documents no non-interactive effort surface at all, so there is nothing to clamp \u2014 a shipped clause may only restate the mechanism the row describes"
+    },
+    "clamp_kind_rule": "`effort.clamp_kind` is the machine-checkable verdict the shipped per-target table's effort cell is gated against (#485), and it is cross-checked against the prose beside it so the field cannot drift from the text it classifies. A shipped clause may never assert more than the record says: under `not-documented` it must carry an absence hedge, under `clamps-down` it must not, and it may only name mechanism words the row's own text carries.",
     "axis": "This record asserts TARGET CAPABILITY \u2014 what the harness documents \u2014 not what our adapter emits. That is a different axis from the CI-enforced `agents` and `effort` flags, which assert EMISSION: a harness can document an effort surface and still be `effort: false` because the adapter emits no key.",
-    "empty_pool_fallback": "inherit",
+    "empty_surface_fallback": "inherit",
     "sibling_relationship": "#296 owns neutral spawn-hint RENDERING and consumes this record, including its `runtime_model_override` sub-key; #434 owns the record itself. One record, one owner \u2014 #296 must not add a second.",
     "verified_on": "2026-09-13"
   },
@@ -111,6 +122,7 @@
           "kind": "separate-key",
           "vocabulary": "A 5-step depth scale plus a non-model orchestration pseudo-level; the supported set is model-dependent",
           "clamp": "An unsupported level clamps down",
+          "clamp_kind": "clamps-down",
           "notes": "Reachable from per-agent frontmatter, a CLI flag, a session command, an environment variable and a settings key; an org can cap the maximum level."
         },
         "declared_pool": {
@@ -166,6 +178,7 @@
           "kind": "separate-key",
           "vocabulary": "Three first-party vocabularies that do not match: a 5-name CLI flag, a 4-name settings key, and a free-string agent frontmatter field",
           "clamp": "Not documented",
+          "clamp_kind": "not-documented",
           "notes": "The agent frontmatter field is documented as a free string and the three surfaces disagree, so no single list can validate a value. First-party sources: https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference ; https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference"
         },
         "declared_pool": {
@@ -219,6 +232,7 @@
           "kind": "separate-key",
           "vocabulary": "A 6-step ordered depth scale",
           "clamp": "Gated on model support",
+          "clamp_kind": "clamps-down",
           "notes": "A per-agent key mirrored by a subagent default; an unsupported level is not applied."
         },
         "declared_pool": {
@@ -277,6 +291,7 @@
           "kind": "folded-into-model-string",
           "vocabulary": "Model-defined; the accepted values are not enumerated in the docs",
           "clamp": "Model-defined \u2014 clamping is not documented",
+          "clamp_kind": "not-documented",
           "notes": "An effort parameter sits inside the bracketed parameter list alongside context size and a fast/non-fast variant."
         },
         "declared_pool": {
@@ -336,6 +351,7 @@
           "kind": "run-level",
           "vocabulary": "A 3-value scale",
           "clamp": "None documented",
+          "clamp_kind": "not-documented",
           "notes": "A run-level flag separate from the reasoning tier folded into the model slug; the docs do not reconcile the two."
         },
         "declared_pool": {
@@ -384,6 +400,7 @@
           "kind": "none",
           "vocabulary": "None expressible non-interactively",
           "clamp": "None",
+          "clamp_kind": "no-surface",
           "notes": "The documented mechanism is an interactive cycle of the thinking level bound to a keyboard shortcut, available only on models that support configurable reasoning levels."
         },
         "declared_pool": {
@@ -432,6 +449,7 @@
           "kind": "separate-key",
           "vocabulary": "Provider-defined; no fixed enum. The agent/model options key is a pass-through, and a run-level variant flag names a provider preset.",
           "clamp": "None documented \u2014 the provider decides",
+          "clamp_kind": "not-documented",
           "notes": "Two documented surfaces, both provider-defined: an extra key in the agent or model options block is passed verbatim to the provider, and a run-level variant flag selects a provider preset. The static key is the one the orchestrator sets; a variant is a run-level refinement."
         },
         "declared_pool": {
@@ -474,6 +492,7 @@
           "kind": "separate-key",
           "vocabulary": "A 7-step scale from off through a maximum, plus per-model support maps and token budgets",
           "clamp": "A per-model tristate map marks a level supported, omitted (provider default) or unsupported; an unsupported level is hidden or clamped away",
+          "clamp_kind": "clamps-down",
           "notes": "A per-agent thinking key, a per-task override, a session flag, a settings default, per-model level maps and a budget map; a level can also ride the model argument as a suffix, and the resolved level is surfaced read-only to shell tools."
         },
         "declared_pool": {
@@ -522,6 +541,7 @@
           "kind": "separate-key",
           "vocabulary": "Agent frontmatter effort: accepts exactly low|medium|high|xhigh|max. The run-level /effort and --reasoning-effort/--effort surfaces accept a wider first-party set. The neutral low|medium|high passes through unclamped and unmapped.",
           "clamp": "No down-clamp documented: a model accepts only the levels its own menu advertises, and an effort it does not advertise is dropped or rejected rather than reduced.",
+          "clamp_kind": "not-documented",
           "notes": "Static per-agent effort: key plus a per-persona reasoning_effort, a per-type or per-run flag, a /effort session command, and a [models].default_reasoning_effort default. An unknown value is a hard failure for the whole agent file \u2014 the harness skips that crew member with a warning, not a clamp."
         },
         "declared_pool": {

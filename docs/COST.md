@@ -258,53 +258,41 @@ canonical content: both resolve at spawn time, on the harness in front of you.
   so a hard task on a mechanical role is not left cheap and a trivial task on a judgment role is not
   overpaid. When a unit's tier is genuinely unclear, inherit the session model rather than guess one.
 
-**The discovery ladder — three tiers, walked in order.** A tier narrows what you may pick from; it ends
-the walk early only if it produced a **ranked** pool:
+**The main agent makes the call — nothing is configured in advance.** No file, in the repository or in the
+captain's home, supplies a ranking: one static list cannot be right across targets, plans and sign-ins,
+and an empty one decides nothing at all. The ranking is the orchestrator's own judgment, exercised **at
+spawn, against what the target in front of it offers**:
 
-1. **Query** — where the target documents a non-interactive enumeration command, run it. This yields
-   **candidates only**: it reports which models exist, never which one is cheap or which one is best, so
-   it never terminates the ladder on its own.
-2. **Declared** — a membership **filter** where the target documents a native allow-list of its own (a
-   managed/policy settings allow-list, or a repository-root allow-list file with a single fallback
-   directive), **intersected with the user's declared pool, which supplies the rank**. A filter alone
-   never picks a tier. The declared pool is a **ranking over user-chosen patterns**, not a list of
-   names: the project file `<repo>/model-pool.json` wins over the user file
-   `~/.shipmates/model-pool.json`, and its shape is `schema_version` (`1`), `tiers.mechanical[]`,
-   `tiers.judgment[]`, and optional `effort.mechanical` / `effort.judgment` on the neutral
-   `low` / `medium` / `high` scale. `<repo>` is the **run's repository root** — the checkout the run was
-   started from, never the worktree cut from it. Entries are patterns the target's own model surface
-   accepts.
-   **Treat every entry as one literal argument** — pass it to the harness surface as a single value,
-   never spliced into a shell string or a command line. Shipmates never writes a value into either
-   file. A pool file that is present but unusable — an unrecognised `schema_version`, malformed keys,
-   unreadable — is reported as `inherit (pool unusable)`, never a silent absence.
-3. **`inherit`** — the terminal fallback: run on the parent/session model. This is a deliberate
-   answer, not a failure, and it is always available.
+1. **Ask the target what exists.** Where the target documents a non-interactive listing command — the
+   per-target table below names which — run it. The answer is candidates only: it says what exists,
+   never which is cheap or which is best.
+2. **Where there is no listing command, read what the target documents.** A target whose only model
+   surface is a native allow-list (a managed settings key, or a repository-root allow-list file) offers
+   what that list permits, alongside the model the session is already on. A target with no such surface
+   offers nothing to read.
+3. **Then judge.** With those candidates in hand, pick per role: the cheapest capable for `mechanical`,
+   the top available for `judgment`, at the effort the unit needs. Name only an identity the target
+   itself offered — never one recalled from a price page, a release note or a naming convention.
+4. **Record the call.** Every spawn's `MODEL ROUTING:` line carries the identity chosen and whether it
+   was observed on the target or inherited. A choice the captain cannot see is a choice they cannot
+   correct.
+5. **`inherit` when you cannot decide.** No listing command and no allow-list, a listing that exits
+   non-zero or returns something unparseable, or a call you are not confident in: run on the
+   parent/session model. `inherit` is a deliberate answer, not a failure, and it is always available.
 
-**A pool is required even when the pool is enumerable.** A query answers *what exists*; it never
-answers *what is cheap* or *what is top*. No harness documents a relative-capability ladder, so with no
-declared tiering the orchestrator falls back to `inherit` — and **never infers a capability order**
-from a listing, a price page, or a naming convention.
+**Never invent a model.** A concrete identifier appears in no shipped file, no default and no example.
+The target's own listing is the only source of an identity, and an identity the harness does not accept
+is refused or substituted by the harness itself — never quietly clamped into looking honoured.
 
 **Resolution order — stated once, for every target.** The levels, in order:
-explicit spawn value → declared default → parent/session value → the model's own effort default.
+explicit spawn value → parent/session value → the model's own effort default.
 A model chosen without an effort gets **that model's own default effort**, never the parent's effort
-carried across a model change: one model's effort scale does not describe another's. Resolve the pool
-once per run and reuse it for every spawn in that run; re-resolve only when a surface fails. Where a
-level of the order does not exist on a target, its row in the per-target table below says so.
+carried across a model change: one model's effort scale does not describe another's. A captain may name
+an identity in the run's own guidance; that is an explicit spawn value and outranks the orchestrator's
+own choice. Where a level of the order does not exist on a target, its row in the table below says so.
 
-**Never guess.** An unknown or empty pool produces `inherit`, recorded as `inherit (no pool)`; a pool
-file that exists but cannot be used is recorded as `inherit (pool unusable)`, with no fall-through to
-the other file, so a missing declaration and a broken one are never confused. A project pool at a path
-this run does not resolve is never the pool in force; when no project pool is in force, that is reported
-as `pool out of scope` — a worktree's own copy and the retired `<repo>/.shipmates/model-pool.json`
-alike. The `pool` field carries at most one condition from a closed set of three, chosen in this order:
-`pool unusable`, then `pool out of scope`, then `no pool`. No pool state is silent or fatal. A concrete
-model identifier is never a fallback, never a default, and never an example. An enumeration command that
-exits non-zero, or whose output cannot be parsed, leaves the pool unknown: continue down the ladder.
-
-**Enforcement.** An identity outside the resolved pool is **refused**, not quietly clamped — resolve a
-different candidate, or stop and report. Not every target's documented mechanism can hold that:
+**Enforcement.** An identity outside what the target permits is **refused**, not quietly clamped —
+choose a different candidate, or stop and report. Not every target's documented mechanism can hold that:
 `abort` refuses · `warn` reports the identity but proceeds · `fallback` means the harness substitutes,
 which the audit line reports as `substituted` · `none` means no native mechanism exists, so the
 orchestrator self-enforces or falls to
@@ -312,7 +300,7 @@ orchestrator self-enforces or falls to
 the discrepancy in the report** instead of pretending enforcement held.
 
 **Audit — one `MODEL ROUTING:` line per spawn.** Every spawn adds one compact line to the run report,
-shaped `MODEL ROUTING: <role> tier=<mechanical|judgment> pool=<project|user|inherit>[ (<condition>)] model=<identity the harness accepts> effort=<requested>→<resolved> <honoured|substituted|inherit>`.
+shaped `MODEL ROUTING: <role> tier=<mechanical|judgment> source=<observed|inherit> model=<identity the harness accepts> effort=<requested>→<resolved> <honoured|substituted|inherit>`.
 `<requested>` is the neutral scale (`low` / `medium` / `high`, or `none` when no effort was named) and
 `<resolved>` is what the harness reports for it — the two differ whenever a target maps the request onto
 its own vocabulary, and a clamped level is recorded here rather than dropped. Substitution is reported
@@ -321,13 +309,14 @@ the requested identity — an admin block, a plan limit, a hard environment over
 `substituted` and names the condition that fired.
 
 **Drift with no new release.** The installed command is a snapshot; the harness is not. Verify a surface
-exists before relying on it — run the enumeration command once, or check the flag in the target's own
-help output — and treat every step above as degradable: a vanished enumeration command falls through to
-the declared pool, a missing or unreadable pool falls through to `inherit`, and a target with no row in
-the table below is treated as no-enumeration → declared → `inherit`.
+exists before relying on it — run the listing command once, or check the flag in the target's own help
+output — and treat every step above as degradable: a listing command that has vanished or changed shape
+falls through to whatever the target documents, and a target with nothing to read falls to `inherit`. A
+target with no row in the table below is treated as no listing command → documented surface → `inherit`.
 
-**Per-target surface.** Discovery tier, override kind, the enforcement it can actually hold, and the
-effort surface with its clamp. No cell is ever blank: a missing feature is a stated finding.
+**Per-target surface.** What the target offers to read, the override kind, the enforcement it can
+actually hold, and the effort surface with its clamp. No cell is ever blank: a missing feature is a
+stated finding.
 
 | Target | Discovery tier | Override kind | Enforcement | Effort surface and clamp |
 |--------|----------------|---------------|-------------|--------------------------|
@@ -342,8 +331,8 @@ effort surface with its clamp. No cell is ever blank: a missing feature is a sta
 | windsurf | inherit | session-level | none | none · only an interactive cycle |
 
 **Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is
-still the primary cost gate, and pool discovery decides only **which** cheap model runs a mechanical
-unit — never **whether** a lighter execution path is chosen.
+still the primary cost gate, and the target's surface decides only **which** capable model runs a
+mechanical unit — never **whether** a lighter execution path is chosen.
 <!-- model-routing:end -->
 
 ## Why merge this (PR body)
@@ -365,7 +354,7 @@ merge.
 
 ## Authoring checklist
 
-- Keep the **Model routing** block the single statement of pool discovery: reference it by its marker
+- Keep the **Model routing** block the single statement of how a model is chosen: reference it by its marker
   instead of restating the ladder, the resolution order, or the per-target table inside a command.
 - Place `<!-- shipmates:why-merge-pr -->` once, next to PR-body requirements, on every command that
   opens a pull request — never copy the Why-merge prose into the command by hand.
