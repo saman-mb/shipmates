@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-09-20
+
+### Fixed
+
+- **`/shipmates-consolidate-issues` reconciles dangling tasks/stories/bugs against existing open
+  epics before bundling.** Stage 0 now pulls the open-epic set with its story checklists; Stage 2's
+  `product-manager` pass checks every non-epic issue against it and returns `migrate` with a
+  `target_epic` on a clear match instead of `keep`, so it gets reattached in Stage 3 rather than
+  swept into a brand-new Stage 4 bundle and left duplicating the epic's own tracked scope (#516).
+
 ## [0.10.0] - 2026-09-20
 
 ### Changed
