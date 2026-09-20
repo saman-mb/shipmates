@@ -1608,6 +1608,15 @@ fn test_acceptance_board_docs_acs_require_machine_pin_or_manual_only() {
         board.contains("manual-only"),
         "acceptance-board must name the `manual-only` escape for docs/content ACs"
     );
+    assert!(
+        board.contains("child-launch") && board.contains("board=off"),
+        "acceptance-board must name a spawn-dead stop, never silent board=off"
+    );
+    let issue = std::fs::read_to_string(root.join("commands/shipmates-issue.md")).unwrap();
+    assert!(
+        issue.contains("child-launch") && issue.contains("never silently set `board=off`"),
+        "/shipmates-issue Stage 0 must stop on a dead child-launch"
+    );
 }
 
 /// The model-routing ruleset is a *global* one. It is expanded from the shared

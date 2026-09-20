@@ -2523,7 +2523,7 @@ mod tests {
         let steering = target.join(".claude/CLAUDE.md");
         let bak = steering.with_file_name("CLAUDE.md.bak-1700000000-4242-0");
         atomic_write(&bak, "old steering\n").unwrap();
-        let mine = target.join(".claude/notes.md.bak-mine");
+        let mine = steering.with_file_name("CLAUDE.md.bak-mine");
         atomic_write(&mine, "hand named\n").unwrap();
 
         let before = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
