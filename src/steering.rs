@@ -93,7 +93,7 @@ pub fn plan_legacy_migration(target_dir: &Path) -> std::io::Result<Vec<LegacyMig
 pub enum GlobalSteeringTier {
     /// Dedicated modular file (e.g. Cursor ~/.cursor/rules/shipmates.mdc)
     TierA,
-    /// Delimited managed block in user-scope file (Claude, Codex, OpenCode, Antigravity, Pi)
+    /// Delimited managed block in user-scope file (Claude, Codex, OpenCode, Antigravity, Pi, Grok Build)
     TierB,
     /// Documented gap where harness has no global instruction file
     Gap(&'static str),
@@ -120,7 +120,7 @@ pub enum SteeringOutcome {
 pub fn global_steering_tier(harness: &str) -> GlobalSteeringTier {
     match harness {
         "cursor" => GlobalSteeringTier::TierA,
-        "claude-code" | "codex" | "opencode" | "antigravity" | "pi" => GlobalSteeringTier::TierB,
+        "claude-code" | "codex" | "opencode" | "antigravity" | "pi" | "grok-build" => GlobalSteeringTier::TierB,
         "github-copilot" => GlobalSteeringTier::Gap(
             "GitHub Copilot has no global instruction file; configure via VS Code settings.json (github.copilot.chat.codeGeneration.instructions)"
         ),
@@ -140,6 +140,10 @@ pub fn global_steering_path(harness: &str, home: &Path) -> Option<PathBuf> {
         "opencode" => Some(home.join(".config").join("opencode").join("AGENTS.md")),
         "antigravity" => Some(home.join(".gemini").join("GEMINI.md")),
         "pi" => Some(home.join(".pi").join("agent").join("AGENTS.md")),
+        // Grok reads named instruction files from `$GROK_HOME` and every
+        // `$GROK_HOME/rules/*.md`, so `~/.grok/AGENTS.md` is its user-scope
+        // instructions file — source-verified against the CLI.
+        "grok-build" => Some(home.join(".grok").join("AGENTS.md")),
         _ => None,
     }
 }
@@ -370,6 +374,16 @@ mod tests {
             a,
             LegacyMigration::Write { content, .. } if content.contains("# Repo")
         )));
+    }
+
+    #[test]
+    fn grok_build_global_steering_is_the_user_instructions_file() {
+        let home = Path::new("/home/captain");
+        assert_eq!(global_steering_tier("grok-build"), GlobalSteeringTier::TierB);
+        assert_eq!(
+            global_steering_path("grok-build", home),
+            Some(home.join(".grok").join("AGENTS.md"))
+        );
     }
 
     #[test]

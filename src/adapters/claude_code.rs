@@ -20,7 +20,15 @@ fn scope_tool(scope: &str) -> Option<&'static str> {
     }
 }
 
-fn map_tools(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
+/// Map a role's capabilities onto the Claude-compatible tool vocabulary.
+///
+/// Shared with every adapter whose target resolves Claude Code's own tool names
+/// (Grok Build resolves them through its first-party alias table), so the
+/// scope handling — `read-scopes`, `web-scopes` and `tool-order` — cannot drift
+/// between them. The order below is load-bearing for the emitted `tools:` line:
+/// capabilities in the order they are declared, and `tool-order`, when set,
+/// replaces that with the role's own explicit sequence.
+pub(crate) fn claude_compatible_tools(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
     if !role.tool_order.is_empty() {
         return role
             .tool_order
@@ -65,7 +73,7 @@ fn map_tools(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
                 }
             }
             "agent" => out.push("Agent".to_string()),
-            other => anyhow::bail!("unmapped capability {other:?} for claude-code"),
+            other => anyhow::bail!("unmapped capability {other:?} for the Claude tool vocabulary"),
         }
     }
     Ok(out)
@@ -93,7 +101,7 @@ fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Resu
 const CREW_FORMAT: CrewFormat = CrewFormat {
     file_suffix: ".md",
     dialect: &CLAUDE_CODE,
-    map_tools,
+    map_tools: claude_compatible_tools,
     serialize,
     layout: CrewLayout::Flat,
 };

@@ -422,6 +422,7 @@ fn validate_harness(harness: &str) -> Result<()> {
             | "cursor"
             | "github-copilot"
             | "pi"
+            | "grok-build"
             | "windsurf"
     ) {
         bail!("unsupported harness {:?}", harness);
@@ -448,6 +449,9 @@ pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
         // to `.pi/agents/` shipped skills there, and its receipt must still load
         // so `update` can refresh those files.
         "pi" => &[".pi", ".agents", ".shipmates"],
+        // Grok Build keeps crew, skills and rules in one dotdir, so `.grok` is
+        // the whole footprint; `.shipmates` carries the receipt store.
+        "grok-build" => &[".grok", ".shipmates"],
         "windsurf" => &[".windsurf", ".shipmates"],
         _ => &[],
     }
@@ -575,6 +579,7 @@ fn is_steering_receipt_path(harness: &str, path: &str) -> bool {
         "opencode" | "codex" | "antigravity" | "windsurf" | "pi" => {
             path == ".shipmates/contributor-steering.md"
         }
+        "grok-build" => path == ".grok/rules/shipmates-contributor.md",
         _ => false,
     }
 }
@@ -734,6 +739,15 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && !parts[3].is_empty()
                     && (parts[4] == "SKILL.md"
                         || (parts.len() == 5 && parts[4].ends_with(".py"))))
+        }
+        "grok-build" => {
+            is_steering_receipt_path(harness, path)
+                || is_shipmates_steering_path(path)
+                || (parts.len() == 3
+                    && root == ".grok"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
+                || is_skill_tree(".grok")
         }
         "github-copilot" => {
             is_steering_receipt_path(harness, path)
@@ -1083,6 +1097,53 @@ mod tests {
                 global_root(name),
                 "{name}: capability_registry.json's global_root disagrees with manifest_db::global_root"
             );
+        }
+    }
+
+    #[test]
+    fn grok_build_receipt_owns_the_grok_tree_and_rejects_arbitrary_paths() {
+        assert!(validate_harness("grok-build").is_ok());
+        assert_eq!(allowed_roots("grok-build"), &[".grok", ".shipmates"]);
+        // Grok's global tree IS its workspace dotdir, so it carries no
+        // `global_root`: joining the payload to $HOME already writes the paths
+        // it reads.
+        assert_eq!(global_root("grok-build"), None);
+        assert!(allowed_receipt_path("grok-build", ".grok/agents/sdet.md"));
+        assert!(allowed_receipt_path(
+            "grok-build",
+            ".grok/skills/ship-issue/SKILL.md"
+        ));
+        assert!(allowed_receipt_path(
+            "grok-build",
+            ".grok/skills/shipmates-termgif/termgif.py"
+        ));
+        // Project steering goes to Grok's own rules tree, not the fallback.
+        assert!(allowed_receipt_path(
+            "grok-build",
+            ".grok/rules/shipmates-contributor.md"
+        ));
+        assert!(allowed_receipt_path(
+            "grok-build",
+            ".shipmates/contributor-steering.md"
+        ));
+        // Tight everywhere else: nothing arbitrary under the tree, at any depth.
+        assert!(!allowed_receipt_path("grok-build", ".grok/settings.json"));
+        assert!(!allowed_receipt_path("grok-build", ".grok/agents/evil.sh"));
+        assert!(!allowed_receipt_path(
+            "grok-build",
+            ".grok/agents/nested/sdet.md"
+        ));
+        assert!(!allowed_receipt_path("grok-build", ".grok/rules/other.md"));
+        // And no other harness may claim a `.grok` path.
+        for harness in [
+            "claude-code",
+            "codex",
+            "cursor",
+            "opencode",
+            "pi",
+            "windsurf",
+        ] {
+            assert!(!allowed_receipt_path(harness, ".grok/agents/sdet.md"), "{harness}");
         }
     }
 

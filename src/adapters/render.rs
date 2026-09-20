@@ -317,6 +317,23 @@ pub const GITHUB_COPILOT: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
+/// Grok Build (the xAI `grok` CLI)'s dialect.
+///
+/// Grok keeps both resources in one dotdir: crew at `.grok/agents/<name>.md` and
+/// skills at `.grok/skills/<name>/SKILL.md`, with contributor steering as a rule
+/// file under `.grok/rules/`. It resolves `.grok/` ahead of the shared `.agents/`
+/// and `.claude/` trees, which is why its commands ship natively (see
+/// [`emit_native_command_skills`]) rather than into the shared tree.
+pub const GROK_BUILD: Dialect = Dialect {
+    agents_glob: ".grok/agents",
+    session_key: "Grok-Session",
+    instructions_primary: "AGENTS.md",
+    instructions_fallback: "CLAUDE.md",
+    general_purpose: "general-purpose",
+    planner: "plan",
+    args_token: "$ARGUMENTS",
+};
+
 /// Windsurf (Cascade)'s dialect.
 pub const WINDSURF: Dialect = Dialect {
     agents_glob: ".windsurf/agents",
@@ -432,6 +449,56 @@ pub fn emit_skill_files(
             "description: {}\n",
             yaml_scalar(&command.description)
         ));
+        content.push_str("---\n");
+        content.push_str(&render_command_body(command, dialect)?);
+        files.insert(
+            format!("{}/skills/{}/SKILL.md", base_dir, command.name),
+            content,
+        );
+    }
+    Ok(files)
+}
+
+/// Emit a harness's commands into its **own** skills tree, carrying the vendor
+/// frontmatter keys that harness honours.
+///
+/// This is deliberately NOT [`emit_skill_files`]. That one is the strict
+/// [Agent Skills](https://agentskills.io) pair *by construction* — `name` and
+/// `description` and nothing else — because a strict parser rejects an unknown
+/// key. Grok Build parses extra frontmatter keys, ignores the ones it does not
+/// know, and *honours* `disable-model-invocation`; it is the one target that can
+/// express the guard every canonical command carries. Rendering the strict pair
+/// here would silently drop that guard, and Grok would then be free to load a
+/// workflow that creates worktrees, pushes branches and opens pull requests on
+/// its own — the exact decision `disable-model-invocation` exists to reserve for
+/// the captain.
+///
+/// `allowed-tools` is deliberately dropped. Grok parses it into its skill
+/// metadata, but no code path applies it as a permission filter, so emitting it
+/// would advertise a boundary that does not exist.
+pub fn emit_native_command_skills(
+    base_dir: &str,
+    commands: &[CanonicalCommand],
+    dialect: &Dialect,
+) -> anyhow::Result<HashMap<String, String>> {
+    let mut files = HashMap::new();
+    for command in commands {
+        let mut content = String::new();
+        content.push_str("---\n");
+        content.push_str(&format!("name: {}\n", command.name));
+        content.push_str(&format!(
+            "description: {}\n",
+            yaml_scalar(&command.description)
+        ));
+        if !command.argument_hint.is_empty() {
+            content.push_str(&format!(
+                "argument-hint: {}\n",
+                yaml_scalar(&command.argument_hint)
+            ));
+        }
+        if command.disable_model_invocation {
+            content.push_str("disable-model-invocation: true\n");
+        }
         content.push_str("---\n");
         content.push_str(&render_command_body(command, dialect)?);
         files.insert(

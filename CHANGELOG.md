@@ -16,6 +16,24 @@ All notable changes to this project are documented here. The format follows
   with the old skill renamed in place, its previous bytes backed up, and the receipt rewritten
   (#502).
 
+### Added
+
+- **xAI's Grok Build is a target: `shipmates install --harness grok-build`.** The ninth harness — and
+  the seventh to take the full crew — installs into the harness's own native tree rather than the
+  shared one: thirteen crew at `.grok/agents/<name>.md`, and the seventeen commands plus all eleven
+  toolbox tools at `.grok/skills/<name>/SKILL.md`. It is the one non-Claude target that keeps the
+  native `disable-model-invocation` guard, so the seventeen stay captain-invoked by the same key
+  Claude Code uses; it enforces a per-agent tool allowlist, so least privilege holds without
+  opencode's inverted `deny`-first map; and it carries static per-role `effort` on the harness's own
+  scale. Project steering lands at `.grok/rules/shipmates-contributor.md` and global steering at
+  `~/.grok/AGENTS.md`. The payload's format was verified against Grok Build's own first-party docs and
+  its digest is gate-checked in CI; no live run is recorded, so its `runtime_verified` status is
+  `none` — `tools/harness_matrix.json` says exactly that, and nothing claims more (#509).
+- **One recorded gap on Grok Build: the toolbox tools are typeable.** Its skills are model-invoked,
+  and the harness offers no way to hide one from the slash menu without hiding it from the model — so
+  a tool arrives agent-invoked *and* still reachable by typing its name. Recorded in the adapter and
+  the harness matrix rather than papered over (#509).
+
 ## [0.9.3] - 2026-09-20
 
 ### Changed

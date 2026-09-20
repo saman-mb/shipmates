@@ -299,6 +299,42 @@
         "agent": "subagent"
       },
       "global_root": ".pi/agent"
+    },
+    "grok-build": {
+      "notes": "Native `.grok/` tree, not the shared `.agents/skills/` one, for a safety property: the seventeen commands ship `disable-model-invocation`, and only the native rendering keeps it — the neutral shared rendering emits the Agent Skills standard's `name`/`description` pair alone and would drop the guard. Grok also scans the `.agents/` and `.claude/` trees, but resolves `.grok/` ahead of both. Crew are a flat `.grok/agents/{name}.md` — Markdown + YAML frontmatter, camelCase for multi-word keys, `name` and `description` required. `tools` is a COMMA-SEPARATED SCALAR of Claude-compatible tool names resolved through Grok's first-party alias table: only a name that resolves to a real tool kind is retained, which is why the adapter emits nothing but alias-legal names (Read, Grep, Glob, Write, Edit, Bash, WebSearch, WebFetch) — an unresolvable entry silently reverts the seat to the FULL toolset, so a made-up name widens privilege instead of narrowing it. `permission_model` is `allowlist` on that basis. `allowed-tools` is parsed into the harness's own skill record and shown in its extensions UI, but no code path applies it as a permission filter (source-verified 2026-09-20), so the adapter drops it rather than imply a boundary that does not exist. RECORDED GAP: the toolbox cannot be model-invoked while hidden from the `/` menu — the key that removes a skill from invocation also removes it from the model's — so tool skills ship typeable, exactly as they do on cursor, codex, github-copilot and pi. GLOBAL SCOPE: a project-level `.grok/`, `.agents/`, `.claude/` or `.cursor/` skill tree outranks User scope (`~/.grok/skills`), so a `--global` install can be shadowed by any ancestor project tree; install into the project. No `global_root` key: the workspace-shaped `~/.grok/...` paths are already correct joined to home.",
+      "agent_path": ".grok/agents/{name}.md",
+      "skill_path": ".grok/skills/{name}/SKILL.md",
+      "project_instructions": "AGENTS.md",
+      "steering_install_path": ".grok/rules/shipmates-contributor.md",
+      "permission_model": "allowlist",
+      "scopes": {
+        "read": "Read",
+        "search": "Grep",
+        "glob": "Glob",
+        "write": "Write",
+        "edit": "Edit",
+        "bash": "Bash",
+        "web-search": "WebSearch",
+        "web-fetch": "WebFetch",
+        "agent": "Agent"
+      },
+      "tools": {
+        "read": [
+          "Read",
+          "Grep",
+          "Glob"
+        ],
+        "edit": [
+          "Write",
+          "Edit"
+        ],
+        "bash": "Bash",
+        "web": {
+          "search": "WebSearch",
+          "fetch": "WebFetch"
+        },
+        "agent": "Agent"
+      }
     }
   }
 }

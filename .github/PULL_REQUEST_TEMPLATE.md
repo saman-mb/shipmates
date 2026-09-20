@@ -18,6 +18,7 @@ _Please check all harnesses that this change affects, or "All" if it's a general
 - [ ] cursor
 - [ ] github-copilot
 - [ ] pi
+- [ ] grok-build
 - [ ] windsurf
 
 ## How Has This Been Tested?

@@ -478,6 +478,11 @@ fn markdown_files_recursive(dir: &Path) -> Vec<PathBuf> {
 /// location, which is exactly where Antigravity keeps its crew. Adding another
 /// reader is one line here — the check itself is data-driven, because a
 /// hardcoded `if harness == "pi"` is how the *next* reader goes unnoticed.
+///
+/// `grok-build` is deliberately absent. Grok reads `.claude/agents` too, but it
+/// resolves Claude Code's tool names through its own first-party alias table
+/// rather than consuming Claude's vocabulary as a foreign one, so a Claude crew
+/// file is not a foreign-vocabulary tree to it.
 const FOREIGN_CREW_READS: &[(&str, &str)] = &[("pi", ".agents/agents")];
 
 /// The co-owned crew trees `harness` reads, each paired with its own path.
@@ -503,6 +508,15 @@ fn harness_tool_vocabulary(harness: &str) -> Option<&'static [&'static str]> {
         "github-copilot" => Some(&["read", "search", "edit", "execute", "web", "agent", "bash", "web_search", "web_fetch"]),
         "pi" => Some(&[
             "read", "grep", "find", "ls", "bash", "edit", "write", "web_search", "fetch_content", "subagent"
+        ]),
+        // Grok Build resolves Claude Code's own tool names through its
+        // first-party alias table. `Agent` is matchable here because the
+        // capability registry maps it for every target, and an emitted name is
+        // checked against this list — but no crew role declares the agent
+        // capability, so the adapter never emits it (Grok cannot resolve it, and
+        // one unresolvable entry reverts the agent to its full toolset).
+        "grok-build" => Some(&[
+            "Read", "Grep", "Glob", "Write", "Edit", "Bash", "WebSearch", "WebFetch", "Agent"
         ]),
         "windsurf" => Some(&["read", "search", "glob", "edit", "bash", "web_search", "web_fetch", "agent"]),
         "codex" => None,

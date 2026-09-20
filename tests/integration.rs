@@ -437,6 +437,7 @@ fn test_cli_targets() {
         "cursor",
         "github-copilot",
         "pi",
+        "grok-build",
         "windsurf",
     ] {
         assert!(stdout.contains(target), "targets output missing {target}");
@@ -446,7 +447,14 @@ fn test_cli_targets() {
 #[test]
 fn test_non_claude_targets_build_via_cli() {
     let temp_dir = tempfile::tempdir().unwrap();
-    for target in ["codex", "cursor", "github-copilot", "pi", "windsurf"] {
+    for target in [
+        "codex",
+        "cursor",
+        "github-copilot",
+        "pi",
+        "grok-build",
+        "windsurf",
+    ] {
         let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
             .args([
                 "build",

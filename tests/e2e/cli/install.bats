@@ -93,7 +93,7 @@ load helpers
 @test "--harness all installs every harness with one receipt each" {
   run "$SHIPMATES_BIN" install --harness all --dir "$SANDBOX" --with-tools none
   assert_success
-  [ "$(receipt_files "$SANDBOX")" -eq 8 ]
+  [ "$(receipt_files "$SANDBOX")" -eq 9 ]
 }
 
 @test "--from-cwd installs from the contributor checkout" {

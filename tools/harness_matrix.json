@@ -500,6 +500,48 @@
         "crew_resolve": "unknown",
         "notes": "Captain-attested live run (#497, 2026-09-18). Pi crew resolve depends on the third-party pi-subagents extension; granular criteria not separately logged (unknown). Not a Tier-A /shipmates-issue proof."
       }
+    },
+    "grok-build": {
+      "agents": true,
+      "agents_notes": "Flat `.grok/agents/<name>.md` \u2014 Markdown with YAML frontmatter, camelCase for multi-word keys, `name` and `description` required. `tools:` is a COMMA-SEPARATED SCALAR of Claude-compatible tool names resolved through the harness's first-party alias table: only a name that resolves to a real tool kind is retained, and an unresolvable entry silently reverts the seat to the FULL toolset rather than to none. Verified 2026-09-20 against the grok-build source (xai-grok-agent's agent-file parser and built-in tool table) and its first-party docs. The agent file's own `effort:` key accepts exactly low|medium|high|xhigh|max.",
+      "effort": true,
+      "effort_notes": "Static per-agent `effort` key in the agent file, accepting exactly low|medium|high|xhigh|max; the adapter stamps the neutral low|medium|high through unclamped and unmapped. The harness pairs it with a per-persona `reasoning_effort`, a per-run and per-type flag, a session `/effort` command and a default-reasoning-effort setting, but those are runtime surfaces rather than emission. An unknown value is a hard failure for the WHOLE agent file \u2014 the harness skips that crew member with a warning instead of clamping \u2014 so an invented level loses the seat. Verified 2026-09-20 against the grok-build source.",
+      "model_surface": {
+        "discovery_tier": "query",
+        "enumeration": {
+          "available": true,
+          "command": "grok models",
+          "notes": "Documented non-interactive enumeration; the subcommand prints the catalog and exits. No machine-readable flag is documented, so the parse step reads names only; grok inspect --json reports discovered skills/agents/rules, not models."
+        },
+        "identity": "A flat model id; a custom endpoint adds a user-chosen catalog key under [model.<name>] whose name and model fields carry the picker label and the wire id, and /model or -m accept either the catalog key or the model id. No provider/model path, no effort suffix folded into the identity.",
+        "runtime_model_override": {
+          "kind": "per-spawn",
+          "notes": "spawn_subagent takes a model argument; over per-type pins in [subagents.models], an agent's own model key, a persona model, the session /model command, and the -m flag. Documented precedence: explicit spawn value, then role default, then persona default, then parent session."
+        },
+        "effort": {
+          "kind": "separate-key",
+          "vocabulary": "Agent frontmatter effort: accepts exactly low|medium|high|xhigh|max. The run-level /effort and --reasoning-effort/--effort surfaces accept a wider first-party set. The neutral low|medium|high passes through unclamped and unmapped.",
+          "clamp": "No down-clamp documented: a model accepts only the levels its own menu advertises, and an effort it does not advertise is dropped or rejected rather than reduced.",
+          "notes": "Static per-agent effort: key plus a per-persona reasoning_effort, a per-type or per-run flag, a /effort session command, and a [models].default_reasoning_effort default. An unknown value is a hard failure for the whole agent file \u2014 the harness skips that crew member with a warning, not a clamp."
+        },
+        "declared_pool": {
+          "mechanism": "A user-config [models] allowed_models list (matching a catalog key or a model id) restricts the selectable set, and a signed admin requirements.toml fleet pin replaces it rather than unioning with it",
+          "enforcement": "abort",
+          "notes": "First-party for the pinned set: /model, Ctrl+M and -m cannot offer models outside the pin, a default or -m value outside it is rejected once the model catalog is fetched, and a present-but-unreadable pin fail-closes to nothing selectable. Not stated: whether a user-config-only allowed_models also rejects a directly requested identity, so that half is recorded, not promoted."
+        },
+        "reported_gaps": [],
+        "verified_on": "2026-09-20",
+        "notes": "Checked 2026-09-20 against Grok Build's first-party docs and source (xai-org/grok-build): docs/user-guide 05-configuration.md, 11-custom-models.md, 14-headless-mode.md, 16-subagents.md; source xai-grok-agent/src/config.rs, xai-grok-pager/src/app/cli.rs. Public docs base: https://docs.x.ai/build/."
+      },
+      "runtime_verified": {
+        "status": "none",
+        "verified_on": "",
+        "crew_resolve": "unknown",
+        "argument_passing": "unknown",
+        "command_e2e": "unknown",
+        "commands_exercised": [],
+        "notes": "No live run recorded. Format/digest checked only; do not write 'tested on grok-build'."
+      }
     }
   },
   "features": {
@@ -532,6 +574,9 @@
         },
         "pi": {
           "supported": true
+        },
+        "grok-build": {
+          "supported": true
         }
       }
     },
@@ -563,6 +608,9 @@
           "supported": true
         },
         "pi": {
+          "supported": true
+        },
+        "grok-build": {
           "supported": true
         }
       }
@@ -600,6 +648,9 @@
         "pi": {
           "supported": false,
           "policy": "warn"
+        },
+        "grok-build": {
+          "supported": true
         }
       }
     },
@@ -636,6 +687,9 @@
         "pi": {
           "supported": false,
           "policy": "warn"
+        },
+        "grok-build": {
+          "supported": true
         }
       }
     },
@@ -672,6 +726,9 @@
         "pi": {
           "supported": false,
           "policy": "warn"
+        },
+        "grok-build": {
+          "supported": true
         }
       }
     },
@@ -711,6 +768,11 @@
         "pi": {
           "supported": false,
           "policy": "warn"
+        },
+        "grok-build": {
+          "supported": true,
+          "separator": "comma",
+          "reason": "Parsed into SkillInfo and shown in the extensions UI, but no code path applies it as a permission filter (source-verified 2026-09-20); shipmates drops it rather than imply a boundary that does not exist."
         }
       }
     },
@@ -749,6 +811,9 @@
         "pi": {
           "supported": false,
           "policy": "drop"
+        },
+        "grok-build": {
+          "supported": true
         }
       }
     },
@@ -793,6 +858,10 @@
           "supported": false,
           "policy": "drop",
           "reason": "Shipped as skills carrying only the standard's name/description pair. The harness has no user-invoked-only equivalent, so the model can start one unprompted; the caveat is documented in Scope & honesty."
+        },
+        "grok-build": {
+          "supported": true,
+          "reason": "Native guard: model invocation requires enabled && !disable_model_invocation && user_invocable, so the seventeen commands cannot be auto-started by the model."
         }
       }
     },
@@ -833,6 +902,10 @@
         "pi": {
           "supported": true,
           "reason": "disable-model-invocation is dropped; Read of the installed skill path still works \u2014 contracted path is Read\u2192execute."
+        },
+        "grok-build": {
+          "supported": true,
+          "reason": "Gated skills stay out of the model's invocation surface; compose by Read of .grok/skills/<name>/SKILL.md, then execute stages in-session."
         }
       }
     },
@@ -872,6 +945,11 @@
         "pi": {
           "supported": false,
           "policy": "drop"
+        },
+        "grok-build": {
+          "supported": true,
+          "separator": "comma",
+          "reason": "Claude-compatible names resolve through the first-party alias table to real ToolKinds and only those are retained. An unresolvable entry silently reverts to the full toolset, so the adapter emits only alias-legal names."
         }
       }
     },
@@ -909,6 +987,9 @@
         "pi": {
           "supported": false,
           "policy": "drop"
+        },
+        "grok-build": {
+          "supported": true
         }
       }
     },
@@ -946,6 +1027,10 @@
           "policy": "drop"
         },
         "pi": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "grok-build": {
           "supported": false,
           "policy": "drop"
         }
@@ -987,6 +1072,10 @@
         "pi": {
           "supported": false,
           "policy": "drop"
+        },
+        "grok-build": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -1024,6 +1113,10 @@
           "policy": "drop"
         },
         "pi": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "grok-build": {
           "supported": false,
           "policy": "drop"
         }
@@ -1065,6 +1158,10 @@
         "pi": {
           "supported": false,
           "policy": "drop"
+        },
+        "grok-build": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -1102,6 +1199,10 @@
           "policy": "drop"
         },
         "pi": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "grok-build": {
           "supported": false,
           "policy": "drop"
         }
@@ -1143,6 +1244,10 @@
         "pi": {
           "supported": false,
           "policy": "drop"
+        },
+        "grok-build": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -1182,6 +1287,10 @@
         "pi": {
           "supported": false,
           "policy": "drop"
+        },
+        "grok-build": {
+          "supported": false,
+          "policy": "drop"
         }
       }
     },
@@ -1219,6 +1328,10 @@
           "policy": "drop"
         },
         "pi": {
+          "supported": false,
+          "policy": "drop"
+        },
+        "grok-build": {
           "supported": false,
           "policy": "drop"
         }

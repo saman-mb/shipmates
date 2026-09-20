@@ -102,6 +102,21 @@ assert "pi: crew under .pi/agents" test -f "$D/.pi/agents/sdet.md"
 assert "pi: no crew in the shared .agents tree" test ! -d "$D/.agents/agents"
 assert "pi: tools are a comma scalar, not a YAML list" grep -q '^tools: read, grep, find' "$D/.pi/agents/sdet.md"
 
+# grok-build: skills, crew and steering are ALL native under .grok/, never the
+# shared .agents tree — the shared two-key rendering emits only name/description
+# and would drop the commands' disable-model-invocation guard.
+D="$WORK/grok-build"
+assert "grok-build: install exits 0" install_to "grok-build" "$D"
+assert "grok-build: skill under .grok/skills" test -f "$D/.grok/skills/shipmates-issue/SKILL.md"
+assert "grok-build: command keeps disable-model-invocation" grep -q '^disable-model-invocation: true' "$D/.grok/skills/shipmates-issue/SKILL.md"
+assert "grok-build: crew under .grok/agents" test -f "$D/.grok/agents/sdet.md"
+assert "grok-build: no shared .agents skills tree" test ! -d "$D/.agents/skills"
+# Contributor steering installs only when the install TARGET is the Shipmates
+# tree itself (catalog::steering_for_target), so this scratch target never gets
+# it — claude-code's `.claude/rules/` behaves the same way. Assert the adapter's
+# declared steering path on the built payload, where every target emits it.
+assert "grok-build: steering at .grok/rules in the built payload" bash -c "cd '$REPO' && cargo run --quiet -- build --target grok-build --out '$WORK/grok-payload' && test -f '$WORK/grok-payload/harnesses/grok-build/.grok/rules/shipmates-contributor.md'"
+
 # --- a GLOBAL install must land in each harness's own user-scope tree ---
 #
 # `--global` (the default) writes into $HOME. For most harnesses the workspace

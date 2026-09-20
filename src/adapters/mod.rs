@@ -6,6 +6,7 @@ pub mod claude_code;
 pub mod codex;
 pub mod cursor;
 pub mod github_copilot;
+pub mod grok_build;
 pub mod opencode;
 pub mod pi;
 pub mod render;
@@ -92,6 +93,7 @@ pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
         "cursor" => Box::new(cursor::CursorAdapter),
         "github-copilot" => Box::new(github_copilot::GithubCopilotAdapter),
         "pi" => Box::new(pi::PiAdapter),
+        "grok-build" => Box::new(grok_build::GrokBuildAdapter),
         "windsurf" => Box::new(windsurf::WindsurfAdapter),
         other => anyhow::bail!("Unsupported target: {}", other),
     };
@@ -113,7 +115,7 @@ pub fn build_payload(
 }
 
 /// The harnesses a user can `shipmates install --harness <name>` for.
-pub fn targets() -> [&'static str; 8] {
+pub fn targets() -> [&'static str; 9] {
     [
         "claude-code",
         "opencode",
@@ -122,6 +124,7 @@ pub fn targets() -> [&'static str; 8] {
         "cursor",
         "github-copilot",
         "pi",
+        "grok-build",
         "windsurf",
     ]
 }

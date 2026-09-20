@@ -21,6 +21,7 @@
     "cursor",
     "github-copilot",
     "pi",
+    "grok-build",
     "windsurf"
   ],
   "target_status": {
@@ -31,6 +32,7 @@
     "cursor": "implemented",
     "github-copilot": "implemented",
     "pi": "implemented",
+    "grok-build": "implemented",
     "windsurf": "implemented"
   }
 }
