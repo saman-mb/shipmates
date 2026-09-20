@@ -91,7 +91,8 @@ for pair in "cursor:.cursor" "windsurf:.windsurf"; do
 done
 assert "cursor: no shared .agents skills tree" test ! -d "$WORK/cursor/.agents/skills"
 
-# pi: crew are pi-native under .pi/agents, skills stay on the shared tree
+# pi: crew are pi-native under .pi/agents, skills stay on the shared tree so a
+# sibling harness in the same repo is one copy (#513). Global omits skills.
 D="$WORK/pi"
 assert "pi: install exits 0" install_to "pi" "$D"
 assert "pi: skill under .agents/skills" test -f "$D/.agents/skills/shipmates-issue/SKILL.md"
@@ -136,8 +137,8 @@ global_install() { # harness
 }
 assert "global pi: exits 0" global_install pi
 assert "global pi: crew at ~/.pi/agent/agents" test -f "$GHOME/.pi/agent/agents/sdet.md"
-assert "global pi: commands at ~/.pi/agent/skills" test -f "$GHOME/.pi/agent/skills/shipmates-issue/SKILL.md"
-assert "global pi: toolbox at ~/.pi/agent/skills" test -f "$GHOME/.pi/agent/skills/shipmates-badge/SKILL.md"
+assert "global pi: no command skills at ~/.pi/agent/skills" test ! -d "$GHOME/.pi/agent/skills"
+assert "global pi: no toolbox at ~/.pi/agent/skills" test ! -f "$GHOME/.pi/agent/skills/shipmates-badge/SKILL.md"
 assert "global pi: crew is NOT a flat <name>.md in the shared tree" test ! -d "$GHOME/.agents/agents"
 assert "global pi: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
 

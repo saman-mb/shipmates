@@ -507,6 +507,11 @@ pub(crate) fn global_root(harness: &str) -> Option<&'static str> {
 /// because pi keeps its crew and its skills in *different* payload dotdirs
 /// (`.pi/agents/…` and `.agents/skills/…`) while both belong under
 /// `~/.pi/agent/` once installed globally.
+/// True when `rel` is a command/tool skill path (`…/skills/<name>/…`).
+fn is_skill_rel(rel: &str) -> bool {
+    rel.split('/').any(|part| part == "skills")
+}
+
 pub(crate) fn global_relocate(harness: &str, rel: &str) -> Option<String> {
     let root = global_root(harness)?;
     let mut parts = rel.splitn(3, '/');
@@ -560,10 +565,20 @@ pub fn relocate_payload(
     let mut out = HashMap::with_capacity(built.len());
     for (key, content) in built {
         let new_key = match key.strip_prefix(&prefix) {
-            Some(rel) => match global_relocate(harness, rel) {
-                Some(relocated) => format!("{prefix}{relocated}"),
-                None => key.clone(),
-            },
+            Some(rel) => {
+                // #513: Pi loads user-scope `~/.pi/agent/skills` and project
+                // `.agents/skills` / `.pi/skills` in the same session. Writing
+                // command skills into the user tree is what collides with a
+                // project or sibling shared-tree install. Global pi keeps crew;
+                // skills stay project-local at `.pi/skills`.
+                if harness == "pi" && is_skill_rel(rel) {
+                    continue;
+                }
+                match global_relocate(harness, rel) {
+                    Some(relocated) => format!("{prefix}{relocated}"),
+                    None => key.clone(),
+                }
+            }
             None => key.clone(),
         };
         out.insert(new_key, content.clone());
@@ -718,6 +733,8 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
             is_steering_receipt_path(harness, path)
                 || is_shipmates_steering_path(path)
                 || is_skill_tree(".agents")
+                // Current project shape (#513): `.pi/skills/<name>/SKILL.md`.
+                || is_skill_tree(".pi")
                 || (parts.len() == 3
                     && root == ".pi"
                     && parts[1] == "agents"
@@ -906,14 +923,14 @@ mod tests {
             global_relocate("antigravity", ".agents/skills/ship-issue/SKILL.md").as_deref(),
             Some(".gemini/config/skills/ship-issue/SKILL.md")
         );
-        // pi keeps crew and skills in *different* payload dotdirs, and both
-        // belong under `~/.pi/agent/` once installed globally.
+        // pi crew relocates under `~/.pi/agent/agents`. Skills *would* relocate
+        // to `~/.pi/agent/skills`, but `relocate_payload` omits them (#513).
         assert_eq!(
             global_relocate("pi", ".pi/agents/sdet.md").as_deref(),
             Some(".pi/agent/agents/sdet.md")
         );
         assert_eq!(
-            global_relocate("pi", ".agents/skills/ship-issue/SKILL.md").as_deref(),
+            global_relocate("pi", ".pi/skills/ship-issue/SKILL.md").as_deref(),
             Some(".pi/agent/skills/ship-issue/SKILL.md")
         );
         // A harness whose global tree IS its workspace dotdir at home keeps no
@@ -1154,6 +1171,10 @@ mod tests {
         // which pi reads as a legacy location — the two harnesses need
         // incompatible `tools:` shapes, so one file cannot serve both.
         assert!(allowed_receipt_path("pi", ".pi/agents/sdet.md"));
+        assert!(allowed_receipt_path(
+            "pi",
+            ".pi/skills/ship-issue/SKILL.md"
+        ));
         // Shared plain-markdown steering, same path as windsurf/codex/opencode/
         // antigravity — doctor/receipt must accept it once the adapter emits it.
         assert!(allowed_receipt_path(
