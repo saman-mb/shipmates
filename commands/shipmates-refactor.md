@@ -155,6 +155,8 @@ the refactor (see Guardrails) — file them with the `/shipmates-issue` Stage 7 
 (prefer one batched issue; cap; dedupe). In-scope polish on already-touched refactor paths may be
 absorbed when behaviour-preserving and within absorb budgets.
 
+<!-- shipmates:why-merge-pr -->
+
 ---
 
 ### Guardrails

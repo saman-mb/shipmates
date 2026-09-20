@@ -182,6 +182,8 @@ touched, never `git add -A`, since the tree may hold unrelated uncommitted work 
   either way — it isn't polish's PR to merge or clean up.
 - `new-branch`: push `<BRANCH>` and open a new PR with the same renders cited by path.
 
+<!-- shipmates:why-merge-pr -->
+
 Either way, then run the CI gate: poll `gh pr checks` until nothing is pending; a red check means
 pulling the failing log, fixing it, re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after
 which you stop and escalate to the user with the failing log rather than looping. Never advance a

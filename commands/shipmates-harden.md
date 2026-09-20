@@ -118,7 +118,11 @@ Deliver: the threat model summary, the findings table (severity → status: fixe
 deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config
 changes outside the repo). Under `report` (the default) that report **is** the deliverable and the
 working tree is exactly as you found it — say so explicitly. Under `pr`, commit and push `<BRANCH>`
-and open the PR, same as `/shipmates-issue`'s commit-push-PR stage, with the same trailers. Then gate on
+and open the PR, same as `/shipmates-issue`'s commit-push-PR stage, with the same trailers.
+
+<!-- shipmates:why-merge-pr -->
+
+Then gate on
 CI: poll `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing
 it, re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and escalate to
 the user with the failing log rather than looping. Never advance a red PR. Only once green do you stop
