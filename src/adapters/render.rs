@@ -410,7 +410,7 @@ pub fn yaml_scalar(value: &str) -> String {
 /// the escapes that function emits (`\\`, `\"`, `\n`, `\r`, `\t`, `\uXXXX`).
 /// `unquote(yaml_scalar(s)) == s` for every string `yaml_scalar` can produce.
 /// Does not change what `yaml_scalar` writes — only reads it.
-pub fn unquote(value: &str) -> String {
+fn unquote(value: &str) -> String {
     let inner = value
         .strip_prefix('"')
         .and_then(|s| s.strip_suffix('"'))
