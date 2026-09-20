@@ -51,7 +51,9 @@ preamble itself, so the substitution order in `render_body` is load-bearing.
   - **High**: Complex or high-risk changes (e.g. major refactors, architectural boundaries, security/delivery changes). Follow the full multi-agent process loop described in the command, including Stage 1.5 when flagged and scaled optional board seats.
 - Spend subagent seats only where their decision can change the outcome. Route model and effort at
   spawn by work difficulty; never hardcode a model in canonical content.
-- Cost is seats × model **plus rework**: Before a spec becomes binding, verify its citations. Route
+- Cost is seats × model **plus rework**: Before a spec becomes binding, verify its citations —
+  including claims about third-party platform behaviour (CI trigger resolution, harness internals),
+  not only `file:line` references in this repo. An unverified platform claim is not a fact. Route
   empirical questions to whoever can run code. Emit the blast radius of any shared API change at plan
   time. Give each unit a machine-checkable owned-paths manifest rather than prose fences.
 - Ask every subagent for a compact structured return: decision/status first, criterion findings and
