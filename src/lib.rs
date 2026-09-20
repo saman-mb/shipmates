@@ -6,5 +6,5 @@ pub mod digest;
 pub mod doctor;
 pub mod embedded;
 pub mod installer;
-pub mod manifest;
+pub(crate) mod manifest;
 pub mod steering;

@@ -82,7 +82,7 @@ impl InstallPlan {
 }
 
 /// Canonical receipt location for one harness install.
-pub fn receipt_path(target_dir: &Path, harness: &str) -> Result<PathBuf> {
+pub(crate) fn receipt_path(target_dir: &Path, harness: &str) -> Result<PathBuf> {
     ReceiptRepository::new(target_dir).receipt_path(harness)
 }
 
