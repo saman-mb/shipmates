@@ -129,6 +129,36 @@ load helpers
   [ -f "$SANDBOX/.claude/skills/shipmates-harden/SKILL.md" ]
 }
 
+# Same rename sweep as the two claude-code tests above, but for every other
+# supported harness — proves the migration isn't claude-code-only: an old
+# identity on disk is deleted (never left alongside the new one) and the
+# current shipmates- name is installed, for both retired generations.
+@test "update migrates a previous name generation in a claimed tree, for every other harness" {
+  local harness dir old new
+  for harness in opencode antigravity codex cursor github-copilot pi windsurf; do
+    for old in ship-harden harden; do
+      dir="$BATS_TEST_TMPDIR/rename-$harness-$old"
+      run "$SHIPMATES_BIN" install --harness "$harness" --dir "$dir" --with-tools none
+      assert_success
+
+      make_previous_generation "$dir" shipmates-harden "$old" "$harness"
+      new="$(harness_skill_path "$harness" shipmates-harden)"
+
+      run "$SHIPMATES_BIN" update --harness "$harness" --dir "$dir"
+      assert_success
+
+      [ ! -e "$dir/$(harness_skill_path "$harness" "$old")" ]
+      if [ "$harness" = opencode ]; then
+        [ -f "$dir/$new" ]
+      else
+        [ -f "$dir/$new/SKILL.md" ]
+      fi
+      run jq -e --arg new "$new" '[.files[].path] | any(startswith($new))' "$dir/.shipmates/receipts/$harness.json"
+      assert_success
+    done
+  done
+}
+
 @test "update --from-cwd refreshes from the checkout" {
   install_claude_code "$SANDBOX"
   cd "$REPO_ROOT"

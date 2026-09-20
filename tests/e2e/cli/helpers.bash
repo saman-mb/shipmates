@@ -88,16 +88,47 @@ stale_shared_skill() {
   done
 }
 
-# Rewrite an installed claude-code tree into an older name generation: move one
-# skill directory and rewrite the receipt so it claims the old path (the
-# receipt writer requires its files sorted by path, so re-sort after the move).
-# `previous` is the older identity: `shipmates-<verb>` or the bare verb.
+# Root-relative path to an installed command skill for `name` under
+# `harness`'s own tree. A directory holding `SKILL.md` everywhere except
+# opencode, which ships one flat command file with no wrapper directory;
+# codex, antigravity, github-copilot and pi share one open `.agents/skills/`
+# tree rather than each carrying a private copy.
+harness_skill_path() {
+  local harness="$1" name="$2"
+  case "$harness" in
+    claude-code) echo ".claude/skills/$name" ;;
+    opencode) echo ".opencode/commands/$name.md" ;;
+    cursor) echo ".cursor/skills/$name" ;;
+    windsurf) echo ".windsurf/skills/$name" ;;
+    codex | antigravity | github-copilot | pi) echo ".agents/skills/$name" ;;
+    *)
+      echo "harness_skill_path: unknown harness '$harness'" >&2
+      return 1
+      ;;
+  esac
+}
+
+# Rewrite an installed tree into an older name generation: move one command
+# skill (a directory everywhere but opencode, which is one file) and rewrite
+# that harness's receipt so it claims the old path (the receipt writer
+# requires its files sorted by path, so re-sort after the move). `previous`
+# is the older identity: `shipmates-<verb>` or the bare verb. `harness`
+# defaults to claude-code.
 make_previous_generation() {
-  local dir="$1" current="$2" previous="$3"
-  local receipt="$dir/.shipmates/receipts/claude-code.json"
-  mv "$dir/.claude/skills/$current" "$dir/.claude/skills/$previous"
-  jq --arg old ".claude/skills/$current/" --arg new ".claude/skills/$previous/" \
-    '(.files[] | select(.path | startswith($old)) | .path) |= sub($old; $new) | .files |= sort_by(.path)' \
-    "$receipt" > "$receipt.tmp"
+  local dir="$1" current="$2" previous="$3" harness="${4:-claude-code}"
+  local receipt="$dir/.shipmates/receipts/$harness.json"
+  local cur_path new_path
+  cur_path="$(harness_skill_path "$harness" "$current")"
+  new_path="$(harness_skill_path "$harness" "$previous")"
+  mv "$dir/$cur_path" "$dir/$new_path"
+  if [ "$harness" = opencode ]; then
+    jq --arg old "$cur_path" --arg new "$new_path" \
+      '(.files[] | select(.path == $old) | .path) = $new | .files |= sort_by(.path)' \
+      "$receipt" > "$receipt.tmp"
+  else
+    jq --arg old "$cur_path/" --arg new "$new_path/" \
+      '(.files[] | select(.path | startswith($old)) | .path) |= sub($old; $new) | .files |= sort_by(.path)' \
+      "$receipt" > "$receipt.tmp"
+  fi
   mv "$receipt.tmp" "$receipt"
 }
