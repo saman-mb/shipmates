@@ -226,8 +226,8 @@ fn third_party_collision_refuses_install_and_leaves_bytes_untouched() {
     );
     let text = output_text(&output);
     assert!(
-        text.contains("shipmates install --force"),
-        "refusal must name the flag that replaces it: {text}"
+        text.contains("shipmates install --harness claude-code") && text.contains("--force"),
+        "refusal must name the invocation that replaces it (#392): {text}"
     );
     assert!(
         text.contains(".claude/agents/architect.md"),
@@ -262,8 +262,10 @@ fn third_party_toml_agent_refuses_install() {
     assert!(!dir.path().join(".shipmates/receipts/codex.json").exists());
     let text = output_text(&output);
     assert!(
-        text.contains("shipmates install --force"),
-        "refusal must name --force: {text}"
+        text.contains("shipmates install --harness codex")
+            && text.contains("--with-tools none")
+            && text.contains("--force"),
+        "refusal must name the invocation that replaces it (#392): {text}"
     );
     assert!(
         text.contains(".codex/agents/sdet.toml"),
@@ -814,17 +816,20 @@ fn doctor_fix_leaves_third_party_drift_untouched_and_names_force() {
 
     let output = run(dir.path(), &["doctor", "--fix"]);
 
-    assert_eq!(
-        output.status.code(),
-        Some(2),
-        "a collision doctor cannot repair stays a reported problem: {}",
+    assert!(
+        output.status.success(),
+        "an unfixable foreign collision is advisory, not a problem (#393): {}",
         output_text(&output)
     );
     assert_eq!(fs::read(&managed).unwrap(), b"unmanaged edit\n");
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("shipmates install --force"),
-        "doctor must name the required next step (#386): {stdout}"
+        stdout.contains("shipmates install --harness claude-code") && stdout.contains("--force"),
+        "doctor must name the required next step (#392/#386): {stdout}"
+    );
+    assert!(
+        stdout.contains("Foreign collisions") || stdout.contains("does not own"),
+        "doctor must still surface the foreign collision: {stdout}"
     );
 }
 
@@ -1092,9 +1097,9 @@ fn doctor_fix_still_repairs_drifted_installed_tool() {
 
 #[test]
 fn doctor_reports_removed_tools_instead_of_a_clean_no_tools_state() {
-    // #412: a wipe removes the live tool files, leaves installer sidecars and
-    // rewrites the receipt without them. Doctor must read the sidecars as
-    // evidence of a removal, not announce a deliberate crew-only install.
+    // #412 + #418: an intentional wipe no longer leaves bak sidecars. Plant
+    // installer sidecars by hand so doctor still reads them as evidence of a
+    // removal rather than a deliberate crew-only install.
     let dir = tempdir().unwrap();
     let first = run(
         dir.path(),
@@ -1105,6 +1110,12 @@ fn doctor_reports_removed_tools_instead_of_a_clean_no_tools_state() {
         "opencode install failed: {}",
         output_text(&first)
     );
+    let tool = dir.path().join(".opencode/tools/shipmates-termgif.ts");
+    let bak = dir
+        .path()
+        .join(".opencode/tools/shipmates-termgif.ts.bak-1788191317-3827013-0");
+    fs::copy(&tool, &bak).unwrap();
+
     let wipe = run(
         dir.path(),
         &["install", "--harness", "opencode", "--with-tools", "none"],
@@ -1116,10 +1127,14 @@ fn doctor_reports_removed_tools_instead_of_a_clean_no_tools_state() {
     );
     let tools_dir = dir.path().join(".opencode/tools");
     assert_eq!(live_file_count(&tools_dir), 0, "the wipe must remove tools");
-    assert!(
-        sidecar_count(&tools_dir) > 0,
-        "the wipe must leave installer sidecars as evidence"
+    // Intentional drop clears the live file and any bak that was already there
+    // (#418). Re-plant a sidecar to exercise the #412 doctor path.
+    assert_eq!(
+        sidecar_count(&tools_dir),
+        0,
+        "intentional --with-tools none must prune tool bak sidecars (#418)"
     );
+    fs::write(&bak, b"prior tool bytes\n").unwrap();
 
     let output = run(dir.path(), &["doctor", "--harness", "opencode"]);
     let text = output_text(&output);
@@ -1486,5 +1501,235 @@ fn cursor_upgrade_from_a_shared_tree_receipt_leaves_no_orphans() {
             .iter()
             .any(|file| file["path"].as_str().unwrap().starts_with(".agents/")),
         "the refreshed receipt must not keep claiming `.agents` paths"
+    );
+}
+
+/// #379: install migrates a claimed previous-generation identity without --force.
+#[test]
+fn install_renames_owned_previous_generation_identity() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    let current = dir.path().join(".claude/skills/shipmates-harden");
+    let previous = dir.path().join(".claude/skills/harden");
+    assert!(current.exists(), "fresh install must write shipmates-harden");
+    fs::rename(&current, &previous).unwrap();
+
+    let mut receipt = read_receipt(dir.path());
+    if let Some(files) = receipt["files"].as_array_mut() {
+        for file in files.iter_mut() {
+            if let Some(path) = file["path"].as_str() {
+                if path.starts_with(".claude/skills/shipmates-harden/") {
+                    let rewritten = path.replacen(
+                        ".claude/skills/shipmates-harden/",
+                        ".claude/skills/harden/",
+                        1,
+                    );
+                    file["path"] = Value::String(rewritten);
+                }
+            }
+        }
+        files.sort_by(|a, b| {
+            a["path"]
+                .as_str()
+                .unwrap_or("")
+                .cmp(b["path"].as_str().unwrap_or(""))
+        });
+    }
+    fs::write(
+        receipt_path(dir.path()),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+
+    let output = run(
+        dir.path(),
+        &["install", "--harness", HARNESS, "--with-tools", "none"],
+    );
+    assert!(
+        output.status.success(),
+        "install must migrate owned identity without --force: {}",
+        output_text(&output)
+    );
+    assert!(
+        dir.path()
+            .join(".claude/skills/shipmates-harden/SKILL.md")
+            .is_file(),
+        "new identity must be installed"
+    );
+    assert!(
+        !previous.exists(),
+        "owned previous identity must be deleted, not left beside the new one"
+    );
+}
+
+/// #379: doctor --fix runs the same identity rename sweep as install.
+#[test]
+fn doctor_fix_renames_owned_previous_generation_identity() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    let current = dir.path().join(".claude/skills/shipmates-harden");
+    let previous = dir.path().join(".claude/skills/harden");
+    fs::rename(&current, &previous).unwrap();
+
+    let mut receipt = read_receipt(dir.path());
+    if let Some(files) = receipt["files"].as_array_mut() {
+        for file in files.iter_mut() {
+            if let Some(path) = file["path"].as_str() {
+                if path.starts_with(".claude/skills/shipmates-harden/") {
+                    let rewritten = path.replacen(
+                        ".claude/skills/shipmates-harden/",
+                        ".claude/skills/harden/",
+                        1,
+                    );
+                    file["path"] = Value::String(rewritten);
+                }
+            }
+        }
+        files.sort_by(|a, b| {
+            a["path"]
+                .as_str()
+                .unwrap_or("")
+                .cmp(b["path"].as_str().unwrap_or(""))
+        });
+    }
+    fs::write(
+        receipt_path(dir.path()),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+
+    let output = run(dir.path(), &["doctor", "--fix"]);
+    assert!(
+        output.status.success(),
+        "doctor --fix must migrate owned identity: {}",
+        output_text(&output)
+    );
+    assert!(
+        dir.path()
+            .join(".claude/skills/shipmates-harden/SKILL.md")
+            .is_file()
+    );
+    assert!(!previous.exists());
+}
+
+/// #379: --no-migrate leaves the old identity; doctor then reports Identity.
+#[test]
+fn install_no_migrate_then_doctor_reports_identity() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    let current = dir.path().join(".claude/skills/shipmates-harden");
+    let previous = dir.path().join(".claude/skills/harden");
+    fs::rename(&current, &previous).unwrap();
+
+    let mut receipt = read_receipt(dir.path());
+    if let Some(files) = receipt["files"].as_array_mut() {
+        for file in files.iter_mut() {
+            if let Some(path) = file["path"].as_str() {
+                if path.starts_with(".claude/skills/shipmates-harden/") {
+                    let rewritten = path.replacen(
+                        ".claude/skills/shipmates-harden/",
+                        ".claude/skills/harden/",
+                        1,
+                    );
+                    file["path"] = Value::String(rewritten);
+                }
+            }
+        }
+        files.sort_by(|a, b| {
+            a["path"]
+                .as_str()
+                .unwrap_or("")
+                .cmp(b["path"].as_str().unwrap_or(""))
+        });
+    }
+    fs::write(
+        receipt_path(dir.path()),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+
+    let output = run(
+        dir.path(),
+        &[
+            "install",
+            "--harness",
+            HARNESS,
+            "--with-tools",
+            "none",
+            "--no-migrate",
+        ],
+    );
+    assert!(
+        output.status.success(),
+        "install --no-migrate must succeed: {}",
+        output_text(&output)
+    );
+    assert!(
+        previous.exists(),
+        "--no-migrate must leave the previous identity in place"
+    );
+    assert!(
+        dir.path()
+            .join(".claude/skills/shipmates-harden/SKILL.md")
+            .is_file(),
+        "payload still writes the new identity beside the old one"
+    );
+
+    let output = run(dir.path(), &["doctor"]);
+    let text = output_text(&output);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "doctor must report the leftover identity as a problem: {text}"
+    );
+    assert!(
+        text.to_lowercase().contains("identity")
+            || text.contains("harden")
+            || text.contains("superseded"),
+        "doctor output must name the leftover identity: {text}"
+    );
+}
+
+/// #379: an unowned previous-generation file is left in place while the new
+/// skill is still installed.
+#[test]
+fn install_leaves_unowned_previous_identity_and_writes_new() {
+    let dir = tempdir().unwrap();
+    install_ok(dir.path());
+
+    let previous = dir.path().join(".claude/skills/harden");
+    fs::create_dir_all(&previous).unwrap();
+    fs::write(
+        previous.join("SKILL.md"),
+        "---\nname: someone-elses\n---\nmine\n",
+    )
+    .unwrap();
+
+    let output = run(
+        dir.path(),
+        &["install", "--harness", HARNESS, "--with-tools", "none"],
+    );
+    assert!(
+        output.status.success(),
+        "install must succeed with an unowned previous identity: {}",
+        output_text(&output)
+    );
+    assert!(
+        previous.join("SKILL.md").is_file(),
+        "unowned previous identity must be left untouched"
+    );
+    assert!(
+        dir.path()
+            .join(".claude/skills/shipmates-harden/SKILL.md")
+            .is_file(),
+        "new identity must still be installed"
+    );
+    let text = output_text(&output);
+    assert!(
+        text.contains("left") || text.contains("not ours"),
+        "install should notice the unowned previous identity: {text}"
     );
 }

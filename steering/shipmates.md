@@ -8,7 +8,7 @@ Agent-facing conventions for changing **this repository's** canonical resources 
 | cursor | `.cursor/rules/shipmates-contributor.mdc` |
 | github-copilot | `.github/instructions/shipmates.instructions.md` |
 | grok-build | `.grok/rules/shipmates-contributor.md` |
-| opencode, codex, antigravity, windsurf | `.shipmates/contributor-steering.md` (no documented auto-load path yet) |
+| opencode, codex, antigravity, windsurf, pi | `.shipmates/contributor-steering.md` (no documented auto-load path yet) |
 
 When you touch canonical sources, extend the model in `tools/gen_command_pages.py` (or the Rust installer) and **regenerate** — never hand-edit generated pages under `site/commands/`, `site/agents/`, or `site/tools/`.
 

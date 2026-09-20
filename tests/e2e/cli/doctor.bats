@@ -39,10 +39,14 @@ load helpers
 @test "doctor points at removed tool files instead of a clean no-tools state" {
   run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools all
   assert_success
+  # Intentional --with-tools none prunes bak husks (#418). Plant a sidecar so
+  # doctor still has evidence of a prior removal (#412).
+  printf 'prior\n' > "$SANDBOX/.opencode/tools/shipmates-termgif.ts.bak-1788191317-3827013-0"
   run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX" --with-tools none
   assert_success
   [ "$(find "$SANDBOX/.opencode/tools" -type f ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
-  [ "$(find "$SANDBOX/.opencode/tools" -name '*.bak-*' | wc -l | tr -d ' ')" -gt 0 ]
+  [ "$(find "$SANDBOX/.opencode/tools" -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
+  printf 'prior\n' > "$SANDBOX/.opencode/tools/shipmates-termgif.ts.bak-1788191317-3827013-0"
 
   run "$SHIPMATES_BIN" doctor --harness opencode --dir "$SANDBOX"
   refute_output --partial "no optional tools installed"
