@@ -128,6 +128,8 @@ otherwise PR-note or capped/batched labelled issues — never one ticket per Low
 `MERGE_MODE=auto`, merge the PR and remove `<WORKTREE_DIR>`; the manual default leaves the worktree
 in place with the PR open for a human to merge.
 
+<!-- shipmates:why-merge-pr -->
+
 ---
 
 ### Guardrails

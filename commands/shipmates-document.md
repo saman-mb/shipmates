@@ -106,6 +106,8 @@ and remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place wit
 the doc type, the fresh-reader's final result (in its words), rounds taken, and any follow-ups
 (things worth documenting next, discovered gaps).
 
+<!-- shipmates:why-merge-pr -->
+
 ---
 
 ### Guardrails

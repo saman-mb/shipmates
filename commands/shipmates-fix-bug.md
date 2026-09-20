@@ -126,6 +126,8 @@ in-scope leftovers; cap and batch any filed issues; never open one ticket per tr
 Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, disposition counts,
 and the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
 
+<!-- shipmates:why-merge-pr -->
+
 ---
 
 ### Guardrails

@@ -255,6 +255,8 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
    - **Integration** — epic issue link, integration branch name, and explicit note: **human review
      required** — merge only when satisfied with the epic scope.
 
+<!-- shipmates:why-merge-pr -->
+
    Record `<EPIC_PR>`.
 7. **Persist state** — post or **edit** the single `<!-- shipmates-epic-progress -->` comment on epic
    `<epic>` (see **Stage 3.5**). Include machine-readable lines `EPIC_BRANCH:`, `EPIC_PR:`, `MAIN_BRANCH:`,

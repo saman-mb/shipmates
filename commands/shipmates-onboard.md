@@ -143,6 +143,8 @@ pass `MODE=edit-in-place` up front instead. Report: the file written, the undo p
 the branch), which commands were proven versus recorded as unverified, and the verification round it
 passed on.
 
+<!-- shipmates:why-merge-pr -->
+
 ---
 
 ### Guardrails

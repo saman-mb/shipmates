@@ -488,6 +488,8 @@ The PR body must include: summary, the acceptance criteria as a checklist, how i
 every issue in `<issues>` — GitHub only auto-closes the ones it's told individually, so a single
 comma-separated `Closes #1, #2, #3` silently leaves all but the first open.
 
+<!-- shipmates:why-merge-pr -->
+
 ## Stage 4.5 — CI gate: wait for green, fix if red  (orchestrator + Fixer)  ⛔ HARD GATE
 
 **When there is no local toolchain to fully validate, CI is the ONLY real runtime gate — the Stage 3

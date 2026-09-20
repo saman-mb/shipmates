@@ -283,6 +283,10 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
                 !content.contains("shipmates:epic-integration-board"),
                 "{target} {path} leaked epic integration board marker"
             );
+            assert!(
+                !content.contains("shipmates:why-merge-pr"),
+                "{target} {path} leaked why-merge-pr marker"
+            );
         }
 
         let role_outputs: Vec<_> = files
@@ -1572,6 +1576,76 @@ fn test_every_command_carries_the_model_routing_ruleset() {
             !rendered.contains("shipmates:model-routing"),
             "{}: the marker must not survive into the payload",
             command.name
+        );
+    }
+}
+
+/// Every command that opens a PR must carry the shared Why-merge-this doctrine.
+/// The marker lives only on PR-opening commands; non-PR commands must stay clean
+/// so the contract cannot silently widen.
+#[test]
+fn test_pr_opening_commands_require_why_merge() {
+    const PR_OPENING: &[&str] = &[
+        "shipmates-issue",
+        "shipmates-fix-bug",
+        "shipmates-document",
+        "shipmates-onboard",
+        "shipmates-harden",
+        "shipmates-spike",
+        "shipmates-polish",
+        "shipmates-epic",
+        "shipmates-migrate",
+        "shipmates-refactor",
+    ];
+    const MARKER: &str = "<!-- shipmates:why-merge-pr -->";
+
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let commands = load_commands(&root.join("commands")).unwrap();
+    assert!(!commands.is_empty());
+    let files = ClaudeCodeAdapter.build(&[], &commands).unwrap();
+
+    let pr_set: std::collections::HashSet<&str> = PR_OPENING.iter().copied().collect();
+    for command in &commands {
+        let canonical = std::fs::read_to_string(root.join("commands").join(format!("{}.md", command.name)))
+            .unwrap_or_else(|e| panic!("read commands/{}.md: {e}", command.name));
+        let path = format!(
+            "harnesses/claude-code/.claude/skills/{}/SKILL.md",
+            command.name
+        );
+        let rendered = files
+            .get(&path)
+            .unwrap_or_else(|| panic!("no rendered payload for {path}"));
+
+        if pr_set.contains(command.name.as_str()) {
+            assert!(
+                canonical.contains(MARKER),
+                "{}: PR-opening command must carry {MARKER}",
+                command.name
+            );
+            assert_eq!(
+                rendered.matches("Why merge this").count(),
+                1,
+                "{}: rendered body must contain 'Why merge this' exactly once",
+                command.name
+            );
+            assert!(
+                !rendered.contains("shipmates:why-merge-pr"),
+                "{}: the why-merge-pr marker must not survive into the payload",
+                command.name
+            );
+        } else {
+            assert!(
+                !canonical.contains(MARKER),
+                "{}: non-PR-opening command must not carry {MARKER}",
+                command.name
+            );
+        }
+    }
+
+    for name in PR_OPENING {
+        assert!(
+            commands.iter().any(|c| c.name == *name),
+            "PR-opening set names unknown command `{name}`"
         );
     }
 }
