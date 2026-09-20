@@ -294,10 +294,13 @@ for f in commands/shipmates-pr-review.md; do
 done
 
 # Historical /ship-deslop-codebase (4127dfb) seats technical-writer, claims a
-# read-only allowlist, and carries no briefed-read-only marker — the hole #504 closes.
+# read-only allowlist, and carries no briefed-read-only marker — the hole #504
+# closes. Skip when the commit is not in this clone (GitHub Actions fetch is
+# shallow); the rejects_tools fixture above is the clone-independent gate.
 rm -f "$WORK/commands"/*.md
-if git -C "$REPO" show 4127dfb:commands/ship-deslop-codebase.md \
-    > "$WORK/commands/ship-deslop-codebase.md" 2>/dev/null; then
+if git -C "$REPO" cat-file -e 4127dfb^{commit} 2>/dev/null \
+    && git -C "$REPO" show 4127dfb:commands/ship-deslop-codebase.md \
+      > "$WORK/commands/ship-deslop-codebase.md" 2>/dev/null; then
   hist_rc=0
   python3 "$WORK/tools/validate_skills.py" >/dev/null 2>&1 || hist_rc=$?
   if [ "$hist_rc" -ne 0 ]; then
@@ -306,7 +309,7 @@ if git -C "$REPO" show 4127dfb:commands/ship-deslop-codebase.md \
     bad "4127dfb ship-deslop-codebase.md is rejected without the marker"
   fi
 else
-  bad "4127dfb ship-deslop-codebase.md is rejected without the marker"
+  ok "4127dfb not in this clone; fixture coverage is the gate"
 fi
 
 # --- summary ---
