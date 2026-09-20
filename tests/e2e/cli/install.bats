@@ -45,11 +45,11 @@ load helpers
 
 @test "--no-migrate leaves a superseded generation name in place" {
   install_claude_code "$SANDBOX"
-  make_previous_generation "$SANDBOX" shipmates-harden shipmates-harden
+  make_previous_generation "$SANDBOX" shipmates-harden ship-harden
 
   run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools none --no-migrate
   assert_success
-  [ -d "$SANDBOX/.claude/skills/shipmates-harden" ]
+  [ -d "$SANDBOX/.claude/skills/ship-harden" ]
 }
 
 @test "--with-tools selects a subset and accepts a legacy tool name" {

@@ -29,7 +29,7 @@ load helpers
   assert_success
   # The removed payload is backed up as a sidecar (the undo a captain can ask
   # for), but no live tool file remains.
-  [ "$(find "$SANDBOX/.claude/skills" -path '*shipmates-*' -type f ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
+  [ "$(tool_files "$SANDBOX")" -eq 0 ]
   [ "$(find "$SANDBOX/.claude/skills" -mindepth 2 -maxdepth 2 -name 'SKILL.md' ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 17 ]
 }
 
@@ -102,14 +102,14 @@ load helpers
   assert_failure
 }
 
-@test "update migrates the previous shipmates- prefix in a claimed tree" {
+@test "update migrates the previous ship- prefix in a claimed tree" {
   install_claude_code "$SANDBOX"
-  make_previous_generation "$SANDBOX" shipmates-harden shipmates-harden
+  make_previous_generation "$SANDBOX" shipmates-harden ship-harden
 
   run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX"
   assert_success
 
-  [ ! -e "$SANDBOX/.claude/skills/shipmates-harden" ]
+  [ ! -e "$SANDBOX/.claude/skills/ship-harden" ]
   [ -f "$SANDBOX/.claude/skills/shipmates-harden/SKILL.md" ]
   run jq -e '[.files[].path] | index(".claude/skills/shipmates-harden/SKILL.md") != null' "$SANDBOX/.shipmates/receipts/claude-code.json"
   assert_success

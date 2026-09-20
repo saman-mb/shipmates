@@ -31,8 +31,27 @@ skill_dirs() {
   find "$1/.claude/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
 }
 
+# Tools and commands both install as `shipmates-*` skill dirs, so a name
+# pattern can't tell them apart — count against the toolbox source directory
+# names instead of guessing from the installed name.
 tool_dirs() {
-  find "$1/.claude/skills" -mindepth 1 -maxdepth 1 -type d -name 'shipmates-*' 2>/dev/null | wc -l | tr -d ' '
+  local dir="$1" name count=0
+  for name in "$REPO_ROOT"/toolbox/*/; do
+    name="$(basename "$name")"
+    [ -d "$dir/.claude/skills/$name" ] && count=$((count + 1))
+  done
+  echo "$count"
+}
+
+# Live (non-backup) files under installed tool directories only — same
+# tools-vs-commands ambiguity as tool_dirs, so walk the same toolbox list.
+tool_files() {
+  local dir="$1" name count=0
+  for name in "$REPO_ROOT"/toolbox/*/; do
+    name="$(basename "$name")"
+    count=$((count + $(find "$dir/.claude/skills/$name" -type f ! -name '*.bak-*' 2>/dev/null | wc -l | tr -d ' ')))
+  done
+  echo "$count"
 }
 
 agent_files() {
