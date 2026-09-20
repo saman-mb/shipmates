@@ -122,5 +122,9 @@ else
 fi
 
 if [ -n "${GITHUB_PATH:-}" ]; then
-  echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+  cargo_bin="$HOME/.cargo/bin"
+  if command -v cygpath >/dev/null 2>&1; then
+    cargo_bin="$(cygpath -w "$cargo_bin")"
+  fi
+  echo "$cargo_bin" >> "$GITHUB_PATH"
 fi
