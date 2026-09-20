@@ -263,6 +263,15 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
 8. **Empty pending shortcut** — when `<pending>` is empty after Stage 0 reconciliation, skip Stages 1–2
    and go directly to **Stage 4** (full closure or crew-complete). `<EPIC_PR>` must already be set from
    steps above.
+9. **CI-trigger sanity check** — `<EPIC_PR>` is opened with **base = `MAIN_BRANCH`**, so
+   `gh pr checks <EPIC_PR>` cannot detect a `pull_request.branches` glob that drops slash-containing
+   **base** names — that is the unit-PR shape (`feat/epic-…`). After `<EPIC_BRANCH>` exists, open one
+   **disposable** probe PR whose **base is `<EPIC_BRANCH>`** (head a throwaway commit on a short-lived
+   `ci-probe/<epic>` branch). Never merge it. Bound the wait to a handful of poll intervals on
+   `gh pr checks` for that probe. If no check suite appears — not pending, not red, empty — **stop
+   and diagnose at kickoff** (`branches: ["*"]` does not match `/`; `**` does). Close the probe PR and
+   delete its branch. A green `<EPIC_PR>` (base = main) is not proof that unit PRs will get checks.
+   Do not merge a workflow tweak to `MAIN_BRANCH` to test the theory. Skip in `DRY_RUN`.
 
 ## Stage 1 — Story graph  (orchestrator)
 
@@ -531,6 +540,11 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
 
 ### Guardrails
 
+- **A merge is never itself the verification step.** To check whether a CI/config/harness fix works,
+  use the cheapest reversible method: local simulation, or a disposable branch/PR that is explicitly
+  never merged. Do not merge to `MAIN_BRANCH`, `<EPIC_BRANCH>`, or any other shared/default/integration
+  branch “just to see if the theory was right”. A merge to shared state needs its own, separately
+  considered captain authorization — never inferred from a different question.
 - **Compose, don't duplicate** — each unit is one full `/shipmates-issue` pipeline taken from the
   **installed** command file (Read → execute stages in-session). Never invent a rival stage list,
   skip mandatory `/shipmates-issue` stages, or approximate the unit run from memory. Skill/`skill` is

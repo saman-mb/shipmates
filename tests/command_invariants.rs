@@ -1,12 +1,18 @@
 //! Regression contracts for command prose that a live run cannot unit-test.
 //!
-//! These read the canonical `commands/*.md` sources. A missing step in the
-//! workflow is a missing sentence here.
+//! These read the canonical `commands/*.md` sources (and the shared preamble
+//! they expand from). A missing guardrail is a missing sentence here.
 
 fn command(name: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("commands")
         .join(format!("{name}.md"));
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
+}
+
+fn cost_preamble() -> String {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/COST.md");
     std::fs::read_to_string(&path)
         .unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
 }
@@ -57,5 +63,79 @@ fn consolidate_reconciles_dangling_issues_into_open_epics_before_bundling() {
     assert!(
         report.contains("reattach"),
         "the report must surface how many issues were reattached to existing epics vs bundled fresh:\n{report}"
+    );
+}
+
+/// #480: verifying a fix must never use a merge to a shared/default branch
+/// as the verification step itself.
+#[test]
+fn ci_verification_never_merges_to_the_default_branch_to_test() {
+    for name in ["shipmates-issue", "shipmates-epic"] {
+        let body = command(name);
+        let guardrails = body
+            .split("### Guardrails")
+            .nth(1)
+            .unwrap_or_else(|| panic!("{name} missing Guardrails"));
+        let lower = guardrails.to_ascii_lowercase();
+        assert!(
+            lower.contains("disposable") && lower.contains("never itself the verification"),
+            "{name} Guardrails must forbid using a merge to a shared/default branch to verify an unverified fix:\n{guardrails}"
+        );
+    }
+}
+
+/// #480: Stage 4.5 must name "no check suite ever appears" as its own
+/// condition, distinct from pending or red, and the snippet must encode it.
+#[test]
+fn ship_issue_stage_4_5_names_empty_check_suite() {
+    let body = command("shipmates-issue");
+    let stage = section(&body, "## Stage 4.5");
+    let lower = stage.to_ascii_lowercase();
+    assert!(
+        lower.contains("no check suite") && lower.contains("root-cause"),
+        "Stage 4.5 must name a permanently empty check suite and require root-cause:\n{stage}"
+    );
+    assert!(
+        stage.contains("empty-check-suite") && stage.contains("-ge 8"),
+        "Stage 4.5 snippet must emit empty-check-suite only after a bounded empty wait:\n{stage}"
+    );
+    assert!(
+        !stage.contains("if [ -z \"$st\" ]; then echo empty-check-suite; break"),
+        "empty must not break on the first poll; keep looping until the bound:\n{stage}"
+    );
+    assert!(
+        stage.contains("no checks reported"),
+        "empty-suite path must classify gh's tabless 'no checks reported' stderr as empty, not as -n success:\n{stage}"
+    );
+    assert!(
+        stage.contains("pending") && stage.contains("continue"),
+        "pending must keep waiting and not share the empty-suite cap:\n{stage}"
+    );
+}
+
+/// #480: Stage 0.5 must probe a pull_request whose **base** is the epic
+/// branch — `<EPIC_PR>` (base = main) cannot catch the slash-glob bug.
+#[test]
+fn ship_epic_stage_0_5_sanity_checks_ci_trigger() {
+    let body = command("shipmates-epic");
+    let stage = section(&body, "## Stage 0.5");
+    let lower = stage.to_ascii_lowercase();
+    assert!(
+        lower.contains("disposable")
+            && lower.contains("base is `<epic_branch>`")
+            && lower.contains("check suite"),
+        "Stage 0.5 must sanity-check a disposable PR whose base is <EPIC_BRANCH>, not gh pr checks on <EPIC_PR>:\n{stage}"
+    );
+}
+
+/// #480: citation-verification covers third-party platform claims, not only
+/// in-repo file:line citations.
+#[test]
+fn cost_discipline_verifies_third_party_platform_claims() {
+    let cost = cost_preamble();
+    let lower = cost.to_ascii_lowercase();
+    assert!(
+        lower.contains("third-party") && lower.contains("platform"),
+        "docs/COST.md must extend citation verification to third-party platform behaviour:\n{cost}"
     );
 }
