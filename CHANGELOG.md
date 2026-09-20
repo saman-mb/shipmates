@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.6] - 2026-09-21
+
+### Fixed
+
+- **`/shipmates-consolidate-issues` Stage 3 reattach is symmetric for existing epics.** Checklist
+  backfill and `Part of #<epic>` on the child are unconditional (not fallback-only); post-attach
+  verification checks membership in the epic's pre-existing child set rather than exact equality;
+  and a story already labeled `Part of #<epic>` but not yet graph-linked stays a migrate case
+  (#517, follow-up to #519 / #516).
+
 ## [0.10.5] - 2026-09-21
 
 ### Fixed
