@@ -1,6 +1,6 @@
 ---
 name: ship-deslop
-description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, over-engineering beyond product need, inconsistency, bad patterns, misplaced files and layers, dependency and config rot — grade every finding by risk, then file the work as an epic with sub-issues. Never edits the codebase: it analyses, files tracked work, and stops at a human gate where the captain chooses what ships now and what waits.
+description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, over-engineering beyond actual need, inconsistency, bad patterns, misplaced files and folders, dependency and config rot — grade every finding by risk, then file the work as an epic with sub-issues. Never edits the codebase: it analyses, files tracked work, and stops at a human gate where the captain chooses what ships now and what waits.
 argument-hint: <path-or-module> [file|ship] — no args: whole repo, analysis only
 allowed-tools: Bash, Read, Agent, Grep, Glob
 disable-model-invocation: true
@@ -23,8 +23,8 @@ fix now and what to leave for later.
 **This command never edits the codebase.** It carries no `Write` and no `Edit`, so read-only is
 structural here rather than a promise a mode makes. Fixes happen downstream, in the workflow that owns
 shipping, after a human has agreed to them. That division is deliberate. A cleanup change is the most
-dangerous kind: the compiler stays green, the tests stay green, and a feature breaks anyway because
-the deleted path was the only one a customer actually used. The thing that catches it is a person
+dangerous kind: the build stays green, the tests stay green, and a feature breaks anyway because
+the deleted path was the only one anything actually used. The thing that catches it is a person
 reading the proposal — so this command's real job is to make that reading *possible*: evidence on
 every finding, work grouped the way the repository is actually owned, and nothing hidden.
 
@@ -122,11 +122,11 @@ What to look for, and what each analyser class feeds:
 
 | Capability class | Feeds | Found in |
 |---|---|---|
-| Unused-symbol / dead-code analysis | dead symbols, imports, unreachable branches | the repo's compiler/linter settings |
+| Unused-symbol / dead-code analysis | dead symbols, imports, unreachable branches | the repo's own analyser settings, where it has them |
 | Lint + style rules | bad patterns by class, naming drift | the repo's lint config |
 | Duplication detection | exact clones and near-duplicates over `DUP_SIMILARITY` | a clone detector, or agent reading |
-| Complexity + type/strictness checking | hotspots over `COMPLEXITY_LIMIT`, overly broad types, unchecked null paths | a metrics tool or the repo's type checker, at its strictest |
-| Dependency audit + import-graph analysis | unused declarations, lockfile version skew, circular module dependencies | the package manager's audit surface, a graph tool, or agent reading |
+| Complexity + type/strictness checking | hotspots over `COMPLEXITY_LIMIT`, overly broad types, unchecked null paths | a metrics tool, or the repo's type checker at its strictest where it has one |
+| Dependency audit + import-graph analysis | unused declarations, version skew in the resolved dependency set, circular module dependencies | the package manager's audit surface, a graph tool, or agent reading |
 | Comment, marker, and docs scanning | zombie blocks, stale TODOs, docs describing moved code | grep-shaped scans plus `git blame` for age |
 
 Whatever the tools do not cover, the crew read for — each finding class to the role named in the roster
@@ -157,19 +157,19 @@ The survey covers these classes — the list is the whole of what "cleanup" mean
 - **Dead code** — unused functions, imports, variables, unreachable branches, private symbols with no internal callers, and a state or guard unreachable by construction rather than by control flow.
 - **Duplication** — exact clones and near-duplicates that could become one shared helper; read-aware, not a token hash, so two blocks that merely look alike are a *candidate group*, never a conclusion.
 - **Redundancy** — unnecessary abstractions, wrappers that only pass arguments through, indirection that adds no name value, intermediate variables that restate their expression, a seam with exactly one implementation, and an extension point nothing registers against.
-- **Over-engineering beyond product need** — machinery that distinguishes more internal states, options or
+- **Over-engineering beyond actual need** — machinery that distinguishes more internal states, options or
   outcomes than any consumer acts on. The signal is a ratio: count the distinct states, modes or outputs a
   unit produces, then count the distinct behaviours consumers actually branch on. Its shapes are an
   optimisation with no measurement behind it, an in-house rebuild of a capability the platform already
   provides, and data modelled richer than any use. Evidence is both counts and the consumer sites, never an
   impression that the code feels heavy — and the protected list still outranks this class.
-- **Inconsistency** — mixed concurrency or callback styles in one codebase, naming drift, error handling that throws at one call site, returns at another, and logs-and-continues at a third.
-- **Structural placement** — symbols and files in the wrong module, layer or folder for the repository's own stated architecture: a layer importing inward past its boundary, logic in a presentation or entrypoint file that belongs in the application layer, cross-cutting policy parked inside one feature, a catch-all `utils` / `helpers` / `common` bucket, single-file folders and folders one level deeper than anything needs, and sibling modules that disagree about their own internal layout. **The repository's committed convention is the oracle — never a general taste for how trees should look.** Two guards keep it honest: quote the convention from a committed file (`{{project-instructions}}`, an ADR, a lint rule, a codeowners entry) before recording any placement finding, and where no convention is committed the class degrades to *observed-majority-layout* findings, reported as such — this class never invents a folder taxonomy the project did not choose. Evidence is the convention it violates plus the import or call that proves the misplacement.
-- **Bad patterns, by class** — resource leaks (acquisition with no matching release on every path), blocking calls inside an asynchronous context, N+1-style repeated access in a loop, repeated work a single pass would do.
+- **Inconsistency** — mixed styles for the same job in one codebase, naming drift, and error handling that throws at one call site, returns at another, and logs-and-continues at a third.
+- **Structural placement** — symbols and files in the wrong module, layer or folder for the repository's own stated architecture: a layer importing inward past its boundary, logic in a UI, entrypoint or handler file that belongs in a core layer, cross-cutting policy parked inside one feature, a catch-all `utils` / `helpers` / `common` bucket, single-file folders and folders one level deeper than anything needs, and sibling modules that disagree about their own internal layout. **The repository's committed convention is the oracle — never a general taste for how trees should look.** Two guards keep it honest: quote the convention from a committed file (`{{project-instructions}}`, an ADR, a lint rule, an ownership file) before recording any placement finding, and where no convention is committed the class degrades to *observed-majority-layout* findings, reported as such — this class never invents a folder taxonomy the project did not choose. Evidence is the convention it violates plus the import or call that proves the misplacement.
+- **Bad patterns, by class** — resource leaks (acquisition with no matching release on every path), work that blocks where it should not, repeated access in a loop that one pass would do, and recomputation a single pass would remove.
 - **Complexity hotspots** — functions and classes over `COMPLEXITY_LIMIT`, deep nesting.
-- **Dependency health** — declared-but-unused dependencies, several versions of one transitive dependency in the lockfile, import cycles that interface extraction would break.
+- **Dependency health** — declared-but-unused dependencies, several versions of one transitive dependency in the resolved set, import cycles that interface extraction would break.
 - **Repository rot** — commented-out blocks older than `ZOMBIE_HORIZON` with no linked issue; a stale TODO/FIXME inventory with age and whether the surrounding code was since rewritten; flags and settings with only one reachable value, whether or not anything reads them; duplicated CI work; docs describing moved code.
-- **Type and contract health** — overly broad types, missing strictness (implicit returns, unchecked null paths, absent exhaustiveness), public surface with no caller in the repo or its consumers.
+- **Type and contract health** — where the language has types: overly broad ones, missing strictness (implicit returns, unchecked null paths, absent exhaustiveness). Where it does not, the same class read as contracts: unstated preconditions, unvalidated inputs, and a public surface with no caller in the repo or its consumers.
 - **Constants and literals** — repeated magic numbers and strings that should be named once, and regex or format strings recompiled at every use.
 
 Two properties make the census usable as a tracker:
@@ -218,8 +218,8 @@ Grading rules:
 - **A move is not a delete, so the grading differs.** A relocation that crosses a module boundary already
   grades `architectural`; state plainly that **a pure relocation with no call-site change still grades at
   least `review`**, because a move breaks downstream patches, `git blame` continuity and every path-based
-  tool — CI path filters, codeowners, coverage config. Before proposing any move, **grep the moved path
-  across CI config, codeowners, coverage config and docs**, so the blast radius is in the finding rather
+  tool — CI path filters, ownership rules, coverage config. Before proposing any move, **grep the moved path
+  across CI config, ownership rules, coverage config and docs**, so the blast radius is in the finding rather
   than discovered in CI. Relocating a file that external consumers import is a breaking change even when
   nothing inside it changed, so a public or exported path is a protected class *for moves specifically*.
 - **No coverage tooling means nothing grades `safe`.** Every finding degrades to `review` at minimum and
@@ -236,8 +236,8 @@ Grading rules:
   where a unit genuinely produces distinguishable outputs, that is the contested claim itself, not a
   conclusion. It grades `review` at minimum, `architectural` where it crosses a boundary or removes a
   public or persisted surface.
-- **No `performance-sensitive` finding grades `safe`.** Machinery the product cannot see maps to zero
-  features by construction, so an empty feature lookup is absence of product evidence, not proof of
+- **No `performance-sensitive` finding grades `safe`.** Machinery no consumer can observe maps to zero
+  features by construction, so an empty feature lookup is absence of consumer evidence, not proof of
   safety. The seat defending the machinery owes a number too — "it might be hot" is the same
   absence-of-evidence argument this command rejects for deletions. Judge a delta against the project's
   stated bar in its own units; where none is stated, report the tail as well as the mean with the
@@ -265,7 +265,7 @@ Grading rules:
 - **Code referenced only from docs, issue templates, or CI config** — grep is unreliable there, so treat a hit as `review`.
 - **Public or exported paths, for moves specifically** — relocating a file external consumers import breaks them even when its contents are unchanged, so a move is never proposed for one on internal evidence alone.
 - **Machinery whose failure is silent rather than loud** — integrity checks, idempotency keys, deduplication, reconciliation. Its absence does not announce itself, so no test going red will tell you it mattered.
-- **Anything on a path that cannot be rolled back** — a destructive migration, an external side effect, a payment, an irreversible publish.
+- **Anything on a path that cannot be rolled back** — a destructive migration, an external side effect, an irreversible publish, a state change with no inverse.
 - **Load-shedding, rate limiting, and backpressure** — removing them harms a third party, which never appears anywhere in this repository's feature map.
 
 Protected classes are discovered two ways, layered: conventions supply the defaults (a path matching a
@@ -295,14 +295,14 @@ difference: a genericisation that drops a null check is a behaviour change weari
 amount of green tests catches it if no test ever exercised the null path. A candidate group whose variants
 cannot be reconciled at a call site is not a duplication finding at all.
 
-**Feature-to-code mapping, and what the product owner is actually asked.** Before a `review` or
+**Feature-to-code mapping, and what the `product-manager` seat is actually asked.** Before a `review` or
 `architectural` finding is filed, answer "which features depend on this?" — a **call-graph reverse lookup**
-from the symbol to its entry points (request handler, command, event consumer, public API), each mapped to
+from the symbol to its entry points — a handler, command, job, event consumer or public API — each mapped to
 a feature name from the README, the tracker, or the repo's optional feature-map file. A unit that reaches
 no observable terminus at all is the strongest finding in the census; a *failed* trace proves only that
 this repository contains no consumer, never that the code is dead. The resulting **feature-impact summary**
 is mandatory on every `review` and `architectural` sub-issue, grouped by affected feature: a deletion
-touching several features is `review`, one touching a revenue-critical feature is `architectural`.
+touching several features is `review`, one touching a feature the project cannot afford to break is `architectural`.
 
 **The mapping may only raise a grade, never lower one.** A finding that arrives graded `review` or
 `architectural` stays there even when the reverse lookup finds no feature — the lookup reads the repository,
@@ -401,7 +401,7 @@ rollback scope, and the gate below becomes a wall of noise instead of a decision
   wants — but it never becomes a task.
 
 **Acceptance criteria written into each sub-issue.** This command does not enforce these; it states them
-where the downstream workflow's mandatory product-owner seat will check them, so write them
+where the downstream workflow's mandatory `product-manager` seat will check them, so write them
 checkbox-shaped:
 
 - Green baseline before any edit; a red suite stops the work rather than absorbing the blame for it.
@@ -412,8 +412,8 @@ checkbox-shaped:
   on behaviour, not on lines.** The baseline is the set of observable behaviours the unit's entry points
   exhibit, each named and pinned by a passing test *before* the change; the invariant is that every
   behaviour in that set is still asserted afterwards, by a test that fails when the behaviour breaks. Line
-  and percentage movement is reported, never gated — a fall is expected, because coverage of machinery the
-  product never needed was never worth what it cost to keep. Where the existing tests prove only
+  and percentage movement is reported, never gated — a fall is expected, because coverage of machinery
+  nothing needed was never worth what it cost to keep. Where the existing tests prove only
   machinery, writing the missing behaviour test against the *unchanged* code is the first commit, not an
   afterthought.
 - Assertion-free tests, mock-only paths and flaky tests are not evidence, and their presence downgrades

@@ -46,9 +46,11 @@ All notable changes to this project are documented here. The format follows
   findings where none exists, rather than inventing a taxonomy the project never chose. A move is not a
   delete, so a pure relocation grades at least `review` even with no call-site change — moves break
   downstream patches, `git blame` continuity and path-based tooling — and the moved path is grepped
-  across CI config, codeowners and docs so the blast radius is in the finding rather than found in CI.
+  across CI config, ownership rules and docs so the blast radius is in the finding rather than found in CI.
   The coverage footer now also names the classes that were *not* looked for, so a run cannot read as a
-  clean bill of health for something it never asked about (#505).
+  clean bill of health for something it never asked about. The command was also swept for stack and
+  domain assumptions — it no longer presumes a compiler, a lockfile, a type system or an async runtime,
+  and its examples are shapes of debt rather than any one ecosystem's (#505).
 - **Pruned the dependency set.** `flate2`, `reqwest` and `tar` were declared but never referenced
   anywhere in the source, and `serde_yaml` was reachable only from the test suite. The first three
   are removed and `serde_yaml` moved to `[dev-dependencies]`, shrinking the published dependency
