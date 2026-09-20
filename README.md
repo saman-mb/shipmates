@@ -5,7 +5,7 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, and Windsurf.</b><br/>
+  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, Grok Build, and Windsurf.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
@@ -378,7 +378,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
    before anything moves on. Red? It reads the logs and fixes — bounded to a few rounds.
 6. **Acceptance board** ⚖️ — `product-manager` + `sdet` (+ gated `ux-ui-designer` / `art-director` /
    `architect`) review the *pushed PR head*, independently and adversarially.
-7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-reviews. Bounded, then escalates.
+7. **Remediate** 🔁 — any rejection loops back to a fixer, then re-selects the board from that delta: failers sit again, prior ACCEPTs carry unless the delta can invalidate them, and a seat the delta newly trips may join. Bounded, then escalates.
 8. **Deliver** 🏁 — disposes non-blocking nits absorb-first (fix cheap ones in the same PR; file
    only capped/batched leftovers), names a `/shipmates-harden` follow-up if the
    change touched a security-relevant surface (this board doesn't threat-model), and opens (or,

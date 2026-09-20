@@ -1,17 +1,17 @@
 ---
-title: "I gave Claude Code a crew of 12 specialist subagents that ships a GitHub issue to a reviewed PR autonomously"
+title: "I gave Claude Code a crew of 13 specialist subagents that ships a GitHub issue to a reviewed PR autonomously"
 published: false
-description: "How Shipmates orchestrates 12 specialist subagents and 13 command workflows with isolated git worktrees and adversarial review boards to drive issues from open to CI-green PRs."
+description: "How Shipmates orchestrates 13 specialist subagents and 17 command workflows with isolated git worktrees and adversarial review boards to drive issues from open to CI-green PRs."
 tags: "ai, claudecode, programming, devops"
 canonical_url: "https://saman-mb.github.io/shipmates/"
 cover_image: "https://saman-mb.github.io/shipmates/assets/social-preview.png"
 ---
 
-# I gave Claude Code a crew of 12 specialist subagents that ships a GitHub issue to a reviewed PR autonomously
+# I gave Claude Code a crew of 13 specialist subagents that ships a GitHub issue to a reviewed PR autonomously
 
 Single AI prompts are great for generating a function or explaining a bug. But real engineering rarely happens in single prompts: a real ticket requires an architectural sanity check, an isolated branch or worktree, test suite validation, continuous integration gating, and an adversarial peer review before anything gets merged.
 
-That is why we built [**Shipmates**](https://saman-mb.github.io/shipmates/) — an open-source (MIT) crew of **12 domain-neutral specialist subagents** and **13 command workflows** designed to take whole GitHub tickets from open to a reviewed, CI-green pull request on their own.
+That is why we built [**Shipmates**](https://saman-mb.github.io/shipmates/) — an open-source (MIT) crew of **13 domain-neutral specialist subagents** and **17 command workflows** designed to take whole GitHub tickets from open to a reviewed, CI-green pull request on their own.
 
 ---
 
@@ -20,7 +20,7 @@ That is why we built [**Shipmates**](https://saman-mb.github.io/shipmates/) — 
 Instead of treating your AI coding harness as a single general-purpose prompt loop, Shipmates organizes the process into specialized roles:
 
 ```
-Captain (/ship-issue 42)
+Captain (/shipmates-issue 42)
   │
   ├── 1. Intake & Complexity Tiering (Simple / Medium / High)
   ├── 2. Architect & Planner (Decomposition & Design Specs)
@@ -31,9 +31,10 @@ Captain (/ship-issue 42)
   └── 7. Delivery (PR opened, summary posted, follow-ups logged)
 ```
 
-The crew consists of 12 specialist agents:
+The crew consists of 13 specialist agents:
 - **`architect`**: System boundaries, invariants, dependency layering, and data migrations.
 - **`senior-engineer`**: High-craft implementation and minimal diffs.
+- **`principal-engineer`**: Correctness, maintainability, test quality, scope discipline, and contributor-checklist compliance.
 - **`sdet`**: Flaky-test detection, regression fixtures, edge cases, and test assertions.
 - **`security-engineer`**: Authn/authz, input sanitization, least privilege, and secret exposure audits.
 - **`site-reliability-engineer`**: Rollback safety, health probes, graceful degradation, and rate limits.
@@ -47,9 +48,9 @@ The crew consists of 12 specialist agents:
 
 ---
 
-## The Flagship Workflow: `/ship-issue`
+## The Flagship Workflow: `/shipmates-issue`
 
-The flagship workflow of Shipmates is `/ship-issue`. When you issue `/ship-issue <number>` in Claude Code (or any supported harness), the orchestrator executes a multi-stage lifecycle:
+The flagship workflow of Shipmates is `/shipmates-issue`. When you issue `/shipmates-issue <number>` in Claude Code (or any supported harness), the orchestrator executes a multi-stage lifecycle:
 
 ### 1. Complexity Tiering
 Not every change requires a full board of 6 specialists. Stage 0 dynamically classifies incoming tasks into three execution tiers:
@@ -136,7 +137,7 @@ shipmates install --harness claude-code
 
 Then open Claude Code and run:
 ```bash
-/ship-issue <your-issue-number>
+/shipmates-issue <your-issue-number>
 ```
 
 ---
