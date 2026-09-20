@@ -1,7 +1,7 @@
 //! Regression contracts for command prose that a live run cannot unit-test.
 //!
 //! These read the canonical `commands/*.md` sources (and the shared preamble
-//! they expand from). A missing step or guardrail is a missing sentence here.
+//! they expand from). A missing guardrail is a missing sentence here.
 
 fn command(name: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -38,7 +38,10 @@ fn consolidate_reconciles_dangling_issues_into_open_epics_before_bundling() {
         "Stage 0 must inventory the existing open-epic set so later stages can match against it:\n{stage0}"
     );
 
-    let before_stage4 = body.split("## Stage 4").next().expect("Stage 4 heading");
+    let before_stage4 = body
+        .split("## Stage 4")
+        .next()
+        .expect("Stage 4 heading");
     assert!(
         before_stage4.contains("target_epic")
             || before_stage4.contains("reattach")
@@ -73,50 +76,55 @@ fn ci_verification_never_merges_to_the_default_branch_to_test() {
             .split("### Guardrails")
             .nth(1)
             .unwrap_or_else(|| panic!("{name} missing Guardrails"));
+        let lower = guardrails.to_ascii_lowercase();
         assert!(
-            guardrails.to_ascii_lowercase().contains("disposable")
-                || guardrails.contains("never itself the verification")
-                || guardrails.contains("merge is never itself"),
+            lower.contains("disposable") && lower.contains("never itself the verification"),
             "{name} Guardrails must forbid using a merge to a shared/default branch to verify an unverified fix:\n{guardrails}"
         );
     }
 }
 
 /// #480: Stage 4.5 must name "no check suite ever appears" as its own
-/// condition, distinct from pending or red.
+/// condition, distinct from pending or red, and the snippet must encode it.
 #[test]
 fn ship_issue_stage_4_5_names_empty_check_suite() {
     let body = command("shipmates-issue");
     let stage = section(&body, "## Stage 4.5");
     let lower = stage.to_ascii_lowercase();
     assert!(
-        lower.contains("no check suite")
-            || lower.contains("zero checks")
-            || lower.contains("no checks reported")
-            || lower.contains("empty check"),
-        "Stage 4.5 must name a permanently empty check suite as its own failure mode, not only pending vs red:\n{stage}"
+        lower.contains("no check suite") && lower.contains("root-cause"),
+        "Stage 4.5 must name a permanently empty check suite and require root-cause:\n{stage}"
     );
     assert!(
-        !lower.contains("poll indefinitely")
-            || lower.contains("bounded")
-            || lower.contains("root-cause"),
-        "empty-suite handling must root-cause rather than poll forever:\n{stage}"
+        stage.contains("empty-check-suite") && stage.contains("-ge 8"),
+        "Stage 4.5 snippet must emit empty-check-suite only after a bounded empty wait:\n{stage}"
+    );
+    assert!(
+        !stage.contains("if [ -z \"$st\" ]; then echo empty-check-suite; break"),
+        "empty must not break on the first poll; keep looping until the bound:\n{stage}"
+    );
+    assert!(
+        stage.contains("no checks reported"),
+        "empty-suite path must classify gh's tabless 'no checks reported' stderr as empty, not as -n success:\n{stage}"
+    );
+    assert!(
+        stage.contains("pending") && stage.contains("continue"),
+        "pending must keep waiting and not share the empty-suite cap:\n{stage}"
     );
 }
 
-/// #480: Stage 0.5 must cheaply confirm a pull_request event actually
-/// produces a check suite against the new epic branch.
+/// #480: Stage 0.5 must probe a pull_request whose **base** is the epic
+/// branch — `<EPIC_PR>` (base = main) cannot catch the slash-glob bug.
 #[test]
 fn ship_epic_stage_0_5_sanity_checks_ci_trigger() {
     let body = command("shipmates-epic");
     let stage = section(&body, "## Stage 0.5");
     let lower = stage.to_ascii_lowercase();
     assert!(
-        lower.contains("check suite")
-            || lower.contains("pr checks")
-            || lower.contains("ci-trigger")
-            || lower.contains("ci trigger"),
-        "Stage 0.5 must sanity-check that a pull_request event produces checks on <EPIC_BRANCH>:\n{stage}"
+        lower.contains("disposable")
+            && lower.contains("base is `<epic_branch>`")
+            && lower.contains("check suite"),
+        "Stage 0.5 must sanity-check a disposable PR whose base is <EPIC_BRANCH>, not gh pr checks on <EPIC_PR>:\n{stage}"
     );
 }
 
@@ -127,7 +135,7 @@ fn cost_discipline_verifies_third_party_platform_claims() {
     let cost = cost_preamble();
     let lower = cost.to_ascii_lowercase();
     assert!(
-        lower.contains("third-party") || lower.contains("third party") || lower.contains("platform"),
+        lower.contains("third-party") && lower.contains("platform"),
         "docs/COST.md must extend citation verification to third-party platform behaviour:\n{cost}"
     );
 }

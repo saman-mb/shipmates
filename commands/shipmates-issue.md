@@ -502,17 +502,25 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/shipmates-issue` so the epi
 
 1. **Wait for the checks to finish** on the PR head (poll, don't guess). Three outcomes, not two:
    pending → green, pending → red, **or no check suite appears**. Empty is not “not pending” — it is
-   its own failure mode. Bound the wait (a handful of poll intervals, not an open loop). If `gh pr
+   its own failure mode. Bound the wait (eight polls, 15s apart — not an open loop). If `gh pr
    checks <PR#>` still reports no checks after that bound — no suite, not pending, not red — **stop
    polling**. Root-cause why the `pull_request` trigger never fired (a `branches:` glob that drops
-   slash-containing names is the usual class) rather than waiting longer, and rather than merging a
-   workflow tweak to the default branch to “see if that was it”.
+   slash-containing **base** names is the usual class) rather than waiting longer, and rather than
+   merging a workflow tweak to the default branch to “see if that was it”.
    ```bash
-   until s=$(gh pr checks <PR#> 2>&1 | head -1); st=$(echo "$s" | cut -f2); \
-     [ "$st" != "pending" ]; do sleep 15; done; echo "$s"
+   n=0
+   while [ "$n" -lt 8 ]; do
+     s=$(gh pr checks <PR#> 2>&1 | head -1)
+     st=$(printf '%s\n' "$s" | cut -f2)
+     if [ -z "$st" ]; then echo empty-check-suite; break; fi
+     if [ "$st" != "pending" ]; then echo "$s"; break; fi
+     n=$((n + 1))
+     sleep 15
+   done
    ```
-   (Long-running: launch as a background command / until-loop so you're notified on completion — do
-   not chain foreground sleeps.)
+   Treat `empty-check-suite` (or a loop that hits the bound still empty) as the named failure mode
+   above — do not continue to step 2 as if the suite had finished. (Long-running: launch as a
+   background command / until-loop so you're notified on completion — do not chain foreground sleeps.)
 2. **If any check FAILS**, pull the actual failure log — do not speculate:
    ```bash
    gh run view <run-id> --log-failed | grep -iE "FAIL|error|Parse|::error" | head -60

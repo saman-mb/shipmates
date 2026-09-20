@@ -263,13 +263,15 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
 8. **Empty pending shortcut** — when `<pending>` is empty after Stage 0 reconciliation, skip Stages 1–2
    and go directly to **Stage 4** (full closure or crew-complete). `<EPIC_PR>` must already be set from
    steps above.
-9. **CI-trigger sanity check** — once `<EPIC_PR>` exists, cheaply confirm a `pull_request` event
-   actually produces a **check suite** against `<EPIC_BRANCH>` (`gh pr checks <EPIC_PR>`). Bound the
-   wait to a handful of poll intervals. If no check suite appears — not pending, not red, empty —
-   **stop and diagnose** at kickoff (a `branches:` glob that drops slash-containing names is the usual
-   class for `feat/epic-…` branches). Do not start N unit runs against a trigger that never fires, and
-   do not merge a workflow tweak to `MAIN_BRANCH` to test the theory — use a disposable branch/PR that
-   is never merged. Skip in `DRY_RUN`.
+9. **CI-trigger sanity check** — `<EPIC_PR>` is opened with **base = `MAIN_BRANCH`**, so
+   `gh pr checks <EPIC_PR>` cannot detect a `pull_request.branches` glob that drops slash-containing
+   **base** names — that is the unit-PR shape (`feat/epic-…`). After `<EPIC_BRANCH>` exists, open one
+   **disposable** probe PR whose **base is `<EPIC_BRANCH>`** (head a throwaway commit on a short-lived
+   `ci-probe/<epic>` branch). Never merge it. Bound the wait to a handful of poll intervals on
+   `gh pr checks` for that probe. If no check suite appears — not pending, not red, empty — **stop
+   and diagnose at kickoff** (`branches: ["*"]` does not match `/`; `**` does). Close the probe PR and
+   delete its branch. A green `<EPIC_PR>` (base = main) is not proof that unit PRs will get checks.
+   Do not merge a workflow tweak to `MAIN_BRANCH` to test the theory. Skip in `DRY_RUN`.
 
 ## Stage 1 — Story graph  (orchestrator)
 
