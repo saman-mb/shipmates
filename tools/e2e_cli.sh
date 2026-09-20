@@ -76,7 +76,8 @@ assert_contains() {
   local needle="$1"
   local haystack="$2"
   local desc="$3"
-  if printf '%s' "$haystack" | grep -qF "$needle"; then
+  # `--` so a needle like `--force` is never parsed as a grep option.
+  if printf '%s' "$haystack" | grep -qF -- "$needle"; then
     ok "$desc"
   else
     fail "$desc — output missing '$needle'"
@@ -330,10 +331,9 @@ cmd_capture "collision" "$BIN" install --harness claude-code --dir "$PROJ" --wit
 COLLIDE_RC="$CMD_RC"
 [ "$COLLIDE_RC" -eq 1 ] && ok "Collision install exits 1 (refused)" || fail "Collision exited $COLLIDE_RC (expected 1)"
 assert_contains "does not own" "$CMD_OUT" "Collision names the unowned path"
-# Force hint replays the captain's flags then appends --force (#392) — not a
-  # contiguous `install --force` token.
-  assert_contains "--force" "$CMD_OUT" "Collision names --force as the overwrite path"
-  assert_contains "shipmates install" "$CMD_OUT" "Collision force hint starts from shipmates install"
+# Force hint replays the captain's flags then appends --force (#392).
+assert_contains "--force" "$CMD_OUT" "Collision names --force as the overwrite path"
+assert_contains "shipmates install" "$CMD_OUT" "Collision force hint starts from shipmates install"
 if grep -q "intruder" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
   ok "Collision preserves intruder file"
 else
