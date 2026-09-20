@@ -5,7 +5,7 @@
 # Default path is deterministic and runs in CI: build the Codex payload,
 # verify its committed golden digest, check native file layout, and diagnose
 # the install. It does not invoke Codex. Set CODEX_SMOKE=1 to additionally
-# run one read-only `harden` skill through an installed Codex CLI. That path
+# run one read-only `shipmates-harden` skill through an installed Codex CLI. That path
 # needs locally authenticated `codex` binary and is not a CI runtime gate.
 #
 #   bash tests/test_codex_smoke.sh

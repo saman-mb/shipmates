@@ -1,11 +1,11 @@
 ---
 name: shipmates-svgflow
-description: Shipmates: Deprecated alias for the `diagram` tool. svgflow's flow diagram is now the default `kind` of `diagram`, which also renders PNG and animated GIF and adds a sequence kind. This shim forwards to diagram.py so nothing that already reaches for svgflow breaks; reach for `diagram` instead. Never a slash command.
+description: Shipmates: Deprecated alias for the `shipmates-diagram` tool. svgflow's flow diagram is now the default `kind` of `shipmates-diagram`, which also renders PNG and animated GIF and adds a sequence kind. This shim forwards to diagram.py so nothing that already reaches for svgflow breaks; reach for `shipmates-diagram` instead. Never a slash command.
 ---
 
 # svgflow (deprecated → `diagram`)
 
-**svgflow is now [`diagram`](../diagram/tool.md).** Flow became a *kind* of a more
+**svgflow is now [`shipmates-diagram`](../shipmates-diagram/tool.md).** Flow became a *kind* of a more
 general diagram tool (ADR 0001) that keeps svgflow's theme-exact, deterministic
 SVG and adds:
 
@@ -28,7 +28,7 @@ Existing calls keep working:
 python3 svgflow.py --spec spec.json --out flow.svg   # forwards to diagram.py
 ```
 
-Prefer `diagram` directly — see its [tool.md](../diagram/tool.md):
+Prefer `shipmates-diagram` directly — see its [tool.md](../shipmates-diagram/tool.md):
 
 ```
 python3 diagram.py --spec spec.json --out flow.svg
