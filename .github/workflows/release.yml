@@ -137,11 +137,14 @@ jobs:
         with:
           key: ${{ join(matrix.targets, '-') }}
           cache-provider: ${{ matrix.cache_provider }}
-      # Matrix-supplied and shell-specific (sh on Unix, pwsh on Windows). It comes
-      # from cargo-dist's plan output, not this repo, so it stays inline — a bash
-      # script here would be unrunnable on the windows-msvc runner.
+      # Checksum-verified cargo-dist for this runner. shell: bash is available on
+      # windows-msvc, so the same script covers ubuntu, macos, and windows.
       - name: Install dist
-        run: ${{ matrix.install_dist.run }}
+        shell: bash
+        env:
+          DIST_VERSION: "0.32.0"
+          DIST_TARGET: ${{ matrix.host }}
+        run: bash .github/scripts/install-dist-verified.sh
       # Get the dist-manifest
       - name: Fetch local artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -149,7 +152,7 @@ jobs:
           pattern: artifacts-*
           path: target/distrib/
           merge-multiple: true
-      # Same contract as `Install dist` above: matrix-supplied, shell-specific.
+      # cargo-dist plan output; shell-specific (not extracted — pwsh on Windows).
       - name: Install dependencies
         run: |
           ${{ matrix.packages_install }}
