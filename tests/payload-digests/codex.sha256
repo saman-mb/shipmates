@@ -1,7 +1,7 @@
 payload_digest_version=1
 target=codex
-.agents/skills/ship-consolidate-issues/SKILL.md 574f7b7d428fdd667ad2514eceae1871daaaf4c063c9fee4db8f5876d03047b1
-.agents/skills/ship-deslop-codebase/SKILL.md dbcc92f65c0ba7ae9b695c53f09f12a199809bfc9a23ebb9e75ff0f2b628ff80
+.agents/skills/ship-consolidate-issues/SKILL.md 8816c42b146ef9c82382550b03346dd84c1d04842726d9537751ddd27c33fe00
+.agents/skills/ship-deslop-codebase/SKILL.md c51bd472399ad45212ccd3e78f80c0523940c42bd7403a134916ebefe3152c6b
 .agents/skills/ship-document/SKILL.md 8a2e222a339b2bbbdd5343192a7237ea6b933ffd911a8f7fdb1513c29a1dc4cf
 .agents/skills/ship-epic/SKILL.md 06c9ea0c463855c136f1eaeb125c84d2eb479e4d0fe6780cf77aadd562e5514e
 .agents/skills/ship-fix-bug/SKILL.md d9bf8b0cf3bf447f54c1d20a78486e39de2a86a0765978052198d34fa95d0f71
