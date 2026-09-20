@@ -406,6 +406,47 @@ pub fn yaml_scalar(value: &str) -> String {
     out
 }
 
+/// Inverse of [`yaml_scalar`]: strip the wrapping double quotes and undo
+/// the escapes that function emits (`\\`, `\"`, `\n`, `\r`, `\t`, `\uXXXX`).
+/// `unquote(yaml_scalar(s)) == s` for every string `yaml_scalar` can produce.
+/// Does not change what `yaml_scalar` writes — only reads it.
+pub fn unquote(value: &str) -> String {
+    let inner = value
+        .strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .unwrap_or_else(|| panic!("yaml_scalar output is always double-quoted, got {value:?}"));
+    let mut out = String::with_capacity(inner.len());
+    let mut chars = inner.chars();
+    while let Some(character) = chars.next() {
+        if character != '\\' {
+            out.push(character);
+            continue;
+        }
+        match chars.next() {
+            Some('\\') => out.push('\\'),
+            Some('"') => out.push('"'),
+            Some('n') => out.push('\n'),
+            Some('r') => out.push('\r'),
+            Some('t') => out.push('\t'),
+            Some('u') => {
+                let mut code = 0u32;
+                for _ in 0..4 {
+                    let digit = chars
+                        .next()
+                        .expect("yaml_scalar emits four hex digits after \\u");
+                    code = code * 16
+                        + digit
+                            .to_digit(16)
+                            .expect("yaml_scalar emits lowercase hex in \\uXXXX");
+                }
+                out.push(char::from_u32(code).expect("yaml_scalar emits a valid code point"));
+            }
+            other => panic!("unknown yaml_scalar escape {other:?} in {value:?}"),
+        }
+    }
+    out
+}
+
 /// Emit crew files with one path/body loop shared by every crew-bearing target.
 /// Format-specific tool mapping and serialisation stay adapter-owned.
 pub fn emit_crew_files(
@@ -740,6 +781,29 @@ mod tests {
     #[test]
     fn test_yaml_scalar_escapes_control_characters() {
         assert_eq!(yaml_scalar("a\tb\rc\u{7}"), "\"a\\tb\\rc\\u0007\"");
+    }
+
+    #[test]
+    fn test_unquote_inverts_yaml_scalar_quotes_backslashes_and_c0() {
+        let mut cases = vec![
+            String::new(),
+            "plain".into(),
+            "the \"right\" shape".into(),
+            r"a\\b".into(),
+            "quotes and \\backslashes\" mixed".into(),
+        ];
+        for byte in 0u8..=0x1f {
+            cases.push((byte as char).to_string());
+            cases.push(format!("pre{}post", byte as char));
+        }
+        cases.push((0u8..=0x1f).map(char::from).collect());
+        for value in &cases {
+            assert_eq!(
+                unquote(&yaml_scalar(value)),
+                *value,
+                "unquote must invert yaml_scalar for {value:?}"
+            );
+        }
     }
 
     #[test]

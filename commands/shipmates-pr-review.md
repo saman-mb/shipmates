@@ -74,6 +74,7 @@ do*. Where the PR description and the diff disagree, that mismatch is itself a f
   dependency or toolchain pins)? Gates `devops-engineer`.
 - `IS_DOCS_AFFECTING` — does the change touch documented behaviour, flags, commands, config, or public
   API/CLI surface that user- or agent-facing docs describe? Gates `technical-writer`.
+  <!-- shipmates:briefed-read-only:technical-writer -->
 - `IS_RELEASE_AFFECTING` — does merging this PR to the repo's release branch require a new published
   version for users to receive the change (commands, tools, crew, install payload, CLI/API surface)?
   When `yes`, verify the diff includes a consistent version bump in every `VERSION_FILES` entry the
