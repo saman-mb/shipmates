@@ -28,6 +28,7 @@ const COMMAND_PREAMBLE_MARKER: &str = "<!-- shipmates:command-preamble -->";
 const ACCEPTANCE_BOARD_MARKER: &str = "<!-- shipmates:acceptance-board -->";
 const EPIC_INTEGRATION_BOARD_MARKER: &str = "<!-- shipmates:epic-integration-board -->";
 const SUBAGENT_PREAMBLE_MARKER: &str = "<!-- shipmates:subagent-preamble -->";
+const WHY_MERGE_PR_MARKER: &str = "<!-- shipmates:why-merge-pr -->";
 const MODEL_ROUTING_MARKER: &str = "<!-- shipmates:model-routing -->";
 const COST_DOCTRINE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/COST.md"));
 
@@ -74,6 +75,10 @@ fn model_routing() -> &'static str {
     doctrine_section("<!-- model-routing:start -->", "<!-- model-routing:end -->")
 }
 
+fn why_merge_pr() -> &'static str {
+    doctrine_section("<!-- why-merge-pr:start -->", "<!-- why-merge-pr:end -->")
+}
+
 /// Resolve explicit repo-instructions tokens in neutral prose.
 ///
 /// Primary and fallback remain separate, so literal filenames in prose are not
@@ -97,6 +102,7 @@ pub fn render_body(text: &str, d: &Dialect) -> String {
     out = out.replace(ACCEPTANCE_BOARD_MARKER, acceptance_board());
     out = out.replace(EPIC_INTEGRATION_BOARD_MARKER, epic_integration_board());
     out = out.replace(SUBAGENT_PREAMBLE_MARKER, subagent_preamble());
+    out = out.replace(WHY_MERGE_PR_MARKER, why_merge_pr());
     out = out.replace(MODEL_ROUTING_MARKER, model_routing());
     out = render_instructions(&out, d.instructions_primary, d.instructions_fallback);
     out = render_token(&out, "{{agents-glob}}", &format!("{}/*.md", d.agents_glob));
@@ -739,7 +745,7 @@ mod tests {
     #[test]
     fn test_shared_preambles_expand_and_leave_no_markers() {
         let command = render_body(
-            "<!-- shipmates:command-preamble -->\n<!-- shipmates:acceptance-board -->\n<!-- shipmates:epic-integration-board -->\nbody",
+            "<!-- shipmates:command-preamble -->\n<!-- shipmates:acceptance-board -->\n<!-- shipmates:epic-integration-board -->\n<!-- shipmates:why-merge-pr -->\nbody",
             &CLAUDE_CODE,
         );
         let role = render_role_body("<!-- shipmates:subagent-preamble -->\nrole", &CLAUDE_CODE);
@@ -748,6 +754,7 @@ mod tests {
         assert!(command.contains("## Argument intake"));
         assert!(command.contains("Mandatory seats"));
         assert!(command.contains("Integration questions"));
+        assert!(command.contains("Why merge this"));
         // The model-routing ruleset is part of the shared cost-discipline
         // preamble, so a command carrying only that one marker still gets it —
         // which is what makes the ruleset global rather than per-command.
@@ -759,6 +766,7 @@ mod tests {
         assert!(!command.contains("shipmates:command-preamble"));
         assert!(!command.contains("shipmates:acceptance-board"));
         assert!(!command.contains("shipmates:epic-integration-board"));
+        assert!(!command.contains("shipmates:why-merge-pr"));
         assert!(!command.contains("shipmates:model-routing"));
         assert!(!role.contains("shipmates:subagent-preamble"));
     }

@@ -346,10 +346,29 @@ still the primary cost gate, and pool discovery decides only **which** cheap mod
 unit — never **whether** a lighter execution path is chosen.
 <!-- model-routing:end -->
 
+## Why merge this (PR body)
+
+The marker below expands into every command that opens a pull request. Command authors place
+`<!-- shipmates:why-merge-pr -->` where PR body requirements are stated — once per PR-opening
+command — instead of copying maintainer-facing impact prose into each workflow.
+
+<!-- why-merge-pr:start -->
+**Why merge this**
+
+Any pull request this command opens — and any completion comment it posts on that PR — must open
+with or include a short maintainer-facing block under this heading. Write it for the human who owns
+the tool: why should they care that this lands? Answer the product-impact bar already required of
+every pull request description — **What changes**, **Why it matters**, **Who is affected**. Do not
+invent a second template. A file list, a ticket dump, or a bare `Closes #<n>` is not a reason to
+merge.
+<!-- why-merge-pr:end -->
+
 ## Authoring checklist
 
 - Keep the **Model routing** block the single statement of pool discovery: reference it by its marker
   instead of restating the ladder, the resolution order, or the per-target table inside a command.
+- Place `<!-- shipmates:why-merge-pr -->` once, next to PR-body requirements, on every command that
+  opens a pull request — never copy the Why-merge prose into the command by hand.
 
 - Put one shared preamble marker near the start of every command and keep its runtime input section at
   the end of the stable workflow.
