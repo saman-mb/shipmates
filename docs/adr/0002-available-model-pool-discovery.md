@@ -33,7 +33,7 @@ Three inputs exist on a running harness, and they are not the same thing:
 3. **An override surface** — where a chosen model and effort are written: a per-spawn argument, a static
    agent file, a session flag, or nothing.
 
-The design has to hold across all eight targets in `tools/harness_matrix.json` and degrade to a *named*
+The design has to hold across all nine targets in `tools/harness_matrix.json` and degrade to a *named*
 fallback rather than a hard failure, because an installed command is a snapshot and the user's harness
 is not.
 
@@ -45,7 +45,9 @@ model identifier. The full per-harness record — with the exact command strings
 and the `verified_on` date — lives in `tools/harness_matrix.json` under `model_surface`, and the shipped
 per-target table in `docs/COST.md` is gated against that record by an integration test. The table below
 is a **frozen snapshot** of the evidence at the date above, kept for the reasoning, not a live mirror —
-where it and the record disagree, the record wins.
+where it and the record disagree, the record wins. The `grok-build` row joined the table when that
+target shipped: read the same way from the same kind of source, carrying its own `verified_on` in the
+record rather than a date repeated here.
 
 | Target | Discovery tier | Enumeration (scheme) | Override kind | Effort surface | Declared pool |
 |---|---|---|---|---|---|
@@ -56,9 +58,10 @@ where it and the record disagree, the record wins.
 | cursor | query | a session flag that lists all models, plus a listing subcommand | static agent file per subagent (`inherit` is the default), plus a session-wide flag | folded into the model string as a bracketed parameter; values are model-defined | none documented; documented instead are fallback conditions → the model is substituted |
 | github-copilot | declared | none documented as a command; an interactive picker plus a static reference table | per-spawn, plus a static agent file and a settings override map | separate key with three mismatched first-party vocabularies (flag / settings key / free-string agent field) | repo-root allow-list file (globs plus one fallback directive) and an agent policy key; abort |
 | pi | query | a listing flag with an optional fuzzy search; a catalog-refresh subcommand | per-spawn, over a per-agent file and a session-level default | separate key; 7-step scale with a per-model tristate support map | scoping, not enforcement (an enabled-models key and a models-pattern flag) |
+| grok-build | query | a `grok models` subcommand that prints the models the account can run | per-spawn, over a `[subagents.models]` pin, an agent model key, a persona model, and session-level `/model` and `-m` | separate key; a 5-value agent scale (`low`…`max`) plus a wider run-level set behind `/effort` and flags; model-defined menu, no clamp documented | a user-level `[models] allowed_models` key, replaced by a signed `requirements.toml` fleet pin that rejects an out-of-pin pick; abort |
 | windsurf | inherit | none on the surface we target; a companion CLI documents a family-grouped JSON listing we do not drive | session-level on the surface we target | none; only an interactive shortcut-bound cycle | admin-side only; restriction and a team default, no abort |
 
-Reading: **five `query`, two `declared`, one `inherit`** — and every one of the five query targets still
+Reading: **six `query`, two `declared`, one `inherit`** — and every one of the six query targets still
 needs a declared tiering, because enumeration answers *what exists*, never *what is cheap*.
 
 ### Corrections and confirmations — where first-party docs changed or upheld the issue's table
@@ -78,19 +81,19 @@ needs a declared tiering, because enumeration answers *what exists*, never *what
 | github-copilot agent `model` property | no `model` property in the custom-agents reference | **contradicted** — the CLI reference documents a `model` property that inherits the default when unset, alongside a priority-ordered array form and an agent policy key | `docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference` |
 | windsurf enumeration | queryable | **qualified** — the listing belongs to a companion CLI whose surface we do not target | `docs.devin.ai/cli/reference/commands` |
 
-Two of the eight rows (claude-code, github-copilot) genuinely lack enumeration, so the design constraint
-the issue named is real for them — but the durable constraint is stronger and applies to all eight: **no
+Two of the nine rows (claude-code, github-copilot) genuinely lack enumeration, so the design constraint
+the issue named is real for them — but the durable constraint is stronger and applies to all nine: **no
 harness tiers its own pool**, so a declared ranking is required regardless of queryability.
 
 ## Options considered
 
 **A — Query-only.** Discover the pool by running the enumeration command; where there is none, inherit.
-*Rejected.* Three of eight targets cannot reach a pool this way on the surface we ship, and enumeration
+*Rejected.* Three of nine targets cannot reach a pool this way on the surface we ship, and enumeration
 still never answers *which model is cheap-capable* — so the "cheapest capable" rule would resolve to an
 arbitrary member of a listing, which is guessing with extra steps.
 
 **B — Declared-only.** Skip enumeration entirely; route strictly from the user's declared pool.
-*Rejected.* It handles the ranking problem but throws away a real capability: on five targets the
+*Rejected.* It handles the ranking problem but throws away a real capability: on six targets the
 enumeration command is a cheap, authoritative **filter** that stops the orchestrator proposing a model
 the account cannot reach. It also loses the ability to verify a surface exists before relying on it.
 

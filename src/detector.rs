@@ -46,6 +46,7 @@ pub fn detect_project_harnesses(dir: &Path) -> Vec<HarnessDetection> {
         ("cursor", &[".cursor"]),
         ("github-copilot", &[".github/agents"]),
         ("pi", &[".pi"]),
+        ("grok-build", &[".grok"]),
         ("windsurf", &[".windsurf"]),
     ];
 
@@ -91,7 +92,7 @@ pub fn detect_project_harnesses(dir: &Path) -> Vec<HarnessDetection> {
 /// Detect all installed coding harnesses.
 ///
 /// Looks at:
-/// 1. Binaries on PATH (`claude`, `opencode`, `agy`, `codex`, `cursor`, `copilot`, `pi`, `windsurf`)
+/// 1. Binaries on PATH (`claude`, `opencode`, `agy`, `codex`, `cursor`, `copilot`, `pi`, `grok`, `windsurf`)
 /// 2. User-scope config dirs in home directory (`~/.claude/`, `~/.codex/`, `~/.gemini/config/`, etc.)
 /// 3. Project markers in `target_dir` (`.claude/`, `.opencode/`, `.codex/`, `.agents/agents/`, etc.)
 /// 4. Shipmates install receipts in `target_dir` and home.
@@ -110,6 +111,7 @@ pub fn detect_harnesses(target_dir: Option<&Path>) -> Vec<HarnessDetection> {
         ("cursor", &["cursor"]),
         ("github-copilot", &["copilot"]),
         ("pi", &["pi"]),
+        ("grok-build", &["grok"]),
         ("windsurf", &["windsurf"]),
     ];
 
@@ -140,6 +142,7 @@ pub fn detect_harnesses(target_dir: Option<&Path>) -> Vec<HarnessDetection> {
             ("cursor", &[".cursor"]),
             ("github-copilot", &[".config/github-copilot", ".copilot"]),
             ("pi", &[".pi"]),
+            ("grok-build", &[".grok"]),
             ("windsurf", &[".windsurf", ".codeium/windsurf"]),
         ];
 
@@ -280,6 +283,18 @@ mod tests {
             !names.contains(&"antigravity".to_string()),
             "shared .agents/skills must not imply Antigravity; got {names:?}"
         );
+    }
+
+    #[test]
+    fn grok_tree_detects_grok_build() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join(".grok")).unwrap();
+
+        let names: Vec<String> = detect_project_harnesses(dir.path())
+            .into_iter()
+            .map(|d| d.harness)
+            .collect();
+        assert!(names.contains(&"grok-build".to_string()), "got {names:?}");
     }
 
     #[test]

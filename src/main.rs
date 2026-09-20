@@ -26,6 +26,7 @@ fn harness_blurb(name: &str) -> &'static str {
         "cursor" => "skills in .cursor/skills (first-party slash picker)",
         "github-copilot" => "crew in .github/agents + skills in .agents",
         "pi" => "agents in .pi + skills in .agents",
+        "grok-build" => "agents + skills in .grok",
         "windsurf" => "skills in .windsurf",
         _ => "harness payload",
     }

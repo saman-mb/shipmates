@@ -6,6 +6,9 @@ cargo run -- install --harness all --dir "$RUNNER_TEMP/install-all"
 # crew-bearing target and a skill-only target both land under one root
 test -f "$RUNNER_TEMP/install-all/.claude/agents/sdet.md"
 test -f "$RUNNER_TEMP/install-all/.agents/skills/shipmates-issue/SKILL.md"
+# grok-build is crew-bearing on its own tree, not the shared one
+test -f "$RUNNER_TEMP/install-all/.grok/skills/shipmates-issue/SKILL.md"
+test -f "$RUNNER_TEMP/install-all/.grok/agents/sdet.md"
 # The four harnesses on the open tree share ONE .agents/skills rendering,
 # so a multi-harness install must NOT collide: canonical prose names no
 # harness-specific crew tree at all. It cannot — one shared file is

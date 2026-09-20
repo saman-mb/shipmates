@@ -195,10 +195,11 @@ codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .ag
 cursor           .cursor/          skills only (first-party tree; slash picker reads it)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
 pi               .pi/ + .agents/     crew (.md) at .pi/agents, skills at .agents/skills
+grok-build       .grok/            agents + skills
 windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
 
-Every harness compiles the same canonical crew and commands. Six receive the thirteen specialists as
+Every harness compiles the same canonical crew and commands. Seven receive the thirteen specialists as
 agents; the other two ship the seventeen commands as skills only. Pi's crew resolve through the
 third-party `pi-subagents` extension — core pi documents no subagent schema of its own — so a pi
 install without that extension resolves no crew. Pi reads its crew from the nearest ancestor directory
@@ -210,7 +211,9 @@ one source of truth, byte-identical, so a multi-harness repo gets a single copy 
 ones. Their crew still land in each harness's own native format. `cursor` reads that open tree too, but
 only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and
 nowhere else — one copy, never two. `windsurf` keeps its canonical `.windsurf/skills/` (its docs make
-`.agents/skills/` only a secondary scan) and `claude-code` its own `.claude/skills/`.
+`.agents/skills/` only a secondary scan) and `claude-code` its own `.claude/skills/`. `grok-build`
+keeps its own `.grok/skills/` for a different reason: its commands ship the native
+`disable-model-invocation` guard, which the neutral dialect the shared tree carries does not express.
 
 ### opencode quickstart
 
@@ -317,7 +320,8 @@ allowlist: a tool a wildcard denies is hidden from the model rather than refused
 > ⚠️ **Runtime status is per harness in `tools/harness_matrix.json` → `runtime_verified`.** Claude Code
 > is `full` (crew, arguments, `/shipmates-issue` end to end). Antigravity, Cursor, Pi and opencode have
 > captain-attested live runs (`partial` — granular criteria may still be `unknown`). Codex CLI,
-> GitHub Copilot and Windsurf remain format/digest-verified only. Opencode's Tier-A checklist is
+> GitHub Copilot, Grok Build and Windsurf remain format/digest-verified only. Opencode's Tier-A
+> checklist is
 > still tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
 > [#32](https://github.com/saman-mb/shipmates/issues/32).
 
@@ -543,15 +547,16 @@ question is whether it's been *run*.
   logged — attestation is not Tier-A proof. Opencode's Tier-A / sandbox checklist remains open in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32).
-- **Builds, not runtime-verified (`none`)** — Codex CLI, GitHub Copilot, and Windsurf build from
-  `shipmates install --harness <name>`, and each payload's format was verified against that harness's
-  parsing source and first-party docs, but no live run is recorded. The Gemini CLI is retired — the
+- **Builds, not runtime-verified (`none`)** — Codex CLI, GitHub Copilot, Grok Build and Windsurf build
+  from `shipmates install --harness <name>`, and each payload's format was verified against that
+  harness's parsing source and first-party docs, but no live run is recorded. The Gemini CLI is retired — the
   Antigravity CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates
   builds for.
 
 **Crew vs skills (payload shape, independent of runtime status).** opencode, Antigravity, Codex CLI,
-GitHub Copilot and Pi get the full crew + all 17 commands (Pi's crew land at `.pi/agents/` and resolve
-through the third-party `pi-subagents` extension); Cursor and Windsurf ship the 17 skills only.
+GitHub Copilot, Pi and Grok Build get the full crew + all 17 commands (Pi's crew land at `.pi/agents/`
+and resolve through the third-party `pi-subagents` extension; Grok Build's land at `.grok/agents/`);
+Cursor and Windsurf ship the 17 skills only.
 
 Why that's credible: the crew's system prompts name no harness, and the seventeen commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
@@ -569,7 +574,8 @@ commands keep shipping. Want a role or a workflow aboard? Open an issue — idea
 A ready-made crew of **subagents** and **command workflows**. Instead of you playing
 planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
 `/shipmates-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It ships for
-eight harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, and Windsurf;
+nine harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, Grok
+Build, and Windsurf;
 see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**

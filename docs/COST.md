@@ -336,6 +336,7 @@ effort surface with its clamp. No cell is ever blank: a missing feature is a sta
 | cursor | query | static agent file | fallback | folded into the model string · model-defined, clamping undocumented |
 | github-copilot | declared | per-spawn | abort | separate key · no clamp documented |
 | pi | query | per-spawn | none | separate key · per-model map, unsupported clamped away |
+| grok-build | query | per-spawn | abort | separate key · model-defined menu, no clamp documented |
 | windsurf | inherit | session-level | none | none · only an interactive cycle |
 
 **Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is
