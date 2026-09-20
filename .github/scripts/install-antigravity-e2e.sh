@@ -3,7 +3,7 @@
 set -euo pipefail
 
 cargo run -- install --harness antigravity --dir "$RUNNER_TEMP/install-antigravity"
-test -f "$RUNNER_TEMP/install-antigravity/.agents/skills/ship-issue/SKILL.md"
+test -f "$RUNNER_TEMP/install-antigravity/.agents/skills/shipmates-issue/SKILL.md"
 # agy discovers `{workspace}/.agents/agents/{agent_name}/` and reads the
 # `agent.md` inside it, so a directory per agent is the only shape it
 # loads. A flat `<name>.md` installs cleanly and is silently never

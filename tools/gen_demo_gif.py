@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate site/assets/demo.gif — an illustrative animated terminal of a `/ship-issue` run.
+"""Generate site/assets/demo.gif — an illustrative animated terminal of a `/shipmates-issue` run.
 
 Honest by construction: it depicts the *actual stage sequence* the workflow performs
 (Plan → Isolate → Build → Self-check → CI gate → Review → Remediate → Deliver) with
@@ -158,7 +158,7 @@ def render_frames(font_dir=None):
         for i, c in enumerate((DOT_R, DOT_Y, DOT_G)):
             cx = 40 + i * 26
             d.ellipse([cx, 30, cx + 13, 43], fill=c)
-        title = "shipmates — /ship-issue"
+        title = "shipmates — /shipmates-issue"
         tw = f.getlength(title)
         d.text(((W - tw) / 2, 27), title, font=f, fill=GREY)
         return img, d
@@ -181,7 +181,7 @@ def render_frames(font_dir=None):
         return img
 
     frames, durations = [], []
-    CMD = "/ship-issue 142"
+    CMD = "/shipmates-issue 142"
     prompt_segs = [("$ ", PROMPT, True)]
 
     # 1) type the command

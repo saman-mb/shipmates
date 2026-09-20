@@ -1,11 +1,11 @@
 ---
-name: ship-migrate
+name: shipmates-migrate
 description: Shipmates: Run a mechanical migration across a whole codebase — discover every call site, transform each in isolation, verify per-site, and gate on a clean sweep (no old-pattern remnants) with the suite green. For API/dependency/pattern/framework migrations.
 argument-hint: <from → to — e.g. "moment.js → date-fns" or "callback API → async/await"> [sequential] [board=epic-deferred | board=off]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-migrate — discover → transform each → verify → sweep clean
+# /shipmates-migrate — discover → transform each → verify → sweep clean
 <!-- shipmates:command-preamble -->
 
 Carry a repeated, mechanical change across an entire codebase without missing a site or leaving it
@@ -21,8 +21,8 @@ The migration comes from the Runtime input section at the end of this workflow.
 
 - `BASE_BRANCH` = default branch. `WORKTREE_LAYOUT` = `nested` (default) —
   `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
-  `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/ship-migrate-<slug>`;
-  **sibling:** `../<repo>--migrate-<slug>`. Re-runs reuse the same path. `BRANCH` = `chore/ship-migrate-<slug>`.
+  `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/shipmates-migrate-<slug>`;
+  **sibling:** `../<repo>--migrate-<slug>`. Re-runs reuse the same path. `BRANCH` = `chore/shipmates-migrate-<slug>`.
 - `TRANSFORMER` = `senior-engineer`. `MAX_FIX_ROUNDS` = `3`. `MERGE_MODE` = `manual` (`auto` opt-in).
 - `EXECUTION` = `fanout` — how transformer batches run. `fanout` (default): batches execute
   concurrently up to `MAX_CONCURRENT_WORKERS`. Guidance `sequential` sets `EXECUTION=sequential`

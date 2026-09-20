@@ -1,11 +1,11 @@
 ---
-name: ship-release
+name: shipmates-release
 description: Shipmates: Cut a release safely — assemble the changelog from what actually merged, bump the version, gate on green CI at the tag, run an SRE pre-flight (rollback + migration safety), then tag and (opt-in) publish.
 argument-hint: [version — e.g. v1.4.0, or "patch"/"minor"/"major" to derive it]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-release — changelog → CI-green tag → (opt-in) publish
+# /shipmates-release — changelog → CI-green tag → (opt-in) publish
 <!-- shipmates:command-preamble -->
 
 Turn "what's merged since the last release" into a clean, reversible release. The `technical-writer`
@@ -13,9 +13,9 @@ builds the changelog from the real merge history (every user-visible change cove
 bumped consistently, and it's gated on **green CI at the exact commit being tagged** plus an SRE
 pre-flight for rollback and migration safety. Publishing is opt-in.
 
-**Scope vs `/ship-issue`.** `/ship-issue` bumps version and adds a changelog entry **in the same PR**
+**Scope vs `/shipmates-issue`.** `/shipmates-issue` bumps version and adds a changelog entry **in the same PR**
 when a story ships release-affecting work to the release branch (`IS_RELEASE_AFFECTING`). Use
-**`/ship-release`** when you need a **batch** cut (assemble everything since the last tag), SRE pre-flight,
+**`/shipmates-release`** when you need a **batch** cut (assemble everything since the last tag), SRE pre-flight,
 or explicit tag/publish ceremony — not as a substitute for per-story bumps the crew forgot in the PR.
 
 The requested version comes from the Runtime input section at the end of this workflow.

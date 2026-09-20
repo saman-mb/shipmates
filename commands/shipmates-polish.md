@@ -1,11 +1,11 @@
 ---
-name: ship-polish
+name: shipmates-polish
 description: Shipmates: Iterate a visual / UI / output artifact to a specialist's sign-off — produce → critique → fix, looping until the art-director, ux-ui-designer, or product-manager is genuinely happy (or a round cap).
 argument-hint: <what to polish — a screen, an asset, a rendered surface> [reviewer: art-director|ux-ui-designer|product-manager] [sequential]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-polish — iterate to a specialist's sign-off
+# /shipmates-polish — iterate to a specialist's sign-off
 <!-- shipmates:command-preamble -->
 
 Take a visual / UI / output artifact and refine it in a **loop**: produce it, have the right
@@ -38,14 +38,14 @@ The artifact and optional reviewer come from the Runtime input section at the en
   in the report before round 0 runs, and consumed by Stage 4 to pick the push target and whether
   `MERGE_MODE` applies.
 - `MODE` = `pr` (default) — run the loop in a worktree on its own branch and hand back a CI-gated
-  PR, reusing `/ship-issue`'s CI gate; the isolate and commit-push-PR stages diverge on purpose (see
+  PR, reusing `/shipmates-issue`'s CI gate; the isolate and commit-push-PR stages diverge on purpose (see
   Stage 0 and Stage 4) — the caller's checkout is never written to. `edit-in-place` refines the
   working tree directly — still available, but ask for it.
 - Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
   worktree is cut from (that's current `HEAD`; see Stage 0).
   `WORKTREE_LAYOUT` = `nested` (default) — `<repo>/.shipmates/worktrees/`; runtime guidance
   **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
-  `<repo>/.shipmates/worktrees/ship-polish-<slug>`; **sibling:** `../<repo>--polish-<slug>`. Re-runs reuse
+  `<repo>/.shipmates/worktrees/shipmates-polish-<slug>`; **sibling:** `../<repo>--polish-<slug>`. Re-runs reuse
   the same path. `BRANCH` = `polish/<slug>`.
   Default worktree cut is from local **`HEAD`** (includes unpushed commits the captain is viewing).
   Runtime guidance **`sync-base`** fetches and cuts from `origin/<BASE_BRANCH>` instead when
@@ -55,7 +55,7 @@ The artifact and optional reviewer come from the Runtime input section at the en
   so — never silently downgrade to writing in the tree.
   **The guard:** the real question isn't which branch you're on, it's where the polish should
   land — resolve it by destination, not by standing position. Being inside a linked worktree left
-  behind by `/ship-issue` resolves to `DESTINATION` = `reused-worktree`; the caller's own feature
+  behind by `/shipmates-issue` resolves to `DESTINATION` = `reused-worktree`; the caller's own feature
   branch with an open PR resolves to `existing-pr`; a fresh branch is the `new-branch` fallback.
   Don't infer any of it from a branch name — Stage 0 spells out the order:
   ```bash
@@ -147,7 +147,7 @@ Each round:
    actually reviewed this round — the verdict covers only those. Instruct it explicitly not to
    rubber-stamp to end the loop.
 2. **Signed off?** `ACCEPT` → leave the loop. `ACCEPT-WITH-NITS` → leave the loop too unless the
-   caller asked to resolve nits as well; dispose remaining nits with the `/ship-issue` Stage 7
+   caller asked to resolve nits as well; dispose remaining nits with the `/shipmates-issue` Stage 7
    ladder (absorb-first by default — not automatic per-nit issues). `REJECT` → continue.
 3. **Fix** — spawn a `senior-engineer` — or, under `EXECUTION=fanout` (default), parallel Builders
    across disjoint components/assets up to `MAX_CONCURRENT_WORKERS` (`EXECUTION=sequential` fixes one
@@ -167,7 +167,7 @@ reviewer's remaining notes. Escalate; don't spin.
 
 Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the
 number of rounds, and a short before → after of what changed. Dispose allowed nits with the
-`/ship-issue` Stage 7 ladder (absorb when cheap; else PR-note or capped/batched issues — never one
+`/shipmates-issue` Stage 7 ladder (absorb when cheap; else PR-note or capped/batched issues — never one
 ticket per nit by default). Under `MODE=pr`, commit the rounds — staging only the paths the rounds actually
 touched, never `git add -A`, since the tree may hold unrelated uncommitted work — then push per
 `DESTINATION`:
@@ -201,7 +201,7 @@ remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with th
   — not an optimistic paraphrase. A "needs a human visual pass" fallback is a real outcome, not a fail.
 - Reviewer choice follows the project's domain: `art-director` for art, `ux-ui-designer` for UI,
   `product-manager` for general output. When ambiguous, ask.
-- Runs standalone, or as the visual pass inside/after `/ship-issue` on a UI/visual story.
+- Runs standalone, or as the visual pass inside/after `/shipmates-issue` on a UI/visual story.
 - **The loop runs on its own branch by default.** Five rounds of edits belong in a diff a human can
   read, not in someone's checkout. `MODE=edit-in-place` is an explicit request — except when you're
   already inside an isolated worktree, where staying put *is* the isolation.

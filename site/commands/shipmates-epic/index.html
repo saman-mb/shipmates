@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>/shipmates-polish — iterate to a specialist&#x27;s sign-off · Shipmates</title>
-  <meta name="description" content="Show the artifact, take critique, fix, repeat until a specialist signs off.">
-  <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/shipmates-polish/">
+  <title>/shipmates-epic — wave fan-out epic delivery · Shipmates</title>
+  <meta name="description" content="Ship every story on an epic onto one branch, then one PR to main.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/shipmates-epic/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
-  <meta property="og:title" content="/shipmates-polish — iterate to a specialist&#x27;s sign-off">
-  <meta property="og:description" content="Show the artifact, take critique, fix, repeat until a specialist signs off.">
-  <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/shipmates-polish/">
+  <meta property="og:title" content="/shipmates-epic — wave fan-out epic delivery">
+  <meta property="og:description" content="Ship every story on an epic onto one branch, then one PR to main.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/shipmates-epic/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="/shipmates-polish — iterate to a specialist&#x27;s sign-off">
-  <meta name="twitter:description" content="Show the artifact, take critique, fix, repeat until a specialist signs off.">
+  <meta name="twitter:title" content="/shipmates-epic — wave fan-out epic delivery">
+  <meta name="twitter:description" content="Ship every story on an epic onto one branch, then one PR to main.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -28,37 +28,37 @@
   {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    "name": "/shipmates-polish",
-    "description": "Show the artifact, take critique, fix, repeat until a specialist signs off.",
-    "url": "https://saman-mb.github.io/shipmates/commands/shipmates-polish/",
+    "name": "/shipmates-epic",
+    "description": "Ship every story on an epic onto one branch, then one PR to main.",
+    "url": "https://saman-mb.github.io/shipmates/commands/shipmates-epic/",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
-        "name": "See it",
-        "text": "Put the real output in front of the reviewer — not the source that made it. Always: senior-engineer.",
-        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-polish/#step-1"
+        "name": "Map",
+        "text": "The architect reads the epic's stories (sub-issue graph, union the checklist), classifies every story, and groups them into shipping units. Always: architect.",
+        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-epic/#step-1"
       },
       {
         "@type": "HowToStep",
         "position": 2,
-        "name": "Baseline",
-        "text": "Capture round zero so later rounds have something to diff against. No spawn — produce the first version.",
-        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-polish/#step-2"
+        "name": "Integrate",
+        "text": "Cut a shared epic branch (empty kickoff commit if tips still match main) and open the epic PR. Unit PRs target that branch, not main. No specialist — the run cuts the branch and the epic PR.",
+        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-epic/#step-2"
       },
       {
         "@type": "HowToStep",
         "position": 3,
         "name": "Loop",
-        "text": "Critique, fix, recapture. One reviewer by domain; the engineer applies that reviewer's list. Bounded rounds. Always: senior-engineer. Also sit when: ux-ui-designer (the artifact is on-screen UI); art-director (the artifact is rendered art); product-manager (the artifact is other output — copy, a chart, a data view).",
-        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-polish/#step-3"
+        "text": "Each unit is a /shipmates-issue: plan, build, CI, review. That unit's flags pick its extra seats. Always: architect, senior-engineer, sdet, product-manager, principal-engineer. Also sit when: ux-ui-designer (on-screen UI — screens, flows, components); art-director (rendered art (games, illustration), not app chrome); devops-engineer (pipeline, images, or how the project ships); technical-writer (documented behaviour or a public API/CLI).",
+        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-epic/#step-3"
       },
       {
         "@type": "HowToStep",
         "position": 4,
-        "name": "Sign-off",
-        "text": "Stop when that specialist accepts — not when the round cap is merely tiring. No extra spawn — report their verdict.",
-        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-polish/#step-4"
+        "name": "One PR",
+        "text": "When every story is done, you review and merge the single epic PR. No extra spawn — you merge the epic PR, not the unit PRs.",
+        "url": "https://saman-mb.github.io/shipmates/commands/shipmates-epic/#step-4"
       }
     ]
   }
@@ -99,9 +99,9 @@
         <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>
         <div class="order-detail">
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
-          <h1 class="order-detail__title" id="order-title"><code>/shipmates-polish</code></h1>
-          <p class="order-detail__tagline">iterate to a specialist&#x27;s sign-off</p>
-          <p class="order-detail__desc">Show the artifact, take critique, fix, repeat until a specialist signs off.</p>
+          <h1 class="order-detail__title" id="order-title"><code>/shipmates-epic</code></h1>
+          <p class="order-detail__tagline">wave fan-out epic delivery</p>
+          <p class="order-detail__desc">Ship every story on an epic onto one branch, then one PR to main.</p>
         </div>
       </div>
     </section>
@@ -112,9 +112,9 @@
           <h2 class="section__title" id="demo-title">See it run</h2>
         </div>
         <figure class="demo">
-          <img class="demo__media" id="demo-media" src="../../assets/command-shipmates-polish-poster.png" width="820" height="372" alt="Illustrative terminal recording of the stages /shipmates-polish runs, in order." loading="lazy">
+          <img class="demo__media" id="demo-media" src="../../assets/command-shipmates-epic-poster.png" width="820" height="462" alt="Illustrative terminal recording of the stages /shipmates-epic runs, in order." loading="lazy">
           <button type="button" class="btn btn--secondary demo__toggle" id="demo-toggle" aria-pressed="false" aria-controls="demo-media">Play the run</button>
-          <figcaption class="demo__caption">Illustrative — the stages <code>/shipmates-polish</code> runs, in order.</figcaption>
+          <figcaption class="demo__caption">Illustrative — the stages <code>/shipmates-epic</code> runs, in order.</figcaption>
         </figure>
       </div>
     </section>
@@ -127,7 +127,7 @@
         <div class="codeblock">
           <p class="codeblock__label">Run it in your harness</p>
           <div class="codeblock__body">
-            <pre class="codeblock__pre"><code class="codeblock__code">/shipmates-polish &lt;what to polish — a screen, an asset, a rendered surface&gt; [reviewer: art-director|ux-ui-designer|product-manager] [sequential]</code></pre>
+            <pre class="codeblock__pre"><code class="codeblock__code">/shipmates-epic &lt;epic-issue-number&gt; [resume | dry-run | sequential | epic close auto | batch off | unit merge manual | retry-story &lt;n&gt;]</code></pre>
           </div>
         </div>
         <p class="order-invoke__hint"><code>&lt;angle brackets&gt;</code> = required · <code>[square brackets]</code> = optional</p>
@@ -139,12 +139,12 @@
         <div class="section__head">
           <h2 class="section__title" id="process-title">How it works</h2>
         </div>
-        <p class="order-process__lead">One reviewer sits, chosen by the artifact: designer for UI, art-director for pictures judged as art, product-manager for other output. An engineer applies each round of fixes.</p>
+        <p class="order-process__lead">One architect pass groups the epic. Each unit is then a full /shipmates-issue run, so that unit&#x27;s flags pick its specialists. You merge one epic PR at the end.</p>
         <ol class="order-process__list" role="list">
-          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">See it</h3><p class="order-process__line">Put the real output in front of the reviewer — not the source that made it.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a></p></div></div></div></li>
-          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Baseline</h3><p class="order-process__line">Capture round zero so later rounds have something to diff against.</p><p class="order-process__crew order-process__crew--solo">No spawn — produce the first version.</p></div></li>
-          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Loop</h3><p class="order-process__line">Critique, fix, recapture. One reviewer by domain; the engineer applies that reviewer&#x27;s list. Bounded rounds.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/ux-ui-designer/"><code>ux-ui-designer</code></a><span class="order-process__when-text">the artifact is on-screen UI</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/art-director/"><code>art-director</code></a><span class="order-process__when-text">the artifact is rendered art</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a><span class="order-process__when-text">the artifact is other output — copy, a chart, a data view</span></li></ul></div></div></div></li>
-          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">Sign-off</h3><p class="order-process__line">Stop when that specialist accepts — not when the round cap is merely tiring.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — report their verdict.</p></div></li>
+          <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Map</h3><p class="order-process__line">The architect reads the epic&#x27;s stories (sub-issue graph, union the checklist), classifies every story, and groups them into shipping units.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Integrate</h3><p class="order-process__line">Cut a shared epic branch (empty kickoff commit if tips still match main) and open the epic PR. Unit PRs target that branch, not main.</p><p class="order-process__crew order-process__crew--solo">No specialist — the run cuts the branch and the epic PR.</p></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Loop</h3><p class="order-process__line">Each unit is a /shipmates-issue: plan, build, CI, review. That unit&#x27;s flags pick its extra seats.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/architect/"><code>architect</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/senior-engineer/"><code>senior-engineer</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/sdet/"><code>sdet</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a> <a class="chip order-stage__crew-item order-process__chip" href="../../agents/principal-engineer/"><code>principal-engineer</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/ux-ui-designer/"><code>ux-ui-designer</code></a><span class="order-process__when-text">on-screen UI — screens, flows, components</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/art-director/"><code>art-director</code></a><span class="order-process__when-text">rendered art (games, illustration), not app chrome</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/devops-engineer/"><code>devops-engineer</code></a><span class="order-process__when-text">pipeline, images, or how the project ships</span></li><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a><span class="order-process__when-text">documented behaviour or a public API/CLI</span></li></ul></div></div></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">One PR</h3><p class="order-process__line">When every story is done, you review and merge the single epic PR.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — you merge the epic PR, not the unit PRs.</p></div></li>
         </ol>
       </div>
     </section>
@@ -155,8 +155,8 @@
           <h2 class="section__title" id="when-to-use-title">When to use</h2>
         </div>
         <ul class="order-when__list">
-          <li>A screen, chart, or render needs to look right — behaviour already exists.</li>
-          <li>Prose docs? /shipmates-document. New feature? /shipmates-issue.</li>
+          <li>An epic issue already has stories on GitHub (sub-issues and/or a checklist).</li>
+          <li>One ticket? /shipmates-issue. No backlog yet? /shipmates-plan-epics first.</li>
         </ul>
       </div>
     </section>
@@ -166,8 +166,8 @@
         <div class="section__head">
           <h2 class="section__title" id="source-title">The skill</h2>
         </div>
-        <p>The installer ships the full skill — stages, gates, config — from <code>commands/shipmates-polish.md</code>.</p>
-        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/shipmates-polish.md">
+        <p>The installer ships the full skill — stages, gates, config — from <code>commands/shipmates-epic.md</code>.</p>
+        <a class="btn btn--secondary" href="https://github.com/saman-mb/shipmates/blob/main/commands/shipmates-epic.md">
           <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           <span>Read the skill on GitHub</span>
         </a>
@@ -182,7 +182,7 @@
         <nav class="order-siblings" aria-label="Other commands">
           <ul class="order-siblings__list" role="list">
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-issue/"><code>/shipmates-issue</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-epic/"><code>/shipmates-epic</code></a></li>
+            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/shipmates-epic</code><span class="visually-hidden"> (current page)</span></span></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-fix-bug/"><code>/shipmates-fix-bug</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-report-bug/"><code>/shipmates-report-bug</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-plan-epics/"><code>/shipmates-plan-epics</code></a></li>
@@ -192,7 +192,7 @@
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-migrate/"><code>/shipmates-migrate</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-document/"><code>/shipmates-document</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-release/"><code>/shipmates-release</code></a></li>
-            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/shipmates-polish</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-polish/"><code>/shipmates-polish</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-pr-review/"><code>/shipmates-pr-review</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-qa/"><code>/ship-qa</code></a></li>
             <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-onboard/"><code>/shipmates-onboard</code></a></li>
@@ -233,7 +233,7 @@
     var toggle = document.getElementById('demo-toggle');
     if (!img || !toggle) return;
     var poster = img.getAttribute('src');
-    var gif = '../../assets/command-shipmates-polish.gif';
+    var gif = '../../assets/command-shipmates-epic.gif';
     var playing = false;
     toggle.addEventListener('click', function () {
       playing = !playing;

@@ -1,11 +1,11 @@
 ---
-name: ship-plan-epics
+name: shipmates-plan-epics
 description: Shipmates: Turn a brief (or several) into a tracked backlog — GitHub epics + linked, labelled user stories, with a context-selected planning panel authoring and reviewing in parallel.
 argument-hint: <brief text | path to a brief file | several briefs> [area/label hints] [dry-run] [optional role hints — e.g. "also involve architect and UX"]
 allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-plan-epics — briefs → GitHub epics + user stories
+# /shipmates-plan-epics — briefs → GitHub epics + user stories
 <!-- shipmates:command-preamble -->
 
 Turn the supplied brief(s) into a tracked backlog: one or more **epics** (labelled `epic`),
@@ -53,7 +53,7 @@ involve architect and UX designer"), use those roles — resolve each via the cr
 rules below; do not drop a named role because of the cap.
 
 Otherwise, derive additions from the **brief + repo context** using the same domain signals
-`/ship-issue` and `/ship-pr-review` use (but read from the brief, not a diff). Each signal is independent;
+`/shipmates-issue` and `/shipmates-pr-review` use (but read from the brief, not a diff). Each signal is independent;
 a brief can trip more than one. Add a role only when the brief **genuinely implicates** that
 specialty — a neutral backlog-grooming brief (label hygiene, duplicate cleanup, pure bookkeeping)
 stays **PM-only**, same as today. Cap auto-selected non-PM additions at `MAX_PANEL_ADDITIONS`; if
@@ -176,7 +176,7 @@ Otherwise, in this order (numbers must exist before they're referenced):
 - Respect `DRY_RUN` — when set, create nothing and attach nothing; still print the selected panel and
   the attachment plan.
 - Every epic and story must be individually valuable and traceable (`Part of #`), so the backlog is
-  ready to hand to `/ship-epic <epic#>` or `/ship-issue` one story at a time.
+  ready to hand to `/shipmates-epic <epic#>` or `/shipmates-issue` one story at a time.
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the
   role brief inlined, and note the fallback.
 

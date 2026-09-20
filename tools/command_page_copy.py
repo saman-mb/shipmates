@@ -35,7 +35,7 @@ def _also(role: str, when: str) -> CrewWhen:
     return CrewWhen(role, when)
 
 
-# Shared acceptance board — /ship-issue Stage 5, and any command that reuses it.
+# Shared acceptance board — /shipmates-issue Stage 5, and any command that reuses it.
 BOARD_ALSO = (
     _also("architect", "new subsystem, schema, or a change that crosses many modules"),
     _also("ux-ui-designer", "on-screen UI — screens, flows, components"),
@@ -45,7 +45,7 @@ BOARD_ALSO = (
     _also("technical-writer", "documented behaviour or a public API/CLI"),
 )
 
-# /ship-pr-review adds seats /ship-issue does not: it cannot run /ship-harden on a branch it does not own.
+# /shipmates-pr-review adds seats /shipmates-issue does not: it cannot run /shipmates-harden on a branch it does not own.
 PR_BOARD_ALSO = BOARD_ALSO + (
     _also("security-engineer", "auth, secrets, crypto, or untrusted input"),
     _also("performance-engineer", "a claimed perf win, or a known hot path"),
@@ -53,7 +53,7 @@ PR_BOARD_ALSO = BOARD_ALSO + (
     _also("data-scientist", "the deliverable is an analysis or a model"),
 )
 
-# /ship-plan-epics panel: always PM, then up to two of these from the brief (or named by you).
+# /shipmates-plan-epics panel: always PM, then up to two of these from the brief (or named by you).
 PLAN_PANEL_ALSO = (
     _also("architect", "new subsystems, schema, or platform boundaries"),
     _also("ux-ui-designer", "screens, flows, design system, accessibility"),
@@ -68,7 +68,7 @@ PLAN_PANEL_ALSO = (
 
 
 COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
-    "ship-issue": CommandPageCopy(
+    "shipmates-issue": CommandPageCopy(
         guide_blurb="One GitHub issue in, a reviewed CI-green pull request out.",
         process_lead=(
             "The architect reads the issue and sets flags. Those flags decide who else sits — "
@@ -77,7 +77,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "A tracked ticket (or a small related bundle) is ready to build.",
-            "Whole epic? Use /ship-epic. A defect? Use /ship-fix-bug.",
+            "Whole epic? Use /shipmates-epic. A defect? Use /shipmates-fix-bug.",
         ),
         process=(
             ProcessStep(
@@ -113,15 +113,15 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-epic": CommandPageCopy(
+    "shipmates-epic": CommandPageCopy(
         guide_blurb="Ship every story on an epic onto one branch, then one PR to main.",
         process_lead=(
-            "One architect pass groups the epic. Each unit is then a full /ship-issue run, "
+            "One architect pass groups the epic. Each unit is then a full /shipmates-issue run, "
             "so that unit's flags pick its specialists. You merge one epic PR at the end."
         ),
         when_to_use=(
             "An epic issue already has stories on GitHub (sub-issues and/or a checklist).",
-            "One ticket? /ship-issue. No backlog yet? /ship-plan-epics first.",
+            "One ticket? /shipmates-issue. No backlog yet? /shipmates-plan-epics first.",
         ),
         process=(
             ProcessStep(
@@ -136,7 +136,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
             ProcessStep(
                 "Loop",
-                "Each unit is a /ship-issue: plan, build, CI, review. That unit's flags pick its extra seats.",
+                "Each unit is a /shipmates-issue: plan, build, CI, review. That unit's flags pick its extra seats.",
                 always=("architect", "senior-engineer", "sdet", "product-manager", "principal-engineer"),
                 also=tuple(s for s in BOARD_ALSO if s.role not in ("architect", "sdet")),
             ),
@@ -147,7 +147,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-fix-bug": CommandPageCopy(
+    "shipmates-fix-bug": CommandPageCopy(
         guide_blurb="Prove the bug with a failing test, fix the cause, prove it gone.",
         process_lead=(
             "SDET owns the failing test. An engineer (or SRE, if it is a runtime bug) finds the "
@@ -155,7 +155,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "Something is broken and you want red→green proof, not a guess.",
-            "New behaviour? /ship-issue. Same behaviour, new shape? /ship-refactor.",
+            "New behaviour? /shipmates-issue. Same behaviour, new shape? /shipmates-refactor.",
         ),
         process=(
             ProcessStep(
@@ -186,11 +186,11 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-report-bug": CommandPageCopy(
+    "shipmates-report-bug": CommandPageCopy(
         guide_blurb="Turn a live Shipmates failure into a structured upstream issue.",
         when_to_use=(
             "Shipmates itself misbehaved and maintainers need a triage-ready report.",
-            "Fixing your own repo? /ship-fix-bug. Cleaning a backlog? /ship-consolidate-issues.",
+            "Fixing your own repo? /shipmates-fix-bug. Cleaning a backlog? /shipmates-consolidate-issues.",
         ),
         process=(
             ProcessStep(
@@ -216,7 +216,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-plan-epics": CommandPageCopy(
+    "shipmates-plan-epics": CommandPageCopy(
         guide_blurb="Turn a brief into GitHub epics and linked, labelled stories.",
         process_lead=(
             "Product-manager always authors the backlog. Up to two more specialists join when the "
@@ -224,7 +224,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "You know the work, but GitHub has no epics or stories yet.",
-            "Ready to build? /ship-epic. Messy existing backlog? /ship-consolidate-issues.",
+            "Ready to build? /shipmates-epic. Messy existing backlog? /shipmates-consolidate-issues.",
         ),
         process=(
             ProcessStep(
@@ -251,11 +251,11 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-consolidate-issues": CommandPageCopy(
+    "shipmates-consolidate-issues": CommandPageCopy(
         guide_blurb="Triage the backlog against git history; keep what still matters.",
         when_to_use=(
             "Open issues are stale, duplicated, or already shipped.",
-            "Starting from a brief? /ship-plan-epics. Shipping survivors? /ship-issue.",
+            "Starting from a brief? /shipmates-plan-epics. Shipping survivors? /shipmates-issue.",
         ),
         process=(
             ProcessStep(
@@ -280,7 +280,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-harden": CommandPageCopy(
+    "shipmates-harden": CommandPageCopy(
         guide_blurb="Threat-model a surface, rank findings, fix blockers — or just report.",
         process_lead=(
             "Security-engineer always threat-models. An engineer remediates only if you asked for a PR; "
@@ -288,7 +288,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "Auth, secrets, or another sensitive surface needs a security pass.",
-            "/ship-issue may recommend this; it does not replace it.",
+            "/shipmates-issue may recommend this; it does not replace it.",
         ),
         process=(
             ProcessStep(
@@ -313,7 +313,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-spike": CommandPageCopy(
+    "shipmates-spike": CommandPageCopy(
         guide_blurb="Prototype the options, pick one, write the decision down.",
         process_lead=(
             "One engineer prototypes each approach in parallel. The architect always judges. "
@@ -321,7 +321,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "A technical choice is still open and you need evidence, not opinions.",
-            "The path is chosen? /ship-issue. Mechanical rewrite? /ship-migrate.",
+            "The path is chosen? /shipmates-issue. Mechanical rewrite? /shipmates-migrate.",
         ),
         process=(
             ProcessStep(
@@ -351,15 +351,15 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-migrate": CommandPageCopy(
+    "shipmates-migrate": CommandPageCopy(
         guide_blurb="Find every call site, rewrite them, leave none of the old pattern.",
         process_lead=(
             "Engineers rewrite in parallel batches. SDET proves the old pattern is gone. "
-            "The same review board as /ship-issue then sits — extra seats from the same flags."
+            "The same review board as /shipmates-issue then sits — extra seats from the same flags."
         ),
         when_to_use=(
             "An API, library, or idiom must change everywhere it appears.",
-            "Behaviour stays, shape changes? /ship-refactor. Choice still open? /ship-spike.",
+            "Behaviour stays, shape changes? /shipmates-refactor. Choice still open? /shipmates-spike.",
         ),
         process=(
             ProcessStep(
@@ -385,11 +385,11 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-document": CommandPageCopy(
+    "shipmates-document": CommandPageCopy(
         guide_blurb="Write docs from the code, then make a new reader complete them.",
         when_to_use=(
             "User-facing docs drifted from what the repo actually does.",
-            "Agent-facing map of the repo? /ship-onboard.",
+            "Agent-facing map of the repo? /shipmates-onboard.",
         ),
         process=(
             ProcessStep(
@@ -414,7 +414,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-release": CommandPageCopy(
+    "shipmates-release": CommandPageCopy(
         guide_blurb="Changelog, version bump, green CI, then tag — publish if you say so.",
         process_lead=(
             "The writer assembles notes from what actually merged. SRE checks rollback and migration "
@@ -422,7 +422,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "Merged work is ready as a named version with notes.",
-            "A single feature PR that should bump version? That lives in /ship-issue.",
+            "A single feature PR that should bump version? That lives in /shipmates-issue.",
         ),
         process=(
             ProcessStep(
@@ -447,7 +447,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-polish": CommandPageCopy(
+    "shipmates-polish": CommandPageCopy(
         guide_blurb="Show the artifact, take critique, fix, repeat until a specialist signs off.",
         process_lead=(
             "One reviewer sits, chosen by the artifact: designer for UI, art-director for pictures "
@@ -455,7 +455,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "A screen, chart, or render needs to look right — behaviour already exists.",
-            "Prose docs? /ship-document. New feature? /ship-issue.",
+            "Prose docs? /shipmates-document. New feature? /shipmates-issue.",
         ),
         process=(
             ProcessStep(
@@ -485,15 +485,15 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-pr-review": CommandPageCopy(
+    "shipmates-pr-review": CommandPageCopy(
         guide_blurb="Review someone else's PR. Report a verdict. Do not change the code.",
         process_lead=(
-            "The diff is classified with the same flags as /ship-issue. Product-manager and "
+            "The diff is classified with the same flags as /shipmates-issue. Product-manager and "
             "principal-engineer always sit; the flags pull the rest. This command reports — it never edits the branch."
         ),
         when_to_use=(
             "A pull request needs an adversarial pass and you do not own the branch.",
-            "You are delivering the work? /ship-issue, not this.",
+            "You are delivering the work? /shipmates-issue, not this.",
             "Human eyes on a running build? /ship-qa — local interactive QA, not the board.",
         ),
         process=(
@@ -509,7 +509,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
             ProcessStep(
                 "Board",
-                "Specialists review the pushed head in parallel. Because this is someone else's PR, security sits here when the flag is on — /ship-harden is not available.",
+                "Specialists review the pushed head in parallel. Because this is someone else's PR, security sits here when the flag is on — /shipmates-harden is not available.",
                 always=("product-manager", "principal-engineer"),
                 also=PR_BOARD_ALSO,
             ),
@@ -528,7 +528,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "A change needs human eyes on a running build (offline states, chrome collisions, cold-start races).",
-            "Diff / board review? /ship-pr-review. Automated gates? CI. Known defect repair? /ship-fix-bug.",
+            "Diff / board review? /shipmates-pr-review. Automated gates? CI. Known defect repair? /shipmates-fix-bug.",
         ),
         process=(
             ProcessStep(
@@ -558,7 +558,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-onboard": CommandPageCopy(
+    "shipmates-onboard": CommandPageCopy(
         guide_blurb="Read an unfamiliar repo and write the agent-facing map the crew needs.",
         process_lead=(
             "Architect and SDET always recon. DevOps joins when there is a pipeline or image to inspect. "
@@ -566,7 +566,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "Agents (or you) lack a trustworthy picture of how this repo works.",
-            "User-facing docs? /ship-document. Then start shipping with /ship-issue.",
+            "User-facing docs? /shipmates-document. Then start shipping with /shipmates-issue.",
         ),
         process=(
             ProcessStep(
@@ -592,7 +592,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
-    "ship-refactor": CommandPageCopy(
+    "shipmates-refactor": CommandPageCopy(
         guide_blurb="Pin today's behaviour, change the shape, prove callers still see the same thing.",
         process_lead=(
             "SDET pins current behaviour first. An engineer reshapes; architect sits when the shape is "
@@ -600,7 +600,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "The code is wrong-shaped; the product behaviour is not.",
-            "The behaviour is wrong? /ship-fix-bug. Find-and-replace an API? /ship-migrate.",
+            "The behaviour is wrong? /shipmates-fix-bug. Find-and-replace an API? /shipmates-migrate.",
         ),
         process=(
             ProcessStep(
@@ -635,7 +635,7 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
         when_to_use=(
             "The repo feels heavier than it needs to be and no issue tracks why.",
-            "Replacing an API across the codebase? /ship-migrate. Same behaviour, new shape? /ship-refactor.",
+            "Replacing an API across the codebase? /shipmates-migrate. Same behaviour, new shape? /shipmates-refactor.",
         ),
         process=(
             ProcessStep(

@@ -1,16 +1,16 @@
 ---
-name: ship-report-bug
+name: shipmates-report-bug
 description: Shipmates: File a structured bug report on the Shipmates repository from a live run — harness, command, repro, expected vs observed, in the format maintainers triage.
 argument-hint: [symptom text] [apply] — default report-only preview; apply files on saman-mb/shipmates after captain approval
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-report-bug — structured upstream bug reports
+# /shipmates-report-bug — structured upstream bug reports
 <!-- shipmates:command-preamble -->
 
 File a **structured bug report on `saman-mb/shipmates`** from a live run in the captain's project —
 harness, command, repro, expected vs observed — in the shape maintainers already triage (#301, #305,
-#307). This command does **not** fix upstream; it reports upstream. Pair it with `/ship-fix-bug`, which
+#307). This command does **not** fix upstream; it reports upstream. Pair it with `/shipmates-fix-bug`, which
 repairs bugs **in the user's repo**.
 
 The symptom text and mode (`report` vs `apply`) come from the Runtime input section at the end.
@@ -51,7 +51,7 @@ Gather automatically where possible — quote verbatim in the draft when it clar
 - `shipmates --version` (or note if the binary is absent).
 - Active harness — from install receipt, install path (`.claude/`, `.cursor/`, `.agents/`, …), or session
   context.
-- Command that misfired (`/ship-epic`, `/ship-issue`, …) and any guidance tokens the captain passed.
+- Command that misfired (`/shipmates-epic`, `/shipmates-issue`, …) and any guidance tokens the captain passed.
 - User repo — `gh repo view --json nameWithOwner,url` when `gh` is authenticated in the project.
 - Numbered timeline from the session — what ran, what paused, what the captain said (preserve direction
   like "keep going" / "ya" verbatim when it triggered the report).
@@ -75,7 +75,7 @@ Spawn ONE `product-manager` with the harvested context and the template below. W
 command spec behaviour, optionally add ONE `technical-writer` pass to tighten the **Spec reference**
 section — still no upstream code changes.
 
-**Title convention:** `<command> <short symptom>` — e.g. `/ship-epic stops the loop instead of running
+**Title convention:** `<command> <short symptom>` — e.g. `/shipmates-epic stops the loop instead of running
 until the epic is shipped`.
 
 **Body shape** (write to a temp file for preview and filing):
@@ -111,7 +111,7 @@ returned issue URL for the final report.
 ## Final report
 
 One concise summary: issue URL (new or commented), dedupe decision, harness/version/repo/command
-captured, suggested follow-up (link from an epic pause comment, `/ship-issue` on upstream if the captain
+captured, suggested follow-up (link from an epic pause comment, `/shipmates-issue` on upstream if the captain
 pivots to fixing Shipmates itself), and which mode ran.
 
 ---
@@ -133,7 +133,7 @@ and drafts from the current session. Default is **`MODE=report`** — never file
 ### Guardrails
 
 - **Never fixes upstream** — no PR on `saman-mb/shipmates` unless the captain separately runs
-  `/ship-issue` there.
+  `/shipmates-issue` there.
 - **Never silently files** — default is preview; `apply` or explicit approval required.
 - **Dedupe first** — do not spam duplicate command/harness bugs.
 - **Captain voice preserved** — quote direction verbatim when it triggered the report.

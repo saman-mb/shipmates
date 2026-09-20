@@ -1,11 +1,11 @@
 ---
-name: ship-onboard
+name: shipmates-onboard
 description: Shipmates: Read an unfamiliar repo and write the agent-facing context file every other command depends on — conventions, commands, boundaries and the quality bar, proven by running them. Gated on a fresh agent answering the crew's real questions from the file alone.
 argument-hint: [path to the repo — defaults to the current one]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 ---
-# /ship-onboard — recon → draft → prove it answers
+# /shipmates-onboard — recon → draft → prove it answers
 <!-- shipmates:command-preamble -->
 
 Every role in this crew is told to hold the work to the standard in *your* repo's `README` /
@@ -16,18 +16,18 @@ questions from the file alone**.
 
 The repository path comes from the Runtime input section at the end of this workflow.
 
-**This is not `/ship-document`.** The difference is the *audience*, not the topic. `/ship-document` writes for
-**humans** and gates on a fresh reader completing a task. `/ship-onboard` writes the **agent-facing
+**This is not `/shipmates-document`.** The difference is the *audience*, not the topic. `/shipmates-document` writes for
+**humans** and gates on a fresh reader completing a task. `/shipmates-onboard` writes the **agent-facing
 contract** that every other command loads at run time, and gates on a fresh agent answering the crew's
 questions correctly. Same philosophy, different question — so neither forks the other. If what you
-want is a README or a tutorial, stop and run `/ship-document`.
+want is a README or a tutorial, stop and run `/shipmates-document`.
 
 ---
 
 ## Config (override only if the repo needs it)
 
 - `MODE` = `pr` (default) or `edit-in-place` — where the result lands. `pr` opens a worktree, a
-  branch and a CI-gated PR rather than writing to the tree, reusing `/ship-issue`'s isolate stage and
+  branch and a CI-gated PR rather than writing to the tree, reusing `/shipmates-issue`'s isolate stage and
   its commit-push-PR stage. This file is the contract every later run inherits, so it earns a diff
   and a human's eye before it lands; `edit-in-place` is an explicit request. `SURVEY` (`create` /
   `refresh`) is set by Stage 0 and describes what was *found* — it is a separate axis and never
@@ -36,8 +36,8 @@ want is a README or a tutorial, stop and run `/ship-document`.
   worktree is cut from (that's current `HEAD`, so Stage 0's survey sees your actual checkout).
   `WORKTREE_LAYOUT` = `nested` (default) — `<repo>/.shipmates/worktrees/`; runtime guidance
   **`worktree-root=sibling`** selects legacy `../<repo>--…` paths. `WORKTREE_DIR` — **nested:**
-  `<repo>/.shipmates/worktrees/ship-onboard-<SURVEY>`; **sibling:** `../<repo>--onboard-<SURVEY>`. Re-runs
-  reuse the same path. `BRANCH` = `docs/ship-onboard-context-file-<SURVEY>` —
+  `<repo>/.shipmates/worktrees/shipmates-onboard-<SURVEY>`; **sibling:** `../<repo>--onboard-<SURVEY>`. Re-runs
+  reuse the same path. `BRANCH` = `docs/shipmates-onboard-context-file-<SURVEY>` —
   Default worktree cut is from local **`HEAD`**. Runtime guidance **`sync-base`** fetches and cuts
   from `origin/<BASE_BRANCH>` when remote-latest is required.
   onboard has no topic slug to build a name from (it always produces the one context file), so the
@@ -73,7 +73,7 @@ context file agrees with them instead of competing.
 The branch exists before the context file does. First check `git -C <repo> status --porcelain`; if
 the caller's tree is dirty, **warn loudly** — a worktree cut from `HEAD` holds committed work only,
 so an uncommitted rule Stage 0's survey just saw won't carry into the draft — then proceed. Exactly
-as `/ship-issue`'s isolate stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>` — so
+as `/shipmates-issue`'s isolate stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>` — so
 an unpushed `{{project-instructions}}`/`{{project-instructions-fallback}}` that Stage 0's survey already saw is actually present in the
 worktree the draft and refresh work against. Resolve `<WORKTREE_DIR>`, gitignore
 `.shipmates/worktrees/` when nested (once, idempotently), then:
@@ -153,7 +153,7 @@ passed on.
   tidy outcome.
 - Proven over plausible: a command that wasn't run is labelled unverified, never presented as fact.
 - Preserve hand-written rules on a refresh. You are augmenting someone's judgement, not replacing it.
-- Don't write a README. If the content is for humans, it belongs in `/ship-document`.
+- Don't write a README. If the content is for humans, it belongs in `/shipmates-document`.
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the brief
   inlined, and note it.
 

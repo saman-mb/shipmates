@@ -1,11 +1,11 @@
 ---
-name: ship-fix-bug
+name: shipmates-fix-bug
 description: Shipmates: Fix a bug the honest way — reproduce it as a failing test first, root-cause it, apply the minimal fix, and prove it with the test flipping red→green while the suite stays green. Worktree-isolated, CI-gated, opens a PR.
 argument-hint: <issue-number or a description of the bug> [sequential] [board=epic-deferred | board=off] [optional repro hints]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-fix-bug — reproduce → root-cause → fix → prove
+# /shipmates-fix-bug — reproduce → root-cause → fix → prove
 <!-- shipmates:command-preamble -->
 
 Take a bug from report to a **reviewed, CI-green PR** — but gated on the one signal that actually
@@ -121,7 +121,7 @@ the board from the fixer delta (shared rule), bounded by `MAX_FIX_ROUNDS`, then 
 
 Open (or, if `MERGE_MODE=auto`, merge) the PR. Body: the root cause in one paragraph, the fix, the
 regression test, `Closes #<issue>`, and the green-CI link. Dispose sibling bugs / deferred cleanups
-with the same **nit disposition** ladder as `/ship-issue` Stage 7 (default absorb-first for cheap
+with the same **nit disposition** ladder as `/shipmates-issue` Stage 7 (default absorb-first for cheap
 in-scope leftovers; cap and batch any filed issues; never open one ticket per trivial leftover).
 Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, disposition counts,
 and the absolute `<WORKTREE_DIR>` path (for cleanup or resume).

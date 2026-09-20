@@ -1,11 +1,11 @@
 ---
-name: ship-spike
+name: shipmates-spike
 description: Shipmates: De-risk an open technical decision with a time-boxed spike — frame the question, prototype several approaches in parallel as throwaways, judge them against the project's constraints, and return a recommendation as an ADR. Produces a decision, not production code.
 argument-hint: <the open question or decision — e.g. "which queue for the job system" or "SSR vs SPA">
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-spike — prototype the options, recommend with an ADR
+# /shipmates-spike — prototype the options, recommend with an ADR
 <!-- shipmates:command-preamble -->
 
 Answer a hard "which way should we build this?" question with evidence instead of a hunch. Frame the
@@ -27,7 +27,7 @@ The open question comes from the Runtime input section at the end of this workfl
   don't collide and nothing lands on the base branch. `WORKTREE_LAYOUT` = `nested` (default) —
   `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
   `../<repo>--…` paths. Per-prototype path — **nested:**
-  `<repo>/.shipmates/worktrees/ship-spike-<slug>-<approach>`; **sibling:** `../<repo>--spike-<slug>-<approach>`.
+  `<repo>/.shipmates/worktrees/shipmates-spike-<slug>-<approach>`; **sibling:** `../<repo>--spike-<slug>-<approach>`.
 - **Constraints & priorities** = from the repo (quality attributes that matter here — performance,
   simplicity, reversibility, team familiarity, cost) plus anything in the validated runtime input.
 - **ADR delivery** — `MODE` = `pr` (default) or `edit-in-place`: where the **ADR** lands. This is a
@@ -73,7 +73,7 @@ best ideas worth grafting onto the winner.
 
 The branch exists before the ADR does. First check `git -C <repo> status --porcelain`; if the
 caller's tree is dirty, **warn loudly** that a worktree cut from `HEAD` holds committed work only, so
-any uncommitted context won't carry into the ADR — then proceed. Exactly as `/ship-issue`'s isolate
+any uncommitted context won't carry into the ADR — then proceed. Exactly as `/shipmates-issue`'s isolate
 stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>`. Resolve `<WORKTREE_DIR>`,
 gitignore `.shipmates/worktrees/` when nested (once, idempotently), then:
 
@@ -109,14 +109,14 @@ remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with th
 ## Stage 4 — Report & hand off
 
 Summarise the recommendation and why, link the ADR — and, under `MODE=pr`, the PR it's waiting for
-review on — and offer the next step: `/ship-plan-epics` to turn the chosen direction into a backlog, or
-`/ship-issue` if it's already a single unit of work.
+review on — and offer the next step: `/shipmates-plan-epics` to turn the chosen direction into a backlog, or
+`/shipmates-issue` if it's already a single unit of work.
 
 ---
 
 ### Guardrails
 - **Prototypes are disposable** — this command answers a question; it does not ship a feature. Don't let a
-  spike quietly become the implementation without a proper `/ship-issue` pass.
+  spike quietly become the implementation without a proper `/shipmates-issue` pass.
 - Judge against the criteria set in Stage 0 — decide on evidence, not the newest/most-familiar tech.
 - Weigh **reversibility**: spend certainty on one-way doors; move fast on two-way doors.
 - The decision and its trade-offs are **recorded** (the ADR) so the "why" survives — an unrecorded decision

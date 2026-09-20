@@ -1,11 +1,11 @@
 ---
-name: ship-refactor
+name: shipmates-refactor
 description: Shipmates: Change the shape of the code without changing what it does — pin current behaviour in characterization tests first, transform, then prove equivalence by those tests passing unmodified and no existing test being deleted, skipped or loosened.
 argument-hint: <what to refactor + why> [sequential] [board=epic-deferred | board=off]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 ---
-# /ship-refactor — pin behaviour → transform → prove equivalence
+# /shipmates-refactor — pin behaviour → transform → prove equivalence
 <!-- shipmates:command-preamble -->
 
 A refactor that quietly changes behaviour is a bug with good PR copy. The gate here is the one thing
@@ -17,7 +17,7 @@ The runtime target is what to restructure **and why**. The motivation is not opt
 to judge whether the structure actually improved, and "it's cleaner" is not reviewable. If it's empty,
 ask what hurts and what it costs.
 
-**If the ask is "rename/replace X with Y across N call sites", stop and run `/ship-migrate` instead.** That
+**If the ask is "rename/replace X with Y across N call sites", stop and run `/shipmates-migrate` instead.** That
 is a census job: it's provable by re-grepping for the old pattern and finding nothing. A refactor has
 no such grep, which is exactly why it needs behaviour pinned first.
 
@@ -27,7 +27,7 @@ no such grep, which is exactly why it needs behaviour pinned first.
 
 - `BASE_BRANCH` = the repo's default branch. `WORKTREE_LAYOUT` = `nested` (default) —
   `<repo>/.shipmates/worktrees/`; runtime guidance **`worktree-root=sibling`** selects legacy
-  `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/ship-refactor-<slug>`;
+  `../<repo>--…` paths. `WORKTREE_DIR` — **nested:** `<repo>/.shipmates/worktrees/shipmates-refactor-<slug>`;
   **sibling:** `../<repo>--refactor-<slug>`. Re-runs reuse the same path. `BRANCH` = `refactor/<slug>`.
 - `EXECUTION` = `fanout` — how decoupled refactoring seams execute. `fanout` (default): when
   Stage 1.5 identifies multiple independent, file-disjoint seams, spawn Builders concurrently
@@ -41,7 +41,7 @@ no such grep, which is exactly why it needs behaviour pinned first.
 - **Quality bar / test commands** = whatever the repo's README / {{project-instructions}} / test config states.
 - The orchestrator owns all git/gh; agents never push.
 
-## Stage 0 — Scope, motivation, and the `/ship-migrate` escape hatch
+## Stage 0 — Scope, motivation, and the `/shipmates-migrate` escape hatch
 
 Parse runtime guidance: `sequential` sets `EXECUTION=sequential`; `board=epic-deferred` sets
 `BOARD=deferred` (milestone-board owners only); `board=off` sets `BOARD=off` (explicit captain opt-out).
@@ -55,7 +55,7 @@ boundaries, move a public surface, or change who depends on whom? If yes, Stage 
 Spawn the `sdet` to pin the code's behaviour **as it is today** — around the seam being changed, at
 the boundary a caller actually sees.
 
-**This is the inverse of `/ship-fix-bug` Stage 0, and conflating the two is a live risk.** `/ship-fix-bug`
+**This is the inverse of `/shipmates-fix-bug` Stage 0, and conflating the two is a live risk.** `/shipmates-fix-bug`
 writes a test asserting the **correct** behaviour, so it fails now. Here you assert the **current**
 behaviour, so it passes now — *including behaviour you believe is wrong*. A bug that survives the
 refactor unchanged is a success; fixing it here means you can no longer tell which change broke
@@ -151,7 +151,7 @@ the board from the fixer delta (shared rule), bounded by `MAX_FIX_ROUNDS`, then 
 Open (or, if `MERGE_MODE=auto`, merge) the PR. Body: the motivation, the structural change in one
 paragraph, the characterization tests and that they are unmodified, any pre-existing test the diff
 touched and why, and the green-CI link. Bugs found while refactoring still must not be mixed into
-the refactor (see Guardrails) — file them with the `/ship-issue` Stage 7 disposition rules
+the refactor (see Guardrails) — file them with the `/shipmates-issue` Stage 7 disposition rules
 (prefer one batched issue; cap; dedupe). In-scope polish on already-touched refactor paths may be
 absorbed when behaviour-preserving and within absorb budgets.
 
@@ -159,7 +159,7 @@ absorbed when behaviour-preserving and within absorb budgets.
 
 ### Guardrails
 - **Behaviour is pinned before it is preserved.** No characterization tests, no refactor.
-- Don't fix bugs here. A bug found while refactoring becomes an issue, and `/ship-fix-bug` handles it —
+- Don't fix bugs here. A bug found while refactoring becomes an issue, and `/shipmates-fix-bug` handles it —
   mixing the two makes it impossible to attribute a regression.
 - The two gates are not interchangeable: characterization tests are byte-frozen; pre-existing tests
   may be moved and renamed but never weakened.

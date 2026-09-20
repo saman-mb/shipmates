@@ -55,19 +55,19 @@ load helpers
     run "$SHIPMATES_BIN" install --harness "$harness" --dir "$SANDBOX" --with-tools all
     assert_success
   done
-  stale_shared_skill "$SANDBOX" ship-issue
+  stale_shared_skill "$SANDBOX" shipmates-issue
 
   for harness in codex antigravity github-copilot; do
     run "$SHIPMATES_BIN" update --harness "$harness" --dir "$SANDBOX"
     assert_success
     refute_output --partial "shared-managed file left untouched"
-    run jq -e '[.files[].path] | index(".agents/skills/ship-issue/SKILL.md") != null' "$SANDBOX/.shipmates/receipts/$harness.json"
+    run jq -e '[.files[].path] | index(".agents/skills/shipmates-issue/SKILL.md") != null' "$SANDBOX/.shipmates/receipts/$harness.json"
     assert_success
   done
 
   run "$SHIPMATES_BIN" install --harness codex --dir "$BATS_TEST_TMPDIR/fresh" --with-tools all
   assert_success
-  cmp "$SANDBOX/.agents/skills/ship-issue/SKILL.md" "$BATS_TEST_TMPDIR/fresh/.agents/skills/ship-issue/SKILL.md"
+  cmp "$SANDBOX/.agents/skills/shipmates-issue/SKILL.md" "$BATS_TEST_TMPDIR/fresh/.agents/skills/shipmates-issue/SKILL.md"
 }
 
 @test "update --harness all refreshes every receipt non-interactively" {
@@ -93,7 +93,7 @@ load helpers
   assert_success
   [ -f "$SANDBOX/.claude/agents/notes.md" ]
   [ "$(cat "$SANDBOX/.claude/agents/notes.md")" = "mine" ]
-  [ ! -e "$SANDBOX/.claude/skills/ship-issue" ]
+  [ ! -e "$SANDBOX/.claude/skills/shipmates-issue" ]
   [ "$(receipt_files "$SANDBOX")" -eq 0 ]
 }
 
@@ -104,14 +104,14 @@ load helpers
 
 @test "update migrates the previous shipmates- prefix in a claimed tree" {
   install_claude_code "$SANDBOX"
-  make_previous_generation "$SANDBOX" ship-harden shipmates-harden
+  make_previous_generation "$SANDBOX" shipmates-harden shipmates-harden
 
   run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX"
   assert_success
 
   [ ! -e "$SANDBOX/.claude/skills/shipmates-harden" ]
-  [ -f "$SANDBOX/.claude/skills/ship-harden/SKILL.md" ]
-  run jq -e '[.files[].path] | index(".claude/skills/ship-harden/SKILL.md") != null' "$SANDBOX/.shipmates/receipts/claude-code.json"
+  [ -f "$SANDBOX/.claude/skills/shipmates-harden/SKILL.md" ]
+  run jq -e '[.files[].path] | index(".claude/skills/shipmates-harden/SKILL.md") != null' "$SANDBOX/.shipmates/receipts/claude-code.json"
   assert_success
   run bash -c "find '$SANDBOX/.shipmates-backup' -name 'SKILL.md' | head -1"
   assert_success
@@ -120,13 +120,13 @@ load helpers
 
 @test "update migrates the pre-prefix bare verb in a claimed tree" {
   install_claude_code "$SANDBOX"
-  make_previous_generation "$SANDBOX" ship-harden harden
+  make_previous_generation "$SANDBOX" shipmates-harden harden
 
   run "$SHIPMATES_BIN" update --harness claude-code --dir "$SANDBOX"
   assert_success
 
   [ ! -e "$SANDBOX/.claude/skills/harden" ]
-  [ -f "$SANDBOX/.claude/skills/ship-harden/SKILL.md" ]
+  [ -f "$SANDBOX/.claude/skills/shipmates-harden/SKILL.md" ]
 }
 
 @test "update --from-cwd refreshes from the checkout" {
@@ -153,13 +153,13 @@ load helpers
   assert_success
   run "$SHIPMATES_BIN" uninstall --harness claude-code --local
   assert_success
-  [ ! -e "$SANDBOX/.claude/skills/ship-issue" ]
+  [ ! -e "$SANDBOX/.claude/skills/shipmates-issue" ]
 
   run "$SHIPMATES_BIN" install --harness claude-code --global --with-tools none
   assert_success
   run "$SHIPMATES_BIN" uninstall --harness claude-code --global
   assert_success
-  [ ! -e "$HOME/.claude/skills/ship-issue" ]
+  [ ! -e "$HOME/.claude/skills/shipmates-issue" ]
 }
 
 @test "uninstall --from-cwd removes the install and uninstall without --harness is ambiguous" {
@@ -173,7 +173,7 @@ load helpers
   cd "$REPO_ROOT"
   run "$SHIPMATES_BIN" uninstall --harness claude-code --dir "$SANDBOX" --from-cwd
   assert_success
-  [ ! -e "$SANDBOX/.claude/skills/ship-issue" ]
+  [ ! -e "$SANDBOX/.claude/skills/shipmates-issue" ]
 }
 
 @test "an installed tool runs from its installed location" {

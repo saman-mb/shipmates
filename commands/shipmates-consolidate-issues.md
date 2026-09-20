@@ -1,17 +1,17 @@
 ---
-name: ship-consolidate-issues
+name: shipmates-consolidate-issues
 description: Shipmates: Review every open issue against git history, close what's already done or stale, migrate the legacy ones, slim the backlog, and bundle the survivors into themed groups so similar work ships together efficiently. Read-only by default — it reports; changes happen only on an explicit apply.
 argument-hint: [scope filter such as label/area] [apply] — no args: the whole open backlog, report-only
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-consolidate-issues — inventory → cross-check history → close → migrate → bundle
+# /shipmates-consolidate-issues — inventory → cross-check history → close → migrate → bundle
 <!-- shipmates:command-preamble -->
 
 Turn a drifting issue tracker back into a plan. The whole open-issue set is pulled, every issue is
 checked against the project's git history and merged PRs to see what is **already done**, the done
 and stale ones are closed, legacy-shaped issues are migrated to the tracker's current conventions,
-and the survivors are **bundled by theme** into groups each big enough to hand to `/ship-issue` in
+and the survivors are **bundled by theme** into groups each big enough to hand to `/shipmates-issue` in
 one pass — so the backlog shrinks and the work that remains ships in coherent chunks instead of as
 an endless one-issue-at-a-time trickle.
 
@@ -111,7 +111,7 @@ the host has no sub-issue mechanic (the flag is rejected), fall back to the epic
 
 ## Stage 4 — Bundle the survivors  (ONE `product-manager`, parallel by area)
 
-Group every `keep` issue into **bundles**: coherent themes, each sized for a single `/ship-issue`
+Group every `keep` issue into **bundles**: coherent themes, each sized for a single `/shipmates-issue`
 run. Spawn one `product-manager` per **area** (from the project's existing area labels) so the
 theming runs in parallel; give each its area's issues, the repo context, and the rule that bundles
 are **thematic + dependency-ordered + individually shippable** — never a grab-bag of unrelated
@@ -133,12 +133,12 @@ If `MODE=apply`, execute in this order, re-verifying each before acting:
 3. **Close** — close each `DONE` and `STALE` issue with a comment naming its evidence; on a dedupe,
    comment the canonical issue and cross-link the pair.
 4. **Tag bundles** — apply each bundle's label to its issues and note the bundle in a comment, so
-   `/ship-issue` can be run per bundle.
+   `/shipmates-issue` can be run per bundle.
 
 Then verify (re-fetch and grep; don't assume): every planned close happened, every migration landed,
 every bundle label is on exactly its issue set. Report the before/after: how many issues were in
 scope, how many closed (with the count that were already done), how many migrated, and the bundle
-tree ready to hand to `/ship-issue` — one bundle at a time.
+tree ready to hand to `/shipmates-issue` — one bundle at a time.
 
 ---
 

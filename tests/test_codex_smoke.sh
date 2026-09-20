@@ -34,7 +34,7 @@ fi
   cargo run --quiet -- doctor --harness codex --dir "$PROJECT"
 )
 
-test -f "$PROJECT/.agents/skills/ship-issue/SKILL.md"
+test -f "$PROJECT/.agents/skills/shipmates-issue/SKILL.md"
 test -f "$PROJECT/.codex/agents/sdet.toml"
 test ! -d "$PROJECT/.codex/skills"
 test "$(ls -1 "$PROJECT/.agents/skills" | wc -l | tr -d ' ')" -eq 17
@@ -81,7 +81,7 @@ command = [
     "--cd", project,
     "--output-last-message", last_message,
     (
-        "Use the installed ship-harden skill in its default report mode on README.md and AGENTS.md "
+        "Use the installed shipmates-harden skill in its default report mode on README.md and AGENTS.md "
         "only. Resolve the installed sdet subagent from .codex/agents/sdet.toml and delegate one "
         "read-only inspection to sdet. Do not invoke other roles, edit files, create commits, "
         "access the network, or run destructive commands. After the report completes, make the "
@@ -105,4 +105,4 @@ if not message.rstrip().endswith("CODEX_SMOKE_PASS"):
     raise SystemExit("Codex runtime smoke did not return CODEX_SMOKE_PASS")
 PY
 
-printf 'Optional Codex runtime smoke passed: installed crew resolved and read-only ship-harden skill completed.\n'
+printf 'Optional Codex runtime smoke passed: installed crew resolved and read-only shipmates-harden skill completed.\n'

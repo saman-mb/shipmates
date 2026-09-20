@@ -140,9 +140,9 @@
         "argument_passing": "yes",
         "command_e2e": "yes",
         "commands_exercised": [
-          "/ship-issue"
+          "/shipmates-issue"
         ],
-        "notes": "Primary development harness. Full flagship workflow runtime-verified: crew resolve, argument passing, and /ship-issue end to end."
+        "notes": "Primary development harness. Full flagship workflow runtime-verified: crew resolve, argument passing, and /shipmates-issue end to end."
       }
     },
     "github-copilot": {
@@ -360,7 +360,7 @@
         "command_e2e": "unknown",
         "commands_exercised": [],
         "crew_resolve": "unknown",
-        "notes": "Captain-attested live run (#497, 2026-09-18). Granular criteria (crew resolve, argument passing, command E2E) were not separately logged \u2014 recorded as unknown rather than inferred. Not a Tier-A /ship-issue proof."
+        "notes": "Captain-attested live run (#497, 2026-09-18). Granular criteria (crew resolve, argument passing, command E2E) were not separately logged \u2014 recorded as unknown rather than inferred. Not a Tier-A /shipmates-issue proof."
       }
     },
     "windsurf": {
@@ -498,7 +498,7 @@
         "command_e2e": "unknown",
         "commands_exercised": [],
         "crew_resolve": "unknown",
-        "notes": "Captain-attested live run (#497, 2026-09-18). Pi crew resolve depends on the third-party pi-subagents extension; granular criteria not separately logged (unknown). Not a Tier-A /ship-issue proof."
+        "notes": "Captain-attested live run (#497, 2026-09-18). Pi crew resolve depends on the third-party pi-subagents extension; granular criteria not separately logged (unknown). Not a Tier-A /shipmates-issue proof."
       }
     }
   },
