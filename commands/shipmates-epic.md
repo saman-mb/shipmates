@@ -263,6 +263,13 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
 8. **Empty pending shortcut** — when `<pending>` is empty after Stage 0 reconciliation, skip Stages 1–2
    and go directly to **Stage 4** (full closure or crew-complete). `<EPIC_PR>` must already be set from
    steps above.
+9. **CI-trigger sanity check** — once `<EPIC_PR>` exists, cheaply confirm a `pull_request` event
+   actually produces a **check suite** against `<EPIC_BRANCH>` (`gh pr checks <EPIC_PR>`). Bound the
+   wait to a handful of poll intervals. If no check suite appears — not pending, not red, empty —
+   **stop and diagnose** at kickoff (a `branches:` glob that drops slash-containing names is the usual
+   class for `feat/epic-…` branches). Do not start N unit runs against a trigger that never fires, and
+   do not merge a workflow tweak to `MAIN_BRANCH` to test the theory — use a disposable branch/PR that
+   is never merged. Skip in `DRY_RUN`.
 
 ## Stage 1 — Story graph  (orchestrator)
 
@@ -531,6 +538,11 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
 
 ### Guardrails
 
+- **A merge is never itself the verification step.** To check whether a CI/config/harness fix works,
+  use the cheapest reversible method: local simulation, or a disposable branch/PR that is explicitly
+  never merged. Do not merge to `MAIN_BRANCH`, `<EPIC_BRANCH>`, or any other shared/default/integration
+  branch “just to see if the theory was right”. A merge to shared state needs its own, separately
+  considered captain authorization — never inferred from a different question.
 - **Compose, don't duplicate** — each unit is one full `/shipmates-issue` pipeline taken from the
   **installed** command file (Read → execute stages in-session). Never invent a rival stage list,
   skip mandatory `/shipmates-issue` stages, or approximate the unit run from memory. Skill/`skill` is

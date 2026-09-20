@@ -8,6 +8,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **Verifying a CI or config fix must not use a merge to a shared branch as the
+  test.** `/shipmates-issue` and `/shipmates-epic` now say a merge is never itself
+  the verification step — use a local simulation or a disposable branch/PR that is
+  never merged. Stage 4.5 names a permanently empty check suite as its own failure
+  mode (not pending, not red). Stage 0.5 cheaply confirms a `pull_request` event
+  actually produces checks on the epic branch. Citation verification covers
+  third-party platform claims, not only in-repo `file:line` citations (#480).
 - **`/shipmates-consolidate-issues` reattaches dangling issues to existing open epics
   before inventing a new bundle.** Stage 0 inventories the open-epic set; Stage 2
   matches unmatched keep-candidates against it (`target_epic`); Stage 3 reattaches;
