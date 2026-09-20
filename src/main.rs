@@ -1083,7 +1083,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Verify every entry in a payload digest matches the freshly built payload.
+/// Verify every entry in a payload digest matches the freshly built payload,
+/// and that every built path under `digest_root` is recorded in the digest.
 ///
 /// `digest_root` is the harness's install container (`harnesses/<target>`), so
 /// a target that writes into more than one dotdir — Codex, with crew at
@@ -1103,11 +1104,13 @@ fn check_digests(
         bail!("Digest file missing: {:?}", digest_file);
     }
     let digest_content = fs::read_to_string(&digest_file)?;
+    let mut recorded = std::collections::HashSet::new();
     for line in digest_content.lines().skip(2) {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() == 2 {
             let rel_path = parts[0];
             let expected_hash = parts[1];
+            recorded.insert(rel_path.to_string());
             let key = format!("{}/{}", digest_root, rel_path);
             if let Some(content) = files.get(&key) {
                 let actual_hash = digest::hash(content);
@@ -1123,6 +1126,16 @@ fn check_digests(
                 bail!("Payload is missing a digest entry: {}", rel_path);
             }
         }
+    }
+    let prefix = format!("{}/", digest_root);
+    let mut missing: Vec<&str> = files
+        .keys()
+        .filter_map(|path| path.strip_prefix(&prefix))
+        .filter(|rel| !recorded.contains(*rel))
+        .collect();
+    missing.sort_unstable();
+    if let Some(rel) = missing.first() {
+        bail!("Digest is missing a payload path: {}", rel);
     }
     println!("Check passed for target: {}", target);
     Ok(())

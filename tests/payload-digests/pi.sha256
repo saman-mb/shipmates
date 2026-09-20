@@ -1,6 +1,6 @@
 payload_digest_version=1
 target=pi
-.agents/skills/ship-deslop/SKILL.md 0f5778ddedf540d46a3cd06b95d4931bfbd95df651762f7d2c4c77ab6433d9c3
+.agents/skills/ship-deslop/SKILL.md 3a72422ebca1606b3a5941b184775de1f6f8d40666dd7a5f0f61c7fc09df3128
 .agents/skills/ship-qa/SKILL.md 01c2b51aac08bcd77d30d5f75058c95dcf272176316c2d35ceddaf64b382eab7
 .agents/skills/shipmates-consolidate-issues/SKILL.md 34ce0202fa3baf33a635f69094fc927aed11140719e59a96941701590c462198
 .agents/skills/shipmates-document/SKILL.md 84e3f6b3f8651fe5e30bb3d1dfc3d7006a784127f843e87c3a044d5912a7ad1d
@@ -12,7 +12,7 @@ target=pi
 .agents/skills/shipmates-onboard/SKILL.md 2cc3d70616f1f0980b203ff5166b386ac874b4c603dcaebe887d67c94bcc875c
 .agents/skills/shipmates-plan-epics/SKILL.md 78e78fae5c4b5957ea46dd682dfbdaafc9696a95d7509a9b57049752c2ee5cb6
 .agents/skills/shipmates-polish/SKILL.md 819c1124c0890c484a4892281df5da2168acc0155789fa4745e259f2f719e0cc
-.agents/skills/shipmates-pr-review/SKILL.md 24023d0bee4bc35fef1f32667975453c602c793373219a715e91ebd82f49a955
+.agents/skills/shipmates-pr-review/SKILL.md e52a4ebedc2681227cf5432734c7f0fbd0bcb31ae9c551a0b1692d6ef706ff40
 .agents/skills/shipmates-refactor/SKILL.md 702f07b4cbf25a382e605e3a546c59e690d9ffae4249ca444204ccbeb18f9783
 .agents/skills/shipmates-release/SKILL.md 7be6a6e6ebb25160e16ae342138ffe525728e63ad4d383d01d679238bd1700d3
 .agents/skills/shipmates-report-bug/SKILL.md 6911d4b646d990dc096677ab4d55a5356823f7a572ae239da6ceea779bb7d8dd

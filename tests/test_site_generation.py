@@ -250,22 +250,18 @@ class SiteGenerationTests(unittest.TestCase):
         self.assertEqual("<issue-number>", fm.argument_hint)
         self.assertEqual(("Read", "Grep"), fm.allowed_tools)
 
-    @unittest.skipIf(
-        sys.version_info < GENERATOR_MIN,
-        "gen_command_pages requires Python 3.10+ (dataclass slots)",
-    )
     def test_yaml_unquote_mirrors_the_renderer_escapes(self) -> None:
-        """The helper inverts `yaml_scalar` (src/adapters/render.rs) exactly."""
-        from tools import gen_command_pages as generator
+        """The helper inverts yaml_scalar quoting exactly (Python 3.9-safe)."""
+        from tools.yaml_unquote import yaml_unquote
 
         self.assertEqual(
             'quote " backslash \\ slash \n newline \r cr \t tab \x00 nul',
-            generator._yaml_unquote(
+            yaml_unquote(
                 '"quote \\" backslash \\\\ slash \\n newline \\r cr \\t tab \\u0000 nul"'
             ),
         )
-        self.assertEqual("plain value", generator._yaml_unquote("plain value"))
-        self.assertEqual("", generator._yaml_unquote(""))
+        self.assertEqual("plain value", yaml_unquote("plain value"))
+        self.assertEqual("", yaml_unquote(""))
 
     @unittest.skipIf(
         sys.version_info < GENERATOR_MIN,
