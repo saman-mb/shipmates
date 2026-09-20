@@ -512,7 +512,11 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/shipmates-issue` so the epi
    n=0
    while :; do
      s=$(gh pr checks <PR#> 2>&1 | head -1)
-     st=$(printf '%s\n' "$s" | cut -f2)
+     case "$s" in
+       *"no checks reported"*) st= ;;
+       *$'	'*) st=$(printf '%s\n' "$s" | cut -f2) ;;
+       *) st= ;;
+     esac
      if [ "$st" = "pending" ]; then sleep 15; continue; fi
      if [ -n "$st" ]; then echo "$s"; break; fi
      n=$((n + 1))
