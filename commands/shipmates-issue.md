@@ -47,8 +47,8 @@ gate. Never bundle merely to save tokens; bundle when the tickets genuinely belo
 
 Never assume or hardcode a model for a subagent. Harnesses offer different model sets and users have
 different access, so the right model is chosen **at spawn, by task complexity, from what is
-available** — not written into any crew file. Which tier a role starts at, which pool it resolves
-against, the resolution order, each target's override and effort surface, and the audit line every
+available** — not written into any crew file. Which tier a role starts at, how its model is chosen at
+spawn, the resolution order, each target's override and effort surface, and the audit line every
 spawn reports are stated once in the **Model routing** section above — follow it there; do not restate
 it here.
 
@@ -636,7 +636,7 @@ One concise summary: PR link (and merge state), commit(s), the absolute **worktr
 sync/rebase ran, which specialists reviewed it and their
 verdicts (`re-run` / `carried ACCEPT` / `newly seated` / `still gated` after any fix round — a `still
 gated` seat is named with the flag that gated it), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
-(tier, pool source, with its condition when one fired, the model identity the harness accepted, effort requested and resolved, and
+(tier, whether the identity was observed on the target or inherited, the model identity the harness accepted, effort requested and resolved, and
 `honoured` / `substituted` / `inherit`), nit disposition counts (absorbed / pr-noted / filed with links), the confirmed-green CI link,
 
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at

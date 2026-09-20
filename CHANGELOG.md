@@ -4,6 +4,46 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-09-21
+
+### Removed
+
+- **The declared model pool is gone — the orchestrator judges the model instead.**
+  There is no `<repo>/model-pool.json`, no `~/.shipmates/model-pool.json`, no
+  `schema_version`/`tiers` shape to learn, no precedence order and no refusal
+  rule. A static list could not be right across nine harnesses and different
+  plans and sign-ins: a pool written for one target was wrong or empty on
+  another, and an empty pool is not a smaller ranking but no ranking at all, so
+  every spawn fell to `inherit`. It was also invisible work with a sharp edge —
+  a repository that already owned a root `model-pool.json` meaning something else
+  made the captain's own file unusable (#449, #486, #531).
+
+### Changed
+
+- **At spawn, the main agent decides the model from what the target in front of
+  it offers.** Ask the target what exists (its documented listing command); where
+  there is no listing command, read what it documents (a native allow-list, plus
+  the model the session is on); then judge per role — cheapest capable for
+  `mechanical`, top available for `judgment` — and record the identity and
+  whether it was observed or inherited on the `MODEL ROUTING:` line. Two
+  constraints keep that a judgment rather than a guess: an identity may only be
+  one the target itself offered, and the call is recorded so a wrong one is
+  visible. Where nothing can be read, or the call is uncertain, it is `inherit`.
+  A captain who wants a specific model can still name it in the run's own
+  guidance, which outranks the orchestrator's choice (#531).
+
+### Added
+
+- **The shipped routing table's effort clamp clause is gated against the model
+  record.** `tools/harness_matrix.json` now carries a machine-readable
+  `model_surface.effort.clamp_kind` per harness — `clamps-down`,
+  `not-documented` or `no-surface` — cross-checked against the prose beside it so
+  the field cannot drift from the text it classifies. The per-target table's
+  clamp clause must agree with that verdict: it may abbreviate the record, but it
+  may never assert a clamp the record does not document, and a row that documents
+  none must be hedged to the same degree. Both directions are shown failing on a
+  deliberately overstated cell (#485).
+
 ## [0.10.6] - 2026-09-21
 
 ### Fixed
