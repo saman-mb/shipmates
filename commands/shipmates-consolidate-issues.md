@@ -91,33 +91,47 @@ prominently in the report.
 `MIGRATE` applies to issues whose **shape** is obsolete even though the work is still wanted:
 - wrong tracker conventions (missing labels/structure the project now requires, body not in the
   current template, no acceptance criteria where the project mandates them),
-- issues that should be an epic with stories, or a **dangling task/story/bug that Stage 2 matched to
-  an existing open epic** (its `target_epic`) — reattach it there rather than leave it as a standalone
-  `keep`,
+- issues that should be an epic with stories, a story already labeled `Part of #<epic>` but not yet
+  graph-linked, or a **dangling task/story/bug that Stage 2 matched to an existing open epic** (its
+  `target_epic`) — reattach it there rather than leave it as a standalone `keep`,
 - issues blocked by a fixed/unneeded parent (remove the stale `Blocked by` or dependency note).
 
 Migrating means rewriting to the project's current shape — never inventing new scope. If a
 migration would silently change the meaning, keep it and flag it for the user instead.
 
-**When a migration creates a parent and its children, attach the graph with `gh`.** An issue that
-should become an epic with stories (or a story that should join an existing epic) is only migrated
-when the parent/child relationship exists as a GitHub fact — a body mention is a mention, and an epic
-checklist is display, not linkage. After creating each epic and story with `gh issue create` and
+**Attach the graph with `gh`, whether the epic is brand-new or already existed.** An issue that
+should become an epic with stories, a story that should join an existing epic, or a **dangling
+issue Stage 2 reconciled into an existing epic** is only migrated when the parent/child relationship
+exists as a GitHub fact — a body mention is a mention, and an epic checklist is display, not linkage,
+so the graph attach and the checklist entry are both required, never either/or.
+
+For a freshly created epic with new stories: after creating each with `gh issue create` and
 validating every captured number against `^[0-9]+$`, attach every child explicitly:
 
 ```bash
 gh issue edit <epic> --add-sub-issue <story>
 ```
 
-Several children may be attached in one call as a comma-separated list. Read the parent's current
-children first (`gh issue view <epic> --json subIssues`; child numbers live at
-`subIssues.nodes[].number` — `subIssues` is a connection object, not a list) and skip any already
-attached, so a re-run adds nothing twice. Then verify by re-fetching `gh issue view <epic> --json
-subIssues,subIssuesSummary` and confirming the child numbers are exactly the stories created — a
-missing child means the attach did not land: retry it **once**, re-verify, then report the gap. If
-the host has no sub-issue mechanic (the flag is rejected), fall back to the epic checklist plus
-`Part of #<epic>` back-references and say in the report that the graph is missing — never fake it.
-`/ship-plan-epics` Stage 3 owns the full filing sequence; mirror it here.
+Several children may be attached in one call as a comma-separated list. For a **reconciled dangling
+issue** (Stage 2's `target_epic`), attach that one issue the same way against the epic's
+already-populated child set: `gh issue edit <target_epic> --add-sub-issue <issue>`.
+
+Read the parent's current children first (`gh issue view <epic> --json subIssues`; child numbers
+live at `subIssues.nodes[].number` — `subIssues` is a connection object, not a list) and skip any
+already attached, so a re-run adds nothing twice. Then verify by re-fetching `gh issue view <epic>
+--json subIssues,subIssuesSummary`: for a freshly created epic, confirm the child numbers are
+exactly the stories just created; for a reconciled issue, confirm its number now appears among the
+epic's (larger, pre-existing) child set — never an exact-match check there, since prior children are
+expected and their presence is not a gap. Either way, a missing child means the attach did not land:
+retry it **once**, re-verify, then report the gap.
+
+In every case, also backfill the epic's own checklist (`- [ ] #<story>`) with the new entry — for
+human-readability, unconditionally, not only when the sub-issue mechanic is unavailable — and add
+`Part of #<epic>` to the child issue's own body, so a later Stage 2 pass recognizes it as already
+reconciled and doesn't re-send it through the epic-match check. If the host has no sub-issue mechanic
+(the flag is rejected), the checklist entry and `Part of #<epic>` back-reference are the only
+linkage available, and the report says the graph is missing — never fake it. `/shipmates-plan-epics`
+Stage 3 owns the full filing sequence for new epics; mirror it here for both cases.
 
 ## Stage 4 — Bundle the survivors  (ONE `product-manager`, parallel by area)
 
