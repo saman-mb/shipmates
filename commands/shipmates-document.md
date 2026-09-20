@@ -97,16 +97,17 @@ reader's outstanding blockers — don't ship docs that don't work.
 ## Stage 4 — Deliver
 
 `pr` (the default): commit on the worktree branch — staging only the paths this run produced, never
-`git add -A` — push, and open the PR against `BASE_BRANCH`. Then gate on CI: poll `gh pr checks` until
-nothing is pending; a red check means pulling the failing log, fixing it, re-pushing, and re-polling —
-bounded by `MAX_FIX_ROUNDS`, after which you stop and escalate to the user with the failing log rather
-than looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`, in which case merge the PR
-and remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with the PR open.
-`edit-in-place`: leave the finished docs in the working tree and report. Report: what was documented,
-the doc type, the fresh-reader's final result (in its words), rounds taken, and any follow-ups
-(things worth documenting next, discovered gaps).
+`git add -A` — push, and open the PR against `BASE_BRANCH`.
 
 <!-- shipmates:why-merge-pr -->
+
+Then gate on CI: poll `gh pr checks` until nothing is pending; a red check means pulling the failing
+log, fixing it, re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and
+escalate to the user with the failing log rather than looping. Never advance a red PR. Stop there
+unless `MERGE_MODE=auto`, in which case merge the PR and remove `<WORKTREE_DIR>`; the manual default
+leaves the worktree in place with the PR open. `edit-in-place`: leave the finished docs in the working
+tree and report. Report: what was documented, the doc type, the fresh-reader's final result (in its
+words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).
 
 ---
 

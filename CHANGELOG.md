@@ -9,9 +9,9 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - **PR bodies require a maintainer-facing Why merge this block** on every command
-  that opens a pull request. The block answers the product-impact bar in
-  `steering/global.md` §3 (What changes / Why it matters / Who is affected) —
-  not a file list or bare `Closes #n` — and is shared from `docs/COST.md` via
+  that opens a pull request. The block answers the product-impact bar (What
+  changes / Why it matters / Who is affected) — not a file list or bare
+  `Closes #n` — and is shared from `docs/COST.md` via
   `<!-- shipmates:why-merge-pr -->` (#530).
 
 ## [0.10.2] - 2026-09-21
