@@ -4,6 +4,37 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2] - 2026-09-20
+
+### Fixed
+
+- **`--from-cwd` and `SHIPMATES_SRC` together are a hard error** (two explicit
+  sources). `--from-cwd` and the contributor loop walk up from a nested cwd to
+  the catalog root; the contributor loop still exact-matches that root against
+  this binary's checkout (#394).
+- **Intentional `update --with-tools none` no longer leaves tool bak sidecars or
+  empty husk dirs** that doctor would treat as an interrupted update forever.
+  Mid-write overwrite backups are unchanged (#418).
+- **Collision refuse and doctor foreign-collision messages replay the captain's
+  install flags** (`--harness`, `--dir`/`--local`/`--global`, `--with-tools`)
+  plus `--force` — never a bare `shipmates install --force` (#392).
+- **Foreign collisions are advisory (`warn`, unfixable)** so doctor can go
+  green without implying `doctor --fix` will overwrite the captain's file; the
+  detail line still names the force hint (#393).
+- **`doctor --fix` skip stdout includes `mv <bak> <dest>`** when a non-matching
+  sibling bak blocks restore of an unowned missing path (#361).
+- **Pi contributor steering** is recorded in the capability registry and
+  steering path table; contributor-tree `install --harness pi` writes
+  `.shipmates/contributor-steering.md` and claims it on the receipt (#482, #483).
+
+### Changed
+
+- Identity-rename delete-after-write keeps the safer rename rollback (delete the
+  half-written new path); documented in code, with CLI lifecycle coverage for
+  install and `doctor --fix` identity paths (#379).
+- Install and troubleshooting docs describe interrupted-update bak restore and
+  the non-matching `mv` hint (#362).
+
 ## [0.10.1] - 2026-09-21
 
 ### Fixed

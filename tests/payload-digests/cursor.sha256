@@ -1,6 +1,6 @@
 payload_digest_version=1
 target=cursor
-.cursor/rules/shipmates-contributor.mdc 3e92c3b14dde393a8188961d0848539d74c53a19cb46237a70b79a442f8fbb1b
+.cursor/rules/shipmates-contributor.mdc 779fed21cd8356fca937dcb954ffa4361cca3c93ed83023bcb97d1ac6fcafd5c
 .cursor/skills/ship-deslop/SKILL.md 0f5778ddedf540d46a3cd06b95d4931bfbd95df651762f7d2c4c77ab6433d9c3
 .cursor/skills/ship-qa/SKILL.md 01c2b51aac08bcd77d30d5f75058c95dcf272176316c2d35ceddaf64b382eab7
 .cursor/skills/shipmates-consolidate-issues/SKILL.md f1478634a720179560d6d24899ad13d060f9ae8205d022acf4c9815f9d72640d

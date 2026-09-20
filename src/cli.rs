@@ -29,6 +29,39 @@ pub struct LocationOpts {
     pub dir: Option<String>,
 }
 
+impl LocationOpts {
+    /// Reconstruct the Where flag a captain typed for this location.
+    pub fn force_where_flag(&self) -> String {
+        if let Some(dir) = &self.dir {
+            format!("--dir {dir}")
+        } else if self.local {
+            "--local".to_string()
+        } else {
+            "--global".to_string()
+        }
+    }
+}
+
+/// Build the exact `shipmates install … --force` invocation a refusal or doctor
+/// foreign-collision message should recommend (#392). Never a bare
+/// `shipmates install --force` — that drops the harness, root, and tools the
+/// captain already chose.
+///
+/// `with_tools` is the raw CLI value (`none`, `all`, or a comma-joined list).
+/// Pass `None` when the flag was omitted (install default / doctor).
+pub fn install_force_hint(harness: &str, location: &LocationOpts, with_tools: Option<&str>) -> String {
+    let mut parts = vec![
+        "shipmates install".to_string(),
+        format!("--harness {harness}"),
+        location.force_where_flag(),
+    ];
+    if let Some(tools) = with_tools.filter(|t| !t.is_empty()) {
+        parts.push(format!("--with-tools {tools}"));
+    }
+    parts.push("--force".to_string());
+    parts.join(" ")
+}
+
 #[derive(Parser)]
 #[command(
     name = "shipmates",

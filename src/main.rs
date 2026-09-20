@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use shipmates::cli::{Cli, Command};
+use shipmates::cli::{Cli, Command, install_force_hint};
 use shipmates::installer::manifest_db::InstallReceipt;
 use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering};
 use std::fs;
@@ -273,6 +273,7 @@ fn run_install_loop(
     no_migrate: bool,
     force: bool,
     migrate_steering: bool,
+    force_hint_for: &dyn Fn(&str) -> String,
 ) -> Result<()> {
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
     let install_all = harnesses.len() > 1;
@@ -316,6 +317,7 @@ fn run_install_loop(
             no_migrate,
             force,
             previous_tools,
+            &force_hint_for(harness),
         ) {
             Ok(outcome) => {
                 for script in &outcome.provision_scripts {
@@ -466,10 +468,11 @@ fn install_harness(
     no_migrate: bool,
     force: bool,
     previous_tools: Option<usize>,
+    force_hint: &str,
 ) -> Result<HarnessInstall> {
     let mut provision_scripts: Vec<PathBuf> = Vec::new();
     let adapter = adapters::select(harness)?;
-    let mut built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
+    let built = adapters::build_payload(adapter.as_ref(), roles, cmds, install_steering)?;
     // A global install (target = $HOME) writes into each harness's own
     // user-scope tree, which for antigravity and pi is NOT the workspace path
     // joined to home. Relocate once, here, so the plan, the receipt and the
@@ -625,9 +628,15 @@ fn install_harness(
     }
 
     let apply_result = if preserved_paths.is_empty() {
-        installer::apply::apply(target_dir, &plan, force)
+        installer::apply::apply(target_dir, &plan, force, force_hint)
     } else {
-        installer::apply::apply_with_preserved_paths(target_dir, &plan, force, &preserved_paths)
+        installer::apply::apply_with_preserved_paths(
+            target_dir,
+            &plan,
+            force,
+            &preserved_paths,
+            force_hint,
+        )
     };
     let result = match apply_result {
         Ok(result) => result,
@@ -775,6 +784,10 @@ fn partition_symlinked(
     Ok((kept, skipped))
 }
 
+fn format_with_tools_flag(with_tools: Option<&Vec<String>>) -> Option<String> {
+    with_tools.map(|names| names.join(","))
+}
+
 fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
     if let Some(dir) = dir {
         Ok(PathBuf::from(dir))
@@ -801,8 +814,9 @@ fn main() -> Result<()> {
             let cmds = source.load_commands()?;
             let available = source.load_tools()?;
             let available_for_receipt = available.clone();
+            let with_tools_flag = format_with_tools_flag(with_tools.as_ref());
             let selected_tools = select_tools(with_tools, available)?;
-            let target_dir = resolve_target_dir(location.local, location.dir)?;
+            let target_dir = resolve_target_dir(location.local, location.dir.clone())?;
             let install_steering = source.steering_for_target(&target_dir)?;
             let harnesses = resolve_install_harnesses(harness, Some(&target_dir))?;
 
@@ -817,6 +831,7 @@ fn main() -> Result<()> {
                 no_migrate,
                 force,
                 install_steering.is_some(),
+                &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
             )?;
 
             // Global steering is user-scope only (#489). A project --local/--dir
@@ -957,12 +972,13 @@ fn main() -> Result<()> {
             no_migrate,
             from_cwd,
         } => {
-            let target_dir = resolve_target_dir(location.local, location.dir)?;
+            let target_dir = resolve_target_dir(location.local, location.dir.clone())?;
             let harnesses = resolve_update_harnesses(&target_dir, harness)?;
             let source = catalog::resolve_source_from_env(from_cwd)?;
             let roles = source.load_roles()?;
             let cmds = source.load_commands()?;
             let available = source.load_tools()?;
+            let with_tools_flag = format_with_tools_flag(with_tools.as_ref());
             let tools = match with_tools {
                 Some(_) => ToolSelection::Explicit(select_tools(with_tools, available.clone())?),
                 None => ToolSelection::FromReceipt,
@@ -979,6 +995,7 @@ fn main() -> Result<()> {
                 no_migrate,
                 true,
                 install_steering.is_some(),
+                &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
             )?;
 
             // Refresh canonical global steering only on a global/$HOME target (#489).
@@ -1002,7 +1019,8 @@ fn main() -> Result<()> {
             let roles = source.load_roles()?;
             let cmds = source.load_commands()?;
             let tools = source.load_tools()?;
-            let target_dir = resolve_target_dir(location.local, location.dir)?;
+            let target_dir = resolve_target_dir(location.local, location.dir.clone())?;
+            let force_hint = install_force_hint(&harness, &location, None);
 
             let report = if fix {
                 doctor::fix(
@@ -1013,9 +1031,18 @@ fn main() -> Result<()> {
                     &tools,
                     no_migrate,
                     &source,
+                    &force_hint,
                 )?
             } else {
-                doctor::diagnose(&target_dir, &harness, &roles, &cmds, &tools, &source)?
+                doctor::diagnose(
+                    &target_dir,
+                    &harness,
+                    &roles,
+                    &cmds,
+                    &tools,
+                    &source,
+                    &force_hint,
+                )?
             };
             doctor::print_report(&report);
             if report.has_problems() {
@@ -1316,5 +1343,31 @@ mod tests {
         assert!(pi_global_install_hint("claude-code", true).is_none());
         assert!(pi_global_install_hint("antigravity", true).is_none());
         assert!(pi_global_install_hint("codex", true).is_none());
+    }
+
+    #[test]
+    fn test_install_force_hint_replays_cli_flags() {
+        use shipmates::cli::LocationOpts;
+        let dir = LocationOpts {
+            global: false,
+            local: false,
+            dir: Some("/tmp/proj".into()),
+        };
+        let hint = install_force_hint("codex", &dir, Some("none"));
+        assert_eq!(
+            hint,
+            "shipmates install --harness codex --dir /tmp/proj --with-tools none --force"
+        );
+        let local = LocationOpts {
+            global: false,
+            local: true,
+            dir: None,
+        };
+        let hint = install_force_hint("claude-code", &local, None);
+        assert_eq!(
+            hint,
+            "shipmates install --harness claude-code --local --force"
+        );
+        assert!(!hint.contains("shipmates install --force"));
     }
 }

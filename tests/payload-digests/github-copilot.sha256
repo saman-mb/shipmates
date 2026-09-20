@@ -30,4 +30,4 @@ target=github-copilot
 .github/agents/site-reliability-engineer.agent.md 711311d31cc0269afad07316ea3cc8b0609b1b04bd0ca19ee3dcb40a9ba3cd47
 .github/agents/technical-writer.agent.md a8fbb10dde6ac81cd47558c3296825cba6f57c1670f7e53d88f088849eddeae9
 .github/agents/ux-ui-designer.agent.md 7f2ac1e768b99d9aad635f5522b1ba7b7ed1c8b56feb000e68881fcedf92fa0c
-.github/instructions/shipmates.instructions.md 3744eee9be9c019e18211ad53bbd494297717d2e9ecca6ab52b9481ec9ccc42b
+.github/instructions/shipmates.instructions.md a79faacc16a118c4ba21a03f7830186f51827141b00f70893f222457f3f82837

@@ -127,6 +127,41 @@ pub fn is_install_backup_name(name: &str) -> bool {
     numeric && fields.next().is_none()
 }
 
+/// Sibling `{name}.bak-<secs>-<pid>-<n>` files next to `path`, newest first.
+pub fn sibling_install_backups(path: &Path) -> Vec<PathBuf> {
+    let Some(parent) = path.parent() else {
+        return Vec::new();
+    };
+    let Some(original) = path.file_name().and_then(|n| n.to_str()) else {
+        return Vec::new();
+    };
+    let Ok(entries) = fs::read_dir(parent) else {
+        return Vec::new();
+    };
+    let mut backups = Vec::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if !name.starts_with(&format!("{original}.bak-")) {
+            continue;
+        }
+        if !is_install_backup_name(name) {
+            continue;
+        }
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() {
+            continue;
+        }
+        backups.push(entry.path());
+    }
+    backups.sort_by(|a, b| b.cmp(a));
+    backups
+}
+
 /// Return regular files inside the payload's own subtrees that a receipt does
 /// not claim.
 ///
