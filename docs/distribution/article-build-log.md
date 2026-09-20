@@ -82,7 +82,7 @@ Instead, every specialist enforces whatever standard is documented in **your** r
 
 ## Multi-Harness Portability
 
-While Shipmates is runtime-verified on **Claude Code** today, the CLI compiles native adapters for seven additional harnesses:
+While Shipmates is runtime-verified on **Claude Code** today, the CLI compiles native adapters for eight additional harnesses:
 - **Claude Code**: `.claude/skills/` and `.claude/agents/`
 - **OpenCode**: `.opencode/commands/`, `.opencode/agents/`, and native TypeScript `.opencode/tools/`
 - **Antigravity CLI**: `.agents/skills/` and `.agents/agents/`
@@ -90,6 +90,7 @@ While Shipmates is runtime-verified on **Claude Code** today, the CLI compiles n
 - **Cursor**: `.cursor/skills/`
 - **GitHub Copilot**: `.agents/skills/` and `.github/agents/`
 - **Pi**: `.agents/skills/` and `.pi/agents/`
+- **Grok Build**: `.grok/skills/` and `.grok/agents/`
 - **Windsurf**: `.windsurf/skills/`
 
 ---
