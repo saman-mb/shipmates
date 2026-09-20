@@ -29,6 +29,55 @@ pub struct LocationOpts {
     pub dir: Option<String>,
 }
 
+impl LocationOpts {
+    /// Reconstruct the Where flag a captain typed for this location.
+    /// Paths with shell-sensitive characters are single-quoted so a captain
+    /// can copy-paste the force hint safely (#392 board nit).
+    pub fn force_where_flag(&self) -> String {
+        if let Some(dir) = &self.dir {
+            format!("--dir {}", shell_single_quote(dir))
+        } else if self.local {
+            "--local".to_string()
+        } else {
+            "--global".to_string()
+        }
+    }
+}
+
+/// Single-quote a value for safe paste into a shell command line.
+fn shell_single_quote(value: &str) -> String {
+    if value.is_empty() {
+        return "''".to_string();
+    }
+    if value
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || "/._-".contains(c))
+    {
+        return value.to_string();
+    }
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+/// Build the exact `shipmates install … --force` invocation a refusal or doctor
+/// foreign-collision message should recommend (#392). Never a bare
+/// `shipmates install --force` — that drops the harness, root, and tools the
+/// captain already chose.
+///
+/// `with_tools` is the raw CLI value (`none`, `all`, or a comma-joined list).
+/// Pass `None` when the flag was omitted (install default).
+pub fn install_force_hint(harness: &str, location: &LocationOpts, with_tools: Option<&str>) -> String {
+    let mut parts = vec![
+        "shipmates install".to_string(),
+        format!("--harness {harness}"),
+        location.force_where_flag(),
+    ];
+    if let Some(tools) = with_tools.filter(|t| !t.is_empty()) {
+        parts.push(format!("--with-tools {}", shell_single_quote(tools)));
+    }
+    parts.push("--force".to_string());
+    parts.join(" ")
+}
+
 #[derive(Parser)]
 #[command(
     name = "shipmates",

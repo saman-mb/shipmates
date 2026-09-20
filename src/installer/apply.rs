@@ -35,8 +35,17 @@ pub struct ApplyReport {
 /// payload never overwrites an unrelated file at a colliding path unless
 /// `force` is set. Missing receipts still permit new files, but preserve
 /// existing collisions.
-pub fn apply(target_dir: &Path, install: &InstallPlan, force: bool) -> Result<ApplyReport> {
-    apply_with_preserved_paths(target_dir, install, force, &BTreeSet::new())
+///
+/// `force_hint` is the exact `shipmates install … --force` invocation the
+/// captain should re-run on a third-party refusal (#392) — never a bare
+/// `shipmates install --force`.
+pub fn apply(
+    target_dir: &Path,
+    install: &InstallPlan,
+    force: bool,
+    force_hint: &str,
+) -> Result<ApplyReport> {
+    apply_with_preserved_paths(target_dir, install, force, &BTreeSet::new(), force_hint)
 }
 
 /// Apply an install while retaining receipt ownership for migration items that
@@ -46,6 +55,7 @@ pub fn apply_with_preserved_paths(
     install: &InstallPlan,
     force: bool,
     preserved_paths: &BTreeSet<String>,
+    force_hint: &str,
 ) -> Result<ApplyReport> {
     let repository = crate::installer::manifest_db::ReceiptRepository::new(target_dir);
     // Validate complete receipt set before inspecting or changing payload
@@ -194,7 +204,7 @@ pub fn apply_with_preserved_paths(
             .collect();
         bail!(
             "refusing to install over {} file(s) shipmates does not own at payload path(s): {}. \
-             Re-run with `shipmates install --force` to back each one up and overwrite it, or \
+             Re-run with `{force_hint}` to back each one up and overwrite it, or \
              move them aside first.",
             paths.len(),
             paths.join(", ")
@@ -221,16 +231,28 @@ pub fn apply_with_preserved_paths(
                 Path::new(&old_file.path),
             )?;
             if fs::symlink_metadata(&path).is_ok() {
-                let current = fs::read(&path)
-                    .with_context(|| format!("reading dropped file {}", path.display()))?;
-                if let Some(backup) = backup_existing(&path, &current)? {
-                    report.backups.push(backup.clone());
+                // Intentional drop from the payload (e.g. `update --with-tools none`):
+                // remove the live file and any installer bak sidecars, then prune
+                // emptied husk dirs. Do NOT write a new bak — that would leave
+                // doctor treating an intentional removal as an interrupted update
+                // forever (#418). Mid-write overwrite backups still use
+                // `backup_existing` on the write path below.
+                for bak in plan::sibling_install_backups(&path) {
+                    let _ = fs::remove_file(&bak);
                 }
                 fs::remove_file(&path)
                     .with_context(|| format!("removing dropped file {}", path.display()))?;
+                prune_empty_parents(target_dir, Path::new(&old_file.path))?;
                 report
                     .warnings
                     .push(format!("Removed dropped file: {}", old_file.path));
+            } else {
+                // Live file already gone — still clear leftover bak husks from a
+                // prior drop that left sidecars behind (#418).
+                for bak in plan::sibling_install_backups(&path) {
+                    let _ = fs::remove_file(&bak);
+                }
+                prune_empty_parents(target_dir, Path::new(&old_file.path))?;
             }
         }
     }
@@ -395,6 +417,32 @@ fn rollback_files(changed: &[(PathBuf, Option<Vec<u8>>)], backups: &[PathBuf]) {
     }
 }
 
+/// Remove emptied identity directories above a dropped file, stopping at the
+/// install tree (`skills` / `tools` / …) or a harness root (`.claude`, …).
+fn prune_empty_parents(target_dir: &Path, file_rel: &Path) -> Result<()> {
+    let Some(mut parent) = file_rel.parent() else {
+        return Ok(());
+    };
+    loop {
+        let Some(name) = parent.file_name().and_then(|name| name.to_str()) else {
+            break;
+        };
+        if matches!(name, "skills" | "commands" | "tools" | "agents") || name.starts_with('.') {
+            break;
+        }
+        let full = crate::installer::manifest_db::resolve_target_relative(target_dir, parent)?;
+        match fs::remove_dir(&full) {
+            Ok(()) => {}
+            Err(_) => break,
+        }
+        parent = match parent.parent() {
+            Some(next) if !next.as_os_str().is_empty() => next,
+            _ => break,
+        };
+    }
+    Ok(())
+}
+
 pub(crate) fn backup_existing(path: &Path, bytes: &[u8]) -> Result<Option<PathBuf>> {
     let Some(parent) = path.parent() else {
         return Ok(None);
@@ -432,6 +480,8 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
     use tempfile::tempdir;
+
+    const FORCE_HINT: &str = "shipmates install --harness claude-code --dir /tmp --force";
 
     fn install(_target: &Path, version: &str, files: &[(&str, &str)]) -> InstallPlan {
         InstallPlan {
@@ -474,9 +524,9 @@ mod tests {
     fn unchanged_reinstall_writes_no_backup() {
         let dir = tempdir().unwrap();
         let first = install(dir.path(), "one", &[(".claude/agents/a.md", "a")]);
-        let result = apply(dir.path(), &first, false).unwrap();
+        let result = apply(dir.path(), &first, false, FORCE_HINT).unwrap();
         assert_eq!(result.written, 1);
-        let second = apply(dir.path(), &first, false).unwrap();
+        let second = apply(dir.path(), &first, false, FORCE_HINT).unwrap();
         assert_eq!(second.written, 0);
         assert!(second.backups.is_empty());
     }
@@ -485,9 +535,9 @@ mod tests {
     fn changed_receipt_owned_file_is_backed_up() {
         let dir = tempdir().unwrap();
         let first = install(dir.path(), "one", &[(".claude/agents/a.md", "a")]);
-        apply(dir.path(), &first, false).unwrap();
+        apply(dir.path(), &first, false, FORCE_HINT).unwrap();
         let second = install(dir.path(), "two", &[(".claude/agents/a.md", "b")]);
-        let result = apply(dir.path(), &second, false).unwrap();
+        let result = apply(dir.path(), &second, false, FORCE_HINT).unwrap();
         assert_eq!(result.written, 1);
         assert_eq!(fs::read_to_string(&result.backups[0]).unwrap(), "a");
         assert_eq!(
@@ -510,7 +560,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let skill = ".claude/skills/polish/SKILL.md";
         let first = install(dir.path(), "one", &[(".claude/agents/a.md", "a")]);
-        apply(dir.path(), &first, false).unwrap();
+        apply(dir.path(), &first, false, FORCE_HINT).unwrap();
         // A file the old receipt never claimed, at a path the new payload owns.
         crate::installer::atomic_write(&dir.path().join(skill), "theirs").unwrap();
 
@@ -519,7 +569,7 @@ mod tests {
             "two",
             &[(".claude/agents/a.md", "a"), (skill, "ours")],
         );
-        let report = apply(dir.path(), &second, true).unwrap();
+        let report = apply(dir.path(), &second, true, FORCE_HINT).unwrap();
 
         assert_eq!(report.written, 1);
         assert_eq!(
@@ -543,12 +593,12 @@ mod tests {
         let dir = tempdir().unwrap();
         let skill = ".claude/skills/polish/SKILL.md";
         let plan_one = install(dir.path(), "one", &[(skill, "ours")]);
-        apply(dir.path(), &plan_one, false).unwrap();
+        apply(dir.path(), &plan_one, false, FORCE_HINT).unwrap();
         crate::installer::atomic_write(&dir.path().join(".claude/skills/mine/SKILL.md"), "mine")
             .unwrap();
 
         let plan_two = install(dir.path(), "two", &[(skill, "ours v2")]);
-        let report = apply(dir.path(), &plan_two, false).unwrap();
+        let report = apply(dir.path(), &plan_two, false, FORCE_HINT).unwrap();
 
         assert_eq!(
             unmanaged_warnings(&report),
@@ -571,7 +621,7 @@ mod tests {
                 (".claude/skills/polish/SKILL.md", "old polish"),
             ],
         );
-        apply(dir.path(), &first, false).unwrap();
+        apply(dir.path(), &first, false, FORCE_HINT).unwrap();
 
         let second = install(
             dir.path(),
@@ -583,7 +633,7 @@ mod tests {
         );
         let mut preserved = BTreeSet::new();
         preserved.insert(".claude/skills/polish/SKILL.md".into());
-        apply_with_preserved_paths(dir.path(), &second, false, &preserved).unwrap();
+        apply_with_preserved_paths(dir.path(), &second, false, &preserved, FORCE_HINT).unwrap();
 
         assert_eq!(
             fs::read_to_string(dir.path().join(".claude/skills/polish/SKILL.md")).unwrap(),
@@ -614,12 +664,14 @@ mod tests {
             dir,
             &shared_install("codex", "one", &[(SHARED_SKILL, "v1")]),
             false,
+            FORCE_HINT,
         )
         .unwrap();
         apply(
             dir,
             &shared_install("github-copilot", "one", &[(SHARED_SKILL, "v1")]),
             false,
+            FORCE_HINT,
         )
         .unwrap();
     }
@@ -636,6 +688,7 @@ mod tests {
             target,
             &shared_install("codex", "two", &[(SHARED_SKILL, "v2")]),
             true,
+            FORCE_HINT,
         )
         .unwrap();
 
@@ -675,6 +728,7 @@ mod tests {
             target,
             &shared_install("codex", "two", &[(SHARED_SKILL, "v2")]),
             true,
+            FORCE_HINT,
         )
         .unwrap();
 
@@ -706,6 +760,7 @@ mod tests {
             target,
             &shared_install("codex", "one", &[(SHARED_SKILL, "v1")]),
             false,
+            FORCE_HINT,
         )
         .unwrap();
 
@@ -713,6 +768,7 @@ mod tests {
             target,
             &shared_install("github-copilot", "one", &[(SHARED_SKILL, "v1")]),
             false,
+            FORCE_HINT,
         )
         .unwrap();
 

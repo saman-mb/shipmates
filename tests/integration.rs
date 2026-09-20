@@ -655,6 +655,57 @@ fn test_cli_build_and_install() {
     assert!(stdout.contains("Installed harness: claude-code"));
 }
 
+/// #482/#483: contributor-tree `install --harness pi` writes
+/// `.shipmates/contributor-steering.md` and claims it on the receipt.
+#[test]
+fn test_pi_contributor_install_writes_steering_and_receipt() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path();
+    std::fs::create_dir_all(target.join("commands")).unwrap();
+    std::fs::write(target.join("commands/shipmates-issue.md"), "---\n---\n").unwrap();
+    std::fs::create_dir_all(target.join("toolbox")).unwrap();
+    std::fs::create_dir_all(target.join("tools")).unwrap();
+    std::fs::write(target.join("tools/gen_command_pages.py"), "# gen").unwrap();
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .args([
+            "install",
+            "--harness",
+            "pi",
+            "--dir",
+            target.to_str().unwrap(),
+            "--with-tools",
+            "none",
+        ])
+        .output()
+        .expect("failed to execute shipmates install --harness pi");
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let steering = target.join(".shipmates/contributor-steering.md");
+    assert!(
+        steering.is_file(),
+        "pi contributor install must write {}",
+        steering.display()
+    );
+    let receipt_path = target.join(".shipmates/receipts/pi.json");
+    let receipt: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&receipt_path).unwrap()).unwrap();
+    let claimed = receipt["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|file| file["path"] == ".shipmates/contributor-steering.md");
+    assert!(
+        claimed,
+        "pi receipt must claim .shipmates/contributor-steering.md: {receipt}"
+    );
+}
+
 /// #454: a home/global pi install prints project-local guidance; a `--dir`
 /// project install must not.
 #[test]
