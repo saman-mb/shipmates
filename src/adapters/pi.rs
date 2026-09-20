@@ -1,6 +1,6 @@
 use super::Adapter;
 use super::render::{
-    AGENT_SKILLS, CrewFormat, CrewLayout, PI, emit_crew_files, emit_skill_files, emit_tool_files,
+    CrewFormat, CrewLayout, PI, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
     yaml_scalar,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
@@ -25,15 +25,12 @@ use std::collections::HashMap;
 /// `~/.pi/agent/agents/` is loaded before legacy `~/.agents/`, so no user-scope path outranks a
 /// foreign `~/.agents/agents/`. Tracked separately; see `tools/capability_registry.json`.
 ///
-/// Skills and tools ship to Pi's own tree, not the shared `.agents/skills/`
-/// one (#513). Pi loads user-scope `~/.pi/agent/skills/` *and* project
-/// `.agents/skills/` (cwd + ancestors) in the same session, so a mirrored
-/// copy in the shared tree collides with a global install and with a sibling
-/// shared-tree harness. Project installs land at `.pi/skills/` (Pi's
-/// first-party project location). Global installs keep crew at
-/// `~/.pi/agent/agents/` and **omit command/tool skills** — Pi always merges
-/// the user skill tree with any project `.agents/skills`, so writing both is
-/// what produced `[Skill conflicts]` for every `ship-*` name.
+/// Skills and tools stay on the shared neutral `.agents/skills/` tree so a
+/// project Pi install and a sibling shared-tree harness share one copy (#513).
+/// Pi also loads user-scope `~/.pi/agent/skills/` in the same session, so a
+/// **global** install omits command/tool skills (crew still land at
+/// `~/.pi/agent/agents/`) — writing both trees is what produced
+/// `[Skill conflicts]` for every `ship-*` name.
 ///
 /// See https://github.com/earendil-works/pi and the `pi-subagents` package's
 /// `Agents and chains` documentation for the discovery paths and the frontmatter
@@ -196,12 +193,12 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
 
 impl Adapter for PiAdapter {
     fn base_dir(&self) -> &'static str {
-        "harnesses/pi/.pi"
+        "harnesses/pi/.agents"
     }
 
     fn digest_root(&self) -> &'static str {
-        // Steering still lands at `.shipmates/contributor-steering.md` (outside
-        // `.pi/`), so the digest root is the container, not `base_dir`.
+        // Pi writes crew into `.pi/agents/` and skills into `.agents/`, so the
+        // digest root is the container, not `base_dir`.
         self.container()
     }
 
@@ -221,13 +218,13 @@ impl Adapter for PiAdapter {
         roles: &[CanonicalRole],
         commands: &[CanonicalCommand],
     ) -> anyhow::Result<HashMap<String, String>> {
-        let mut files = emit_crew_files(self.base_dir(), roles, &CREW_FORMAT)?;
-        files.extend(emit_skill_files(self.base_dir(), commands, &AGENT_SKILLS)?);
+        let mut files = emit_crew_files(&format!("{}/.pi", self.container()), roles, &CREW_FORMAT)?;
+        files.extend(emit_shared_skills(self.container(), commands)?);
         Ok(files)
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
-        emit_tool_files(self.base_dir(), tools, &AGENT_SKILLS, false)
+        emit_shared_tool_skills(self.container(), tools)
     }
 }
 
@@ -288,8 +285,8 @@ mod tests {
                 keys
             },
             vec![
+                "harnesses/pi/.agents/skills/ship-fix-bug/SKILL.md",
                 "harnesses/pi/.pi/agents/sdet.md",
-                "harnesses/pi/.pi/skills/ship-fix-bug/SKILL.md",
             ]
         );
         // The shared crew tree belongs to Antigravity. Pi must never write there:
@@ -300,21 +297,20 @@ mod tests {
         );
     }
 
-    /// #513: Pi loads user-scope `~/.pi/agent/skills` *and* project `.agents/skills`.
-    /// Skills must live in Pi's own tree (`.pi/skills/`, relocated globally to
-    /// `~/.pi/agent/skills/`) so a dual install cannot plant the same name in
-    /// both load paths.
+    /// #513: project Pi stays on the shared `.agents/skills` tree so a sibling
+    /// shared-tree harness in the same repo is one copy, not two. Dual-scope
+    /// collision is closed by omitting skills from a *global* install.
     #[test]
-    fn test_pi_skills_are_not_emitted_into_the_shared_agents_tree() {
+    fn test_pi_project_skills_share_the_agents_tree() {
         let files = PiAdapter.build(&[], &[command()]).unwrap();
         assert!(
-            !files.keys().any(|path| path.contains(".agents/skills/")),
-            "pi skills in the shared tree collide with a sibling harness and with global ~/.pi/agent/skills (#513): {:?}",
+            files.keys().any(|path| path.contains(".agents/skills/")),
+            "project pi skills must share .agents/skills with sibling harnesses (#513): {:?}",
             files.keys().collect::<Vec<_>>()
         );
         assert!(
-            files.keys().any(|path| path.contains(".pi/skills/")),
-            "pi skills must land in the first-party project tree .pi/skills/: {:?}",
+            !files.keys().any(|path| path.contains(".pi/skills/")),
+            "project pi must not also write .pi/skills (that doubles with .agents/skills): {:?}",
             files.keys().collect::<Vec<_>>()
         );
     }

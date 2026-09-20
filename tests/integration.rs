@@ -486,15 +486,8 @@ fn test_non_claude_targets_build_via_cli() {
     );
     let pi_skill = temp_dir
         .path()
-        .join("harnesses/pi/.pi/skills/shipmates-issue/SKILL.md");
+        .join("harnesses/pi/.agents/skills/shipmates-issue/SKILL.md");
     assert!(pi_skill.is_file(), "pi shipmates-issue skill not emitted");
-    assert!(
-        !temp_dir
-            .path()
-            .join("harnesses/pi/.agents/skills/shipmates-issue/SKILL.md")
-            .exists(),
-        "pi must not emit into the shared .agents/skills tree (#513)"
-    );
     // ...and the shared rendering is byte-identical across those harnesses.
     let codex_bytes = std::fs::read(&codex_skill).unwrap();
     let copilot_bytes = std::fs::read(&copilot_skill).unwrap();
@@ -505,7 +498,7 @@ fn test_non_claude_targets_build_via_cli() {
     );
     assert_eq!(
         codex_bytes, pi_bytes,
-        "pi skill bytes stay the neutral shared rendering; only the path differs (#513)"
+        "pi shared skill must be identical across harnesses"
     );
 }
 
@@ -693,9 +686,9 @@ fn test_pi_global_install_prints_project_local_guidance() {
         "missing install line: {global_out}"
     );
     assert!(
-        global_out.contains(".pi/skills")
+        global_out.contains(".agents/skills")
             && global_out.contains("--local")
-            && (global_out.contains("command skills") || global_out.contains("Skill conflicts")),
+            && global_out.contains("command skills"),
         "missing pi home-install guidance: {global_out}"
     );
 
@@ -880,6 +873,55 @@ fn test_pi_global_plus_shared_tree_project_install_does_not_duplicate_skill_name
     assert!(
         dupes.is_empty(),
         "Pi would load the same Shipmates skill from more than one tree after a sibling shared-tree install (#513): {dupes:?}"
+    );
+}
+
+/// #513: project Pi + a sibling shared-tree harness must share one
+/// `.agents/skills` copy, not plant `.pi/skills` beside it.
+#[test]
+fn test_project_pi_plus_sibling_shared_tree_is_one_copy() {
+    let home = tempfile::tempdir().unwrap();
+    let project = home.path().join("workdir");
+    std::fs::create_dir_all(&project).unwrap();
+
+    for harness in ["pi", "antigravity"] {
+        let out = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+            .env("HOME", home.path())
+            .args([
+                "install",
+                "--harness",
+                harness,
+                "--dir",
+                project.to_str().unwrap(),
+                "--with-tools",
+                "none",
+            ])
+            .output()
+            .unwrap_or_else(|_| panic!("{harness} project install"));
+        assert!(
+            out.status.success(),
+            "{harness}: stdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    let by_name = pi_visible_skill_names(home.path(), &project);
+    let dupes: Vec<_> = by_name
+        .iter()
+        .filter(|(_, paths)| paths.len() > 1)
+        .collect();
+    assert!(
+        dupes.is_empty(),
+        "project pi + sibling must not duplicate Shipmates skill names across Pi-visible trees: {dupes:?}"
+    );
+    assert!(
+        project.join(".agents/skills/shipmates-issue/SKILL.md").is_file(),
+        "the shared copy must exist"
+    );
+    assert!(
+        !project.join(".pi/skills/shipmates-issue/SKILL.md").exists(),
+        "project pi must not also write .pi/skills beside the shared tree"
     );
 }
 

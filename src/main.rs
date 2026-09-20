@@ -25,7 +25,7 @@ fn harness_blurb(name: &str) -> &'static str {
         "codex" => "TOML crew in .codex + skills in .agents",
         "cursor" => "skills in .cursor/skills (first-party slash picker)",
         "github-copilot" => "crew in .github/agents + skills in .agents",
-        "pi" => "crew in .pi/agents + skills in .pi/skills (global: crew only)",
+        "pi" => "crew in .pi/agents + skills in .agents (global: crew only)",
         "grok-build" => "agents + skills in .grok",
         "windsurf" => "skills in .windsurf",
         _ => "harness payload",
@@ -734,10 +734,10 @@ fn install_harness(
 fn pi_global_install_hint(harness: &str, global: bool) -> Option<&'static str> {
     if harness == "pi" && global {
         Some(
-            "Note: pi loads ~/.pi/agent/skills and project .agents/skills / .pi/skills in \
-             the same session, so a global install does not write command skills (that dual \
-             tree is what printed [Skill conflicts]). Crew land at ~/.pi/agent/agents/. \
-             Prefer `--local` or `--dir <project>` for pi — skills install to .pi/skills.",
+            "Note: pi loads ~/.pi/agent/skills and project .agents/skills in the same session, \
+             so a global install does not write command skills (that dual tree is what printed \
+             [Skill conflicts]). Crew land at ~/.pi/agent/agents/. Prefer `--local` or \
+             `--dir <project>` for pi — skills install to .agents/skills.",
         )
     } else {
         None
@@ -1217,15 +1217,16 @@ mod tests {
     }
 
     #[test]
-    fn pi_blurb_names_first_party_skills_tree() {
+    fn pi_blurb_names_shared_skills_and_global_crew_only() {
         assert!(
-            harness_blurb("pi").contains(".pi/skills"),
-            "pi blurb must name the first-party skills tree, got {}",
+            harness_blurb("pi").contains("skills in .agents"),
+            "project pi shares .agents/skills with sibling harnesses, got {}",
             harness_blurb("pi")
         );
         assert!(
-            !harness_blurb("pi").contains("skills in .agents"),
-            "pi no longer ships skills into the shared .agents tree (#513)"
+            harness_blurb("pi").contains("global: crew only"),
+            "global pi must not advertise command skills (#513), got {}",
+            harness_blurb("pi")
         );
     }
 
@@ -1305,9 +1306,9 @@ mod tests {
     fn test_pi_global_install_hint_only_for_home_pi() {
         // #454: home/global pi install prefers project-local; other cases stay quiet.
         let hint = pi_global_install_hint("pi", true).expect("pi + global must hint");
-        assert!(hint.contains("[Skill conflicts]") || hint.contains("command skills"), "{hint}");
+        assert!(hint.contains("command skills"), "{hint}");
         assert!(hint.contains("~/.pi/agent/agents"), "{hint}");
-        assert!(hint.contains(".pi/skills"), "{hint}");
+        assert!(hint.contains(".agents/skills"), "{hint}");
         assert!(hint.contains("--local"), "{hint}");
         assert!(hint.contains("--dir <project>"), "{hint}");
 

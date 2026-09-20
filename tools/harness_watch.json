@@ -91,15 +91,14 @@
     },
     "pi": {
       "docs_url": "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md",
-      "tree": "native",
-      "adapter_skill_path": ".pi/skills/<name>/SKILL.md",
+      "tree": "shared",
+      "adapter_skill_path": ".agents/skills/<name>/SKILL.md",
       "expect_contains": [
-        ".agents/skills",
-        ".pi/skills"
+        ".agents/skills"
       ],
       "expect_absent": [],
-      "verified_on": "2026-09-21",
-      "note": "Pi loads user-scope ~/.pi/agent/skills AND project .pi/skills AND .agents/skills (cwd + ancestors) in one session. #513 ships skills to first-party .pi/skills only and omits command skills from a global install so the two load paths cannot collide. The crew stay pi-native at .pi/agents (project) and ~/.pi/agent/agents (user). First-party skills.md still documents all three trees \u2014 this watch pins that, and the adapter's path is .pi/skills."
+      "verified_on": "2026-09-13",
+      "note": "Reads the open .agents/skills tree natively; this entry watches the SKILLS tree only, and that path is unchanged. The crew are separate and pi-native: the third-party `pi-subagents` extension reads `.pi/agents/<name>.md` (project) and `~/.pi/agent/agents/` (user), and still reads the legacy `.agents/**` tree \u2014 see capability_registry.json and harness_matrix.json."
     },
     "grok-build": {
       "docs_url": "https://docs.x.ai/build/features/skills-plugins-marketplaces",

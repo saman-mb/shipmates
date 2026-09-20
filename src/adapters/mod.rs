@@ -162,7 +162,7 @@ mod tests {
             "cursor must not double-ship into the shared tree"
         );
 
-        for target in ["codex", "github-copilot", "antigravity"] {
+        for target in ["codex", "github-copilot", "antigravity", "pi"] {
             let adapter = select(target).unwrap();
             let files = adapter.build(&[], &commands).unwrap();
             assert!(
@@ -175,17 +175,5 @@ mod tests {
                 "{target} drifted from the neutral skill rendering"
             );
         }
-
-        // #513: pi owns `.pi/skills/` the way cursor owns `.cursor/skills/` —
-        // same bytes, different tree, never the shared `.agents/skills` copy.
-        let pi = select("pi").unwrap().build(&[], &commands).unwrap();
-        assert!(
-            !pi.keys().any(|path| path.contains("/.agents/")),
-            "pi must not double-ship into the shared tree"
-        );
-        assert_eq!(
-            &pi["harnesses/pi/.pi/skills/ship-issue/SKILL.md"], cursor_skill,
-            "pi drifted from the neutral skill rendering"
-        );
     }
 }

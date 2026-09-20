@@ -3178,5 +3178,37 @@ mod tests {
         );
         assert!(check.detail.contains("view_file"));
     }
+
+    #[test]
+    fn test_doctor_warns_when_pi_skill_name_is_in_two_trees() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let skill = "---\nname: shipmates-issue\ndescription: d\n---\n";
+        for rel in [
+            ".agents/skills/shipmates-issue/SKILL.md",
+            ".pi/skills/shipmates-issue/SKILL.md",
+        ] {
+            let path = target.join(rel);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, skill).unwrap();
+        }
+        let report = diagnose(target, "pi", &[], &[], &[]).unwrap();
+        let check = report
+            .checks
+            .iter()
+            .find(|c| c.name == "Pi skill trees")
+            .expect("Pi skill trees check");
+        assert_eq!(
+            check.severity,
+            Severity::Warn,
+            "overlap must be Warn: {}",
+            check.detail
+        );
+        assert!(
+            check.detail.contains("shipmates-issue"),
+            "doctor must name the colliding skill: {}",
+            check.detail
+        );
+    }
 }
 

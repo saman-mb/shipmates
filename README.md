@@ -194,7 +194,7 @@ antigravity      .agents/          agents + skills   (agy — the successor to t
 codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
 cursor           .cursor/          skills only (first-party tree; slash picker reads it)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
-pi               .pi/                crew (.md) at .pi/agents, skills at .pi/skills (global: crew only)
+pi               .pi/ + .agents/     crew (.md) at .pi/agents, skills at .agents/skills (global: crew only)
 grok-build       .grok/            agents + skills
 windsurf         .windsurf/        skills only (canonical .windsurf/skills)
 ```
@@ -205,15 +205,13 @@ third-party `pi-subagents` extension — core pi documents no subagent schema of
 install without that extension resolves no crew. Pi reads its crew from the nearest ancestor directory
 carrying `.pi/` or `.agents/`, so install into your project: a home-directory install only takes effect
 when no nearer ancestor carries either.
-Three harnesses (codex, antigravity, github-copilot) read the open [Agent Skills](https://agentskills.io)
+Four harnesses (codex, antigravity, github-copilot, pi) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
 one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of colliding
-ones. Their crew still land in each harness's own native format. `pi` reads that open tree too, but
-also always loads `~/.pi/agent/skills/`, so shipping a second copy into `.agents/skills` (or into the
-user tree on a global install) prints `[Skill conflicts]` for every duplicated name. Pi skills ship to
-first-party `.pi/skills/` only, and a global Pi install writes crew, not command skills. `cursor` reads
-the open tree too, but only its first-party `.cursor/skills/` reaches the slash-command picker, so its
-skills ship there and nowhere else — one copy, never two. `windsurf` keeps its canonical `.windsurf/skills/` (its docs make
+ones. Their crew still land in each harness's own native format. A **global** Pi install is the
+exception: Pi also always loads `~/.pi/agent/skills/`, so that install writes crew only — command
+skills stay project-local on the shared tree, or Pi prints `[Skill conflicts]` for every duplicated
+name. `cursor` reads that open tree too, but only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and nowhere else — one copy, never two. `windsurf` keeps its canonical `.windsurf/skills/` (its docs make
 `.agents/skills/` only a secondary scan) and `claude-code` its own `.claude/skills/`. `grok-build`
 keeps its own `.grok/skills/` for a different reason: its commands ship the native
 `disable-model-invocation` guard, which the neutral dialect the shared tree carries does not express.

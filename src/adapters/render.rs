@@ -280,15 +280,15 @@ pub const CODEX: Dialect = Dialect {
 /// the legacy `.agents/**` tree "for compatibility", and that is the path
 /// shipmates installs Antigravity's crew to.
 ///
-/// Pi's *commands and tools* ship to first-party `.pi/skills/` (#513), still
-/// rendered through `AGENT_SKILLS`. They do **not** share `.agents/skills/` with
-/// sibling harnesses: Pi loads user-scope `~/.pi/agent/skills` and project
-/// `.agents/skills` in the same session. Note what that implies: pi's command
-/// skills are rendered through `AGENT_SKILLS`, so the command-only tokens below
-/// (`agents_glob`, `session_key`, `general_purpose`, `planner`, `args_token`)
-/// reach *no emitted pi byte* — only `instructions_primary`/`instructions_fallback`
-/// do, through the crew bodies. They are set to pi's real values anyway, so the
-/// dialect is correct;
+/// Pi's *commands and tools* stay on the shared neutral `.agents/skills/` tree
+/// so a sibling harness in the same repo is one copy. A global install omits
+/// those skills (#513) because Pi also loads `~/.pi/agent/skills` in the same
+/// session. Note what that implies: pi's command skills are rendered through
+/// `AGENT_SKILLS`, so the command-only tokens below (`agents_glob`,
+/// `session_key`, `general_purpose`, `planner`, `args_token`) reach *no emitted
+/// pi byte* — only `instructions_primary`/`instructions_fallback` do, through the
+/// crew bodies. They are set to pi's real values anyway, so the dialect is
+/// correct;
 /// `general_purpose` is `worker` because pi ships that builtin and would resolve
 /// the neutral `general-purpose` to nothing. And `.pi/agents/` wins only within
 /// the directory pi resolves as its project root — see `pi.rs` for the scope
