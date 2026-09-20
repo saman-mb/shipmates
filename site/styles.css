@@ -555,7 +555,7 @@ html.js .codeblock__copy{ display:inline-flex; }
 }
 /* Shared icon/emoji alignment box (§4). A bare emoji glyph's line-box metrics
    don't centre it against a sibling like .how-step__num's disc — same literal
-   height as that disc/.order-stage__num gives every icon the same optical
+   height as that disc/.command-stage__num gives every icon the same optical
    centre instead of each component reinventing this (#130). */
 .crew-card__icon,
 .tool-card__icon,
@@ -620,7 +620,7 @@ html.js .codeblock__copy{ display:inline-flex; }
   margin:0;
   padding:0;
 }
-.order-card{
+.command-card{
   position:relative;             /* stretched-link anchor for __link::after — must
                                      NEVER gain overflow:hidden, or the focus ring
                                      and the flagship rail both get clipped */
@@ -637,16 +637,16 @@ html.js .codeblock__copy{ display:inline-flex; }
              transform var(--transition-fast) var(--ease);
 }
 /* N5: never touch border-color here — it would erase --flagship's accent rail. */
-.order-card:hover{
+.command-card:hover{
   box-shadow:var(--shadow-2);
   transform:translateY(-1px);
 }
-.order-card:active{ transform:translateY(0); }
-.order-card--flagship{
+.command-card:active{ transform:translateY(0); }
+.command-card--flagship{
   border-color:var(--accent);
   border-left-width:4px;
 }
-.order-card__tag,
+.command-card__tag,
 .order-detail__flag{
   display:inline-flex;
   align-items:center;
@@ -660,13 +660,13 @@ html.js .codeblock__copy{ display:inline-flex; }
   letter-spacing:.06em;
   text-transform:uppercase;
 }
-.order-card__cmd{
+.command-card__cmd{
   font-size:var(--fs-700);
   line-height:1.25;
   font-weight:var(--fw-semibold);
 }
-.order-card__cmd code{ color:var(--accent-strong); }
-.order-card__desc{
+.command-card__cmd code{ color:var(--accent-strong); }
+.command-card__desc{
   font-size:var(--fs-300);
   line-height:1.5;
   color:var(--text-muted);
@@ -674,27 +674,27 @@ html.js .codeblock__copy{ display:inline-flex; }
 /* Stretched link: exactly one focusable element per card (N4). Known trade-off,
    deliberate: a stretched link kills text selection inside the card — accepted,
    since each card is one command name plus one sentence, neither gets copied. */
-.order-card__link{
+.command-card__link{
   color:inherit;
   text-decoration:none;
   scroll-margin-top:calc(var(--header-h) + var(--space-6));
 }
-.order-card:hover .order-card__link,
-.order-card:hover .order-card__more{ text-decoration:underline; text-underline-offset:2px; }
-.order-card__link::after{
+.command-card:hover .command-card__link,
+.command-card:hover .command-card__more{ text-decoration:underline; text-underline-offset:2px; }
+.command-card__link::after{
   content:"";
   position:absolute;
   inset:0;
   border-radius:var(--radius-md);
 }
 /* N4: ring drawn on the ::after (already card-sized via inset:0), not :has(). */
-.order-card__link:focus-visible{ outline:none; }
-.order-card__link:focus-visible::after{
+.command-card__link:focus-visible{ outline:none; }
+.command-card__link:focus-visible::after{
   outline:2px solid var(--focus-ring);
   outline-offset:2px;
   border-radius:var(--radius-md);
 }
-.order-card__more{
+.command-card__more{
   font-size:var(--fs-300);
   color:var(--accent-strong);
 }
@@ -886,7 +886,7 @@ summary::-webkit-details-marker{ display:none; }
    eyebrow implementation — .order-detail's own gap already supplies the
    rhythm to the next child, so its bottom margin is cancelled here (#130). */
 .order-detail > .section__eyebrow{ margin-bottom:0; }
-/* .order-detail__flag shares .order-card__tag's rule above — same component. */
+/* .order-detail__flag shares .command-card__tag's rule above — same component. */
 .order-detail__title{
   /* N3: accent-strong, NEVER accent — #D97757 on #FBFAF9 is 2.99:1, fails the
      3:1 large-text floor; accent-strong clears it at 5.52:1. The inner <code>
@@ -1077,7 +1077,7 @@ summary::-webkit-details-marker{ display:none; }
 
 /* --- #stages: the stage list + card. Single column always — 11 long stages
    are a sequence, not a gallery. --- */
-.order-stages{
+.command-stages{
   display:flex;
   flex-direction:column;
   gap:var(--space-3);
@@ -1085,7 +1085,7 @@ summary::-webkit-details-marker{ display:none; }
   margin:0;
   padding:0;
 }
-.order-stage{
+.command-stage{
   display:grid;
   grid-template-columns:auto minmax(0, 1fr);
   column-gap:var(--space-4);
@@ -1095,30 +1095,30 @@ summary::-webkit-details-marker{ display:none; }
   border:1px solid var(--border);
   border-radius:var(--radius-md);
 }
-.order-stage__details{
+.command-stage__details{
   min-width:0;
 }
-.order-stage__summary{
+.command-stage__summary{
   display:block;
   cursor:pointer;
   list-style:none;
 }
-.order-stage__summary::-webkit-details-marker{ display:none; }
-.order-stage__summary::marker{ content:""; }
-.order-stage__summary > * + *{ margin-top:var(--space-2); }
-.order-stage__summary:focus-visible{
+.command-stage__summary::-webkit-details-marker{ display:none; }
+.command-stage__summary::marker{ content:""; }
+.command-stage__summary > * + *{ margin-top:var(--space-2); }
+.command-stage__summary:focus-visible{
   outline:2px solid var(--accent-strong);
   outline-offset:2px;
   border-radius:var(--radius-sm);
 }
-.order-stage__details[open] > .order-stage__summary{
+.command-stage__details[open] > .command-stage__summary{
   margin-bottom:var(--space-4);
   padding-bottom:var(--space-4);
   border-bottom:1px solid var(--border);
 }
 /* Mirrors .how-step__num (:601-615) — same disc treatment, but a pill: labels
    like "1.5" / "4.5" don't fit a fixed-width 2.25rem circle. */
-.order-stage__num{
+.command-stage__num{
   align-self:start;
   display:inline-flex;
   align-items:center;
@@ -1133,7 +1133,7 @@ summary::-webkit-details-marker{ display:none; }
   font-weight:var(--fw-bold);
   line-height:1;
 }
-.order-stage__title{
+.command-stage__title{
   font-size:var(--fs-500);      /* same as .how-step__title :621-626 */
   line-height:1.4;
   font-weight:var(--fw-semibold);
@@ -1141,7 +1141,7 @@ summary::-webkit-details-marker{ display:none; }
 /* Not colour-alone (WCAG 1.4.1): the word "HARD GATE" / the source's literal
    gate sentence is real text, plus the 4px rail, the inset fill, the ⛔ glyph
    (aria-hidden) and the SR-only "Gate: " prefix — five non-colour signals. */
-.order-stage__gate{
+.command-stage__gate{
   display:flex;
   align-items:baseline;
   gap:var(--space-2);
@@ -1157,7 +1157,7 @@ summary::-webkit-details-marker{ display:none; }
    Caption treatment matches .codeblock__label (:281-287) — fs-300, semibold,
    muted — because the crew chips below, not this label, are what need to be
    scannable at a glance (#130). */
-.order-stage__crew{
+.command-stage__crew{
   display:flex;
   flex-wrap:wrap;
   align-items:center;
@@ -1172,8 +1172,8 @@ summary::-webkit-details-marker{ display:none; }
    composition read as throwaway metadata — the whole point of this page
    (#130). fs-400 stays a full step under the fs-500 stage title so the crew
    never out-shouts it; accent-strong on --surface clears 4.5:1 (same pairing
-   precedent as .order-stage__gate above). */
-.order-stage__crew-item{
+   precedent as .command-stage__gate above). */
+.command-stage__crew-item{
   background:var(--surface);
   border-color:var(--accent-strong);
   font-family:var(--font-mono);
@@ -1181,7 +1181,7 @@ summary::-webkit-details-marker{ display:none; }
   font-weight:var(--fw-semibold);
   color:var(--accent-strong);
 }
-.order-stage__body{
+.command-stage__body{
   min-width:0;                  /* load-bearing: an unbounded <pre> would defeat
                                     the page-scroll guard at :92-94 otherwise */
 }
@@ -1228,7 +1228,7 @@ summary::-webkit-details-marker{ display:none; }
    (generated pages), or nested one level deeper inside a plain .container
    (landing #next, since #136) — already caps at the same maxw-prose and
    centres itself, so there is no leftover space here to centre. Nested inside
-   .order-stage__body the available width is already narrower than maxw-prose,
+   .command-stage__body the available width is already narrower than maxw-prose,
    so max-width is likewise a no-op there. */
 .order-prose{ min-width:0; max-width:var(--maxw-prose); color:var(--text); }
 .order-prose > * + *{ margin-top:var(--space-3); }   /* single rhythm rule */
@@ -1293,11 +1293,11 @@ summary::-webkit-details-marker{ display:none; }
 .order-table tbody td:first-child{ white-space:nowrap; }
 
 /* --- #source: p + .btn sit flush (global reset zeroes <p> margin) --- */
-.order-source .btn{ margin-top:var(--space-4); }
+.command-source .btn{ margin-top:var(--space-4); }
 
 /* --- #other-commands: sibling nav, ~5% of the page, no shadow/fill/icon. --- */
-.order-siblings{ margin-top:var(--space-2); }
-.order-siblings__list{
+.command-siblings{ margin-top:var(--space-2); }
+.command-siblings__list{
   display:flex;
   flex-wrap:wrap;
   gap:var(--space-2);
@@ -1305,8 +1305,8 @@ summary::-webkit-details-marker{ display:none; }
   margin:0;
   padding:0;
 }
-.order-siblings__item{ display:flex; }
-.order-siblings__link{
+.command-siblings__item{ display:flex; }
+.command-siblings__link{
   display:inline-flex;
   align-items:center;
   min-height:var(--tap-min);
@@ -1319,15 +1319,15 @@ summary::-webkit-details-marker{ display:none; }
   text-decoration:none;
   scroll-margin-top:calc(var(--header-h) + var(--space-6));
 }
-.order-siblings__link:hover,
-.order-siblings__link:focus-visible{
+.command-siblings__link:hover,
+.command-siblings__link:focus-visible{
   text-decoration:underline;
   text-underline-offset:2px;
   background:var(--surface);
 }
 /* Current sibling: distinguished by weight + border + fill + SR text +
    aria-current — never colour alone. */
-.order-siblings__link--current{
+.command-siblings__link--current{
   color:var(--text);
   font-weight:var(--fw-semibold);
   border-color:var(--accent-strong);
@@ -1483,5 +1483,5 @@ summary::-webkit-details-marker{ display:none; }
     scroll-behavior:auto!important;
   }
   .btn--primary:hover{ transform:none; }
-  .order-card:hover{ transform:none; }
+  .command-card:hover{ transform:none; }
 }
