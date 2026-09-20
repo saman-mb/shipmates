@@ -91,8 +91,8 @@ stale_shared_skill() {
 # Root-relative path to an installed command skill for `name` under
 # `harness`'s own tree. A directory holding `SKILL.md` everywhere except
 # opencode, which ships one flat command file with no wrapper directory;
-# codex, antigravity, github-copilot and pi share one open `.agents/skills/`
-# tree rather than each carrying a private copy.
+# codex, antigravity and github-copilot share one open `.agents/skills/`
+# tree rather than each carrying a private copy. pi owns `.pi/skills` (#513).
 harness_skill_path() {
   local harness="$1" name="$2"
   case "$harness" in
@@ -100,7 +100,8 @@ harness_skill_path() {
     opencode) echo ".opencode/commands/$name.md" ;;
     cursor) echo ".cursor/skills/$name" ;;
     windsurf) echo ".windsurf/skills/$name" ;;
-    codex | antigravity | github-copilot | pi) echo ".agents/skills/$name" ;;
+    pi) echo ".pi/skills/$name" ;;
+    codex | antigravity | github-copilot) echo ".agents/skills/$name" ;;
     *)
       echo "harness_skill_path: unknown harness '$harness'" >&2
       return 1

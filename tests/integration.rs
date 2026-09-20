@@ -486,8 +486,15 @@ fn test_non_claude_targets_build_via_cli() {
     );
     let pi_skill = temp_dir
         .path()
-        .join("harnesses/pi/.agents/skills/shipmates-issue/SKILL.md");
+        .join("harnesses/pi/.pi/skills/shipmates-issue/SKILL.md");
     assert!(pi_skill.is_file(), "pi shipmates-issue skill not emitted");
+    assert!(
+        !temp_dir
+            .path()
+            .join("harnesses/pi/.agents/skills/shipmates-issue/SKILL.md")
+            .exists(),
+        "pi must not emit into the shared .agents/skills tree (#513)"
+    );
     // ...and the shared rendering is byte-identical across those harnesses.
     let codex_bytes = std::fs::read(&codex_skill).unwrap();
     let copilot_bytes = std::fs::read(&copilot_skill).unwrap();
@@ -498,7 +505,7 @@ fn test_non_claude_targets_build_via_cli() {
     );
     assert_eq!(
         codex_bytes, pi_bytes,
-        "pi shared skill must be identical across harnesses"
+        "pi skill bytes stay the neutral shared rendering; only the path differs (#513)"
     );
 }
 
@@ -686,10 +693,10 @@ fn test_pi_global_install_prints_project_local_guidance() {
         "missing install line: {global_out}"
     );
     assert!(
-        global_out.contains("nearest ancestor")
-            && global_out.contains("~/.pi/agent/")
-            && global_out.contains("--local"),
-        "missing #454 home-install guidance: {global_out}"
+        global_out.contains(".pi/skills")
+            && global_out.contains("--local")
+            && (global_out.contains("command skills") || global_out.contains("Skill conflicts")),
+        "missing pi home-install guidance: {global_out}"
     );
 
     let local = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))

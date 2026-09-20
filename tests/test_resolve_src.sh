@@ -91,10 +91,12 @@ for pair in "cursor:.cursor" "windsurf:.windsurf"; do
 done
 assert "cursor: no shared .agents skills tree" test ! -d "$WORK/cursor/.agents/skills"
 
-# pi: crew are pi-native under .pi/agents, skills stay on the shared tree
+# pi: crew and skills are both pi-native under .pi/ — skills must not share
+# `.agents/skills` with a sibling harness (#513).
 D="$WORK/pi"
 assert "pi: install exits 0" install_to "pi" "$D"
-assert "pi: skill under .agents/skills" test -f "$D/.agents/skills/shipmates-issue/SKILL.md"
+assert "pi: skill under .pi/skills" test -f "$D/.pi/skills/shipmates-issue/SKILL.md"
+assert "pi: no skills in the shared .agents tree" test ! -d "$D/.agents/skills"
 assert "pi: crew under .pi/agents" test -f "$D/.pi/agents/sdet.md"
 # The shared crew tree belongs to Antigravity. pi reads it as a legacy location
 # and cannot resolve its tool vocabulary, so shipping there would shadow pi's
@@ -136,8 +138,8 @@ global_install() { # harness
 }
 assert "global pi: exits 0" global_install pi
 assert "global pi: crew at ~/.pi/agent/agents" test -f "$GHOME/.pi/agent/agents/sdet.md"
-assert "global pi: commands at ~/.pi/agent/skills" test -f "$GHOME/.pi/agent/skills/shipmates-issue/SKILL.md"
-assert "global pi: toolbox at ~/.pi/agent/skills" test -f "$GHOME/.pi/agent/skills/shipmates-badge/SKILL.md"
+assert "global pi: no command skills at ~/.pi/agent/skills" test ! -d "$GHOME/.pi/agent/skills"
+assert "global pi: no toolbox at ~/.pi/agent/skills" test ! -f "$GHOME/.pi/agent/skills/shipmates-badge/SKILL.md"
 assert "global pi: crew is NOT a flat <name>.md in the shared tree" test ! -d "$GHOME/.agents/agents"
 assert "global pi: writes nothing into the shared .agents tree" test ! -d "$GHOME/.agents"
 

@@ -627,9 +627,13 @@ fn expected_at(
     }
     expected
         .into_iter()
-        .map(|(rel, content)| {
+        .filter_map(|(rel, content)| {
+            // Mirror install: global pi omits command/tool skills (#513).
+            if harness == "pi" && rel.split('/').any(|part| part == "skills") {
+                return None;
+            }
             let relocated = manifest_db::global_relocate(harness, &rel).unwrap_or(rel);
-            (relocated, content)
+            Some((relocated, content))
         })
         .collect()
 }
@@ -1460,7 +1464,84 @@ fn diagnose_built(
         }
     }
 
+    if harness == "pi" {
+        checks.push(pi_dual_skill_tree_check(target_dir));
+    }
+
     Ok(Report { checks })
+}
+
+fn shipmates_skill_dir_names(root: &Path) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    let Ok(entries) = fs::read_dir(root) else {
+        return names;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !(name.starts_with("ship-") || name.starts_with("shipmates-")) {
+            continue;
+        }
+        if entry.path().join("SKILL.md").is_file() {
+            names.insert(name);
+        }
+    }
+    names
+}
+
+/// #513: Pi loads `~/.pi/agent/skills`, `~/.agents/skills`, project `.pi/skills`,
+/// and project `.agents/skills` in one session. Warn when the same Shipmates
+/// skill name is present in more than one of those trees.
+fn pi_dual_skill_tree_check(target_dir: &Path) -> Check {
+    let mut seen_roots = BTreeSet::new();
+    let mut trees: Vec<(String, BTreeSet<String>)> = Vec::new();
+    let mut add = |label: &str, root: PathBuf| {
+        let key = fs::canonicalize(&root).unwrap_or_else(|_| root.clone());
+        if !seen_roots.insert(key) {
+            return;
+        }
+        let names = shipmates_skill_dir_names(&root);
+        if !names.is_empty() {
+            trees.push((label.to_string(), names));
+        }
+    };
+    if let Some(home) = home::home_dir() {
+        add("~/.pi/agent/skills", home.join(".pi/agent/skills"));
+        add("~/.agents/skills", home.join(".agents/skills"));
+    }
+    add(".pi/skills", target_dir.join(".pi/skills"));
+    add(".agents/skills", target_dir.join(".agents/skills"));
+
+    let mut by_name: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for (label, names) in &trees {
+        for name in names {
+            by_name.entry(name.clone()).or_default().push(label.clone());
+        }
+    }
+    let overlap: Vec<String> = by_name
+        .into_iter()
+        .filter(|(_, labels)| {
+            labels.iter().collect::<BTreeSet<_>>().len() > 1
+        })
+        .map(|(name, labels)| format!("{name} ({})", labels.join(", ")))
+        .collect();
+    if overlap.is_empty() {
+        Check {
+            name: "Pi skill trees".into(),
+            severity: Severity::Ok,
+            detail: "no Shipmates skill name appears in more than one tree Pi loads".into(),
+            fixable: false,
+        }
+    } else {
+        Check {
+            name: "Pi skill trees".into(),
+            severity: Severity::Warn,
+            detail: format!(
+                "Pi loads user-scope and project skill trees in the same session; these Shipmates names appear in more than one: {}. Prefer one tree — project `.pi/skills` via `--dir` — and do not also keep command skills under ~/.pi/agent/skills.",
+                overlap.join("; ")
+            ),
+            fixable: false,
+        }
+    }
 }
 
 /// Repair an install: identity-rename leftover superseded names, migrate
