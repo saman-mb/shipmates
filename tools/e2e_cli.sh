@@ -332,8 +332,11 @@ COLLIDE_RC="$CMD_RC"
 [ "$COLLIDE_RC" -eq 1 ] && ok "Collision install exits 1 (refused)" || fail "Collision exited $COLLIDE_RC (expected 1)"
 assert_contains "does not own" "$CMD_OUT" "Collision names the unowned path"
 # Force hint replays the captain's flags then appends --force (#392).
-assert_contains "--force" "$CMD_OUT" "Collision names --force as the overwrite path"
 assert_contains "shipmates install" "$CMD_OUT" "Collision force hint starts from shipmates install"
+assert_contains "--harness claude-code" "$CMD_OUT" "Collision force hint keeps --harness"
+assert_contains "--dir $PROJ" "$CMD_OUT" "Collision force hint keeps --dir"
+assert_contains "--with-tools none" "$CMD_OUT" "Collision force hint keeps --with-tools"
+assert_contains "--force" "$CMD_OUT" "Collision names --force as the overwrite path"
 if grep -q "intruder" "$PROJ/.claude/agents/architect.md" 2>/dev/null; then
   ok "Collision preserves intruder file"
 else

@@ -798,6 +798,27 @@ fn resolve_target_dir(local: bool, dir: Option<String>) -> Result<PathBuf> {
     }
 }
 
+/// Reconstruct `--with-tools` for a doctor force hint from what the receipt
+/// still claims. `none` when no tool paths remain; `all` when any do. `None`
+/// when there is no readable receipt (omit the flag — install default applies).
+fn with_tools_flag_from_receipt(
+    target_dir: &Path,
+    harness: &str,
+    tools: &[catalog::CanonicalTool],
+) -> Option<String> {
+    let (_, receipt, _) = installer::plan::read_receipt(target_dir, harness);
+    let receipt = receipt?;
+    let has_tool = receipt.files.iter().any(|file| {
+        let path = Path::new(&file.path);
+        tools.iter().any(|tool| tool.owns_path(path))
+    });
+    Some(if has_tool {
+        "all".to_string()
+    } else {
+        "none".to_string()
+    })
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -1020,7 +1041,11 @@ fn main() -> Result<()> {
             let cmds = source.load_commands()?;
             let tools = source.load_tools()?;
             let target_dir = resolve_target_dir(location.local, location.dir.clone())?;
-            let force_hint = install_force_hint(&harness, &location, None);
+            // Replay the tools posture the receipt claims so a foreign-collision
+            // force hint does not silently broaden a crew-only install (#392 nit).
+            let with_tools = with_tools_flag_from_receipt(&target_dir, &harness, &tools);
+            let force_hint =
+                install_force_hint(&harness, &location, with_tools.as_deref());
 
             let report = if fix {
                 doctor::fix(
@@ -1357,6 +1382,16 @@ mod tests {
         assert_eq!(
             hint,
             "shipmates install --harness codex --dir /tmp/proj --with-tools none --force"
+        );
+        let spaced = LocationOpts {
+            global: false,
+            local: false,
+            dir: Some("/tmp/my project".into()),
+        };
+        let hint = install_force_hint("claude-code", &spaced, Some("none"));
+        assert_eq!(
+            hint,
+            "shipmates install --harness claude-code --dir '/tmp/my project' --with-tools none --force"
         );
         let local = LocationOpts {
             global: false,

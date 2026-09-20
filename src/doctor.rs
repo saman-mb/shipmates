@@ -77,37 +77,6 @@ fn parse_install_backup_name(filename: &str, original: &str) -> Option<(u64, u32
     Some((secs, pid, n))
 }
 
-/// Sibling `{name}.bak-<secs>-<pid>-<n>` files next to `path`, newest first.
-fn sibling_install_backups(path: &Path) -> Vec<PathBuf> {
-    let Some(parent) = path.parent() else {
-        return Vec::new();
-    };
-    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-        return Vec::new();
-    };
-    let Ok(entries) = std::fs::read_dir(parent) else {
-        return Vec::new();
-    };
-    let mut found: Vec<(u64, u32, u32, PathBuf)> = Vec::new();
-    for entry in entries.flatten() {
-        let Ok(file_type) = entry.file_type() else {
-            continue;
-        };
-        if !file_type.is_file() {
-            continue;
-        }
-        let fname = entry.file_name();
-        let Some(s) = fname.to_str() else {
-            continue;
-        };
-        if let Some(key) = parse_install_backup_name(s, name) {
-            found.push((key.0, key.1, key.2, entry.path()));
-        }
-    }
-    found.sort_by(|a, b| (b.0, b.1, b.2).cmp(&(a.0, a.1, a.2)));
-    found.into_iter().map(|(_, _, _, p)| p).collect()
-}
-
 fn backup_matches_payload(bak: &Path, want: &[u8]) -> bool {
     std::fs::read(bak)
         .map(|bytes| digest::hash_bytes(&bytes) == digest::hash_bytes(want))
@@ -242,7 +211,7 @@ fn scan_hygiene(
         if digest::hash_bytes(&on_disk) != digest::hash_bytes(want.as_bytes()) {
             continue; // drifted — the sidecar may be the only copy of v-current
         }
-        hygiene.superseded.extend(sibling_install_backups(&path));
+        hygiene.superseded.extend(plan::sibling_install_backups(&path));
         if let Some(identity) = install_identity(rel) {
             live.extend(pre_prefix_aliases(&identity));
             live.insert(identity);
@@ -962,7 +931,7 @@ fn diagnose_built(
         let mut interrupted: Vec<String> = Vec::new();
         let mut gone: Vec<String> = Vec::new();
         for rel in &missing {
-            if sibling_install_backups(&target_dir.join(rel)).is_empty() {
+            if plan::sibling_install_backups(&target_dir.join(rel)).is_empty() {
                 gone.push(rel.clone());
             } else {
                 interrupted.push(rel.clone());
@@ -1154,7 +1123,7 @@ fn diagnose_built(
             // deliberate crew-only install (#412).
             if files
                 .iter()
-                .any(|(k, _)| !sibling_install_backups(&target_dir.join(k)).is_empty())
+                .any(|(k, _)| !plan::sibling_install_backups(&target_dir.join(k)).is_empty())
             {
                 tool_removed.push(t.name.clone());
             }
@@ -1757,7 +1726,7 @@ pub fn fix(
                     Some(on_disk)
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    let siblings = sibling_install_backups(&path);
+                    let siblings = plan::sibling_install_backups(&path);
                     let matching = siblings
                         .iter()
                         .any(|bak| backup_matches_payload(bak, want.as_bytes()));
