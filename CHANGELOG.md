@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **`/shipmates-consolidate-issues` reattaches dangling issues to existing open epics
+  before inventing a new bundle.** Stage 0 inventories the open-epic set; Stage 2
+  matches unmatched keep-candidates against it (`target_epic`); Stage 3 reattaches;
+  only the leftovers reach Stage 4's themed bundles. The report counts reattachments
+  vs fresh bundles (#516).
 - **A global Pi install no longer writes command skills.** Pi loads `~/.pi/agent/skills`
   and project `.agents/skills` in the same session, so a home install plus a project
   (or sibling shared-tree) install printed `[Skill conflicts]` for every `ship-*`
