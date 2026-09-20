@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-09-21
+
+### Fixed
+
+- **A global Pi install no longer writes command skills.** Pi loads `~/.pi/agent/skills`
+  and project `.agents/skills` in the same session, so a home install plus a project
+  (or sibling shared-tree) install printed `[Skill conflicts]` for every `ship-*`
+  name. Project Pi still shares `.agents/skills` with sibling harnesses (one copy).
+  A home install keeps crew at `~/.pi/agent/agents/` and omits command/tool skills.
+  `doctor --harness pi` warns when the same Shipmates skill name is present in more
+  than one tree Pi would load (#513).
+
 ## [0.10.0] - 2026-09-20
 
 ### Changed

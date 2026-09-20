@@ -25,7 +25,7 @@ fn harness_blurb(name: &str) -> &'static str {
         "codex" => "TOML crew in .codex + skills in .agents",
         "cursor" => "skills in .cursor/skills (first-party slash picker)",
         "github-copilot" => "crew in .github/agents + skills in .agents",
-        "pi" => "agents in .pi + skills in .agents",
+        "pi" => "crew in .pi/agents + skills in .agents (global: crew only)",
         "grok-build" => "agents + skills in .grok",
         "windsurf" => "skills in .windsurf",
         _ => "harness payload",
@@ -475,10 +475,9 @@ fn install_harness(
     // joined to home. Relocate once, here, so the plan, the receipt and the
     // migration table all describe where the files actually land.
     //
-    // The tool payload is relocated with the rest: it lands in the same `skills/`
-    // resource tree (pi's toolbox is `.agents/skills/shipmates-*` in the
-    // workspace shape), and leaving it behind would install the tools somewhere
-    // the harness never reads while `doctor` reported them present.
+    // The tool payload is relocated with the rest, except global pi, which omits
+    // command/tool skills so they cannot collide with a project tree Pi also
+    // loads (#513).
     let global = installer::manifest_db::is_global_target(target_dir);
     let container = adapter.container();
     let relocate = |payload: std::collections::HashMap<String, String>| {
@@ -735,9 +734,10 @@ fn install_harness(
 fn pi_global_install_hint(harness: &str, global: bool) -> Option<&'static str> {
     if harness == "pi" && global {
         Some(
-            "Note: pi resolves its project root to the nearest ancestor carrying `.pi/` or \
-             `.agents/`, so a home install under ~/.pi/agent/ can be shadowed. Prefer \
-             `--local` or `--dir <project>` for pi.",
+            "Note: pi loads ~/.pi/agent/skills and project .agents/skills in the same session, \
+             so a global install does not write command skills (that dual tree is what printed \
+             [Skill conflicts]). Crew land at ~/.pi/agent/agents/. Prefer `--local` or \
+             `--dir <project>` for pi — skills install to .agents/skills.",
         )
     } else {
         None
@@ -1217,6 +1217,20 @@ mod tests {
     }
 
     #[test]
+    fn pi_blurb_names_shared_skills_and_global_crew_only() {
+        assert!(
+            harness_blurb("pi").contains("skills in .agents"),
+            "project pi shares .agents/skills with sibling harnesses, got {}",
+            harness_blurb("pi")
+        );
+        assert!(
+            harness_blurb("pi").contains("global: crew only"),
+            "global pi must not advertise command skills (#513), got {}",
+            harness_blurb("pi")
+        );
+    }
+
+    #[test]
     fn test_harness_line_all_and_names() {
         let avail = ["claude-code", "opencode", "cursor"];
         assert_eq!(
@@ -1292,9 +1306,9 @@ mod tests {
     fn test_pi_global_install_hint_only_for_home_pi() {
         // #454: home/global pi install prefers project-local; other cases stay quiet.
         let hint = pi_global_install_hint("pi", true).expect("pi + global must hint");
-        assert!(hint.contains("nearest ancestor"), "{hint}");
-        assert!(hint.contains("~/.pi/agent/"), "{hint}");
-        assert!(hint.contains("shadowed"), "{hint}");
+        assert!(hint.contains("command skills"), "{hint}");
+        assert!(hint.contains("~/.pi/agent/agents"), "{hint}");
+        assert!(hint.contains(".agents/skills"), "{hint}");
         assert!(hint.contains("--local"), "{hint}");
         assert!(hint.contains("--dir <project>"), "{hint}");
 
