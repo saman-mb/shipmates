@@ -4,6 +4,49 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.3] - 2026-09-20
+
+### Changed
+
+- **The seventeenth command is now `/ship-deslop`.** It shipped in 0.9.0 as
+  `/ship-deslop-codebase`; the shorter name is the one it keeps. An existing install migrates
+  automatically — the old skill is renamed in place with the previous bytes backed up and the receipt
+  rewritten — and the old site page keeps a redirect, so nothing breaks for a captain who already has
+  it (#505).
+- **The census gained a twelfth finding class: structural placement.** Files and symbols sitting in the
+  wrong module, layer or folder for the repository's own stated architecture — a layer importing inward
+  past its boundary, logic in a presentation file that belongs in the application layer, cross-cutting
+  policy parked inside one feature, a catch-all `utils` bucket, single-file folders, sibling modules
+  disagreeing about their own layout. The repository's committed convention is the oracle: the class
+  quotes it from a committed file before recording a finding, and degrades to observed-majority-layout
+  findings where none exists, rather than inventing a taxonomy the project never chose. A move is not a
+  delete, so a pure relocation grades at least `review` even with no call-site change — moves break
+  downstream patches, `git blame` continuity and path-based tooling — and the moved path is grepped
+  across CI config, ownership rules and docs so the blast radius is in the finding rather than found in CI.
+  The coverage footer now also names the classes that were *not* looked for, so a run cannot read as a
+  clean bill of health for something it never asked about. The command was also swept for stack and
+  domain assumptions — it no longer presumes a compiler, a lockfile, a type system or an async runtime,
+  and its examples are shapes of debt rather than any one ecosystem's (#505).
+- **Pruned the dependency set.** `flate2`, `reqwest` and `tar` were declared but never referenced
+  anywhere in the source, and `serde_yaml` was reachable only from the test suite. The first three
+  are removed and `serde_yaml` moved to `[dev-dependencies]`, shrinking the published dependency
+  closure by roughly 150 packages and dropping an async HTTP stack from a CLI that never makes a
+  network request (#496).
+- **The binary no longer compiles the module tree a second time.** `src/main.rs` re-declared the ten
+  modules `src/lib.rs` already exposes, so every unit test ran twice and fourteen dead-code warnings
+  came from the library's copy of items only the binary calls. The binary now consumes the library
+  instead of duplicating it: unit tests run once (the duplicated 184-run set is gone), warnings drop
+  from 14 to 2, and the refactor changed no rendered output — all eight target digests were unmoved by
+  it. Two items in `src/installer/manifest_db.rs` widened from `pub(crate)` to `pub`, since
+  `pub(crate)` does not cross the lib/bin boundary (#495).
+- **`/ship-deslop` now names its crew at every spawn.** A live run resolved its workers to
+  general-purpose agents instead of the crew, because the command described "workers" without ever
+  naming a role — the harness had no identity to look up. The command now carries a crew roster and
+  names the role at each spawn, and `validate_skills.py` fails any command whose fan-out section binds
+  no crew role and names none — so the defect cannot recur silently. The command's
+  `technical-writer` seat is explicitly briefed to report only: unlike the other six roles it is a
+  writing role by trade, and an audit must not carry a write path.
+
 ## [0.9.2] - 2026-09-19
 
 ### Changed

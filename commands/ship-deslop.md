@@ -1,11 +1,11 @@
 ---
-name: ship-deslop-codebase
-description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, over-engineering beyond product need, inconsistency, bad patterns, dependency and config rot — grade every finding by risk, then file the work as an epic with sub-issues. Never edits the codebase: it analyses, files tracked work, and stops at a human gate where the captain chooses what ships now and what waits.
+name: ship-deslop
+description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, over-engineering beyond actual need, inconsistency, bad patterns, misplaced files and folders, dependency and config rot — grade every finding by risk, then file the work as an epic with sub-issues. Never edits the codebase: it analyses, files tracked work, and stops at a human gate where the captain chooses what ships now and what waits.
 argument-hint: <path-or-module> [file|ship] — no args: whole repo, analysis only
 allowed-tools: Bash, Read, Agent, Grep, Glob
 disable-model-invocation: true
 ---
-# /ship-deslop-codebase — audit the debt, file it as an epic, let the captain choose what ships
+# /ship-deslop — audit the debt, file it as an epic, let the captain choose what ships
 <!-- shipmates:command-preamble -->
 
 Every repository carries debt no issue tracks: an import nothing imports, two copies of one function
@@ -15,7 +15,7 @@ release after it shipped, a TODO older than the test runner around it. No analys
 no human wants to read the whole tree to find it. "Slop" here is any of the debt below — whatever
 wrote it; the command judges the debt, not its author.
 
-`/ship-deslop-codebase` inventories that debt, grades every finding by the risk of touching it, and
+`/ship-deslop` inventories that debt, grades every finding by the risk of touching it, and
 then **files it as an epic with sub-issues** — durable tracked work, not a report that dies with the
 session. The captain reviews that epic, confirms the breakdown is sound, and only then chooses what to
 fix now and what to leave for later.
@@ -23,8 +23,8 @@ fix now and what to leave for later.
 **This command never edits the codebase.** It carries no `Write` and no `Edit`, so read-only is
 structural here rather than a promise a mode makes. Fixes happen downstream, in the workflow that owns
 shipping, after a human has agreed to them. That division is deliberate. A cleanup change is the most
-dangerous kind: the compiler stays green, the tests stay green, and a feature breaks anyway because
-the deleted path was the only one a customer actually used. The thing that catches it is a person
+dangerous kind: the build stays green, the tests stay green, and a feature breaks anyway because
+the deleted path was the only one anything actually used. The thing that catches it is a person
 reading the proposal — so this command's real job is to make that reading *possible*: evidence on
 every finding, work grouped the way the repository is actually owned, and nothing hidden.
 
@@ -54,12 +54,53 @@ scope and how far to go come from the Runtime input section at the end of this w
 - `MAX_SUB_ISSUES` = `12` — the ceiling on sub-issues filed in one run. A gate the captain cannot read
   is not a gate: past the ceiling the lowest-priority areas are summarised in the epic body and left in
   the ledger for a later run, and the report says so.
-- Thresholds — repo overrides come from `{{project-instructions}}` or `.shipmates/deslop-codebase.toml`:
+- Thresholds — repo overrides come from `{{project-instructions}}` or `.shipmates/deslop.toml`
+  (`.shipmates/deslop-codebase.toml` is still read when the new file is absent, since it shipped under
+  the command's previous name):
   `COMPLEXITY_LIMIT` = `15`; `DUP_SIMILARITY` = `80%`; `TODO_HORIZON` = `180d`; `ZOMBIE_HORIZON` = `90d`
   (commented-out blocks older than this with no linked issue).
 - **Quality bar / test commands / coverage tooling** = whatever the repo's README /
   `{{project-instructions}}` / CI config states. Read them before Stage 0 grades anything. The
   orchestrator owns all `gh`; agents never file, comment, or push.
+
+### The crew this command spawns — and why it is named at every spawn
+
+This command's workers are **named crew subagents**, invoked by their `{{role-reference}}` — never a
+general-purpose agent with a persona pasted inline. Every role below works read-only here: six by their
+own definition, the seventh by an explicit brief — which is what lets the read-only promise hold while
+the analysis is still parallel and specialist:
+
+| Role | Sits for | Stage |
+|---|---|---|
+| `architect` | the semantic diff on near-duplicate candidates; structural impact of a boundary-crossing deletion; the placement census and its convention oracle | 1, 2, 4 |
+| `sdet` | test-coverage and test-validity evidence — which tests actually pin the code a finding would touch | 1, 2 |
+| `product-manager` | the feature-impact summary and the sign-off a `review` or `architectural` sub-issue carries as a criterion | 2, 4 |
+| `site-reliability-engineer` | the `failure-path` four questions — hazard provenance, execution evidence, blast radius, upstream elimination | 2 |
+| `performance-engineer` | the measurement behind a `performance-sensitive` finding, in the project's own units | 2 |
+| `security-engineer` | dependency and supply-chain findings, and anything touching secrets, authz or untrusted input | 1, 2 |
+| `technical-writer` | documentation-rot findings — docs describing code that has moved | 1 |
+
+**Read-only is structural for six of those seven; the seventh needs its brief to say so.** `architect`,
+`sdet`, `product-manager`, `site-reliability-engineer`, `performance-engineer` and `security-engineer`
+carry no write capability in their role definition, so none of them can write whatever the brief says.
+**`technical-writer` does carry one** — it is a writing role by trade — so when it sits for a
+reported-only audit its brief must state plainly that it reports findings and writes nothing. Never spawn
+it here with its default posture: a role that *can* write will, and a captain auditing a repository
+read-only would have an unguarded write path they had no reason to look for. The orchestrator carries no
+`Write` and no `Edit` of its own, so the command's headline promise holds only while every spawn's
+effective permissions do.
+
+**Every spawn names its role explicitly.** A spawn that says only "workers" or "the agents" resolves to
+no crew at all: the harness has nothing to look up and falls back to a general-purpose agent, silently
+losing the specialism this command depends on. Write the role at the point of spawn, as the siblings do —
+`(agent: \`sdet\`)` on the stage, `Spawn a \`security-engineer\`` in the step — and when a role does not
+resolve to a shipped crew role, fall back to a general-purpose agent with that role's brief inlined and
+**name the fallback in the report**, never silently.
+
+Which roles a run actually needs is decided by what the census finds: a repository with no dependency
+manifest pulls no `security-engineer`; a census with no `failure-path` findings pulls no
+`site-reliability-engineer`. Name the ones that sit in the report, and name the ones that did not with the
+reason — a seat gated out is a stated finding, never a blank.
 
 ---
 
@@ -81,28 +122,33 @@ What to look for, and what each analyser class feeds:
 
 | Capability class | Feeds | Found in |
 |---|---|---|
-| Unused-symbol / dead-code analysis | dead symbols, imports, unreachable branches | the repo's compiler/linter settings |
+| Unused-symbol / dead-code analysis | dead symbols, imports, unreachable branches | the repo's own analyser settings, where it has them |
 | Lint + style rules | bad patterns by class, naming drift | the repo's lint config |
 | Duplication detection | exact clones and near-duplicates over `DUP_SIMILARITY` | a clone detector, or agent reading |
-| Complexity + type/strictness checking | hotspots over `COMPLEXITY_LIMIT`, overly broad types, unchecked null paths | a metrics tool or the repo's type checker, at its strictest |
-| Dependency audit + import-graph analysis | unused declarations, lockfile version skew, circular module dependencies | the package manager's audit surface, a graph tool, or agent reading |
+| Complexity + type/strictness checking | hotspots over `COMPLEXITY_LIMIT`, overly broad types, unchecked null paths | a metrics tool, or the repo's type checker at its strictest where it has one |
+| Dependency audit + import-graph analysis | unused declarations, version skew in the resolved dependency set, circular module dependencies | the package manager's audit surface, a graph tool, or agent reading |
 | Comment, marker, and docs scanning | zombie blocks, stale TODOs, docs describing moved code | grep-shaped scans plus `git blame` for age |
 
-Whatever the tools do not cover, the agents read for: pattern inconsistency, architectural redundancy,
-dead feature flags, machinery out of proportion to what it delivers, and comments describing code that
-has moved. Never reimplement a mature analyser — orchestrate the ones that exist, and say which ones
-were missing.
+Whatever the tools do not cover, the crew read for — each finding class to the role named in the roster
+above: pattern inconsistency and architectural redundancy, dead feature flags, machinery out of proportion
+to what it delivers, and comments describing code that has moved. Never reimplement a mature analyser —
+orchestrate the ones that exist, and say which ones were missing.
 
 ---
 
-## Stage 1 — Discovery census  ⛔ the contract
+## Stage 1 — Discovery census  ⛔ the contract  (agents: `sdet`, `security-engineer`, `technical-writer`, `architect` × N, parallel across classes)
 
 **This census is the contract.** Every finding it records ends filed or explicitly excluded, with a
 reason. Silent truncation is a failure of the run, not a smaller run.
 
 - Run the Stage 0 analysers and complement them with agent-driven reading. Under `EXECUTION=fanout`,
-  split the survey by finding class (or by subtree for a large repo) across workers up to
-  `MAX_CONCURRENT_WORKERS`, each returning rows in the one shape below.
+  split the survey by finding class (or by subtree for a large repo) across named crew subagents up to
+  `MAX_CONCURRENT_WORKERS` — spawn each with its role's `{{role-reference}}`, one `sdet` for the
+  test-coverage and test-validity classes, one `security-engineer` for dependency and supply-chain
+  classes, one `technical-writer` for documentation rot (briefed to report only — see the roster
+  above), an `architect` per structural or
+  near-duplicate class — each returning rows in the one shape below. **A generic worker is not a
+  substitute for a named role here**: the class a worker is assigned is the specialism it must bring.
 - Every finding is one row: **stable ID**, `file:line`, **class**, a one-line rationale, the evidence
   that produced it, and the proposed action. A row without evidence is a hunch, not a finding.
 
@@ -111,18 +157,19 @@ The survey covers these classes — the list is the whole of what "cleanup" mean
 - **Dead code** — unused functions, imports, variables, unreachable branches, private symbols with no internal callers, and a state or guard unreachable by construction rather than by control flow.
 - **Duplication** — exact clones and near-duplicates that could become one shared helper; read-aware, not a token hash, so two blocks that merely look alike are a *candidate group*, never a conclusion.
 - **Redundancy** — unnecessary abstractions, wrappers that only pass arguments through, indirection that adds no name value, intermediate variables that restate their expression, a seam with exactly one implementation, and an extension point nothing registers against.
-- **Over-engineering beyond product need** — machinery that distinguishes more internal states, options or
+- **Over-engineering beyond actual need** — machinery that distinguishes more internal states, options or
   outcomes than any consumer acts on. The signal is a ratio: count the distinct states, modes or outputs a
   unit produces, then count the distinct behaviours consumers actually branch on. Its shapes are an
   optimisation with no measurement behind it, an in-house rebuild of a capability the platform already
   provides, and data modelled richer than any use. Evidence is both counts and the consumer sites, never an
   impression that the code feels heavy — and the protected list still outranks this class.
-- **Inconsistency** — mixed concurrency or callback styles in one codebase, naming drift, error handling that throws at one call site, returns at another, and logs-and-continues at a third.
-- **Bad patterns, by class** — resource leaks (acquisition with no matching release on every path), blocking calls inside an asynchronous context, N+1-style repeated access in a loop, repeated work a single pass would do.
+- **Inconsistency** — mixed styles for the same job in one codebase, naming drift, and error handling that throws at one call site, returns at another, and logs-and-continues at a third.
+- **Structural placement** — symbols and files in the wrong module, layer or folder for the repository's own stated architecture: a layer importing inward past its boundary, logic in a UI, entrypoint or handler file that belongs in a core layer, cross-cutting policy parked inside one feature, a catch-all `utils` / `helpers` / `common` bucket, single-file folders and folders one level deeper than anything needs, and sibling modules that disagree about their own internal layout. **The repository's committed convention is the oracle — never a general taste for how trees should look.** Two guards keep it honest: quote the convention from a committed file (`{{project-instructions}}`, an ADR, a lint rule, an ownership file) before recording any placement finding, and where no convention is committed the class degrades to *observed-majority-layout* findings, reported as such — this class never invents a folder taxonomy the project did not choose. Evidence is the convention it violates plus the import or call that proves the misplacement.
+- **Bad patterns, by class** — resource leaks (acquisition with no matching release on every path), work that blocks where it should not, repeated access in a loop that one pass would do, and recomputation a single pass would remove.
 - **Complexity hotspots** — functions and classes over `COMPLEXITY_LIMIT`, deep nesting.
-- **Dependency health** — declared-but-unused dependencies, several versions of one transitive dependency in the lockfile, import cycles that interface extraction would break.
+- **Dependency health** — declared-but-unused dependencies, several versions of one transitive dependency in the resolved set, import cycles that interface extraction would break.
 - **Repository rot** — commented-out blocks older than `ZOMBIE_HORIZON` with no linked issue; a stale TODO/FIXME inventory with age and whether the surrounding code was since rewritten; flags and settings with only one reachable value, whether or not anything reads them; duplicated CI work; docs describing moved code.
-- **Type and contract health** — overly broad types, missing strictness (implicit returns, unchecked null paths, absent exhaustiveness), public surface with no caller in the repo or its consumers.
+- **Type and contract health** — where the language has types: overly broad ones, missing strictness (implicit returns, unchecked null paths, absent exhaustiveness). Where it does not, the same class read as contracts: unstated preconditions, unvalidated inputs, and a public surface with no caller in the repo or its consumers.
 - **Constants and literals** — repeated magic numbers and strings that should be named once, and regex or format strings recompiled at every use.
 
 Two properties make the census usable as a tracker:
@@ -134,11 +181,16 @@ Two properties make the census usable as a tracker:
   a progress tracker.
 
 Close the stage by printing the coverage-of-the-scan footer — which paths, languages, and file types were
-analysed, which were skipped — and recording what `BUDGET` left unscanned. Both carry into Stage 3.
+analysed, which were skipped, and **which classes were not looked for at all**. That last part matters
+more than it looks: a footer that reports only *paths scanned* lets a run read as a clean bill of health
+for classes it never asked about. When a class is narrowed or unavailable — no committed architecture
+convention for structural placement, so it falls back to observed-majority-layout findings; no dependency
+manifest, so dependency health has nothing to read — say which, by name, and say what the fallback was.
+What `BUDGET` left unscanned carries into Stage 3 alongside it.
 
 ---
 
-## Stage 2 — Risk grade and protected classes
+## Stage 2 — Risk grade and protected classes  (agents: `sdet`, `product-manager`, `site-reliability-engineer`, `performance-engineer` — each only for the classes below)
 
 Every finding gets exactly one grade, assigned mechanically where it can be and by judgement where it
 cannot. The grade decides where the finding goes, so it is assigned here and nowhere else.
@@ -163,6 +215,13 @@ Grading rules:
 - An unused **exported** symbol, or one with no internal callers, grades `review`: nothing inside the
   repo can prove who imports a published package.
 - A deletion that crosses a module boundary or changes a contract grades `architectural`.
+- **A move is not a delete, so the grading differs.** A relocation that crosses a module boundary already
+  grades `architectural`; state plainly that **a pure relocation with no call-site change still grades at
+  least `review`**, because a move breaks downstream patches, `git blame` continuity and every path-based
+  tool — CI path filters, ownership rules, coverage config. Before proposing any move, **grep the moved path
+  across CI config, ownership rules, coverage config and docs**, so the blast radius is in the finding rather
+  than discovered in CI. Relocating a file that external consumers import is a breaking change even when
+  nothing inside it changed, so a public or exported path is a protected class *for moves specifically*.
 - **No coverage tooling means nothing grades `safe`.** Every finding degrades to `review` at minimum and
   the report says so plainly — a confidence grade is a claim about verification, and without the tooling
   the honest claim is "unverified". Standing up coverage tooling is an explicit, opt-in prerequisite,
@@ -177,8 +236,8 @@ Grading rules:
   where a unit genuinely produces distinguishable outputs, that is the contested claim itself, not a
   conclusion. It grades `review` at minimum, `architectural` where it crosses a boundary or removes a
   public or persisted surface.
-- **No `performance-sensitive` finding grades `safe`.** Machinery the product cannot see maps to zero
-  features by construction, so an empty feature lookup is absence of product evidence, not proof of
+- **No `performance-sensitive` finding grades `safe`.** Machinery no consumer can observe maps to zero
+  features by construction, so an empty feature lookup is absence of consumer evidence, not proof of
   safety. The seat defending the machinery owes a number too — "it might be hot" is the same
   absence-of-evidence argument this command rejects for deletions. Judge a delta against the project's
   stated bar in its own units; where none is stated, report the tail as well as the mean with the
@@ -194,7 +253,7 @@ Grading rules:
   on it. Theatre has no hazard provenance *and* no execution evidence *and* recoverable blast radius;
   anything with a named hazard, or observed execution, or unrecoverable blast radius is load-bearing.
 
-**Protected classes — never proposed for deletion, reported with rationale instead:**
+**Protected classes — never proposed for deletion, and never proposed for relocation, reported with rationale instead:**
 
 - **Database migrations** — an "unused" migration may be the only path that upgrades a deployed instance, and deleting it strands every environment that has not run it yet.
 - **Error-path, fallback, and graceful-degradation handlers** — catch blocks, retries, circuit breakers and defaults look dead precisely because they only run when something goes wrong.
@@ -204,8 +263,9 @@ Grading rules:
 - **Framework entry points and lifecycle hooks** — called by the framework, never by your code: route handlers, dependency providers, command registration, test fixtures, plugin hooks.
 - **Targets of dynamic dispatch** — anything reached through `eval`, reflection, string-keyed dispatch, serialization, or a configuration file.
 - **Code referenced only from docs, issue templates, or CI config** — grep is unreliable there, so treat a hit as `review`.
+- **Public or exported paths, for moves specifically** — relocating a file external consumers import breaks them even when its contents are unchanged, so a move is never proposed for one on internal evidence alone.
 - **Machinery whose failure is silent rather than loud** — integrity checks, idempotency keys, deduplication, reconciliation. Its absence does not announce itself, so no test going red will tell you it mattered.
-- **Anything on a path that cannot be rolled back** — a destructive migration, an external side effect, a payment, an irreversible publish.
+- **Anything on a path that cannot be rolled back** — a destructive migration, an external side effect, an irreversible publish, a state change with no inverse.
 - **Load-shedding, rate limiting, and backpressure** — removing them harms a third party, which never appears anywhere in this repository's feature map.
 
 Protected classes are discovered two ways, layered: conventions supply the defaults (a path matching a
@@ -228,21 +288,21 @@ downgrade the finding they cover.
 **Near-duplicate candidates need a semantic diff before they are reportable.** The single most dangerous
 cleanup action is hoisting "duplicated" code into a shared helper when the copies only *look* alike: one
 handles a null and the other throws, one trims whitespace and the other does not, one retries and the other
-does not. So an `architect` produces a **semantic diff** for every candidate group — inputs, boundary
+does not. So **spawn an `architect`** to produce a **semantic diff** for every candidate group — inputs, boundary
 conditions, error handling, side effects, and ordering — and the finding carries it, with each difference
 named as an explicit parameter the eventual helper must take. Never propose silently collapsing a
 difference: a genericisation that drops a null check is a behaviour change wearing a cleanup badge, and no
 amount of green tests catches it if no test ever exercised the null path. A candidate group whose variants
 cannot be reconciled at a call site is not a duplication finding at all.
 
-**Feature-to-code mapping, and what the product owner is actually asked.** Before a `review` or
+**Feature-to-code mapping, and what the `product-manager` seat is actually asked.** Before a `review` or
 `architectural` finding is filed, answer "which features depend on this?" — a **call-graph reverse lookup**
-from the symbol to its entry points (request handler, command, event consumer, public API), each mapped to
+from the symbol to its entry points — a handler, command, job, event consumer or public API — each mapped to
 a feature name from the README, the tracker, or the repo's optional feature-map file. A unit that reaches
 no observable terminus at all is the strongest finding in the census; a *failed* trace proves only that
 this repository contains no consumer, never that the code is dead. The resulting **feature-impact summary**
 is mandatory on every `review` and `architectural` sub-issue, grouped by affected feature: a deletion
-touching several features is `review`, one touching a revenue-critical feature is `architectural`.
+touching several features is `review`, one touching a feature the project cannot afford to break is `architectural`.
 
 **The mapping may only raise a grade, never lower one.** A finding that arrives graded `review` or
 `architectural` stays there even when the reverse lookup finds no feature — the lookup reads the repository,
@@ -280,7 +340,7 @@ what it would take to make them so.
 
 ---
 
-## Stage 4 — Decompose into an epic with sub-issues
+## Stage 4 — Decompose into an epic with sub-issues  (agent: `product-manager` for the feature-impact sign-off)
 
 `MODE=file` and `MODE=ship`. This is where the census becomes tracked work, or evaporates.
 
@@ -341,7 +401,7 @@ rollback scope, and the gate below becomes a wall of noise instead of a decision
   wants — but it never becomes a task.
 
 **Acceptance criteria written into each sub-issue.** This command does not enforce these; it states them
-where the downstream workflow's mandatory product-owner seat will check them, so write them
+where the downstream workflow's mandatory `product-manager` seat will check them, so write them
 checkbox-shaped:
 
 - Green baseline before any edit; a red suite stops the work rather than absorbing the blame for it.
@@ -352,8 +412,8 @@ checkbox-shaped:
   on behaviour, not on lines.** The baseline is the set of observable behaviours the unit's entry points
   exhibit, each named and pinned by a passing test *before* the change; the invariant is that every
   behaviour in that set is still asserted afterwards, by a test that fails when the behaviour breaks. Line
-  and percentage movement is reported, never gated — a fall is expected, because coverage of machinery the
-  product never needed was never worth what it cost to keep. Where the existing tests prove only
+  and percentage movement is reported, never gated — a fall is expected, because coverage of machinery
+  nothing needed was never worth what it cost to keep. Where the existing tests prove only
   machinery, writing the missing behaviour test against the *unchanged* code is the first commit, not an
   afterthought.
 - Assertion-free tests, mock-only paths and flaky tests are not evidence, and their presence downgrades
@@ -423,7 +483,8 @@ is `/ship-harden`; a genericisation needing a new abstraction with no precedent 
 
 ### Guardrails
 
-- **This command cannot edit the codebase, and that is structural.** `allowed-tools` carries no `Write` and no `Edit`, and no working-tree write goes through `Bash` either. The read-only promise is enforced by what the command *can do*, not by a mode agreeing to honour it.
+- **This command cannot edit the codebase, and that is structural.** `allowed-tools` carries no `Write` and no `Edit`, and no working-tree write goes through `Bash` either. The read-only promise is enforced by what the command *can do*, not by a mode agreeing to honour it. Six of the seven crew roles it spawns are read-only by their own definition; the seventh (`technical-writer`) is a writing role by trade and must be briefed to report only — see the roster above. A spawn's effective permissions are part of this promise, not a detail beside it.
+- **Every spawn names its crew role.** A spawn that says only "workers" or "the agents" has nothing for the harness to resolve and lands on a general-purpose agent, silently discarding the specialism the finding class needs. Name the role at the point of spawn; where a role genuinely does not resolve to a shipped crew role, inline that role's brief and **say so in the report**. Never let a fallback pass unremarked — the run's whole value is that a specialist read the thing.
 - **Two write surfaces, named separately.** The working tree is never written, in any mode. The tracker is written under `file` and `ship` only, and that is its own opt-in.
 - **Nothing is proposed for deletion without a caller audit** — reflection, dynamic import, serialization, config keys, and framework entry points are all checked, even for `safe` findings.
 - **Verdicts are evidence, not impressions.** Every finding row names its evidence; every grade names the rule that produced it.

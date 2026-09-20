@@ -227,7 +227,7 @@ COMMANDS = {
         ],
         "closer": "Refactored — behaviour proven unchanged. ⚓",
     },
-    "ship-deslop-codebase": {
+    "ship-deslop": {
         "arg": "src/orders file",
         "stages": [
             ("SCOPE", "target, mode, analysers"),

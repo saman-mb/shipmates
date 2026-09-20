@@ -58,6 +58,9 @@ ALLOWED_KEYS = REQUIRED_KEYS + STANDARD_OPTIONAL_KEYS + EXTENSION_KEYS
 # note describes, but only the REQUIRED_KEYS prefix is enforced.
 FRONTMATTER_KEYS = REQUIRED_KEYS + EXTENSION_KEYS
 
+# crew/*.md — the source of truth for role names (see crew_roles()).
+CREW = ROOT / "crew"
+
 # `metadata:` is the one standard key defined as a nested mapping, so its value
 # may live on indented continuation lines. They are opaque here (this is a
 # line-oriented reader, not a YAML parser) but still scanned for placeholders.
@@ -421,6 +424,124 @@ def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
             )
 
 
+def crew_roles() -> tuple:
+    """The shipped crew role names, read from crew/*.md.
+
+    Read from disk rather than hardcoded: a second hand-maintained copy of the
+    roster would drift, and a spawn naming a role that was renamed or deleted
+    must fail this check — that is the defect it guards. Returns () when crew/ is
+    absent; the caller fails loudly rather than passing, because a check that
+    cannot see the roster cannot certify the command.
+    """
+    if not CREW.is_dir():
+        return ()
+    return tuple(sorted(p.stem for p in CREW.glob("*.md")))
+
+
+def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
+    """A command that fans work out to workers must declare which crew role does it.
+
+    The failure this guards is silent and expensive: a command declares
+    `MAX_CONCURRENT_WORKERS` and tells the reader to "spawn workers", naming no role.
+    The harness has nothing to resolve, falls back to a general-purpose agent, and the
+    run looks healthy while every finding came from a generic agent instead of the
+    specialist the class needed. The payload is well-formed, the digests match, CI is
+    green, and a captain gets worse work than they paid for.
+
+    **Structured, not prose.** This reads declarations, never sentences:
+
+      * a stage heading carrying the catalogue's `(agent: \\`role\\`)` annotation — the
+        shape 8 of the 9 fan-out commands already use, and the shape a reader and a
+        renderer both already understand; or
+      * a Config binding — an ALLCAPS knob whose value *is* a crew role
+        (`BUILDER = senior-engineer`), which is how a command that composes another
+        command instead of spawning a role declares who owns the work; or
+      * a stage heading that names a composed command (`(composes: /ship-issue)`) for
+        the same case, when the composed command owns the crew rather than a role.
+
+    An earlier revision of this check scanned prose for role names near spawn verbs. It
+    was defeated four times in review — by a file-wide anchor, by a one-word insert in an
+    unrelated stage, by the substring `architect` inside `architectural`, and by a
+    *negative* mention ("do not compose /ship-issue") satisfying it. Every patch closed
+    the named hole and opened an equivalent one, because the input was prose. Reading a
+    declaration instead of a sentence is what makes the check mean something.
+    """
+    text = "\n".join(lines)
+    if "MAX_CONCURRENT_WORKERS" not in text:
+        return
+
+    roles = crew_roles()
+    if not roles:
+        fail(
+            f"{rel}:{start + 1}: cannot check that this fan-out declares a crew role — "
+            "crew/*.md is missing or unreadable, so the roster is unknown. A broken "
+            "environment is not a pass: restore crew/ (or run the validator from the "
+            "repository root) so the check can see the roles"
+        )
+        return
+
+    # A role name must match whole: `architect` is a crew role, `architectural` is a
+    # word this catalogue uses constantly, and treating one as the other is how a
+    # prose scan passed a command that named nobody.
+    role_alt = "|".join(re.escape(role) for role in roles)
+    role_re = re.compile(r"(?<![\w-])(?:" + role_alt + r")(?![\w-])")
+
+    # Scope (1) and (3) to the stage that declares the fan-out. A heading anywhere in
+    # the file is not an answer: `ship-epic`'s fan-out stage says `(orchestrator)` and
+    # the command happens to carry `(agent: architect)` on its planning stage, so an
+    # unscoped scan passed it on an annotation that has nothing to do with who runs
+    # the wave. The declaration must sit on the stage that fans out.
+    body_lines = lines[start:]
+    section_of: list[int] = []
+    current = 0
+    for raw in body_lines:
+        if raw.startswith("#"):
+            current += 1
+        section_of.append(current)
+    knob_sections = {
+        section_of[i]
+        for i, raw in enumerate(body_lines)
+        if "MAX_CONCURRENT_WORKERS" in raw
+    }
+
+    heading_ann = re.compile(r"^#+.*\((?:agents?)\s*:(?P<body>[^)]*)\)")
+    composes = re.compile(r"^#+.*\((?:composes)\s*:\s*/ship-[a-z-]+", re.IGNORECASE)
+    for section in sorted(knob_sections):
+        for i, raw in enumerate(body_lines):
+            if section_of[i] != section:
+                continue
+            ann = heading_ann.match(raw)
+            if ann and role_re.search(ann.group("body")):
+                return
+            if composes.match(raw):
+                return
+
+    # (2) A Config binding whose value IS a role — how a command that names its worker
+    # through a knob declares who owns the work. Scoped to the Config block and the
+    # fan-out stages, like the heading anchors: a file-wide search here would be the last
+    # escape hatch of the same class this check exists to close, since any unrelated knob
+    # bound to a role name anywhere in the document would satisfy it.
+    binding = re.compile(
+        r"`?[A-Z][A-Z_]+`?\s*=\s*`?(?:" + role_alt + r")`?(?![\w-])"
+    )
+    config_lines = [
+        raw
+        for i, raw in enumerate(body_lines)
+        if section_of[i] == 0 or section_of[i] in knob_sections
+    ]
+    if any(binding.search(raw) for raw in config_lines):
+        return
+
+    fail(
+        f"{rel}:{start + 1}: fans out to workers (`MAX_CONCURRENT_WORKERS`) but declares no "
+        "crew role to do the work — a harness has nothing to resolve and silently falls back "
+        "to a general-purpose agent, discarding the specialism the findings need. Declare it "
+        "structurally: annotate the fan-out stage heading `(agent: `role`)`, bind a Config "
+        "knob to a role (`BUILDER` = `senior-engineer`), or annotate a stage that composes "
+        "another command as `(composes: /ship-issue)` when that command owns the crew. Naming "
+        "the role in prose alone does not count — this check reads declarations, and a "
+        "sentence can be edited without changing what the command does"
+    )
 def check_command(path: Path) -> None:
     slug = path.stem
     rel = f"commands/{path.name}"
@@ -435,12 +556,13 @@ def check_command(path: Path) -> None:
     check_frontmatter(rel, lines, start)
     check_body(rel, lines, start)
     check_no_inline_body(rel, lines, start)
+    check_spawn_binds_crew_role(rel, lines, start)
 
     if len(failures) == before:
         ok(
             f"{rel}: frontmatter opens with {REQUIRED_LIST}, every key known and non-empty, "
             "name matches filename, no unescaped '$n' anywhere, fences closed, no inline "
-            "--body in a shell fence"
+            "--body in a shell fence, every fan-out names its crew role"
         )
 
 

@@ -64,7 +64,7 @@ SLUGS = (
     "ship-qa",
     "ship-onboard",
     "ship-refactor",
-    "ship-deslop-codebase",
+    "ship-deslop",
 )
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
@@ -95,6 +95,8 @@ REDIRECTS = {
     "pr-review": "ship-pr-review",
     "report-bug": "ship-report-bug",
     "consolidate-issues": "ship-consolidate-issues",
+    # A command that shipped, then shortened its name.
+    "ship-deslop-codebase": "ship-deslop",
 }
 
 # Old tool page slugs → new. Same meta-refresh stubs as command REDIRECTS.

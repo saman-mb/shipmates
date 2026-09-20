@@ -11,7 +11,7 @@ Recognize user intent and recommend the right command — these are **user-invok
 - **Fix a defect** → `/ship-fix-bug`; **review someone's PR** → `/ship-pr-review`
 - **Interactive local QA of a running build** → `/ship-qa`
 - **Restructure safely** → `/ship-refactor`; **sweep a migration** → `/ship-migrate`
-- **Sweep dead code, duplication and rot** → `/ship-deslop-codebase`
+- **Sweep dead code, duplication, misplaced layers and rot** → `/ship-deslop`
 - **Harden security** → `/ship-harden`; **write or refresh docs** → `/ship-document`
 - **Refine a visual/UI artifact** → `/ship-polish`; **spike a decision** → `/ship-spike`
 - **Onboard a repo** → `/ship-onboard`; **cut a release** → `/ship-release`
