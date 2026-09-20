@@ -104,14 +104,14 @@ Spawn reviewers **in parallel** against the PR head commit — they review exact
 **Mandatory seats (never skip)**
 
 - **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / {{project-instructions}} / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
-- **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/ship-harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
+- **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/shipmates-harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
 
 Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** on the **first** board once a PR head exists. Later rounds follow **Retry** below — a PE/PO ACCEPT may be carried when the fixer delta cannot invalidate it.
 
 **Delegation modes (the only two authorized exceptions to the mandatory seats above)**
 
 - **`board=epic-deferred`** — a *deferral*, never a cancel. Set by an orchestrating command that owns a
-  mandatory milestone board on the integrated artifact (e.g. `/ship-epic`'s Stage 4 integration board on `<EPIC_PR>`).
+  mandatory milestone board on the integrated artifact (e.g. `/shipmates-epic`'s Stage 4 integration board on `<EPIC_PR>`).
   The unit's own board is skipped, its CI gate still runs, and the milestone board reviews the integrated
   diff. The deferral is valid only while that milestone board is guaranteed; a delegated run must **not**
   convert it to `board=off`.
@@ -134,12 +134,12 @@ Convene only when the change can plausibly trip the concern. A gated-out seat is
 | `technical-writer` | `IS_DOCS_AFFECTING` — doc copy/staleness (PE covers process compliance; both may run) |
 | `ux-ui-designer` | `IS_UI_STORY` |
 | `art-director` | `IS_VISUAL_STORY` |
-| `security-engineer` | `/ship-pr-review` only when `IS_SECURITY_SENSITIVE` |
-| `performance-engineer` | `/ship-pr-review` when the PR claims a perf win or touches a hot path; `/ship-refactor` when the stated motivation was performance |
-| `site-reliability-engineer` | `/ship-pr-review` when runtime behaviour, failure handling, or rollout changes |
-| `data-scientist` | `/ship-pr-review` when the deliverable is an analysis or model |
+| `security-engineer` | `/shipmates-pr-review` only when `IS_SECURITY_SENSITIVE` |
+| `performance-engineer` | `/shipmates-pr-review` when the PR claims a perf win or touches a hot path; `/shipmates-refactor` when the stated motivation was performance |
+| `site-reliability-engineer` | `/shipmates-pr-review` when runtime behaviour, failure handling, or rollout changes |
+| `data-scientist` | `/shipmates-pr-review` when the deliverable is an analysis or model |
 
-The `IS_*` flag vocabulary is shared by `/ship-issue` Stage 0 and `/ship-pr-review` Stage 0 — a new flag must be added to both classifiers.
+The `IS_*` flag vocabulary is shared by `/shipmates-issue` Stage 0 and `/shipmates-pr-review` Stage 0 — a new flag must be added to both classifiers.
 
 **Decision**
 
@@ -162,7 +162,7 @@ If `principal-engineer` or any role does not resolve to a shipped crew role (ski
 
 ## Reusable epic integration board
 
-The marker below is expanded into `/ship-epic` Stage 4 (epic closure) when every checklist story has landed.
+The marker below is expanded into `/shipmates-epic` Stage 4 (epic closure) when every checklist story has landed.
 It reviews the **combined** epic PR head — not a re-litigation of each unit PR.
 
 <!-- epic-integration-board:start -->

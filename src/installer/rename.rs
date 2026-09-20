@@ -1,10 +1,12 @@
-//! Identity-rename colliding install names with a `ship-` prefix.
+//! Identity-rename colliding install names with a `shipmates-` prefix.
 //!
-//! Commands have been through two renames: the bare verbs (`polish`) gained a
-//! `shipmates-` prefix, then every command moved to `ship-` (`polish` and
-//! `shipmates-polish` both become `ship-polish`). Both generations are rows in
-//! this table, so one sweep reaches any install. Crew roles and the two
-//! flagships (`ship-issue`, `ship-epic`) are absent — they never moved.
+//! Commands have been through three generations: the bare verbs (`polish`)
+//! gained a `shipmates-` prefix, then every command moved to `ship-` (`polish`
+//! and `shipmates-polish` both became `ship-polish`), and now every command —
+//! including the two flagships (`ship-issue`, `ship-epic`), which never moved
+//! before this generation — converges on `shipmates-` (`ship-polish` becomes
+//! `shipmates-polish`). All three generations are rows in this table, so one
+//! sweep reaches any install. Crew roles are absent — they never moved.
 //! Every tool still moves to its `shipmates-` name (`gh` → `shipmates-gh`).
 //! Adapters expand a row into real paths by substituting the identity folder
 //! or file stem in a payload map; leftover `…/commands/<old>.md` is included
@@ -28,41 +30,51 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Command identities that pick up the `ship-` prefix.
+/// Command identities that pick up the `shipmates-` prefix.
 ///
-/// Two generations are represented. The earliest installs carried the bare
-/// verb (`polish`); the `shipmates-` generation then prefixed nine of them and
-/// left the four workflow names alone. Current payloads ship every command as
-/// `ship-…`, so each row maps a name that can still be on disk to the name the
-/// payload ships today — a bare `polish` and a `shipmates-polish` both land on
-/// `ship-polish`. The two flagships (`ship-issue`, `ship-epic`) never moved
-/// and are deliberately absent.
+/// Three generations are represented. The earliest installs carried the bare
+/// verb (`polish`) or, for four workflow names, the bare name itself
+/// (`plan-epics`) with no `shipmates-` step at all; the `shipmates-`
+/// generation then prefixed the first nine; the `ship-` generation then moved
+/// every command, including the two flagships, under `ship-`. Current
+/// payloads ship every command as `shipmates-…`, so each row maps a name that
+/// can still be on disk directly to the name the payload ships today — a bare
+/// `polish` or `plan-epics`, and `ship-polish`, all land on `shipmates-…`. A
+/// `shipmates-polish` from the first prefixed generation is already current
+/// and needs no row. The two flagships (`ship-issue`, `ship-epic`) never
+/// moved before this generation and are new rows here.
 pub const COMMAND_RENAMES: &[(&str, &str)] = &[
     // Bare verbs from the pre-prefix generation.
-    ("document", "ship-document"),
-    ("fix-bug", "ship-fix-bug"),
-    ("harden", "ship-harden"),
-    ("migrate", "ship-migrate"),
-    ("onboard", "ship-onboard"),
-    ("polish", "ship-polish"),
-    ("refactor", "ship-refactor"),
-    ("release", "ship-release"),
-    ("spike", "ship-spike"),
-    // The first prefixed generation.
-    ("shipmates-document", "ship-document"),
-    ("shipmates-fix-bug", "ship-fix-bug"),
-    ("shipmates-harden", "ship-harden"),
-    ("shipmates-migrate", "ship-migrate"),
-    ("shipmates-onboard", "ship-onboard"),
-    ("shipmates-polish", "ship-polish"),
-    ("shipmates-refactor", "ship-refactor"),
-    ("shipmates-release", "ship-release"),
-    ("shipmates-spike", "ship-spike"),
-    // Full workflow names that gain the prefix in this generation.
-    ("plan-epics", "ship-plan-epics"),
-    ("pr-review", "ship-pr-review"),
-    ("report-bug", "ship-report-bug"),
-    ("consolidate-issues", "ship-consolidate-issues"),
+    ("document", "shipmates-document"),
+    ("fix-bug", "shipmates-fix-bug"),
+    ("harden", "shipmates-harden"),
+    ("migrate", "shipmates-migrate"),
+    ("onboard", "shipmates-onboard"),
+    ("polish", "shipmates-polish"),
+    ("refactor", "shipmates-refactor"),
+    ("release", "shipmates-release"),
+    ("spike", "shipmates-spike"),
+    ("plan-epics", "shipmates-plan-epics"),
+    ("pr-review", "shipmates-pr-review"),
+    ("report-bug", "shipmates-report-bug"),
+    ("consolidate-issues", "shipmates-consolidate-issues"),
+    // The `ship-` generation — every command, including the two flagships,
+    // which never moved before now.
+    ("ship-document", "shipmates-document"),
+    ("ship-fix-bug", "shipmates-fix-bug"),
+    ("ship-harden", "shipmates-harden"),
+    ("ship-migrate", "shipmates-migrate"),
+    ("ship-onboard", "shipmates-onboard"),
+    ("ship-polish", "shipmates-polish"),
+    ("ship-refactor", "shipmates-refactor"),
+    ("ship-release", "shipmates-release"),
+    ("ship-spike", "shipmates-spike"),
+    ("ship-plan-epics", "shipmates-plan-epics"),
+    ("ship-pr-review", "shipmates-pr-review"),
+    ("ship-report-bug", "shipmates-report-bug"),
+    ("ship-consolidate-issues", "shipmates-consolidate-issues"),
+    ("ship-issue", "shipmates-issue"),
+    ("ship-epic", "shipmates-epic"),
     // The one command that shipped and was then shortened (v0.9.0 → v0.9.1).
     ("ship-deslop-codebase", "ship-deslop"),
 ];
@@ -338,7 +350,7 @@ pub fn print_map(report: &RenameReport) {
         let verb = if reclaimed { "Reclaimed" } else { "Renamed" };
         if !commands.is_empty() {
             println!(
-                "{verb} {} command(s) (autocomplete /ship-):",
+                "{verb} {} command(s) (autocomplete /shipmates-):",
                 commands.len()
             );
             for (old, new) in commands {
@@ -812,25 +824,26 @@ mod tests {
     }
 
     #[test]
-    fn table_maps_both_prefixed_generations_and_never_flagships() {
+    fn table_maps_ship_generation_and_pre_prefix_generation_including_flagships() {
         let rows: BTreeMap<_, _> = all_rows().map(|(old, new, _)| (old, new)).collect();
-        for forbidden in ["ship-issue", "ship-epic", "architect"] {
-            assert!(rows.keys().all(|old| *old != forbidden));
-            assert!(rows.values().all(|new| *new != forbidden));
-        }
+        assert!(rows.keys().all(|old| *old != "architect"));
+        assert!(rows.values().all(|new| *new != "architect"));
         for (old, new) in [
-            ("document", "ship-document"),
-            ("shipmates-document", "ship-document"),
-            ("harden", "ship-harden"),
-            ("shipmates-harden", "ship-harden"),
-            ("polish", "ship-polish"),
-            ("shipmates-polish", "ship-polish"),
-            ("spike", "ship-spike"),
-            ("shipmates-spike", "ship-spike"),
-            ("plan-epics", "ship-plan-epics"),
-            ("pr-review", "ship-pr-review"),
-            ("report-bug", "ship-report-bug"),
-            ("consolidate-issues", "ship-consolidate-issues"),
+            ("document", "shipmates-document"),
+            ("ship-document", "shipmates-document"),
+            ("harden", "shipmates-harden"),
+            ("ship-harden", "shipmates-harden"),
+            ("polish", "shipmates-polish"),
+            ("ship-polish", "shipmates-polish"),
+            ("spike", "shipmates-spike"),
+            ("ship-spike", "shipmates-spike"),
+            ("plan-epics", "shipmates-plan-epics"),
+            ("ship-plan-epics", "shipmates-plan-epics"),
+            ("ship-pr-review", "shipmates-pr-review"),
+            ("ship-report-bug", "shipmates-report-bug"),
+            ("ship-consolidate-issues", "shipmates-consolidate-issues"),
+            ("ship-issue", "shipmates-issue"),
+            ("ship-epic", "shipmates-epic"),
             // The command that shipped, then shortened its name.
             ("ship-deslop-codebase", "ship-deslop"),
         ] {
@@ -839,28 +852,28 @@ mod tests {
     }
 
     #[test]
-    fn plan_migrates_the_previous_shipmates_generation() {
+    fn plan_migrates_the_previous_ship_generation() {
         let dir = tempdir().unwrap();
         let target = dir.path();
         atomic_write(
-            &target.join(".claude/skills/shipmates-polish/SKILL.md"),
+            &target.join(".claude/skills/ship-polish/SKILL.md"),
             "old skill",
         )
         .unwrap();
         atomic_write(
-            &target.join(".claude/commands/shipmates-polish.md"),
-            "---\nname: shipmates-polish\n---\nold\n",
+            &target.join(".claude/commands/ship-polish.md"),
+            "---\nname: ship-polish\n---\nold\n",
         )
         .unwrap();
-        let payload = payload_skill(".claude/skills/ship-polish/SKILL.md", "new polish");
+        let payload = payload_skill(".claude/skills/shipmates-polish/SKILL.md", "new polish");
         let items = plan(target, &payload, "").unwrap();
         let olds: Vec<_> = items
             .iter()
             .map(|item| item.old_path.to_string_lossy().into_owned())
             .collect();
-        assert!(olds.contains(&".claude/skills/shipmates-polish/SKILL.md".to_string()));
-        assert!(olds.contains(&".claude/commands/shipmates-polish.md".to_string()));
-        assert!(items.iter().all(|item| item.new_name == "ship-polish"));
+        assert!(olds.contains(&".claude/skills/ship-polish/SKILL.md".to_string()));
+        assert!(olds.contains(&".claude/commands/ship-polish.md".to_string()));
+        assert!(items.iter().all(|item| item.new_name == "shipmates-polish"));
     }
 
     #[test]
@@ -922,7 +935,7 @@ mod tests {
             "---\nname: polish\n---\nold\n",
         )
         .unwrap();
-        let payload = payload_skill(".claude/skills/ship-polish/SKILL.md", "new polish");
+        let payload = payload_skill(".claude/skills/shipmates-polish/SKILL.md", "new polish");
         let items = plan(target, &payload, "").unwrap();
         let olds: Vec<_> = items
             .iter()
@@ -930,7 +943,7 @@ mod tests {
             .collect();
         assert!(olds.contains(&".claude/skills/polish/SKILL.md".to_string()));
         assert!(olds.contains(&".claude/commands/polish.md".to_string()));
-        assert!(items.iter().all(|item| item.new_name == "ship-polish"));
+        assert!(items.iter().all(|item| item.new_name == "shipmates-polish"));
     }
 
     #[test]
@@ -940,7 +953,7 @@ mod tests {
         atomic_write(&target.join(".claude/skills/polish/SKILL.md"), "old").unwrap();
         let mut payload = HashMap::new();
         payload.insert(
-            "harnesses/claude-code/.claude/skills/ship-polish/SKILL.md".into(),
+            "harnesses/claude-code/.claude/skills/shipmates-polish/SKILL.md".into(),
             "new".into(),
         );
         let items = plan(target, &payload, "harnesses/claude-code").unwrap();
@@ -951,7 +964,7 @@ mod tests {
         );
         assert_eq!(
             items[0].new_path,
-            PathBuf::from(".claude/skills/ship-polish/SKILL.md")
+            PathBuf::from(".claude/skills/shipmates-polish/SKILL.md")
         );
     }
 
@@ -960,7 +973,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         atomic_write(&target.join(".opencode/commands/polish.md"), "old").unwrap();
-        let payload = payload_skill(".opencode/commands/ship-polish.md", "new");
+        let payload = payload_skill(".opencode/commands/shipmates-polish.md", "new");
         let items = plan(target, &payload, "").unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(
@@ -969,7 +982,7 @@ mod tests {
         );
         assert_eq!(
             items[0].new_path,
-            PathBuf::from(".opencode/commands/ship-polish.md")
+            PathBuf::from(".opencode/commands/shipmates-polish.md")
         );
     }
 
@@ -978,7 +991,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let old = ".claude/skills/polish/SKILL.md";
-        let new = ".claude/skills/ship-polish/SKILL.md";
+        let new = ".claude/skills/shipmates-polish/SKILL.md";
         atomic_write(&target.join(old), "old polish").unwrap();
         save_receipt(target, "claude-code", &[".claude"], &[(old, "old polish")]);
 
@@ -1014,7 +1027,7 @@ mod tests {
         let target = dir.path();
         let old = ".claude/skills/polish/SKILL.md";
         atomic_write(&target.join(old), "user polish").unwrap();
-        let payload = payload_skill(".claude/skills/ship-polish/SKILL.md", "new polish");
+        let payload = payload_skill(".claude/skills/shipmates-polish/SKILL.md", "new polish");
         let items = plan(target, &payload, "").unwrap();
         let report = apply(
             target,
@@ -1030,7 +1043,7 @@ mod tests {
         assert_eq!(fs::read_to_string(target.join(old)).unwrap(), "user polish");
         assert!(
             !target
-                .join(".claude/skills/ship-polish/SKILL.md")
+                .join(".claude/skills/shipmates-polish/SKILL.md")
                 .exists()
         );
     }
@@ -1044,7 +1057,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let old = ".agents/skills/polish/SKILL.md";
-        let new = ".agents/skills/ship-polish/SKILL.md";
+        let new = ".agents/skills/shipmates-polish/SKILL.md";
         // A pre-receipt v0.1.4 tree: nothing claims the path, but the file
         // still declares the identity the table moves (#403).
         atomic_write(&target.join(old), &skill_declaring("polish")).unwrap();
@@ -1084,7 +1097,7 @@ mod tests {
         // Somebody else's skill that merely squats a rename-table name.
         atomic_write(&target.join(old), &skill_declaring("my-own-polish")).unwrap();
 
-        let payload = payload_skill(".agents/skills/ship-polish/SKILL.md", "new polish");
+        let payload = payload_skill(".agents/skills/shipmates-polish/SKILL.md", "new polish");
         let items = plan(target, &payload, "").unwrap();
         let report = apply(
             target,
@@ -1109,7 +1122,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let old = ".claude/skills/polish/SKILL.md";
-        let new = ".claude/skills/ship-polish/SKILL.md";
+        let new = ".claude/skills/shipmates-polish/SKILL.md";
         atomic_write(&target.join(old), "old polish").unwrap();
         save_receipt(target, "claude-code", &[".claude"], &[(old, "old polish")]);
         // Unclaimed foreign bytes already occupy the new name.
@@ -1139,17 +1152,17 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let polish_old = ".claude/skills/polish/SKILL.md";
-        let polish_new = ".claude/skills/ship-polish/SKILL.md";
+        let polish_new = ".claude/skills/shipmates-polish/SKILL.md";
         let spike_old = ".claude/skills/spike/SKILL.md";
         atomic_write(&target.join(polish_old), &skill_declaring("polish")).unwrap();
         atomic_write(&target.join(spike_old), &skill_declaring("spike")).unwrap();
         // Block the second item's destination: a regular file where the folder
         // must go, so the sweep fails after the first reclaim succeeded.
-        atomic_write(&target.join(".claude/skills/ship-spike"), "blocker").unwrap();
+        atomic_write(&target.join(".claude/skills/shipmates-spike"), "blocker").unwrap();
 
         let mut payload = payload_skill(polish_new, "new polish");
         payload.insert(
-            ".claude/skills/ship-spike/SKILL.md".into(),
+            ".claude/skills/shipmates-spike/SKILL.md".into(),
             "new spike".into(),
         );
         let items = plan(target, &payload, "").unwrap();
@@ -1185,7 +1198,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let old = ".agents/skills/polish/SKILL.md";
-        let new = ".agents/skills/ship-polish/SKILL.md";
+        let new = ".agents/skills/shipmates-polish/SKILL.md";
         atomic_write(&target.join(old), "shared polish").unwrap();
         save_receipt(target, "cursor", &[".agents"], &[(old, "shared polish")]);
         save_receipt(
@@ -1230,7 +1243,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let old = ".claude/skills/polish/SKILL.md";
-        let new = ".claude/skills/ship-polish/SKILL.md";
+        let new = ".claude/skills/shipmates-polish/SKILL.md";
         atomic_write(&target.join(old), "old").unwrap();
         save_receipt(target, "claude-code", &[".claude"], &[(old, "old")]);
         let payload = payload_skill(new, "new");
@@ -1257,7 +1270,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let old = ".claude/skills/polish/SKILL.md";
-        let new = ".claude/skills/ship-polish/SKILL.md";
+        let new = ".claude/skills/shipmates-polish/SKILL.md";
         let first = install_plan(&[(old, "old polish")]);
         apply::apply(target, &first, false).unwrap();
 
@@ -1290,9 +1303,9 @@ mod tests {
         atomic_write(&target.join(old), "old polish").unwrap();
         save_receipt(target, "claude-code", &[".claude"], &[(old, "old polish")]);
         // Block the new skill directory: a regular file where the folder must go.
-        atomic_write(&target.join(".claude/skills/ship-polish"), "blocker").unwrap();
+        atomic_write(&target.join(".claude/skills/shipmates-polish"), "blocker").unwrap();
 
-        let payload = payload_skill(".claude/skills/ship-polish/SKILL.md", "new polish");
+        let payload = payload_skill(".claude/skills/shipmates-polish/SKILL.md", "new polish");
         let items = plan(target, &payload, "").unwrap();
         let error = apply(
             target,
@@ -1320,7 +1333,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let target = dir.path();
         let old = ".claude/skills/polish/SKILL.md";
-        let new = ".claude/skills/ship-polish/SKILL.md";
+        let new = ".claude/skills/shipmates-polish/SKILL.md";
         atomic_write(&target.join(old), "old polish").unwrap();
         save_receipt(target, "claude-code", &[".claude"], &[(old, "old polish")]);
         let payload = payload_skill(new, "new polish");

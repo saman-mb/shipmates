@@ -273,7 +273,7 @@ mkdir -p "$PROJ"
 cmd_run "$BIN" install --harness codex --dir "$PROJ" --with-tools none >/dev/null 2>&1
 CODEX_FILES=$(find "$PROJ" -type f | wc -l)
 [ "$CODEX_FILES" -eq 31 ] && ok "Codex install: 31 files" || fail "Codex install: $CODEX_FILES files (expected 31)"
-assert_file_exists "$PROJ/.agents/skills/ship-issue/SKILL.md" "Shared skill present after codex"
+assert_file_exists "$PROJ/.agents/skills/shipmates-issue/SKILL.md" "Shared skill present after codex"
 assert_file_exists "$PROJ/.codex/agents/architect.toml" "Codex agent present"
 
 cmd_run "$BIN" install --harness github-copilot --dir "$PROJ" --with-tools none >/dev/null 2>&1
@@ -281,7 +281,7 @@ SHARED_FILES=$(find "$PROJ" -type f | wc -l)
 # 31 (codex) + 13 (github-copilot agents) + 1 receipt = 45
 [ "$SHARED_FILES" -eq 45 ] && ok "After github-copilot: 45 files" || fail "After github-copilot: $SHARED_FILES files (expected 45)"
 assert_file_exists "$PROJ/.github/agents/architect.agent.md" "GitHub agent present"
-assert_file_exists "$PROJ/.agents/skills/ship-issue/SKILL.md" "Shared skill still present"
+assert_file_exists "$PROJ/.agents/skills/shipmates-issue/SKILL.md" "Shared skill still present"
 
 # ---------------------------------------------------------------------------
 # Segment 13 — Unowned Shipmates file at a payload path is adopted
@@ -482,8 +482,8 @@ mkdir -p "$PROJ"
 for h in codex antigravity github-copilot; do
   cmd_run "$BIN" install --harness "$h" --dir "$PROJ" --with-tools all >/dev/null 2>&1
 done
-SKILL="$PROJ/.agents/skills/ship-issue/SKILL.md"
-printf '%s\n' '---' 'name: ship-issue' 'description: stale shared generation' '---' 'stale shared body' > "$SKILL"
+SKILL="$PROJ/.agents/skills/shipmates-issue/SKILL.md"
+printf '%s\n' '---' 'name: shipmates-issue' 'description: stale shared generation' '---' 'stale shared body' > "$SKILL"
 STALE_SHA=$(python3 - "$SKILL" <<'PY'
 import hashlib, sys
 print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())
@@ -493,7 +493,7 @@ python3 - "$PROJ" "$STALE_SHA" <<'PY'
 import json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 stale = sys.argv[2]
-rel = ".agents/skills/ship-issue/SKILL.md"
+rel = ".agents/skills/shipmates-issue/SKILL.md"
 for receipt in sorted((root / ".shipmates/receipts").glob("*.json")):
     data = json.loads(receipt.read_text())
     for entry in data["files"]:
@@ -518,7 +518,7 @@ done
 FRESH="$TMPDIR/proj-shared-update-fresh"
 mkdir -p "$FRESH"
 cmd_run "$BIN" install --harness codex --dir "$FRESH" --with-tools all >/dev/null 2>&1
-if cmp -s "$SKILL" "$FRESH/.agents/skills/ship-issue/SKILL.md"; then
+if cmp -s "$SKILL" "$FRESH/.agents/skills/shipmates-issue/SKILL.md"; then
   ok "updated shared skill matches a fresh install"
 else
   fail "updated shared skill differs from a fresh install"

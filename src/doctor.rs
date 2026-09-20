@@ -2170,9 +2170,18 @@ mod tests {
         );
         assert_eq!(install_identity(".shipmates/receipts/cursor.json"), None);
 
-        assert_eq!(pre_prefix_aliases("shipmates-harden"), vec!["harden"]);
+        assert_eq!(
+            pre_prefix_aliases("shipmates-harden"),
+            vec!["harden", "ship-harden"]
+        );
         assert_eq!(pre_prefix_aliases("shipmates-gh"), vec!["gh"]);
-        // Flagships and third-party skills are not in the rename table.
+        // The flagships now have a `ship-` generation behind them, like every
+        // other command — queried by their current name, that generation is
+        // the alias.
+        assert_eq!(pre_prefix_aliases("shipmates-issue"), vec!["ship-issue"]);
+        // Queried by the old generation's own name, there is no generation
+        // before it, and third-party skills are not in the rename table at
+        // all.
         assert!(pre_prefix_aliases("ship-issue").is_empty());
         assert!(pre_prefix_aliases("caveman").is_empty());
     }

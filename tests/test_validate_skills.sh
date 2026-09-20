@@ -5,7 +5,7 @@
 #
 # The lint is a negative control, so it can rot silently: a regex "cleanup"
 # that stops matching still leaves every suite green. This pins both halves —
-# the forms that must be rejected, and the fact that ship-pr-review still posts its
+# the forms that must be rejected, and the fact that shipmates-pr-review still posts its
 # review through --body-file.
 #
 #   bash tests/test_validate_skills.sh
@@ -223,7 +223,7 @@ real_rc=0
 python3 "$REPO/tools/validate_skills.py" >/dev/null 2>&1 || real_rc=$?
 if [ "$real_rc" -eq 0 ]; then ok "real commands/ passes the lint"; else bad "real commands/ passes the lint"; fi
 
-for f in commands/ship-pr-review.md; do
+for f in commands/shipmates-pr-review.md; do
   if grep -q -- '--body-file "\$REVIEW_BODY_FILE"' "$REPO/$f"; then
     ok "$f still posts via --body-file (#138 fix present)"
   else

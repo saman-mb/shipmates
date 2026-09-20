@@ -17,7 +17,7 @@ copy_root() {
   copy_root "$copy"
   run "$SHIPMATES_BIN" build --target claude-code --root "$copy" --out "$out"
   assert_success
-  [ -f "$out/harnesses/claude-code/.claude/skills/ship-issue/SKILL.md" ]
+  [ -f "$out/harnesses/claude-code/.claude/skills/shipmates-issue/SKILL.md" ]
   [ ! -e "$copy/harnesses" ]
 }
 
@@ -32,7 +32,7 @@ copy_root() {
   assert_success
   [ ! -e "$copy/harnesses" ]
 
-  printf '\ntampered\n' >> "$copy/commands/ship-issue.md"
+  printf '\ntampered\n' >> "$copy/commands/shipmates-issue.md"
   run "$SHIPMATES_BIN" check --target claude-code --root "$copy"
   assert_failure
 }
@@ -40,7 +40,7 @@ copy_root() {
 @test "build --update refreshes the copied digests" {
   local copy="$BATS_TEST_TMPDIR/root"
   copy_root "$copy"
-  printf '\ntampered\n' >> "$copy/commands/ship-issue.md"
+  printf '\ntampered\n' >> "$copy/commands/shipmates-issue.md"
 
   run "$SHIPMATES_BIN" build --target claude-code --root "$copy" --update
   assert_success

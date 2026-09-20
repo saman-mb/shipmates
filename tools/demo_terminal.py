@@ -39,7 +39,7 @@ PROMPT = (86, 214, 122)    # $ prompt
 CURSOR = (200, 220, 235)
 
 # Stage accent colours, shared with gen_demo_gif.py's STAGE_COLORS so a command
-# reel that reuses a stage name paints it the same hue the /ship-issue reel does.
+# reel that reuses a stage name paints it the same hue the /shipmates-issue reel does.
 BLUE   = (130, 170, 255)
 PURPLE = (170, 150, 255)
 ORANGE = (255, 180, 90)
@@ -204,7 +204,7 @@ class Reel:
         self._emit(self.log, 60)
 
     def stage(self, label, color, running, done, done_detail_color=GREY, cycles=4):
-        """Spinner-running then a green ✓ done line — the /ship-issue reel's
+        """Spinner-running then a green ✓ done line — the /shipmates-issue reel's
         stage idiom, reusable per command. CYCLES tunes the spinner frame count
         (fewer = smaller GIF)."""
         lab = label.ljust(13)

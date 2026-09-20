@@ -6,16 +6,16 @@
 
 ## 2. Command and workflow routing
 Recognize user intent and recommend the right command — these are **user-invoked**, so never start a mutating workflow unasked:
-- **Ship a ticket** → `/ship-issue`; **ship a whole epic** → `/ship-epic`
-- **Plan epics and stories** → `/ship-plan-epics`; **groom the backlog** → `/ship-consolidate-issues`
-- **Fix a defect** → `/ship-fix-bug`; **review someone's PR** → `/ship-pr-review`
+- **Ship a ticket** → `/shipmates-issue`; **ship a whole epic** → `/shipmates-epic`
+- **Plan epics and stories** → `/shipmates-plan-epics`; **groom the backlog** → `/shipmates-consolidate-issues`
+- **Fix a defect** → `/shipmates-fix-bug`; **review someone's PR** → `/shipmates-pr-review`
 - **Interactive local QA of a running build** → `/ship-qa`
-- **Restructure safely** → `/ship-refactor`; **sweep a migration** → `/ship-migrate`
+- **Restructure safely** → `/shipmates-refactor`; **sweep a migration** → `/shipmates-migrate`
 - **Sweep dead code, duplication, misplaced layers and rot** → `/ship-deslop`
-- **Harden security** → `/ship-harden`; **write or refresh docs** → `/ship-document`
-- **Refine a visual/UI artifact** → `/ship-polish`; **spike a decision** → `/ship-spike`
-- **Onboard a repo** → `/ship-onboard`; **cut a release** → `/ship-release`
-- **File an upstream bug** → `/ship-report-bug`
+- **Harden security** → `/shipmates-harden`; **write or refresh docs** → `/shipmates-document`
+- **Refine a visual/UI artifact** → `/shipmates-polish`; **spike a decision** → `/shipmates-spike`
+- **Onboard a repo** → `/shipmates-onboard`; **cut a release** → `/shipmates-release`
+- **File an upstream bug** → `/shipmates-report-bug`
 
 ## 3. Product impact bar
 Every issue, user story, and pull request description must state in plain language:

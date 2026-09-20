@@ -69,19 +69,19 @@ load helpers
 
 @test "doctor --fix --no-migrate skips the rename sweep a plain --fix performs" {
   install_claude_code "$SANDBOX"
-  make_previous_generation "$SANDBOX" ship-harden shipmates-harden
+  make_previous_generation "$SANDBOX" shipmates-harden ship-harden
 
   # The sweep is skipped on purpose, so doctor restores the payload but still
   # reports the leftover identity as a problem (non-zero), never greenwashing it.
   run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX" --fix --no-migrate
   assert_failure
   assert_output --partial "leftover superseded"
-  [ -d "$SANDBOX/.claude/skills/shipmates-harden" ]
+  [ -d "$SANDBOX/.claude/skills/ship-harden" ]
 
   run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX" --fix
   assert_success
-  [ ! -e "$SANDBOX/.claude/skills/shipmates-harden" ]
-  [ -f "$SANDBOX/.claude/skills/ship-harden/SKILL.md" ]
+  [ ! -e "$SANDBOX/.claude/skills/ship-harden" ]
+  [ -f "$SANDBOX/.claude/skills/shipmates-harden/SKILL.md" ]
 
   run "$SHIPMATES_BIN" doctor --harness claude-code --dir "$SANDBOX"
   assert_success
