@@ -105,7 +105,7 @@ Spawn reviewers **in parallel** against the PR head commit — they review exact
 
 **Mandatory seats (never skip)**
 
-- **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / {{project-instructions}} / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion.
+- **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / {{project-instructions}} / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion. For each docs/content AC that claims specific wording or a registry fact, PO cannot `ACCEPT` without a **machine-checkable pin** (unittest string assert, `--check` golden, or validator content rule) or an explicit `manual-only` label on that criterion in the verdict — silent ACCEPT from reading the page is forbidden.
 - **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/shipmates-harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
 
 Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** on the **first** board once a PR head exists. Later rounds follow **Retry** below — a PE/PO ACCEPT may be carried when the fixer delta cannot invalidate it.
@@ -160,6 +160,7 @@ When a seat is re-spawned, they review the **pushed SHA**. The report lists `re-
 **Harness fallback**
 
 If `principal-engineer` or any role does not resolve to a shipped crew role (skill-only harnesses until crew agents ship), fall back to a general-purpose agent with the role brief inlined and note the fallback — never silently skip a mandatory seat.
+If the child-launch / subagent runtime cannot load (spawn dies before any role resolves), **stop** and name the diagnostic — never silently run the board inline, never silently set `board=off`.
 <!-- acceptance-board:end -->
 
 ## Reusable epic integration board

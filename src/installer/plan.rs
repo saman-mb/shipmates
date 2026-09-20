@@ -169,13 +169,15 @@ pub fn sibling_install_backups(path: &Path) -> Vec<PathBuf> {
 /// Return regular files inside the payload's own subtrees that a receipt does
 /// not claim.
 ///
-/// The scan is bounded to the two-component prefixes the managed set itself
-/// occupies (`.opencode/commands`, `.claude/skills`, …) rather than the whole
-/// harness root, because a harness root doubles as the user's environment — an
-/// opencode tree holds `node_modules/.bin` shims that are none of our business.
-/// Symlinks are skipped outright: never resolved, never descended, never
-/// reported. Reporting unmanaged files is advisory, so a root that cannot be
-/// resolved is skipped rather than failing the install or uninstall around it.
+/// The scan starts at the parent directory of each managed file — never the
+/// harness root itself — because a harness root doubles as the user's runtime
+/// (`.pi/agent/sessions`, `.claude/skills/synced`, `node_modules/.bin`). A
+/// directory is descended only when some managed path lives under it, so an
+/// unmanaged sibling folder is left unwalked. Extra *files* next to a managed
+/// file are still reported. Symlinks are skipped outright: never resolved,
+/// never descended, never reported. Reporting unmanaged files is advisory, so a
+/// root that cannot be resolved is skipped rather than failing the install or
+/// uninstall around it.
 ///
 /// Shipmates' own sibling backups are not reported: an install that just wrote
 /// `SKILL.md.bak-…` must not then warn about the file it created itself (#404).
@@ -195,27 +197,44 @@ pub fn unmanaged_files(
     result
 }
 
-/// The `<first>/<second>` component prefixes the managed paths occupy. A
-/// managed path shallower than two components contributes nothing: its parent
-/// is the harness root itself, which is exactly what must not be walked.
+/// Parent directory of each managed file, as a slash-separated relative path.
+///
+/// Empty and single-component parents are dropped: that parent *is* the harness
+/// root, which must not be walked. A managed path whose parent contains a
+/// `NEVER_SCANNED` component contributes nothing either.
 fn scan_prefixes(managed: &std::collections::BTreeSet<String>) -> BTreeSet<String> {
     managed
         .iter()
         .filter_map(|path| {
-            let mut components = Path::new(path).components().filter_map(|c| match c {
-                Component::Normal(value) => value.to_str(),
-                _ => None,
-            });
-            let first = components.next()?;
-            let second = components.next()?;
-            // A two-component managed path is a file, not a subtree.
-            components.next()?;
-            if NEVER_SCANNED.contains(&first) || NEVER_SCANNED.contains(&second) {
+            let parent = Path::new(path).parent()?;
+            let parts = slash_components(parent);
+            if parts.len() < 2 {
                 return None;
             }
-            Some(format!("{first}/{second}"))
+            if parts.iter().any(|part| NEVER_SCANNED.contains(part)) {
+                return None;
+            }
+            Some(parts.join("/"))
         })
         .collect()
+}
+
+fn slash_components(path: &Path) -> Vec<&str> {
+    path.components()
+        .filter_map(|component| match component {
+            Component::Normal(value) => value.to_str(),
+            _ => None,
+        })
+        .collect()
+}
+
+fn relative_to_managed(relative: &Path) -> String {
+    slash_components(relative).join("/")
+}
+
+fn managed_under(managed: &std::collections::BTreeSet<String>, relative_dir: &str) -> bool {
+    let prefix = format!("{relative_dir}/");
+    managed.iter().any(|path| path.starts_with(&prefix))
 }
 
 fn collect_unmanaged(
@@ -251,9 +270,12 @@ fn collect_unmanaged(
             continue;
         };
         if file_type.is_dir() {
-            collect_unmanaged(&resolved, target_dir, managed, result);
+            let relative = relative_to_managed(relative);
+            if managed_under(managed, &relative) {
+                collect_unmanaged(&resolved, target_dir, managed, result);
+            }
         } else if file_type.is_file() {
-            let relative = relative.to_string_lossy().into_owned();
+            let relative = relative_to_managed(relative);
             if !managed.contains(&relative) {
                 result.push(resolved);
             }
@@ -319,6 +341,69 @@ mod tests {
         let found = unmanaged_files(target, &managed(&[".opencode/commands/ship-issue.md"]));
 
         assert_eq!(found, vec![target.join(".opencode/commands/mine.md")]);
+    }
+
+    #[test]
+    fn unmanaged_scan_stays_inside_directories_that_hold_managed_files() {
+        struct Case {
+            managed: &'static str,
+            planted: &'static [&'static str],
+            warned: &'static [&'static str],
+        }
+        let cases = [
+            Case {
+                managed: ".pi/agent/agents/architect.md",
+                planted: &[
+                    ".pi/agent/agents/architect.md",
+                    ".pi/agent/sessions/foo.jsonl",
+                    ".pi/agent/missions/x",
+                    ".pi/agent/npm/y",
+                ],
+                warned: &[],
+            },
+            Case {
+                managed: ".claude/skills/shipmates-issue/SKILL.md",
+                planted: &[
+                    ".claude/skills/shipmates-issue/SKILL.md",
+                    ".claude/skills/synced/x",
+                    ".claude/plugins/x",
+                    ".claude/skills/shipmates-issue/extra.md",
+                ],
+                warned: &[".claude/skills/shipmates-issue/extra.md"],
+            },
+            Case {
+                managed: ".gemini/config/skills/foo/SKILL.md",
+                planted: &[
+                    ".gemini/config/skills/foo/SKILL.md",
+                    ".gemini/config/plugins/x",
+                ],
+                warned: &[],
+            },
+            Case {
+                managed: ".codex/agents/architect.toml",
+                planted: &[
+                    ".codex/agents/architect.toml",
+                    ".codex/agents/agency-agents/nested.md",
+                    ".codex/skills/.system/hidden.md",
+                ],
+                warned: &[],
+            },
+        ];
+
+        for case in cases {
+            let dir = tempfile::tempdir().unwrap();
+            let target = dir.path();
+            for rel in case.planted {
+                crate::installer::atomic_write(&target.join(rel), "x").unwrap();
+            }
+            let found = unmanaged_files(target, &managed(&[case.managed]));
+            let expected: Vec<PathBuf> = case.warned.iter().map(|rel| target.join(rel)).collect();
+            assert_eq!(
+                found, expected,
+                "managed {} must not walk unmanaged sibling trees",
+                case.managed
+            );
+        }
     }
 
     #[cfg(unix)]
