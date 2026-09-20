@@ -77,6 +77,8 @@ jobs:
       # which this job already has), so an upstream stage change red-builds here.
       - name: Check per-command demo GIF/poster artifacts are up to date
         run: python3 tools/gen_command_demos.py --check
+      - name: Validate ruleset required checks
+        run: python3 .github/scripts/validate_ruleset_checks.py
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
