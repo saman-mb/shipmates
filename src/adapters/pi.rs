@@ -294,6 +294,25 @@ mod tests {
         );
     }
 
+    /// #513: Pi loads user-scope `~/.pi/agent/skills` *and* project `.agents/skills`.
+    /// Skills must live in Pi's own tree (`.pi/skills/`, relocated globally to
+    /// `~/.pi/agent/skills/`) so a dual install cannot plant the same name in
+    /// both load paths.
+    #[test]
+    fn test_pi_skills_are_not_emitted_into_the_shared_agents_tree() {
+        let files = PiAdapter.build(&[], &[command()]).unwrap();
+        assert!(
+            !files.keys().any(|path| path.contains(".agents/skills/")),
+            "pi skills in the shared tree collide with a sibling harness and with global ~/.pi/agent/skills (#513): {:?}",
+            files.keys().collect::<Vec<_>>()
+        );
+        assert!(
+            files.keys().any(|path| path.contains(".pi/skills/")),
+            "pi skills must land in the first-party project tree .pi/skills/: {:?}",
+            files.keys().collect::<Vec<_>>()
+        );
+    }
+
     #[test]
     fn test_pi_tools_are_a_comma_scalar_that_pi_can_resolve() {
         let files = PiAdapter.build(&[role("sdet", "QA")], &[]).unwrap();
