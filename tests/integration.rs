@@ -1231,9 +1231,9 @@ fn test_matrix_model_surface_is_complete() {
         .as_object()
         .expect("harness_matrix.json has no model_surface_schema block");
     assert_eq!(
-        schema["empty_pool_fallback"].as_str(),
+        schema["empty_surface_fallback"].as_str(),
         Some("inherit"),
-        "the schema must record `inherit` as the empty-pool fallback"
+        "the schema must record `inherit` as the fallback when the target offers nothing to read"
     );
 
     let harnesses = matrix["harnesses"]
@@ -1286,6 +1286,7 @@ fn test_matrix_model_surface_is_complete() {
         ("discovery_tier", &DISCOVERY_TIERS[..]),
         ("runtime_model_override.kind", &OVERRIDE_KINDS[..]),
         ("effort.kind", &EFFORT_KINDS[..]),
+        ("effort.clamp_kind", &CLAMP_KINDS[..]),
         ("declared_pool.enforcement", &ENFORCEMENTS[..]),
     ] {
         let declared: Vec<&str> = schema["enums"][path]
@@ -1329,6 +1330,30 @@ fn test_matrix_model_surface_is_complete() {
             EFFORT_KINDS.contains(&effort_kind),
             "{name}: effort.kind `{effort_kind}` is outside the closed enum"
         );
+        // The verdict and the prose beside it are one claim stated twice. A
+        // `clamps-down` row whose prose documents nothing (or the reverse) is a
+        // record disagreeing with itself — and the shipped-clause guard reads
+        // the verdict, so unchecked prose drift would gate real cells against a
+        // stale claim (#485).
+        let clamp_kind = cell(name, "effort.clamp_kind", &surface["effort"]["clamp_kind"]);
+        assert!(
+            CLAMP_KINDS.contains(&clamp_kind),
+            "{name}: effort.clamp_kind `{clamp_kind}` is outside the closed enum"
+        );
+        let clamp_prose = cell(name, "effort.clamp", &surface["effort"]["clamp"]);
+        if clamp_kind == "clamps-down" {
+            assert!(
+                !clamp_is_hedged(clamp_prose),
+                "{name}: effort.clamp_kind says the harness clamps down, but its clamp prose \
+                 documents no clamp: `{clamp_prose}`"
+            );
+        } else {
+            assert!(
+                clamp_is_hedged(clamp_prose),
+                "{name}: effort.clamp_kind `{clamp_kind}` records no clamp, but its clamp prose \
+                 does not say so: `{clamp_prose}`"
+            );
+        }
         let enforcement = cell(
             name,
             "declared_pool.enforcement",
@@ -1713,8 +1738,15 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
     /// The effort cell is the record's effort kind plus **at most one** ` · `
     /// clamp clause. The clamp changes the `requested→resolved` audit field, so
     /// the orchestrator acts on it; the record's remaining effort prose is not
-    /// worth inlining 128 times, because it changes no decision (#450).
-    fn effort_value(cells: &[(&str, &str)], cell: &str, target: &str) -> String {
+    /// worth inlining 128 times, because it changes no decision (#450). The
+    /// clause itself is now gated against the record by `check_clamp_clause`
+    /// (#485), so it can abbreviate the record but never overstate it.
+    fn effort_value(
+        cells: &[(&str, &str)],
+        cell: &str,
+        effort: &serde_json::Value,
+        target: &str,
+    ) -> String {
         assert!(
             cell.matches('·').count() <= 1,
             "{target}: the shipped effort cell `{cell}` carries more than one ` · ` clause"
@@ -1735,6 +1767,9 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
                  enough to be a second opinion on the record again (#450)",
                 clamp.len()
             );
+            if let Err(defect) = check_clamp_clause(clamp, effort, target) {
+                panic!("{defect}");
+            }
         }
         cells
             .iter()
@@ -1824,7 +1859,7 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
             (
                 "effort",
                 cells[4],
-                effort_value(&EFFORT_CELLS, cells[4], target),
+                effort_value(&EFFORT_CELLS, cells[4], &surface["effort"], target),
             ),
         ] {
             let recorded = match column {
@@ -1915,6 +1950,220 @@ fn parse_emitted_toml_basic(raw: &str) -> Result<String, String> {
         }
     }
     Ok(out)
+}
+
+/// The closed set of `effort.clamp_kind` verdicts the record may carry (#485).
+/// Defined once here: the shipped-clause guard, the completeness guard and the
+/// demonstration test all read this same list.
+const CLAMP_KINDS: [&str; 3] = ["clamps-down", "not-documented", "no-surface"];
+
+/// Lowercase alphanumeric words — the unit both the hedge test and the
+/// entailment test work on, so `per-model` and `per model` agree.
+fn clamp_words(text: &str) -> Vec<String> {
+    text.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+/// Whether a record's clamp prose documents *no* clamp — the absence it states
+/// with a hedge phrase (`Not documented`, `None documented`, `No down-clamp
+/// documented`) or with a bare `None`.
+fn clamp_is_hedged(text: &str) -> bool {
+    let words = clamp_words(text);
+    let has = |needle: &str| words.iter().any(|word| word == needle);
+    has("none")
+        || has("undocumented")
+        || words.join(" ").contains("not documented")
+        || has("no") && (has("clamp") || has("documented"))
+}
+
+/// Every word the clause names must appear in the record text it abbreviates,
+/// so a clause can shorten the record but never invent a claim.
+fn clamp_entails(record_text: &str, clause: &str) -> bool {
+    let haystack = clamp_words(record_text);
+    clamp_words(clause)
+        .iter()
+        .all(|word| haystack.iter().any(|candidate| candidate == word))
+}
+
+/// #485 — the mapping rule binding a shipped clamp clause to the record.
+///
+/// `effort.clamp` is prose, so a guard needs a decidable rule. The record
+/// carries the verdict machine-readably in `effort.clamp_kind`, and this binds
+/// the shipped clause to it three ways:
+///
+/// - `clamps-down`: the clause must **not** hedge (it describes a clamp the
+///   record documents), and every word it names must appear in the record's own
+///   `clamp` text — it may abbreviate the record, never invent a mechanism.
+/// - `not-documented`: the clause **must** hedge to the same degree — a clause
+///   asserting a clamp where the record documents none is exactly the drift
+///   this guard exists to stop.
+/// - `no-surface`: there is nothing to clamp, so the clause may only restate
+///   the row's own effort text (vocabulary + clamp + notes) — which is how
+///   `only an interactive cycle` stays honest on a row whose clamp is `None`.
+///
+/// The rule refuses a clause that **overstates** the record. It is not a
+/// semantic-equivalence check and deliberately cannot be: it is a guard against
+/// a gloss growing back, not a proof of meaning.
+fn check_clamp_clause(
+    clause: &str,
+    effort: &serde_json::Value,
+    target: &str,
+) -> Result<(), String> {
+    let clamp = effort["clamp"].as_str().unwrap_or("");
+    if clamp.is_empty() {
+        return Err(format!(
+            "{target}: the record documents no clamp at all, so the shipped cell must carry no \
+             ` · ` clamp clause, found `{clause}` (#485)"
+        ));
+    }
+    let clamp_kind = effort["clamp_kind"].as_str().unwrap_or("");
+    if !CLAMP_KINDS.contains(&clamp_kind) {
+        return Err(format!(
+            "{target}: effort.clamp_kind `{clamp_kind}` is outside the closed set {CLAMP_KINDS:?} \
+             — the record must state the verdict the shipped clause is gated on (#485)"
+        ));
+    }
+    let hedged = clamp_is_hedged(clause);
+    match clamp_kind {
+        "clamps-down" if hedged => Err(format!(
+            "{target}: the shipped clamp clause `{clause}` hedges a clamp the record documents \
+             (`{clamp}`) — the clause must not assert less than the record either (#485)"
+        )),
+        "not-documented" if !hedged => Err(format!(
+            "{target}: the shipped clamp clause `{clause}` asserts a clamp the record does not \
+             document (`{clamp}`) — it must hedge to the same degree (#485)"
+        )),
+        "clamps-down" => {
+            if clamp_entails(clamp, clause) {
+                Ok(())
+            } else {
+                Err(format!(
+                    "{target}: the shipped clamp clause `{clause}` names a mechanism the record's \
+                     own clamp text does not document (`{clamp}`) — abbreviate the record, never \
+                     invent it (#485)"
+                ))
+            }
+        }
+        "no-surface" => {
+            let row_text = format!(
+                "{} {} {}",
+                effort["vocabulary"].as_str().unwrap_or(""),
+                clamp,
+                effort["notes"].as_str().unwrap_or("")
+            );
+            if clamp_entails(&row_text, clause) {
+                Ok(())
+            } else {
+                Err(format!(
+                    "{target}: the shipped clamp clause `{clause}` is not entailed by the row's own \
+                     effort text on a `no-surface` row (#485)"
+                ))
+            }
+        }
+        // `not-documented` with a hedge is the only passing combination left.
+        _ => Ok(()),
+    }
+}
+
+/// #485 — the shipped-clause guard must be **shown failing**, not merely
+/// asserted to pass. This drives `check_clamp_clause` with clauses that
+/// overstate the record — including one built from the record's real bytes — so
+/// the guard's binding is exercised rather than described.
+#[test]
+fn test_clamp_guard_rejects_an_overstated_clause() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let matrix: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("tools/harness_matrix.json")).unwrap(),
+    )
+    .unwrap();
+
+    // Built from the live record: a row that documents no clamp, handed a
+    // clause that asserts one — the exact drift #450 exists to stop.
+    let antigravity = &matrix["harnesses"]["antigravity"]["model_surface"]["effort"];
+    assert_eq!(antigravity["clamp_kind"].as_str(), Some("not-documented"));
+    assert!(
+        check_clamp_clause("unsupported level clamps down", antigravity, "antigravity").is_err(),
+        "a clause asserting a clamp the record does not document must be refused"
+    );
+
+    // The mirror image: hedging a clamp the record does document.
+    let claude_code = &matrix["harnesses"]["claude-code"]["model_surface"]["effort"];
+    assert!(
+        check_clamp_clause("no clamp documented", claude_code, "claude-code").is_err(),
+        "a clause hedging a clamp the record documents must be refused"
+    );
+
+    // A mechanism the record never names, on a row that does document a clamp.
+    assert!(
+        check_clamp_clause("hard refusal above its tier", claude_code, "claude-code").is_err(),
+        "a clause naming a mechanism the record does not document must be refused"
+    );
+
+    // And the real clause still passes on the same row, so the guard is
+    // refusing the overstatement rather than every clause.
+    assert_eq!(
+        check_clamp_clause("unsupported level clamps down", claude_code, "claude-code"),
+        Ok(())
+    );
+}
+
+/// #531 — the declared model pool is removed, and nothing that ships may
+/// describe it. The routing block is asserted clause-by-clause in `render.rs`;
+/// this sweeps the canonical trees that become a captain's payload, so a stale
+/// mention in a command, a crew role or a toolbox tool fails here instead of
+/// shipping as advice to maintain a file that no longer exists.
+///
+/// The vocabulary is named specifically rather than as the bare word `pool`:
+/// the word has legitimate uses in this payload — the reviewer/builder pool, a
+/// candidate pool, a name pool, pooling in a performance note — and only the
+/// declared-config sense was retired.
+#[test]
+fn test_no_canonical_file_describes_the_removed_model_pool() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    const RESIDUE: [&str; 8] = [
+        "model-pool",
+        "pool unusable",
+        "pool out of scope",
+        "declared pool",
+        "declared-pool",
+        "pool source",
+        "pool discovery",
+        "which pool",
+    ];
+    let mut files: Vec<PathBuf> = vec![root.join("docs/COST.md")];
+    for tree in ["commands", "crew", "toolbox"] {
+        files.extend(walk(&root.join(tree)));
+    }
+    assert!(
+        files.len() > 20,
+        "the sweep found only {} canonical files — the trees moved, so this guard proves nothing",
+        files.len()
+    );
+    for path in files {
+        // Binary files cannot describe a removed feature in prose, and the
+        // canonical trees carry at least one (a gitignored `__pycache__` under
+        // `toolbox/`, which `build.rs` skips so it never ships). Skipping them
+        // keeps this guard about text, which is what it guards.
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let flat = text
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        for residue in RESIDUE {
+            assert!(
+                !flat.contains(residue),
+                "{}: the removed declared model pool is still described here (`{residue}`) — the \
+                 orchestrator supplies the ranking now, so the doctrine must not send a captain \
+                 looking for a file that does nothing (#531)",
+                path.strip_prefix(&root).unwrap().display()
+            );
+        }
+    }
 }
 
 /// The frontmatter text between the opening and closing `---` lines, for a file
