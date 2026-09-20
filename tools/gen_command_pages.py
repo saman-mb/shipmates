@@ -41,6 +41,7 @@ _TOOLS = Path(__file__).resolve().parent
 if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 from command_page_copy import COMMAND_PAGE_COPY, CommandPageCopy, ProcessStep
+from yaml_unquote import yaml_unquote as _yaml_unquote
 
 # ---------------------------------------------------------------------------
 # Constants (the generator's whole non-source input; see the drift invariant)
@@ -1735,11 +1736,6 @@ TRAILING_PAREN_RE = re.compile(r"[ ]*\(([^()]*)\)[ ]*$")
 AGENT_WORD_RE = re.compile(r"\bagents?\b")
 LINK_RE = re.compile(r"!\[|\[[^\]]*\]\(|\[[^\]]*\]\[|\[\^|~~")
 LASTMOD_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
-# The double-quoted escapes the renderer writes, mirroring `yaml_scalar` in
-# src/adapters/render.rs: backslash, double quote, newline/CR/tab, and every
-# other control character as `\uXXXX` (lowercase hex).
-YAML_UNQUOTE_ESCAPES = {"\\": "\\", '"': '"', "n": "\n", "r": "\r", "t": "\t"}
-YAML_UNICODE_ESCAPE_RE = re.compile(r"[0-9a-fA-F]{4}")
 
 LINKS_UNSUPPORTED = (
     "links are not supported in skill sources — write the target as inline code instead"
@@ -2147,37 +2143,6 @@ def load_skills(skills_dir: Path, agents: tuple) -> tuple:
                 "then rerun the generator and commit site/",
             )
     return tuple(parse_skill(on_disk[slug], agents) for slug in SLUGS)
-
-
-def _yaml_unquote(value: str) -> str:
-    """Undo the renderer's `yaml_scalar` quoting on one parsed frontmatter value.
-
-    The renderer double-quotes free-text scalars (#407) and escapes `\\`, `\"`,
-    `\n`, `\r`, `\t` and other control characters as `\\uXXXX`. Page copy wants
-    the authored string back, not its YAML spelling. Values not wrapped in
-    double quotes — the bare `name:` the renderer deliberately leaves alone, and
-    every authored source read directly — pass through byte-identical.
-
-    Scanned left to right: sequential replaces would unescape `\\\\n` twice.
-    """
-    if len(value) < 2 or value[0] != '"' or value[-1] != '"':
-        return value
-    inner = value[1:-1]
-    out = []
-    i = 0
-    while i < len(inner):
-        char = inner[i]
-        escape = inner[i + 1] if char == "\\" and i + 1 < len(inner) else ""
-        if escape in YAML_UNQUOTE_ESCAPES:
-            out.append(YAML_UNQUOTE_ESCAPES[escape])
-            i += 2
-        elif escape == "u" and YAML_UNICODE_ESCAPE_RE.match(inner, i + 2):
-            out.append(chr(int(inner[i + 2 : i + 6], 16)))
-            i += 6
-        else:
-            out.append(char)
-            i += 1
-    return "".join(out)
 
 
 def split_frontmatter(lines: list, src: str, consumed: set) -> tuple:

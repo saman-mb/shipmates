@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
-"""Validate the skills/ payload against the Agent Skills layout — stdlib only.
+"""Validate canonical commands/ and crew/ — stdlib only.
 
 Runs identically in a local self-check and in CI, with no arguments and no
-network: the skills/ tree is the thing the installer copies, so it is gated on
-its own terms rather than only through the site it feeds.
+network: commands/*.md and crew/*.md are the installer sources of truth, so they
+are gated on their own terms rather than only through compiled payloads or the
+site they feed. This checker does not walk a skills/ or harnesses/ tree, and it
+does not lint rendered harness output.
 
-Asserts the invariants a skill directory holds: skills/<slug>/SKILL.md exists
-for every entry under skills/, its frontmatter opens on line 1 and declares
-name then description first (the standard's two required keys, in the order it
-requires them) followed by any of the standard's optional keys and the vendor
-extensions we use, in any order; the name is its own directory name; every
-declared value carries content (and the description is bounded); no unescaped
-positional argument placeholder (`$1`) survives anywhere in the file; every
-fenced code block is closed; and the retired commands/ directory is gone.
+For every commands/<slug>.md: frontmatter opens on line 1 and declares name then
+description first (the standard's two required keys, in that order) followed by
+any of the standard's optional keys and the vendor extensions we use, in any
+order; the name is the filename stem; every declared value carries content (and
+the description is bounded); no unescaped positional argument placeholder (`$1`)
+survives anywhere in the file; every fenced code block is closed; shell fences
+carry no inline `--body`/`-b` (and no command-substituted `--body-file` path);
+prose and inline-backticks carry no invocation-shaped `--body` unless the same
+line has `<!-- shipmates:body-ok -->`; every fan-out names its crew role; and a
+strictly-read-only command (allowed-tools contains neither Write nor Edit) that
+seats a write-capable crew role carries `<!-- shipmates:briefed-read-only:<role> -->`.
+
+crew/*.md is scanned after frontmatter for the same `--body` rules (blunt inside
+shell fences, invocation-shaped in prose). Role files are also the roster:
+`writes: true` or `edit` in `capabilities` marks a write-capable seat. Compiled
+payloads are not a second source of truth here.
 
 The key set is a superset check, not an exact-set check. An earlier revision
 demanded exactly name, description, argument-hint, allowed-tools in that fixed
@@ -41,7 +51,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ROOT / "skills"
 COMMANDS = ROOT / "commands"
 
 # The Agent Skills standard's required keys — present, and first, in this order.
@@ -103,6 +112,22 @@ GH_INVOCATION_RE = re.compile(r"(?<![\w-])gh\s")
 # `--body-file "$(gh pr view <PR#> -q .title)"` is the original defect wearing
 # the safe flag's name.
 BODY_FILE_SUBST_RE = re.compile(r"--body-file\b\s*=?\s*\S*(?:\$\(|`)")
+
+# Prose / inline-backticks: only an *invocation-shaped* `--body` is a hit.
+# `--body=` or `--body` plus whitespace plus a quote, `$`, `<`, or ident is a
+# value being passed; naming the flag in a never/don't sentence is not.
+# `--body-file` stays the sanctioned form. Same-line `<!-- shipmates:body-ok -->`
+# is the explicit escape hatch for a genuine exception.
+PROSE_BODY_RE = re.compile(r"--body(?!-file)\b(?:\s*=|\s+[\"'`$</A-Za-z_])")
+BODY_OK_RE = re.compile(r"<!--\s*shipmates:body-ok\s*-->")
+NEVER_BODY_RE = re.compile(r"(?i)\b(never|don't|do not)\b")
+
+# A strictly-read-only command that seats a write-capable role must carry one
+# of these per role, repeatable. Unknown HTML comments are not renderer markers.
+BRIEFED_READ_ONLY_RE = re.compile(
+    r"<!--\s*shipmates:briefed-read-only:([a-z0-9]+(?:-[a-z0-9]+)*)\s*-->"
+)
+WRITE_TRUE = frozenset({"true", "yes", "on", "1"})
 
 # Fence languages whose contents are shell the crew will run. A bare ``` fence
 # counts: an unlabelled block of commands is still commands.
@@ -393,17 +418,43 @@ def _shell_blocks(lines: list[str], start: int):
         yield pending_lineno, pending, fence_lineno
 
 
-def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
-    """No `--body`/`-b` inside a shell fence — that puts content (a PR/issue
-    title, body, diff, or review comment — all attacker-controlled on anything
-    the crew didn't write) inside a shell command string, where a crafted value
-    can break out of the quoting. This is the same defect fixed twice already,
-    once per command (#82, #138) — a lint that fails the build is cheaper than
-    a third fix.
+def _unfenced_lines(lines: list[str], start: int):
+    """Yield (lineno, raw) for body lines that are not inside a fenced block."""
+    open_ticks = 0
+    fence_lineno = 0
+    for offset, raw in enumerate(lines[start:]):
+        lineno = start + offset + 1
+        hit = FENCE_RE.match(raw.strip())
+        if hit:
+            ticks, info = len(hit.group(1)), hit.group(2).strip()
+            if not fence_lineno:
+                open_ticks, fence_lineno = ticks, lineno
+            elif ticks >= open_ticks and not info:
+                open_ticks = fence_lineno = 0
+            continue
+        if fence_lineno:
+            continue
+        yield lineno, raw
 
-    `--body-file <path>` is the sanctioned form, but only with a literal or
-    plain-variable path: substituting a command into the *filename* smuggles
-    the same defect back in under the safe flag's name.
+
+def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
+    """No `--body`/`-b` inside a shell fence, and no invocation-shaped `--body`
+    in prose.
+
+    A shell-fence `--body`/`-b` puts content (a PR/issue title, body, diff, or
+    review comment — all attacker-controlled on anything the crew didn't write)
+    inside a shell command string, where a crafted value can break out of the
+    quoting. This is the same defect fixed twice already, once per command
+    (#82, #138) — a lint that fails the build is cheaper than a third fix.
+    Fence checks stay blunt: BODY_FLAG_RE, gh-scoped SHORT_BODY_RE,
+    BODY_FILE_SUBST_RE. `--body-file <path>` is the sanctioned form, but only
+    with a literal or plain-variable path: substituting a command into the
+    *filename* smuggles the same defect back in under the safe flag's name.
+
+    Prose and inline-backticks are narrower: only `--body=` or `--body` plus a
+    value starter (quote, `$`, `<`, ident) is a hit. Naming the flag inside a
+    never/don't sentence is not an invocation. Same-line
+    `<!-- shipmates:body-ok -->` is the explicit escape hatch.
     """
     for lineno, line, fence_lineno in _shell_blocks(lines, start):
         short_hit = GH_INVOCATION_RE.search(line) and SHORT_BODY_RE.search(line)
@@ -422,6 +473,20 @@ def check_no_inline_body(rel: str, lines: list[str], start: int) -> None:
                 "that is the #82 / #138 defect wearing the safe flag's name; capture the "
                 "value into a quoted variable on its own line and pass the variable"
             )
+    for lineno, line in _unfenced_lines(lines, start):
+        if BODY_OK_RE.search(line):
+            continue
+        for hit in PROSE_BODY_RE.finditer(line):
+            if NEVER_BODY_RE.search(line[: hit.start()]):
+                continue
+            fail(
+                f"{rel}:{lineno}: {line.strip()[:70]!r} passes content to `--body` in "
+                "prose — an invocation-shaped `--body=` / `--body <value>` in running text "
+                "is the same defect class as a shell fence; write the content to a temp file "
+                "and use `--body-file <path>`, or add `<!-- shipmates:body-ok -->` on this "
+                "line if it is not an invocation"
+            )
+            break
 
 
 def crew_roles() -> tuple:
@@ -542,6 +607,100 @@ def check_spawn_binds_crew_role(rel: str, lines: list[str], start: int) -> None:
         "the role in prose alone does not count — this check reads declarations, and a "
         "sentence can be edited without changing what the command does"
     )
+
+
+def _frontmatter_entries(lines: list[str]) -> dict[str, str]:
+    """Line-oriented key: value map up to the closing '---'. Unknown keys kept."""
+    entries: dict[str, str] = {}
+    if not lines or lines[0].strip() != "---":
+        return entries
+    for raw in lines[1:]:
+        if raw.strip() == "---":
+            break
+        if not raw.strip() or INDENTED_RE.match(raw):
+            continue
+        key, sep, value = raw.partition(":")
+        if sep:
+            entries[key] = value.strip()
+    return entries
+
+
+def _body_start(lines: list[str]) -> int:
+    """Index of the first body line after closing frontmatter, or 0."""
+    if lines and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                return i + 1
+    return 0
+
+
+def write_capable_roles() -> frozenset[str]:
+    """Crew stems that can write: `writes: true` or `edit` in capabilities."""
+    capable: set[str] = set()
+    if not CREW.is_dir():
+        return frozenset()
+    for path in CREW.glob("*.md"):
+        entries = _frontmatter_entries(path.read_text(encoding="utf-8").split("\n"))
+        writes = entries.get("writes", "").lower()
+        caps = {
+            part.strip().lower()
+            for part in entries.get("capabilities", "").split(",")
+            if part.strip()
+        }
+        if writes in WRITE_TRUE or "edit" in caps:
+            capable.add(path.stem)
+    return frozenset(capable)
+
+
+def _strictly_read_only(entries: dict) -> bool:
+    """True only when allowed-tools is present and contains neither Write nor Edit."""
+    if "allowed-tools" not in entries:
+        return False
+    tokens = {
+        part.strip().lower()
+        for part in entries["allowed-tools"][1].split(",")
+        if part.strip()
+    }
+    return "write" not in tokens and "edit" not in tokens
+
+
+def check_read_only_write_seats(
+    rel: str, lines: list[str], start: int, entries: dict
+) -> None:
+    """A strictly-read-only command must brief every write-capable seat it names.
+
+    Inferred from allowed-tools (no extra frontmatter key): neither Write nor
+    Edit. A seated role is a backtick-wrapped crew stem. Write-capable means
+    the role's own `writes: true` or `edit` in capabilities. Mixed-mode
+    commands that keep Write/Edit do not trip. Crew files are not gated.
+    """
+    if not _strictly_read_only(entries):
+        return
+    roles = crew_roles()
+    if not roles:
+        fail(
+            f"{rel}:{start + 1}: cannot check write-capable seats on a strictly-read-only "
+            "command — crew/*.md is missing or unreadable, so the roster is unknown. "
+            "Restore crew/ (or run the validator from the repository root) so the check "
+            "can see which roles write"
+        )
+        return
+    capable = write_capable_roles()
+    body = "\n".join(lines[start:])
+    role_alt = "|".join(re.escape(role) for role in roles)
+    seated = set(re.findall(r"`(" + role_alt + r")`", body))
+    briefed = set(BRIEFED_READ_ONLY_RE.findall(body))
+    for role in sorted(seated & capable):
+        if role not in briefed:
+            fail(
+                f"{rel}:{start + 1}: strictly-read-only command seats write-capable "
+                f"`{role}` without `<!-- shipmates:briefed-read-only:{role} -->` — a role "
+                "that can write will, so the command's read-only promise holds only while "
+                "that seat is briefed to report and write nothing. Add one marker per "
+                "write-capable role, with <role> equal to the crew file stem"
+            )
+
+
 def check_command(path: Path) -> None:
     slug = path.stem
     rel = f"commands/{path.name}"
@@ -557,13 +716,25 @@ def check_command(path: Path) -> None:
     check_body(rel, lines, start)
     check_no_inline_body(rel, lines, start)
     check_spawn_binds_crew_role(rel, lines, start)
+    check_read_only_write_seats(rel, lines, start, entries)
 
     if len(failures) == before:
         ok(
             f"{rel}: frontmatter opens with {REQUIRED_LIST}, every key known and non-empty, "
             "name matches filename, no unescaped '$n' anywhere, fences closed, no inline "
-            "--body in a shell fence, every fan-out names its crew role"
+            "--body in a shell fence or invocation-shaped in prose, every fan-out names its "
+            "crew role, read-only write-capable seats are briefed"
         )
+
+
+def check_crew(path: Path) -> None:
+    rel = f"crew/{path.name}"
+    before = len(failures)
+    lines = path.read_text(encoding="utf-8").split("\n")
+    start = _body_start(lines)
+    check_no_inline_body(rel, lines, start)
+    if len(failures) == before:
+        ok(f"{rel}: no inline --body in a shell fence or invocation-shaped in prose")
 
 
 def main() -> int:
@@ -584,6 +755,14 @@ def main() -> int:
         check_command(path)
     if len(failures) == before:
         ok(f"commands/: {len(files)} command files, each valid")
+
+    if CREW.is_dir():
+        crew_files = sorted(CREW.glob("*.md"))
+        before = len(failures)
+        for path in crew_files:
+            check_crew(path)
+        if len(failures) == before:
+            ok(f"crew/: {len(crew_files)} role files, --body scan clean")
     return report()
 
 
