@@ -29,7 +29,7 @@ pub struct ReceiptFile {
 
 impl ReceiptFile {
     /// Build an entry from a file below `target_dir`, hashing its raw bytes.
-    pub fn from_target_file(target_dir: &Path, path: &Path) -> Result<Self> {
+    pub(crate) fn from_target_file(target_dir: &Path, path: &Path) -> Result<Self> {
         let relative = path.strip_prefix(target_dir).with_context(|| {
             format!(
                 "receipt file {} is outside target {}",
@@ -172,7 +172,7 @@ impl ReceiptRepository {
         }
     }
 
-    pub fn target_dir(&self) -> &Path {
+    pub(crate) fn target_dir(&self) -> &Path {
         &self.target_dir
     }
 
@@ -272,7 +272,7 @@ impl ReceiptRepository {
         Ok(receipts)
     }
 
-    pub fn all(&self) -> Result<Vec<InstallReceipt>> {
+    pub(crate) fn all(&self) -> Result<Vec<InstallReceipt>> {
         self.load_all()
     }
 
@@ -287,11 +287,11 @@ impl ReceiptRepository {
             .collect())
     }
 
-    pub fn claims(&self, path: &Path) -> Result<Vec<String>> {
+    pub(crate) fn claims(&self, path: &Path) -> Result<Vec<String>> {
         self.claims_for_path(path)
     }
 
-    pub fn path_claims(&self, path: &Path) -> Result<Vec<String>> {
+    pub(crate) fn path_claims(&self, path: &Path) -> Result<Vec<String>> {
         self.claims_for_path(path)
     }
 
@@ -299,7 +299,7 @@ impl ReceiptRepository {
         Ok(!self.claims_for_path(path)?.is_empty())
     }
 
-    pub fn is_claimed_by_other(&self, path: &Path, harness: &str) -> Result<bool> {
+    pub(crate) fn is_claimed_by_other(&self, path: &Path, harness: &str) -> Result<bool> {
         validate_harness(harness)?;
         Ok(self
             .claims_for_path(path)?
@@ -308,9 +308,9 @@ impl ReceiptRepository {
     }
 }
 
-pub type ManifestDb = ReceiptRepository;
-pub type Manifest = InstallReceipt;
-pub type ManifestEntry = ReceiptFile;
+pub(crate) type ManifestDb = ReceiptRepository;
+pub(crate) type Manifest = InstallReceipt;
+pub(crate) type ManifestEntry = ReceiptFile;
 
 /// Resolve one target-relative path without traversing symlinks.
 ///

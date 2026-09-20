@@ -142,8 +142,8 @@
         <p class="order-process__lead">The writer assembles notes from what actually merged. SRE checks rollback and migration safety before anything is tagged. Publish is opt-in.</p>
         <ol class="order-process__list" role="list">
           <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Since last tag</h3><p class="order-process__line">Collect every merged PR and commit since the last release.</p><p class="order-process__crew order-process__crew--solo">No specialist — the run reads git history.</p></div></li>
-          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Notes + bump</h3><p class="order-process__line">Write the changelog from that history and move the version files together.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a></p></div></div></div></li>
-          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Gate</h3><p class="order-process__line">CI must be green on the exact commit you will tag. SRE checks rollback and migration safety.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/site-reliability-engineer/"><code>site-reliability-engineer</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Notes + bump</h3><p class="order-process__line">Write the changelog from that history and move the version files together.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip command-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a></p></div></div></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Gate</h3><p class="order-process__line">CI must be green on the exact commit you will tag. SRE checks rollback and migration safety.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Crew</p><p class="order-process__chips"><a class="chip command-stage__crew-item order-process__chip" href="../../agents/site-reliability-engineer/"><code>site-reliability-engineer</code></a></p></div></div></div></li>
           <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">Ship</h3><p class="order-process__line">Tag it. Publish a GitHub release only when you opt in.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — tag and optional publish.</p></div></li>
         </ol>
       </div>
@@ -161,7 +161,7 @@
       </div>
     </section>
 
-    <section class="section order-source" id="source" aria-labelledby="source-title">
+    <section class="section command-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="source-title">The skill</h2>
@@ -179,25 +179,25 @@
         <div class="section__head">
           <h2 class="section__title" id="other-commands-title">Other commands</h2>
         </div>
-        <nav class="order-siblings" aria-label="Other commands">
-          <ul class="order-siblings__list" role="list">
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-issue/"><code>/shipmates-issue</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-epic/"><code>/shipmates-epic</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-fix-bug/"><code>/shipmates-fix-bug</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-report-bug/"><code>/shipmates-report-bug</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-plan-epics/"><code>/shipmates-plan-epics</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-consolidate-issues/"><code>/shipmates-consolidate-issues</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-harden/"><code>/shipmates-harden</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-spike/"><code>/shipmates-spike</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-migrate/"><code>/shipmates-migrate</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-document/"><code>/shipmates-document</code></a></li>
-            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/shipmates-release</code><span class="visually-hidden"> (current page)</span></span></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-polish/"><code>/shipmates-polish</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-pr-review/"><code>/shipmates-pr-review</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-qa/"><code>/ship-qa</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-onboard/"><code>/shipmates-onboard</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-refactor/"><code>/shipmates-refactor</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-deslop/"><code>/ship-deslop</code></a></li>
+        <nav class="command-siblings" aria-label="Other commands">
+          <ul class="command-siblings__list" role="list">
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-issue/"><code>/shipmates-issue</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-epic/"><code>/shipmates-epic</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-fix-bug/"><code>/shipmates-fix-bug</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-report-bug/"><code>/shipmates-report-bug</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-plan-epics/"><code>/shipmates-plan-epics</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-consolidate-issues/"><code>/shipmates-consolidate-issues</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-harden/"><code>/shipmates-harden</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-spike/"><code>/shipmates-spike</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-migrate/"><code>/shipmates-migrate</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-document/"><code>/shipmates-document</code></a></li>
+            <li class="command-siblings__item"><span class="command-siblings__link command-siblings__link--current" aria-current="page"><code>/shipmates-release</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-polish/"><code>/shipmates-polish</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-pr-review/"><code>/shipmates-pr-review</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../ship-qa/"><code>/ship-qa</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-onboard/"><code>/shipmates-onboard</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-refactor/"><code>/shipmates-refactor</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../ship-deslop/"><code>/ship-deslop</code></a></li>
           </ul>
         </nav>
         <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>

@@ -174,13 +174,13 @@ C3_CLASSES = (
     "order-process__chips", "order-process__crew-label",
     "order-process__band", "order-process__also",
     "order-process__when", "order-process__when-item", "order-process__when-text",
-    "order-stage__crew", "order-stage__crew-item",
+    "command-stage__crew", "command-stage__crew-item",
     "order-prose", "order-code", "order-table",
-    "order-source",
+    "command-source",
     "demo", "demo__media", "demo__toggle", "demo__caption",
-    "order-siblings", "order-siblings__list", "order-siblings__item",
-    "order-siblings__link", "order-siblings__link--current",
-    "order-card__link", "order-card__more",
+    "command-siblings", "command-siblings__list", "command-siblings__item",
+    "command-siblings__link", "command-siblings__link--current",
+    "command-card__link", "command-card__more",
     "agent-scenarios", "agent-scenario", "agent-scenario__title",
     "agent-scenario__desc",
     "agent-ref",
@@ -519,17 +519,17 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
     # --- component counts (acceptance criteria) ---
     counts = {
         "crew-card": (len(re.findall(r'class="crew-card(?:\s|")', page.html)), len(crew_roles())),
-        "order-card": (len(re.findall(r'class="order-card(?:\s|")', page.html)), n_commands),
-        "order-card--flagship": (page.html.count("order-card--flagship"), 1),
+        "command-card": (len(re.findall(r'class="command-card(?:\s|")', page.html)), n_commands),
+        "command-card--flagship": (page.html.count("command-card--flagship"), 1),
         "how-step": (len(re.findall(r'class="how-step"', page.html)), 8),
         "faq__item": (len(re.findall(r'class="faq__item"', page.html)), 7),
     }
     for name, (got, want) in counts.items():
         if got == want:
             ok(f"{page.rel}: {name}: {got}")
-        elif name == "order-card":
+        elif name == "command-card":
             fail(
-                f"{page.rel}: order-card: expected {want} (one per skills/*/SKILL.md), found {got} — "
+                f"{page.rel}: command-card: expected {want} (one per skills/*/SKILL.md), found {got} — "
                 f"add or remove the card, then {REGEN_HINT}"
             )
         else:
@@ -537,14 +537,14 @@ def check_homepage(page: Page, css: str, n_commands: int) -> None:
 
     # --- every card actually links to its detail page ---
     # Counted from the parsed class list so an extra class on the element
-    # (e.g. class="btn order-card__link") cannot silently pass.
-    n_cards = counts["order-card"][0]
-    n_links = page.collector.classes.count("order-card__link")
+    # (e.g. class="btn command-card__link") cannot silently pass.
+    n_cards = counts["command-card"][0]
+    n_links = page.collector.classes.count("command-card__link")
     if n_links == n_cards == n_commands:
-        ok(f"{page.rel}: order-card__link: {n_links} (one per card)")
+        ok(f"{page.rel}: command-card__link: {n_links} (one per card)")
     else:
         fail(
-            f"{page.rel}: order-card__link: found {n_links}, expected one per order-card "
+            f"{page.rel}: command-card__link: found {n_links}, expected one per command-card "
             f"({n_cards}) and one per skills/*/SKILL.md ({n_commands}) — a card with no link "
             "strands its detail page"
         )
@@ -848,8 +848,8 @@ def _needles(raw: str, in_fence: bool, agents: list[str]) -> list[str]:
 
     A stage heading is checked piecewise, not contiguously, because the
     renderer deliberately relocates two of its parts: the ⛔ gate text moves
-    into .order-stage__gate and the trailing crew parenthetical into
-    .order-stage__crew — itself split further into chips plus qualifier, see
+    into .command-stage__gate and the trailing crew parenthetical into
+    .command-stage__crew — itself split further into chips plus qualifier, see
     _crew_annotation_needles.
     """
     if in_fence:

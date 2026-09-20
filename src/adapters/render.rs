@@ -126,7 +126,7 @@ pub fn render_body(text: &str, d: &Dialect) -> String {
 
 /// Render a role body through the same neutral-to-harness rules as commands,
 /// including the stable return preamble shared by every subagent.
-pub fn render_role_body(text: &str, d: &Dialect) -> String {
+pub(crate) fn render_role_body(text: &str, d: &Dialect) -> String {
     render_body(text, d)
 }
 

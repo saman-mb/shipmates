@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.4] - 2026-09-21
+
+### Fixed
+
+- **FAQ questions are headings again.** Each `<summary>` wraps an `<h3>`, so the
+  page outline no longer drops a level inside the FAQ disclosure (#122).
+
+### Changed
+
+- **Homepage and command-page CSS classes use `command-*`, not `order-*`, for the
+  workflow card/stage/sibling/source blocks.** Markup, generator, and site
+  validator stay in lockstep (#90).
+- **Library surface narrowed.** Unused `pub` items from the dual-compile cleanup
+  are `pub(crate)` (or already crate-private), so they are not accidental semver
+  commitments (#503).
+
 ## [0.10.3] - 2026-09-21
 
 ### Added

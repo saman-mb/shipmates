@@ -142,7 +142,7 @@
         <ol class="order-process__list" role="list">
           <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Capture</h3><p class="order-process__line">Record what broke, which harness, which command, and the expected vs observed result.</p><p class="order-process__crew order-process__crew--solo">No specialist — the run harvests context from the session.</p></div></li>
           <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Dedupe</h3><p class="order-process__line">Search existing upstream issues so a duplicate is a comment, not a new ticket.</p><p class="order-process__crew order-process__crew--solo">Still the run — no spawn until the draft.</p></div></li>
-          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Draft</h3><p class="order-process__line">Shape a title and body a maintainer can act on.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip order-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a><span class="order-process__when-text">the report cites command-spec behaviour</span></li></ul></div></div></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Draft</h3><p class="order-process__line">Shape a title and body a maintainer can act on.</p><div class="order-process__crew"><div class="order-process__band"><p class="order-process__crew-label">Always</p><p class="order-process__chips"><a class="chip command-stage__crew-item order-process__chip" href="../../agents/product-manager/"><code>product-manager</code></a></p></div><div class="order-process__also"><p class="order-process__crew-label">Also sit when</p><ul class="order-process__when"><li class="order-process__when-item"><a class="chip command-stage__crew-item order-process__chip" href="../../agents/technical-writer/"><code>technical-writer</code></a><span class="order-process__when-text">the report cites command-spec behaviour</span></li></ul></div></div></div></li>
           <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">File</h3><p class="order-process__line">Preview first; create the GitHub issue only when you say apply.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — you confirm, then it files.</p></div></li>
         </ol>
       </div>
@@ -160,7 +160,7 @@
       </div>
     </section>
 
-    <section class="section order-source" id="source" aria-labelledby="source-title">
+    <section class="section command-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="source-title">The skill</h2>
@@ -178,25 +178,25 @@
         <div class="section__head">
           <h2 class="section__title" id="other-commands-title">Other commands</h2>
         </div>
-        <nav class="order-siblings" aria-label="Other commands">
-          <ul class="order-siblings__list" role="list">
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-issue/"><code>/shipmates-issue</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-epic/"><code>/shipmates-epic</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-fix-bug/"><code>/shipmates-fix-bug</code></a></li>
-            <li class="order-siblings__item"><span class="order-siblings__link order-siblings__link--current" aria-current="page"><code>/shipmates-report-bug</code><span class="visually-hidden"> (current page)</span></span></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-plan-epics/"><code>/shipmates-plan-epics</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-consolidate-issues/"><code>/shipmates-consolidate-issues</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-harden/"><code>/shipmates-harden</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-spike/"><code>/shipmates-spike</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-migrate/"><code>/shipmates-migrate</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-document/"><code>/shipmates-document</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-release/"><code>/shipmates-release</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-polish/"><code>/shipmates-polish</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-pr-review/"><code>/shipmates-pr-review</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-qa/"><code>/ship-qa</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-onboard/"><code>/shipmates-onboard</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../shipmates-refactor/"><code>/shipmates-refactor</code></a></li>
-            <li class="order-siblings__item"><a class="order-siblings__link" href="../ship-deslop/"><code>/ship-deslop</code></a></li>
+        <nav class="command-siblings" aria-label="Other commands">
+          <ul class="command-siblings__list" role="list">
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-issue/"><code>/shipmates-issue</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-epic/"><code>/shipmates-epic</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-fix-bug/"><code>/shipmates-fix-bug</code></a></li>
+            <li class="command-siblings__item"><span class="command-siblings__link command-siblings__link--current" aria-current="page"><code>/shipmates-report-bug</code><span class="visually-hidden"> (current page)</span></span></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-plan-epics/"><code>/shipmates-plan-epics</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-consolidate-issues/"><code>/shipmates-consolidate-issues</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-harden/"><code>/shipmates-harden</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-spike/"><code>/shipmates-spike</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-migrate/"><code>/shipmates-migrate</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-document/"><code>/shipmates-document</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-release/"><code>/shipmates-release</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-polish/"><code>/shipmates-polish</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-pr-review/"><code>/shipmates-pr-review</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../ship-qa/"><code>/ship-qa</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-onboard/"><code>/shipmates-onboard</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../shipmates-refactor/"><code>/shipmates-refactor</code></a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../ship-deslop/"><code>/ship-deslop</code></a></li>
           </ul>
         </nav>
         <a class="order-back" href="../../#commands"><span aria-hidden="true">←</span> All commands</a>

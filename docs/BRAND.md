@@ -52,7 +52,7 @@ delegation) land in one read.
 | **captain** | the user — you decide, you approve, you merge | README: "You stay the captain." |
 | **crew** / **shipmates** | the 13 subagents, authored in `crew/*.md` | README "Meet the crew"; site `#crew`; `crew-card` components |
 | **shipmate** | a single subagent role | README crew table column header |
-| **command** | one of the 17 workflows, authored in `commands/*.md`, as the captain issues it | README "The commands"; site `#commands`; `order-card` components |
+| **command** | one of the 17 workflows, authored in `commands/*.md`, as the captain issues it | README "The commands"; site `#commands`; `command-card` components |
 | **order** | what one subagent is told to do *inside* a command | Nowhere yet — reserved for per-subagent copy; see [The narrow sense of "order"](#the-narrow-sense-of-order) |
 | **voyage** | one end-to-end run of a command | README + site "How the voyage works" |
 | **come aboard** | installing Shipmates | README + site "Come aboard" / "Get the crew aboard" |
@@ -180,7 +180,7 @@ equivalent — use those in brand-leading copy, `subagent` in tech-leading copy.
 
 A find-and-replace across the repo will produce "install the commands" and "the /shipmates-issue skill
 takes a GitHub issue" in the same document. Both are wrong. It will also rewrite the English word
-— "the stages, in order", "in order to act", the `order-card` CSS class — which is a different word
+— "the stages, in order", "in order to act", the `command-card` CSS class — which is a different word
 that happens to be spelled the same. Read every hit.
 
 ### Do / don't

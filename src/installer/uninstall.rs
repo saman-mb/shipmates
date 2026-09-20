@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct LocatedReceipt {
-    pub path: PathBuf,
+    pub(crate) path: PathBuf,
     pub receipt: InstallReceipt,
 }
 
@@ -89,7 +89,7 @@ pub fn select_receipt(target_dir: &Path, harness: Option<&str>) -> Result<Option
 /// still belong to the current harness payload. Other valid receipts claim
 /// shared paths; those paths remain. Receipt entries from an older payload are
 /// preserved with a warning rather than treated as deletion authority.
-pub fn uninstall(target_dir: &Path, selected: LocatedReceipt) -> Result<UninstallReport> {
+pub(crate) fn uninstall(target_dir: &Path, selected: LocatedReceipt) -> Result<UninstallReport> {
     let known_payload = current_payload(&selected.receipt.harness)?;
     uninstall_with_payload(target_dir, selected, &known_payload)
 }

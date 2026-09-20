@@ -3471,7 +3471,7 @@ def _render_stage_crew(st: Stage, src: str) -> str:
         return ""
     bits = ["Crew:"]
     bits.extend(
-        f'<span class="chip order-stage__crew-item"><code>{esc(name)}</code></span>'
+        f'<span class="chip command-stage__crew-item"><code>{esc(name)}</code></span>'
         for name in st.crew
     )
     if st.annotation:
@@ -3481,23 +3481,23 @@ def _render_stage_crew(st: Stage, src: str) -> str:
                 bits.append(render_inline(f"({residue})", src, st.lineno))
         else:
             bits.append(render_inline(st.annotation, src, st.lineno))
-    return '  <p class="order-stage__crew">' + " ".join(bits) + "</p>"
+    return '  <p class="command-stage__crew">' + " ".join(bits) + "</p>"
 
 
 def render_stage(st: Stage, src: str, *, summary: str = "") -> str:
     """One-line process step — no skill body, no accordion."""
     line = summary or plain_inline(st.title)
     parts = [
-        f'<li class="order-stage" id="{esc(st.anchor)}">',
-        f'  <span class="order-stage__num" aria-hidden="true">{esc(st.label)}</span>',
-        '  <div class="order-stage__main">',
-        f'    <h3 class="order-stage__title"><span class="visually-hidden">Stage '
+        f'<li class="command-stage" id="{esc(st.anchor)}">',
+        f'  <span class="command-stage__num" aria-hidden="true">{esc(st.label)}</span>',
+        '  <div class="command-stage__main">',
+        f'    <h3 class="command-stage__title"><span class="visually-hidden">Stage '
         f'{esc(st.label)} — {render_inline(st.title, src, st.lineno)}</span>'
-        f'<span class="order-stage__summary-text">{esc(line)}</span></h3>',
+        f'<span class="command-stage__summary-text">{esc(line)}</span></h3>',
     ]
     if st.gate:
         parts.append(
-            '    <p class="order-stage__gate"><span class="visually-hidden">Gate. </span>'
+            '    <p class="command-stage__gate"><span class="visually-hidden">Gate. </span>'
             "Hard gate — the run stops here until this step passes.</p>"
         )
     parts.extend(["  </div>", "</li>"])
@@ -3587,7 +3587,7 @@ def render_when_to_use(copy: CommandPageCopy) -> str:
 def _crew_chip(name: str) -> str:
     href = link(f"../../agents/{name}/")
     return (
-        f'<a class="chip order-stage__crew-item order-process__chip" href="{href}">'
+        f'<a class="chip command-stage__crew-item order-process__chip" href="{href}">'
         f"<code>{esc(name)}</code></a>"
     )
 
@@ -3673,7 +3673,7 @@ def render_section(section, section_id: str, src: str):
 
 def render_source(cmd: Command, ctx: PageContext) -> str:
     blob = ctx.repo_blob_base + cmd.source_path
-    return f"""    <section class="section order-source" id="source" aria-labelledby="source-title">
+    return f"""    <section class="section command-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="source-title">The skill</h2>
@@ -3693,24 +3693,24 @@ def render_siblings(cmd: Command, all_cmds: tuple) -> str:
         name = f"<code>/{esc(other.slug)}</code>"
         if other.slug == cmd.slug:
             inner = (
-                '<span class="order-siblings__link order-siblings__link--current" '
+                '<span class="command-siblings__link command-siblings__link--current" '
                 f'aria-current="page">{name}'
                 '<span class="visually-hidden"> (current page)</span></span>'
             )
         else:
             inner = (
-                f'<a class="order-siblings__link" href="{link("../" + other.slug + "/")}">'
+                f'<a class="command-siblings__link" href="{link("../" + other.slug + "/")}">'
                 f"{name}</a>"
             )
-        items.append(f'            <li class="order-siblings__item">{inner}</li>')
+        items.append(f'            <li class="command-siblings__item">{inner}</li>')
     listing = "\n".join(items)
     return f"""    <section class="section" id="other-commands" aria-labelledby="other-commands-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="other-commands-title">Other commands</h2>
         </div>
-        <nav class="order-siblings" aria-label="Other commands">
-          <ul class="order-siblings__list" role="list">
+        <nav class="command-siblings" aria-label="Other commands">
+          <ul class="command-siblings__list" role="list">
 {listing}
           </ul>
         </nav>
@@ -3852,19 +3852,19 @@ def render_agent_checks(agent: Agent) -> str:
 
 def render_agent_crew_fit(agent: Agent) -> str:
     related = " ".join(
-        f'<a class="chip order-stage__crew-item" href="{link("../" + role + "/")}">'
+        f'<a class="chip command-stage__crew-item" href="{link("../" + role + "/")}">'
         f"<code>{esc(role)}</code></a>"
         for role in agent.crew_fit.related
     )
     called = " ".join(
-        f'<a class="chip order-stage__crew-item" href="{link("../../commands/" + slug + "/")}">'
+        f'<a class="chip command-stage__crew-item" href="{link("../../commands/" + slug + "/")}">'
         f"<code>/{esc(slug)}</code></a>"
         for slug in agent.called_by
     )
     inner = (
         _copy_prose(agent.crew_fit.paragraphs, "        ")
-        + f'\n        <p class="order-stage__crew">Related roles: {related}</p>'
-        + f'\n        <p class="order-stage__crew">Called in by: {called}</p>'
+        + f'\n        <p class="command-stage__crew">Related roles: {related}</p>'
+        + f'\n        <p class="command-stage__crew">Called in by: {called}</p>'
     )
     return _agent_section("crew-fit", "How it fits the crew", inner)
 
@@ -3884,7 +3884,7 @@ def render_agent_reference(agent: Agent) -> str:
 
 def render_agent_source(agent: Agent, ctx: PageContext) -> str:
     blob = ctx.repo_blob_base + agent.source_path
-    return f"""    <section class="section order-source" id="source" aria-labelledby="source-title">
+    return f"""    <section class="section command-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="source-title">Where this lives</h2>
@@ -3904,24 +3904,24 @@ def render_agent_siblings(agent: Agent, all_agents: tuple) -> str:
         name = f"<code>{esc(other.name)}</code>"
         if other.slug == agent.slug:
             inner = (
-                '<span class="order-siblings__link order-siblings__link--current" '
+                '<span class="command-siblings__link command-siblings__link--current" '
                 f'aria-current="page">{name}'
                 '<span class="visually-hidden"> (current page)</span></span>'
             )
         else:
             inner = (
-                f'<a class="order-siblings__link" href="{link("../" + other.slug + "/")}">'
+                f'<a class="command-siblings__link" href="{link("../" + other.slug + "/")}">'
                 f"{name}</a>"
             )
-        items.append(f'            <li class="order-siblings__item">{inner}</li>')
+        items.append(f'            <li class="command-siblings__item">{inner}</li>')
     listing = "\n".join(items)
     return f"""    <section class="section" id="other-agents" aria-labelledby="other-agents-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="other-agents-title">Other agents</h2>
         </div>
-        <nav class="order-siblings" aria-label="Other agents">
-          <ul class="order-siblings__list" role="list">
+        <nav class="command-siblings" aria-label="Other agents">
+          <ul class="command-siblings__list" role="list">
 {listing}
           </ul>
         </nav>
@@ -4100,7 +4100,7 @@ def render_tool_reference(tool: Tool) -> str:
 
 def render_tool_source(tool: Tool, ctx: PageContext) -> str:
     blob = ctx.repo_blob_base + tool.source_path
-    return f"""    <section class="section order-source" id="source" aria-labelledby="source-title">
+    return f"""    <section class="section command-source" id="source" aria-labelledby="source-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="source-title">Where this lives</h2>
@@ -4120,24 +4120,24 @@ def render_tool_siblings(tool: Tool, all_tools: tuple) -> str:
         name = f"<code>{esc(other.name)}</code>"
         if other.slug == tool.slug:
             inner = (
-                '<span class="order-siblings__link order-siblings__link--current" '
+                '<span class="command-siblings__link command-siblings__link--current" '
                 f'aria-current="page">{name}'
                 '<span class="visually-hidden"> (current page)</span></span>'
             )
         else:
             inner = (
-                f'<a class="order-siblings__link" href="{link("../" + other.slug + "/")}">'
+                f'<a class="command-siblings__link" href="{link("../" + other.slug + "/")}">'
                 f"{name}</a>"
             )
-        items.append(f'            <li class="order-siblings__item">{inner}</li>')
+        items.append(f'            <li class="command-siblings__item">{inner}</li>')
     listing = "\n".join(items)
     return f"""    <section class="section" id="other-tools" aria-labelledby="other-tools-title">
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="other-tools-title">Other tools</h2>
         </div>
-        <nav class="order-siblings" aria-label="Other tools">
-          <ul class="order-siblings__list" role="list">
+        <nav class="command-siblings" aria-label="Other tools">
+          <ul class="command-siblings__list" role="list">
 {listing}
           </ul>
         </nav>
