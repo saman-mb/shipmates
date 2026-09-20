@@ -89,6 +89,26 @@ prominently in the report.
 Migrating means rewriting to the project's current shape — never inventing new scope. If a
 migration would silently change the meaning, keep it and flag it for the user instead.
 
+**When a migration creates a parent and its children, attach the graph with `gh`.** An issue that
+should become an epic with stories (or a story that should join an existing epic) is only migrated
+when the parent/child relationship exists as a GitHub fact — a body mention is a mention, and an epic
+checklist is display, not linkage. After creating each epic and story with `gh issue create` and
+validating every captured number against `^[0-9]+$`, attach every child explicitly:
+
+```bash
+gh issue edit <epic> --add-sub-issue <story>
+```
+
+Several children may be attached in one call as a comma-separated list. Read the parent's current
+children first (`gh issue view <epic> --json subIssues`; child numbers live at
+`subIssues.nodes[].number` — `subIssues` is a connection object, not a list) and skip any already
+attached, so a re-run adds nothing twice. Then verify by re-fetching `gh issue view <epic> --json
+subIssues,subIssuesSummary` and confirming the child numbers are exactly the stories created — a
+missing child means the attach did not land: retry it **once**, re-verify, then report the gap. If
+the host has no sub-issue mechanic (the flag is rejected), fall back to the epic checklist plus
+`Part of #<epic>` back-references and say in the report that the graph is missing — never fake it.
+`/ship-plan-epics` Stage 3 owns the full filing sequence; mirror it here.
+
 ## Stage 4 — Bundle the survivors  (ONE `product-manager`, parallel by area)
 
 Group every `keep` issue into **bundles**: coherent themes, each sized for a single `/ship-issue`
