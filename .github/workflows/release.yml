@@ -12,6 +12,27 @@
 #
 # Note that the GitHub Release will be created with a generated
 # title/body based on your changelogs.
+#
+# ---------------------------------------------------------------------------
+# RELEASE PIPELINE GATES (issue-499)
+# A path-filter gate skips expensive work when only docs/site/tests change.
+#
+# binary-affected — true when ANY path that changes the compiled binary or
+# release configuration changed:
+#   src/*, Cargo.toml, Cargo.lock, build.rs, crew/*, commands/*, toolbox/*,
+#   docs/COST.md, steering/*, dist-workspace.toml
+#
+# Test scenarios:
+#   site/index.html only     → binary-affected=false → skip build, e2e, publish
+#   docs/BRAND.md only       → binary-affected=false → skip build, e2e, publish
+#   crew/architect.md only   → binary-affected=true  → build + publish
+#   src/main.rs only         → binary-affected=true  → build + publish
+#   Empty diff               → binary-affected=false → skip build, e2e, publish
+#   First push / force-push  → binary-affected=true  → fail-open, full pipeline
+#
+# NOTE: Any new include_str! references in Rust source that resolve outside
+# the above list must be added to the case statement in the `resolve` step.
+# ---------------------------------------------------------------------------
 
 name: Release
 permissions:
@@ -39,6 +60,7 @@ jobs:
       tag: ${{ steps.resolve.outputs.tag }}
       tag-flag: ${{ steps.resolve.outputs.tag-flag }}
       publishing: ${{ steps.resolve.outputs.publishing }}
+      binary-affected: ${{ steps.resolve.outputs.binary-affected }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -51,62 +73,25 @@ jobs:
       # publishes only when that release does not exist yet — auto-release on
       # version bump, no-op otherwise.
       - id: resolve
-        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            TAG=""
-            FLAG=""
-            PUBLISH="false"
-          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
-            TAG="${{ github.ref_name }}"
-            FLAG="--tag=${TAG} --force-tag"
-            PUBLISH="true"
-          else
-            VERSION="$(grep -m1 '^version' Cargo.toml | sed 's/.*= *"\(.*\)"/\1/')"
-            TAG="v${VERSION}"
-            if gh release view "${TAG}" >/dev/null 2>&1; then
-              FLAG=""
-              PUBLISH="false"
-            else
-              FLAG="--tag=${TAG} --force-tag"
-              PUBLISH="true"
-            fi
-          fi
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "tag-flag=${FLAG}" >> "$GITHUB_OUTPUT"
-          echo "publishing=${PUBLISH}" >> "$GITHUB_OUTPUT"
-          echo "resolved tag=${TAG:-<none>} publishing=${PUBLISH}"
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: bash .github/scripts/resolve-release.sh
       - name: Install dist
-        # we specify bash to get pipefail, and the script sets `set -euo pipefail`
-        # itself, so a failed `curl` or a failing checksum aborts the step instead
-        # of being masked
-        shell: bash
         env:
           DIST_VERSION: "0.32.0"
           DIST_TARGET: "x86_64-unknown-linux-gnu"
-        run: |
-          set -euo pipefail
-          base="https://github.com/axodotdev/cargo-dist/releases/download/v${DIST_VERSION}"
-          asset="cargo-dist-${DIST_TARGET}.tar.xz"
-          curl --proto '=https' --tlsv1.2 -LsSf -o "$asset" "${base}/${asset}"
-          curl --proto '=https' --tlsv1.2 -LsSf -o "${asset}.sha256" "${base}/${asset}.sha256"
-          sha256sum -c "${asset}.sha256"
-          tar -xJf "$asset"
-          mkdir -p "$HOME/.cargo/bin"
-          install -m755 "cargo-dist-${DIST_TARGET}/dist" "$HOME/.cargo/bin/dist"
+        run: bash .github/scripts/install-dist-verified.sh
       - name: Cache dist
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: cargo-dist-cache
           path: ~/.cargo/bin/dist
       - id: plan
-        run: |
-          dist ${{ (steps.resolve.outputs.publishing == 'true' && format('host --steps=create --tag={0} --force-tag', steps.resolve.outputs.tag)) || 'plan' }} --output-format=json > plan-dist-manifest.json
-          echo "dist ran successfully"
-          cat plan-dist-manifest.json
-          echo "manifest=$(jq -c "." plan-dist-manifest.json)" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
+          PUBLISHING: ${{ steps.resolve.outputs.publishing }}
+        run: bash .github/scripts/dist-plan.sh
       - name: "Upload dist-manifest.json"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -119,7 +104,7 @@ jobs:
     # Let the initial task tell us to not run (currently very blunt)
     needs:
       - plan
-    if: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix.include != null && (needs.plan.outputs.publishing == 'true' || fromJson(needs.plan.outputs.val).ci.github.pr_run_mode == 'upload') }}
+    if: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix.include != null && (needs.plan.outputs.publishing == 'true' || fromJson(needs.plan.outputs.val).ci.github.pr_run_mode == 'upload') && needs.plan.outputs.binary-affected == 'true' }}
     strategy:
       fail-fast: false
       # Target platforms/runners are computed by dist in create-release.
@@ -140,23 +125,21 @@ jobs:
       BUILD_MANIFEST_NAME: target/distrib/${{ join(matrix.targets, '-') }}-dist-manifest.json
     steps:
       - name: enable windows longpaths
-        run: |
-          git config --global core.longpaths true
+        run: bash .github/scripts/enable-windows-longpaths.sh
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
           submodules: recursive
       - name: Install Rust non-interactively if not already installed
         if: ${{ matrix.container }}
-        run: |
-          if ! command -v cargo > /dev/null 2>&1; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          fi
+        run: bash .github/scripts/install-rust-noninteractive.sh
       - uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           key: ${{ join(matrix.targets, '-') }}
           cache-provider: ${{ matrix.cache_provider }}
+      # Matrix-supplied and shell-specific (sh on Unix, pwsh on Windows). It comes
+      # from cargo-dist's plan output, not this repo, so it stays inline — a bash
+      # script here would be unrunnable on the windows-msvc runner.
       - name: Install dist
         run: ${{ matrix.install_dist.run }}
       # Get the dist-manifest
@@ -166,27 +149,18 @@ jobs:
           pattern: artifacts-*
           path: target/distrib/
           merge-multiple: true
+      # Same contract as `Install dist` above: matrix-supplied, shell-specific.
       - name: Install dependencies
         run: |
           ${{ matrix.packages_install }}
       - name: Build artifacts
-        run: |
-          # Actually do builds and make zips and whatnot
-          dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
-          echo "dist ran successfully"
+        env:
+          TAG_FLAG: ${{ needs.plan.outputs.tag-flag }}
+          DIST_ARGS: ${{ matrix.dist_args }}
+        run: bash .github/scripts/build-dist-artifacts.sh
       - id: cargo-dist
         name: Post-build
-        # We force bash here just because github makes it really hard to get values up
-        # to "real" actions without writing to env-vars, and writing to env-vars has
-        # inconsistent syntax between shell and powershell.
-        shell: bash
-        run: |
-          # Parse out what we just built and upload it to scratch storage
-          echo "paths<<EOF" >> "$GITHUB_OUTPUT"
-          dist print-upload-files-from-manifest --manifest dist-manifest.json >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-          cp dist-manifest.json "$BUILD_MANIFEST_NAME"
+        run: bash .github/scripts/post-build-dist.sh
       - name: "Upload artifacts"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -200,6 +174,7 @@ jobs:
     needs:
       - plan
       - build-local-artifacts
+    if: ${{ needs.plan.outputs.binary-affected == 'true' }}
     runs-on: "ubuntu-22.04"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -223,17 +198,9 @@ jobs:
           path: target/distrib/
           merge-multiple: true
       - id: cargo-dist
-        shell: bash
-        run: |
-          dist build ${{ needs.plan.outputs.tag-flag }} --output-format=json "--artifacts=global" > dist-manifest.json
-          echo "dist ran successfully"
-
-          # Parse out what we just built and upload it to scratch storage
-          echo "paths<<EOF" >> "$GITHUB_OUTPUT"
-          jq --raw-output ".upload_files[]" dist-manifest.json >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-          cp dist-manifest.json "$BUILD_MANIFEST_NAME"
+        env:
+          TAG_FLAG: ${{ needs.plan.outputs.tag-flag }}
+        run: bash .github/scripts/build-global-dist.sh
       - name: "Upload artifacts"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -246,7 +213,7 @@ jobs:
   e2e-cli:
     needs:
       - plan
-    if: ${{ needs.plan.outputs.publishing == 'true' }}
+    if: ${{ needs.plan.outputs.publishing == 'true' && needs.plan.outputs.binary-affected == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -267,7 +234,7 @@ jobs:
       - build-global-artifacts
       - e2e-cli
     # Only run if we're "publishing", and only if plan, local, global and e2e didn't fail (skipped is fine)
-    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.e2e-cli.result == 'skipped' || needs.e2e-cli.result == 'success') }}
+    if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && needs.plan.outputs.binary-affected == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') && (needs.e2e-cli.result == 'skipped' || needs.e2e-cli.result == 'success') }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: "ubuntu-22.04"
@@ -292,12 +259,9 @@ jobs:
           path: target/distrib/
           merge-multiple: true
       - id: host
-        shell: bash
-        run: |
-          dist host ${{ needs.plan.outputs.tag-flag }} --steps=upload --steps=release --output-format=json > dist-manifest.json
-          echo "artifacts uploaded and released successfully"
-          cat dist-manifest.json
-          echo "manifest=$(jq -c "." dist-manifest.json)" >> "$GITHUB_OUTPUT"
+        env:
+          TAG_FLAG: ${{ needs.plan.outputs.tag-flag }}
+        run: bash .github/scripts/host-release.sh
       - name: "Upload dist-manifest.json"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -312,20 +276,14 @@ jobs:
           path: artifacts
           merge-multiple: true
       - name: Cleanup
-        run: |
-          # Remove the granular manifests
-          rm -f artifacts/*-dist-manifest.json
+        run: bash .github/scripts/cleanup-artifacts.sh
       - name: Create GitHub Release
         env:
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
           PRERELEASE_FLAG: "${{ fromJson(steps.host.outputs.manifest).announcement_is_prerelease && '--prerelease' || '' }}"
           ANNOUNCEMENT_TITLE: "${{ fromJson(steps.host.outputs.manifest).announcement_title }}"
           ANNOUNCEMENT_BODY: "${{ fromJson(steps.host.outputs.manifest).announcement_github_body }}"
-          RELEASE_COMMIT: "${{ github.sha }}"
-        run: |
-          # Write and read notes from a file to avoid quoting breaking things
-          echo "$ANNOUNCEMENT_BODY" > $RUNNER_TEMP/notes.txt
-
-          gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+        run: bash .github/scripts/create-gh-release.sh
 
   publish-homebrew-formula:
     needs:
@@ -338,7 +296,7 @@ jobs:
       PLAN: ${{ needs.plan.outputs.val }}
       GITHUB_USER: "axo bot"
       GITHUB_EMAIL: "admin+bot@axo.dev"
-    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
+    if: ${{ needs.plan.outputs.binary-affected == 'true' && (!fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -355,31 +313,14 @@ jobs:
       # This is extra complex because you can make your Formula name not match your app name
       # so we need to find releases with a *.rb file, and publish with that filename.
       - name: Commit formula files
-        run: |
-          git config --global user.name "${GITHUB_USER}"
-          git config --global user.email "${GITHUB_EMAIL}"
-
-          for release in $(echo "$PLAN" | jq --compact-output '.releases[] | select([.artifacts[] | endswith(".rb")] | any)'); do
-            filename=$(echo "$release" | jq '.artifacts[] | select(endswith(".rb"))' --raw-output)
-            name=$(echo "$filename" | sed "s/\.rb$//")
-            version=$(echo "$release" | jq .app_version --raw-output)
-
-            export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
-            brew update
-            # We avoid reformatting user-provided data such as the app description and homepage.
-            brew style --except-cops FormulaAudit/Homepage,FormulaAudit/Desc,FormulaAuditStrict --fix "Formula/${filename}" || true
-
-            git add "Formula/${filename}"
-            git commit -m "${name} ${version}"
-          done
-          git push
+        run: bash .github/scripts/commit-homebrew-formula.sh
 
   custom-publish-cargo:
     needs:
       - plan
       - host
       - e2e-cli
-    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
+    if: ${{ needs.plan.outputs.binary-affected == 'true' && (!fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases) }}
     uses: ./.github/workflows/publish-cargo.yml
     with:
       plan: ${{ needs.plan.outputs.val }}

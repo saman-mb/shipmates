@@ -42,30 +42,9 @@ jobs:
         run: python3 tools/gen_command_pages.py --check
       # Gates every target payload against its reference digest
       - name: Check target payload digests
-        run: |
-          for target in claude-code opencode antigravity codex cursor github-copilot pi windsurf; do
-            cargo run -- check --target "$target"
-          done
+        run: bash .github/scripts/check-payload-digests.sh
       - name: Run opencode golden and embedded install-fidelity tests
-        run: |
-          cargo test --test integration -- --list | python3 -c '
-          import sys
-          expected = {
-              "test_opencode_cli_build_matches_golden_payload",
-              "test_opencode_embedded_install_fidelity",
-          }
-          found = {
-              line.split(":", 1)[0]
-              for line in sys.stdin
-              if line.rstrip().endswith(": test")
-          }
-          missing = expected - found
-          if missing:
-              print("missing tests:", *sorted(missing))
-              raise SystemExit(1)
-          '
-          cargo test --test integration test_opencode_cli_build_matches_golden_payload -- --exact --nocapture
-          cargo test --test integration test_opencode_embedded_install_fidelity -- --exact --nocapture
+        run: bash .github/scripts/check-opencode-tests.sh
       # Codex has a native TOML crew plus shared Agent Skills. This checks the
       # golden payload and installed layout only; it never invokes Codex.
       - name: Check Codex golden payload and layout-install smoke
@@ -79,16 +58,17 @@ jobs:
         run: python3 tools/harness_watch.py --offline
       - name: Run the skill-lint regression suite
         run: bash tests/test_validate_skills.sh
+      # actionlint shellchecks inline `run:` blocks; a script extracted to
+      # .github/scripts/ is outside its reach, so this is that gate.
+      - name: Lint the extracted workflow scripts
+        run: bash .github/scripts/lint-shell.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
         # Both are pinned: the artifacts are compared as pixels, and the pixels
         # come from Pillow's bundled freetype and this exact font version. An
         # unpinned bump would re-render every glyph and red-build an unrelated
         # PR. Bump these deliberately, regenerating the artifacts in the same
         # commit.
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y fonts-dejavu-core=2.37-8
-          pip install "Pillow==12.3.0"
+        run: bash .github/scripts/install-demo-deps.sh
       - name: Check demo GIF/poster artifacts are up to date
         run: python3 tools/gen_demo_gif.py --check
       - name: Check install (CLI) demo GIF/poster artifacts are up to date
@@ -108,13 +88,7 @@ jobs:
       - name: Test installer source resolution
         run: bash tests/test_resolve_src.sh
       - name: Check install.sh is executable (#100)
-        run: |
-          mode=$(git ls-files -s install.sh | awk '{print $1}')
-          if [ "$mode" != "100755" ]; then
-            echo "install.sh mode is $mode, expected 100755"
-            echo "Fix: git update-index --chmod=+x install.sh && git commit"
-            exit 1
-          fi
+        run: bash .github/scripts/check-install-perms.sh
 
   exporter-floor:
     name: Exporter on minimum environment
@@ -129,124 +103,28 @@ jobs:
       - name: Cache Rust build
         uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Build and check every target payload
-        run: |
-          for target in claude-code opencode antigravity codex cursor github-copilot pi windsurf; do
-            cargo run -- check --target "$target"
-            cargo run -- build --target "$target" --out "$RUNNER_TEMP/floor"
-          done
+        run: bash .github/scripts/build-check-all-targets.sh
       - name: Install end to end
-        run: |
-          cargo run -- install --harness claude-code --dir "$RUNNER_TEMP/install"
-          test -f "$RUNNER_TEMP/install/.claude/skills/ship-issue/SKILL.md"
-          test -f "$RUNNER_TEMP/install/.claude/agents/sdet.md"
+        run: bash .github/scripts/install-claude-e2e.sh
       - name: Install every harness at once (--harness all)
-        run: |
-          cargo run -- install --harness all --dir "$RUNNER_TEMP/install-all"
-          # crew-bearing target and a skill-only target both land under one root
-          test -f "$RUNNER_TEMP/install-all/.claude/agents/sdet.md"
-          test -f "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
-          # The four harnesses on the open tree share ONE .agents/skills rendering,
-          # so a multi-harness install must NOT collide: canonical prose names no
-          # harness-specific crew tree at all. It cannot — one shared file is
-          # rendered for four harnesses whose crews live in four different trees,
-          # so naming one is wrong for three of them (it was `.agents/agents/*.md`,
-          # correct only for antigravity). Assert absence, not shape.
-          ! grep -qE '\.(agents|codex|cursor|github|pi)/agents' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
-          grep -q 'shipped crew role' "$RUNNER_TEMP/install-all/.agents/skills/ship-issue/SKILL.md"
-          # cursor owns its own tree for slash discovery (#405); the other
-          # shared harnesses write no private skills tree.
-          test -d "$RUNNER_TEMP/install-all/.cursor/skills"
-          test ! -d "$RUNNER_TEMP/install-all/.codex/skills"
-          test ! -d "$RUNNER_TEMP/install-all/.github/skills"
+        run: bash .github/scripts/install-all-harnesses-e2e.sh
       # Tools ship by default; --with-tools selects subsets or opts out.
       - name: Install tools end to end (--with-tools)
-        run: |
-          # a plain install ships every bundled tool under shipmates-* (aliases still
-          # select the namespaced skill; old short names must not land as a second skill)
-          test -f "$RUNNER_TEMP/install/.claude/skills/shipmates-termgif/SKILL.md"
-          test -f "$RUNNER_TEMP/install/.claude/skills/shipmates-termgif/termgif.py"
-          grep -q "user-invocable: false" "$RUNNER_TEMP/install/.claude/skills/shipmates-termgif/SKILL.md"
-          test ! -e "$RUNNER_TEMP/install/.claude/skills/termgif"
-          # crew-only escape hatch
-          cargo run -- install --harness claude-code --with-tools none --dir "$RUNNER_TEMP/install-crew-only"
-          test ! -e "$RUNNER_TEMP/install-crew-only/.claude/skills/shipmates-termgif"
-          test ! -e "$RUNNER_TEMP/install-crew-only/.claude/skills/termgif"
-          cargo run -- install --harness claude-code --with-tools termgif --dir "$RUNNER_TEMP/install-tool"
-          test -f "$RUNNER_TEMP/install-tool/.claude/skills/shipmates-termgif/SKILL.md"
-          test -f "$RUNNER_TEMP/install-tool/.claude/skills/shipmates-termgif/termgif.py"
-          grep -q "user-invocable: false" "$RUNNER_TEMP/install-tool/.claude/skills/shipmates-termgif/SKILL.md"
-          test ! -e "$RUNNER_TEMP/install-tool/.claude/skills/termgif"
-          # a named tool that is not termgif also installs correctly (agent-only skill + its script)
-          cargo run -- install --harness claude-code --with-tools pixelart --dir "$RUNNER_TEMP/install-tool-px"
-          test -f "$RUNNER_TEMP/install-tool-px/.claude/skills/shipmates-pixelart/SKILL.md"
-          test -f "$RUNNER_TEMP/install-tool-px/.claude/skills/shipmates-pixelart/pixelart.py"
-          test ! -e "$RUNNER_TEMP/install-tool-px/.claude/skills/shipmates-termgif"   # only the requested tool
-          test ! -e "$RUNNER_TEMP/install-tool-px/.claude/skills/pixelart"
-          # comma-separated selection installs exactly those tools
-          cargo run -- install --harness claude-code --with-tools scrub,badge --dir "$RUNNER_TEMP/install-tool-multi"
-          test -d "$RUNNER_TEMP/install-tool-multi/.claude/skills/shipmates-scrub"
-          test -d "$RUNNER_TEMP/install-tool-multi/.claude/skills/shipmates-badge"
-          test ! -e "$RUNNER_TEMP/install-tool-multi/.claude/skills/shipmates-pixelart"
-          test ! -e "$RUNNER_TEMP/install-tool-multi/.claude/skills/scrub"
-          # opencode gets a native code tool per selected tool, not a skill.
-          # .ts is named after the skill; bundled .py keeps the original asset filename.
-          cargo run -- install --harness opencode --with-tools all --dir "$RUNNER_TEMP/install-tool-oc"
-          for t in shipmates-termgif shipmates-social-card shipmates-pixelart shipmates-diagram shipmates-svgflow shipmates-badge shipmates-sparkline shipmates-scrub shipmates-fixtures shipmates-domaincheck shipmates-gh; do
-            test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/$t.ts"
-          done
-          for script in termgif.py social_card.py pixelart.py diagram.py svgflow.py badge.py sparkline.py scrub.py fixtures.py domaincheck.py gh.py; do
-            test -f "$RUNNER_TEMP/install-tool-oc/.opencode/tools/$script"
-          done
-          test ! -d "$RUNNER_TEMP/install-tool-oc/.opencode/skills"
-          # shared-tree harness (codex): --with-tools all lands every tool in .agents/skills, not .codex
-          cargo run -- install --harness codex --with-tools all --dir "$RUNNER_TEMP/install-tool-cx"
-          for t in shipmates-termgif shipmates-social-card shipmates-pixelart shipmates-diagram shipmates-svgflow shipmates-badge shipmates-sparkline shipmates-scrub shipmates-fixtures shipmates-domaincheck shipmates-gh; do
-            test -f "$RUNNER_TEMP/install-tool-cx/.agents/skills/$t/SKILL.md"
-          done
-          test ! -d "$RUNNER_TEMP/install-tool-cx/.codex/skills"
+        run: bash .github/scripts/install-tools-e2e.sh
       - name: Install the opencode harness end to end
-        run: |
-          cargo run -- install --harness opencode --dir "$RUNNER_TEMP/install-opencode"
-          test -f "$RUNNER_TEMP/install-opencode/.opencode/commands/ship-issue.md"
-          test -f "$RUNNER_TEMP/install-opencode/.opencode/agents/sdet.md"
+        run: bash .github/scripts/install-opencode-e2e.sh
       - name: Install the antigravity harness end to end
-        run: |
-          cargo run -- install --harness antigravity --dir "$RUNNER_TEMP/install-antigravity"
-          test -f "$RUNNER_TEMP/install-antigravity/.agents/skills/ship-issue/SKILL.md"
-          # agy discovers `{workspace}/.agents/agents/{agent_name}/` and reads the
-          # `agent.md` inside it, so a directory per agent is the only shape it
-          # loads. A flat `<name>.md` installs cleanly and is silently never
-          # read, so assert the shape, not just presence.
-          test -f "$RUNNER_TEMP/install-antigravity/.agents/agents/sdet/agent.md"
-          test ! -f "$RUNNER_TEMP/install-antigravity/.agents/agents/sdet.md"
-          test ! -d "$RUNNER_TEMP/install-antigravity/.gemini"
+        run: bash .github/scripts/install-antigravity-e2e.sh
       # Codex agents are TOML and Copilot needs the .agent.md double extension.
       # Both are easy to regress into a plain <name>.md that installs cleanly
       # and is silently never loaded, so assert the format, not just presence.
       - name: Install the crew-bearing non-Claude harnesses end to end
-        run: |
-          cargo run -- install --harness codex --dir "$RUNNER_TEMP/install-codex"
-          # skills follow the open Agent Skills standard (.agents/skills), crew stay Codex-native (.codex/agents)
-          test -f "$RUNNER_TEMP/install-codex/.agents/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-codex/.codex/skills"
-          test -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.toml"
-          test ! -f "$RUNNER_TEMP/install-codex/.codex/agents/sdet.md"
-          cargo run -- install --harness github-copilot --dir "$RUNNER_TEMP/install-copilot"
-          # Copilot skills follow the open standard (.agents/skills); crew stay .github-native
-          test -f "$RUNNER_TEMP/install-copilot/.agents/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-copilot/.github/skills"
-          test -f "$RUNNER_TEMP/install-copilot/.github/agents/sdet.agent.md"
-          test ! -f "$RUNNER_TEMP/install-copilot/.github/agents/sdet.md"
+        run: bash .github/scripts/install-crew-harnesses-e2e.sh
 
       # cursor: agents directory reported but frontmatter schema unverified.
       # windsurf: target identity under review since the Devin Desktop rename.
       - name: Install a skill-only harness end to end
-        run: |
-          cargo run -- install --harness cursor --dir "$RUNNER_TEMP/install-cursor"
-          # Cursor's slash picker only reads its first-party tree (#405).
-          test -f "$RUNNER_TEMP/install-cursor/.cursor/skills/ship-issue/SKILL.md"
-          test ! -d "$RUNNER_TEMP/install-cursor/.agents/skills"
-          test ! -d "$RUNNER_TEMP/install-cursor/.cursor/agents"
+        run: bash .github/scripts/install-skill-only-harness-e2e.sh
 
   deploy:
     name: Deploy to GitHub Pages
