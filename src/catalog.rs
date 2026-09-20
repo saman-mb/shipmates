@@ -647,7 +647,7 @@ pub fn resolve_source_from_env(from_cwd: bool) -> anyhow::Result<CatalogSource> 
 /// True when `dir` looks like the Shipmates source tree (not a random project
 /// that merely ran `shipmates install` for the crew).
 pub fn is_shipmates_contributor_tree(dir: &Path) -> bool {
-    dir.join("commands").join("ship-issue.md").is_file()
+    dir.join("commands").join("shipmates-issue.md").is_file()
         && dir.join("toolbox").is_dir()
         && dir.join("tools").join("gen_command_pages.py").is_file()
 }
@@ -762,7 +762,7 @@ mod tests {
         assert_eq!(source.steering_for_target(dir.path()).unwrap(), None);
 
         fs::create_dir_all(dir.path().join("commands")).unwrap();
-        fs::write(dir.path().join("commands/ship-issue.md"), "---\n---\n").unwrap();
+        fs::write(dir.path().join("commands/shipmates-issue.md"), "---\n---\n").unwrap();
         fs::create_dir_all(dir.path().join("toolbox")).unwrap();
         fs::create_dir_all(dir.path().join("tools")).unwrap();
         fs::write(dir.path().join("tools/gen_command_pages.py"), "# gen").unwrap();

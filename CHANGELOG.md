@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-09-20
+
+### Changed
+
+- **All seventeen commands (except the repo-internal `/ship-qa` and `/ship-deslop`) carry
+  the `shipmates-` prefix.** They shipped under `ship-` (`/ship-issue`, `/ship-epic`, …); the home
+  page's "THE COMMANDS" section always showed the plain, unprefixed title and never that prefix, so
+  a captain typing what the site showed got "command not found". The `shipmates-` prefix is the one
+  every install now uses, matching the CLI's own name — an existing install migrates automatically,
+  with the old skill renamed in place, its previous bytes backed up, and the receipt rewritten
+  (#502).
+
 ## [0.9.3] - 2026-09-20
 
 ### Changed

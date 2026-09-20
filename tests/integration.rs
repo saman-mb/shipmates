@@ -162,7 +162,7 @@ fn test_opencode_embedded_install_fidelity() {
     assert_eq!(file_count(&agents), expected_roles.len());
     assert_eq!(file_count(&commands), 17);
 
-    let report_order = std::fs::read_to_string(commands.join("ship-harden.md")).unwrap();
+    let report_order = std::fs::read_to_string(commands.join("shipmates-harden.md")).unwrap();
     assert!(report_order.contains("report"), "harden order lost report-only mode");
     assert!(report_order.contains("$ARGUMENTS"), "harden order lost argument passing");
     assert!(!report_order.contains("{{"), "neutral argument placeholder leaked");
@@ -328,14 +328,14 @@ fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
     // this change exists to ship.
     assert!(
         serde_yaml::from_str::<serde_yaml::Value>(
-            "name: ship-epic\ndescription: Shipmates: take an issue\n"
+            "name: shipmates-epic\ndescription: Shipmates: take an issue\n"
         )
         .is_err(),
         "an unquoted `: ` description must fail a strict YAML parse"
     );
     assert!(
         serde_yaml::from_str::<serde_yaml::Value>(
-            "name: ship-epic\ndescription: \"Shipmates: take an issue\"\n"
+            "name: shipmates-epic\ndescription: \"Shipmates: take an issue\"\n"
         )
         .is_ok(),
         "the double-quoted equivalent must parse"
@@ -467,19 +467,19 @@ fn test_non_claude_targets_build_via_cli() {
     // shared `.agents/skills/` location, not a harness-private one.
     let codex_skill = temp_dir
         .path()
-        .join("harnesses/codex/.agents/skills/ship-issue/SKILL.md");
-    assert!(codex_skill.is_file(), "codex ship-issue skill not emitted");
+        .join("harnesses/codex/.agents/skills/shipmates-issue/SKILL.md");
+    assert!(codex_skill.is_file(), "codex shipmates-issue skill not emitted");
     let copilot_skill = temp_dir
         .path()
-        .join("harnesses/github-copilot/.agents/skills/ship-issue/SKILL.md");
+        .join("harnesses/github-copilot/.agents/skills/shipmates-issue/SKILL.md");
     assert!(
         copilot_skill.is_file(),
-        "copilot ship-issue skill not emitted"
+        "copilot shipmates-issue skill not emitted"
     );
     let pi_skill = temp_dir
         .path()
-        .join("harnesses/pi/.agents/skills/ship-issue/SKILL.md");
-    assert!(pi_skill.is_file(), "pi ship-issue skill not emitted");
+        .join("harnesses/pi/.agents/skills/shipmates-issue/SKILL.md");
+    assert!(pi_skill.is_file(), "pi shipmates-issue skill not emitted");
     // ...and the shared rendering is byte-identical across those harnesses.
     let codex_bytes = std::fs::read(&codex_skill).unwrap();
     let copilot_bytes = std::fs::read(&copilot_skill).unwrap();

@@ -6,9 +6,9 @@ Honest by construction, like gen_demo_gif.py: each reel shows the *real* stages
 the workflow performs (parsed and kept in lockstep with the source SKILL.md's
 own stage headings — see the assertion in build_artifacts), with short generic
 labels. No fabricated counts, no invented file names. The example invocation
-uses a placeholder argument, exactly as the /ship-issue demo uses "142".
+uses a placeholder argument, exactly as the /shipmates-issue demo uses "142".
 
-`/ship-issue` is intentionally absent: its command page reuses the flagship
+`/shipmates-issue` is intentionally absent: its command page reuses the flagship
 site/assets/demo.gif, so there is no second, near-identical asset to keep in
 sync.
 
@@ -37,21 +37,21 @@ ACCENTS = [dt.BLUE, dt.PURPLE, dt.ORANGE, dt.CYAN, dt.CORAL, dt.GOLD, dt.SAGE]
 # against the parsed SKILL.md so a stage added or removed upstream fails the
 # build instead of silently drifting.
 COMMANDS = {
-    "ship-epic": {
+    "shipmates-epic": {
         "arg": "42",
         "stages": [
             ("INTAKE", "parse epic checklist"),
             ("BRANCH", "epic integration line + PR"),
             ("GRAPH", "dependency order + gate map"),
             ("PLAN", "one architect -> shipping units"),
-            ("LOOP", "delegate /ship-issue per unit"),
+            ("LOOP", "delegate /shipmates-issue per unit"),
             ("TICK", "checklist after each unit"),
             ("LOG", "epic progress + PR review notes"),
             ("CLOSE", "epic PR green — captain merge"),
         ],
         "closer": "Epic delivered — N stories in U runs, one epic PR. ⚓",
     },
-    "ship-fix-bug": {
+    "shipmates-fix-bug": {
         "arg": "142",
         "stages": [
             ("REPRODUCE", "a failing test that pins the bug"),
@@ -64,8 +64,8 @@ COMMANDS = {
         ],
         "closer": "Bug fixed — proven by a test, reviewed, CI-green. ⚓",
     },
-    "ship-report-bug": {
-        "arg": "ship-epic re-shipped merged stories",
+    "shipmates-report-bug": {
+        "arg": "shipmates-epic re-shipped merged stories",
         "stages": [
             ("INTAKE", "symptom + report vs apply"),
             ("HARVEST", "harness, version, repo, command"),
@@ -76,7 +76,7 @@ COMMANDS = {
         ],
         "closer": "Upstream bug filed — structured for maintainer triage. ⚓",
     },
-    "ship-plan-epics": {
+    "shipmates-plan-epics": {
         "arg": "briefs/q3.md",
         "stages": [
             ("INTAKE", "read the brief + repo context"),
@@ -87,7 +87,7 @@ COMMANDS = {
         ],
         "closer": "Backlog ready — epics + linked stories on GitHub. ⚓",
     },
-    "ship-consolidate-issues": {
+    "shipmates-consolidate-issues": {
         "arg": "area:* apply",
         "stages": [
             ("INVENTORY", "every open issue, scoped"),
@@ -99,7 +99,7 @@ COMMANDS = {
         ],
         "closer": "Backlog slimmed — the survivors ship as bundles. ⚓",
     },
-    "ship-harden": {
+    "shipmates-harden": {
         "arg": "the auth flow",
         "stages": [
             ("SCOPE", "map the attack surface"),
@@ -112,7 +112,7 @@ COMMANDS = {
         ],
         "closer": "Hardened — every blocker fixed or signed off. ⚓",
     },
-    "ship-spike": {
+    "shipmates-spike": {
         "arg": "which queue for jobs",
         "stages": [
             ("FRAME", "the open question"),
@@ -125,7 +125,7 @@ COMMANDS = {
         ],
         "closer": "Decision made — captured as an ADR. ⚓",
     },
-    "ship-migrate": {
+    "shipmates-migrate": {
         "arg": "moment.js -> date-fns",
         "stages": [
             ("DISCOVER", "every call site"),
@@ -138,7 +138,7 @@ COMMANDS = {
         ],
         "closer": "Migrated — every call site moved, swept clean. ⚓",
     },
-    "ship-document": {
+    "shipmates-document": {
         "arg": "the public API",
         "stages": [
             ("SCOPE", "audience + doc type"),
@@ -150,7 +150,7 @@ COMMANDS = {
         ],
         "closer": "Docs that work — a fresh reader can follow them. ⚓",
     },
-    "ship-release": {
+    "shipmates-release": {
         "arg": "v1.4.0",
         "stages": [
             ("SCOPE", "what merged since last tag"),
@@ -163,7 +163,7 @@ COMMANDS = {
         ],
         "closer": "Released — CI-green at the tag. ⚓",
     },
-    "ship-polish": {
+    "shipmates-polish": {
         "arg": "the dashboard",
         "stages": [
             ("ISOLATE", "throwaway worktree"),
@@ -174,7 +174,7 @@ COMMANDS = {
         ],
         "closer": "Shipped — the specialist signed off. ⚓",
     },
-    "ship-pr-review": {
+    "shipmates-pr-review": {
         "arg": "128",
         "stages": [
             ("CLASSIFY", "size & risk of the PR"),
@@ -201,7 +201,7 @@ COMMANDS = {
         ],
         "closer": "QA-FAIL — 1 finding, checklist reusable for re-QA. ⚓",
     },
-    "ship-onboard": {
+    "shipmates-onboard": {
         "arg": "",
         "stages": [
             ("SURVEY", "repo shape + mode"),
@@ -213,7 +213,7 @@ COMMANDS = {
         ],
         "closer": "Onboarded — a guide that answers real questions. ⚓",
     },
-    "ship-refactor": {
+    "shipmates-refactor": {
         "arg": "the order service",
         "stages": [
             ("SCOPE", "what & why"),
@@ -371,8 +371,8 @@ def build_artifacts(verify_sources=True):
                     f"but {got} in this generator. Update COMMANDS[{slug!r}] to match, "
                     f"then regenerate."
                 )
-        # ship-issue reuses the flagship demo.gif; every other command must be here.
-        missing = set(counts) - set(COMMANDS) - {"ship-issue"}
+        # shipmates-issue reuses the flagship demo.gif; every other command must be here.
+        missing = set(counts) - set(COMMANDS) - {"shipmates-issue"}
         if missing:
             sys.exit(f"gen_command_demos: no reel authored for: {', '.join(sorted(missing))}")
 

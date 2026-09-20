@@ -115,12 +115,12 @@ class SiteGenerationTests(unittest.TestCase):
 
     def test_command_pages_are_a_guide_not_the_skill(self) -> None:
         """Positive control: the page names the process and crew, and links the skill."""
-        migrate = (ROOT / "site/commands/ship-migrate/index.html").read_text(encoding="utf-8")
+        migrate = (ROOT / "site/commands/shipmates-migrate/index.html").read_text(encoding="utf-8")
         self.assertIn('id="process"', migrate)
         self.assertIn("How it works", migrate)
         self.assertIn("senior-engineer", migrate)
         self.assertIn("Also sit when", migrate)
-        self.assertIn("commands/ship-migrate.md", migrate)
+        self.assertIn("commands/shipmates-migrate.md", migrate)
         self.assertNotIn("ARGUMENTS", migrate)
 
     def test_agent_pages_list_harness_tool_names(self) -> None:
@@ -139,7 +139,7 @@ class SiteGenerationTests(unittest.TestCase):
         self.assertIn('id="opencode-quickstart"', page)
         self.assertIn("install-fidelity checks", page)
         self.assertIn("not opencode runtime behaviour", page)
-        self.assertIn("/ship-issue", page)
+        self.assertIn("/shipmates-issue", page)
 
     @unittest.skipIf(
         sys.version_info < GENERATOR_MIN,
@@ -165,7 +165,7 @@ class SiteGenerationTests(unittest.TestCase):
         self.assertEqual(13, len(agents))
         commands = generator.load_skills(nested, tuple(a.name for a in agents))
         self.assertEqual(17, len(commands))
-        self.assertIn("ship-issue", {c.slug for c in commands})
+        self.assertIn("shipmates-issue", {c.slug for c in commands})
 
         flat = generator.load_skills(ROOT / "commands", tuple(a.name for a in agents))
         self.assertEqual({c.slug for c in commands}, {c.slug for c in flat})
@@ -186,18 +186,18 @@ class SiteGenerationTests(unittest.TestCase):
 
         lines = [
             "---",
-            "name: ship-epic",
-            'description: "Shipmates: Loop /ship-issue over an epic\'s stories — colon: yes"',
+            "name: shipmates-epic",
+            'description: "Shipmates: Loop /shipmates-issue over an epic\'s stories — colon: yes"',
             'argument-hint: "<epic issue> [focus] [max-cycles]"',
             'allowed-tools: "Read, Grep, Glob, Bash"',
             "---",
-            "# /ship-epic — test",
+            "# /shipmates-epic — test",
             "",
         ]
-        fm, _ = generator.split_frontmatter(lines, "commands/ship-epic.md", set())
-        self.assertEqual("ship-epic", fm.name)
+        fm, _ = generator.split_frontmatter(lines, "commands/shipmates-epic.md", set())
+        self.assertEqual("shipmates-epic", fm.name)
         self.assertEqual(
-            "Shipmates: Loop /ship-issue over an epic's stories — colon: yes",
+            "Shipmates: Loop /shipmates-issue over an epic's stories — colon: yes",
             fm.description,
         )
         self.assertEqual("<epic issue> [focus] [max-cycles]", fm.argument_hint)
@@ -237,15 +237,15 @@ class SiteGenerationTests(unittest.TestCase):
 
         lines = [
             "---",
-            "name: ship-issue",
+            "name: shipmates-issue",
             "description: A plain description with no mapping colon",
             "argument-hint: <issue-number>",
             "allowed-tools: Read, Grep",
             "---",
-            "# /ship-issue — test",
+            "# /shipmates-issue — test",
             "",
         ]
-        fm, _ = generator.split_frontmatter(lines, "commands/ship-issue.md", set())
+        fm, _ = generator.split_frontmatter(lines, "commands/shipmates-issue.md", set())
         self.assertEqual("A plain description with no mapping colon", fm.description)
         self.assertEqual("<issue-number>", fm.argument_hint)
         self.assertEqual(("Read", "Grep"), fm.allowed_tools)

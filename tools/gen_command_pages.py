@@ -48,55 +48,61 @@ from command_page_copy import COMMAND_PAGE_COPY, CommandPageCopy, ProcessStep
 
 # Canonical order. Drives page order, the sitemap, and the sibling nav.
 SLUGS = (
-    "ship-issue",
-    "ship-epic",
-    "ship-fix-bug",
-    "ship-report-bug",
-    "ship-plan-epics",
-    "ship-consolidate-issues",
-    "ship-harden",
-    "ship-spike",
-    "ship-migrate",
-    "ship-document",
-    "ship-release",
-    "ship-polish",
-    "ship-pr-review",
+    "shipmates-issue",
+    "shipmates-epic",
+    "shipmates-fix-bug",
+    "shipmates-report-bug",
+    "shipmates-plan-epics",
+    "shipmates-consolidate-issues",
+    "shipmates-harden",
+    "shipmates-spike",
+    "shipmates-migrate",
+    "shipmates-document",
+    "shipmates-release",
+    "shipmates-polish",
+    "shipmates-pr-review",
     "ship-qa",
-    "ship-onboard",
-    "ship-refactor",
+    "shipmates-onboard",
+    "shipmates-refactor",
     "ship-deslop",
 )
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
 # as static HTML meta-refresh stubs with canonical links; excluded from sitemap.
 REDIRECTS = {
-    "review": "ship-pr-review",
-    "document": "ship-document",
-    "fix-bug": "ship-fix-bug",
-    "harden": "ship-harden",
-    "migrate": "ship-migrate",
-    "onboard": "ship-onboard",
-    "polish": "ship-polish",
-    "refactor": "ship-refactor",
-    "release": "ship-release",
-    "spike": "ship-spike",
-    # The intermediate `shipmates-` generation.
-    "shipmates-document": "ship-document",
-    "shipmates-fix-bug": "ship-fix-bug",
-    "shipmates-harden": "ship-harden",
-    "shipmates-migrate": "ship-migrate",
-    "shipmates-onboard": "ship-onboard",
-    "shipmates-polish": "ship-polish",
-    "shipmates-refactor": "ship-refactor",
-    "shipmates-release": "ship-release",
-    "shipmates-spike": "ship-spike",
+    "review": "shipmates-pr-review",
+    "document": "shipmates-document",
+    "fix-bug": "shipmates-fix-bug",
+    "harden": "shipmates-harden",
+    "migrate": "shipmates-migrate",
+    "onboard": "shipmates-onboard",
+    "polish": "shipmates-polish",
+    "refactor": "shipmates-refactor",
+    "release": "shipmates-release",
+    "spike": "shipmates-spike",
     # Full workflow names that gained the prefix.
-    "plan-epics": "ship-plan-epics",
-    "pr-review": "ship-pr-review",
-    "report-bug": "ship-report-bug",
-    "consolidate-issues": "ship-consolidate-issues",
+    "plan-epics": "shipmates-plan-epics",
+    "pr-review": "shipmates-pr-review",
+    "report-bug": "shipmates-report-bug",
+    "consolidate-issues": "shipmates-consolidate-issues",
     # A command that shipped, then shortened its name.
     "ship-deslop-codebase": "ship-deslop",
+    # The `ship-` generation, renamed to `shipmates-`.
+    "ship-issue": "shipmates-issue",
+    "ship-epic": "shipmates-epic",
+    "ship-fix-bug": "shipmates-fix-bug",
+    "ship-report-bug": "shipmates-report-bug",
+    "ship-plan-epics": "shipmates-plan-epics",
+    "ship-consolidate-issues": "shipmates-consolidate-issues",
+    "ship-harden": "shipmates-harden",
+    "ship-spike": "shipmates-spike",
+    "ship-migrate": "shipmates-migrate",
+    "ship-document": "shipmates-document",
+    "ship-release": "shipmates-release",
+    "ship-polish": "shipmates-polish",
+    "ship-pr-review": "shipmates-pr-review",
+    "ship-onboard": "shipmates-onboard",
+    "ship-refactor": "shipmates-refactor",
 }
 
 # Old tool page slugs → new. Same meta-refresh stubs as command REDIRECTS.
@@ -117,7 +123,7 @@ TOOL_REDIRECTS = {
 # Hand-authored docs pages under site/docs/. The generator discovers them on
 # disk and includes them in the sitemap — it never generates them.
 DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture", "github-copilot")
-FLAGSHIP_SLUG = "ship-issue"
+FLAGSHIP_SLUG = "shipmates-issue"
 
 # Canonical crew order — the homepage crew grid's order. Drives the agent page
 # sibling nav and the sitemap. Every agents/<role>.md on disk must appear here.
@@ -813,9 +819,9 @@ AGENT_COPY = {
         ),
         crew_fit=CrewFit(
             paragraphs=(
-                "On `/ship-fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
+                "On `/shipmates-fix-bug` the SRE owns the root cause and hands the `senior-engineer` the "
                 "minimal fix and its regression check; the `sdet` then proves the fix. On "
-                "`/ship-release` it gates deploy safety. Build-time questions — pipelines, caching, "
+                "`/shipmates-release` it gates deploy safety. Build-time questions — pipelines, caching, "
                 "pinning — belong to the `devops-engineer`, and the SRE defers there "
                 "explicitly.",
             ),
@@ -1316,8 +1322,8 @@ AGENT_COPY = {
         crew_fit=CrewFit(
             paragraphs=(
                 "The data scientist is the crew's specialist for data-and-model deliverables — "
-                "designing experiments in `/ship-spike`, reviewing analysis and model changes in "
-                "`/ship-pr-review`. Findings hand to the `senior-engineer` as specific fixes, and "
+                "designing experiments in `/shipmates-spike`, reviewing analysis and model changes in "
+                "`/shipmates-pr-review`. Findings hand to the `senior-engineer` as specific fixes, and "
                 "anything outside data work routes back to the rest of the crew.",
             ),
             related=("senior-engineer", "sdet", "product-manager"),
@@ -1634,8 +1640,8 @@ TOOL_COPY = {
             "of scraped shell output. It covers repo default branch lookup, issue fetch/list/search/create/"
             "edit/comment/close, parent/child **sub-issue** attach/list/detach, PR view/diff/create/checks/"
             "poll/comment/review/merge/list, labels, "
-            "releases, and failed workflow logs — the same operations repeated across `/ship-issue`, "
-            "`/ship-epic`, `/ship-pr-review`, `/ship-consolidate-issues`, `/ship-plan-epics`, and `/ship-release`.",
+            "releases, and failed workflow logs — the same operations repeated across `/shipmates-issue`, "
+            "`/shipmates-epic`, `/shipmates-pr-review`, `/shipmates-consolidate-issues`, `/shipmates-plan-epics`, and `/shipmates-release`.",
             "It is a *tool*, not a command. The crew reach for it when orchestrating GitHub instead of "
             "hand-rolling `gh` bash. Requires the GitHub CLI installed and authenticated (`gh auth login`); "
             "Python side is stdlib-only.",
@@ -3349,7 +3355,7 @@ def _png_size(path: Path) -> tuple:
 
 
 def _demo_assets(slug: str) -> tuple:
-    """(gif, poster) filenames for a command's demo. `/ship-issue` reuses the
+    """(gif, poster) filenames for a command's demo. `/shipmates-issue` reuses the
     flagship demo.gif rather than shipping a second near-identical asset."""
     if slug == FLAGSHIP_SLUG:
         return "demo.gif", "demo-poster.png"

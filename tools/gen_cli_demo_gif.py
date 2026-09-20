@@ -63,7 +63,7 @@ def build_reel():
     # 4) sign-off
     reel.reveal([("✓ ", dt.GREEN, True),
                  ("Crew aboard — run ", dt.GREEN, False),
-                 ("/ship-issue <issue#>", dt.WHITE, True),
+                 ("/shipmates-issue <issue#>", dt.WHITE, True),
                  (" to set sail. ⚓", dt.GREEN, False)])
     reel.hold(300, times=6)
     return reel

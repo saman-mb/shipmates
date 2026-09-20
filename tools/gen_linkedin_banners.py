@@ -48,7 +48,7 @@ TAGLINE = "Stop being your AI&rsquo;s for-loop. Give it a crew. &#9875;"
 SUBTITLE = "Sub-agents &amp; slash-command workflows for Claude Code"
 URL = "github.com/saman-mb/shipmates"
 
-# The stage sequence /ship-issue actually runs, abbreviated to fit.
+# The stage sequence /shipmates-issue actually runs, abbreviated to fit.
 STAGES = ["Plan", "Isolate", "Build", "CI gate", "Review", "Deliver"]
 CI_STAGE = "CI gate"
 

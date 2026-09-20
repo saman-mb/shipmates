@@ -277,9 +277,9 @@ fn install_adopts_an_unowned_shipmates_file_at_a_payload_path() {
     // backs it up, writes the current payload, and claims it — rather than
     // leaving it stale forever behind an "unmanaged" warning.
     let dir = tempdir().unwrap();
-    let skill = dir.path().join(".claude/skills/ship-report-bug/SKILL.md");
+    let skill = dir.path().join(".claude/skills/shipmates-report-bug/SKILL.md");
     fs::create_dir_all(skill.parent().unwrap()).unwrap();
-    fs::write(&skill, "---\nname: ship-report-bug\n---\nstale 0.1.13 body\n").unwrap();
+    fs::write(&skill, "---\nname: shipmates-report-bug\n---\nstale 0.1.13 body\n").unwrap();
 
     install_ok(dir.path());
 
@@ -299,7 +299,7 @@ fn install_adopts_an_unowned_shipmates_file_at_a_payload_path() {
     assert!(
         receipt_files(&receipt)
             .iter()
-            .any(|file| file["path"] == ".claude/skills/ship-report-bug/SKILL.md"),
+            .any(|file| file["path"] == ".claude/skills/shipmates-report-bug/SKILL.md"),
         "an adopted path must be claimed by the receipt"
     );
 }
@@ -562,7 +562,7 @@ fn install_all_continues_past_a_failed_harness_and_exits_non_zero() {
     );
     assert!(
         dir.path()
-            .join(".opencode/commands/ship-issue.md")
+            .join(".opencode/commands/shipmates-issue.md")
             .is_file(),
         "later harnesses must still install"
     );
@@ -774,7 +774,7 @@ fn shared_path_uninstall_does_not_remove_files_owned_by_another_harness() {
         "antigravity install failed: {}",
         output_text(&antigravity)
     );
-    let shared_skill = dir.path().join(".agents/skills/ship-issue/SKILL.md");
+    let shared_skill = dir.path().join(".agents/skills/shipmates-issue/SKILL.md");
     assert!(shared_skill.is_file());
 
     let output = run(dir.path(), &["uninstall", "--harness", "codex"]);
@@ -832,19 +832,19 @@ fn doctor_fix_leaves_third_party_drift_untouched_and_names_force() {
 fn doctor_fix_adopts_an_unowned_shipmates_file_and_claims_it() {
     let dir = tempdir().unwrap();
     install_ok(dir.path());
-    let skill = dir.path().join(".claude/skills/ship-report-bug/SKILL.md");
+    let skill = dir.path().join(".claude/skills/shipmates-report-bug/SKILL.md");
     let payload = fs::read_to_string(&skill).unwrap();
     let mut receipt = read_receipt(dir.path());
     receipt["files"]
         .as_array_mut()
         .unwrap()
-        .retain(|entry| entry["path"] != ".claude/skills/ship-report-bug/SKILL.md");
+        .retain(|entry| entry["path"] != ".claude/skills/shipmates-report-bug/SKILL.md");
     fs::write(
         receipt_path(dir.path()),
         serde_json::to_vec_pretty(&receipt).unwrap(),
     )
     .unwrap();
-    fs::write(&skill, "---\nname: ship-report-bug\n---\nstale body\n").unwrap();
+    fs::write(&skill, "---\nname: shipmates-report-bug\n---\nstale body\n").unwrap();
 
     let output = run(dir.path(), &["doctor", "--fix"]);
 
@@ -858,7 +858,7 @@ fn doctor_fix_adopts_an_unowned_shipmates_file_and_claims_it() {
     assert!(
         receipt_files(&refreshed)
             .iter()
-            .any(|file| file["path"] == ".claude/skills/ship-report-bug/SKILL.md"),
+            .any(|file| file["path"] == ".claude/skills/shipmates-report-bug/SKILL.md"),
         "the adopted path must be claimed"
     );
 }
@@ -1007,9 +1007,9 @@ fn doctor_no_migrate_requires_fix_and_fix_leaves_legacy_file() {
     install_ok(dir.path());
     let missing = dir.path().join(".claude/agents/architect.md");
     fs::remove_file(&missing).unwrap();
-    let legacy = dir.path().join(".claude/commands/ship-issue.md");
+    let legacy = dir.path().join(".claude/commands/shipmates-issue.md");
     fs::create_dir_all(legacy.parent().unwrap()).unwrap();
-    fs::write(&legacy, "---\nname: ship-issue\n---\nlegacy\n").unwrap();
+    fs::write(&legacy, "---\nname: shipmates-issue\n---\nlegacy\n").unwrap();
 
     let output = run(dir.path(), &["doctor", "--fix", "--no-migrate"]);
     assert_eq!(
@@ -1297,9 +1297,9 @@ fn update_advances_shared_agents_skill_across_sibling_receipts() {
         );
     }
 
-    let relative = ".agents/skills/ship-issue/SKILL.md";
+    let relative = ".agents/skills/shipmates-issue/SKILL.md";
     let skill = dir.path().join(relative);
-    let stale = b"---\nname: ship-issue\n---\nstale shared generation\n";
+    let stale = b"---\nname: shipmates-issue\n---\nstale shared generation\n";
     fs::write(&skill, stale).unwrap();
     let stale_hash = shipmates::digest::compute_sha256(&skill).unwrap();
     for harness in harnesses {
@@ -1394,11 +1394,11 @@ fn cursor_installs_into_its_own_skill_tree_and_doctor_owns_it() {
         output_text(&output)
     );
 
-    let native = dir.path().join(".cursor/skills/ship-issue/SKILL.md");
+    let native = dir.path().join(".cursor/skills/shipmates-issue/SKILL.md");
     assert!(native.is_file(), "cursor skill not installed");
     assert!(
         !dir.path()
-            .join(".agents/skills/ship-issue/SKILL.md")
+            .join(".agents/skills/shipmates-issue/SKILL.md")
             .exists(),
         "a second copy in the shared tree would double the picker (#403)"
     );
@@ -1408,14 +1408,14 @@ fn cursor_installs_into_its_own_skill_tree_and_doctor_owns_it() {
     assert!(
         receipt_files(&receipt)
             .iter()
-            .any(|file| file["path"] == ".cursor/skills/ship-issue/SKILL.md"),
+            .any(|file| file["path"] == ".cursor/skills/shipmates-issue/SKILL.md"),
         "receipt must claim the native cursor tree"
     );
 
-    fs::write(&native, "---\nname: ship-issue\n---\nlocal drift marker\n").unwrap();
+    fs::write(&native, "---\nname: shipmates-issue\n---\nlocal drift marker\n").unwrap();
     let drifted = run(dir.path(), &["doctor", "--harness", "cursor"]);
     assert!(
-        String::from_utf8_lossy(&drifted.stdout).contains(".cursor/skills/ship-issue/SKILL.md"),
+        String::from_utf8_lossy(&drifted.stdout).contains(".cursor/skills/shipmates-issue/SKILL.md"),
         "doctor must report drift in the cursor tree: {}",
         output_text(&drifted)
     );
@@ -1443,9 +1443,9 @@ fn cursor_installs_into_its_own_skill_tree_and_doctor_owns_it() {
 #[test]
 fn cursor_upgrade_from_a_shared_tree_receipt_leaves_no_orphans() {
     let dir = tempdir().unwrap();
-    let legacy = dir.path().join(".agents/skills/ship-issue/SKILL.md");
+    let legacy = dir.path().join(".agents/skills/shipmates-issue/SKILL.md");
     fs::create_dir_all(legacy.parent().unwrap()).unwrap();
-    let body = "---\nname: ship-issue\n---\npre-405 body\n";
+    let body = "---\nname: shipmates-issue\n---\npre-405 body\n";
     fs::write(&legacy, body).unwrap();
     let receipt = serde_json::json!({
         "schema_version": 1,
@@ -1454,7 +1454,7 @@ fn cursor_upgrade_from_a_shared_tree_receipt_leaves_no_orphans() {
         "layout": "skills",
         "roots": [".agents"],
         "files": [{
-            "path": ".agents/skills/ship-issue/SKILL.md",
+            "path": ".agents/skills/shipmates-issue/SKILL.md",
             "sha256": shipmates::digest::compute_sha256(&legacy).unwrap(),
         }],
     });
@@ -1471,7 +1471,7 @@ fn cursor_upgrade_from_a_shared_tree_receipt_leaves_no_orphans() {
 
     assert!(
         dir.path()
-            .join(".cursor/skills/ship-issue/SKILL.md")
+            .join(".cursor/skills/shipmates-issue/SKILL.md")
             .is_file(),
         "upgrade must write the payload to the new tree"
     );
