@@ -306,6 +306,11 @@
             <p class="command-card__desc">Audits the codebase for dead code, duplication and rot — risk-graded; fixes on a branch, opt-in.</p>
             <span class="command-card__more" aria-hidden="true">How it works →</span>
           </li>
+          <li class="command-card">
+            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/shipmates-upgrade/">Upgrade</a></h3>
+            <p class="command-card__desc">Checks for a newer Shipmates release, refreshes and audits every install — apply and file only on request.</p>
+            <span class="command-card__more" aria-hidden="true">How it works →</span>
+          </li>
         </ul>
       </div>
     </section>
@@ -460,22 +465,22 @@
             <ul>
               <li><strong>Runtime-verified (<code>full</code>)</strong>
                 <ul>
-                  <li>Claude Code — the full crew and all 17 commands; crew resolve, argument passing, and <code>/shipmates-ship-issue</code> end to end.</li>
+                  <li>Claude Code — the full crew and all 18 commands; crew resolve, argument passing, and <code>/shipmates-ship-issue</code> end to end.</li>
                 </ul>
               </li>
               <li><strong>Live run (<code>partial</code>)</strong> — captain-attested live runs in <code>tools/harness_matrix.json</code> (<a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>). Granular criteria stay <code>unknown</code> until separately logged, except pi <code>crew_resolve</code> and <code>command_e2e</code> which are <code>no</code> (<a href="https://github.com/saman-mb/shipmates/issues/525">#525</a>).
                 <ul>
-                  <li>opencode — full crew + all 17 commands as <code>.opencode/</code>; Tier-A checklist still open in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
-                  <li>antigravity (the Antigravity CLI, <code>agy</code> — successor to the retired Gemini CLI) — full crew + all 17 commands as <code>.agents/</code>.</li>
-                  <li>pi — full crew + all 17 commands at <code>.pi/agents/</code> via <code>pi-subagents</code>; <code>crew_resolve</code> and <code>command_e2e</code> are <code>no</code>.</li>
-                  <li>cursor — the 17 skills only (crew resolve N/A).</li>
+                  <li>opencode — full crew + all 18 commands as <code>.opencode/</code>; Tier-A checklist still open in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
+                  <li>antigravity (the Antigravity CLI, <code>agy</code> — successor to the retired Gemini CLI) — full crew + all 18 commands as <code>.agents/</code>.</li>
+                  <li>pi — full crew + all 18 commands at <code>.pi/agents/</code> via <code>pi-subagents</code>; <code>crew_resolve</code> and <code>command_e2e</code> are <code>no</code>.</li>
+                  <li>cursor — the 18 skills only (crew resolve N/A).</li>
                 </ul>
               </li>
               <li><strong>Builds, not runtime-verified (<code>none</code>)</strong>
                 <ul>
-                  <li>codex, github-copilot — the full crew and all 17 commands. Codex agents are TOML and inherit the session's tools (no per-agent allowlist).</li>
-                  <li>grok-build — the full crew and all 17 commands in its own <code>.grok/</code> tree: the one non-Claude target that keeps the native <code>disable-model-invocation</code> guard, and it enforces a per-agent tool allowlist too.</li>
-                  <li>windsurf — the 17 skills only; under review since the Devin Desktop rename.</li>
+                  <li>codex, github-copilot — the full crew and all 18 commands. Codex agents are TOML and inherit the session's tools (no per-agent allowlist).</li>
+                  <li>grok-build — the full crew and all 18 commands in its own <code>.grok/</code> tree: the one non-Claude target that keeps the native <code>disable-model-invocation</code> guard, and it enforces a per-agent tool allowlist too.</li>
+                  <li>windsurf — the 18 skills only; under review since the Devin Desktop rename.</li>
                 </ul>
               </li>
               <li><strong>Next</strong>
@@ -484,7 +489,7 @@
                 </ul>
               </li>
             </ul>
-            <p>Why that's credible: the crew's system prompts name no harness, and the seventeen commands ship in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape rather than a Claude-specific one — so most of a port is mapping frontmatter fields, not rewriting the crew. opencode is the first test of that: every persona and workflow body carried over unchanged, and what remained was path mapping and translating an allowlist into a permission map. Details on the <a href="docs/harnesses/">harness matrix</a>.</p>
+            <p>Why that's credible: the crew's system prompts name no harness, and the eighteen commands ship in the <a href="https://agentskills.io">Agent Skills</a> open-standard shape rather than a Claude-specific one — so most of a port is mapping frontmatter fields, not rewriting the crew. opencode is the first test of that: every persona and workflow body carried over unchanged, and what remained was path mapping and translating an allowlist into a permission map. Details on the <a href="docs/harnesses/">harness matrix</a>.</p>
           </div>
         </div>
       </div>
@@ -513,7 +518,7 @@
                 <span class="faq__marker" aria-hidden="true"></span>
               </summary>
               <div class="faq__a">
-            <p>Subagents are focused AI agents defined in .claude/agents/*.md; skills are reusable workflows defined in .claude/skills/&lt;name&gt;/SKILL.md and invoked as commands, like /shipmates-ship-issue. Shipmates ships 13 agents and 17 commands you drop into a repo's .claude/ with <code>shipmates install</code> (or .opencode/ for opencode, .codex/ for codex, and so on).</p>
+            <p>Subagents are focused AI agents defined in .claude/agents/*.md; skills are reusable workflows defined in .claude/skills/&lt;name&gt;/SKILL.md and invoked as commands, like /shipmates-ship-issue. Shipmates ships 13 agents and 18 commands you drop into a repo's .claude/ with <code>shipmates install</code> (or .opencode/ for opencode, .codex/ for codex, and so on).</p>
               </div>
             </details>
             <details class="faq__item">

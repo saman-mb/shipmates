@@ -17,6 +17,7 @@ target=github-copilot
 .agents/skills/shipmates-ship-epic/SKILL.md 833c1ee0c9f10e773d9ad37b84319fb1626adf8d70c66fa215131a55061d3b95
 .agents/skills/shipmates-ship-issue/SKILL.md f484066d29cae9edb2947ea7225b6df36e6535852869907665e695e7d316c412
 .agents/skills/shipmates-spike/SKILL.md 6d19511e13c1328f37fa3f1ce5fbd18f0faf2d7c08e8f960e5fad55e06d35563
+.agents/skills/shipmates-upgrade/SKILL.md 755fcfcf52ebb98559e6d94cc3c19bba9fa1520e276f0b62b6b42313edf5a4d4
 .github/agents/architect.agent.md 8fcf5712782f50284cfaff771eb7000d641a65ef2cfd60ced99db3a25d325fa1
 .github/agents/art-director.agent.md c050203f65e582ac0305aca04cf8936269624a6473ca1f566f38f02291c2e1d8
 .github/agents/data-scientist.agent.md 57cd78e31e7099803163c602c0c179e04436e9d6786ab8c47d2d0b302c711f17

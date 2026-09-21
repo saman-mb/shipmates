@@ -37,7 +37,7 @@ fi
 test -f "$PROJECT/.agents/skills/shipmates-ship-issue/SKILL.md"
 test -f "$PROJECT/.codex/agents/sdet.toml"
 test ! -d "$PROJECT/.codex/skills"
-test "$(ls -1 "$PROJECT/.agents/skills" | wc -l | tr -d ' ')" -eq 17
+test "$(ls -1 "$PROJECT/.agents/skills" | wc -l | tr -d ' ')" -eq 18
 test "$(ls -1 "$PROJECT/.codex/agents"/*.toml | wc -l | tr -d ' ')" -eq 13
 
 for role in \

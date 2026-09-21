@@ -4,6 +4,48 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-09-21
+
+### Added
+
+- **`shipmates status` and `shipmates upgrade` turn maintenance into one observable
+  sweep.** `status` reports every known install — harness, root, receipt version, drift
+  count, claimed tools — across a global install index plus any `--dir` roots, read-only
+  and `--json`-friendly. `upgrade` checks the published release feed, refreshes every
+  known install from the running binary, audits each one through the same checks
+  `shipmates doctor` uses, and reports findings in a stable machine-readable shape with
+  distinct exit codes (up-to-date, upgrade available, unknown/offline, refresh failed,
+  findings present, bugs filed) (#538).
+- **The release check degrades, never breaks.** It fetches the release feed with `curl`,
+  honours `SHIPMATES_RELEASES_URL` (and `SHIPMATES_CURL`) for hermetic tests, treats a
+  missing binary, a blocked network or a parse failure as "version unknown" instead of an
+  error, never offers a downgrade when the running binary is newer, and selects by SemVer
+  so a prerelease ranks below its final release.
+- **`--self` upgrades the binary through the channel that installed it.** Brew and the
+  cargo-dist installer are the executable channels; a cargo install, a source checkout and
+  an unknown channel are refused with the exact command to run instead. The default
+  posture is a safe one: refresh payloads from the current binary, print the binary
+  upgrade command, execute nothing.
+- **Audit findings classify before they file.** `upgrade` reuses `doctor::diagnose` plus a
+  payload-completeness check and a tool smoke, so user-caused drift, a partial install
+  that `--fix` repairs, and a correct third-party refusal are reported but never filed as
+  upstream bugs. What is attributable — a failed refresh, unrepairable drift, a corrupt
+  receipt, a post-upgrade version mismatch, a claimed tool that will not run — is
+  deduplicated by fingerprint, sanitised (`$HOME` becomes `~`, project roots become
+  `<project-root>`), capped per run, and filed or commented on `saman-mb/shipmates` only
+  with `--file-bugs`. Findings are also available as JSON for agents and CI.
+- **The install index makes "which harnesses are installed?" answerable.** Install,
+  update and uninstall register their receipt (root, harness, version, layout) in
+  `~/.shipmates/installs.json`, best-effort and never fatal; a moved or deleted root is
+  reported and pruned, a root without a receipt is reported as unmanaged, and
+  `SHIPMATES_INDEX` keeps the whole mechanism testable against a throwaway home.
+- **`/shipmates-upgrade` is the eighteenth command and the second meta command.** One
+  captain-invoked maintenance workflow over the new CLI surface: survey, show the exact
+  binary-upgrade command, refresh and repair every install, classify findings, file only
+  what is genuinely Shipmates' fault, and remind the captain to restart a running harness
+  before invoking a refreshed command. It names Shipmates, harnesses and the upstream
+  repo explicitly, exactly like `/shipmates-report-bug` (#538).
+
 ## [0.12.0] - 2026-09-21
 
 ### Changed

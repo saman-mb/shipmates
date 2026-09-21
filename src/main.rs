@@ -2,7 +2,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use shipmates::cli::{Cli, Command, install_force_hint};
 use shipmates::installer::manifest_db::InstallReceipt;
-use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering};
+use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering, upgrade};
 use std::fs;
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -819,6 +819,59 @@ fn with_tools_flag_from_receipt(
     })
 }
 
+/// Best-effort registration of freshly installed/updated harnesses in the
+/// installs index. A failure never changes the command's exit status.
+fn register_installs(target_dir: &Path, harnesses: &[String]) {
+    let index_file = match upgrade::index::index_path() {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("warning: could not locate the installs index: {error}");
+            return;
+        }
+    };
+    let mut index = match upgrade::index::InstallsIndex::load(&index_file) {
+        Ok(index) => index,
+        Err(error) => {
+            eprintln!("warning: could not load the installs index: {error}");
+            return;
+        }
+    };
+    for harness in harnesses {
+        let (_, receipt, _) = installer::plan::read_receipt(target_dir, harness);
+        let Some(receipt) = receipt else { continue };
+        if let Err(error) = index.register(
+            &index_file,
+            target_dir,
+            harness,
+            &receipt.version,
+            &receipt.layout,
+        ) {
+            eprintln!("warning: could not register {harness} in the installs index: {error}");
+        }
+    }
+}
+
+/// Best-effort deregistration of an uninstalled harness from the installs index.
+fn deregister_install(target_dir: &Path, harness: &str) {
+    let index_file = match upgrade::index::index_path() {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("warning: could not locate the installs index: {error}");
+            return;
+        }
+    };
+    let mut index = match upgrade::index::InstallsIndex::load(&index_file) {
+        Ok(index) => index,
+        Err(error) => {
+            eprintln!("warning: could not load the installs index: {error}");
+            return;
+        }
+    };
+    if let Err(error) = index.deregister(&index_file, target_dir, harness) {
+        eprintln!("warning: could not deregister {harness} from the installs index: {error}");
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -886,6 +939,7 @@ fn main() -> Result<()> {
                     }
                 }
             }
+            register_installs(&target_dir, &harnesses);
         }
         Command::Uninstall {
             harness,
@@ -939,6 +993,7 @@ fn main() -> Result<()> {
                     }
                 }
             }
+            deregister_install(&target_dir, &harness_name);
         }
         Command::Build {
             target,
@@ -1028,6 +1083,7 @@ fn main() -> Result<()> {
                     let _ = steering::install_global_steering(h, &home_path, &global_content);
                 }
             }
+            register_installs(&target_dir, &harnesses);
         }
         Command::Doctor {
             harness,
@@ -1073,6 +1129,38 @@ fn main() -> Result<()> {
             if report.has_problems() {
                 std::process::exit(2);
             }
+        }
+        Command::Status { json, dir } => {
+            let dirs: Vec<PathBuf> = dir.into_iter().map(PathBuf::from).collect();
+            let code = upgrade::orchestrate::run_status(json, &dirs)?;
+            std::process::exit(code);
+        }
+        Command::Upgrade {
+            check,
+            json,
+            pre,
+            dry_run,
+            fix,
+            dir,
+            file_bugs,
+            self_upgrade,
+            resume: _,
+        } => {
+            let dirs: Vec<PathBuf> = dir.into_iter().map(PathBuf::from).collect();
+            let code = if check {
+                upgrade::orchestrate::run_check(json, pre, &dirs)?
+            } else {
+                upgrade::orchestrate::run_upgrade(&upgrade::orchestrate::UpgradeOpts {
+                    json,
+                    pre,
+                    dry_run,
+                    fix,
+                    dirs,
+                    file_bugs,
+                    self_upgrade,
+                })?
+            };
+            std::process::exit(code);
         }
         Command::Targets => {
             for name in adapters::targets() {
@@ -1251,8 +1339,60 @@ mod tests {
     }
 
     #[test]
+    fn status_help_documents_flags_and_examples() {
+        let help = help_for("status");
+        for needle in [
+            "--json",
+            "--dir <PATH>",
+            "Where:",
+            "Examples:",
+            "shipmates status",
+            "shipmates status --json",
+            "shipmates status --dir ~/work/app",
+        ] {
+            assert!(help.contains(needle), "missing `{needle}`:\n{help}");
+        }
+    }
+
+    #[test]
+    fn upgrade_help_documents_flags_conflicts_and_hides_resume() {
+        let help = help_for("upgrade");
+        for needle in [
+            "--check",
+            "--pre",
+            "--dry-run",
+            "--fix",
+            "--file-bugs",
+            "--self",
+            "--dir <PATH>",
+            "Where:",
+            "Examples:",
+            "shipmates upgrade --check",
+            "shipmates upgrade --json",
+            "shipmates upgrade --fix",
+            "shipmates upgrade --self",
+            "shipmates upgrade --dir ~/work/app",
+            "conflicts with --fix, --file-bugs, --self",
+        ] {
+            assert!(help.contains(needle), "missing `{needle}`:\n{help}");
+        }
+        // `--resume` is an internal re-exec seam, never part of the help.
+        assert!(
+            !help.contains("--resume"),
+            "`--resume` must stay hidden:\n{help}"
+        );
+    }
+
+    #[test]
     fn location_flags_share_where_heading_across_user_commands() {
-        for command in ["install", "update", "uninstall", "doctor"] {
+        for command in [
+            "install",
+            "update",
+            "uninstall",
+            "doctor",
+            "status",
+            "upgrade",
+        ] {
             let help = help_for(command);
             assert!(help.contains("Where:"), "{command}:\n{help}");
             assert!(help.contains("--dir <PATH>"), "{command}");

@@ -863,7 +863,7 @@
         "antigravity": {
           "supported": false,
           "policy": "refuse",
-          "reason": "No documented way to keep a skill user-invoked only. The seventeen commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
+          "reason": "No documented way to keep a skill user-invoked only. The eighteen commands create worktrees, push branches and open pull requests, so building without the guard would let the harness auto-start them \u2014 refuse rather than ship that."
         },
         "windsurf": {
           "supported": false,
@@ -872,7 +872,7 @@
         },
         "opencode": {
           "supported": true,
-          "reason": "Honoured structurally rather than as a frontmatter key: the payload ships the seventeen as `/`-invoked entries under .opencode/commands/, and deliberately does NOT use .opencode/skills/, whose entries opencode's model invokes itself through its native `skill` tool and which has no `disable-model-invocation` equivalent."
+          "reason": "Honoured structurally rather than as a frontmatter key: the payload ships the eighteen as `/`-invoked entries under .opencode/commands/, and deliberately does NOT use .opencode/skills/, whose entries opencode's model invokes itself through its native `skill` tool and which has no `disable-model-invocation` equivalent."
         },
         "pi": {
           "supported": false,
@@ -881,7 +881,7 @@
         },
         "grok-build": {
           "supported": true,
-          "reason": "Native guard: model invocation requires enabled && !disable_model_invocation && user_invocable, so the seventeen commands cannot be auto-started by the model."
+          "reason": "Native guard: model invocation requires enabled && !disable_model_invocation && user_invocable, so the eighteen commands cannot be auto-started by the model."
         }
       }
     },
