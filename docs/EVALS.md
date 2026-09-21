@@ -52,28 +52,56 @@ filesystem — deterministic checks over a non-deterministic run.
 
 ---
 
-## The five layers
+## Five layers — but only three of them are evals
 
-Each layer buys a different kind of confidence at a different price. Cheap and deterministic runs
-everywhere; expensive and model-dependent runs on a schedule and on demand.
+The epic's name is *test **and** eval* pipeline, and the distinction is load-bearing rather than
+pedantic. Three of the five layers are **scripts**: they assert over files and process exits, they
+give the same answer every run, and no model is involved. Those are tests — they belong in the
+suites this repository already has (`cargo test`, the bats sandbox suite, the python validators),
+and they should grow there rather than being dressed up as something cleverer.
+
+| Layer | Mechanism | Model? | What it is |
+|---|---|---|---|
+| L0 prompt contracts | parse the rendered payload, assert required text | no | **test** — a unit test over generated content |
+| L1a harness discovery | install to a sandbox, assert tree, paths, frontmatter | no | **test** — an e2e install test |
+| L4 published-release upgrade | install previous release, upgrade, `doctor`, uninstall | no | **test** — an e2e CLI test |
+| L1b live harness smoke | run the harness headlessly, read the transcript | **yes** | **eval** |
+| L2 workflow contract evals | run each command in a stub sandbox, score the trace | **yes** | **eval** |
+| L3 live end-to-end | run the flagship for real against GitHub | **yes** | **eval** |
+
+Why insist on the line: a test failing means *the code is wrong*. An eval failing means the code,
+the prompt, the model, or the harness moved, and someone has to work out which. They need different
+triggers, different budgets, different storage (a commit SHA versus a prompt-hash series), and
+different closure rules. Filing them under one word is how a stochastic result ends up being read as
+a deterministic one.
+
+The practical consequence is the one that answers "how many accounts do we need":
+
+> **The tests cover all nine harnesses, on every pull request, for nothing. The evals need a paid
+> credential for every run — so the eval pipeline is three layers, and it runs where we already hold
+> a key.**
+
+That is also why the tests are the blocking gates and the evals are not. A gate that can go red
+because a vendor changed a model is not a gate.
 
 ```mermaid
 flowchart TB
-    subgraph cheap["Free · deterministic · every PR"]
+    subgraph cheap["Tests · scripts, no model · free · every PR · all nine harnesses"]
         L0["<b>L0 — Prompt contracts</b> issue 420<br/>Static assertions on the <i>rendered</i> payload:<br/>no force-push, CI gate before the board,<br/>bounded fix rounds, manual-merge default,<br/>a repeated <code>Closes</code> line, PTY harness picker"]
+        L4["<b>L4 — Published-release upgrade</b> issue 425<br/>Previous released tarball → branch binary →<br/>doctor green → clean uninstall"]
         L1a["<b>L1a — Harness discovery</b> issue 421<br/>Install into a sandbox and validate the tree:<br/>17 commands + 13 crew present at the path that<br/>harness reads, frontmatter parses, name = dir.<br/>Then ask the harness itself, where it documents how"]
     end
-    subgraph nightly["Keys · models · nightly or opt-in"]
+    subgraph nightly["Evals · a model runs · keys + budget · nightly"]
         L1b["<b>L1b — Live harness smoke</b> issue 422<br/>One headless run per harness that documents<br/>a headless mode; assert from the transcript that<br/>discovery → spawn → command body actually ran"]
         L2["<b>L2 — Workflow contract evals</b> issue 423<br/>Every command in a sandbox repo with stub<br/>gh/git; score the action sequence, incl.<br/>negative cases that must fail closed"]
-        L4["<b>L4 — Published-release upgrade</b> issue 425<br/>Previous released tarball → branch binary →<br/>doctor green → clean uninstall"]
     end
-    subgraph gate["Real money · weekly · blocks the tag"]
+    subgraph gate["Eval · real money · weekly · blocks the tag"]
         L3["<b>L3 — Live end-to-end</b> issue 424<br/>A real /shipmates-ship-issue and /shipmates-fix-bug on a<br/>throwaway repo: PR opened, CI polled green,<br/>board convened, nothing auto-merged"]
     end
 
-    L0 --> L1a --> L1b --> L2 --> L3
-    L4 -.->|independent of the crew| L3
+    L0 --> L1a
+    L1a ==>|"a paid credential is required past this line"| L1b
+    L1b --> L2 --> L3
 ```
 
 Read it as a ladder of claims:
@@ -95,6 +123,22 @@ Read it as a ladder of claims:
   slow, and therefore rare — and the one that blocks a release tag.
 - **L4** — *the upgrade path a captain actually runs works.* Independent of the crew entirely;
   it tests the binary and the installer against a real previous release.
+
+### A headless run can be too clean to measure anything
+
+One trap is worth naming before anyone builds L1b, because it fails silently rather than loudly. A
+harness's scripted mode may exist precisely to be *reproducible* — skipping discovery of the host's
+plugins, hooks, memory and project config so the same command gives the same result on every
+machine. That is the right default for a scripted task and the wrong one for a discovery eval: if
+the mode also skips the tree our payload installs into, the run succeeds, spends tokens, and proves
+nothing about whether the crew resolves.
+
+So a smoke run must **verify that the isolation flags it uses still load the resources under test**,
+and where they do not, run without them and isolate by environment instead — a clean home directory
+and a fresh sandbox repo, so the run is reproducible because nothing else is present rather than
+because the harness declined to look. This is a per-harness fact with a per-version expiry date,
+which is why it belongs in the registry sweep alongside the headless invocation itself, not in a
+contributor's memory.
 
 ---
 
@@ -138,7 +182,9 @@ job in the ruleset, and the validator staying green.
 ## Which harnesses each layer covers
 
 All nine targets, because a layer that quietly covers two of them is the failure mode `AGENTS.md`
-warns about. Install tree and crew mechanic come from `tools/harness_watch.json` and
+warns about. Read the columns with the test/eval split in mind: the self-parse column is a script
+and costs nothing, so it is genuinely nine-wide; the two right-hand columns describe evals, and an
+eval only runs where a credential exists. Install tree and crew mechanic come from `tools/harness_watch.json` and
 `tools/harness_matrix.json`; the runtime column is that harness's `runtime_verified.status`.
 
 | Harness | Skills land in | Crew | `runtime_verified` | L1a self-parse | L1a harness-attested | L1b headless |
@@ -185,8 +231,8 @@ The obvious objection to a nine-harness eval matrix is that it implies nine acco
 paid, several of them personal seats — and a nightly job that spends on all of them. That objection
 is correct, and it is the main thing that shapes where each layer runs.
 
-**L0 and L1a need no account at all.** That is not incidental — it is *why* they are the blocking
-layers. Both work on an installed tree in a sandbox: assert the files exist at the path that harness
+**L0, L1a and L4 need no account at all** — they are scripts, not evals. That is not incidental; it
+is *why* they are the blocking layers. Both work on an installed tree in a sandbox: assert the files exist at the path that harness
 reads, parse strictly, check `name` equals the directory, confirm the full command and crew set
 resolves. Nine targets, every pull request, zero credentials, zero tokens. The single most expensive
 class of bug we have actually shipped — a payload written to a tree the harness never reads — is
