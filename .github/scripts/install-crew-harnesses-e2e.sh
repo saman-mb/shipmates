@@ -36,7 +36,7 @@ cargo run -- build --target grok-build --out "$RUNNER_TEMP/grok-payload"
 test -f "$RUNNER_TEMP/grok-payload/harnesses/grok-build/.grok/rules/shipmates-contributor.md"
 cargo run -- install --harness devin --dir "$RUNNER_TEMP/install-devin"
 # Devin CLI reads its own .devin tree for crew and would otherwise resolve the
-# shared .agents one; the guard on the seventeen commands is `triggers: [user]`,
+# shared .agents one; the guard on the eighteen commands is `triggers: [user]`,
 # which the shared two-key rendering cannot express, so assert both.
 test -f "$RUNNER_TEMP/install-devin/.devin/skills/shipmates-ship-issue/SKILL.md"
 grep -q 'triggers:' "$RUNNER_TEMP/install-devin/.devin/skills/shipmates-ship-issue/SKILL.md"

@@ -33,7 +33,7 @@ load helpers
   [ "$(tool_files "$SANDBOX")" -eq 0 ]
   [ "$(tool_dirs "$SANDBOX")" -eq 0 ]
   [ "$(find "$SANDBOX/.claude/skills" -path '*shipmates-*' -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]
-  [ "$(find "$SANDBOX/.claude/skills" -mindepth 2 -maxdepth 2 -name 'SKILL.md' ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 17 ]
+  [ "$(find "$SANDBOX/.claude/skills" -mindepth 2 -maxdepth 2 -name 'SKILL.md' ! -name '*.bak-*' | wc -l | tr -d ' ')" -eq 18 ]
 }
 
 @test "update without --with-tools keeps opencode native tools and their receipt claims" {

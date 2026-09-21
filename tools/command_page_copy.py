@@ -671,4 +671,42 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
+    "shipmates-upgrade": CommandPageCopy(
+        guide_blurb="Check for a newer Shipmates release, refresh and audit every install — apply and file only on request.",
+        process_lead=(
+            "No crew spawns — the run drives the installed CLI (release check, self-upgrade, "
+            "refresh, audit, filing) and reports what it reads back from its JSON."
+        ),
+        when_to_use=(
+            "Shipmates itself needs upgrading, or an install has drifted and you want it surveyed before anything changes.",
+            "Bug in your repo? /shipmates-fix-bug. Bug in Shipmates itself? /shipmates-report-bug.",
+        ),
+        process=(
+            ProcessStep(
+                "Survey",
+                "Run shipmates upgrade --check --json and shipmates status --json; present the release, channel, and each install's version, state, and drift.",
+                solo="No spawn — the CLI reports; the run reads the JSON.",
+            ),
+            ProcessStep(
+                "Upgrade",
+                "Show the channel command the CLI reports. Apply runs shipmates upgrade --self — brew and cargo-dist only; a source checkout gets the manual path.",
+                solo="Still the run — no spawn, and never a self-upgrade for a source checkout.",
+            ),
+            ProcessStep(
+                "Repair",
+                "Apply runs shipmates upgrade --fix --json and reports what was refreshed and repaired, per root — one failing root never stops the rest.",
+                solo="The run reads the per-root JSON back.",
+            ),
+            ProcessStep(
+                "File",
+                "Read findings (class, harness, root, fingerprint). Apply plus the file-bugs token runs shipmates upgrade --file-bugs; otherwise print the list and the exact command.",
+                solo="Never files silently — the CLI dedupes and sanitises; the run reports its URLs.",
+            ),
+            ProcessStep(
+                "Report",
+                "Summarise what changed and any issue URLs, and remind the captain to restart the harness so a refreshed command loads.",
+                solo="No extra spawn — the run closes out.",
+            ),
+        ),
+    ),
 }

@@ -2,7 +2,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use shipmates::cli::{Cli, Command, install_force_hint};
 use shipmates::installer::manifest_db::InstallReceipt;
-use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering};
+use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering, upgrade};
 use std::fs;
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -522,8 +522,7 @@ fn install_harness(
     // the whole install aborted on a path that was already correct. Every skipped
     // path is named below, and the tools summary / returned tool list reflect
     // what actually landed — never the requested set (#489).
-    let (built, mut skipped_symlinked) =
-        partition_symlinked(target_dir, &payload_prefix, built)?;
+    let (built, mut skipped_symlinked) = partition_symlinked(target_dir, &payload_prefix, built)?;
     let (tools_payload, skipped_tools) =
         partition_symlinked(target_dir, &payload_prefix, tools_payload)?;
     skipped_symlinked.extend(skipped_tools);
@@ -755,10 +754,7 @@ fn install_harness(
             harness, result.written, tool_change
         );
     } else {
-        let names: Vec<&str> = landed_tools
-            .iter()
-            .map(|tool| tool.name.as_str())
-            .collect();
+        let names: Vec<&str> = landed_tools.iter().map(|tool| tool.name.as_str()).collect();
         println!(
             "Installed harness: {} ({} files written, {} — {})",
             harness,
@@ -865,6 +861,59 @@ fn with_tools_flag_from_receipt(
     })
 }
 
+/// Best-effort registration of freshly installed/updated harnesses in the
+/// installs index. A failure never changes the command's exit status.
+fn register_installs(target_dir: &Path, harnesses: &[String]) {
+    let index_file = match upgrade::index::index_path() {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("warning: could not locate the installs index: {error}");
+            return;
+        }
+    };
+    let mut index = match upgrade::index::InstallsIndex::load(&index_file) {
+        Ok(index) => index,
+        Err(error) => {
+            eprintln!("warning: could not load the installs index: {error}");
+            return;
+        }
+    };
+    for harness in harnesses {
+        let (_, receipt, _) = installer::plan::read_receipt(target_dir, harness);
+        let Some(receipt) = receipt else { continue };
+        if let Err(error) = index.register(
+            &index_file,
+            target_dir,
+            harness,
+            &receipt.version,
+            &receipt.layout,
+        ) {
+            eprintln!("warning: could not register {harness} in the installs index: {error}");
+        }
+    }
+}
+
+/// Best-effort deregistration of an uninstalled harness from the installs index.
+fn deregister_install(target_dir: &Path, harness: &str) {
+    let index_file = match upgrade::index::index_path() {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("warning: could not locate the installs index: {error}");
+            return;
+        }
+    };
+    let mut index = match upgrade::index::InstallsIndex::load(&index_file) {
+        Ok(index) => index,
+        Err(error) => {
+            eprintln!("warning: could not load the installs index: {error}");
+            return;
+        }
+    };
+    if let Err(error) = index.deregister(&index_file, target_dir, harness) {
+        eprintln!("warning: could not deregister {harness} from the installs index: {error}");
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -887,7 +936,7 @@ fn main() -> Result<()> {
             let install_steering = source.steering_for_target(&target_dir)?;
             let harnesses = resolve_install_harnesses(harness, Some(&target_dir))?;
 
-            run_install_loop(
+            let install_result = run_install_loop(
                 &target_dir,
                 &harnesses,
                 ToolSelection::Explicit(selected_tools),
@@ -899,7 +948,7 @@ fn main() -> Result<()> {
                 force,
                 install_steering.is_some(),
                 &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
-            )?;
+            );
 
             // Global steering is user-scope only (#489). A project --local/--dir
             // install must not rewrite ~/.claude/CLAUDE.md (and friends); that
@@ -932,6 +981,8 @@ fn main() -> Result<()> {
                     }
                 }
             }
+            register_installs(&target_dir, &harnesses);
+            install_result?;
         }
         Command::Uninstall {
             harness,
@@ -985,6 +1036,7 @@ fn main() -> Result<()> {
                     }
                 }
             }
+            deregister_install(&target_dir, &harness_name);
         }
         Command::Build {
             target,
@@ -1051,7 +1103,7 @@ fn main() -> Result<()> {
                 None => ToolSelection::FromReceipt,
             };
             let install_steering = source.steering_for_target(&target_dir)?;
-            run_install_loop(
+            let install_result = run_install_loop(
                 &target_dir,
                 &harnesses,
                 tools,
@@ -1063,7 +1115,7 @@ fn main() -> Result<()> {
                 true,
                 install_steering.is_some(),
                 &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
-            )?;
+            );
 
             // Refresh canonical global steering only on a global/$HOME target (#489).
             if installer::manifest_db::is_global_target(&target_dir)
@@ -1074,6 +1126,8 @@ fn main() -> Result<()> {
                     let _ = steering::install_global_steering(h, &home_path, &global_content);
                 }
             }
+            register_installs(&target_dir, &harnesses);
+            install_result?;
         }
         Command::Doctor {
             harness,
@@ -1090,8 +1144,7 @@ fn main() -> Result<()> {
             // Replay the tools posture the receipt claims so a foreign-collision
             // force hint does not silently broaden a crew-only install (#392 nit).
             let with_tools = with_tools_flag_from_receipt(&target_dir, &harness, &tools);
-            let force_hint =
-                install_force_hint(&harness, &location, with_tools.as_deref());
+            let force_hint = install_force_hint(&harness, &location, with_tools.as_deref());
 
             let report = if fix {
                 doctor::fix(
@@ -1119,6 +1172,39 @@ fn main() -> Result<()> {
             if report.has_problems() {
                 std::process::exit(2);
             }
+        }
+        Command::Status { json, dir } => {
+            let dirs: Vec<PathBuf> = dir.into_iter().map(PathBuf::from).collect();
+            let code = upgrade::orchestrate::run_status(json, &dirs)?;
+            std::process::exit(code);
+        }
+        Command::Upgrade {
+            check,
+            json,
+            pre,
+            dry_run,
+            fix,
+            dir,
+            file_bugs,
+            self_upgrade,
+            resume,
+        } => {
+            let dirs: Vec<PathBuf> = dir.into_iter().map(PathBuf::from).collect();
+            let code = if check {
+                upgrade::orchestrate::run_check(json, pre, &dirs)?
+            } else {
+                upgrade::orchestrate::run_upgrade(&upgrade::orchestrate::UpgradeOpts {
+                    json,
+                    pre,
+                    dry_run,
+                    fix,
+                    dirs,
+                    file_bugs,
+                    self_upgrade,
+                    resume,
+                })?
+            };
+            std::process::exit(code);
         }
         Command::Targets => {
             for name in adapters::targets() {
@@ -1231,7 +1317,6 @@ fn combine_rollback_error(error: anyhow::Error, rollback: Result<()>) -> anyhow:
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1297,8 +1382,60 @@ mod tests {
     }
 
     #[test]
+    fn status_help_documents_flags_and_examples() {
+        let help = help_for("status");
+        for needle in [
+            "--json",
+            "--dir <PATH>",
+            "Where:",
+            "Examples:",
+            "shipmates status",
+            "shipmates status --json",
+            "shipmates status --dir ~/work/app",
+        ] {
+            assert!(help.contains(needle), "missing `{needle}`:\n{help}");
+        }
+    }
+
+    #[test]
+    fn upgrade_help_documents_flags_conflicts_and_hides_resume() {
+        let help = help_for("upgrade");
+        for needle in [
+            "--check",
+            "--pre",
+            "--dry-run",
+            "--fix",
+            "--file-bugs",
+            "--self",
+            "--dir <PATH>",
+            "Where:",
+            "Examples:",
+            "shipmates upgrade --check",
+            "shipmates upgrade --json",
+            "shipmates upgrade --fix",
+            "shipmates upgrade --self",
+            "shipmates upgrade --dir ~/work/app",
+            "conflicts with --fix, --file-bugs, --self",
+        ] {
+            assert!(help.contains(needle), "missing `{needle}`:\n{help}");
+        }
+        // `--resume` is an internal re-exec seam, never part of the help.
+        assert!(
+            !help.contains("--resume"),
+            "`--resume` must stay hidden:\n{help}"
+        );
+    }
+
+    #[test]
     fn location_flags_share_where_heading_across_user_commands() {
-        for command in ["install", "update", "uninstall", "doctor"] {
+        for command in [
+            "install",
+            "update",
+            "uninstall",
+            "doctor",
+            "status",
+            "upgrade",
+        ] {
             let help = help_for(command);
             assert!(help.contains("Where:"), "{command}:\n{help}");
             assert!(help.contains("--dir <PATH>"), "{command}");

@@ -17,14 +17,14 @@ load helpers
   run "$SHIPMATES_BIN" --help
   assert_success
   local cmd
-  for cmd in install update uninstall doctor targets build check; do
+  for cmd in install update uninstall doctor status upgrade targets build check; do
     assert_output --partial "$cmd"
   done
 }
 
 @test "every subcommand has a help page that exits zero" {
   local cmd
-  for cmd in install update uninstall doctor targets build check; do
+  for cmd in install update uninstall doctor status upgrade targets build check; do
     run "$SHIPMATES_BIN" help "$cmd"
     assert_success
   done
