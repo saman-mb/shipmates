@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.13.0] - 2026-09-21
+## [0.14.0] - 2026-09-22
 
 ### Added
 
@@ -45,6 +45,55 @@ All notable changes to this project are documented here. The format follows
   what is genuinely Shipmates' fault, and remind the captain to restart a running harness
   before invoking a refreshed command. It names Shipmates, harnesses and the upstream
   repo explicitly, exactly like `/shipmates-report-bug` (#538).
+
+
+## [0.13.0] - 2026-09-22
+
+### Changed
+
+- **`windsurf` is now `devin`, and it ships the crew.** Windsurf became Devin
+  Desktop on 2026-06-02, Cascade was replaced by Devin Local, and Devin CLI
+  documents both a subagent profile format (`name`, `description`, `model`,
+  `allowed-tools`, `max-nesting`) and three skill trees — `.agents/skills/`
+  (recommended, shared), `.devin/skills/` (native, takes precedence) and
+  `.windsurf/skills/` (legacy, still read). So the target is renamed, retargeted
+  at the `.devin/` tree, and promoted from seventeen skills to the full crew:
+  `.devin/agents/<name>.md` for the thirteen specialists, `.devin/skills/` for
+  the seventeen commands and the toolbox, `.devin/rules/shipmates-contributor.md`
+  for contributor steering, and `~/.config/devin/AGENTS.md` for global steering
+  (#164, #168).
+- **The commands keep the user-invoked-only guard on a third harness.** Devin's
+  skills carry `triggers`, defaulting to `[user, model]`; the adapter writes the
+  explicit `triggers: [user]`, which is why devin ships the native tree rather
+  than the shared one — the neutral two-key rendering drops the guard and would
+  hand the agent seventeen workflows to start on its own. Same reasoning that put
+  Grok Build on `.grok/skills/`.
+- **Crew tool restrictions are emitted only where the names are documented.**
+  On a Devin subagent definition `allowed-tools` restricts, so the adapter emits
+  it from Devin's documented tool names (`read`, `edit`, `grep`, `glob`, `exec`)
+  and omits the key for a role that declares a capability with no documented name
+  (`web`) rather than silently stripping that capability from the seat.
+
+### Added
+
+- **`tools/harness_roster.json` — the harness coverage audit, as data.** All 46
+  clients on the Agent Skills showcase plus our nine targets, each with a
+  first-party doc URL, the date it was checked, the literal path string it
+  yielded, subagent support, and a verdict (`shipped` / `shared-free` /
+  `native-adapter` / `watch` / `skip`) with a reason a deferral cannot hide in.
+  It records what the count could not: which clients read the shared
+  `.agents/skills/` tree and so need no adapter at all, and which need one.
+  `python3 tools/validate_harness_roster.py` gates it in CI — the `shipped` rows
+  must equal the shipped targets, a `shared` claim must quote `.agents/skills`,
+  and every deferral must carry a reason (#164).
+- **A retired target name keeps working, and its files are adopted.** `shipmates
+  install --harness windsurf` resolves to `devin` and says so, and installing
+  `devin` over an existing Windsurf-era install adopts it: every file whose
+  bytes still match the retired receipt is backed up under `.shipmates-backup/`
+  and removed, a file the captain edited is left exactly where it is and
+  reported, the legacy receipt is cleared, and the emptied `.windsurf/` tree is
+  pruned — so no captain ends up with two copies of every command in the picker
+  (#168).
 
 ## [0.12.0] - 2026-09-21
 

@@ -5,7 +5,7 @@
 # 🚢 Shipmates
 
 <p align="center">
-  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, Grok Build, and Windsurf.</b><br/>
+  <b>Custom subagents &amp; command workflows — for <a href="https://claude.com/product/claude-code">Claude Code</a>, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, Grok Build, and Devin.</b><br/>
   A crew of specialist AI agents that drives a GitHub issue from open to a <b>reviewed, CI-green pull request</b> — autonomously.
 </p>
 
@@ -84,12 +84,12 @@ from anything hardcoded into the role.
 | `/shipmates-upgrade [apply] [pre] [file-bugs]` | Checks for a newer Shipmates release and refreshes, audits, and repairs every known install — check-and-report by default; `apply` runs the upgrade/repair/filing steps |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
-worktree, and hands you a pull request — your checkout is left as you left it. `/shipmates-report-bug` writes to
-the upstream Shipmates repo (preview by default), not your project. `/shipmates-release` is the one
+worktree, and hands you a pull request — your checkout is left as you left it. `/shipmates-report-bug` and the opt-in `--file-bugs` path of
+`/shipmates-upgrade` write to the upstream Shipmates repo, not your project. `/shipmates-release` is the one
 exception: the release commit has to land on the branch being tagged, so it commits, pushes and tags
 straight in your checkout instead of an unmerged side branch. `/shipmates-pr-review` and the default
-`report` mode of `/shipmates-harden`, `/shipmates-consolidate-issues` and `/shipmates-deslop` write nothing at
-all. Writing straight into the working tree is opt-in
+`report` mode of `/shipmates-harden`, `/shipmates-consolidate-issues`, `/shipmates-deslop` and
+`/shipmates-upgrade` write nothing at all. Writing straight into the working tree is opt-in
 (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
 **There's deliberately no `code-reviewer`.** Review is split by discipline instead of pooled into one
@@ -197,11 +197,11 @@ cursor           .cursor/          skills only (first-party tree; slash picker r
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
 pi               .pi/ + .agents/     crew (.md) at .pi/agents, skills at .agents/skills (global: crew only)
 grok-build       .grok/            agents + skills
-windsurf         .windsurf/        skills only (canonical .windsurf/skills)
+devin            .devin/           agents + skills   (Devin CLI / Devin Desktop — formerly Windsurf)
 ```
 
-Every harness compiles the same canonical crew and commands. Seven receive the thirteen specialists as
-agents; the other two ship the eighteen commands as skills only. Pi's crew resolve through the
+Every harness compiles the same canonical crew and commands. Eight receive the thirteen specialists as
+agents; cursor ships the eighteen commands as skills only. Pi's crew resolve through the
 third-party `pi-subagents` extension — core pi documents no subagent schema of its own — so a pi
 install without that extension resolves no crew. Pi reads its crew from the nearest ancestor directory
 carrying `.pi/` or `.agents/`, so install into your project: a home-directory install only takes effect
@@ -212,8 +212,7 @@ one source of truth, byte-identical, so a multi-harness repo gets a single copy 
 ones. Their crew still land in each harness's own native format. A **global** Pi install is the
 exception: Pi also always loads `~/.pi/agent/skills/`, so that install writes crew only — command
 skills stay project-local on the shared tree, or Pi prints `[Skill conflicts]` for every duplicated
-name. `cursor` reads that open tree too, but only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and nowhere else — one copy, never two. `windsurf` keeps its canonical `.windsurf/skills/` (its docs make
-`.agents/skills/` only a secondary scan) and `claude-code` its own `.claude/skills/`. `grok-build`
+name. `cursor` reads that open tree too, but only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and nowhere else — one copy, never two. `claude-code` keeps its own `.claude/skills/`, and `devin` its `.devin/skills/`. `grok-build`
 keeps its own `.grok/skills/` for a different reason: its commands ship the native
 `disable-model-invocation` guard, which the neutral dialect the shared tree carries does not express.
 
@@ -321,7 +320,7 @@ allowlist: a tool a wildcard denies is hidden from the model rather than refused
 > ⚠️ **Runtime status is per harness in `tools/harness_matrix.json` → `runtime_verified`.** Claude Code
 > is `full` (crew, arguments, `/shipmates-ship-issue` end to end). Antigravity, Cursor, Pi and opencode have
 > captain-attested live runs (`partial` — Pi `crew_resolve`/`command_e2e` are `no` per #525; other granular cells may still be `unknown`). Codex CLI,
-> GitHub Copilot, Grok Build and Windsurf remain format/digest-verified only. Opencode's Tier-A
+> GitHub Copilot, Grok Build and Devin remain format/digest-verified only. Opencode's Tier-A
 > checklist is
 > still tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
 > [#32](https://github.com/saman-mb/shipmates/issues/32).
@@ -549,7 +548,7 @@ question is whether it's been *run*.
   `argument_passing` is still unknown. Opencode's Tier-A / sandbox checklist remains open in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32).
-- **Builds, not runtime-verified (`none`)** — Codex CLI, GitHub Copilot, Grok Build and Windsurf build
+- **Builds, not runtime-verified (`none`)** — Codex CLI, GitHub Copilot, Grok Build and Devin build
   from `shipmates install --harness <name>`, and each payload's format was verified against that
   harness's parsing source and first-party docs, but no live run is recorded. The Gemini CLI is retired — the
   Antigravity CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates
@@ -558,7 +557,7 @@ question is whether it's been *run*.
 **Crew vs skills (payload shape, independent of runtime status).** opencode, Antigravity, Codex CLI,
 GitHub Copilot, Pi and Grok Build get the full crew + all 18 commands (Pi's crew land at `.pi/agents/`
 and resolve through the third-party `pi-subagents` extension; Grok Build's land at `.grok/agents/`);
-Cursor and Windsurf ship the 18 skills only.
+Cursor ships the 18 skills only.
 
 Why that's credible: the crew's system prompts name no harness, and the eighteen commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
@@ -577,7 +576,7 @@ A ready-made crew of **subagents** and **command workflows**. Instead of you pla
 planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
 `/shipmates-ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It ships for
 nine harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, Grok
-Build, and Windsurf;
+Build, and Devin;
 see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**

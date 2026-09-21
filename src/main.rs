@@ -27,7 +27,7 @@ fn harness_blurb(name: &str) -> &'static str {
         "github-copilot" => "crew in .github/agents + skills in .agents",
         "pi" => "crew in .pi/agents + skills in .agents (global: crew only)",
         "grok-build" => "agents + skills in .grok",
-        "windsurf" => "skills in .windsurf",
+        "devin" => "crew in .devin/agents + skills in .devin/skills (Devin CLI, formerly Windsurf)",
         _ => "harness payload",
     }
 }
@@ -136,6 +136,15 @@ fn resolve_install_harnesses(
     match harness {
         Some(name) if name == "all" => Ok(available.iter().map(|s| (*s).to_string()).collect()),
         Some(name) => {
+            // A retired target name resolves to its current one so an existing
+            // script or habit keeps working, but the resolved id is what gets
+            // installed and what the receipt records — nothing new is ever
+            // written under a name the product no longer answers to.
+            if adapters::is_retired_target_name(&name) {
+                let current = adapters::normalize_target(&name).to_string();
+                println!("  \"{name}\" is the retired name for {current} — installing {current}.");
+                return Ok(vec![current]);
+            }
             if !available.iter().any(|candidate| *candidate == name) {
                 bail!(
                     "Unsupported harness: {name} (available: {})",
@@ -494,6 +503,17 @@ fn install_harness(
     let tools_payload = relocate(adapter.build_tools(selected_tools));
     let payload_prefix = format!("{}/", adapter.container());
 
+    // A target that replaced another name (windsurf -> devin) may be installing
+    // over the retired install's tree. Adopt it first — receipt-verified,
+    // backed up, and only while the harness still reads those files — so the
+    // captain never ends up with two copies of every command. `--no-migrate`
+    // leaves it alone on purpose and says so.
+    let retired_report = if no_migrate {
+        None
+    } else {
+        installer::retired::adopt(target_dir, harness)?
+    };
+
     // A path behind a symlink is SKIPPED — not written through and not fatal.
     //
     // Shipmates never writes through a symlink: that containment property is not
@@ -679,6 +699,32 @@ fn install_harness(
             "{} files changed, {} new, {} removed",
             result.summary.changed, result.summary.new, result.summary.removed
         );
+    }
+    if let Some(report) = retired_report.as_ref()
+        && report.changed()
+    {
+        println!(
+            "Adopted {} file(s) from the retired \"{}\" install (backup: {})",
+            report.adopted.len(),
+            report.name,
+            report
+                .backup_root
+                .as_ref()
+                .map(|path| path.display().to_string())
+                .unwrap_or_else(|| target_dir.display().to_string())
+        );
+        if !report.kept_modified.is_empty() {
+            println!(
+                "  kept {} file(s) you edited: {}",
+                report.kept_modified.len(),
+                report
+                    .kept_modified
+                    .iter()
+                    .map(|path| path.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
     }
     for warning in &result.warnings {
         println!("{}", warning);

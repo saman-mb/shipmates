@@ -46,7 +46,7 @@ load helpers
   run "$SHIPMATES_BIN" targets
   assert_success
   local harness
-  for harness in claude-code opencode antigravity codex cursor github-copilot pi grok-build windsurf; do
+  for harness in claude-code opencode antigravity codex cursor github-copilot pi grok-build devin; do
     assert_output --partial "$harness"
   done
   [ "$(printf '%s\n' "$output" | wc -w | tr -d ' ')" -eq 9 ]

@@ -398,7 +398,7 @@
         <div class="section__head">
           <p class="section__eyebrow"><span aria-hidden="true">🛠️</span> How the voyage works</p>
           <h2 class="section__title" id="how-title">How <code>/shipmates-ship-issue</code> takes a GitHub issue to a pull request</h2>
-          <p class="section__lead">It's not a clever prompt — it's a structured workflow with explicit quality gates. Eight stages, in order.</p>
+          <p class="section__lead">It's not a clever prompt — it's a structured workflow with <a href="docs/how-commands-work/">explicit quality gates</a>. Eight stages, in order.</p>
         </div>
         <ol class="how__steps">
           <li class="how-step">
@@ -435,7 +435,7 @@
             <span class="how-step__num" aria-hidden="true">6</span>
             <span class="how-step__icon" aria-hidden="true">⚖️</span>
             <h3 class="how-step__title">Acceptance board</h3>
-            <p class="how-step__desc">product-manager + sdet (+ gated ux-ui-designer / art-director / architect) review the pushed PR head, adversarially.</p>
+            <p class="how-step__desc">product-manager + principal-engineer, plus gated specialists, review the pushed PR head adversarially.</p>
           </li>
           <li class="how-step">
             <span class="how-step__num" aria-hidden="true">7</span>
@@ -459,7 +459,7 @@
           <div class="section__head">
             <p class="section__eyebrow"><span aria-hidden="true">🌊</span> What's next</p>
             <h2 class="section__title" id="next-title">Which harnesses the crew runs on</h2>
-            <p class="section__lead">Claude Code is fully runtime-verified; antigravity, cursor, pi and opencode have captain-attested live runs; codex, GitHub Copilot, grok-build and windsurf remain format-only. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> <code>runtime_verified</code> record rather than a promise.</p>
+            <p class="section__lead">Claude Code is fully runtime-verified; antigravity, cursor, pi and opencode have captain-attested live runs; codex, GitHub Copilot, grok-build and devin remain format-only. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> <code>runtime_verified</code> record rather than a promise.</p>
           </div>
           <div class="order-prose">
             <ul>
@@ -480,7 +480,7 @@
                 <ul>
                   <li>codex, github-copilot — the full crew and all 18 commands. Codex agents are TOML and inherit the session's tools (no per-agent allowlist).</li>
                   <li>grok-build — the full crew and all 18 commands in its own <code>.grok/</code> tree: the one non-Claude target that keeps the native <code>disable-model-invocation</code> guard, and it enforces a per-agent tool allowlist too.</li>
-                  <li>windsurf — the 18 skills only; under review since the Devin Desktop rename.</li>
+                  <li>devin — the full crew and all 18 commands in <code>.devin/</code> (Devin CLI / Devin Desktop, formerly Windsurf), with the legacy <code>.windsurf/</code> tree adopted on install.</li>
                 </ul>
               </li>
               <li><strong>Next</strong>
@@ -563,7 +563,7 @@
                 <span class="faq__marker" aria-hidden="true"></span>
               </summary>
               <div class="faq__a">
-                <p>The <a href="docs/install/">install reference</a> covers every flag and path. See also the <a href="docs/harnesses/">harness matrix</a>, <a href="docs/troubleshooting/">troubleshooting</a>, and <a href="docs/architecture/">architecture</a> pages.</p>
+                <p>The <a href="docs/install/">install reference</a> covers every flag and path. See also <a href="docs/how-commands-work/">how commands work</a>, the <a href="docs/harnesses/">harness matrix</a>, <a href="docs/troubleshooting/">troubleshooting</a>, and <a href="docs/architecture/">architecture</a> pages.</p>
               </div>
             </details>
           </div>

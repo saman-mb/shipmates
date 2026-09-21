@@ -1,7 +1,7 @@
 ---
 title: "I gave Claude Code a crew of 13 specialist subagents that ships a GitHub issue to a reviewed PR autonomously"
 published: false
-description: "How Shipmates orchestrates 13 specialist subagents and 17 command workflows with isolated git worktrees and adversarial review boards to drive issues from open to CI-green PRs."
+description: "How Shipmates orchestrates 13 specialist subagents and 18 command workflows with isolated git worktrees and adversarial review boards to drive issues from open to CI-green PRs."
 tags: "ai, claudecode, programming, devops"
 canonical_url: "https://saman-mb.github.io/shipmates/"
 cover_image: "https://saman-mb.github.io/shipmates/assets/social-preview.png"
@@ -11,7 +11,7 @@ cover_image: "https://saman-mb.github.io/shipmates/assets/social-preview.png"
 
 Single AI prompts are great for generating a function or explaining a bug. But real engineering rarely happens in single prompts: a real ticket requires an architectural sanity check, an isolated branch or worktree, test suite validation, continuous integration gating, and an adversarial peer review before anything gets merged.
 
-That is why we built [**Shipmates**](https://saman-mb.github.io/shipmates/) — an open-source (MIT) crew of **13 domain-neutral specialist subagents** and **17 command workflows** designed to take whole GitHub tickets from open to a reviewed, CI-green pull request on their own.
+That is why we built [**Shipmates**](https://saman-mb.github.io/shipmates/) — an open-source (MIT) crew of **13 domain-neutral specialist subagents** and **18 command workflows** designed to take whole GitHub tickets from open to a reviewed, CI-green pull request on their own.
 
 ---
 
@@ -92,7 +92,7 @@ While Shipmates is runtime-verified on **Claude Code** today, the CLI compiles n
 - **GitHub Copilot**: `.agents/skills/` and `.github/agents/`
 - **Pi**: `.agents/skills/` and `.pi/agents/`
 - **Grok Build**: `.grok/skills/` and `.grok/agents/`
-- **Windsurf**: `.windsurf/skills/`
+- **Devin CLI**: `.devin/skills/` (the legacy `.windsurf/skills/` tree is still read by the product and adopted on install)
 
 ---
 

@@ -1008,6 +1008,12 @@ summary::-webkit-details-marker{ display:none; }
   color:var(--text-muted);
   font-size:var(--fs-400);
 }
+.order-process__shared{
+  margin:var(--space-5) 0 0;
+  max-width:var(--maxw-prose);
+  color:var(--text-muted);
+  font-size:var(--fs-300);
+}
 .order-process__crew{
   display:flex;
   flex-direction:column;
