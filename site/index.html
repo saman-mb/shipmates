@@ -81,9 +81,9 @@
           </ul>
         </div>
         <figure class="hero__figure">
-          <img class="hero__demo" id="hero-demo" src="assets/demo-poster.png" width="940" height="604" alt="A /shipmates-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request.">
+          <img class="hero__demo" id="hero-demo" src="assets/demo-poster.png" width="940" height="604" alt="A /shipmates-ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request.">
           <button type="button" class="btn btn--secondary hero__demo-toggle" id="hero-demo-toggle" aria-pressed="false" aria-controls="hero-demo">Play the run</button>
-          <figcaption class="hero__figcaption">Illustrative — the stages <code>/shipmates-issue</code> runs, in order.</figcaption>
+          <figcaption class="hero__figcaption">Illustrative — the stages <code>/shipmates-ship-issue</code> runs, in order.</figcaption>
         </figure>
       </div>
     </section>
@@ -222,12 +222,12 @@
         <ul class="orders__grid">
           <li class="command-card command-card--flagship">
             <span class="command-card__tag">Flagship</span>
-            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/shipmates-issue/">Issue</a></h3>
+            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/shipmates-ship-issue/">Ship Issue</a></h3>
             <p class="command-card__desc">Drives issue #n from open → reviewed, CI-green PR with the whole crew.</p>
             <span class="command-card__more" aria-hidden="true">How it works →</span>
           </li>
           <li class="command-card">
-            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/shipmates-epic/">Epic</a></h3>
+            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/shipmates-ship-epic/">Ship Epic</a></h3>
             <p class="command-card__desc">Ships an epic's stories in dependency-ordered waves — independent units fan out concurrently; gates pause, failures pause with state.</p>
             <span class="command-card__more" aria-hidden="true">How it works →</span>
           </li>
@@ -287,7 +287,7 @@
             <span class="command-card__more" aria-hidden="true">How it works →</span>
           </li>
           <li class="command-card">
-            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/ship-qa/"><code>/ship-qa</code></a></h3>
+            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/shipmates-qa/">QA</a></h3>
             <p class="command-card__desc">Interactive local human QA walkthrough — complements the board and CI.</p>
             <span class="command-card__more" aria-hidden="true">How it works →</span>
           </li>
@@ -302,7 +302,7 @@
             <span class="command-card__more" aria-hidden="true">How it works →</span>
           </li>
           <li class="command-card">
-            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/ship-deslop/"><code>/ship-deslop</code></a></h3>
+            <h3 class="command-card__cmd"><a class="command-card__link" href="commands/shipmates-deslop/">Deslop</a></h3>
             <p class="command-card__desc">Audits the codebase for dead code, duplication and rot — risk-graded; fixes on a branch, opt-in.</p>
             <span class="command-card__more" aria-hidden="true">How it works →</span>
           </li>
@@ -392,7 +392,7 @@
       <div class="container">
         <div class="section__head">
           <p class="section__eyebrow"><span aria-hidden="true">🛠️</span> How the voyage works</p>
-          <h2 class="section__title" id="how-title">How <code>/shipmates-issue</code> takes a GitHub issue to a pull request</h2>
+          <h2 class="section__title" id="how-title">How <code>/shipmates-ship-issue</code> takes a GitHub issue to a pull request</h2>
           <p class="section__lead">It's not a clever prompt — it's a structured workflow with explicit quality gates. Eight stages, in order.</p>
         </div>
         <ol class="how__steps">
@@ -460,7 +460,7 @@
             <ul>
               <li><strong>Runtime-verified (<code>full</code>)</strong>
                 <ul>
-                  <li>Claude Code — the full crew and all 17 commands; crew resolve, argument passing, and <code>/shipmates-issue</code> end to end.</li>
+                  <li>Claude Code — the full crew and all 17 commands; crew resolve, argument passing, and <code>/shipmates-ship-issue</code> end to end.</li>
                 </ul>
               </li>
               <li><strong>Live run (<code>partial</code>)</strong> — captain-attested live runs in <code>tools/harness_matrix.json</code> (<a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>). Granular criteria stay <code>unknown</code> until separately logged, except pi <code>crew_resolve</code> and <code>command_e2e</code> which are <code>no</code> (<a href="https://github.com/saman-mb/shipmates/issues/525">#525</a>).
@@ -504,7 +504,7 @@
                 <span class="faq__marker" aria-hidden="true"></span>
               </summary>
               <div class="faq__a">
-                <p>A ready-made crew of subagents and command workflows. Instead of you playing planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship /shipmates-issue takes a GitHub issue all the way to a reviewed, CI-green pull request. It is harness-agnostic: one authored crew, compiled to whichever harness you install it for. See <a href="#next">which harnesses</a> for where each one stands.</p>
+                <p>A ready-made crew of subagents and command workflows. Instead of you playing planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship /shipmates-ship-issue takes a GitHub issue all the way to a reviewed, CI-green pull request. It is harness-agnostic: one authored crew, compiled to whichever harness you install it for. See <a href="#next">which harnesses</a> for where each one stands.</p>
               </div>
             </details>
             <details class="faq__item">
@@ -513,7 +513,7 @@
                 <span class="faq__marker" aria-hidden="true"></span>
               </summary>
               <div class="faq__a">
-            <p>Subagents are focused AI agents defined in .claude/agents/*.md; skills are reusable workflows defined in .claude/skills/&lt;name&gt;/SKILL.md and invoked as commands, like /shipmates-issue. Shipmates ships 13 agents and 17 commands you drop into a repo's .claude/ with <code>shipmates install</code> (or .opencode/ for opencode, .codex/ for codex, and so on).</p>
+            <p>Subagents are focused AI agents defined in .claude/agents/*.md; skills are reusable workflows defined in .claude/skills/&lt;name&gt;/SKILL.md and invoked as commands, like /shipmates-ship-issue. Shipmates ships 13 agents and 17 commands you drop into a repo's .claude/ with <code>shipmates install</code> (or .opencode/ for opencode, .codex/ for codex, and so on).</p>
               </div>
             </details>
             <details class="faq__item">
@@ -549,7 +549,7 @@
                 <span class="faq__marker" aria-hidden="true"></span>
               </summary>
               <div class="faq__a">
-                <p>No. Install once, then /shipmates-issue 42. The crew picks up your project's quality bar automatically from your repo's README / AGENTS.md.</p>
+                <p>No. Install once, then /shipmates-ship-issue 42. The crew picks up your project's quality bar automatically from your repo's README / AGENTS.md.</p>
               </div>
             </details>
             <details class="faq__item">

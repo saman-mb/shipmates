@@ -19,9 +19,9 @@
 [![Issues](https://img.shields.io/github/issues/saman-mb/shipmates)](https://github.com/saman-mb/shipmates/issues)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/saman-mb/shipmates/main/site/assets/demo.gif" width="760" alt="A /shipmates-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request." />
+  <img src="https://raw.githubusercontent.com/saman-mb/shipmates/main/site/assets/demo.gif" width="760" alt="A /shipmates-ship-issue run: Plan, Isolate, Build, Self-check, CI gate, Review, Remediate, Deliver — one GitHub issue driven to a reviewed, CI-green pull request." />
 </p>
-<p align="center"><sub><i>Illustrative — the actual stages <code>/shipmates-issue</code> runs, in order.</i></sub></p>
+<p align="center"><sub><i>Illustrative — the actual stages <code>/shipmates-ship-issue</code> runs, in order.</i></sub></p>
 
 ### Stop being your AI's for-loop. Give it a crew. ⚓
 
@@ -29,13 +29,13 @@ You know the drill: prompt, read the reply, prompt again, sigh, prompt again. **
 control loop — the planner, the reviewer, the nagger. Shipmates hands that job to a *crew* of
 specialist subagents and a workflow that actually finishes things.
 
-One command — **`/shipmates-issue`** — takes a GitHub issue from *"open"* to a *reviewed, CI-green pull
+One command — **`/shipmates-ship-issue`** — takes a GitHub issue from *"open"* to a *reviewed, CI-green pull
 request*, on its own: it plans the work, builds it in an isolated worktree, waits for CI to go
 green, convenes an adversarial review board, loops on the fixes, and hands you a PR to merge.
 You stay the captain. The shipmates do the twenty steps in between. 🫡
 
-**[⚓ Get the crew aboard →](#-come-aboard-install)** · one line, no clone — then just `/shipmates-issue 42`.
-<br/>🌐 **[shipmates website →](https://saman-mb.github.io/shipmates/)** · the crew, the commands, and how `/shipmates-issue` works.
+**[⚓ Get the crew aboard →](#-come-aboard-install)** · one line, no clone — then just `/shipmates-ship-issue 42`.
+<br/>🌐 **[shipmates website →](https://saman-mb.github.io/shipmates/)** · the crew, the commands, and how `/shipmates-ship-issue` works.
 
 ---
 
@@ -64,8 +64,8 @@ from anything hardcoded into the role.
 
 | Command | What it does |
 |---|---|
-| `/shipmates-issue <n>...` | Drives GitHub issue `#n` — or several at once, bundled into one PR — from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
-| `/shipmates-epic <n>` | Ships an epic's unchecked stories in dependency-ordered waves — independent units fan out concurrently; gate stories pause for sign-off; failures pause with state |
+| `/shipmates-ship-issue <n>...` | Drives GitHub issue `#n` — or several at once, bundled into one PR — from open → reviewed, CI-green PR (→ merged, opt-in), with the whole crew |
+| `/shipmates-ship-epic <n>` | Ships an epic's unchecked stories in dependency-ordered waves — independent units fan out concurrently; gate stories pause for sign-off; failures pause with state |
 | `/shipmates-fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
 | `/shipmates-report-bug [symptom] [apply]` | Files a structured bug report on `saman-mb/shipmates` from a live run — preview by default; `apply` creates the issue |
 | `/shipmates-plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
@@ -77,17 +77,17 @@ from anything hardcoded into the role.
 | `/shipmates-release [version]` | Cuts a release — changelog from what merged, CI-green tag, SRE rollback pre-flight, opt-in publish |
 | `/shipmates-polish <target>` | Iterates a visual/UI/output artifact to a specialist's sign-off — render → critique → fix loop |
 | `/shipmates-pr-review <pr>` | Runs the board against a PR the crew didn't author — read-only, it reports and never repairs |
-| `/ship-qa <pr|issue|branch>` | Interactive local human QA walkthrough — complements the board and CI |
+| `/shipmates-qa <pr|issue|branch>` | Interactive local human QA walkthrough — complements the board and CI |
 | `/shipmates-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/shipmates-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
-| `/ship-deslop [target] [file|ship]` | Audits the codebase for health debt — dead code, duplication, misplaced layers, dependency and config rot — grades each finding by risk, and files it as an epic behind a human gate |
+| `/shipmates-deslop [target] [file|ship]` | Audits the codebase for health debt — dead code, duplication, misplaced layers, dependency and config rot — grades each finding by risk, and files it as an epic behind a human gate |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
 worktree, and hands you a pull request — your checkout is left as you left it. `/shipmates-report-bug` writes to
 the upstream Shipmates repo (preview by default), not your project. `/shipmates-release` is the one
 exception: the release commit has to land on the branch being tagged, so it commits, pushes and tags
 straight in your checkout instead of an unmerged side branch. `/shipmates-pr-review` and the default
-`report` mode of `/shipmates-harden`, `/shipmates-consolidate-issues` and `/ship-deslop` write nothing at
+`report` mode of `/shipmates-harden`, `/shipmates-consolidate-issues` and `/shipmates-deslop` write nothing at
 all. Writing straight into the working tree is opt-in
 (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
@@ -236,7 +236,7 @@ not use model credentials and do not claim that opencode runtime behavior is ful
 captain-attested live run is recorded as `runtime_verified.status = partial` (#497); those CI smokes
 do not fill the `unknown` cells or promote past `partial`. Full crew resolution,
 argument passing, permission enforcement,
-parallel board execution, and `/shipmates-issue` end-to-end remain open for [#31](https://github.com/saman-mb/shipmates/issues/31)
+parallel board execution, and `/shipmates-ship-issue` end-to-end remain open for [#31](https://github.com/saman-mb/shipmates/issues/31)
 and [#32](https://github.com/saman-mb/shipmates/issues/32).
 
 One caveat worth knowing before you pick Codex: it documents no per-agent tool allowlist, so its
@@ -300,7 +300,7 @@ CODEX_SMOKE=1 bash tests/test_codex_smoke.sh
 ```
 
 The CI smoke is deliberately layout/install-only; neither path proves Codex runtime support or Tier C
-`/shipmates-issue` completion. Tier C still needs the external orchestrator tracked in
+`/shipmates-ship-issue` completion. Tier C still needs the external orchestrator tracked in
 [#13](https://github.com/saman-mb/shipmates/issues/13); see the
 [Codex quickstart](https://saman-mb.github.io/shipmates/docs/harnesses/#codex).
 
@@ -318,7 +318,7 @@ last-match-wins, so the ordering is the mechanism. The result is marginally stro
 allowlist: a tool a wildcard denies is hidden from the model rather than refused at call time.
 
 > ⚠️ **Runtime status is per harness in `tools/harness_matrix.json` → `runtime_verified`.** Claude Code
-> is `full` (crew, arguments, `/shipmates-issue` end to end). Antigravity, Cursor, Pi and opencode have
+> is `full` (crew, arguments, `/shipmates-ship-issue` end to end). Antigravity, Cursor, Pi and opencode have
 > captain-attested live runs (`partial` — Pi `crew_resolve`/`command_e2e` are `no` per #525; other granular cells may still be `unknown`). Codex CLI,
 > GitHub Copilot, Grok Build and Windsurf remain format/digest-verified only. Opencode's Tier-A
 > checklist is
@@ -354,7 +354,7 @@ is refused on that declared status, not on a hardcoded name in the exporter.
 ## 🚀 Weigh anchor (use it)
 
 ```
-/shipmates-issue 42
+/shipmates-ship-issue 42
 ```
 
 Then go get a coffee ☕. It plans, spins up a worktree, builds, waits for CI to go green, convenes
@@ -365,7 +365,7 @@ merge — set `MERGE_MODE=auto` if you want it fully hands-off in a repo where t
 
 ## 🛠️ How the voyage works
 
-`/shipmates-issue` isn't a clever prompt — it runs a **structured workflow with explicit quality gates**:
+`/shipmates-ship-issue` isn't a clever prompt — it runs a **structured workflow with explicit quality gates**:
 
 1. **Plan** 🗺️ — a planner reads the issue + your docs → build plan, acceptance criteria, validation
    plan, and flags for which specialists this story needs.
@@ -396,7 +396,7 @@ The tricks that make the loop hold together:
 
 **Ship a single ticket, hands-off to a reviewed PR:**
 ```
-/shipmates-issue 142
+/shipmates-ship-issue 142
 ```
 The planner reads issue #142 and your README; a `senior-engineer` builds it in a worktree; CI has to
 go green; then a `product-manager` and `sdet` review the pushed PR — a `ux-ui-designer` or `art-director`
@@ -405,7 +405,7 @@ to merge.
 
 **Ship it fully autonomously (merge included), where that's acceptable:**
 ```
-MERGE_MODE=auto /shipmates-issue 142      # or just say "auto-merge" in the prompt
+MERGE_MODE=auto /shipmates-ship-issue 142      # or just say "auto-merge" in the prompt
 ```
 
 **Turn a one-line brief into a tracked backlog:**
@@ -413,7 +413,7 @@ MERGE_MODE=auto /shipmates-issue 142      # or just say "auto-merge" in the prom
 /shipmates-plan-epics "User accounts: signup, login, password reset, and a profile page"
 ```
 A `product-manager` scopes it into an epic, drafts INVEST user stories with acceptance criteria, and
-files them as linked, labelled GitHub issues — ready to hand to `/shipmates-issue` one at a time.
+files them as linked, labelled GitHub issues — ready to hand to `/shipmates-ship-issue` one at a time.
 
 **Break a big vision into several epics at once (fan-out):**
 ```
@@ -435,7 +435,7 @@ The `ux-ui-designer` reviews the *rendered* screen (not the code), lists concret
 `senior-engineer` applies them, it re-renders, and the loop repeats until the designer signs off — or
 hands you the outstanding notes after a few rounds. It never writes to your checkout: it decides
 where the polish should *land*, not where you happen to be standing. Already inside a worktree — the
-one `/shipmates-issue` left behind, say — it stays put and reuses it, refusing if the tree is dirty. On a
+one `/shipmates-ship-issue` left behind, say — it stays put and reuses it, refusing if the tree is dirty. On a
 feature branch whose PR is already open, it works in a detached worktree and pushes back onto that
 branch, so the polish joins the PR you already have instead of opening a second one. Otherwise it
 cuts a `polish/<slug>` branch from `HEAD` and opens a PR of its own.
@@ -495,11 +495,11 @@ tagged commit, and the `site-reliability-engineer` checks rollback + migration s
 **Chain them — scope the work, ship a story, polish its UI:**
 ```
 /shipmates-plan-epics "settings redesign"     # → creates the epic + stories
-/shipmates-epic 42                       # → ships every story in epic #42 (or pauses at gates)
-/shipmates-issue next epic 42            # → ships the next unchecked story in epic #42 only
+/shipmates-ship-epic 42                       # → ships every story in epic #42 (or pauses at gates)
+/shipmates-ship-issue next epic 42            # → ships the next unchecked story in epic #42 only
 /shipmates-polish the settings screen         # → iterates the visuals to sign-off
 ```
-Run that third step **from the worktree `/shipmates-issue` left behind** (`../<repo>--issue-148`), so the
+Run that third step **from the worktree `/shipmates-ship-issue` left behind** (`../<repo>--issue-148`), so the
 polish lands on the same branch. Started from your base branch, `/shipmates-polish` would begin from a baseline
 that doesn't contain the new screen yet.
 
@@ -511,8 +511,8 @@ only) are loaded. The two halves of the crew then resolve a name clash in **oppo
 - **Subagents — the project copy wins.** `<repo>/.claude/agents/architect.md` overrides
   `~/.claude/agents/architect.md`, so any repo can specialise a crew member without touching the
   shared copy.
-- **Skills — the personal copy wins.** `~/.claude/skills/shipmates-issue/SKILL.md` overrides
-  `<repo>/.claude/skills/shipmates-issue/SKILL.md`. If you have installed globally *and* into a project
+- **Skills — the personal copy wins.** `~/.claude/skills/shipmates-ship-issue/SKILL.md` overrides
+  `<repo>/.claude/skills/shipmates-ship-issue/SKILL.md`. If you have installed globally *and* into a project
   (via `--dir`), the **global** command is the one that runs — uninstall the one you don't want
   rather than editing the loser.
 
@@ -540,7 +540,7 @@ universal one.
 question is whether it's been *run*.
 
 - **Runtime-verified (`full`)** — Claude Code: the full crew and all 17 commands, with crew resolve,
-  argument passing, and `/shipmates-issue` proven end to end.
+  argument passing, and `/shipmates-ship-issue` proven end to end.
 - **Live run (`partial`)** — Antigravity CLI, Cursor, Pi, and opencode: captain-attested live runs
   recorded in `tools/harness_matrix.json` under `runtime_verified` (2026-09-18, #497; Pi cells 2026-09-20, #525). Granular cells
   (`crew_resolve`, `argument_passing`, `command_e2e`) stay `unknown` where they were not separately
@@ -574,14 +574,14 @@ commands keep shipping. Want a role or a workflow aboard? Open an issue — idea
 **What is Shipmates?**
 A ready-made crew of **subagents** and **command workflows**. Instead of you playing
 planner–builder–reviewer in a loop, a board of specialist AI agents does it — the flagship
-`/shipmates-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It ships for
+`/shipmates-ship-issue` takes a GitHub issue all the way to a reviewed, CI-green pull request. It ships for
 nine harnesses — Claude Code, opencode, Antigravity CLI, Codex, Cursor, GitHub Copilot, Pi, Grok
 Build, and Windsurf;
 see [on the horizon](#-on-the-horizon) for where each harness stands.
 
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
-in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/shipmates-issue`. Shipmates ships 13 agents
+in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/shipmates-ship-issue`. Shipmates ships 13 agents
 and 17 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
 `.codex/` for codex, and so on). See [install](#-come-aboard-install).
 
@@ -600,7 +600,7 @@ Any. The agents are **domain-neutral** — they enforce the standard in *your* r
 so the same crew works on a game engine, a web app, or a CLI.
 
 **Do I have to configure each agent?**
-No. Install once, then `/shipmates-issue 42`. The crew picks up your project's quality bar automatically;
+No. Install once, then `/shipmates-ship-issue 42`. The crew picks up your project's quality bar automatically;
 a project-level `.claude/agents/` definition overrides the global one when you want to specialise a
 crew member. Skills go the other way — see [scopes & precedence](#-scopes--precedence).
 

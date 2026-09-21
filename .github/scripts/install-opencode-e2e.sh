@@ -3,5 +3,5 @@
 set -euo pipefail
 
 cargo run -- install --harness opencode --dir "$RUNNER_TEMP/install-opencode"
-test -f "$RUNNER_TEMP/install-opencode/.opencode/commands/shipmates-issue.md"
+test -f "$RUNNER_TEMP/install-opencode/.opencode/commands/shipmates-ship-issue.md"
 test -f "$RUNNER_TEMP/install-opencode/.opencode/agents/sdet.md"

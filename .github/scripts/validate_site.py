@@ -104,10 +104,10 @@ REDIRECTS = {
     "report-bug": "shipmates-report-bug",
     "consolidate-issues": "shipmates-consolidate-issues",
     # A command that shipped, then shortened its name.
-    "ship-deslop-codebase": "ship-deslop",
+    "ship-deslop-codebase": "shipmates-deslop",
     # The `ship-` generation, renamed to `shipmates-`.
-    "ship-issue": "shipmates-issue",
-    "ship-epic": "shipmates-epic",
+    "ship-issue": "shipmates-ship-issue",
+    "ship-epic": "shipmates-ship-epic",
     "ship-fix-bug": "shipmates-fix-bug",
     "ship-report-bug": "shipmates-report-bug",
     "ship-plan-epics": "shipmates-plan-epics",
@@ -121,6 +121,12 @@ REDIRECTS = {
     "ship-pr-review": "shipmates-pr-review",
     "ship-onboard": "shipmates-onboard",
     "ship-refactor": "shipmates-refactor",
+    # Two commands that landed while `ship-` was the live prefix.
+    "ship-qa": "shipmates-qa",
+    "ship-deslop": "shipmates-deslop",
+    # The flagships kept the `ship` verb when the prefix came back.
+    "shipmates-issue": "shipmates-ship-issue",
+    "shipmates-epic": "shipmates-ship-epic",
 }
 TOOL_REDIRECTS = {
     "gh": "shipmates-gh",

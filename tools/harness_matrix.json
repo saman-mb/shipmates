@@ -152,9 +152,9 @@
         "argument_passing": "yes",
         "command_e2e": "yes",
         "commands_exercised": [
-          "/shipmates-issue"
+          "/shipmates-ship-issue"
         ],
-        "notes": "Primary development harness. Full flagship workflow runtime-verified: crew resolve, argument passing, and /shipmates-issue end to end."
+        "notes": "Primary development harness. Full flagship workflow runtime-verified: crew resolve, argument passing, and /shipmates-ship-issue end to end."
       }
     },
     "github-copilot": {
@@ -376,7 +376,7 @@
         "command_e2e": "unknown",
         "commands_exercised": [],
         "crew_resolve": "unknown",
-        "notes": "Captain-attested live run (#497, 2026-09-18). Granular criteria (crew resolve, argument passing, command E2E) were not separately logged \u2014 recorded as unknown rather than inferred. Not a Tier-A /shipmates-issue proof."
+        "notes": "Captain-attested live run (#497, 2026-09-18). Granular criteria (crew resolve, argument passing, command E2E) were not separately logged \u2014 recorded as unknown rather than inferred. Not a Tier-A /shipmates-ship-issue proof."
       }
     },
     "windsurf": {

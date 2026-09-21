@@ -34,7 +34,7 @@ fi
   cargo run --quiet -- doctor --harness codex --dir "$PROJECT"
 )
 
-test -f "$PROJECT/.agents/skills/shipmates-issue/SKILL.md"
+test -f "$PROJECT/.agents/skills/shipmates-ship-issue/SKILL.md"
 test -f "$PROJECT/.codex/agents/sdet.toml"
 test ! -d "$PROJECT/.codex/skills"
 test "$(ls -1 "$PROJECT/.agents/skills" | wc -l | tr -d ' ')" -eq 17

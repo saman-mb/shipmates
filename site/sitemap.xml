@@ -7,13 +7,13 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-issue/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-ship-issue/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-epic/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-ship-epic/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -85,7 +85,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/ship-qa/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-qa/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -103,7 +103,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://saman-mb.github.io/shipmates/commands/ship-deslop/</loc>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-deslop/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

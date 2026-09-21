@@ -1,11 +1,11 @@
 ---
-name: ship-qa
+name: shipmates-qa
 description: Shipmates: Walk a captain through interactive, one-step-at-a-time local QA of a PR, issue branch, or named branch — risk-targeted by default, optional blind smoke — logging findings for handoff. Guides and reports; it never repairs.
 argument-hint: <pr-number|issue-number|branch> [mode: risk|smoke] [platform hint]
 allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /ship-qa — context → checklist → one step per turn → summary
+# /shipmates-qa — context → checklist → one step per turn → summary
 <!-- shipmates:command-preamble -->
 
 Point the crew at a change that needs **human eyes on a running build** — a PR, an issue's branch,

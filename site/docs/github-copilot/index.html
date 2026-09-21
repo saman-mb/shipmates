@@ -93,7 +93,7 @@
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>cargo run -- check --target github-copilot
 ls /path/to/sandbox/.github/agents
-ls /path/to/sandbox/.agents/skills/shipmates-issue</code></pre>
+ls /path/to/sandbox/.agents/skills/shipmates-ship-issue</code></pre>
           <p>CI compares every file produced by <code>build --target github-copilot</code> with the checked-in golden digest. The fixture covers both dot-directories and rejects missing or unexpected files.</p>
           <p>Passing this check proves adapter output and registration shape. It does not prove that a running Copilot session discovers agents, loads skills, passes arguments, or completes a workflow.</p>
         </div>
@@ -118,12 +118,12 @@ ls /path/to/sandbox/.agents/skills/shipmates-issue</code></pre>
     <section class="section" id="tier-b" aria-labelledby="tier-b-title">
       <div class="container container--prose">
         <div class="section__head">
-          <h2 class="section__title" id="tier-b-title">/shipmates-issue Tier B boundary</h2>
+          <h2 class="section__title" id="tier-b-title">/shipmates-ship-issue Tier B boundary</h2>
           <p class="section__lead">The adapter provides the dispatch surface; it does not provide the external runner.</p>
         </div>
         <div class="order-prose">
           <ul>
-            <li><strong>Validated statically:</strong> the shared <code>shipmates-issue</code> skill is emitted, and the custom agents it names are emitted with Copilot-native filenames and least-privilege tools.</li>
+            <li><strong>Validated statically:</strong> the shared <code>shipmates-ship-issue</code> skill is emitted, and the custom agents it names are emitted with Copilot-native filenames and least-privilege tools.</li>
             <li><strong>Not validated here:</strong> a real issue-to-PR run, scripted acceptance board, CI polling, or bounded fix loop through <code>copilot --agent</code>.</li>
             <li><strong>Reason:</strong> those behaviours belong to the external orchestrator described by issue <a href="https://github.com/saman-mb/shipmates/issues/13">#13</a>; the current Copilot adapter only compiles and installs payload files.</li>
           </ul>

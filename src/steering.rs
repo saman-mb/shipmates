@@ -348,7 +348,7 @@ mod tests {
     fn plan_removes_orphan_claude_and_strips_agents() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir_all(dir.path().join("commands")).unwrap();
-        fs::write(dir.path().join("commands/shipmates-issue.md"), "---\n---\n").unwrap();
+        fs::write(dir.path().join("commands/shipmates-ship-issue.md"), "---\n---\n").unwrap();
         fs::create_dir_all(dir.path().join("toolbox")).unwrap();
         fs::create_dir_all(dir.path().join("tools")).unwrap();
         fs::write(dir.path().join("tools/gen_command_pages.py"), "# gen").unwrap();

@@ -70,7 +70,7 @@ fn consolidate_reconciles_dangling_issues_into_open_epics_before_bundling() {
 /// as the verification step itself.
 #[test]
 fn ci_verification_never_merges_to_the_default_branch_to_test() {
-    for name in ["shipmates-issue", "shipmates-epic"] {
+    for name in ["shipmates-ship-issue", "shipmates-ship-epic"] {
         let body = command(name);
         let guardrails = body
             .split("### Guardrails")
@@ -88,7 +88,7 @@ fn ci_verification_never_merges_to_the_default_branch_to_test() {
 /// condition, distinct from pending or red, and the snippet must encode it.
 #[test]
 fn ship_issue_stage_4_5_names_empty_check_suite() {
-    let body = command("shipmates-issue");
+    let body = command("shipmates-ship-issue");
     let stage = section(&body, "## Stage 4.5");
     let lower = stage.to_ascii_lowercase();
     assert!(
@@ -117,7 +117,7 @@ fn ship_issue_stage_4_5_names_empty_check_suite() {
 /// branch — `<EPIC_PR>` (base = main) cannot catch the slash-glob bug.
 #[test]
 fn ship_epic_stage_0_5_sanity_checks_ci_trigger() {
-    let body = command("shipmates-epic");
+    let body = command("shipmates-ship-epic");
     let stage = section(&body, "## Stage 0.5");
     let lower = stage.to_ascii_lowercase();
     assert!(

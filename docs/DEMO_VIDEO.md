@@ -27,7 +27,7 @@ Cost: ≈ $6 (cloud voice) or ≈ $0 (fully local). AI-video b-roll is optional 
   ```
   Line gets struck-through in red; stamps beneath in bold green:
   ```
-  ❯ /shipmates-issue 42
+  ❯ /shipmates-ship-issue 42
   ```
 - **Narration:** "Stop being your AI's for-loop."
 - **Caption:** `PROMPT. READ. REPEAT. STOP.` → flips to `GIVE IT A CREW.`
@@ -54,7 +54,7 @@ Cost: ≈ $6 (cloud voice) or ≈ $0 (fully local). AI-video b-roll is optional 
   → tool: Bash — npm test … "✓ 214 passed"
   ```
   One deliberate red fail: `✗ 1 test failed — retrying` → `✓ 214 passed` (imperfection = credibility).
-- **Narration:** "One command — slash, shipmates-issue, forty-two. It isolates a worktree, plans the work, builds it, and runs the tests."
+- **Narration:** "One command — slash, shipmates-ship-issue, forty-two. It isolates a worktree, plans the work, builds it, and runs the tests."
 - **Caption:** `ISOLATES → PLANS → BUILDS → TESTS`
 
 ### Beat 4 — Gates · 0:22–0:29
@@ -67,7 +67,7 @@ Cost: ≈ $6 (cloud voice) or ≈ $0 (fully local). AI-video b-roll is optional 
 - **Caption:** `REVIEW BOARD · CI GATE · GREEN OR IT DOESN'T SHIP`
 
 ### Beat 5 — Epic timelapse · 0:29–0:38
-- **Visual:** hard cut to stylised GitHub PR mock: epic PR "#88 Ship auth overhaul" with child-PR checklist ticking ~1/s, corner inset showing `/shipmates-issue` spawning per child:
+- **Visual:** hard cut to stylised GitHub PR mock: epic PR "#88 Ship auth overhaul" with child-PR checklist ticking ~1/s, corner inset showing `/shipmates-ship-issue` spawning per child:
   ```
   ☑ #89  Add session refresh      merged
   ☑ #90  Rotate token store       merged
@@ -75,8 +75,8 @@ Cost: ≈ $6 (cloud voice) or ≈ $0 (fully local). AI-video b-roll is optional 
   ☐ #92  Audit logging            …
   ```
   Speed ramps 1 tick/s → ~3 ticks/s; board sign-off stamps end: `architect ✓ sdet ✓ pm ✓ security ✓`
-- **Narration:** "Bigger work? Ship an epic: shipmates-issue runs as a subprocess — child pull requests landing, one by one."
-- **Caption:** `1 EPIC → N CHILD PRs · /shipmates-issue ALL THE WAY DOWN`
+- **Narration:** "Bigger work? Ship an epic: shipmates-ship-issue runs as a subprocess — child pull requests landing, one by one."
+- **Caption:** `1 EPIC → N CHILD PRs · /shipmates-ship-issue ALL THE WAY DOWN`
 
 ### Beat 6 — Close · 0:38–0:41
 - **Visual:** both screens tile side by side, dimmed, (as-built: 4×3 tile-mock pull-back — see tools/demo-video README, ADR beat 6). Final line types:
@@ -97,9 +97,9 @@ Cost: ≈ $6 (cloud voice) or ≈ $0 (fully local). AI-video b-roll is optional 
 
 > Stop being your AI's for-loop.
 > Shipmates gives Claude Code a crew of specialists — planners, builders, testers, reviewers.
-> One command — slash, shipmates-issue, forty-two. It isolates a worktree, plans the work, builds it, and runs the tests.
+> One command — slash, shipmates-ship-issue, forty-two. It isolates a worktree, plans the work, builds it, and runs the tests.
 > Then a review board signs it off — and CI goes green.
-> Bigger work? Ship an epic: shipmates-issue runs as a subprocess — child pull requests landing, one by one.
+> Bigger work? Ship an epic: shipmates-ship-issue runs as a subprocess — child pull requests landing, one by one.
 > You stay the captain.
 
 Optional 95-word variant for beat 3 adds self-remediation: "…spawns builders as it goes. Tool calls fire — tests run, one fails, it fixes itself, and runs again."
