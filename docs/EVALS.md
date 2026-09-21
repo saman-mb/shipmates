@@ -179,11 +179,56 @@ scoping L1a's attested half and L1b at all, tracked in
 coverage cannot honestly be planned, and a harness with no documented headless mode gets the gap
 recorded rather than a faked run.
 
+### What this costs in accounts
+
+The obvious objection to a nine-harness eval matrix is that it implies nine accounts, most of them
+paid, several of them personal seats — and a nightly job that spends on all of them. That objection
+is correct, and it is the main thing that shapes where each layer runs.
+
+**L0 and L1a need no account at all.** That is not incidental — it is *why* they are the blocking
+layers. Both work on an installed tree in a sandbox: assert the files exist at the path that harness
+reads, parse strictly, check `name` equals the directory, confirm the full command and crew set
+resolves. Nine targets, every pull request, zero credentials, zero tokens. The single most expensive
+class of bug we have actually shipped — a payload written to a tree the harness never reads — is
+caught here, for free.
+
+Everything above L1a needs credentials, and harnesses differ in *kind*, not just in price:
+
+| Access shape | What it means for CI | Where those layers can run |
+|---|---|---|
+| **BYO provider key** | An API key is issued for programmatic use; it belongs in a CI secret. Metered per token, so a budget cap is a real control. | CI, nightly |
+| **Subscription / OAuth seat** | A headless runner cannot complete an interactive sign-in, and a personal seat's terms frequently restrict sharing the credential with automation. | Not CI — captain-run locally |
+| **No documented headless surface** | Nothing to invoke non-interactively. | Nowhere; recorded as a gap |
+
+Which shape each harness takes is a per-harness fact, so it is **not** asserted here from memory —
+it is an unverified column collected alongside the discovery and headless surfaces in
+[#542](https://github.com/saman-mb/shipmates/issues/542), from each vendor's own documentation and
+terms.
+
+Three decisions follow, and the second is the one that keeps this affordable:
+
+1. **Subscription-only harnesses get a captain-run path, not a CI job.** The same script, run on a
+   machine that is already signed in, writing the same result row — and the outcome is attested into
+   `runtime_verified` with a date. That is what the record already is today; this makes it
+   repeatable and uniform rather than ad hoc. A missing nightly is honest; a seat credential in a CI
+   secret may breach the terms it was issued under.
+2. **Do not multiply L2 by harness.** The workflow contract is harness-independent — the same
+   rendered prompt text, the same asserted action sequence — so running all 17 commands against all
+   nine targets buys almost nothing and costs nine times as much. L2 runs on **one** cheap BYO-key
+   harness. Harness-specific risk belongs to L1a and L1b, which are built to measure exactly that.
+3. **Sample rather than sweep.** Where a layer does fan out, a nightly run covers a rotating subset
+   with a per-run budget cap, and the full sweep runs on a release candidate. A trend series keyed by
+   prompt hash tolerates gaps in the middle; a blown budget stops the pipeline entirely.
+
+The honest summary: **continuous, free, and complete on all nine for the artifact-level claims;
+metered and partial for the live ones; and a documented local ritual where a vendor's terms make CI
+the wrong place.** No layer claims a harness it cannot actually run.
+
 L2, L3 and L4 are scoped differently and deliberately:
 
-- **L2** runs wherever a harness can be driven headlessly — so its coverage is whatever L1b's
-  research establishes. The contract being asserted is harness-independent, because the workflow
-  text is.
+- **L2** runs on **one** BYO-key harness, not all nine — the contract it asserts is
+  harness-independent because the workflow text is, so fanning it out multiplies cost without
+  adding a claim.
 - **L3** is deliberately **one harness at a time**, not a matrix. It is the expensive layer; running
   the flagship end to end on every target would multiply the cost for a claim the cheaper layers
   mostly cover. Claude Code carries it because it is the only `full` target.
