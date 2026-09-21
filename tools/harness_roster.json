@@ -1,0 +1,769 @@
+{
+  "schema_version": 1,
+  "purpose": "Which Agent Skills-compatible clients Shipmates could be a target for, and what each one costs. This is the roster audit epic #164 exists to produce: it answers 'should we add more targets' with per-client first-party evidence instead of a count.",
+  "policy": {
+    "shared-tree": "A client that reads the open `.agents/skills/` tree needs NO adapter: the commands and the toolbox already land there for codex, antigravity, github-copilot and pi. The shared tree is the cheap path, and it is why a client can be 'shared-free' without being a target.",
+    "named-target": "A named target is earned, not assumed: it needs a per-harness payload (dialect, crew location, steering), a digest fixture, the install/doctor lifecycle, a harness-matrix entry, and a receiver who can run it. Two of the nine - grok-build and devin - ship the NATIVE tree rather than the shared one, because the eighteen commands must stay user-invoked only and that guard is a vendor frontmatter key the neutral two-key rendering drops. Native adapters are therefore the norm when a harness's own guard semantics matter, not a failure of the shared-tree idea.",
+    "evidence": "Every row carries a first-party doc URL, the date it was checked, and the literal path string it yielded. A row with no path string is `watch`, never a guess: absence of evidence is recorded as absence, not as a feature.",
+    "promotion": "Promote a candidate only when the crew has somewhere to land (`subagents` is not `unknown`/absent) and someone can run the harness end to end; until then a captain on that client can still point their harness at the shared tree."
+  },
+  "source": {
+    "name": "Agent Skills - Client Showcase",
+    "url": "https://agentskills.io/clients",
+    "checked_on": "2026-09-22",
+    "clients_listed": 46,
+    "note": "The showcase is the census anchor: 46 clients, each with a first-party instructions link. Two shipped targets are not on it (antigravity, grok-build) and devin replaced a product that was, so the roster is the union.",
+    "covered_by_shipped": [
+      "claude-code",
+      "codex",
+      "cursor",
+      "github-copilot",
+      "opencode",
+      "pi"
+    ]
+  },
+  "verdict_values": {
+    "shipped": "A named target with an adapter, digest and install lifecycle.",
+    "shared-free": "Reads the shared `.agents/skills/` tree; commands and tools land with no adapter work.",
+    "native-adapter": "Documents its own skills tree; a target needs an adapter before it can ship.",
+    "watch": "On the showcase, but no tree path was obtained this pass.",
+    "skip": "Not a coding harness Shipmates can drive."
+  },
+  "harnesses": [
+    {
+      "id": "antigravity",
+      "name": "Antigravity CLI (agy)",
+      "vendor": "Google",
+      "source": "shipped-target",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://antigravity.google/docs/cli/plugins",
+        "checked_on": "2026-09-22",
+        "quote": ".agents/skills and .agents/agents/<name>/agent.md"
+      },
+      "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "vendor": "Anthropic",
+      "source": "shipped-target",
+      "tree": "native",
+      "subagents": "yes",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://code.claude.com/docs/en/skills",
+        "checked_on": "2026-09-22",
+        "quote": ".claude/skills/<skill-name>/SKILL.md"
+      },
+      "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
+    },
+    {
+      "id": "codex",
+      "name": "Codex CLI",
+      "vendor": "OpenAI",
+      "source": "shipped-target",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://developers.openai.com/codex/skills",
+        "checked_on": "2026-09-22",
+        "quote": ".agents/skills (crew stay .codex/agents/*.toml)"
+      },
+      "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "vendor": "Anysphere",
+      "source": "shipped-target",
+      "tree": "native",
+      "subagents": "not emitted",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://cursor.com/docs/context/skills",
+        "checked_on": "2026-09-22",
+        "quote": ".cursor/skills/<name>/SKILL.md"
+      },
+      "reason": "Native tree only: reading both `.agents/skills/` and `.cursor/skills/`, but only the first-party tree reaches the slash-command picker (#405), so one copy ships there. Cursor documents named subagents, so the crew can land once that emitter exists (#34)."
+    },
+    {
+      "id": "devin",
+      "name": "Devin CLI / Devin Desktop",
+      "vendor": "Cognition",
+      "source": "shipped-target",
+      "tree": "native",
+      "subagents": "yes",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://docs.devin.ai/cli/extensibility/skills/creating-skills",
+        "checked_on": "2026-09-22",
+        "quote": ".devin/skills (also reads .agents/skills and legacy .windsurf/skills)"
+      },
+      "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
+    },
+    {
+      "id": "github-copilot",
+      "name": "GitHub Copilot",
+      "vendor": "GitHub",
+      "source": "shipped-target",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://docs.github.com/en/copilot/concepts/agents/about-agent-skills",
+        "checked_on": "2026-09-22",
+        "quote": ".github/skills, .claude/skills or .agents/skills"
+      },
+      "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
+    },
+    {
+      "id": "grok-build",
+      "name": "Grok Build",
+      "vendor": "xAI",
+      "source": "shipped-target",
+      "tree": "native",
+      "subagents": "yes",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://docs.x.ai/build/features/skills-plugins-marketplaces",
+        "checked_on": "2026-09-22",
+        "quote": ".grok/skills/<name>/SKILL.md, crew .grok/agents/<name>.md"
+      },
+      "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
+    },
+    {
+      "id": "opencode",
+      "name": "opencode",
+      "vendor": "sst",
+      "source": "shipped-target",
+      "tree": "commands",
+      "subagents": "yes",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://opencode.ai/docs/commands/",
+        "checked_on": "2026-09-22",
+        "quote": ".opencode/commands/<name>.md"
+      },
+      "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
+    },
+    {
+      "id": "pi",
+      "name": "pi",
+      "vendor": "Earendil Works",
+      "source": "shipped-target",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shipped",
+      "evidence": {
+        "url": "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/skills.md",
+        "checked_on": "2026-09-22",
+        "quote": ".agents/skills (crew at .pi/agents/)"
+      },
+      "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
+    },
+    {
+      "id": "agentman",
+      "name": "Agentman",
+      "vendor": "Agentman",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://agentman.ai/agentskills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "A healthcare revenue-cycle platform. Not a coding harness."
+    },
+    {
+      "id": "amp",
+      "name": "Amp",
+      "vendor": "Sourcegraph",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "unknown",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://ampcode.com/manual#agent-skills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "autohand-code",
+      "name": "Autohand Code CLI",
+      "vendor": "Autohand",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "unknown",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://autohand.ai/docs/working-with-autohand-code/agent-skills.html",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "bub",
+      "name": "bub",
+      "vendor": "bubbuild",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "unknown",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://bub.build/docs/build/skills/",
+        "checked_on": "2026-09-22",
+        "quote": "Project: <workspace>/.agents/skills/ User: ~/.agents/skills/"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "claude-app",
+      "name": "Claude",
+      "vendor": "Anthropic",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "A general assistant rather than a coding harness: no repository-bound issue-to-PR workflow for the crew to drive. Claude Code, the coding harness, is a target."
+    },
+    {
+      "id": "command-code",
+      "name": "Command Code",
+      "vendor": "Command Code",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "unknown",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://commandcode.ai/docs/skills",
+        "checked_on": "2026-09-22",
+        "quote": ".agents/skills/ compatibility"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "databricks-genie",
+      "name": "Databricks Genie Code",
+      "vendor": "Databricks",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://docs.databricks.com/aws/en/assistant/skills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "A data-platform assistant: the work it does is warehouse-shaped, not a repository ticket to a reviewed pull request."
+    },
+    {
+      "id": "deep-code",
+      "name": "Deep Code",
+      "vendor": "Deep Code (open source)",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "unknown",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://deepcode.vegamo.cn/en/docs/configuration/agent-skills",
+        "checked_on": "2026-09-22",
+        "quote": "Project ./.agents/skills/ - project skills shared with other agent clients"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "emdash",
+      "name": "Emdash",
+      "vendor": "generalaction",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "unknown",
+      "verdict": "native-adapter",
+      "evidence": {
+        "url": "https://docs.emdash.sh/skills",
+        "checked_on": "2026-09-22",
+        "quote": "~/.agentskills/<your-skill>/"
+      },
+      "reason": "Its skills root is `~/.agentskills/` - deliberately not the open `.agents/skills/` tree - so commands would need their own dialect and install path before this is a target."
+    },
+    {
+      "id": "factory",
+      "name": "Factory (Droids)",
+      "vendor": "Factory",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://docs.factory.ai/cli/configuration/skills",
+        "checked_on": "2026-09-22",
+        "quote": "<repo>/.agents/skills/**/SKILL.md"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "fast-agent",
+      "name": "fast-agent",
+      "vendor": "evalstate",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "yes",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://fast-agent.ai/agents/skills/",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "A Python agent framework: skills are a library feature for building agents, not a harness a captain drives a ticket through."
+    },
+    {
+      "id": "firebender",
+      "name": "Firebender",
+      "vendor": "Firebender",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://docs.firebender.com/multi-agent/skills",
+        "checked_on": "2026-09-22",
+        "quote": "~/.agents/skills/ (Generic agents)"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "gemini-cli",
+      "name": "Gemini CLI",
+      "vendor": "Google",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://geminicli.com/docs/cli/skills/",
+        "checked_on": "2026-09-22",
+        "quote": "~/.gemini/skills/ or the ~/.agents/skills/ alias"
+      },
+      "reason": "The product was shut down on 2026-06-18; its successor is the Antigravity target (`.gemini/config/` is kept as Antigravity's global root, and `.agents/skills/` is shared). A retired product is not a target."
+    },
+    {
+      "id": "google-ai-edge-gallery",
+      "name": "Google AI Edge Gallery",
+      "vendor": "Google",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://github.com/google-ai-edge/gallery/tree/main/skills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "An on-device model demo app for mobile. It carries sample skills; it is not a development harness."
+    },
+    {
+      "id": "goose",
+      "name": "Goose",
+      "vendor": "Block",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "unknown",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://block.github.io/goose/docs/guides/context-engineering/using-skills/",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "hermes-agent",
+      "name": "Hermes Agent",
+      "vendor": "Nous Research",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "unknown",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/skills",
+        "checked_on": "2026-09-22",
+        "quote": "external_dirs: - ~/.agents/skills"
+      },
+      "reason": "Reads the shared tree, but only when the captain adds it to `skill_paths`/`external_dirs` - configured rather than discovered, so a plain install reaches nothing until that line is set."
+    },
+    {
+      "id": "junie",
+      "name": "Junie",
+      "vendor": "JetBrains",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "unknown",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://junie.jetbrains.com/docs/agent-skills.html",
+        "checked_on": "2026-09-22",
+        "quote": ".agents/skills/ directories: <projectRoot>/.agents/skills/ (in a trusted project) and ~/.agents/skills/"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "kiro",
+      "name": "Kiro",
+      "vendor": "AWS",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "unknown",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://kiro.dev/docs/skills/",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "laravel-boost",
+      "name": "Laravel Boost",
+      "vendor": "Laravel",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://laravel.com/docs/12.x/boost#agent-skills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "A framework package that ships its own skill set to other agents. It consumes skills; it is not a harness."
+    },
+    {
+      "id": "letta",
+      "name": "Letta",
+      "vendor": "Letta",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://docs.letta.com/letta-code/skills/",
+        "checked_on": "2026-09-22",
+        "quote": "Registers skills from the current project (.agents/skills)"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "mistral-vibe",
+      "name": "Mistral Vibe",
+      "vendor": "Mistral AI",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://github.com/mistralai/mistral-vibe",
+        "checked_on": "2026-09-22",
+        "quote": ".agents/skills/ - Agent Skills standard; global ~/.agents/skills/"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "mux",
+      "name": "Mux",
+      "vendor": "Coder",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://mux.coder.com/agent-skills",
+        "checked_on": "2026-09-22",
+        "quote": "Project (cross-tool): .agents/skills/<skill-name>/SKILL.md"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "nanobot",
+      "name": "nanobot",
+      "vendor": "HKUDS",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "unknown",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://nanobot.wiki/docs/0.1.5/use-nanobot/skills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "ona",
+      "name": "Ona",
+      "vendor": "Ona",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "unknown",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://ona.com/docs/ona/agents-md#skills-for-repository-specific-workflows",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw",
+      "vendor": "OpenClaw",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://docs.openclaw.ai/tools/skills",
+        "checked_on": "2026-09-22",
+        "quote": "Project agent skills <workspace>/.agents/skills"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "openhands",
+      "name": "OpenHands",
+      "vendor": "OpenHands",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "unknown",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://docs.openhands.dev/overview/skills",
+        "checked_on": "2026-09-22",
+        "quote": ".agents/skills/<skill-name>/SKILL.md"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "piebald",
+      "name": "Piebald",
+      "vendor": "Piebald",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "unknown",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://piebald.ai",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "pulumi-neo",
+      "name": "Pulumi Neo",
+      "vendor": "Pulumi",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://www.pulumi.com/docs/ai/skills/",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "An infrastructure-management agent. The work is cloud state, not a repository ticket."
+    },
+    {
+      "id": "qodo",
+      "name": "Qodo",
+      "vendor": "Qodo",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://www.qodo.ai/blog/how-i-use-qodos-agent-skills-to-auto-fix-issues-in-pull-requests/",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "A code-integrity platform (review, tests) that runs its own PR-fixing agent. It is not a harness a captain installs a crew into."
+    },
+    {
+      "id": "roo-code",
+      "name": "Roo Code",
+      "vendor": "RooCode",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "unknown",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://docs.roocode.com/features/skills",
+        "checked_on": "2026-09-22",
+        "quote": "~/.agents/skills/{skill-name}/SKILL.md"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "snowflake-cortex",
+      "name": "Snowflake Cortex Code",
+      "vendor": "Snowflake",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "yes",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://docs.snowflake.com/en/user-guide/cortex-code/extensibility#extensibility-skills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "spring-ai",
+      "name": "Spring AI",
+      "vendor": "VMware/Spring",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "yes",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://spring.io/blog/2026/01/13/spring-ai-generic-agent-skills/",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "A library for building agents, not a harness a captain runs. Skills support here is a framework feature, not an install target."
+    },
+    {
+      "id": "superconductor",
+      "name": "Superconductor",
+      "vendor": "Superconductor",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://superconductor.com/docs/project/mcp-and-skills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "A workspace for running many agents. It orchestrates harnesses; it is not one."
+    },
+    {
+      "id": "tabnine",
+      "name": "Tabnine",
+      "vendor": "Tabnine",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://docs.tabnine.com/main/getting-started/tabnine-cli/features/agent-skills",
+        "checked_on": "2026-09-22",
+        "quote": "Workspace (alias) <project>/.agents/skills/<name>/SKILL.md"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "trae",
+      "name": "TRAE",
+      "vendor": "ByteDance",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "yes",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://www.trae.ai/blog/trae_tutorial_0115",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "vita",
+      "name": "Vita",
+      "vendor": "Vita",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "no",
+      "verdict": "skip",
+      "evidence": {
+        "url": "https://www.vita-ai.net/docs/features/agent-skills",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "Autonomous digital workers on virtual desktops - workflow automation, not software delivery."
+    },
+    {
+      "id": "vscode",
+      "name": "VS Code",
+      "vendor": "Microsoft",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "yes",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://code.visualstudio.com/docs/copilot/customization/agent-skills",
+        "checked_on": "2026-09-22",
+        "quote": ".github/skills/, .claude/skills/, .agents/skills/"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "vt-code",
+      "name": "VT Code",
+      "vendor": "vinhnx",
+      "source": "showcase",
+      "tree": "shared",
+      "subagents": "unknown",
+      "verdict": "shared-free",
+      "evidence": {
+        "url": "https://github.com/vinhnx/vtcode/blob/main/docs/skills/SKILLS_GUIDE.md",
+        "checked_on": "2026-09-22",
+        "quote": "Nearest ancestor .agents/skills; ~/.agents/skills"
+      },
+      "reason": "Reads the shared open Agent Skills tree, so the commands and the toolbox land there with no adapter code. Not a named target: no per-harness dialect, no crew, no receipt, no verification. Promote only when the crew has somewhere to land and someone can run it."
+    },
+    {
+      "id": "workshop",
+      "name": "Workshop",
+      "vendor": "Workshop",
+      "source": "showcase",
+      "tree": "unknown",
+      "subagents": "yes",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://docs.workshop.ai/core-concepts/working-with-the-agent#create-your-own-agents",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    },
+    {
+      "id": "zeroclaw",
+      "name": "ZeroClaw",
+      "vendor": "ZeroClaw Labs",
+      "source": "showcase",
+      "tree": "native",
+      "subagents": "unknown",
+      "verdict": "watch",
+      "evidence": {
+        "url": "https://docs.zeroclawlabs.ai/master/en/tools/skills.html",
+        "checked_on": "2026-09-22",
+        "quote": ""
+      },
+      "reason": "On the Agent Skills showcase, but the page this pass linked yielded no tree path, so nothing is claimed about where it reads skills. One first-party check would answer it; until then it is not a candidate."
+    }
+  ]
+}
