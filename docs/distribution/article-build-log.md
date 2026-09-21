@@ -20,7 +20,7 @@ That is why we built [**Shipmates**](https://saman-mb.github.io/shipmates/) — 
 Instead of treating your AI coding harness as a single general-purpose prompt loop, Shipmates organizes the process into specialized roles:
 
 ```
-Captain (/shipmates-issue 42)
+Captain (/shipmates-ship-issue 42)
   │
   ├── 1. Intake & Complexity Tiering (Simple / Medium / High)
   ├── 2. Architect & Planner (Decomposition & Design Specs)
@@ -48,9 +48,9 @@ The crew consists of 13 specialist agents:
 
 ---
 
-## The Flagship Workflow: `/shipmates-issue`
+## The Flagship Workflow: `/shipmates-ship-issue`
 
-The flagship workflow of Shipmates is `/shipmates-issue`. When you issue `/shipmates-issue <number>` in Claude Code (or any supported harness), the orchestrator executes a multi-stage lifecycle:
+The flagship workflow of Shipmates is `/shipmates-ship-issue`. When you issue `/shipmates-ship-issue <number>` in Claude Code (or any supported harness), the orchestrator executes a multi-stage lifecycle:
 
 ### 1. Complexity Tiering
 Not every change requires a full board of 6 specialists. Stage 0 dynamically classifies incoming tasks into three execution tiers:
@@ -137,7 +137,7 @@ shipmates install --harness claude-code
 
 Then open Claude Code and run:
 ```bash
-/shipmates-issue <your-issue-number>
+/shipmates-ship-issue <your-issue-number>
 ```
 
 ---

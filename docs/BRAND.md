@@ -34,7 +34,7 @@ were distinguished. Recorded on issue #72; do not reopen it here.
 
 Shipmates is an open-source (MIT) crew of specialist AI agents on
 [Claude Code](https://code.claude.com/docs) today: **13 domain-neutral subagents** and
-**17 reusable commands**. Its flagship, `/shipmates-issue`, takes a GitHub issue all the way to a
+**17 reusable commands**. Its flagship, `/shipmates-ship-issue`, takes a GitHub issue all the way to a
 reviewed, CI-green pull request on its own — it plans the work, builds it in an isolated git
 worktree, waits for CI to go green, convenes an adversarial review board, loops on fixes within
 bounds, and hands you a PR to merge. You stay the captain. The shipmates do the twenty steps in
@@ -92,7 +92,7 @@ swapped at will.
 | Term | Register | What it names |
 |---|---|---|
 | **skill** | technical | The artifact on disk — `skills/<name>/SKILL.md`, in the [Agent Skills](https://agentskills.io) open-standard shape. |
-| **command** | brand | A whole workflow the captain issues to the crew — `/shipmates-issue`, `/shipmates-fix-bug`. The seventeen of them are **the commands**. |
+| **command** | brand | A whole workflow the captain issues to the crew — `/shipmates-ship-issue`, `/shipmates-fix-bug`. The seventeen of them are **the commands**. |
 | **order** | brand | What a single subagent is told to do *within* a command — one specialist's instruction. |
 
 The metaphor holds the three together: the captain issues a **command** to the crew, and carrying
@@ -104,18 +104,18 @@ Shipmates ships reusable **skills** — the [Agent Skills](https://agentskills.i
 artifact, one directory per skill with a `SKILL.md` inside:
 
 ```
-.claude/skills/shipmates-issue/SKILL.md
+.claude/skills/shipmates-ship-issue/SKILL.md
 .claude/skills/shipmates-fix-bug/SKILL.md
 …
 ```
 
 That is the *installed* shape on Claude Code. In this repository the authored
-source is `commands/shipmates-issue.md`; the `skills/` layout is produced by the
+source is `commands/shipmates-ship-issue.md`; the `skills/` layout is produced by the
 exporter at install time and is never committed.
 
 `install.sh` copies them to `~/.claude/skills/<name>/SKILL.md` (global) or
 `<repo>/.claude/skills/<name>/SKILL.md` (project-scoped). In the Shipmates product domain,
-these same things are **commands you give the crew** — you invoke one by typing `/shipmates-issue 42`.
+these same things are **commands you give the crew** — you invoke one by typing `/shipmates-ship-issue 42`.
 
 Both names are correct for that one object. They are not synonyms you may swap at will; they
 belong to different registers.
@@ -123,7 +123,7 @@ belong to different registers.
 ### The narrow sense of "order"
 
 **"Order" is not a synonym for "command", and it is not a name for the seventeen.** It is deliberately
-smaller: an order is what one crew member is told to do inside a run. `/shipmates-issue` is a command;
+smaller: an order is what one crew member is told to do inside a run. `/shipmates-ship-issue` is a command;
 "root-cause the failure and write the minimal fix", handed to `senior-engineer` at the remediation
 loop, is an order. Test it by rewriting: if the sentence still works with "one of the seventeen
 workflows", the word is **command**; if it only works with "one specialist's instruction", the word
@@ -136,8 +136,8 @@ workflows — README's `## 📜 The orders (commands)`, the site's `#orders` sec
 
 Worked examples:
 
-- ✅ "Install the crew, then run your first **command**: `/shipmates-issue 42`." — brand, the whole workflow.
-- ✅ "`/shipmates-issue` is defined by the `shipmates-issue` **skill**, installed at `.claude/skills/shipmates-issue/SKILL.md`." — technical, the file on disk.
+- ✅ "Install the crew, then run your first **command**: `/shipmates-ship-issue 42`." — brand, the whole workflow.
+- ✅ "`/shipmates-ship-issue` is defined by the `shipmates-ship-issue` **skill**, installed at `.claude/skills/shipmates-ship-issue/SKILL.md`." — technical, the file on disk.
 - ✅ "Every reviewer on the acceptance board gets the same **order**: judge the pushed PR head, independently." — brand, one subagent's instruction inside one command.
 - ❌ "Shipmates ships seventeen **orders**." — they are **commands**.
 - ❌ "Install the **orders** into `~/.claude/`." — wrong twice: wrong tier, and install paths are tech-leading, so it is **skills**.
@@ -149,8 +149,8 @@ Worked examples:
 | **Brand-leading** — "command", "order" | Site hero and section headings, card labels, README intro and tagline, example-usage prose, social copy, release announcements | The reader is being sold an idea. "Give the crew a command" is the product. |
 | **Tech-leading** — "skill" | Install paths, repo layout and reference docs, frontmatter documentation, contributor instructions, validation tooling, portability / cross-harness material | The reader is being told a fact they must act on. The fact is the open standard. |
 
-The two overlap in one place and that is fine: a doc may say "the `/shipmates-issue` **command**,
-defined by the `shipmates-issue` **skill**, installed at `.claude/skills/shipmates-issue/SKILL.md`." Naming the bridge once,
+The two overlap in one place and that is fine: a doc may say "the `/shipmates-ship-issue` **command**,
+defined by the `shipmates-ship-issue` **skill**, installed at `.claude/skills/shipmates-ship-issue/SKILL.md`." Naming the bridge once,
 where the reader first meets it, is better than picking a side.
 
 ### Retired terms
@@ -178,7 +178,7 @@ equivalent — use those in brand-leading copy, `subagent` in tech-leading copy.
 > reader a fact they must act on — and does it mean the whole workflow or one specialist's
 > instruction?
 
-A find-and-replace across the repo will produce "install the commands" and "the /shipmates-issue skill
+A find-and-replace across the repo will produce "install the commands" and "the /shipmates-ship-issue skill
 takes a GitHub issue" in the same document. Both are wrong. It will also rewrite the English word
 — "the stages, in order", "in order to act", the `command-card` CSS class — which is a different word
 that happens to be spelled the same. Read every hit.
@@ -195,7 +195,7 @@ surface is right and this table is stale — fix the table.
 | Site commands-section heading (`h2#commands-title`) | `Slash command workflows` | `Command workflows` | Brand-leading |
 | README subtitle | `Custom sub-agents & slash-command workflows for Claude Code.` | `Custom subagents & command workflows for Claude Code.` | Brand-leading |
 | Site `<title>` | `Shipmates — Claude Code sub-agents & slash-command workflows` | `Shipmates — Claude Code subagents & command workflows` | Brand-leading |
-| README FAQ answer | `slash commands are reusable workflows in .claude/commands/*.md` | `skills are reusable workflows defined in .claude/skills/<name>/SKILL.md and invoked as commands, like /shipmates-issue` | Tech-leading |
+| README FAQ answer | `slash commands are reusable workflows in .claude/commands/*.md` | `skills are reusable workflows defined in .claude/skills/<name>/SKILL.md and invoked as commands, like /shipmates-ship-issue` | Tech-leading |
 | `CONTRIBUTING.md` heading | `## Adding a command` | `## Adding a skill (workflow)` | Tech-leading |
 | Site FAQ | `builds on Claude Code's public sub-agent and slash-command features` | `builds on Claude Code's public subagent and skill features` | Tech-leading |
 | README section heading | `## 📜 The orders (commands)` | `## 📜 The commands` | Brand-leading |
@@ -240,7 +240,7 @@ Derived from the copy that already works. Four rules:
 | Person | Second person ("you"). Avoid "we" — the project speaks as the product, not as a company. |
 | Headings | Sentence case. `Get the crew aboard`, not `Get The Crew Aboard`. |
 | Dashes | Em dash `—` for asides, spaced as in existing copy. |
-| Command references | Always with the leading slash and in code: `` `/shipmates-issue` ``. |
+| Command references | Always with the leading slash and in code: `` `/shipmates-ship-issue` ``. |
 | Role references | Always lowercase-hyphenated and in code: `` `senior-engineer` ``. |
 | Product name | `Shipmates`, capital S, always. Never `shipmates` as the product, never `ShipMates`. Lowercase `shipmates` is only the metaphor noun ("the shipmates do the twenty steps"). |
 
@@ -332,7 +332,7 @@ cards: 🏛️ `architect` · 🔧 `senior-engineer` · 🧪 `sdet` · 🛡️ `
 🚨 `site-reliability-engineer` · ⚡ `performance-engineer` · 📋 `product-manager` ·
 🎛️ `ux-ui-designer` · 🎨 `art-director` · 📖 `technical-writer` · 📊 `data-scientist`.
 
-The `/shipmates-issue` stages likewise: 🗺️ Plan · ✏️ Design specs · 📦 Isolate · 🔨 Build ·
+The `/shipmates-ship-issue` stages likewise: 🗺️ Plan · ✏️ Design specs · 📦 Isolate · 🔨 Build ·
 🚦 Self-check → CI gate · ⚖️ Acceptance board · 🔁 Remediate · 🏁 Deliver.
 
 ---
@@ -356,15 +356,15 @@ Bad: `react-expert`, `godot-reviewer`, `our-style-guardian`, `bosun`.
 
 | Rule | Detail |
 |---|---|
-| Format | Imperative verb phrase, `lowercase-hyphenated`. Invoked with a leading slash: `/shipmates-issue`, `/shipmates-fix-bug`, `/shipmates-plan-epics`. |
+| Format | Imperative verb phrase, `lowercase-hyphenated`. Invoked with a leading slash: `/shipmates-ship-issue`, `/shipmates-fix-bug`, `/shipmates-plan-epics`. |
 | Filename | `skills/<name>/SKILL.md`, where `<name>` exactly equals the frontmatter `name` and the command you type (`/<name>`). |
 | Verb first | The name is a command you give the crew. `/shipmates-harden`, `/shipmates-migrate`, `/shipmates-document`, `/shipmates-release`, `/shipmates-polish`, `/shipmates-spike` — every one starts with the action. |
-| Object second, if needed | `/shipmates-issue`, `/shipmates-fix-bug`, `/shipmates-plan-epics`. Singular or plural per what the command actually takes. |
+| Object second, if needed | `/shipmates-ship-issue`, `/shipmates-fix-bug`, `/shipmates-plan-epics`. Singular or plural per what the command actually takes. |
 | No nouns-as-names | Not `/quality-gate`, not `/pr-flow`. If you can't phrase it as an instruction, it isn't a command. |
 | No harness names | Not `/claude-review`. Skills are meant to be portable. |
 
-The seventeen that exist: `/shipmates-issue` · `/shipmates-epic` · `/shipmates-fix-bug` · `/shipmates-report-bug` · `/shipmates-plan-epics` · `/shipmates-consolidate-issues` · `/shipmates-harden` · `/shipmates-spike` ·
-`/shipmates-migrate` · `/shipmates-document` · `/shipmates-release` · `/shipmates-polish` · `/shipmates-pr-review` · `/ship-qa` · `/shipmates-onboard` · `/shipmates-refactor` · `/ship-deslop`.
+The seventeen that exist: `/shipmates-ship-issue` · `/shipmates-ship-epic` · `/shipmates-fix-bug` · `/shipmates-report-bug` · `/shipmates-plan-epics` · `/shipmates-consolidate-issues` · `/shipmates-harden` · `/shipmates-spike` ·
+`/shipmates-migrate` · `/shipmates-document` · `/shipmates-release` · `/shipmates-polish` · `/shipmates-pr-review` · `/shipmates-qa` · `/shipmates-onboard` · `/shipmates-refactor` · `/shipmates-deslop`.
 
 ---
 

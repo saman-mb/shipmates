@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-09-21
+
+### Changed
+
+- **The two flagships are `/shipmates-ship-issue` and `/shipmates-ship-epic`, and
+  `/shipmates-qa` and `/shipmates-deslop` finally carry the prefix.** When every command
+  took the `shipmates-` prefix in 0.10.0 the flagships lost the verb that named what they
+  do — `/shipmates-issue` reads as a noun, and "ship this issue" is the whole product — so
+  they take it back. `/ship-qa` and `/ship-deslop` landed while `ship-` was the live prefix
+  and were missed by that rename, leaving a captain two spellings to remember and a home
+  page that showed the retired one. All seventeen now answer to a single `shipmates-`
+  namespace. An existing install migrates automatically on `shipmates install` or
+  `shipmates doctor --fix` — the old skill is renamed in place, its previous bytes backed
+  up, and the receipt rewritten — and every old site URL redirects to the new page, so
+  bookmarks and links survive (#537).
+- **The home page names the flagships "Ship Issue" and "Ship Epic".** The command grid
+  showed "Issue" and "Epic", and showed `/ship-qa` and `/ship-deslop` as raw slash
+  commands while every neighbour showed a plain title — three different spellings in one
+  grid. Every card now reads as a plain title, and the flagships read as the action they
+  perform (#537).
+
 ## [0.11.1] - 2026-09-21
 
 ### Fixed

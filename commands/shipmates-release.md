@@ -13,7 +13,7 @@ builds the changelog from the real merge history (every user-visible change cove
 bumped consistently, and it's gated on **green CI at the exact commit being tagged** plus an SRE
 pre-flight for rollback and migration safety. Publishing is opt-in.
 
-**Scope vs `/shipmates-issue`.** `/shipmates-issue` bumps version and adds a changelog entry **in the same PR**
+**Scope vs `/shipmates-ship-issue`.** `/shipmates-ship-issue` bumps version and adds a changelog entry **in the same PR**
 when a story ships release-affecting work to the release branch (`IS_RELEASE_AFFECTING`). Use
 **`/shipmates-release`** when you need a **batch** cut (assemble everything since the last tag), SRE pre-flight,
 or explicit tag/publish ceremony — not as a substitute for per-story bumps the crew forgot in the PR.

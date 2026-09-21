@@ -2342,14 +2342,21 @@ mod tests {
             vec!["harden", "ship-harden"]
         );
         assert_eq!(pre_prefix_aliases("shipmates-gh"), vec!["gh"]);
-        // The flagships now have a `ship-` generation behind them, like every
-        // other command — queried by their current name, that generation is
-        // the alias.
-        assert_eq!(pre_prefix_aliases("shipmates-issue"), vec!["ship-issue"]);
-        // Queried by the old generation's own name, there is no generation
+        // The flagships have two generations behind them — `ship-issue`, and
+        // the `shipmates-issue` that dropped the verb before it came back —
+        // so querying by the current name reclaims both.
+        assert_eq!(
+            pre_prefix_aliases("shipmates-ship-issue"),
+            vec!["ship-issue", "shipmates-issue"]
+        );
+        // Queried by an old generation's own name, there is no generation
         // before it, and third-party skills are not in the rename table at
         // all.
         assert!(pre_prefix_aliases("ship-issue").is_empty());
+        // Queried from the middle of the chain, only the generations actually
+        // older than it come back — the ordering of the rename rows is what
+        // makes that cut correct.
+        assert_eq!(pre_prefix_aliases("shipmates-issue"), vec!["ship-issue"]);
         assert!(pre_prefix_aliases("caveman").is_empty());
     }
 
@@ -3386,10 +3393,10 @@ mod tests {
     fn test_doctor_warns_when_pi_skill_name_is_in_two_trees() {
         let dir = tempdir().unwrap();
         let target = dir.path();
-        let skill = "---\nname: shipmates-issue\ndescription: d\n---\n";
+        let skill = "---\nname: shipmates-ship-issue\ndescription: d\n---\n";
         for rel in [
-            ".agents/skills/shipmates-issue/SKILL.md",
-            ".pi/skills/shipmates-issue/SKILL.md",
+            ".agents/skills/shipmates-ship-issue/SKILL.md",
+            ".pi/skills/shipmates-ship-issue/SKILL.md",
         ] {
             let path = target.join(rel);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -3408,7 +3415,7 @@ mod tests {
             check.detail
         );
         assert!(
-            check.detail.contains("shipmates-issue"),
+            check.detail.contains("shipmates-ship-issue"),
             "doctor must name the colliding skill: {}",
             check.detail
         );

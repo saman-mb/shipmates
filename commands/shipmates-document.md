@@ -27,7 +27,7 @@ a migration guide, or the whole repo — and for whom (see Parameters).
   Guidance `sequential` sets `EXECUTION=sequential` to draft them one at a time.
 - `MAX_CONCURRENT_WORKERS` = `5` — concurrency cap in `fanout` mode.
 - `MAX_ROUNDS` = `3` — the fresh-reader fix loop cap (Stage 3). `MODE` = `pr` (default) — a worktree,
-  a branch and a CI-gated PR, reusing `/shipmates-issue`'s isolate stage and its commit-push-PR stage;
+  a branch and a CI-gated PR, reusing `/shipmates-ship-issue`'s isolate stage and its commit-push-PR stage;
   your checkout is left exactly as you left it. `edit-in-place` writes the docs straight into the
   working tree — still available, but ask for it.
 - Under `MODE=pr`: `BASE_BRANCH` = the repo's default branch — the PR's target, not what the
@@ -57,7 +57,7 @@ Don't blend them. State the concrete "reader can now do X" success condition the
 The worktree exists before anything writes. First check `git -C <repo> status --porcelain`; if the
 caller's tree is dirty, **stop and say so** — a worktree cut from `HEAD` holds committed work only,
 so a draft written against it would silently miss whatever the caller hasn't committed yet; tell them
-to commit or stash first. Otherwise, exactly as `/shipmates-issue`'s isolate stage, but cut from current
+to commit or stash first. Otherwise, exactly as `/shipmates-ship-issue`'s isolate stage, but cut from current
 `HEAD` rather than `origin/<BASE_BRANCH>`, so it contains the work being documented. Resolve
 `<WORKTREE_DIR>`, gitignore `.shipmates/worktrees/` when nested (once, idempotently), then:
 

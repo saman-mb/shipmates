@@ -1,11 +1,11 @@
 ---
-name: ship-deslop
+name: shipmates-deslop
 description: Shipmates: Audit a codebase for health debt — dead code, duplication, redundancy, over-engineering beyond actual need, inconsistency, bad patterns, misplaced files and folders, dependency and config rot — grade every finding by risk, then file the work as an epic with sub-issues. Never edits the codebase: it analyses, files tracked work, and stops at a human gate where the captain chooses what ships now and what waits.
 argument-hint: <path-or-module> [file|ship] — no args: whole repo, analysis only
 allowed-tools: Bash, Read, Agent, Grep, Glob
 disable-model-invocation: true
 ---
-# /ship-deslop — audit the debt, file it as an epic, let the captain choose what ships
+# /shipmates-deslop — audit the debt, file it as an epic, let the captain choose what ships
 <!-- shipmates:command-preamble -->
 
 Every repository carries debt no issue tracks: an import nothing imports, two copies of one function
@@ -15,7 +15,7 @@ release after it shipped, a TODO older than the test runner around it. No analys
 no human wants to read the whole tree to find it. "Slop" here is any of the debt below — whatever
 wrote it; the command judges the debt, not its author.
 
-`/ship-deslop` inventories that debt, grades every finding by the risk of touching it, and
+`/shipmates-deslop` inventories that debt, grades every finding by the risk of touching it, and
 then **files it as an epic with sub-issues** — durable tracked work, not a report that dies with the
 session. The captain reviews that epic, confirms the breakdown is sound, and only then chooses what to
 fix now and what to leave for later.

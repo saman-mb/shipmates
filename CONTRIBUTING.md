@@ -50,7 +50,7 @@ are correct; which one belongs in a given sentence is set by the
    followed by a digit is rejected **anywhere in the file**, frontmatter and fenced code blocks
    included: substitution is textual over the whole file, so a fence protects nothing. (An earlier
    version of this checklist allowed it inside a fence, on the grounds that it reads as a shell field
-   reference there. That was wrong: run `/shipmates-issue 42 focus on retries` and a fenced snippet asking
+   reference there. That was wrong: run `/shipmates-ship-issue 42 focus on retries` and a fenced snippet asking
    for field two gets the literal word `on`.) If you genuinely need a literal, escape it as `\$2` —
    but prefer restructuring so you don't, e.g. `cut -f2` rather than an `awk` field reference.
    `cargo run -- check` enforces this over the whole file, fenced or not.
@@ -81,7 +81,7 @@ are correct; which one belongs in a given sentence is set by the
    **Which ref to branch from follows the same split: cut from wherever the stage that found the
    work read from.** `/shipmates-harden` locates findings in your checkout, `/shipmates-document` describes what you
    built, `/shipmates-onboard` surveys your files, `/shipmates-polish` critiques your render, and `/shipmates-spike`'s ADR
-   belongs on top of the state that provoked it, so those cut from `HEAD`; `/shipmates-issue` and
+   belongs on top of the state that provoked it, so those cut from `HEAD`; `/shipmates-ship-issue` and
    `/shipmates-fix-bug` start from an issue and a bug must reproduce against the base branch, and
    `/shipmates-migrate` and `/shipmates-refactor` transform the whole codebase and want a clean mergeable baseline,
    so those cut from `origin/<BASE_BRANCH>`. `HEAD` is not the working tree — uncommitted work

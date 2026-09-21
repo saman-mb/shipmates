@@ -32,17 +32,19 @@ use std::path::{Path, PathBuf};
 
 /// Command identities that pick up the `shipmates-` prefix.
 ///
-/// Three generations are represented. The earliest installs carried the bare
+/// Four generations are represented. The earliest installs carried the bare
 /// verb (`polish`) or, for four workflow names, the bare name itself
 /// (`plan-epics`) with no `shipmates-` step at all; the `shipmates-`
 /// generation then prefixed the first nine; the `ship-` generation then moved
-/// every command, including the two flagships, under `ship-`. Current
-/// payloads ship every command as `shipmates-…`, so each row maps a name that
-/// can still be on disk directly to the name the payload ships today — a bare
-/// `polish` or `plan-epics`, and `ship-polish`, all land on `shipmates-…`. A
+/// every command, including the two flagships, under `ship-`; the prefix then
+/// came back to `shipmates-`, and the two flagships took the verb with them
+/// (`shipmates-ship-issue`, `shipmates-ship-epic`). Current payloads ship
+/// every command as `shipmates-…`, so each row maps a name that can still be
+/// on disk directly to the name the payload ships today — a bare `polish` or
+/// `plan-epics`, and `ship-polish`, all land on `shipmates-…`. A
 /// `shipmates-polish` from the first prefixed generation is already current
-/// and needs no row. The two flagships (`ship-issue`, `ship-epic`) never
-/// moved before this generation and are new rows here.
+/// and needs no row; `shipmates-issue` and `shipmates-epic` are not, because
+/// the flagships moved again underneath them.
 pub const COMMAND_RENAMES: &[(&str, &str)] = &[
     // Bare verbs from the pre-prefix generation.
     ("document", "shipmates-document"),
@@ -73,10 +75,18 @@ pub const COMMAND_RENAMES: &[(&str, &str)] = &[
     ("ship-pr-review", "shipmates-pr-review"),
     ("ship-report-bug", "shipmates-report-bug"),
     ("ship-consolidate-issues", "shipmates-consolidate-issues"),
-    ("ship-issue", "shipmates-issue"),
-    ("ship-epic", "shipmates-epic"),
+    ("ship-issue", "shipmates-ship-issue"),
+    ("ship-epic", "shipmates-ship-epic"),
+    // Two commands landed while `ship-` was the live prefix and so never got
+    // a `shipmates-` row until now.
+    ("ship-qa", "shipmates-qa"),
+    ("ship-deslop", "shipmates-deslop"),
+    // The flagships kept the `ship` verb when the prefix came back, so the
+    // `shipmates-` generation's own names for them are stale too.
+    ("shipmates-issue", "shipmates-ship-issue"),
+    ("shipmates-epic", "shipmates-ship-epic"),
     // The one command that shipped and was then shortened (v0.9.0 → v0.9.1).
-    ("ship-deslop-codebase", "ship-deslop"),
+    ("ship-deslop-codebase", "shipmates-deslop"),
 ];
 
 /// Every tool occupies the same skill tree as commands; `gh` is the collision
@@ -847,10 +857,10 @@ mod tests {
             ("ship-pr-review", "shipmates-pr-review"),
             ("ship-report-bug", "shipmates-report-bug"),
             ("ship-consolidate-issues", "shipmates-consolidate-issues"),
-            ("ship-issue", "shipmates-issue"),
-            ("ship-epic", "shipmates-epic"),
+            ("ship-issue", "shipmates-ship-issue"),
+            ("ship-epic", "shipmates-ship-epic"),
             // The command that shipped, then shortened its name.
-            ("ship-deslop-codebase", "ship-deslop"),
+            ("ship-deslop-codebase", "shipmates-deslop"),
         ] {
             assert_eq!(rows.get(old), Some(&new), "{old} → {new}");
         }
@@ -884,7 +894,7 @@ mod tests {
     #[test]
     fn plan_migrates_a_released_command_that_was_renamed() {
         // `ship-deslop-codebase` shipped in v0.9.0 and was shortened to
-        // `ship-deslop`. Unlike the earlier generations this is not a prefix
+        // `shipmates-deslop`. Unlike the earlier generations this is not a prefix
         // change but a rename of a live command, so the row must still reclaim
         // the installed skill folder and the leftover flat command file.
         let dir = tempdir().unwrap();
@@ -902,7 +912,7 @@ mod tests {
             "---\nname: ship-deslop-codebase\n---\nold\n",
         )
         .unwrap();
-        let payload = payload_skill(".claude/skills/ship-deslop/SKILL.md", "new deslop");
+        let payload = payload_skill(".claude/skills/shipmates-deslop/SKILL.md", "new deslop");
         let items = plan(target, &payload, "").unwrap();
         let olds: Vec<_> = items
             .iter()
@@ -916,7 +926,7 @@ mod tests {
             olds.contains(&".claude/commands/ship-deslop-codebase.md".to_string()),
             "leftover flat command file not reclaimed: {olds:?}"
         );
-        assert!(items.iter().all(|item| item.new_name == "ship-deslop"));
+        assert!(items.iter().all(|item| item.new_name == "shipmates-deslop"));
     }
 
     #[test]

@@ -17,10 +17,10 @@ load helpers
 
 @test "re-install is idempotent" {
   install_claude_code "$SANDBOX"
-  cp "$SANDBOX/.claude/skills/shipmates-issue/SKILL.md" "$BATS_TEST_TMPDIR/before.md"
+  cp "$SANDBOX/.claude/skills/shipmates-ship-issue/SKILL.md" "$BATS_TEST_TMPDIR/before.md"
   run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools none
   assert_success
-  cmp "$BATS_TEST_TMPDIR/before.md" "$SANDBOX/.claude/skills/shipmates-issue/SKILL.md"
+  cmp "$BATS_TEST_TMPDIR/before.md" "$SANDBOX/.claude/skills/shipmates-ship-issue/SKILL.md"
   [ "$(skill_dirs "$SANDBOX")" -eq 17 ]
 }
 
@@ -62,27 +62,27 @@ load helpers
 }
 
 @test "a foreign file at a payload path fails closed; --force adopts it with a backup" {
-  mkdir -p "$SANDBOX/.claude/skills/shipmates-issue"
-  printf 'mine\n' > "$SANDBOX/.claude/skills/shipmates-issue/SKILL.md"
+  mkdir -p "$SANDBOX/.claude/skills/shipmates-ship-issue"
+  printf 'mine\n' > "$SANDBOX/.claude/skills/shipmates-ship-issue/SKILL.md"
 
   run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools none
   assert_failure
-  [ "$(cat "$SANDBOX/.claude/skills/shipmates-issue/SKILL.md")" = "mine" ]
+  [ "$(cat "$SANDBOX/.claude/skills/shipmates-ship-issue/SKILL.md")" = "mine" ]
 
   run "$SHIPMATES_BIN" install --harness claude-code --dir "$SANDBOX" --with-tools none --force
   assert_success
-  [ "$(cat "$SANDBOX/.claude/skills/shipmates-issue/SKILL.md")" != "mine" ]
+  [ "$(cat "$SANDBOX/.claude/skills/shipmates-ship-issue/SKILL.md")" != "mine" ]
   find "$SANDBOX" -name '*.bak-*' | grep -q .
 }
 
 @test "--local installs into the working directory and --global into HOME" {
   run "$SHIPMATES_BIN" install --harness claude-code --local --with-tools none
   assert_success
-  [ -f "$SANDBOX/.claude/skills/shipmates-issue/SKILL.md" ]
+  [ -f "$SANDBOX/.claude/skills/shipmates-ship-issue/SKILL.md" ]
 
   run "$SHIPMATES_BIN" install --harness claude-code --global --with-tools none
   assert_success
-  [ -f "$HOME/.claude/skills/shipmates-issue/SKILL.md" ]
+  [ -f "$HOME/.claude/skills/shipmates-ship-issue/SKILL.md" ]
 }
 
 @test "--global and --local together are rejected" {

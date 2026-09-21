@@ -121,7 +121,7 @@ the board from the fixer delta (shared rule), bounded by `MAX_FIX_ROUNDS`, then 
 
 Open (or, if `MERGE_MODE=auto`, merge) the PR. Body: the root cause in one paragraph, the fix, the
 regression test, `Closes #<issue>`, and the green-CI link. Dispose sibling bugs / deferred cleanups
-with the same **nit disposition** ladder as `/shipmates-issue` Stage 7 (default absorb-first for cheap
+with the same **nit disposition** ladder as `/shipmates-ship-issue` Stage 7 (default absorb-first for cheap
 in-scope leftovers; cap and batch any filed issues; never open one ticket per trivial leftover).
 Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, disposition counts,
 and the absolute `<WORKTREE_DIR>` path (for cleanup or resume).

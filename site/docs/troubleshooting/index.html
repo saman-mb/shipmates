@@ -179,11 +179,11 @@
         <div class="faq__list">
           <details class="faq__item">
             <summary class="faq__q">
-              <span class="faq__q-text"><code>/shipmates-issue</code> doesn&#x27;t resolve</span>
+              <span class="faq__q-text"><code>/shipmates-ship-issue</code> doesn&#x27;t resolve</span>
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> the skill isn&#x27;t where the harness looks, or its identity broke — the Agent Skills standard requires the frontmatter <code>name:</code> to equal the parent directory name, so <code>skills/shipmates-issue/SKILL.md</code> must declare <code>name: shipmates-issue</code>. <strong>Fix:</strong> check <code>./.claude/skills/shipmates-issue/SKILL.md</code> exists and that the harness is pointing at this project&#x27;s <code>.claude/</code>. Missing → re-run <code>shipmates install</code>. Hand-edited <code>name:</code> → restore it to match the directory.</p>
+              <p><strong>Cause:</strong> the skill isn&#x27;t where the harness looks, or its identity broke — the Agent Skills standard requires the frontmatter <code>name:</code> to equal the parent directory name, so <code>skills/shipmates-ship-issue/SKILL.md</code> must declare <code>name: shipmates-ship-issue</code>. <strong>Fix:</strong> check <code>./.claude/skills/shipmates-ship-issue/SKILL.md</code> exists and that the harness is pointing at this project&#x27;s <code>.claude/</code>. Missing → re-run <code>shipmates install</code>. Hand-edited <code>name:</code> → restore it to match the directory.</p>
             </div>
           </details>
           <details class="faq__item">
@@ -192,7 +192,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> the seventeen install as <code>.opencode/commands/&lt;name&gt;.md</code> (flat files, <code>/</code>-invoked) rather than skills, and agents land in <code>.opencode/agents/</code>. If files are missing, the install went to a different root than opencode reads. <strong>Fix:</strong> confirm <code>.opencode/commands/shipmates-issue.md</code> and <code>.opencode/agents/sdet.md</code> exist, then restart opencode. Note the payload has a captain-attested live run (<code>partial</code> in the matrix) but that is not Tier-A <code>/shipmates-issue</code> proof — see the <a href="../harnesses/">harness matrix</a>.</p>
+              <p><strong>Cause:</strong> the seventeen install as <code>.opencode/commands/&lt;name&gt;.md</code> (flat files, <code>/</code>-invoked) rather than skills, and agents land in <code>.opencode/agents/</code>. If files are missing, the install went to a different root than opencode reads. <strong>Fix:</strong> confirm <code>.opencode/commands/shipmates-ship-issue.md</code> and <code>.opencode/agents/sdet.md</code> exist, then restart opencode. Note the payload has a captain-attested live run (<code>partial</code> in the matrix) but that is not Tier-A <code>/shipmates-ship-issue</code> proof — see the <a href="../harnesses/">harness matrix</a>.</p>
             </div>
           </details>
           <details class="faq__item">
@@ -201,7 +201,7 @@
               <span class="faq__marker" aria-hidden="true"></span>
             </summary>
             <div class="faq__a">
-              <p><strong>Cause:</strong> Codex keeps crew and skills in separate trees. <strong>Fix:</strong> confirm <code>.codex/agents/sdet.toml</code> exists for crew and <code>.agents/skills/shipmates-issue/SKILL.md</code> exists for skills, then restart Codex. The payload is format-, golden-digest-, and install-verified, but not runtime-verified; use the <a href="../harnesses/#codex">Codex quickstart</a> for the optional read-only <code>harden</code> skill check.</p>
+              <p><strong>Cause:</strong> Codex keeps crew and skills in separate trees. <strong>Fix:</strong> confirm <code>.codex/agents/sdet.toml</code> exists for crew and <code>.agents/skills/shipmates-ship-issue/SKILL.md</code> exists for skills, then restart Codex. The payload is format-, golden-digest-, and install-verified, but not runtime-verified; use the <a href="../harnesses/#codex">Codex quickstart</a> for the optional read-only <code>harden</code> skill check.</p>
             </div>
           </details>
           <details class="faq__item">

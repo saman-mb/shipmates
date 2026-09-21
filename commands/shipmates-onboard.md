@@ -27,7 +27,7 @@ want is a README or a tutorial, stop and run `/shipmates-document`.
 ## Config (override only if the repo needs it)
 
 - `MODE` = `pr` (default) or `edit-in-place` — where the result lands. `pr` opens a worktree, a
-  branch and a CI-gated PR rather than writing to the tree, reusing `/shipmates-issue`'s isolate stage and
+  branch and a CI-gated PR rather than writing to the tree, reusing `/shipmates-ship-issue`'s isolate stage and
   its commit-push-PR stage. This file is the contract every later run inherits, so it earns a diff
   and a human's eye before it lands; `edit-in-place` is an explicit request. `SURVEY` (`create` /
   `refresh`) is set by Stage 0 and describes what was *found* — it is a separate axis and never
@@ -73,7 +73,7 @@ context file agrees with them instead of competing.
 The branch exists before the context file does. First check `git -C <repo> status --porcelain`; if
 the caller's tree is dirty, **warn loudly** — a worktree cut from `HEAD` holds committed work only,
 so an uncommitted rule Stage 0's survey just saw won't carry into the draft — then proceed. Exactly
-as `/shipmates-issue`'s isolate stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>` — so
+as `/shipmates-ship-issue`'s isolate stage, but cut from current `HEAD` rather than `origin/<BASE_BRANCH>` — so
 an unpushed `{{project-instructions}}`/`{{project-instructions-fallback}}` that Stage 0's survey already saw is actually present in the
 worktree the draft and refresh work against. Resolve `<WORKTREE_DIR>`, gitignore
 `.shipmates/worktrees/` when nested (once, idempotently), then:

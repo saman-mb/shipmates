@@ -362,14 +362,14 @@ mod tests {
                 warned: &[],
             },
             Case {
-                managed: ".claude/skills/shipmates-issue/SKILL.md",
+                managed: ".claude/skills/shipmates-ship-issue/SKILL.md",
                 planted: &[
-                    ".claude/skills/shipmates-issue/SKILL.md",
+                    ".claude/skills/shipmates-ship-issue/SKILL.md",
                     ".claude/skills/synced/x",
                     ".claude/plugins/x",
-                    ".claude/skills/shipmates-issue/extra.md",
+                    ".claude/skills/shipmates-ship-issue/extra.md",
                 ],
-                warned: &[".claude/skills/shipmates-issue/extra.md"],
+                warned: &[".claude/skills/shipmates-ship-issue/extra.md"],
             },
             Case {
                 managed: ".gemini/config/skills/foo/SKILL.md",

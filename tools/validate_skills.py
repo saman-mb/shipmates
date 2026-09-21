@@ -38,7 +38,7 @@ shell field reference rather than substituted. That assumption was never
 verified — nothing documents a fence exemption, and the documented way to keep a
 literal `$` before a digit is the backslash escape `\\$1`, which would be
 pointless if fences were exempt — so it was removed. Substitution is treated as
-textual over the whole file: `/shipmates-issue 42 focus on retries` binds `$2` to
+textual over the whole file: `/shipmates-ship-issue 42 focus on retries` binds `$2` to
 `on` and rewrites `awk '{print $2}'` to `awk '{print on}'`.
 
 Exit 0 if all green; exit 1 if one or more failures (printed).
@@ -288,7 +288,7 @@ def check_values(rel: str, slug: str, entries: dict) -> None:
         elif not NAME_RE.fullmatch(name):
             fail(
                 f"{rel}:{lineno}: name {name!r} is not lowercase-hyphen — use lowercase "
-                "letters and digits joined by single hyphens (e.g. shipmates-issue)"
+                "letters and digits joined by single hyphens (e.g. shipmates-ship-issue)"
             )
         if len(name) > MAX_NAME:
             fail(
@@ -356,7 +356,7 @@ def check_body(rel: str, lines: list[str], start: int) -> None:
             fail(
                 f"{rel}:{lineno}: {hit.group(0)!r} inside the fenced code block opened on "
                 f"line {fence_lineno} — substitution is textual over the whole file, so a "
-                "``` fence does not protect it (`/shipmates-issue 42 focus on retries` would "
+                "``` fence does not protect it (`/shipmates-ship-issue 42 focus on retries` would "
                 "make `awk '{print $2}'` read `awk '{print on}'`); restructure to avoid "
                 "`$` before a digit (e.g. `cut -f2` instead of `awk '{print $2}'`), or "
                 "escape it as `\\$2`"
