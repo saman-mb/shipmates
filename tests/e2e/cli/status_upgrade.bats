@@ -314,7 +314,9 @@ EOF
 
 @test "upgrade --json reports and continues on a read-only root" {
   install_claude_code "$SANDBOX/app"
-  chmod 0555 "$SANDBOX/app"
+  # Recursive: `update` writes inside `.claude/`, so a root-only chmod would
+  # leave the subtree writable and the refresh could still succeed.
+  chmod -R 0555 "$SANDBOX/app"
 
   # Where 0555 is a no-op (root user, or a filesystem that ignores modes) the
   # assertion below cannot hold, so skip instead of failing on the environment.
@@ -328,12 +330,16 @@ EOF
   export SHIPMATES_CURL="$feed"
 
   run "$SHIPMATES_BIN" upgrade --json --dir "$SANDBOX/app"
-  # Never a hard abort (exit 1): the refresh either succeeds (0) or its failure
-  # is recorded as a finding and the run continues (3).
-  [ "$status" -eq 0 ] || [ "$status" -eq 3 ]
-  run jq -e '.installs | length >= 1' <<< "$output"
+  # The write-probe above proves the root rejects writes, so the refresh must
+  # fail and be recorded as a finding (exit 3) — never a hard abort (exit 1)
+  # and never a silent success.
+  [ "$status" -eq 3 ]
+  local json="$output"
+  run jq -e '[.findings[] | select(.class == "refresh-failed")] | length >= 1' <<< "$json"
+  assert_success
+  run jq -e '.installs | length >= 1' <<< "$json"
   assert_success
 
   # Restore write permission so the throwaway sandbox can be cleaned up.
-  chmod 0755 "$SANDBOX/app"
+  chmod -R 0755 "$SANDBOX/app"
 }

@@ -181,12 +181,10 @@ pub fn run_upgrade(opts: &UpgradeOpts) -> anyhow::Result<i32> {
                     if !status.success() {
                         anyhow::bail!("self-upgrade failed ({command}): {status}");
                     }
-                    // Drop the upgrade lock before the re-exec so the fresh
-                    // binary is free to take it again (and `--resume` skips it).
-                    drop(_lock);
+                    // The lock is deliberately held across the re-exec: the
+                    // child runs with `--resume`, which skips lock acquisition,
+                    // so the guard keeps the whole `--self` run exclusive.
                     // Re-exec the freshly-upgraded binary to refresh payloads.
-                    // Prefer the channel's binary on `PATH`: after a brew
-                    // upgrade the running image's Cellar path may be gone.
                     let exe = resolve_self_binary();
                     let mut child = Command::new(&exe);
                     child.args(reexec_args(opts));
@@ -538,18 +536,26 @@ fn reexec_args(opts: &UpgradeOpts) -> Vec<String> {
     args
 }
 
-/// The post-upgrade binary to re-exec: the first `shipmates` on `PATH` when one
-/// exists, else the running executable. After `brew upgrade`, the running
-/// image's Cellar path may already be gone, so `PATH` is preferred.
+/// The post-upgrade binary to re-exec: the running executable while it still
+/// exists, else the first `shipmates` on `PATH`. An in-place upgrade (cargo)
+/// leaves the running path valid and freshly upgraded, while `brew upgrade`
+/// removes the old Cellar path — so checking existence first covers both and
+/// never re-executes an unrelated copy that happens to sit earlier on `PATH`.
 fn resolve_self_binary() -> PathBuf {
-    resolve_self_binary_with(std::env::var_os("PATH").as_deref())
+    resolve_self_binary_with(
+        std::env::current_exe().ok(),
+        std::env::var_os("PATH").as_deref(),
+    )
 }
 
-fn resolve_self_binary_with(path_var: Option<&OsStr>) -> PathBuf {
+fn resolve_self_binary_with(current: Option<PathBuf>, path_var: Option<&OsStr>) -> PathBuf {
+    if let Some(exe) = current.filter(|path| path.is_file()) {
+        return exe;
+    }
     if let Some(exe) = path_var.and_then(first_shipmates_on_path) {
         return exe;
     }
-    std::env::current_exe().unwrap_or_else(|_| PathBuf::from("shipmates"))
+    PathBuf::from("shipmates")
 }
 
 fn first_shipmates_on_path(path_var: &OsStr) -> Option<PathBuf> {
@@ -1046,17 +1052,36 @@ mod tests {
     }
 
     #[test]
-    fn resolve_self_binary_prefers_path_lookup() {
+    fn resolve_self_binary_keeps_a_still_existing_current_exe() {
         let dir = tempfile::tempdir().unwrap();
-        let bin = dir.path().join("shipmates");
-        std::fs::write(&bin, "#!/bin/sh\n").unwrap();
+        let path_bin = dir.path().join("shipmates");
+        std::fs::write(&path_bin, "#!/bin/sh\n").unwrap();
+        let current = dir.path().join("current");
+        std::fs::write(&current, "#!/bin/sh\n").unwrap();
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+            std::fs::set_permissions(&path_bin, std::fs::Permissions::from_mode(0o755)).unwrap();
         }
 
         let path_var = std::ffi::OsStr::new(dir.path().to_str().unwrap());
-        assert_eq!(resolve_self_binary_with(Some(path_var)), bin);
+        assert_eq!(
+            resolve_self_binary_with(Some(current.clone()), Some(path_var)),
+            current
+        );
+
+        // A vanished current exe (brew Cellar swap) falls back to PATH.
+        assert_eq!(
+            resolve_self_binary_with(Some(dir.path().join("gone")), Some(path_var)),
+            path_bin
+        );
+    }
+
+    #[test]
+    fn resolve_self_binary_falls_back_to_shipmates_name() {
+        assert_eq!(
+            resolve_self_binary_with(None, None),
+            PathBuf::from("shipmates")
+        );
     }
 }
