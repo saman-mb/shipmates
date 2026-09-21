@@ -260,7 +260,9 @@ the cohesion bundle widening in step 2.5.
    bundle, Stage 4 already repeats `Closes #<N>` for every issue, so if the board later rejects one, it
    can be dropped from the bundle — revert its files and omit its `Closes` — rather than sinking the rest.
 3. Spawn ONE **Planner** (`{{role:planner}}`). Give it all issue bodies + repo README +
-   {{project-instructions}}. When runtime guidance includes **`epic-plan`** from a `/shipmates-epic`
+   {{project-instructions}}. If the child-launch / subagent runtime cannot load (spawn dies
+   before any role resolves), **stop** and name the diagnostic — never run the planner inline,
+   never silently set `board=off`. When runtime guidance includes **`epic-plan`** from a `/shipmates-epic`
    delegation, treat that classification and unit grouping as the **starting plan** — amend only where
    an issue body contradicts it; do not re-derive the epic shape from scratch. When guidance includes
    **`epic-run`**, do not scan the wider backlog or propose bundle widening beyond the passed issue

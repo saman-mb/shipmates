@@ -463,11 +463,12 @@ fn upgrade_prints_version_and_file_summary() {
 
 #[test]
 fn unmanaged_file_survives_reinstall_with_warning() {
-    // A file of the user's own inside a payload subtree — not at a payload path
-    // — is still reported, and still survives.
+    // A file of the user's own next to a managed payload file is still reported,
+    // and still survives. Sibling *directories* under the harness root are not
+    // walked (see update_does_not_warn_on_harness_runtime_junk).
     let dir = tempdir().unwrap();
     install_ok(dir.path());
-    let unmanaged = dir.path().join(".claude/skills/my-notes/SKILL.md");
+    let unmanaged = dir.path().join(".claude/skills/shipmates-issue/extra.md");
     fs::create_dir_all(unmanaged.parent().unwrap()).unwrap();
     fs::write(&unmanaged, "local skill\n").unwrap();
 
@@ -481,9 +482,85 @@ fn unmanaged_file_survives_reinstall_with_warning() {
     let stdout = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
     assert!(
         stdout.contains("unmanaged file left untouched")
-            && stdout.contains(".claude/skills/my-notes/skill.md"),
+            && stdout.contains(".claude/skills/shipmates-issue/extra.md"),
         "reinstall should warn about the unmanaged file: {stdout}"
     );
+}
+
+#[test]
+fn update_does_not_warn_on_harness_runtime_junk() {
+    let home = tempdir().unwrap();
+    let first = Command::new(bin())
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .env("HOME", home.path())
+        .args([
+            "install",
+            "--harness",
+            "pi",
+            "--global",
+            "--with-tools",
+            "none",
+        ])
+        .output()
+        .expect("failed to execute shipmates install --global pi");
+    assert!(
+        first.status.success(),
+        "pi global install failed: {}",
+        output_text(&first)
+    );
+
+    for rel in [
+        ".pi/agent/sessions/foo.jsonl",
+        ".pi/agent/plugins/x",
+        ".pi/agent/synced/x",
+        ".pi/agent/missions/x",
+        ".pi/agent/npm/y",
+    ] {
+        let path = home.path().join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, "runtime\n").unwrap();
+    }
+    let genuine = home.path().join(".pi/agent/agents/mine.md");
+    fs::write(&genuine, "captain\n").unwrap();
+    let managed = home.path().join(".pi/agent/agents/architect.md");
+    assert!(
+        managed.is_file(),
+        "pi global install must land crew at .pi/agent/agents"
+    );
+    fs::write(&managed, "drifted\n").unwrap();
+
+    let update = Command::new(bin())
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .env("HOME", home.path())
+        .args(["update", "--harness", "pi"])
+        .output()
+        .expect("failed to execute shipmates update pi");
+    assert!(
+        update.status.success(),
+        "pi update failed: {}",
+        output_text(&update)
+    );
+    let stdout = String::from_utf8_lossy(&update.stdout);
+    for junk in ["sessions/", "plugins/", "synced/", "missions/", "npm/"] {
+        for line in stdout.lines() {
+            if line.contains("unmanaged file left untouched") {
+                assert!(
+                    !line.contains(junk),
+                    "runtime junk {junk} must not be reported unmanaged: {stdout}"
+                );
+            }
+        }
+    }
+    assert!(
+        stdout.contains("unmanaged file left untouched") && stdout.contains("mine.md"),
+        "a genuine unclaimed file on a payload path must still warn: {stdout}"
+    );
+    assert_ne!(
+        fs::read_to_string(&managed).unwrap(),
+        "drifted\n",
+        "update must still refresh owned payload files"
+    );
+    assert_eq!(fs::read_to_string(&genuine).unwrap(), "captain\n");
 }
 
 #[cfg(unix)]

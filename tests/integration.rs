@@ -1586,6 +1586,39 @@ fn test_matrix_runtime_verified_is_complete() {
     }
 }
 
+/// Docs/content ACs on the acceptance board require a machine-checkable pin
+/// or an explicit `manual-only` label (#528). Silent ACCEPT from reading the
+/// page is forbidden; this test fails if that sentence is deleted from COST.md.
+#[test]
+fn test_acceptance_board_docs_acs_require_machine_pin_or_manual_only() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let doctrine = std::fs::read_to_string(root.join("docs/COST.md")).unwrap();
+    let board = doctrine
+        .split_once("<!-- acceptance-board:start -->")
+        .expect("cost doctrine has no acceptance-board start marker")
+        .1
+        .split_once("<!-- acceptance-board:end -->")
+        .expect("cost doctrine has no acceptance-board end marker")
+        .0;
+    assert!(
+        board.contains("machine-checkable pin"),
+        "acceptance-board must require a machine-checkable pin for docs/content ACs"
+    );
+    assert!(
+        board.contains("manual-only"),
+        "acceptance-board must name the `manual-only` escape for docs/content ACs"
+    );
+    assert!(
+        board.contains("child-launch") && board.contains("board=off"),
+        "acceptance-board must name a spawn-dead stop, never silent board=off"
+    );
+    let issue = std::fs::read_to_string(root.join("commands/shipmates-issue.md")).unwrap();
+    assert!(
+        issue.contains("child-launch") && issue.contains("never silently set `board=off`"),
+        "/shipmates-issue Stage 0 must stop on a dead child-launch"
+    );
+}
+
 /// The model-routing ruleset is a *global* one. It is expanded from the shared
 /// cost-discipline preamble, so **every** command carries it — not only the two
 /// that spawn the most subagents. A marker left in a single command would make

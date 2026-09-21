@@ -463,11 +463,11 @@
                   <li>Claude Code — the full crew and all 17 commands; crew resolve, argument passing, and <code>/shipmates-issue</code> end to end.</li>
                 </ul>
               </li>
-              <li><strong>Live run (<code>partial</code>)</strong> — captain-attested live runs in <code>tools/harness_matrix.json</code> (<a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>). Granular criteria stay <code>unknown</code> until separately logged.
+              <li><strong>Live run (<code>partial</code>)</strong> — captain-attested live runs in <code>tools/harness_matrix.json</code> (<a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>). Granular criteria stay <code>unknown</code> until separately logged, except pi <code>crew_resolve</code> and <code>command_e2e</code> which are <code>no</code> (<a href="https://github.com/saman-mb/shipmates/issues/525">#525</a>).
                 <ul>
                   <li>opencode — full crew + all 17 commands as <code>.opencode/</code>; Tier-A checklist still open in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
                   <li>antigravity (the Antigravity CLI, <code>agy</code> — successor to the retired Gemini CLI) — full crew + all 17 commands as <code>.agents/</code>.</li>
-                  <li>pi — full crew + all 17 commands at <code>.pi/agents/</code> via <code>pi-subagents</code>.</li>
+                  <li>pi — full crew + all 17 commands at <code>.pi/agents/</code> via <code>pi-subagents</code>; <code>crew_resolve</code> and <code>command_e2e</code> are <code>no</code>.</li>
                   <li>cursor — the 17 skills only (crew resolve N/A).</li>
                 </ul>
               </li>

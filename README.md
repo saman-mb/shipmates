@@ -246,8 +246,7 @@ enforces. Each harness records its evidence, and the date it was checked, in
 `<target>/.shipmates/receipts/<harness>.json`. It records Shipmates version, harness, layout, and every
 file Shipmates owns with its SHA-256 hash. Reinstalling the same payload skips unchanged files and
 creates backups only for changed files. Files outside the receipt are unmanaged: Shipmates warns and
-leaves them alone — the scan covers the payload's own subtrees, so a harness root that also holds your
-runtime (an opencode `node_modules`, say) is left to you.
+leaves them alone — the scan covers the payload's own subtrees and does not walk harness runtime dirs (sessions, plugins, synced).
 
 A file already sitting at a path the payload writes is decided by what it says it is. One whose
 frontmatter names the artifact installed there is a Shipmates file that fell out of ownership: install
@@ -320,7 +319,7 @@ allowlist: a tool a wildcard denies is hidden from the model rather than refused
 
 > ⚠️ **Runtime status is per harness in `tools/harness_matrix.json` → `runtime_verified`.** Claude Code
 > is `full` (crew, arguments, `/shipmates-issue` end to end). Antigravity, Cursor, Pi and opencode have
-> captain-attested live runs (`partial` — granular criteria may still be `unknown`). Codex CLI,
+> captain-attested live runs (`partial` — Pi `crew_resolve`/`command_e2e` are `no` per #525; other granular cells may still be `unknown`). Codex CLI,
 > GitHub Copilot, Grok Build and Windsurf remain format/digest-verified only. Opencode's Tier-A
 > checklist is
 > still tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
@@ -543,9 +542,10 @@ question is whether it's been *run*.
 - **Runtime-verified (`full`)** — Claude Code: the full crew and all 17 commands, with crew resolve,
   argument passing, and `/shipmates-issue` proven end to end.
 - **Live run (`partial`)** — Antigravity CLI, Cursor, Pi, and opencode: captain-attested live runs
-  recorded in `tools/harness_matrix.json` under `runtime_verified` (2026-09-18, #497). Granular cells
+  recorded in `tools/harness_matrix.json` under `runtime_verified` (2026-09-18, #497; Pi cells 2026-09-20, #525). Granular cells
   (`crew_resolve`, `argument_passing`, `command_e2e`) stay `unknown` where they were not separately
-  logged — attestation is not Tier-A proof. Opencode's Tier-A / sandbox checklist remains open in
+  logged — attestation is not Tier-A proof. Pi's `crew_resolve` and `command_e2e` are `no` (#525);
+  `argument_passing` is still unknown. Opencode's Tier-A / sandbox checklist remains open in
   [#31](https://github.com/saman-mb/shipmates/issues/31) and
   [#32](https://github.com/saman-mb/shipmates/issues/32).
 - **Builds, not runtime-verified (`none`)** — Codex CLI, GitHub Copilot, Grok Build and Windsurf build

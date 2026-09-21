@@ -594,7 +594,7 @@ mod tests {
         let skill = ".claude/skills/polish/SKILL.md";
         let plan_one = install(dir.path(), "one", &[(skill, "ours")]);
         apply(dir.path(), &plan_one, false, FORCE_HINT).unwrap();
-        crate::installer::atomic_write(&dir.path().join(".claude/skills/mine/SKILL.md"), "mine")
+        crate::installer::atomic_write(&dir.path().join(".claude/skills/polish/extra.md"), "mine")
             .unwrap();
 
         let plan_two = install(dir.path(), "two", &[(skill, "ours v2")]);
@@ -602,7 +602,7 @@ mod tests {
 
         assert_eq!(
             unmanaged_warnings(&report),
-            vec!["Warning: unmanaged file left untouched: .claude/skills/mine/SKILL.md"]
+            vec!["Warning: unmanaged file left untouched: .claude/skills/polish/extra.md"]
         );
         assert!(
             !report.backups.is_empty(),
