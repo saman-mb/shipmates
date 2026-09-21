@@ -188,6 +188,7 @@ opencode run --command shipmates-harden --format json \
           <p>The install places thirteen Markdown subagents under <code>.opencode/agents/</code> and seventeen user-invoked commands under <code>.opencode/commands/</code>. <code>agent list</code> should include all thirteen Shipmates roles; the report-only <code>shipmates-harden</code> order is a narrow manual probe of command loading. Keep <code>--auto</code> off.</p>
           <p>CI runs deterministic install-fidelity checks without network or model credentials: it builds against the committed opencode golden file, installs from the embedded payload into a temporary directory, checks all thirteen crew files and seventeen commands, and verifies the report-only <code>/shipmates-harden</code> rendering. This proves exporter and installer fidelity, not opencode runtime behaviour.</p>
           <p><strong>Fidelity caveat.</strong> The current status is <em>Live run (partial)</em> per #497. These checks do not prove all thirteen agents spawn, argument substitution, permission enforcement, parallel acceptance-board subagents, CI polling, or the full <code>/shipmates-ship-issue</code> workflow. Those remain the explicit follow-up for <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</p>
+          <p>The shared mechanics those checks would exercise &mdash; worktree isolation, the CI gate, the acceptance board, merge modes &mdash; are the same on every harness; see <a href="../how-commands-work/">How commands work</a>.</p>
         </div>
       </div>
     </section>
@@ -213,6 +214,7 @@ opencode run --command shipmates-harden --format json \
         <nav class="command-siblings" aria-label="More docs">
           <ul class="command-siblings__list" role="list">
             <li class="command-siblings__item"><a class="command-siblings__link" href="../install/">Install reference</a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../how-commands-work/">How commands work</a></li>
             <li class="command-siblings__item"><span class="command-siblings__link command-siblings__link--current" aria-current="page">Harness matrix<span class="visually-hidden"> (current page)</span></span></li>
             <li class="command-siblings__item"><a class="command-siblings__link" href="../github-copilot/">GitHub Copilot quickstart</a></li>
             <li class="command-siblings__item"><a class="command-siblings__link" href="../troubleshooting/">Troubleshooting</a></li>
