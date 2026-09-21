@@ -61,7 +61,7 @@ everywhere; expensive and model-dependent runs on a schedule and on demand.
 flowchart TB
     subgraph cheap["Free · deterministic · every PR"]
         L0["<b>L0 — Prompt contracts</b> issue 420<br/>Static assertions on the <i>rendered</i> payload:<br/>no force-push, CI gate before the board,<br/>bounded fix rounds, manual-merge default,<br/>a repeated <code>Closes</code> line, PTY harness picker"]
-        L1a["<b>L1a — Harness discovery</b> issue 421<br/>Install into a sandbox, then ask each harness<br/>to list what it found: 17 commands + 13 crew<br/>resolve, frontmatter parses, names match dirs"]
+        L1a["<b>L1a — Harness discovery</b> issue 421<br/>Install into a sandbox and validate the tree:<br/>17 commands + 13 crew present at the path that<br/>harness reads, frontmatter parses, name = dir.<br/>Then ask the harness itself, where it documents how"]
     end
     subgraph nightly["Keys · models · nightly or opt-in"]
         L1b["<b>L1b — Live harness smoke</b> issue 422<br/>One headless run per harness that documents<br/>a headless mode; assert from the transcript that<br/>discovery → spawn → command body actually ran"]
@@ -80,9 +80,11 @@ Read it as a ladder of claims:
 
 - **L0** — *the words we ship still say the safe thing.* A guardrail deleted from a command fails CI
   the same day, not the day a captain's branch gets force-pushed.
-- **L1a** — *the harness can see what we installed.* This is the layer that would have caught the
-  Codex skill-path bug (a private `.codex/` tree the harness never reads) without a single token
-  spent. Keyless, so it runs on every PR.
+- **L1a** — *what we installed is where that harness looks, and parses.* This is the layer that
+  would have caught the Codex skill-path bug (a private `.codex/` tree the harness never reads)
+  without a single token spent. Keyless, so it runs on every PR — and its self-parse half covers all
+  nine targets, while asking the harness itself is a stronger check gated on a documented listing
+  command (see the coverage table).
 - **L1b** — *the harness actually loads and runs it.* The first layer that needs a model. Only for
   harnesses whose own documentation describes a headless invocation; where none exists, the gap is
   **recorded in the matrix, never faked**.
@@ -130,6 +132,62 @@ has: the desired ruleset is committed at `.github/rulesets/main.json` and
 `.github/scripts/validate_ruleset_checks.py` fails CI when a workflow's jobs and the required-check
 list drift apart. So a new blocking layer must arrive as three things, not one — the workflow, the
 job in the ruleset, and the validator staying green.
+
+---
+
+## Which harnesses each layer covers
+
+All nine targets, because a layer that quietly covers two of them is the failure mode `AGENTS.md`
+warns about. Install tree and crew mechanic come from `tools/harness_watch.json` and
+`tools/harness_matrix.json`; the runtime column is that harness's `runtime_verified.status`.
+
+| Harness | Skills land in | Crew | `runtime_verified` | L1a self-parse | L1a harness-attested | L1b headless |
+|---|---|---|---|---|---|---|
+| claude-code | `.claude/skills/` | yes | `full` | ✅ | needs a doc check | print/non-interactive mode — **re-verify** |
+| opencode | `.opencode/commands/` | yes | `partial` | ✅ | needs a doc check | run subcommand with JSON output — **re-verify** |
+| codex | `.agents/skills/` (shared) | yes (TOML) | `none` | ✅ | needs a doc check | exec subcommand — **re-verify** |
+| antigravity | `.agents/skills/` (shared) | yes | `partial` | ✅ | needs a doc check | ✅ documented headless mode |
+| github-copilot | `.agents/skills/` (shared) | yes | `none` | ✅ | needs a doc check | non-interactive CLI documented — **re-verify** |
+| pi | `.agents/skills/` (shared) | yes¹ | `partial` | ✅ | needs a doc check | needs a doc check |
+| cursor | `.cursor/skills/` | no (skills only) | `partial` | ✅ | needs a doc check | needs a doc check |
+| windsurf | `.windsurf/skills/` | no (skills only) | `none` | ✅ | needs a doc check | no surface recorded |
+| grok-build | `.grok/skills/` | yes | `none` | ✅ | ✅ `inspect` reports discovered skills/agents/rules | ✅ documented headless mode |
+
+¹ Pi's crew resolve through a third-party extension, and `crew_resolve` is recorded `no` as of
+2026-09-20 — an install without that extension resolves no crew at all.
+
+**The two halves of L1a are not the same claim**, and separating them is what makes the layer
+cover everything:
+
+- **Self-parse** — we install into a sandbox and validate the tree *ourselves*: every expected file
+  present at the path that harness reads, frontmatter parses under a strict parser, `name` equals
+  the parent directory, the full command and crew set resolves. This needs nothing from the harness,
+  so it covers **all nine** on every PR, keyless. It is the layer that catches a payload written to
+  a tree the harness never reads.
+- **Harness-attested** — we ask the *harness* what it loaded and compare. Strictly stronger: it
+  catches a tree we read correctly and the harness rejects. But it needs a documented listing
+  command, and only grok-build's is recorded today.
+
+**Stated as a finding, not a blank:** neither registry has a field for a discovery-listing command
+or a headless invocation. `harness_matrix.json` records the model surface, effort support and
+runtime status; `harness_watch.json` records doc URLs and skill paths. Headless evidence exists only
+incidentally, for antigravity and grok-build. Every "needs a doc check" above is therefore an
+**unverified cell, not a no** — the surface may well exist and simply has not been checked into the
+registry. Filling those two columns from each harness's first-party docs is a prerequisite for
+scoping L1a's attested half and L1b at all, tracked in
+[#542](https://github.com/saman-mb/shipmates/issues/542); until it lands, L1b's per-harness
+coverage cannot honestly be planned, and a harness with no documented headless mode gets the gap
+recorded rather than a faked run.
+
+L2, L3 and L4 are scoped differently and deliberately:
+
+- **L2** runs wherever a harness can be driven headlessly — so its coverage is whatever L1b's
+  research establishes. The contract being asserted is harness-independent, because the workflow
+  text is.
+- **L3** is deliberately **one harness at a time**, not a matrix. It is the expensive layer; running
+  the flagship end to end on every target would multiply the cost for a claim the cheaper layers
+  mostly cover. Claude Code carries it because it is the only `full` target.
+- **L4** is about the binary and the installer, not the crew, so harnesses do not enter into it.
 
 ---
 
