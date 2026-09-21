@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # cursor: agents directory reported but frontmatter schema unverified.
-# windsurf: target identity under review since the Devin Desktop rename.
 set -euo pipefail
 
 cargo run -- install --harness cursor --dir "$RUNNER_TEMP/install-cursor"

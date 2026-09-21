@@ -58,7 +58,7 @@ name it in the run's own guidance; that is an explicit spawn value and outranks 
   is guarded instead is the rule's presence, the removed concept's absence, and that no canonical file
   still describes a pool.
 - **`inherit` carries more traffic** on the three targets with nothing to read: claude-code and
-  github-copilot document only an allow-list, and windsurf documents neither.
+  github-copilot document only an allow-list, and devin (recorded as windsurf at the time) documents neither.
 
 ## Consequences
 

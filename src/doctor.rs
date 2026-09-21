@@ -514,7 +514,11 @@ fn harness_tool_vocabulary(harness: &str) -> Option<&'static [&'static str]> {
         "grok-build" => Some(&[
             "Read", "Grep", "Glob", "Write", "Edit", "Bash", "WebSearch", "WebFetch", "Agent"
         ]),
-        "windsurf" => Some(&["read", "search", "glob", "edit", "bash", "web_search", "web_fetch", "agent"]),
+        // Devin CLI's documented native tool names, from the `allowed-tools`
+        // reference. The crew adapter emits `allowed-tools` only from this set,
+        // and omits the key entirely for a role that declares a capability with
+        // no documented tool name (web), rather than narrowing the seat.
+        "devin" => Some(&["read", "edit", "grep", "glob", "exec"]),
         "codex" => None,
         _ => None,
     }

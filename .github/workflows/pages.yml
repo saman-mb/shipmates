@@ -84,6 +84,8 @@ jobs:
       # inline for exactly that reason, and its jobs only run on a push (#534).
       - name: Validate workflow steps that run before checkout
         run: python3 .github/scripts/validate_precheckout_steps.py
+      - name: Validate the harness roster audit
+        run: python3 tools/validate_harness_roster.py
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
@@ -129,7 +131,6 @@ jobs:
         run: bash .github/scripts/install-crew-harnesses-e2e.sh
 
       # cursor: agents directory reported but frontmatter schema unverified.
-      # windsurf: target identity under review since the Devin Desktop rename.
       - name: Install a skill-only harness end to end
         run: bash .github/scripts/install-skill-only-harness-e2e.sh
 

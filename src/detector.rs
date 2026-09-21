@@ -47,7 +47,7 @@ pub fn detect_project_harnesses(dir: &Path) -> Vec<HarnessDetection> {
         ("github-copilot", &[".github/agents"]),
         ("pi", &[".pi"]),
         ("grok-build", &[".grok"]),
-        ("windsurf", &[".windsurf"]),
+        ("devin", &[".devin"]),
     ];
 
     for (harness, rel_paths) in project_dirs {
@@ -92,7 +92,7 @@ pub fn detect_project_harnesses(dir: &Path) -> Vec<HarnessDetection> {
 /// Detect all installed coding harnesses.
 ///
 /// Looks at:
-/// 1. Binaries on PATH (`claude`, `opencode`, `agy`, `codex`, `cursor`, `copilot`, `pi`, `grok`, `windsurf`)
+/// 1. Binaries on PATH (`claude`, `opencode`, `agy`, `codex`, `cursor`, `copilot`, `pi`, `grok`, `devin`)
 /// 2. User-scope config dirs in home directory (`~/.claude/`, `~/.codex/`, `~/.gemini/config/`, etc.)
 /// 3. Project markers in `target_dir` (`.claude/`, `.opencode/`, `.codex/`, `.agents/agents/`, etc.)
 /// 4. Shipmates install receipts in `target_dir` and home.
@@ -112,7 +112,7 @@ pub fn detect_harnesses(target_dir: Option<&Path>) -> Vec<HarnessDetection> {
         ("github-copilot", &["copilot"]),
         ("pi", &["pi"]),
         ("grok-build", &["grok"]),
-        ("windsurf", &["windsurf"]),
+        ("devin", &["devin", "devin-desktop"]),
     ];
 
     for (harness, binaries) in binary_mappings {
@@ -143,7 +143,10 @@ pub fn detect_harnesses(target_dir: Option<&Path>) -> Vec<HarnessDetection> {
             ("github-copilot", &[".config/github-copilot", ".copilot"]),
             ("pi", &[".pi"]),
             ("grok-build", &[".grok"]),
-            ("windsurf", &[".windsurf", ".codeium/windsurf"]),
+            // `~/.config/devin` is Devin CLI's user-scope config root;
+            // `.windsurf`/`.codeium/windsurf` are the same product's pre-rename
+            // trees and still count as a detection, never as a target id.
+            ("devin", &[".config/devin", ".devin", ".windsurf", ".codeium/windsurf"]),
         ];
 
         for (harness, rel_paths) in home_dirs {

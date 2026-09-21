@@ -335,5 +335,6 @@ never ships a model-name default. The per-harness `model_surface` record is repo
 - **A reader-facing routing page** on the site, generated or hand-authored per that page's rules.
 - **#296 is a sibling, not a duplicate.** #296 owns neutral spawn-hint rendering and consumes this
   record — including its `runtime_model_override` sub-key. It must not add a second record.
-- **#168 owns the windsurf identity question** (rename, retarget or remove the target); this ADR records
+- **RESOLVED 2026-09-22 (#168):** the target was renamed `windsurf` → `devin`, and every `windsurf` row in this ADR is the same product under its former name. The rows were left as written — an ADR is a dated record — but read them as `devin`.
+- **#168 owned the windsurf identity question** (rename, retarget or remove the target); this ADR records
   the mismatch rather than pre-empting that call.

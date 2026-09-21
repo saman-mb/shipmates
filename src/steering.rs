@@ -120,12 +120,15 @@ pub enum SteeringOutcome {
 pub fn global_steering_tier(harness: &str) -> GlobalSteeringTier {
     match harness {
         "cursor" => GlobalSteeringTier::TierA,
-        "claude-code" | "codex" | "opencode" | "antigravity" | "pi" | "grok-build" => GlobalSteeringTier::TierB,
+        // Devin CLI loads a user-scope instruction file from its config
+        // directory (`~/.config/devin/AGENTS.md`), so it carries real global
+        // steering; the pre-rename Windsurf entry was a Gap because only
+        // Cascade's workspace rules were documented.
+        "claude-code" | "codex" | "opencode" | "antigravity" | "pi" | "grok-build" | "devin" => {
+            GlobalSteeringTier::TierB
+        }
         "github-copilot" => GlobalSteeringTier::Gap(
             "GitHub Copilot has no global instruction file; configure via VS Code settings.json (github.copilot.chat.codeGeneration.instructions)"
-        ),
-        "windsurf" => GlobalSteeringTier::Gap(
-            "Windsurf documents no user-scope instruction file in first-party documentation"
         ),
         _ => GlobalSteeringTier::Gap("Unsupported or undocumented global steering for harness"),
     }
@@ -144,6 +147,9 @@ pub fn global_steering_path(harness: &str, home: &Path) -> Option<PathBuf> {
         // `$GROK_HOME/rules/*.md`, so `~/.grok/AGENTS.md` is its user-scope
         // instructions file — source-verified against the CLI.
         "grok-build" => Some(home.join(".grok").join("AGENTS.md")),
+        // Devin CLI loads a user-scope instruction file from its config
+        // directory: `~/.config/devin/AGENTS.md` (first-party docs).
+        "devin" => Some(home.join(".config").join("devin").join("AGENTS.md")),
         _ => None,
     }
 }
