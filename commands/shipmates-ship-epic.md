@@ -1,30 +1,30 @@
 ---
-name: shipmates-epic
-description: Shipmates: Ship an epic by driving /shipmates-issue over its stories in dependency-ordered waves — independent units fan out concurrently; one epic plan amortizes overhead, gate stories pause for sign-off.
+name: shipmates-ship-epic
+description: Shipmates: Ship an epic by driving /shipmates-ship-issue over its stories in dependency-ordered waves — independent units fan out concurrently; one epic plan amortizes overhead, gate stories pause for sign-off.
 argument-hint: <epic-issue-number> [resume | dry-run | sequential | epic close auto | batch off | unit merge manual | retry-story <n>]
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /shipmates-epic — wave fan-out epic delivery
+# /shipmates-ship-epic — wave fan-out epic delivery
 <!-- shipmates:command-preamble -->
 
-Deliver a whole **epic** by driving the `/shipmates-issue` pipeline over its unchecked story checklist —
+Deliver a whole **epic** by driving the `/shipmates-ship-issue` pipeline over its unchecked story checklist —
 in **shipping units** (one story or a small cohesive bundle), dependency order preserved — until
 every non-gate story lands on a shared **epic integration branch**, then hand the captain **one**
 CI-green **epic PR** against the repo default branch for final review.
 
-**Epic cost discipline.** A naïve loop pays `/shipmates-issue`'s full fixed overhead **once per story**
+**Epic cost discipline.** A naïve loop pays `/shipmates-ship-issue`'s full fixed overhead **once per story**
 (Planner, worktree, CI poll, acceptance board). On a five-story epic that is roughly five times the
 cost of one run for little extra diff. This command **amortizes** that overhead instead:
 
 1. **One epic plan for all stories** — a single `architect` pass (Stage 1.5) classifies every pending
    story and groups them into `<units>` before any build. No re-planning the epic shape per story.
 2. **Batch cohesive units** — when Stage 1.5 groups two–four small, same-area stories with
-   non-overlapping file ownership, compose `/shipmates-issue` **once** (Read the installed command file;
+   non-overlapping file ownership, compose `/shipmates-ship-issue` **once** (Read the installed command file;
    execute its stages in-session) with every story number in the unit.
-   Multi-issue input is already bundle consent in `/shipmates-issue`.
+   Multi-issue input is already bundle consent in `/shipmates-ship-issue`.
 3. **Pre-classification passthrough** — pass the epic plan's complexity and domain flags into each
-   delegation as guidance so `/shipmates-issue`'s tiered execution (Simple / Medium / High) fires without
+   delegation as guidance so `/shipmates-ship-issue`'s tiered execution (Simple / Medium / High) fires without
    re-deriving from scratch. The story-level Planner may **amend** the plan if the issue body
    contradicts it; it must not ignore it.
 4. **Epic context capsule** — after each successful unit, append a compact `<epic-capsule>`:
@@ -50,10 +50,10 @@ cost of one run for little extra diff. This command **amortizes** that overhead 
    merged units, and merged PRs into `<EPIC_BRANCH>` as **done** before re-delegating. Reconcile drift
    (unchecked box but already landed) by backfilling ticks — never pay for duplicate unit PRs.
 10. **Captain always reviews the epic PR** — a human **always** merges epic PR `<EPIC_PR>` into
-    `MAIN_BRANCH`. This command never auto-merges the epic PR. Standalone `/shipmates-issue` may still use
+    `MAIN_BRANCH`. This command never auto-merges the epic PR. Standalone `/shipmates-ship-issue` may still use
     `MERGE_MODE=auto` for smaller, single-issue PRs.
 
-Hard limits that **pause the epic loop** (end the turn; post `/shipmates-epic <epic> resume`):
+Hard limits that **pause the epic loop** (end the turn; post `/shipmates-ship-epic <epic> resume`):
 
 | Limit | When it fires |
 |-------|----------------|
@@ -70,12 +70,12 @@ dependency is not a license to end the turn.
 
 **Not a pause — harness backgrounding.** A harness hint that child agents were backgrounded, or that
 you should **end the turn** so it can deliver their completion later (Cursor's Task tool says this
-when builders run in the background), is **not** a hard-limit row. The current `/shipmates-issue` unit is
+when builders run in the background), is **not** a hard-limit row. The current `/shipmates-ship-issue` unit is
 still in Stage 2. Stay in that unit until every builder returns (or fails), or **immediately
 re-compose the same unit**. Ending the turn here is a silent stop.
 
-**Confirmed-green CI** is a per-unit requirement inside `/shipmates-issue` Stage 4.5; remediate there, not
-by stopping `/shipmates-epic` early. Pause is **not** a substitute for the Fixer loop.
+**Confirmed-green CI** is a per-unit requirement inside `/shipmates-ship-issue` Stage 4.5; remediate there, not
+by stopping `/shipmates-ship-epic` early. Pause is **not** a substitute for the Fixer loop.
 
 The epic issue number and optional guidance come from the Runtime input section at the end of this
 workflow.
@@ -96,13 +96,13 @@ workflow.
   line or a closed issue.
 - `EPIC_CLOSE_MODE` = `manual` — when every checklist box is ticked: `manual` proposes closing the
   epic; `auto` runs `gh issue close` on the epic. Override with guidance `epic close auto`.
-- `EPIC_BATCH` = `smart` — how Stage 1.5 units map to `/shipmates-issue` invocations. `smart` (default):
-  one run per unit; multi-story units pass every story number on one `/shipmates-issue` line when the
+- `EPIC_BATCH` = `smart` — how Stage 1.5 units map to `/shipmates-ship-issue` invocations. `smart` (default):
+  one run per unit; multi-story units pass every story number on one `/shipmates-ship-issue` line when the
   unit has more than one story. `off` (guidance `batch off`): force **singleton** units only — one
-  story per `/shipmates-issue` even when the planner grouped them (safest, most expensive). `max`: allow
+  story per `/shipmates-ship-issue` even when the planner grouped them (safest, most expensive). `max`: allow
   the planner to merge **adjacent** same-area units when every story in the merge is `trivial` or
   `standard`, no arch/security flags, and the combined count stays ≤ `MAX_UNIT_SIZE`.
-- `MAX_UNIT_SIZE` = `4` — cap stories per `/shipmates-issue` invocation (matches `/shipmates-issue` cohesion
+- `MAX_UNIT_SIZE` = `4` — cap stories per `/shipmates-ship-issue` invocation (matches `/shipmates-ship-issue` cohesion
   guidance: one reviewable PR).
 - `MAIN_BRANCH` = the repo's default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
   Epic PR `<EPIC_PR>` targets this; unit PRs do **not**.
@@ -110,7 +110,7 @@ workflow.
   Stage 0.5). `<short-slug>` from the epic title, sanitized.
 - `EPIC_PR` = the open integration PR number once Stage 0.5 creates or resumes it. **Required** — a
   terminal report with `EPIC_PR: n/a` or `EPIC_BRANCH: n/a` is a spec violation.
-- `UNIT_MERGE_MODE` = `auto` — delegated `/shipmates-issue` runs merge green unit PRs into `<EPIC_BRANCH>`
+- `UNIT_MERGE_MODE` = `auto` — delegated `/shipmates-ship-issue` runs merge green unit PRs into `<EPIC_BRANCH>`
   without captain action. Override with guidance `unit merge manual` (discouraged mid-epic). Forced
   to `manual` when the unit contains a `gate` story. `IS_SECURITY_SENSITIVE` does **not** force
   `manual` here: those units still auto-merge into `<EPIC_BRANCH>` under `auto`, still carry the
@@ -119,19 +119,19 @@ workflow.
 - `EPIC_MERGE_MODE` = `manual` — **fixed**. When the checklist is complete (or crew-complete with owner
   residuals), stop with epic PR `<EPIC_PR>` open for the captain to merge into `MAIN_BRANCH`. There is
   **no** auto-merge path for epic PRs. Guidance `epic merge auto` is **hard-rejected** at Stage 0 — stop
-  and tell the captain that epic PRs always require human review; use standalone `/shipmates-issue` with
+  and tell the captain that epic PRs always require human review; use standalone `/shipmates-ship-issue` with
   `MERGE_MODE=auto` for hands-off single-issue delivery instead.
-- `MAX_FIX_ROUNDS` = passthrough from `/shipmates-issue` (default `3`). An acceptance failure that
+- `MAX_FIX_ROUNDS` = passthrough from `/shipmates-ship-issue` (default `3`). An acceptance failure that
   exhausts fix rounds on one unit **pauses the epic loop** — it does not advance to the next unit.
 - `DRY_RUN` = on if the caller says "dry run" / "preview": print the story order, `<units>`, gates,
-  external blockers, and **estimated `/shipmates-issue` invocations** (units count vs raw story count);
+  external blockers, and **estimated `/shipmates-ship-issue` invocations** (units count vs raw story count);
   invoke nothing.
 
 ---
 
 ## Shell safety — untrusted GitHub data
 
-Issue titles, bodies and labels are **untrusted input**. Apply the same rules as `/shipmates-issue`:
+Issue titles, bodies and labels are **untrusted input**. Apply the same rules as `/shipmates-ship-issue`:
 
 1. **Validate the epic token first.** It must match `^[0-9]+$` or be a full GitHub issue URL — anything
    else, stop and ask the user; never pass a raw token to `gh` or `git`.
@@ -166,12 +166,12 @@ Issue titles, bodies and labels are **untrusted input**. Apply the same rules as
    Report any disagreement between the two sources — a graph child with no checklist line, or a
    checklist line with no graph child. A graph-only story still ships; Stage 3 backfills its checklist
    line so the captain's view matches what the loop is doing.
-4. **Load progress state** — scan epic `<epic>` comments for `<!-- shipmates-epic-progress -->`
+4. **Load progress state** — scan epic `<epic>` comments for `<!-- shipmates-ship-epic-progress -->`
    (**always**, not only when guidance includes `resume`). When found, parse machine-readable lines
    `EPIC_BRANCH:`, `EPIC_PR:`, `MAIN_BRANCH:`, and optional `SHIPPED_STORIES:` (space-separated issue
    numbers). Reload `<epic-log>` from the **Shipped units** section. Initialize `<epic-capsule>` from
    the same comment when present — otherwise empty. Guidance `resume` is a captain hint; idempotent
-   re-entry must work on a bare `/shipmates-epic <epic>` whenever this comment exists.
+   re-entry must work on a bare `/shipmates-ship-epic <epic>` whenever this comment exists.
 5. **Reconcile landed stories** — build `<landed>` = stories already in `<done>`, plus every number in
    `SHIPPED_STORIES:` and every `#<n>` referenced in `<epic-log>` unit bullets marked merged. Also scan
    merged PRs into `<EPIC_BRANCH>` when `EPIC_BRANCH` is known (`gh pr list --base <EPIC_BRANCH> --state
@@ -258,7 +258,7 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
 <!-- shipmates:why-merge-pr -->
 
    Record `<EPIC_PR>`.
-7. **Persist state** — post or **edit** the single `<!-- shipmates-epic-progress -->` comment on epic
+7. **Persist state** — post or **edit** the single `<!-- shipmates-ship-epic-progress -->` comment on epic
    `<epic>` (see **Stage 3.5**). Include machine-readable lines `EPIC_BRANCH:`, `EPIC_PR:`, `MAIN_BRANCH:`,
    and `SHIPPED_STORIES:` (space-separated numbers from `<landed>`) so any re-run reloads idempotently.
    Update after every unit and every pause — one living comment, not a new thread per unit.
@@ -306,7 +306,7 @@ Spawn **one** `architect` with: the epic title/body, every pending story's title
 `README` / {{project-instructions}}, and `<done>`. Ask for **structured data only**:
 
 - Per story: `complexity` (`trivial`, `standard`, or `complex`), domain flags (same vocabulary as
-  `/shipmates-issue` Stage 0), `blocker_class` (`none`, `full`, or `partial` when externally blocked),
+  `/shipmates-ship-issue` Stage 0), `blocker_class` (`none`, `full`, or `partial` when externally blocked),
   and one-line rationale.
 - `<units>`: an **ordered** list of shipping units covering every non-gate pending story exactly
   once. Each unit: `stories` (issue numbers), `batch_rationale` (why together or alone),
@@ -325,7 +325,7 @@ Apply `EPIC_BATCH`:
   `MAX_UNIT_SIZE`.
 
 Record `<units>`, `<waves>`, and `<story-classification>`. In `DRY_RUN`, print `<waves>` and `<units>` with story titles,
-unit sizes, and **token rationale**: "`N` stories → `U` `/shipmates-issue` invocations".
+unit sizes, and **token rationale**: "`N` stories → `U` `/shipmates-ship-issue` invocations".
 
 ## Stage 2 — Loop  (composes: /ship-issue, one per unit)
 
@@ -333,12 +333,12 @@ Skip when Stage 0.5 step 8 sent the run to Stage 4.
 
 `EPIC_EXECUTION=fanout` is the default execution mode; `sequential` is an opt-in mode to force serial execution.
 When `EPIC_EXECUTION=fanout` (default), iterate over `<waves>`. For each wave:
-- Run the wave's units concurrently (up to `MAX_CONCURRENT_WORKERS`). Each unit runs in the worktree its `/shipmates-issue` composition resolves — `/shipmates-issue` owns the worktree layout; the epic orchestrator does not predetermine or reuse paths.
+- Run the wave's units concurrently (up to `MAX_CONCURRENT_WORKERS`). Each unit runs in the worktree its `/shipmates-ship-issue` composition resolves — `/shipmates-ship-issue` owns the worktree layout; the epic orchestrator does not predetermine or reuse paths.
 - A wave completes when its units have merged, or pauses when a unit fails. A `manual`-merge unit (a `gate` story or explicit `unit merge manual`) pauses at its own PR; a wave must not mix `auto` and `manual` merge modes.
 - **In-flight rebase protocol:** when base drift occurs, the worker fetches `origin/<EPIC_BRANCH>` and rebases inside its own isolated worktree. The worker force-pushes with lease to **its own feature/story branch** (`git push --force-with-lease origin <BRANCH>`), NOT to the shared integration branch. After the rebase it **re-runs the local suite in its worktree and the CI gate, waiting for green on the post-rebase head**; the squash merge (`gh pr merge --squash`) then runs against that same SHA — green from before the rebase does not authorize the merge.
 - **Post-wave integration gate:** after a wave merges, assert CI on `<EPIC_BRANCH>` is green before advancing to the next wave. A semantic regression is fixed in a **dedicated fixer worktree** (a branch and a PR into `<EPIC_BRANCH>`, CI-gated) — never by pushing unreviewed commits straight to `<EPIC_BRANCH>`; bounded by `MAX_FIX_ROUNDS`.
 
-When `EPIC_EXECUTION=sequential`, walk `<units>` in order — one `/shipmates-issue` composition per unit (not one per story unless the unit is a singleton).
+When `EPIC_EXECUTION=sequential`, walk `<units>` in order — one `/shipmates-ship-issue` composition per unit (not one per story unless the unit is a singleton).
 
 For each `<unit>` (sequentially, or concurrently within a wave):
 
@@ -352,39 +352,39 @@ For each `<unit>` (sequentially, or concurrently within a wave):
    stop and report; do not open a duplicate unit PR. Assert composed runs will use
    `epic-base=<EPIC_BRANCH>` — unit PR base **must not** be `MAIN_BRANCH`.
 3. **Gate unit** — if any story in the unit is in `<gates>` and still open: **pause** with
-   **awaiting sign-off**. Do **not** compose `/shipmates-issue`. **Stop** — this is the only deliberate
+   **awaiting sign-off**. Do **not** compose `/shipmates-ship-issue`. **Stop** — this is the only deliberate
    human gate in the loop.
 4. **External / mixed blocker** — for each story in the unit blocked by an open external issue:
 
    a. **Shippable slice** — if the story body (or Stage 1.5 `blocker_class: partial`) names work that
       does **not** require the blocker to close, treat that slice as the **unit scope**. Compose
-      `/shipmates-issue` on that slice; in the PR body note the residual owner action and link the blocker.
+      `/shipmates-ship-issue` on that slice; in the PR body note the residual owner action and link the blocker.
       **Do not pause the epic.**
 
    b. **Owner-only remainder** — when every remaining AC for the unit truly requires the external
       blocker and there is **zero** shippable remainder (`blocker_class: full`): record the owner
       action in `<epic-log>` (residual, not a pause), file or update a follow-up if useful, tick or
       comment on the story that prep shipped, leave the flip open, and **continue to the next unit**
-      without pausing. **Do not** post `/shipmates-epic <epic> resume` for owner DNS / registrar / deploy
+      without pausing. **Do not** post `/shipmates-ship-epic <epic> resume` for owner DNS / registrar / deploy
       console work.
 
    Do **not** pause the whole epic because one story is *partly* blocked or *fully* owner-only.
 5. **Build delegation guidance** (compact prose, not a transcript). Include:
    - `epic-run` — story numbers in this unit belong to epic `<epic>`; do **not** scan the wider
      backlog or propose bundle widening beyond this unit's story list.
-   - `epic-id=<epic>` — parent epic issue number; `/shipmates-issue` must return an **Epic unit record**
+   - `epic-id=<epic>` — parent epic issue number; `/shipmates-ship-issue` must return an **Epic unit record**
      block in its final report (see that command) so this orchestrator can append to `<epic-log>`.
    - `epic-base=<EPIC_BRANCH>` — unit PR base and worktree cut from `origin/<EPIC_BRANCH>`, **not**
      `MAIN_BRANCH`. **Mandatory** — a unit PR targeting `MAIN_BRANCH` is a spec violation. When
-     resuming after another unit merged, include **`sync-base`** so `/shipmates-issue` Stage 1 re-fetches
+     resuming after another unit merged, include **`sync-base`** so `/shipmates-ship-issue` Stage 1 re-fetches
      and rebases onto the current integration tip before build work.
    - `epic-plan` — paste the unit's pre-classification (complexity + flags per story); the
      story-level Planner should treat this as the starting plan and amend only on contradiction.
    - `epic-capsule` — paste `<epic-capsule>` when non-empty (validation commands, paths, conventions
      from prior units in this run).
-   - `board=epic-deferred` — **always** pass this guidance so `/shipmates-issue` defers its internal acceptance board; the mandatory board runs once on epic PR `<EPIC_PR>` at Stage 4 (shared acceptance-board delegation mode — a deferral, not a skip).
+   - `board=epic-deferred` — **always** pass this guidance so `/shipmates-ship-issue` defers its internal acceptance board; the mandatory board runs once on epic PR `<EPIC_PR>` at Stage 4 (shared acceptance-board delegation mode — a deferral, not a skip).
    - `sequential` — pass this only when `EPIC_EXECUTION=sequential`, so the unit's own builder fan-out runs serial too and the whole epic stays single-threaded.
-   - `MERGE_MODE=<UNIT_MERGE_MODE>` — merge the green unit PR into `<EPIC_BRANCH>` via `/shipmates-issue`
+   - `MERGE_MODE=<UNIT_MERGE_MODE>` — merge the green unit PR into `<EPIC_BRANCH>` via `/shipmates-ship-issue`
      Stage 8 when `UNIT_MERGE_MODE=auto` (default). When `manual` (guidance `unit merge manual`, a
      `gate` story, or other explicit forced-manual path), pass `MERGE_MODE=manual` and **pause after
      the unit** per the **Manual unit merge** hard limit — do not advance to the next unit until the
@@ -392,15 +392,15 @@ For each `<unit>` (sequentially, or concurrently within a wave):
      **not** force `manual` on an epic unit. **Never ask the captain to merge a green epic unit when
      `UNIT_MERGE_MODE=auto`.**
    - Tier hint — when **every** story in the unit is `trivial` and no specialist flags are set,
-     include `complexity tier: simple` so `/shipmates-issue` takes the Simple path. When all are
+     include `complexity tier: simple` so `/shipmates-ship-issue` takes the Simple path. When all are
      `trivial` or `standard` with no arch/security/delivery flags, include `complexity tier: medium`.
      Otherwise omit (full High path).
-6. **Delegate (compose)** — Read the installed `/shipmates-issue` command file for this harness; execute
+6. **Delegate (compose)** — Read the installed `/shipmates-ship-issue` command file for this harness; execute
    its stages in-session for **all story numbers in the unit scope** (after step 1 trimming), with
    the guidance from step 5 as that run's arguments/context. Example shape: story numbers `101 102`
    plus `epic-run …` for a two-story unit; singleton: `103` plus `epic-run …`. Do **not** set
    `BUNDLE=off` — explicit multi-story tokens **are** the bundle; singletons behave as today. Do
-   **not** call Skill/`skill` for `shipmates-issue` unless that name appears in the harness's available
+   **not** call Skill/`skill` for `shipmates-ship-issue` unless that name appears in the harness's available
    Skill / `skill` listing. Do **not** author a parallel unit pipeline. Keep `epic-run` /
    `epic-base` / `MERGE_MODE` guidance semantics from step 5.
 7. **Outcome:**
@@ -409,24 +409,24 @@ For each `<unit>` (sequentially, or concurrently within a wave):
      delivery + review summary to `<epic-log>` and refresh epic PR notes), extend `<epic-capsule>` with
      validation commands used, key paths touched, and any convention a review enforced — keep the
      capsule **short** (bullet list, not a narrative). Nit disposition is owned entirely by the
-     composed `/shipmates-issue` Stage 7 — do **not** open additional per-nit issues at the epic layer;
+     composed `/shipmates-ship-issue` Stage 7 — do **not** open additional per-nit issues at the epic layer;
      carry disposition counts from the unit record into `<epic-log>` when present. Continue to the next unit.
    - **Success (manual merge required)** — unit finished with `MERGE_MODE=manual` and a green PR open →
      **pause the epic loop** (hard limit **Manual unit merge**): post state (`EPIC_BRANCH`, `EPIC_PR`,
-     unit PR link, `/shipmates-epic <epic> resume`). **Stop** — captain merges the unit PR into
+     unit PR link, `/shipmates-ship-epic <epic> resume`). **Stop** — captain merges the unit PR into
      `<EPIC_BRANCH>`, then resume.
-   - **`/shipmates-issue` escalated after `MAX_FIX_ROUNDS`** → **pause the epic loop** with state report
+   - **`/shipmates-ship-issue` escalated after `MAX_FIX_ROUNDS`** → **pause the epic loop** with state report
      (epic, `EPIC_BRANCH`, `EPIC_PR`, completed units, current unit, PR link, failure summary,
-     `/shipmates-epic <epic> resume`). **Stop.**
+     `/shipmates-ship-epic <epic> resume`). **Stop.**
    - **Red CI / fix in progress** → **not** an epic pause. The composition must finish Stage 4.5
-     inside `/shipmates-issue` before returning. If it returned early, **re-compose** with explicit
+     inside `/shipmates-ship-issue` before returning. If it returned early, **re-compose** with explicit
      guidance `finish-ci-gate` — do not end the epic turn.
    - **Gate mid-run** → pause and stop (same as step 3).
 
 **Pre-existing CI on the merge base** — when a failing check **already fails on `<EPIC_BRANCH>`**
 (same job red on the epic integration line) and the unit PR touches unrelated files:
 
-- **Not an epic pause.** Remediation belongs in **this unit's** `/shipmates-issue` run (Stage 4.5).
+- **Not an epic pause.** Remediation belongs in **this unit's** `/shipmates-ship-issue` run (Stage 4.5).
 - Fix what makes **this PR head** green: format only touched files if that suffices; otherwise fix
   the minimal set the log requires; gate or skip tests that cannot run under the repo's build flags
   when that matches project convention.
@@ -449,13 +449,13 @@ After each successful unit, for **each story** in that unit:
 
 Backfill ticks for stories closed before this run but still unchecked in the epic body.
 
-`/shipmates-issue` ticks the epic when `MERGE_MODE=auto`; this stage ensures ticks when a unit used
+`/shipmates-ship-issue` ticks the epic when `MERGE_MODE=auto`; this stage ensures ticks when a unit used
 `MERGE_MODE=manual` (gate stories and other explicit manual units).
 
 ## Stage 3.5 — Epic progress log & PR notes  (orchestrator)
 
 After each auto-merged unit (and after a manual unit once the captain has merged it and the orchestrator
-resumes), ingest the delegated `/shipmates-issue` **Epic unit record** and update captain-facing artifacts.
+resumes), ingest the delegated `/shipmates-ship-issue` **Epic unit record** and update captain-facing artifacts.
 
 1. **Parse the unit record** from the delegation's final report (`EPIC_UNIT_RECORD:` block — stories,
    PR link, merge SHA, one-line **delivered** summary per story, **reviews** one-liner, green CI link,
@@ -467,7 +467,7 @@ resumes), ingest the delegated `/shipmates-issue` **Epic unit record** and updat
    `MODEL ROUTING:` lines (or one line saying every spawn inherited) so routing is visible per unit.
    Keep `<epic-log>` scannable — no transcripts, no raw board dumps.
 3. **Edit the epic progress comment** on epic `<epic>` — single comment anchored
-   `<!-- shipmates-epic-progress -->`. Include: machine-readable `EPIC_BRANCH` / `EPIC_PR` / `MAIN_BRANCH`
+   `<!-- shipmates-ship-epic-progress -->`. Include: machine-readable `EPIC_BRANCH` / `EPIC_PR` / `MAIN_BRANCH`
    lines; **`SHIPPED_STORIES:`** (all numbers in `<landed>` after this unit); a **Shipped units** section
    (paste `<epic-log>` bullets); **Pending stories** (remaining checklist lines); **Latest reviews** (one
    line from the most recent unit record); when the latest unit record has `HARDEN: recommended`, a
@@ -521,7 +521,7 @@ story is owner-only with zero in-repo remainder (the crew has nothing left to de
 3. Refresh epic PR `<EPIC_PR>` notes with the same split — crew work complete; owner checklist explicit;
    **human review required** before merge to `MAIN_BRANCH`.
 4. Post a **completion-style final report** on the epic issue (not a pause block — **no**
-   `/shipmates-epic <epic> resume`). State that the crew loop is **finished**; the captain reviews and merges
+   `/shipmates-ship-epic <epic> resume`). State that the crew loop is **finished**; the captain reviews and merges
    epic PR `<EPIC_PR>` when ready — not auto-merged.
 5. **Stop** — this is a normal terminal turn, not a hard-limit pause. Do **not** ask the captain to
    poke the command again for owner DNS / registrar work.
@@ -535,7 +535,7 @@ highlights, **integration board verdicts** (when full closure ran), gate pauses,
 the `MODEL ROUTING:` lines for the board's own spawns (or one line saying every spawn inherited), and
 resume command **only if** a hard-limit pause occurred. For each pause, state **which hard-limit row
 fired** — "waiting for captain" without a limit name is a spec violation. Owner-only remainder must
-**not** appear as a pause reason. Include **economy line**: "`N` stories in `U` `/shipmates-issue` runs" so
+**not** appear as a pause reason. Include **economy line**: "`N` stories in `U` `/shipmates-ship-issue` runs" so
 the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_BRANCH: n/a`.
 
 ---
@@ -547,11 +547,11 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   never merged. Do not merge to `MAIN_BRANCH`, `<EPIC_BRANCH>`, or any other shared/default/integration
   branch “just to see if the theory was right”. A merge to shared state needs its own, separately
   considered captain authorization — never inferred from a different question.
-- **Compose, don't duplicate** — each unit is one full `/shipmates-issue` pipeline taken from the
+- **Compose, don't duplicate** — each unit is one full `/shipmates-ship-issue` pipeline taken from the
   **installed** command file (Read → execute stages in-session). Never invent a rival stage list,
-  skip mandatory `/shipmates-issue` stages, or approximate the unit run from memory. Skill/`skill` is
+  skip mandatory `/shipmates-ship-issue` stages, or approximate the unit run from memory. Skill/`skill` is
   not the composition path when the target is gated off the listing.
-- **One epic planner** — Stage 1.5 runs once per `/shipmates-epic` invocation; do not spawn a second
+- **One epic planner** — Stage 1.5 runs once per `/shipmates-ship-epic` invocation; do not spawn a second
   epic-wide planner inside the loop.
 - **Batch only on merit** — cohesion, file ownership, and flags gate batching; never merge unrelated
   stories because the epic is long.
@@ -559,7 +559,7 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   picking siblings from outside the checklist.
 - **Resumable** — any re-run reloads the progress comment when present (not only with `resume`);
   `<landed>` + checklist backfill prevent redoing merged work. Paused loops continue with
-  `/shipmates-epic <epic> resume`.
+  `/shipmates-ship-epic <epic> resume`.
 - **No duplicate unit PRs** — never delegate a story in `<landed>` / `<epic-log>` unless
   `retry-story <n>` is explicit.
 - **Union membership, checklist done-state** — never narrow an epic to one source. A populated
@@ -567,19 +567,19 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   epic. Ticks and closed issues remain the only done signal the loop acts on.
 - **Gate-aware** — never auto-ship a gate-labelled story.
 - **Failure-aware** — never advance after `MAX_FIX_ROUNDS` exhaustion on a unit.
-- **No silent stops** — before ending a `/shipmates-epic` turn on a **pause**, name which hard-limit row
+- **No silent stops** — before ending a `/shipmates-ship-epic` turn on a **pause**, name which hard-limit row
   fired. If none fired, you are **not allowed** to stop on a pause/resume handshake. Owner-only
   remainder uses **crew-complete** (Stage 4) — a normal terminal report, not a pause. Harness
   backgrounding / "end your turn for notifications" is **not** a pause — see **Not a pause —
-  harness backgrounding** above; keep or re-compose the in-flight `/shipmates-issue` unit.
+  harness backgrounding** above; keep or re-compose the in-flight `/shipmates-ship-issue` unit.
 - **Owner-only remainder is not a pause** — DNS, registrar, deploy-console attach, or any AC only the
   captain can satisfy with zero in-repo slice left: record residual, continue or crew-complete; never
-  post `/shipmates-epic <epic> resume` for it.
+  post `/shipmates-ship-epic <epic> resume` for it.
 - **Epic PR always open** — every terminal turn (full closure, crew-complete, or pause) must name a
   real `EPIC_PR` and `EPIC_BRANCH`. Skipping the epic PR because in-repo work is done or already on
   `MAIN_BRANCH` is forbidden — reconstruct the integration line instead.
 - **Never auto-merge epic PRs** — `EPIC_MERGE_MODE` is fixed at `manual`. Reject `epic merge auto`
-  guidance. Standalone `/shipmates-issue` `MERGE_MODE=auto` is unchanged.
+  guidance. Standalone `/shipmates-ship-issue` `MERGE_MODE=auto` is unchanged.
 - **Unit PRs never target `MAIN_BRANCH`** — delegated runs must pass `epic-base=<EPIC_BRANCH>`. Mis-targeted
   unit PRs are recovered via Stage 0.5 reconstruction, not accepted as the terminal state.
 - **No captain merge per unit** — green accepted units merge into `<EPIC_BRANCH>` via delegated
@@ -591,8 +591,8 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   validation or acceptance on shipped code. **Integration board** at epic closure is never skipped on
   full closure — it is the holistic review of the combined epic PR.
 - **Orchestrator owns `gh`** — epic edits and loop control only; builders/reviewers live in
-  `/shipmates-issue`.
-- **Captain digest** — `<epic-log>` and the `<!-- shipmates-epic-progress -->` comment are the source of
+  `/shipmates-ship-issue`.
+- **Captain digest** — `<epic-log>` and the `<!-- shipmates-ship-epic-progress -->` comment are the source of
   truth for human review; epic PR notes stay in sync. Never leave the captain to reconstruct unit work
   from scattered PR threads alone.
 
@@ -605,7 +605,7 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
 | dry_run | no | `dry-run` | `dry-run`  /  `dry run`  /  `preview` | — | Print story order, units, gates, and estimated invocations; invoke nothing. |
 | sequential | no | `sequential` | `sequential` | — | Walk units one at a time instead of fan-out waves. |
 | epic_close | no | `epic close auto` | `epic close auto` | manual | Auto-close the epic when every checklist box is ticked. |
-| batch | no | `batch off` | `batch off` | smart | Force singleton units (one story per `/shipmates-issue`). |
+| batch | no | `batch off` | `batch off` | smart | Force singleton units (one story per `/shipmates-ship-issue`). |
 | unit_merge | no | `unit merge manual` | `unit merge manual` | auto | Require captain merge of each unit PR into the epic branch. |
 | retry_story | no | `retry-story <n>` | `retry-story` + story number | — | Re-run story `<n>` even if progress already marks it landed. |
 

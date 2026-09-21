@@ -51,7 +51,7 @@ Gather automatically where possible — quote verbatim in the draft when it clar
 - `shipmates --version` (or note if the binary is absent).
 - Active harness — from install receipt, install path (`.claude/`, `.cursor/`, `.agents/`, …), or session
   context.
-- Command that misfired (`/shipmates-epic`, `/shipmates-issue`, …) and any guidance tokens the captain passed.
+- Command that misfired (`/shipmates-ship-epic`, `/shipmates-ship-issue`, …) and any guidance tokens the captain passed.
 - User repo — `gh repo view --json nameWithOwner,url` when `gh` is authenticated in the project.
 - Numbered timeline from the session — what ran, what paused, what the captain said (preserve direction
   like "keep going" / "ya" verbatim when it triggered the report).
@@ -75,7 +75,7 @@ Spawn ONE `product-manager` with the harvested context and the template below. W
 command spec behaviour, optionally add ONE `technical-writer` pass to tighten the **Spec reference**
 section — still no upstream code changes.
 
-**Title convention:** `<command> <short symptom>` — e.g. `/shipmates-epic stops the loop instead of running
+**Title convention:** `<command> <short symptom>` — e.g. `/shipmates-ship-epic stops the loop instead of running
 until the epic is shipped`.
 
 **Body shape** (write to a temp file for preview and filing):
@@ -111,7 +111,7 @@ returned issue URL for the final report.
 ## Final report
 
 One concise summary: issue URL (new or commented), dedupe decision, harness/version/repo/command
-captured, suggested follow-up (link from an epic pause comment, `/shipmates-issue` on upstream if the captain
+captured, suggested follow-up (link from an epic pause comment, `/shipmates-ship-issue` on upstream if the captain
 pivots to fixing Shipmates itself), and which mode ran.
 
 ---
@@ -133,7 +133,7 @@ and drafts from the current session. Default is **`MODE=report`** — never file
 ### Guardrails
 
 - **Never fixes upstream** — no PR on `saman-mb/shipmates` unless the captain separately runs
-  `/shipmates-issue` there.
+  `/shipmates-ship-issue` there.
 - **Never silently files** — default is preview; `apply` or explicit approval required.
 - **Dedupe first** — do not spam duplicate command/harness bugs.
 - **Captain voice preserved** — quote direction verbatim when it triggered the report.

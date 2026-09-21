@@ -49,8 +49,8 @@ from yaml_unquote import yaml_unquote as _yaml_unquote
 
 # Canonical order. Drives page order, the sitemap, and the sibling nav.
 SLUGS = (
-    "shipmates-issue",
-    "shipmates-epic",
+    "shipmates-ship-issue",
+    "shipmates-ship-epic",
     "shipmates-fix-bug",
     "shipmates-report-bug",
     "shipmates-plan-epics",
@@ -62,10 +62,10 @@ SLUGS = (
     "shipmates-release",
     "shipmates-polish",
     "shipmates-pr-review",
-    "ship-qa",
+    "shipmates-qa",
     "shipmates-onboard",
     "shipmates-refactor",
-    "ship-deslop",
+    "shipmates-deslop",
 )
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
@@ -87,10 +87,10 @@ REDIRECTS = {
     "report-bug": "shipmates-report-bug",
     "consolidate-issues": "shipmates-consolidate-issues",
     # A command that shipped, then shortened its name.
-    "ship-deslop-codebase": "ship-deslop",
+    "ship-deslop-codebase": "shipmates-deslop",
     # The `ship-` generation, renamed to `shipmates-`.
-    "ship-issue": "shipmates-issue",
-    "ship-epic": "shipmates-epic",
+    "ship-issue": "shipmates-ship-issue",
+    "ship-epic": "shipmates-ship-epic",
     "ship-fix-bug": "shipmates-fix-bug",
     "ship-report-bug": "shipmates-report-bug",
     "ship-plan-epics": "shipmates-plan-epics",
@@ -104,6 +104,12 @@ REDIRECTS = {
     "ship-pr-review": "shipmates-pr-review",
     "ship-onboard": "shipmates-onboard",
     "ship-refactor": "shipmates-refactor",
+    # Two commands that landed while `ship-` was the live prefix.
+    "ship-qa": "shipmates-qa",
+    "ship-deslop": "shipmates-deslop",
+    # The flagships kept the `ship` verb when the prefix came back.
+    "shipmates-issue": "shipmates-ship-issue",
+    "shipmates-epic": "shipmates-ship-epic",
 }
 
 # Old tool page slugs → new. Same meta-refresh stubs as command REDIRECTS.
@@ -124,7 +130,7 @@ TOOL_REDIRECTS = {
 # Hand-authored docs pages under site/docs/. The generator discovers them on
 # disk and includes them in the sitemap — it never generates them.
 DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture", "github-copilot")
-FLAGSHIP_SLUG = "shipmates-issue"
+FLAGSHIP_SLUG = "shipmates-ship-issue"
 
 # Canonical crew order — the homepage crew grid's order. Drives the agent page
 # sibling nav and the sitemap. Every agents/<role>.md on disk must appear here.
@@ -1641,8 +1647,8 @@ TOOL_COPY = {
             "of scraped shell output. It covers repo default branch lookup, issue fetch/list/search/create/"
             "edit/comment/close, parent/child **sub-issue** attach/list/detach, PR view/diff/create/checks/"
             "poll/comment/review/merge/list, labels, "
-            "releases, and failed workflow logs — the same operations repeated across `/shipmates-issue`, "
-            "`/shipmates-epic`, `/shipmates-pr-review`, `/shipmates-consolidate-issues`, `/shipmates-plan-epics`, and `/shipmates-release`.",
+            "releases, and failed workflow logs — the same operations repeated across `/shipmates-ship-issue`, "
+            "`/shipmates-ship-epic`, `/shipmates-pr-review`, `/shipmates-consolidate-issues`, `/shipmates-plan-epics`, and `/shipmates-release`.",
             "It is a *tool*, not a command. The crew reach for it when orchestrating GitHub instead of "
             "hand-rolling `gh` bash. Requires the GitHub CLI installed and authenticated (`gh auth login`); "
             "Python side is stdlib-only.",
@@ -3320,7 +3326,7 @@ def _png_size(path: Path) -> tuple:
 
 
 def _demo_assets(slug: str) -> tuple:
-    """(gif, poster) filenames for a command's demo. `/shipmates-issue` reuses the
+    """(gif, poster) filenames for a command's demo. `/shipmates-ship-issue` reuses the
     flagship demo.gif rather than shipping a second near-identical asset."""
     if slug == FLAGSHIP_SLUG:
         return "demo.gif", "demo-poster.png"
@@ -3332,7 +3338,7 @@ def render_demo(cmd: Command) -> str:
     button swaps in the animated GIF (WCAG 2.2.2 — motion is user-initiated)."""
     _gif, poster = _demo_assets(cmd.slug)
     w, h = _png_size(ROOT / "site" / "assets" / poster)
-    if cmd.slug == "ship-qa":
+    if cmd.slug == "shipmates-qa":
         alt = (
             f"Illustrative terminal recording of an interactive /{esc(cmd.slug)} "
             "session — agent announces each check, captain types pass or a bug note."

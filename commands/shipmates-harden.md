@@ -29,7 +29,7 @@ The hardening surface comes from the Runtime input section at the end of this wo
 - `MODE` = `report` (default) — **read-only**: threat-model, rank, report. It writes nothing to the
   working tree, not even a fix that looks safe; a mode that edits is named for it. `pr` — apply
   the remediations in a worktree on a branch and open a CI-gated PR, reusing the shape of
-  `/shipmates-issue`'s isolate stage and its commit-push-PR stage rather than a second path of its own.
+  `/shipmates-ship-issue`'s isolate stage and its commit-push-PR stage rather than a second path of its own.
   Infer from the request; when ambiguous, default to `report`, and state which mode you ran.
 - Under `MODE=pr` only: `BASE_BRANCH` = the branch the PR targets (the repo's default branch) — the
   worktree itself is cut from the caller's current `HEAD`, not `BASE_BRANCH` (see Stage 2.5).
@@ -73,7 +73,7 @@ Critical/High may be silently dropped.
 Nothing is edited until the branch exists. First check `git -C <repo> status --porcelain`; if the
 caller's tree is dirty, **stop and say so** — tell them to commit or stash first, because a worktree
 cut from `HEAD` holds committed work only, and remediating a tree that doesn't match the findings'
-`file:line` locations would fix the wrong thing. Otherwise, unlike `/shipmates-issue`'s isolate stage, cut
+`file:line` locations would fix the wrong thing. Otherwise, unlike `/shipmates-ship-issue`'s isolate stage, cut
 the worktree from the caller's current `HEAD`, not `origin/<BASE_BRANCH>` — on a clean tree, this is
 precisely so the findings located in Stages 0–2 still exist in the branch being remediated. Resolve
 `<WORKTREE_DIR>`, gitignore `.shipmates/worktrees/` when nested (once, idempotently), then:
@@ -118,7 +118,7 @@ Deliver: the threat model summary, the findings table (severity → status: fixe
 deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config
 changes outside the repo). Under `report` (the default) that report **is** the deliverable and the
 working tree is exactly as you found it — say so explicitly. Under `pr`, commit and push `<BRANCH>`
-and open the PR, same as `/shipmates-issue`'s commit-push-PR stage, with the same trailers.
+and open the PR, same as `/shipmates-ship-issue`'s commit-push-PR stage, with the same trailers.
 
 <!-- shipmates:why-merge-pr -->
 
@@ -127,7 +127,7 @@ CI: poll `gh pr checks` until nothing is pending; a red check means pulling the 
 it, re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and escalate to
 the user with the failing log rather than looping. Never advance a red PR. Only once green do you stop
 there unless `MERGE_MODE=auto`, and dispose Medium/Low items with the same **nit disposition** ladder
-as `/shipmates-issue` Stage 7 (absorb cheap in-scope defence-in-depth fixes on this PR when `MODE=pr`;
+as `/shipmates-ship-issue` Stage 7 (absorb cheap in-scope defence-in-depth fixes on this PR when `MODE=pr`;
 otherwise PR-note or capped/batched labelled issues — never one ticket per Low nit). Under
 `MERGE_MODE=auto`, merge the PR and remove `<WORKTREE_DIR>`; the manual default leaves the worktree
 in place with the PR open for a human to merge.
@@ -148,7 +148,7 @@ in place with the PR open for a human to merge.
   (deleting them from the diff does not un-leak them).
 - Every Critical/High ends as fixed or explicitly accepted — never silently dropped.
 - Bounded loop; escalate with open findings rather than rubber-stamping.
-- **Security review lives here, not in `/shipmates-issue`.** `/shipmates-issue` doesn't seat `security-engineer`
+- **Security review lives here, not in `/shipmates-ship-issue`.** `/shipmates-ship-issue` doesn't seat `security-engineer`
   on its acceptance board — when a story it's shipping touches a security-sensitive surface, it
   classifies the change as such and **recommends** a `/shipmates-harden` pass rather than convening the review
   itself. If the `security-engineer` role doesn't resolve to a shipped crew role here, fall back

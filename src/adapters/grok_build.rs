@@ -167,23 +167,23 @@ mod tests {
     #[test]
     fn test_crew_lands_in_the_grok_agents_tree() {
         let files = GrokBuildAdapter
-            .build(&[role("sdet", &["read"])], &[command("shipmates-issue")])
+            .build(&[role("sdet", &["read"])], &[command("shipmates-ship-issue")])
             .unwrap();
         assert!(
             files.contains_key("harnesses/grok-build/.grok/agents/sdet.md"),
             "crew must land at .grok/agents/<name>.md: {:?}",
             files.keys().collect::<Vec<_>>()
         );
-        assert!(files.contains_key("harnesses/grok-build/.grok/skills/shipmates-issue/SKILL.md"));
+        assert!(files.contains_key("harnesses/grok-build/.grok/skills/shipmates-ship-issue/SKILL.md"));
     }
 
     #[test]
     fn test_command_keeps_the_guard_and_argument_hint() {
         let files = GrokBuildAdapter
-            .build(&[], &[command("shipmates-issue")])
+            .build(&[], &[command("shipmates-ship-issue")])
             .unwrap();
-        let skill = &files["harnesses/grok-build/.grok/skills/shipmates-issue/SKILL.md"];
-        assert!(skill.contains("name: shipmates-issue\n"), "{skill}");
+        let skill = &files["harnesses/grok-build/.grok/skills/shipmates-ship-issue/SKILL.md"];
+        assert!(skill.contains("name: shipmates-ship-issue\n"), "{skill}");
         assert!(skill.contains("argument-hint: \"<issue>\"\n"), "{skill}");
         // The guard is the whole reason this target renders its own command
         // frontmatter instead of the strict Agent Skills pair.
@@ -197,11 +197,11 @@ mod tests {
 
     #[test]
     fn test_command_without_the_guard_omits_it() {
-        let mut c = command("shipmates-issue");
+        let mut c = command("shipmates-ship-issue");
         c.disable_model_invocation = false;
         c.argument_hint = String::new();
         let files = GrokBuildAdapter.build(&[], &[c]).unwrap();
-        let skill = &files["harnesses/grok-build/.grok/skills/shipmates-issue/SKILL.md"];
+        let skill = &files["harnesses/grok-build/.grok/skills/shipmates-ship-issue/SKILL.md"];
         assert!(!skill.contains("disable-model-invocation"), "{skill}");
         assert!(!skill.contains("argument-hint"), "{skill}");
     }

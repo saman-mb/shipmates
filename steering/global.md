@@ -6,12 +6,12 @@
 
 ## 2. Command and workflow routing
 Recognize user intent and recommend the right command — these are **user-invoked**, so never start a mutating workflow unasked:
-- **Ship a ticket** → `/shipmates-issue`; **ship a whole epic** → `/shipmates-epic`
+- **Ship a ticket** → `/shipmates-ship-issue`; **ship a whole epic** → `/shipmates-ship-epic`
 - **Plan epics and stories** → `/shipmates-plan-epics`; **groom the backlog** → `/shipmates-consolidate-issues`
 - **Fix a defect** → `/shipmates-fix-bug`; **review someone's PR** → `/shipmates-pr-review`
-- **Interactive local QA of a running build** → `/ship-qa`
+- **Interactive local QA of a running build** → `/shipmates-qa`
 - **Restructure safely** → `/shipmates-refactor`; **sweep a migration** → `/shipmates-migrate`
-- **Sweep dead code, duplication, misplaced layers and rot** → `/ship-deslop`
+- **Sweep dead code, duplication, misplaced layers and rot** → `/shipmates-deslop`
 - **Harden security** → `/shipmates-harden`; **write or refresh docs** → `/shipmates-document`
 - **Refine a visual/UI artifact** → `/shipmates-polish`; **spike a decision** → `/shipmates-spike`
 - **Onboard a repo** → `/shipmates-onboard`; **cut a release** → `/shipmates-release`

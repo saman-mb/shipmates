@@ -18,19 +18,19 @@ Shipmates commands that isolate work in a git worktree default to **nested** pat
 `<repo>/.shipmates/worktrees/<slug>` — same namespace as `.shipmates/receipts/`. Stage 1 (or the
 command's isolate stage) idempotently appends `.shipmates/worktrees/` to `.gitignore` on first use.
 Runtime guidance **`worktree-root=sibling`** selects the legacy sibling layout (`../<repo>--…`).
-Remote-base commands (`/shipmates-issue`, `/shipmates-fix-bug`, `/shipmates-refactor`, `/shipmates-migrate`) require **`git fetch origin`**
+Remote-base commands (`/shipmates-ship-issue`, `/shipmates-fix-bug`, `/shipmates-refactor`, `/shipmates-migrate`) require **`git fetch origin`**
 then cut from `origin/<BASE>`; resume re-fetches and rebases when behind. `HEAD`-based commands accept
 **`sync-base`** guidance for remote-latest instead of local `HEAD`.
 When you change one command's isolate stage, keep all nine mutating commands in sync:
-`/shipmates-issue`, `/shipmates-fix-bug`, `/shipmates-polish`, `/shipmates-harden`, `/shipmates-migrate`, `/shipmates-document`, `/shipmates-onboard`, `/shipmates-refactor`,
-`/shipmates-spike` — plus `/shipmates-epic`'s transient `epic-kickoff-<epic>` worktree,
+`/shipmates-ship-issue`, `/shipmates-fix-bug`, `/shipmates-polish`, `/shipmates-harden`, `/shipmates-migrate`, `/shipmates-document`, `/shipmates-onboard`, `/shipmates-refactor`,
+`/shipmates-spike` — plus `/shipmates-ship-epic`'s transient `epic-kickoff-<epic>` worktree,
 which shares the same nested layout without owning an isolate stage.
 
 ## New command
 
 - Add `commands/<name>.md` (harness-neutral prose; `$ARGUMENTS` only).
 - Register in `SLUGS` and `COMMAND_COPY` in `tools/gen_command_pages.py`.
-- Add a reel in `tools/gen_command_demos.py` and commit `site/assets/command-<slug>.gif` + poster (except `/shipmates-issue`, which reuses `demo.gif`).
+- Add a reel in `tools/gen_command_demos.py` and commit `site/assets/command-<slug>.gif` + poster (except `/shipmates-ship-issue`, which reuses `demo.gif`).
 - Regenerate command pages; update the homepage commands grid and sitemap.
 - Run `cargo run -- build --target <harness> --update` for every target and commit `tests/payload-digests/*.sha256`.
 

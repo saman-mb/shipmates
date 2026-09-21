@@ -333,14 +333,14 @@ fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
     // this change exists to ship.
     assert!(
         serde_yaml::from_str::<serde_yaml::Value>(
-            "name: shipmates-epic\ndescription: Shipmates: take an issue\n"
+            "name: shipmates-ship-epic\ndescription: Shipmates: take an issue\n"
         )
         .is_err(),
         "an unquoted `: ` description must fail a strict YAML parse"
     );
     assert!(
         serde_yaml::from_str::<serde_yaml::Value>(
-            "name: shipmates-epic\ndescription: \"Shipmates: take an issue\"\n"
+            "name: shipmates-ship-epic\ndescription: \"Shipmates: take an issue\"\n"
         )
         .is_ok(),
         "the double-quoted equivalent must parse"
@@ -507,19 +507,19 @@ fn test_non_claude_targets_build_via_cli() {
     // shared `.agents/skills/` location, not a harness-private one.
     let codex_skill = temp_dir
         .path()
-        .join("harnesses/codex/.agents/skills/shipmates-issue/SKILL.md");
-    assert!(codex_skill.is_file(), "codex shipmates-issue skill not emitted");
+        .join("harnesses/codex/.agents/skills/shipmates-ship-issue/SKILL.md");
+    assert!(codex_skill.is_file(), "codex shipmates-ship-issue skill not emitted");
     let copilot_skill = temp_dir
         .path()
-        .join("harnesses/github-copilot/.agents/skills/shipmates-issue/SKILL.md");
+        .join("harnesses/github-copilot/.agents/skills/shipmates-ship-issue/SKILL.md");
     assert!(
         copilot_skill.is_file(),
-        "copilot shipmates-issue skill not emitted"
+        "copilot shipmates-ship-issue skill not emitted"
     );
     let pi_skill = temp_dir
         .path()
-        .join("harnesses/pi/.agents/skills/shipmates-issue/SKILL.md");
-    assert!(pi_skill.is_file(), "pi shipmates-issue skill not emitted");
+        .join("harnesses/pi/.agents/skills/shipmates-ship-issue/SKILL.md");
+    assert!(pi_skill.is_file(), "pi shipmates-ship-issue skill not emitted");
     // ...and the shared rendering is byte-identical across those harnesses.
     let codex_bytes = std::fs::read(&codex_skill).unwrap();
     let copilot_bytes = std::fs::read(&copilot_skill).unwrap();
@@ -694,7 +694,7 @@ fn test_pi_contributor_install_writes_steering_and_receipt() {
     let dir = tempfile::tempdir().unwrap();
     let target = dir.path();
     std::fs::create_dir_all(target.join("commands")).unwrap();
-    std::fs::write(target.join("commands/shipmates-issue.md"), "---\n---\n").unwrap();
+    std::fs::write(target.join("commands/shipmates-ship-issue.md"), "---\n---\n").unwrap();
     std::fs::create_dir_all(target.join("toolbox")).unwrap();
     std::fs::create_dir_all(target.join("tools")).unwrap();
     std::fs::write(target.join("tools/gen_command_pages.py"), "# gen").unwrap();
@@ -999,11 +999,11 @@ fn test_project_pi_plus_sibling_shared_tree_is_one_copy() {
         "project pi + sibling must not duplicate Shipmates skill names across Pi-visible trees: {dupes:?}"
     );
     assert!(
-        project.join(".agents/skills/shipmates-issue/SKILL.md").is_file(),
+        project.join(".agents/skills/shipmates-ship-issue/SKILL.md").is_file(),
         "the shared copy must exist"
     );
     assert!(
-        !project.join(".pi/skills/shipmates-issue/SKILL.md").exists(),
+        !project.join(".pi/skills/shipmates-ship-issue/SKILL.md").exists(),
         "project pi must not also write .pi/skills beside the shared tree"
     );
 }
@@ -1612,10 +1612,10 @@ fn test_acceptance_board_docs_acs_require_machine_pin_or_manual_only() {
         board.contains("child-launch") && board.contains("board=off"),
         "acceptance-board must name a spawn-dead stop, never silent board=off"
     );
-    let issue = std::fs::read_to_string(root.join("commands/shipmates-issue.md")).unwrap();
+    let issue = std::fs::read_to_string(root.join("commands/shipmates-ship-issue.md")).unwrap();
     assert!(
         issue.contains("child-launch") && issue.contains("never silently set `board=off`"),
-        "/shipmates-issue Stage 0 must stop on a dead child-launch"
+        "/shipmates-ship-issue Stage 0 must stop on a dead child-launch"
     );
 }
 
@@ -1672,14 +1672,14 @@ fn test_every_command_carries_the_model_routing_ruleset() {
 #[test]
 fn test_pr_opening_commands_require_why_merge() {
     const PR_OPENING: &[&str] = &[
-        "shipmates-issue",
+        "shipmates-ship-issue",
         "shipmates-fix-bug",
         "shipmates-document",
         "shipmates-onboard",
         "shipmates-harden",
         "shipmates-spike",
         "shipmates-polish",
-        "shipmates-epic",
+        "shipmates-ship-epic",
         "shipmates-migrate",
         "shipmates-refactor",
     ];

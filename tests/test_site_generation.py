@@ -139,7 +139,7 @@ class SiteGenerationTests(unittest.TestCase):
         self.assertIn('id="opencode-quickstart"', page)
         self.assertIn("install-fidelity checks", page)
         self.assertIn("not opencode runtime behaviour", page)
-        self.assertIn("/shipmates-issue", page)
+        self.assertIn("/shipmates-ship-issue", page)
 
     @unittest.skipIf(
         sys.version_info < GENERATOR_MIN,
@@ -165,7 +165,7 @@ class SiteGenerationTests(unittest.TestCase):
         self.assertEqual(13, len(agents))
         commands = generator.load_skills(nested, tuple(a.name for a in agents))
         self.assertEqual(17, len(commands))
-        self.assertIn("shipmates-issue", {c.slug for c in commands})
+        self.assertIn("shipmates-ship-issue", {c.slug for c in commands})
 
         flat = generator.load_skills(ROOT / "commands", tuple(a.name for a in agents))
         self.assertEqual({c.slug for c in commands}, {c.slug for c in flat})
@@ -186,18 +186,18 @@ class SiteGenerationTests(unittest.TestCase):
 
         lines = [
             "---",
-            "name: shipmates-epic",
-            'description: "Shipmates: Loop /shipmates-issue over an epic\'s stories — colon: yes"',
+            "name: shipmates-ship-epic",
+            'description: "Shipmates: Loop /shipmates-ship-issue over an epic\'s stories — colon: yes"',
             'argument-hint: "<epic issue> [focus] [max-cycles]"',
             'allowed-tools: "Read, Grep, Glob, Bash"',
             "---",
-            "# /shipmates-epic — test",
+            "# /shipmates-ship-epic — test",
             "",
         ]
-        fm, _ = generator.split_frontmatter(lines, "commands/shipmates-epic.md", set())
-        self.assertEqual("shipmates-epic", fm.name)
+        fm, _ = generator.split_frontmatter(lines, "commands/shipmates-ship-epic.md", set())
+        self.assertEqual("shipmates-ship-epic", fm.name)
         self.assertEqual(
-            "Shipmates: Loop /shipmates-issue over an epic's stories — colon: yes",
+            "Shipmates: Loop /shipmates-ship-issue over an epic's stories — colon: yes",
             fm.description,
         )
         self.assertEqual("<epic issue> [focus] [max-cycles]", fm.argument_hint)
@@ -237,15 +237,15 @@ class SiteGenerationTests(unittest.TestCase):
 
         lines = [
             "---",
-            "name: shipmates-issue",
+            "name: shipmates-ship-issue",
             "description: A plain description with no mapping colon",
             "argument-hint: <issue-number>",
             "allowed-tools: Read, Grep",
             "---",
-            "# /shipmates-issue — test",
+            "# /shipmates-ship-issue — test",
             "",
         ]
-        fm, _ = generator.split_frontmatter(lines, "commands/shipmates-issue.md", set())
+        fm, _ = generator.split_frontmatter(lines, "commands/shipmates-ship-issue.md", set())
         self.assertEqual("A plain description with no mapping colon", fm.description)
         self.assertEqual("<issue-number>", fm.argument_hint)
         self.assertEqual(("Read", "Grep"), fm.allowed_tools)

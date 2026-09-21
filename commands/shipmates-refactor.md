@@ -151,7 +151,7 @@ the board from the fixer delta (shared rule), bounded by `MAX_FIX_ROUNDS`, then 
 Open (or, if `MERGE_MODE=auto`, merge) the PR. Body: the motivation, the structural change in one
 paragraph, the characterization tests and that they are unmodified, any pre-existing test the diff
 touched and why, and the green-CI link. Bugs found while refactoring still must not be mixed into
-the refactor (see Guardrails) — file them with the `/shipmates-issue` Stage 7 disposition rules
+the refactor (see Guardrails) — file them with the `/shipmates-ship-issue` Stage 7 disposition rules
 (prefer one batched issue; cap; dedupe). In-scope polish on already-touched refactor paths may be
 absorbed when behaviour-preserving and within absorb budgets.
 

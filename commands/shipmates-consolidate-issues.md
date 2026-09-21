@@ -11,7 +11,7 @@ disable-model-invocation: true
 Turn a drifting issue tracker back into a plan. The whole open-issue set is pulled, every issue is
 checked against the project's git history and merged PRs to see what is **already done**, the done
 and stale ones are closed, legacy-shaped issues are migrated to the tracker's current conventions,
-and the survivors are **bundled by theme** into groups each big enough to hand to `/shipmates-issue` in
+and the survivors are **bundled by theme** into groups each big enough to hand to `/shipmates-ship-issue` in
 one pass — so the backlog shrinks and the work that remains ships in coherent chunks instead of as
 an endless one-issue-at-a-time trickle.
 
@@ -137,7 +137,7 @@ Stage 3 owns the full filing sequence for new epics; mirror it here for both cas
 
 An issue Stage 2 matched to an existing epic is `migrate`, not `keep` — it never reaches this stage;
 Stage 3 reattaches it instead. Group every remaining `keep` issue into **bundles**: coherent themes,
-each sized for a single `/shipmates-issue`
+each sized for a single `/shipmates-ship-issue`
 run. Spawn one `product-manager` per **area** (from the project's existing area labels) so the
 theming runs in parallel; give each its area's issues, the repo context, and the rule that bundles
 are **thematic + dependency-ordered + individually shippable** — never a grab-bag of unrelated
@@ -159,13 +159,13 @@ If `MODE=apply`, execute in this order, re-verifying each before acting:
 3. **Close** — close each `DONE` and `STALE` issue with a comment naming its evidence; on a dedupe,
    comment the canonical issue and cross-link the pair.
 4. **Tag bundles** — apply each bundle's label to its issues and note the bundle in a comment, so
-   `/shipmates-issue` can be run per bundle.
+   `/shipmates-ship-issue` can be run per bundle.
 
 Then verify (re-fetch and grep; don't assume): every planned close happened, every migration landed,
 every bundle label is on exactly its issue set. Report the before/after: how many issues were in
 scope, how many closed (with the count that were already done), how many migrated — broken out as
 **how many were reattached to an existing epic** vs. other shape migrations — vs. how many remaining
-`keep` issues were bundled fresh, and the bundle tree ready to hand to `/shipmates-issue` — one
+`keep` issues were bundled fresh, and the bundle tree ready to hand to `/shipmates-ship-issue` — one
 bundle at a time.
 
 ---

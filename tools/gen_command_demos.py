@@ -6,9 +6,9 @@ Honest by construction, like gen_demo_gif.py: each reel shows the *real* stages
 the workflow performs (parsed and kept in lockstep with the source SKILL.md's
 own stage headings — see the assertion in build_artifacts), with short generic
 labels. No fabricated counts, no invented file names. The example invocation
-uses a placeholder argument, exactly as the /shipmates-issue demo uses "142".
+uses a placeholder argument, exactly as the /shipmates-ship-issue demo uses "142".
 
-`/shipmates-issue` is intentionally absent: its command page reuses the flagship
+`/shipmates-ship-issue` is intentionally absent: its command page reuses the flagship
 site/assets/demo.gif, so there is no second, near-identical asset to keep in
 sync.
 
@@ -37,14 +37,14 @@ ACCENTS = [dt.BLUE, dt.PURPLE, dt.ORANGE, dt.CYAN, dt.CORAL, dt.GOLD, dt.SAGE]
 # against the parsed SKILL.md so a stage added or removed upstream fails the
 # build instead of silently drifting.
 COMMANDS = {
-    "shipmates-epic": {
+    "shipmates-ship-epic": {
         "arg": "42",
         "stages": [
             ("INTAKE", "parse epic checklist"),
             ("BRANCH", "epic integration line + PR"),
             ("GRAPH", "dependency order + gate map"),
             ("PLAN", "one architect -> shipping units"),
-            ("LOOP", "delegate /shipmates-issue per unit"),
+            ("LOOP", "delegate /shipmates-ship-issue per unit"),
             ("TICK", "checklist after each unit"),
             ("LOG", "epic progress + PR review notes"),
             ("CLOSE", "epic PR green — captain merge"),
@@ -65,7 +65,7 @@ COMMANDS = {
         "closer": "Bug fixed — proven by a test, reviewed, CI-green. ⚓",
     },
     "shipmates-report-bug": {
-        "arg": "shipmates-epic re-shipped merged stories",
+        "arg": "shipmates-ship-epic re-shipped merged stories",
         "stages": [
             ("INTAKE", "symptom + report vs apply"),
             ("HARVEST", "harness, version, repo, command"),
@@ -185,8 +185,8 @@ COMMANDS = {
         ],
         "closer": "Reviewed — one ranked verdict, with reasons. ⚓",
     },
-    "ship-qa": {
-        # Stages list stays in lockstep with commands/ship-qa.md for the
+    "shipmates-qa": {
+        # Stages list stays in lockstep with commands/shipmates-qa.md for the
         # source-count assertion; the reel itself is a custom interactive walk
         # (see build_ship_qa) — not the generic spinner-stage idiom.
         "arg": "128 risk",
@@ -227,7 +227,7 @@ COMMANDS = {
         ],
         "closer": "Refactored — behaviour proven unchanged. ⚓",
     },
-    "ship-deslop": {
+    "shipmates-deslop": {
         "arg": "src/orders file",
         "stages": [
             ("SCOPE", "target, mode, analysers"),
@@ -264,12 +264,12 @@ def build_ship_qa(spec):
     """
     # cmd, blank, contract, blank, 4×(step + reply), blank, closer
     H = _height_for_lines(14)
-    term = dt.Terminal(W, H, "shipmates — /ship-qa")
+    term = dt.Terminal(W, H, "shipmates — /shipmates-qa")
     reel = dt.Reel(term)
     prompt = [("$ ", dt.PROMPT, True)]
     captain = [("→ ", dt.PROMPT, True)]
 
-    invocation = f"/ship-qa {spec['arg']}".strip()
+    invocation = f"/shipmates-qa {spec['arg']}".strip()
     reel.type_command(prompt, invocation, hold_blinks=1)
     reel.blank()
     reel.reveal(
@@ -313,7 +313,7 @@ def build_ship_qa(spec):
 
 
 def build_one(slug, spec):
-    if slug == "ship-qa":
+    if slug == "shipmates-qa":
         return build_ship_qa(spec)
 
     n = len(spec["stages"])
@@ -371,8 +371,8 @@ def build_artifacts(verify_sources=True):
                     f"but {got} in this generator. Update COMMANDS[{slug!r}] to match, "
                     f"then regenerate."
                 )
-        # shipmates-issue reuses the flagship demo.gif; every other command must be here.
-        missing = set(counts) - set(COMMANDS) - {"shipmates-issue"}
+        # shipmates-ship-issue reuses the flagship demo.gif; every other command must be here.
+        missing = set(counts) - set(COMMANDS) - {"shipmates-ship-issue"}
         if missing:
             sys.exit(f"gen_command_demos: no reel authored for: {', '.join(sorted(missing))}")
 
