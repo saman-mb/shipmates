@@ -79,6 +79,11 @@ jobs:
         run: python3 tools/gen_command_demos.py --check
       - name: Validate ruleset required checks
         run: python3 .github/scripts/validate_ruleset_checks.py
+      # A step above actions/checkout has an empty workspace, so it can never
+      # call a script from the tree — the release job's longpaths command is
+      # inline for exactly that reason, and its jobs only run on a push (#534).
+      - name: Validate workflow steps that run before checkout
+        run: python3 .github/scripts/validate_precheckout_steps.py
       - name: Validate static site
         run: python3 .github/scripts/validate_site.py
       - name: Check for design-system drift (#131)
