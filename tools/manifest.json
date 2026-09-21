@@ -22,7 +22,7 @@
     "github-copilot",
     "pi",
     "grok-build",
-    "windsurf"
+    "devin"
   ],
   "target_status": {
     "claude-code": "implemented",
@@ -33,6 +33,6 @@
     "github-copilot": "implemented",
     "pi": "implemented",
     "grok-build": "implemented",
-    "windsurf": "implemented"
+    "devin": "implemented"
   }
 }

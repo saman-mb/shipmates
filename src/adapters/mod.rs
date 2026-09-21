@@ -5,12 +5,12 @@ pub mod antigravity;
 pub mod claude_code;
 pub mod codex;
 pub mod cursor;
+pub mod devin;
 pub mod github_copilot;
 pub mod grok_build;
 pub mod opencode;
 pub mod pi;
 pub mod render;
-pub mod windsurf;
 
 pub trait Adapter {
     fn build(
@@ -82,10 +82,28 @@ pub trait Adapter {
 #[allow(dead_code)]
 pub fn conformance_report() {}
 
+/// Normalize a harness name to its current target id.
+///
+/// `windsurf` is the retired name of what is now Devin CLI / Devin Desktop. It
+/// stays accepted for one migration generation so an existing script or install
+/// command keeps working instead of failing on an unknown harness; everything
+/// downstream — payload, receipt filename, hygiene sweep — uses `devin`.
+pub fn normalize_target(target: &str) -> &str {
+    match target {
+        "windsurf" => "devin",
+        other => other,
+    }
+}
+
+/// True when the caller used a retired harness name that still resolves.
+pub fn is_retired_target_name(target: &str) -> bool {
+    target == "windsurf"
+}
+
 /// Resolve a target name to its adapter. Shared by `install`, `update`, `build`,
 /// `check` and `doctor`, so a new harness is wired into selection in one place.
 pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
-    let adapter: Box<dyn Adapter> = match target {
+    let adapter: Box<dyn Adapter> = match normalize_target(target) {
         "opencode" => Box::new(opencode::OpencodeAdapter),
         "claude-code" => Box::new(claude_code::ClaudeCodeAdapter),
         "antigravity" => Box::new(antigravity::AntigravityAdapter),
@@ -94,7 +112,7 @@ pub fn select(target: &str) -> anyhow::Result<Box<dyn Adapter>> {
         "github-copilot" => Box::new(github_copilot::GithubCopilotAdapter),
         "pi" => Box::new(pi::PiAdapter),
         "grok-build" => Box::new(grok_build::GrokBuildAdapter),
-        "windsurf" => Box::new(windsurf::WindsurfAdapter),
+        "devin" => Box::new(devin::DevinAdapter),
         other => anyhow::bail!("Unsupported target: {}", other),
     };
     Ok(adapter)
@@ -125,7 +143,7 @@ pub fn targets() -> [&'static str; 9] {
         "github-copilot",
         "pi",
         "grok-build",
-        "windsurf",
+        "devin",
     ]
 }
 

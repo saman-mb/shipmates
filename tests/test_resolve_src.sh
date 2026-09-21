@@ -76,20 +76,26 @@ assert "github-copilot: no skills under .github" test ! -d "$D/.github/skills"
 assert "github-copilot: agent uses .agent.md" test -f "$D/.github/agents/sdet.agent.md"
 assert "github-copilot: bare .md is not emitted" test ! -f "$D/.github/agents/sdet.md"
 
-# --- skill-only targets on the open Agent Skills tree: skills only, no crew ---
+# --- cursor is the one skills-only target ---
 # cursor: slash-command discovery requires its first-party .cursor/skills tree
 #   (#405); it no longer shares .agents/skills.
-# windsurf: keeps its canonical .windsurf/skills (.agents/skills is only a
-#   secondary compat scan there — do not move it off its documented path).
-for pair in "cursor:.cursor" "windsurf:.windsurf"; do
-  harness="${pair%%:*}"
-  dirname="${pair##*:}"
-  D="$WORK/$harness"
-  assert "$harness: install exits 0" install_to "$harness" "$D"
-  assert "$harness: skill under $dirname/skills" test -f "$D/$dirname/skills/shipmates-ship-issue/SKILL.md"
-  assert "$harness: no agent files emitted" test ! -d "$D/$dirname/agents"
-done
+D="$WORK/cursor"
+assert "cursor: install exits 0" install_to "cursor" "$D"
+assert "cursor: skill under .cursor/skills" test -f "$D/.cursor/skills/shipmates-ship-issue/SKILL.md"
+assert "cursor: no agent files emitted" test ! -d "$D/.cursor/agents"
 assert "cursor: no shared .agents skills tree" test ! -d "$WORK/cursor/.agents/skills"
+
+# --- devin: native tree, because the guard is a vendor key ---
+# devin reads its own .devin tree; the commands' user-invoked-only guard is
+# `triggers: [user]`, which the shared two-key rendering drops ? so it keeps the
+# native tree rather than joining .agents/skills. Crew land here too.
+D="$WORK/devin"
+assert "devin: install exits 0" install_to "devin" "$D"
+assert "devin: skill under .devin/skills" test -f "$D/.devin/skills/shipmates-ship-issue/SKILL.md"
+assert "devin: commands are user-invoked only" grep -q -- "- user" "$D/.devin/skills/shipmates-ship-issue/SKILL.md"
+assert "devin: crew under .devin/agents" test -f "$D/.devin/agents/sdet.md"
+assert "devin: no shared .agents skills tree" test ! -d "$WORK/devin/.agents/skills"
+assert "devin: does not write the legacy .windsurf tree" test ! -d "$D/.windsurf"
 
 # pi: crew are pi-native under .pi/agents, skills stay on the shared tree so a
 # sibling harness in the same repo is one copy (#513). Global omits skills.

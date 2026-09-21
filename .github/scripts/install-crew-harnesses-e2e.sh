@@ -34,3 +34,17 @@ test ! -d "$RUNNER_TEMP/install-grok/.agents/skills"
 # payload, where every target emits it, rather than on the install tree.
 cargo run -- build --target grok-build --out "$RUNNER_TEMP/grok-payload"
 test -f "$RUNNER_TEMP/grok-payload/harnesses/grok-build/.grok/rules/shipmates-contributor.md"
+cargo run -- install --harness devin --dir "$RUNNER_TEMP/install-devin"
+# Devin CLI reads its own .devin tree for crew and would otherwise resolve the
+# shared .agents one; the guard on the seventeen commands is `triggers: [user]`,
+# which the shared two-key rendering cannot express, so assert both.
+test -f "$RUNNER_TEMP/install-devin/.devin/skills/shipmates-ship-issue/SKILL.md"
+grep -q 'triggers:' "$RUNNER_TEMP/install-devin/.devin/skills/shipmates-ship-issue/SKILL.md"
+grep -q -- '- user' "$RUNNER_TEMP/install-devin/.devin/skills/shipmates-ship-issue/SKILL.md"
+test -f "$RUNNER_TEMP/install-devin/.devin/agents/sdet.md"
+test ! -f "$RUNNER_TEMP/install-devin/.devin/agents/sdet.toml"
+test ! -d "$RUNNER_TEMP/install-devin/.agents/skills"
+# Legacy: a pre-rename windsurf tree must not be created by a devin install.
+test ! -d "$RUNNER_TEMP/install-devin/.windsurf"
+cargo run -- build --target devin --out "$RUNNER_TEMP/devin-payload"
+test -f "$RUNNER_TEMP/devin-payload/harnesses/devin/.devin/rules/shipmates-contributor.md"

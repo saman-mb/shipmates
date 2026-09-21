@@ -138,7 +138,7 @@ load helpers
 # current shipmates- name is installed, for both retired generations.
 @test "update migrates a previous name generation in a claimed tree, for every other harness" {
   local harness dir old new
-  for harness in opencode antigravity codex cursor github-copilot pi windsurf; do
+  for harness in opencode antigravity codex cursor github-copilot pi devin; do
     for old in ship-harden harden; do
       dir="$BATS_TEST_TMPDIR/rename-$harness-$old"
       run "$SHIPMATES_BIN" install --harness "$harness" --dir "$dir" --with-tools none
@@ -219,4 +219,74 @@ load helpers
   assert_success
   assert_output --partial "[REDACTED_TOKEN]"
   assert_output --partial "[REDACTED_EMAIL]"
+}
+
+# windsurf -> devin (#164, #168): the retired name still resolves, and its files
+# are adopted rather than left beside the new tree where the product would read
+# both copies and list every command twice.
+@test "the retired harness name resolves to its current target and says so" {
+  run "$SHIPMATES_BIN" install --harness windsurf --dir "$SANDBOX" --with-tools none
+  assert_success
+  assert_output --partial 'retired name for devin'
+  [ -f "$SANDBOX/.devin/skills/shipmates-ship-issue/SKILL.md" ]
+  [ ! -d "$SANDBOX/.windsurf" ]
+  [ -f "$SANDBOX/.shipmates/receipts/devin.json" ]
+  [ ! -e "$SANDBOX/.shipmates/receipts/windsurf.json" ]
+}
+
+@test "installing over a retired-name install adopts its files and clears its receipt" {
+  run "$SHIPMATES_BIN" install --harness devin --dir "$SANDBOX" --with-tools none
+  assert_success
+
+  # Re-shape the install into what the retired target wrote: skills only (the
+  # crew did not exist then), under .windsurf/, with a matching receipt.
+  local receipt="$SANDBOX/.shipmates/receipts/devin.json" legacy="$SANDBOX/.shipmates/receipts/windsurf.json"
+  mv "$SANDBOX/.devin/skills" "$SANDBOX/.windsurf-tmp"
+  rm -rf "$SANDBOX/.devin"
+  mkdir -p "$SANDBOX/.windsurf"
+  mv "$SANDBOX/.windsurf-tmp" "$SANDBOX/.windsurf/skills"
+  jq '{schema_version, version: "0.11.0", harness: "windsurf", layout,
+       roots: [".shipmates", ".windsurf"],
+       files: [.files[] | select(.path | startswith(".devin/skills"))
+               | .path |= sub("^\\.devin/"; ".windsurf/")] | sort_by(.path)}' \
+     "$receipt" > "$legacy"
+  rm "$receipt"
+
+  run "$SHIPMATES_BIN" install --harness devin --dir "$SANDBOX" --with-tools none
+  assert_success
+  assert_output --partial 'Adopted'
+  assert_output --partial 'windsurf'
+  [ ! -d "$SANDBOX/.windsurf" ]
+  [ ! -e "$legacy" ]
+  [ -f "$SANDBOX/.shipmates/receipts/devin.json" ]
+  [ -f "$SANDBOX/.devin/agents/sdet.md" ]
+  # The adopted bytes survive in the run's backup tree, so the move is reversible.
+  run bash -c "find '$SANDBOX/.shipmates-backup' -name SKILL.md | head -1"
+  assert_success
+  assert_output --partial "SKILL.md"
+}
+
+@test "a file the captain edited in a retired tree is left alone" {
+  run "$SHIPMATES_BIN" install --harness devin --dir "$SANDBOX" --with-tools none
+  assert_success
+
+  local receipt="$SANDBOX/.shipmates/receipts/devin.json" legacy="$SANDBOX/.shipmates/receipts/windsurf.json"
+  mv "$SANDBOX/.devin/skills" "$SANDBOX/.windsurf-tmp"
+  rm -rf "$SANDBOX/.devin"
+  mkdir -p "$SANDBOX/.windsurf"
+  mv "$SANDBOX/.windsurf-tmp" "$SANDBOX/.windsurf/skills"
+  jq '{schema_version, version: "0.11.0", harness: "windsurf", layout,
+       roots: [".shipmates", ".windsurf"],
+       files: [.files[] | select(.path | startswith(".devin/skills"))
+               | .path |= sub("^\\.devin/"; ".windsurf/")] | sort_by(.path)}' \
+     "$receipt" > "$legacy"
+  rm "$receipt"
+  printf 'my own notes\n' > "$SANDBOX/.windsurf/skills/shipmates-ship-issue/SKILL.md"
+
+  run "$SHIPMATES_BIN" install --harness devin --dir "$SANDBOX" --with-tools none
+  assert_success
+  assert_output --partial 'kept'
+  assert_output --partial 'you edited'
+  run cat "$SANDBOX/.windsurf/skills/shipmates-ship-issue/SKILL.md"
+  assert_output 'my own notes'
 }

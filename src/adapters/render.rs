@@ -161,6 +161,10 @@ pub enum SteeringFormat {
     PlainMarkdown,
     CursorMdc { description: &'static str },
     CopilotInstructions { apply_to: &'static str },
+    /// Devin rule files (`.devin/rules/*.md`) take the Windsurf rule
+    /// frontmatter, so the steering file declares `trigger: always_on`
+    /// explicitly rather than relying on an undocumented default.
+    DevinRules { description: &'static str },
 }
 
 pub struct SteeringTarget {
@@ -191,6 +195,12 @@ pub fn emit_steering_at(
         }
         SteeringFormat::CopilotInstructions { apply_to } => {
             format!("---\napplyTo: {}\n---\n{rendered}", yaml_scalar(apply_to))
+        }
+        SteeringFormat::DevinRules { description } => {
+            format!(
+                "---\ndescription: {}\ntrigger: always_on\n---\n{rendered}",
+                yaml_scalar(description)
+            )
         }
     };
     let path = format!("{}/{}", container, target.rel_path);
@@ -341,10 +351,12 @@ pub const GROK_BUILD: Dialect = Dialect {
     args_token: "$ARGUMENTS",
 };
 
-/// Windsurf (Cascade)'s dialect.
-pub const WINDSURF: Dialect = Dialect {
-    agents_glob: ".windsurf/agents",
-    session_key: "Windsurf-Session",
+/// Devin CLI / Devin Desktop's dialect. Devin is what Windsurf became on
+/// 2026-06-02; `.windsurf/` remains a legacy read path in the product, and the
+/// installer keeps sweeping it, but nothing new is written there.
+pub const DEVIN: Dialect = Dialect {
+    agents_glob: ".devin/agents",
+    session_key: "Devin-Session",
     instructions_primary: "AGENTS.md",
     instructions_fallback: "CLAUDE.md",
     general_purpose: "general-purpose",

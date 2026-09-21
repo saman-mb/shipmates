@@ -454,7 +454,7 @@
           <div class="section__head">
             <p class="section__eyebrow"><span aria-hidden="true">🌊</span> What's next</p>
             <h2 class="section__title" id="next-title">Which harnesses the crew runs on</h2>
-            <p class="section__lead">Claude Code is fully runtime-verified; antigravity, cursor, pi and opencode have captain-attested live runs; codex, GitHub Copilot, grok-build and windsurf remain format-only. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> <code>runtime_verified</code> record rather than a promise.</p>
+            <p class="section__lead">Claude Code is fully runtime-verified; antigravity, cursor, pi and opencode have captain-attested live runs; codex, GitHub Copilot, grok-build and devin remain format-only. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> <code>runtime_verified</code> record rather than a promise.</p>
           </div>
           <div class="order-prose">
             <ul>
@@ -475,7 +475,7 @@
                 <ul>
                   <li>codex, github-copilot — the full crew and all 17 commands. Codex agents are TOML and inherit the session's tools (no per-agent allowlist).</li>
                   <li>grok-build — the full crew and all 17 commands in its own <code>.grok/</code> tree: the one non-Claude target that keeps the native <code>disable-model-invocation</code> guard, and it enforces a per-agent tool allowlist too.</li>
-                  <li>windsurf — the 17 skills only; under review since the Devin Desktop rename.</li>
+                  <li>devin — the full crew and all 17 commands in <code>.devin/</code> (Devin CLI / Devin Desktop, formerly Windsurf), with the legacy <code>.windsurf/</code> tree adopted on install.</li>
                 </ul>
               </li>
               <li><strong>Next</strong>

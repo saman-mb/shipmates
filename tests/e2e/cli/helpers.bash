@@ -99,7 +99,7 @@ harness_skill_path() {
     claude-code) echo ".claude/skills/$name" ;;
     opencode) echo ".opencode/commands/$name.md" ;;
     cursor) echo ".cursor/skills/$name" ;;
-    windsurf) echo ".windsurf/skills/$name" ;;
+    devin) echo ".devin/skills/$name" ;;
     codex | antigravity | github-copilot | pi) echo ".agents/skills/$name" ;;
     *)
       echo "harness_skill_path: unknown harness '$harness'" >&2

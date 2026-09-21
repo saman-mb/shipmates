@@ -40,7 +40,10 @@ fn hook_path(harness: &str) -> Option<&'static str> {
     match harness {
         "claude-code" => Some(".claude/hooks/fsm-gate.sh"),
         "opencode" => Some(".opencode/plugins/fsm-gate.ts"),
-        "windsurf" => Some(".windsurf/hooks/fsm-gate.sh"),
+        // Devin replaced Windsurf, and the pre-rename install's hooks are still
+        // sitting in `.windsurf/`: installing the current target has to be able
+        // to find and remove them.
+        "devin" | "windsurf" => Some(".windsurf/hooks/fsm-gate.sh"),
         "antigravity" => Some(".agents/hooks/fsm-gate.sh"),
         "codex" => Some(".codex/hooks/fsm-gate.sh"),
         "github-copilot" => Some(".github/hooks/fsm-gate.sh"),
@@ -56,7 +59,7 @@ fn config_paths(harness: &str) -> &'static [&'static str] {
         "codex" => &[".codex/hooks.json", ".codex/config.toml"],
         "antigravity" => &[".agents/hooks.json"],
         "github-copilot" => &[".github/hooks/shipmates-fsm-gate.json"],
-        "windsurf" => &[".windsurf/hooks.json"],
+        "devin" | "windsurf" => &[".windsurf/hooks.json"],
         _ => &[],
     }
 }
@@ -91,7 +94,7 @@ fn registration_commands(harness: &str) -> BTreeSet<&'static str> {
         "github-copilot" => {
             commands.insert(COPILOT_GATE);
         }
-        "windsurf" => {
+        "windsurf" | "devin" => {
             commands.insert(WINDSURF_GATE);
         }
         "opencode" => {}
@@ -487,7 +490,7 @@ mod tests {
                 CLAUDE_GATE,
             ),
             "opencode" => (".opencode/plugins/fsm-gate.ts", "", ""),
-            "windsurf" => (
+            "windsurf" | "devin" => (
                 ".windsurf/hooks/fsm-gate.sh",
                 ".windsurf/hooks.json",
                 WINDSURF_GATE,
@@ -546,7 +549,7 @@ mod tests {
                         "hooks": {"beforeShellExecution": [{"command": command}]}
                     })
                     .to_string()
-                } else if harness == "windsurf" {
+                } else if harness == "windsurf" || harness == "devin" {
                     serde_json::json!({
                         "hooks": {"pre_run_command": [{"command": command}]}
                     })

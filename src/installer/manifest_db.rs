@@ -423,6 +423,10 @@ fn validate_harness(harness: &str) -> Result<()> {
             | "github-copilot"
             | "pi"
             | "grok-build"
+            | "devin"
+            // `windsurf` is the retired name this target shipped under. A
+            // receipt written then must still load so `update` can reclaim its
+            // files instead of leaving an orphan tree behind.
             | "windsurf"
     ) {
         bail!("unsupported harness {:?}", harness);
@@ -452,6 +456,10 @@ pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
         // Grok Build keeps crew, skills and rules in one dotdir, so `.grok` is
         // the whole footprint; `.shipmates` carries the receipt store.
         "grok-build" => &[".grok", ".shipmates"],
+        // Devin CLI (formerly Windsurf) keeps crew, skills and rules in
+        // `.devin/`; `.windsurf` is legacy-only — nothing writes there any
+        // more, but a pre-rename install's files must still be swept.
+        "devin" => &[".devin", ".windsurf", ".shipmates"],
         "windsurf" => &[".windsurf", ".shipmates"],
         _ => &[],
     }
@@ -490,6 +498,11 @@ pub(crate) fn global_root(harness: &str) -> Option<&'static str> {
         // ~/.copilot/skills/", and resolves a non-project agent to
         // `<config-dir>/agents`. `.github/` is the *workspace* location only.
         "github-copilot" => Some(".copilot"),
+        // Devin CLI's user-scope config root is `~/.config/devin/`, holding
+        // both `agents/<name>.md` and `skills/<name>/SKILL.md`. Project scope is
+        // the `.devin/` tree; joining the workspace path to `$HOME` would write
+        // files nothing reads.
+        "devin" => Some(".config/devin"),
         _ => None,
     }
 }
@@ -595,6 +608,11 @@ fn is_steering_receipt_path(harness: &str, path: &str) -> bool {
             path == ".shipmates/contributor-steering.md"
         }
         "grok-build" => path == ".grok/rules/shipmates-contributor.md",
+        "devin" => {
+            path == ".devin/rules/shipmates-contributor.md"
+                // Pre-rename windsurf installs wrote the fallback path.
+                || path == ".shipmates/contributor-steering.md"
+        }
         _ => false,
     }
 }
@@ -766,6 +784,22 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && parts[2].ends_with(".md"))
                 || is_skill_tree(".grok")
         }
+        "devin" => {
+            // `.devin/rules/` is a lived-in directory a contributor may also put
+            // their own rules in, so only the one steering file this adapter
+            // writes is claimable — never `.devin/rules/<anything>.md`.
+            is_steering_receipt_path(harness, path)
+                || is_shipmates_steering_path(path)
+                || (parts.len() == 3
+                    && root == ".devin"
+                    && parts[1] == "agents"
+                    && parts[2].ends_with(".md"))
+                || is_skill_tree(".devin")
+                // Legacy read side: a `windsurf`-era receipt's skill files
+                // must validate so their entry is removed on upgrade rather
+                // than left behind.
+                || is_skill_tree(".windsurf")
+        }
         "github-copilot" => {
             is_steering_receipt_path(harness, path)
                 || (parts.len() == 3
@@ -853,9 +887,8 @@ fn is_legacy_instructions_root(root: &str) -> bool {
 fn is_legacy_steering_receipt_path(harness: &str, path: &str) -> bool {
     match harness {
         "claude-code" => path == "CLAUDE.md",
-        "opencode" | "codex" | "cursor" | "github-copilot" | "antigravity" | "pi" | "windsurf" => {
-            path == "AGENTS.md"
-        }
+        "opencode" | "codex" | "cursor" | "github-copilot" | "antigravity" | "pi" | "windsurf"
+        | "devin" => path == "AGENTS.md",
         _ => false,
     }
 }
@@ -901,7 +934,7 @@ mod tests {
         ));
         // The widening is cursor-only and skills-only: no other harness may
         // claim a `.cursor` path, and cursor still can't claim arbitrary ones.
-        for harness in ["codex", "github-copilot", "antigravity", "claude-code"] {
+        for harness in ["codex", "github-copilot", "antigravity", "claude-code", "devin"] {
             assert!(!allowed_receipt_path(
                 harness,
                 ".cursor/skills/ship-issue/SKILL.md"
@@ -998,7 +1031,7 @@ mod tests {
             ".gemini/config/agents/evil.sh"
         ));
         // And no other harness may claim either global tree.
-        for harness in ["codex", "claude-code", "cursor", "opencode", "windsurf"] {
+        for harness in ["codex", "claude-code", "cursor", "opencode", "windsurf", "devin"] {
             assert!(!allowed_receipt_path(harness, ".pi/agent/agents/sdet.md"), "{harness}");
             assert!(
                 !allowed_receipt_path(harness, ".gemini/config/agents/sdet/agent.md"),
@@ -1159,9 +1192,57 @@ mod tests {
             "opencode",
             "pi",
             "windsurf",
+            "devin",
         ] {
             assert!(!allowed_receipt_path(harness, ".grok/agents/sdet.md"), "{harness}");
         }
+    }
+
+    /// Devin CLI replaced Windsurf: the target id and every new path are
+    /// `devin`, while `.windsurf` stays claimable purely so a pre-rename
+    /// install's receipt still loads and its files can be reclaimed.
+    #[test]
+    fn devin_receipt_owns_the_devin_tree_and_still_loads_the_windsurf_era_one() {
+        assert!(validate_harness("devin").is_ok());
+        // The retired name still validates: it is what old receipts say.
+        assert!(validate_harness("windsurf").is_ok());
+        assert_eq!(allowed_roots("devin"), &[".devin", ".windsurf", ".shipmates"]);
+        assert_eq!(global_root("devin"), Some(".config/devin"));
+        assert!(allowed_receipt_path("devin", ".devin/agents/sdet.md"));
+        assert!(allowed_receipt_path("devin", ".devin/skills/ship-issue/SKILL.md"));
+        assert!(allowed_receipt_path(
+            "devin",
+            ".devin/skills/shipmates-termgif/termgif.py"
+        ));
+        assert!(allowed_receipt_path(
+            "devin",
+            ".devin/rules/shipmates-contributor.md"
+        ));
+        // Legacy: the windsurf-era skill tree and fallback steering path.
+        assert!(allowed_receipt_path(
+            "devin",
+            ".windsurf/skills/ship-issue/SKILL.md"
+        ));
+        assert!(allowed_receipt_path(
+            "devin",
+            ".shipmates/contributor-steering.md"
+        ));
+        // Global install: only the two resource subtrees relocate.
+        assert_eq!(
+            global_relocate("devin", ".devin/agents/sdet.md"),
+            Some(".config/devin/agents/sdet.md".to_string())
+        );
+        assert_eq!(
+            global_relocate("devin", ".devin/skills/ship-issue/SKILL.md"),
+            Some(".config/devin/skills/ship-issue/SKILL.md".to_string())
+        );
+        assert_eq!(global_relocate("devin", ".devin/rules/shipmates-contributor.md"), None);
+        // Tight everywhere else, at any depth.
+        assert!(!allowed_receipt_path("devin", ".devin/settings.json"));
+        assert!(!allowed_receipt_path("devin", ".devin/agents/evil.sh"));
+        assert!(!allowed_receipt_path("devin", ".devin/agents/nested/sdet.md"));
+        assert!(!allowed_receipt_path("devin", ".devin/rules/other.md"));
+        assert!(!allowed_receipt_path("devin", ".windsurf/agents/sdet.md"));
     }
 
     #[test]

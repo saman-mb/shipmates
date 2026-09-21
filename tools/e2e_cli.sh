@@ -135,7 +135,7 @@ cmd_capture "targets" "$BIN" targets
 TARGETS_OUT="$CMD_OUT"
 TARGET_COUNT=$(echo "$TARGETS_OUT" | wc -l)
 [ "$TARGET_COUNT" -eq 9 ] && ok "Targets lists 9 harnesses" || fail "Targets lists $TARGET_COUNT (expected 9)"
-for t in claude-code opencode antigravity codex cursor github-copilot pi grok-build windsurf; do
+for t in claude-code opencode antigravity codex cursor github-copilot pi grok-build devin; do
   if printf '%s' "$TARGETS_OUT" | grep -qF "$t" || true; then
     ok "Target '$t' present"
   else

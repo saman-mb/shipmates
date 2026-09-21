@@ -227,42 +227,6 @@
       },
       "global_root": ".copilot"
     },
-    "windsurf": {
-      "notes": "Windsurf (Cascade) discovers skills under `.windsurf/skills/`. It ships no subagents, so the adapter emits the crew as seventeen skills and ignores `roles`.",
-      "agent_path": ".windsurf/agents/{name}.md",
-      "skill_path": ".windsurf/skills/{name}/SKILL.md",
-      "project_instructions": "AGENTS.md",
-      "steering_install_path": ".shipmates/contributor-steering.md",
-      "steering_notes": "No documented modular rules/instructions auto-load path; steering installs to receipt-owned `.shipmates/contributor-steering.md` — open it when contributing to Shipmates.",
-      "permission_model": "permission-map",
-      "scopes": {
-        "read": "read",
-        "search": "search",
-        "glob": "glob",
-        "write": "edit",
-        "edit": "edit",
-        "bash": "bash",
-        "web-search": "web_search",
-        "web-fetch": "web_fetch",
-        "agent": "agent"
-      },
-      "tools": {
-        "read": [
-          "read",
-          "search",
-          "glob"
-        ],
-        "edit": [
-          "edit"
-        ],
-        "bash": "bash",
-        "web": {
-          "search": "web_search",
-          "fetch": "web_fetch"
-        },
-        "agent": "agent"
-      }
-    },
     "pi": {
       "notes": "Pi's crew mechanic comes from the third-party `pi-subagents` extension (github.com/nicobailon/pi-subagents) — core pi documents no declarative subagent schema, which is why this target once claimed `agents: false`. pi-subagents reads crew from `.pi/agents/{name}.md` (canonical project scope) and `~/.pi/agent/agents/` (user scope), and still reads the legacy `.agents/**` tree for compatibility — which is the path Antigravity's crew installs to. Shipmates emits to the project-scope `.pi/agents/`, which outranks the legacy `.agents/` tree *within whichever directory pi resolves as the project root* — the nearest ancestor carrying `.pi/` or `.agents/`. A project-local install therefore resolves correctly (the normal case). A `--global` install lands in the home directory, which is the resolved root only when no ancestor between the working directory and `~` carries `.pi/` or `.agents/`; where one does, pi reads that one and the home install is invisible. Pi's user scope cannot rescue that case: `~/.pi/agent/agents/` is loaded *before* legacy `~/.agents/` and the later write wins, so no user-scope path can outrank a foreign `~/.agents/agents/`. `tools` is a COMMA-SEPARATED SCALAR, never a YAML list: pi's frontmatter reader is line-based, so a list opens a block and is read as one unmatchable name, leaving the seat with no tools and no error (#437). `permission_model` is `allowlist` because an unresolvable name yields zero tools rather than being ignored. Skills stay on the shared `.agents/skills/` tree. Known gap: `web_search` / `fetch_content` come from a separate extension (`pi-web-access`), not pi core, so the two crew roles declaring the `web` capability name tools a bare pi install does not have. Verified 2026-09-13 against pi-subagents' own source and docs.",
       "agent_path": ".pi/agents/{name}.md",
@@ -334,6 +298,42 @@
           "fetch": "WebFetch"
         },
         "agent": "Agent"
+      }
+    },
+    "devin": {
+      "notes": "Devin CLI / Devin Desktop (Cognition) - the product Windsurf became on 2026-06-02. Crew at `.devin/agents/<name>.md` (flat Markdown + YAML frontmatter: `name`, `description`, `allowed-tools`, `max-nesting`; no effort field). Commands and tools at `.devin/skills/<name>/SKILL.md`. Devin documents THREE skill trees: `.agents/skills/` (recommended for portability), `.devin/skills/` (native, takes precedence) and `.windsurf/skills/` (legacy, still read). We ship the native tree because the seventeen commands must stay user-invoked only and the guard is the vendor key `triggers: [user]` - the neutral shared rendering emits only `name`/`description` and would drop it (same reasoning as grok-build). Least privilege: on a subagent definition `allowed-tools` RESTRICTS, so the adapter emits it only from Devin's documented tool names (read, edit, grep, glob, exec) and omits the key entirely for a role declaring a capability with no documented name (`web`), rather than silently stripping that capability. Verified 2026-09-22: https://docs.devin.ai/cli/subagents + https://docs.devin.ai/cli/extensibility/skills/creating-skills",
+      "agent_path": ".devin/agents/{name}.md",
+      "skill_path": ".devin/skills/{name}/SKILL.md",
+      "global_root": ".config/devin",
+      "project_instructions": "AGENTS.md",
+      "steering_install_path": ".devin/rules/shipmates-contributor.md",
+      "steering_notes": "`.devin/rules/*.md` is Devin's documented project-rules surface, using the Windsurf rule frontmatter; the adapter emits `trigger: always_on` explicitly rather than relying on an undocumented default. Legacy windsurf installs wrote `.shipmates/contributor-steering.md` and keep loading from there.",
+      "permission_model": "allowlist",
+      "scopes": {
+        "read": "read",
+        "search": "grep",
+        "glob": "glob",
+        "write": "edit",
+        "edit": "edit",
+        "bash": "exec"
+      },
+      "tools": {
+        "read": [
+          "read",
+          "grep",
+          "glob"
+        ],
+        "edit": [
+          "edit"
+        ],
+        "bash": "exec"
+      },
+      "legacy": {
+        "target_name": "windsurf",
+        "roots": [
+          ".windsurf"
+        ],
+        "notes": "Retired name of the same product. `--harness windsurf` still resolves to devin, and `.windsurf/skills/` inside an old receipt is still reclaimable."
       }
     }
   }

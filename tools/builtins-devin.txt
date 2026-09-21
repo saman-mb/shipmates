@@ -1,0 +1,71 @@
+# Built-in commands: Devin CLI (Devin Desktop, formerly Windsurf)
+# Source: https://docs.devin.ai/cli/reference/commands (section "Slash Commands")
+# Last updated: 2026-09-22
+#
+# This list is manually maintained. Refresh when Devin ships new built-ins.
+# Refreshed with the windsurf -> devin rename: the retired Windsurf/Cascade
+# target documented no built-in slash commands, while Devin CLI documents a
+# full set. Our commands are all `shipmates-*`, so none of these collide.
+mode
+normal
+accept-edits
+smart
+plan
+ask
+bypass
+autonomous
+model
+fast
+theme
+clear
+continue
+fork
+steps
+revert
+resume
+ls
+title
+rename-session
+rm-session
+export
+exit
+workspace
+add-dir
+undo-add-dir
+remove-dir
+loop
+btw
+hooks
+mcp
+help
+shortcuts
+config
+bug
+update
+upgrade
+login
+logout
+login-status
+org
+copy
+feedback
+mouse
+context
+usage
+session-stats
+compact
+cloud
+handoff
+repo
+platform
+open
+rename
+archive
+new
+quit
+dangerous
+yolo
+list-sessions
+stats
+workspaces
+status

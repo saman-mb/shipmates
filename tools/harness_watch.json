@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "description": "Repo-local watch config for tools/harness_watch.py. One injected entry per harness: what its FIRST-PARTY docs must still say about skill discovery, and what our adapter currently assumes. When a harness ships a new version and its docs drift from `expect`, the checker flags it so we can re-verify and, if needed, change the adapter's approach. Nothing about any harness is hard-coded in the script \u2014 it iterates this config. Update `verified_on` and the `expect` rules here (never in the script) whenever a harness is re-reviewed.",
+  "description": "Repo-local watch config for tools/harness_watch.py. One injected entry per harness: what its FIRST-PARTY docs must still say about skill discovery, and what our adapter currently assumes. When a harness ships a new version and its docs drift from `expect`, the checker flags it so we can re-verify and, if needed, change the adapter's approach. Nothing about any harness is hard-coded in the script — it iterates this config. Update `verified_on` and the `expect` rules here (never in the script) whenever a harness is re-reviewed.",
   "trees": {
-    "shared": "reads the open agentskills.io tree .agents/skills/ \u2014 skills go there via emit_shared_skills (one byte-identical copy across all shared harnesses)",
-    "native": "reads its own <root>/skills/ \u2014 skills rendered in the harness dialect",
+    "shared": "reads the open agentskills.io tree .agents/skills/ — skills go there via emit_shared_skills (one byte-identical copy across all shared harnesses)",
+    "native": "reads its own <root>/skills/ — skills rendered in the harness dialect",
     "commands": "opencode-only: the fourteen ship as /-invoked .opencode/commands/*.md, not skills (its skills are auto-invoked and have no disable-model-invocation)"
   },
   "harnesses": {
@@ -52,7 +52,7 @@
       ],
       "expect_absent": [],
       "verified_on": "2026-09-12",
-      "note": "Reads BOTH .agents/skills and .cursor/skills, but only .cursor/skills reaches the slash-command picker (#405), so we ship there \u2014 one copy, never both. Also watch: `.cursor/agents` subagent schema is still undocumented \u2014 if it lands, cursor could become crew-bearing (harness_matrix agents=false)."
+      "note": "Reads BOTH .agents/skills and .cursor/skills, but only .cursor/skills reaches the slash-command picker (#405), so we ship there — one copy, never both. Also watch: `.cursor/agents` subagent schema is still undocumented — if it lands, cursor could become crew-bearing (harness_matrix agents=false)."
     },
     "github-copilot": {
       "docs_url": "https://docs.github.com/en/copilot/concepts/agents/about-agent-skills",
@@ -76,18 +76,7 @@
       ],
       "expect_absent": [],
       "verified_on": "2026-08-03",
-      "note": "agy reads .agents/ throughout: skills at .agents/skills (shared), crew at .agents/agents/*.md. The docs page (antigravity.google) is a JS-rendered app, so its content is not in the static HTML \u2014 check=reachable confirms it still loads and flags it for manual review rather than false-flagging every run."
-    },
-    "windsurf": {
-      "docs_url": "https://docs.windsurf.com/windsurf/cascade/skills",
-      "tree": "native",
-      "adapter_skill_path": ".windsurf/skills/<name>/SKILL.md",
-      "expect_contains": [
-        ".windsurf/skills"
-      ],
-      "expect_absent": [],
-      "verified_on": "2026-08-03",
-      "note": "Canonical location is .windsurf/skills; .agents/skills is only a SECONDARY compat scan, so we deliberately keep windsurf OFF the shared tree. Now Devin Desktop \u2014 docs.windsurf.com 307-redirects to docs.devin.ai. If the canonical path moves to .agents/skills, windsurf could join the shared tree."
+      "note": "agy reads .agents/ throughout: skills at .agents/skills (shared), crew at .agents/agents/*.md. The docs page (antigravity.google) is a JS-rendered app, so its content is not in the static HTML — check=reachable confirms it still loads and flags it for manual review rather than false-flagging every run."
     },
     "pi": {
       "docs_url": "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/skills.md",
@@ -98,7 +87,7 @@
       ],
       "expect_absent": [],
       "verified_on": "2026-09-13",
-      "note": "Reads the open .agents/skills tree natively; this entry watches the SKILLS tree only, and that path is unchanged. The crew are separate and pi-native: the third-party `pi-subagents` extension reads `.pi/agents/<name>.md` (project) and `~/.pi/agent/agents/` (user), and still reads the legacy `.agents/**` tree \u2014 see capability_registry.json and harness_matrix.json."
+      "note": "Reads the open .agents/skills tree natively; this entry watches the SKILLS tree only, and that path is unchanged. The crew are separate and pi-native: the third-party `pi-subagents` extension reads `.pi/agents/<name>.md` (project) and `~/.pi/agent/agents/` (user), and still reads the legacy `.agents/**` tree — see capability_registry.json and harness_matrix.json."
     },
     "grok-build": {
       "docs_url": "https://docs.x.ai/build/features/skills-plugins-marketplaces",
@@ -110,6 +99,18 @@
       "expect_absent": [],
       "verified_on": "2026-09-20",
       "note": "Native .grok tree, not the shared .agents one: the seventeen commands ship disable-model-invocation, which the neutral two-key rendering would drop. Grok also scans .agents/.claude trees but resolves .grok first. If the docs URL stops resolving the strings, switch to check: reachable rather than invent a path."
+    },
+    "devin": {
+      "docs_url": "https://docs.devin.ai/cli/extensibility/skills/creating-skills",
+      "tree": "native",
+      "adapter_skill_path": ".devin/skills/<name>/SKILL.md",
+      "expect_contains": [
+        ".devin/skills",
+        "triggers"
+      ],
+      "expect_absent": [],
+      "verified_on": "2026-09-22",
+      "note": "Renamed from `windsurf` on 2026-09-22 (Windsurf became Devin Desktop 2026-06-02; Cascade was replaced by Devin Local, which spawns subagents). Devin documents THREE skill trees - `.agents/skills/` (recommended, shared), `.devin/skills/` (native, precedence) and `.windsurf/skills/` (legacy, still read) - and we ship the native one because the seventeen commands must stay user-invoked only and the guard is the vendor key `triggers: [user]`, which the neutral shared rendering would drop. Crew are `.devin/agents/<name>.md`. If the `triggers` key disappears from this page, re-check before trusting the guard."
     }
   }
 }
