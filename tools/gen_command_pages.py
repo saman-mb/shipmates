@@ -129,7 +129,7 @@ TOOL_REDIRECTS = {
 
 # Hand-authored docs pages under site/docs/. The generator discovers them on
 # disk and includes them in the sitemap — it never generates them.
-DOCS_SLUGS = ("install", "harnesses", "troubleshooting", "architecture", "github-copilot")
+DOCS_SLUGS = ("install", "how-commands-work", "harnesses", "troubleshooting", "architecture", "github-copilot")
 FLAGSHIP_SLUG = "shipmates-ship-issue"
 
 # Canonical crew order — the homepage crew grid's order. Drives the agent page
@@ -3625,6 +3625,7 @@ def render_process(copy: CommandPageCopy) -> str:
         <ol class="order-process__list" role="list">
 {listing}
         </ol>
+        <p class="order-process__shared">Shared machinery &mdash; <a href="../../docs/how-commands-work/">how commands work</a>: worktrees, the CI gate, the review board, and merge modes.</p>
       </div>
     </section>"""
 

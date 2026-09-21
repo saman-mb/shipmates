@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How commands work · Shipmates docs</title>
+  <meta name="description" content="What every Shipmates command does under the hood — isolated worktrees, the CI gate, the review board, merge modes, and where the cost goes.">
+  <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/how-commands-work/">
+  <link rel="icon" href="../../assets/logo-240.png" type="image/png">
+  <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14110F" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Shipmates">
+  <meta property="og:title" content="How commands work — Shipmates docs">
+  <meta property="og:description" content="What every Shipmates command does under the hood — isolated worktrees, the CI gate, the review board, merge modes, and where the cost goes.">
+  <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/how-commands-work/">
+  <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How commands work — Shipmates docs">
+  <meta name="twitter:description" content="What every Shipmates command does under the hood — isolated worktrees, the CI gate, the review board, merge modes, and where the cost goes.">
+  <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
+  <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
+  <link rel="stylesheet" href="../../styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "How commands work",
+    "description": "What every Shipmates command does under the hood — isolated worktrees, the CI gate, the review board, merge modes, and where the cost goes.",
+    "url": "https://saman-mb.github.io/shipmates/docs/how-commands-work/",
+    "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
+  }
+  </script>
+</head>
+<body class="page--doc">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-header__brand" href="../../">
+        <img class="site-header__logo" src="../../assets/logo-240.png" width="28" height="28" alt="">
+        <span class="site-header__name">Shipmates</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul class="site-nav__list">
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#install">Install</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#crew">Crew</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#commands">Commands</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#how">How</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#next">What&#x27;s next</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../../#faq">FAQ</a></li>
+          <li class="site-nav__item"><a class="site-nav__link" href="../" aria-current="location">Docs</a></li>
+        </ul>
+        <a class="btn btn--secondary site-nav__cta" href="https://github.com/saman-mb/shipmates">
+          <svg class="btn__icon" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" id="main" tabindex="-1">
+
+    <section class="section" aria-labelledby="how-commands-work-title">
+      <div class="container container--prose">
+        <a class="order-back" href="../"><span aria-hidden="true">&#8592;</span> All docs</a>
+        <div class="order-detail">
+          <p class="order-detail__eyebrow"><span aria-hidden="true">&#129517;</span> How commands work</p>
+          <h1 class="order-detail__title" id="how-commands-work-title">How commands work</h1>
+          <p class="order-detail__tagline">The same spine under every command.</p>
+          <p class="order-detail__desc">Every command runs the same machinery: it builds in its own isolated worktree, refuses to move until CI is green, puts the result in front of a review board, and stops for you to merge. The command pages tell you what each workflow does &mdash; this page tells you how a run behaves while it does it.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="toc-title">
+      <div class="container container--prose">
+        <nav class="docs-toc" aria-labelledby="toc-title">
+          <h2 id="toc-title">On this page</h2>
+          <ul>
+            <li><a href="#worktree">Your checkout stays clean</a></li>
+            <li><a href="#ci-gate">Nothing moves on a red CI</a></li>
+            <li><a href="#board">A review board sized to the change</a></li>
+            <li><a href="#merge">You choose who merges</a></li>
+            <li><a href="#cost">Where the cost goes</a></li>
+          </ul>
+        </nav>
+      </div>
+    </section>
+
+    <section class="section" id="worktree" aria-labelledby="worktree-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="worktree-title">Your checkout stays clean</h2>
+          <p class="section__lead">Every run builds and fixes in a disposable git worktree it creates for the job.</p>
+        </div>
+        <div class="order-prose">
+          <p>A worktree is a second checkout of the same repository &mdash; its own files on its own branch, sharing one history with your main checkout, with no second clone required. Before anything is written, the command fetches <code>origin</code> and cuts that branch from <code>origin/&lt;default-branch&gt;</code>. That fetch <em>is</em> the pull-latest step &mdash; a new worktree always starts from the current base, with no separate pull to remember.</p>
+          <p>By default the worktree lives inside the repo under <code>.shipmates/worktrees/</code>, one directory per issue or bundle, and the run adds that path to <code>.gitignore</code> for you. A repo that prefers the older layout can put it next to the checkout instead, but the effect is the same:</p>
+          <pre class="order-code" tabindex="0"><code># default (nested)
+&lt;repo&gt;/.shipmates/worktrees/issue-42
+
+# optional sibling layout
+../&lt;repo&gt;--issue-42</code></pre>
+          <p>Parallel runs never collide, and an abandoned run is a directory you can delete. Re-running the same issue reuses its worktree and branch rather than starting over. If the base branch has moved on, the run syncs first &mdash; rebase or merge, whichever your contributing docs prefer &mdash; and a sync that cannot complete cleanly stops the run with the failure instead of guessing.</p>
+          <p>Everything &mdash; builds, tests, fixes, commits &mdash; happens inside that worktree. Your checkout and the base branch are untouched until a merge lands.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="ci-gate" aria-labelledby="ci-gate-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="ci-gate-title">Nothing moves on a red CI</h2>
+          <p class="section__lead">CI is a hard gate on the pushed pull-request head. Green is the only state that reaches review.</p>
+        </div>
+        <div class="order-prose">
+          <p>The run polls the checks on the exact commit it pushed. Three outcomes are handled, not two: green, red, and <strong>no check suite appears at all</strong> &mdash; an empty result is its own failure mode, not &ldquo;still pending&rdquo;.</p>
+          <p><strong>Red:</strong> the run pulls the real failure log, fixes the cause, pushes, and polls the new head again. The loop is bounded &mdash; three fix rounds by default. If checks are still red after that, it stops and hands you the log rather than reviewing code it cannot verify.</p>
+          <p><strong>No suite:</strong> after a bounded wait, the run root-causes why the trigger never fired instead of waiting indefinitely or merging a workflow guess to see what happens.</p>
+          <p>Reviewers only ever see a green, pushed head &mdash; never a local diff. If your repository has no CI at all, the run says so and treats the static self-check as the gate, stating the reduced assurance explicitly.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="board" aria-labelledby="board-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="board-title">A review board sized to the change</h2>
+          <p class="section__lead">Two seats always sit; specialists join only when the change can benefit from their judgment.</p>
+        </div>
+        <div class="order-prose">
+          <p>Every acceptance cycle has a mandatory core: the <strong>product-manager</strong> checks the change against the ticket&rsquo;s acceptance criteria, and the <strong>principal-engineer</strong> checks boundary integrity, scope discipline, and the repository&rsquo;s own quality bar.</p>
+          <p>Specialists are pulled by what the plan flagged, not by a fixed roster: an <strong>architect</strong> for new subsystems, schema, or cross-module change; a <strong>ux-ui-designer</strong> for on-screen UI; an <strong>art-director</strong> for rendered art; an <strong>sdet</strong> when the plan asks for a specialist test review; a <strong>devops-engineer</strong> for pipelines and packaging; a <strong>technical-writer</strong> for documented behaviour or a public API; a <strong>security-engineer</strong> for auth, secrets, crypto, or untrusted input; a <strong>performance-engineer</strong> for a claimed win or a known hot path; a <strong>site-reliability-engineer</strong> for runtime behaviour and rollout; a <strong>data-scientist</strong> when the deliverable is an analysis or a model.</p>
+          <p>A seat whose criteria do not hold is gated out on purpose &mdash; a recorded result, not an omission, and part of what keeps a run affordable.</p>
+          <p>Verdicts are ACCEPT or REJECT (PASS/FAIL for test seats; nits are allowed). Any REJECT or FAIL goes to a fixer and the board re-sits on the new delta: the failers review the change, a prior ACCEPT carries unless the delta can invalidate it, and a seat the delta newly trips may join. Like the CI loop, this is bounded &mdash; then it escalates to you with the reasons.</p>
+          <p>Epic runs review once at the top: unit commands defer their board to a single integration board on the epic pull request, so a five-story epic pays for one thorough reversal rather than five rushed ones. The board can be turned off explicitly; no command skips it silently.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="merge" aria-labelledby="merge-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="merge-title">You choose who merges</h2>
+          <p class="section__lead">Manual by default, automatic when you ask for it &mdash; and an epic keeps the final gate with you.</p>
+        </div>
+        <div class="order-prose">
+          <p><strong>Manual (default).</strong> The run stops at a green, reviewed pull request and hands you the link. Merging it closes the issues named in the body, because every one is written as its own closing keyword.</p>
+          <p><strong>Automatic (opt-in).</strong> Once every gate passes, the run squash-merges, deletes the branch, and confirms the issues closed. The merge is bound to the exact head the board reviewed: if the head moved after review, the merge refuses instead of landing unverified code.</p>
+          <p><strong>Epic runs.</strong> Unit pull requests merge automatically into the epic&rsquo;s integration branch so the checklist can complete, while the epic pull request into your default branch stays yours to merge.</p>
+          <p>A security-sensitive change never auto-merges onto the default branch on its own &mdash; that run is forced to manual regardless of the setting.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="cost" aria-labelledby="cost-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="cost-title">Where the cost goes</h2>
+          <p class="section__lead">Context is spent on decisions that change the outcome &mdash; not on repeating work already proven.</p>
+        </div>
+        <div class="order-prose">
+          <ul>
+            <li><strong>Bundling is a recommendation you accept.</strong> When the leading ticket is small, the run can propose cohesive siblings that share one plan, worktree, validation pass, and review. It always asks before widening the run.</li>
+            <li><strong>Independent work runs in parallel.</strong> File-disjoint slices build concurrently up to a bounded worker cap, each in its own worktree, one writer per checkout. Dependent work stays sequential.</li>
+            <li><strong>Seats are value-gated; models are chosen at spawn.</strong> Mechanical work goes to the cheapest capable model; planning, architecture, security, and acceptance get the stronger reasoning.</li>
+            <li><strong>Agents return decisions, not transcripts.</strong> Verdict first, then the evidence that supports it, then blockers &mdash; never a replay of every step.</li>
+            <li><strong>Nits are absorbed, not filed.</strong> Cheap in-scope findings are fixed on the same pull request under a cap; leftovers are noted on the PR, and a run opens at most a couple of follow-up issues.</li>
+          </ul>
+          <p>The contributor-level detail, including the model-routing rule and the exact defaults, is in <a href="https://github.com/saman-mb/shipmates/blob/main/docs/COST.md"><code>docs/COST.md</code></a>.</p>
+          <p>New here? Start with the <a href="../install/">install reference</a>, then open <a href="../../commands/shipmates-ship-issue/"><code>/shipmates-ship-issue</code></a> and point it at a real ticket. The <a href="../harnesses/">harness matrix</a> records what has been verified on which harness, and <a href="../architecture/">architecture</a> explains how one crew compiles into each harness&rsquo;s native payload.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="more-docs-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="more-docs-title">More docs</h2>
+        </div>
+        <nav class="command-siblings" aria-label="More docs">
+          <ul class="command-siblings__list" role="list">
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../install/">Install reference</a></li>
+            <li class="command-siblings__item"><span class="command-siblings__link command-siblings__link--current" aria-current="page">How commands work<span class="visually-hidden"> (current page)</span></span></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../harnesses/">Harness matrix</a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../github-copilot/">GitHub Copilot quickstart</a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../troubleshooting/">Troubleshooting</a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="../architecture/">Architecture</a></li>
+          </ul>
+        </nav>
+        <a class="order-back" href="../"><span aria-hidden="true">&#8592;</span> All docs</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <div class="site-footer__brand">
+        <img class="site-footer__logo" src="../../assets/logo-240.png" width="32" height="32" alt="">
+        <span class="site-footer__name">Shipmates</span>
+        <p class="site-footer__tagline">Custom subagents &amp; command workflows — for your AI coding harness.</p>
+      </div>
+      <nav class="site-footer__nav" aria-label="Footer">
+        <ul class="site-footer__links">
+          <li><a href="https://github.com/saman-mb/shipmates">GitHub</a></li>
+          <li><a href="../../#install">Install</a></li>
+          <li><a href="../../#crew">Crew</a></li>
+          <li><a href="../../#commands">Commands</a></li>
+          <li><a href="../">Docs</a></li>
+          <li><a href="../../#next">What&#x27;s next</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/LICENSE">License</a></li>
+          <li><a href="https://github.com/saman-mb/shipmates/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </nav>
+      <p class="site-footer__legal">MIT License. Not affiliated with Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic.</p>
+    </div>
+  </footer>
+</body>
+</html>
