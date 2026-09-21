@@ -124,8 +124,13 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BUILD_MANIFEST_NAME: target/distrib/${{ join(matrix.targets, '-') }}-dist-manifest.json
     steps:
+      # Keep this command inline, never a .github/scripts/ call: the runner's
+      # workspace is empty until the checkout below, and longpaths has to be set
+      # before that. Every platform failing here costs a whole release (#534);
+      # `validate_precheckout_steps.py` gates the class.
       - name: enable windows longpaths
-        run: bash .github/scripts/enable-windows-longpaths.sh
+        run: |
+          git config --global core.longpaths true
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
