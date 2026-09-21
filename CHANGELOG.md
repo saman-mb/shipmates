@@ -24,8 +24,9 @@ All notable changes to this project are documented here. The format follows
 - **`--self` upgrades the binary through the channel that installed it.** Brew and the
   cargo-dist installer are the executable channels; a cargo install, a source checkout and
   an unknown channel are refused with the exact command to run instead. The default
-  posture is a safe one: refresh payloads from the current binary, print the binary
-  upgrade command, execute nothing.
+  posture is a safe one: payload refresh always runs from the current binary, while the
+  binary upgrade is print-only — the channel command is shown but executed only when
+  `--self` is passed.
 - **Audit findings classify before they file.** `upgrade` reuses `doctor::diagnose` plus a
   payload-completeness check and a tool smoke, so user-caused drift, a partial install
   that `--fix` repairs, and a correct third-party refusal are reported but never filed as

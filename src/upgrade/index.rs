@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::upgrade::types::PrunedRoot;
 
 /// The index schema version this code writes.
-const SCHEMA_VERSION: u32 = 1;
+const CURRENT_SCHEMA_VERSION: u32 = 1;
 
 /// One install's record.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -41,22 +41,41 @@ impl InstallsIndex {
             Ok(content) => content,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Self::empty()),
             Err(e) => {
-                return Err(e)
-                    .with_context(|| format!("reading installs index {}", path.display()));
+                eprintln!(
+                    "warning: ignoring unreadable installs index {}: {e}",
+                    path.display()
+                );
+                return Ok(Self::empty());
             }
         };
         if content.trim().is_empty() {
             return Ok(Self::empty());
         }
-        let index: Self = serde_json::from_str(&content)
-            .with_context(|| format!("parsing installs index {}", path.display()))?;
+        let index: Self = match serde_json::from_str(&content) {
+            Ok(index) => index,
+            Err(e) => {
+                eprintln!(
+                    "warning: ignoring corrupt installs index {}: {e}",
+                    path.display()
+                );
+                return Ok(Self::empty());
+            }
+        };
+        if index.schema_version > CURRENT_SCHEMA_VERSION {
+            eprintln!(
+                "warning: ignoring installs index {} (schema_version {} is newer than this binary supports {CURRENT_SCHEMA_VERSION})",
+                path.display(),
+                index.schema_version
+            );
+            return Ok(Self::empty());
+        }
         Ok(index)
     }
 
     /// Persist the index atomically via `installer::atomic_write`.
     pub fn save(&self, path: &Path) -> anyhow::Result<()> {
         let mut index = self.clone();
-        index.schema_version = SCHEMA_VERSION;
+        index.schema_version = CURRENT_SCHEMA_VERSION;
         let json = serde_json::to_string_pretty(&index).context("serializing installs index")?;
         crate::installer::atomic_write(path, &json)
             .with_context(|| format!("writing installs index {}", path.display()))?;
@@ -91,7 +110,7 @@ impl InstallsIndex {
                 last_seen: now,
             });
         }
-        self.schema_version = SCHEMA_VERSION;
+        self.schema_version = CURRENT_SCHEMA_VERSION;
         self.save(path)
     }
 
@@ -146,7 +165,7 @@ impl InstallsIndex {
 
     fn empty() -> Self {
         Self {
-            schema_version: SCHEMA_VERSION,
+            schema_version: CURRENT_SCHEMA_VERSION,
             records: Vec::new(),
         }
     }
@@ -194,7 +213,32 @@ mod tests {
         let path = dir.path().join("installs.json");
         let index = InstallsIndex::load(&path).unwrap();
         assert!(index.records.is_empty());
-        assert_eq!(index.schema_version, SCHEMA_VERSION);
+        assert_eq!(index.schema_version, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn load_garbage_falls_back_to_empty_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("installs.json");
+        std::fs::write(&path, "{ not json").unwrap();
+
+        let index = InstallsIndex::load(&path).unwrap();
+        assert!(index.records.is_empty());
+        assert_eq!(index.schema_version, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn load_future_schema_falls_back_to_empty_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("installs.json");
+        std::fs::write(
+            &path,
+            r#"{"schema_version":99,"records":[{"root":"/x","harness":"claude-code","version":"1.0.0","layout":"skills","last_seen":1}]}"#,
+        )
+        .unwrap();
+
+        let index = InstallsIndex::load(&path).unwrap();
+        assert!(index.records.is_empty());
     }
 
     #[test]

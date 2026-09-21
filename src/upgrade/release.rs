@@ -128,44 +128,47 @@ pub(crate) fn select_latest(body: &str, pre: bool) -> Result<ReleaseInfo, Releas
 }
 
 /// Classify how this binary was installed, per the ordered channel list.
+///
+/// Path evidence wins before any external check: a Cellar path is Brew, a
+/// `~/.cargo/bin` path is Cargo, then a cargo-dist receipt, then the
+/// `brew list` fallback, then a source tree. The two external checks are
+/// passed in as booleans so the ordering is unit-testable without invoking
+/// `brew` or touching the receipt filesystem.
 pub fn detect_channel() -> Channel {
     let home = home::home_dir().unwrap_or_default();
     let exe = std::env::current_exe().unwrap_or_default();
-
-    // Path-only evidence is classified first; the contract order interleaves
-    // two external checks (brew formula, cargo-dist receipt) between the path
-    // branches, so re-check those at their contract positions below.
-    let path = classify_exe_path(&exe, &home);
-
-    // 1. Homebrew Cellar path.
-    if path == Channel::Brew {
-        return Channel::Brew;
-    }
-    // 2. Homebrew formula present (before Cargo/Source path evidence).
-    if brew_list_has_shipmates() {
-        return Channel::Brew;
-    }
-    // 3. Cargo-installed into ~/.cargo/bin.
-    if path == Channel::Cargo {
-        return Channel::Cargo;
-    }
-    // 4. cargo-dist receipt present under the XDG data home.
-    if cargo_dist_receipt_exists(&home) {
-        return Channel::CargoDist;
-    }
-    // 5. Built from a source tree.
-    if path == Channel::Source {
-        return Channel::Source;
-    }
-    // 6. Could not tell.
-    Channel::Unknown
+    detect_channel_from(
+        &exe,
+        &home,
+        cargo_dist_receipt_exists(),
+        brew_list_has_shipmates(),
+    )
 }
 
-/// Pure, path-only classification: the branches that never shell out to `brew`.
-///
-/// The path rules are kept separate so they are unit-testable without invoking
-/// `brew` (or touching receipts); `detect_channel` composes them with the two
-/// external checks at the contract's exact order.
+/// Pure, ordered channel decision: path evidence, cargo-dist receipt, then the
+/// `brew list` fallback, then a source tree.
+pub(crate) fn detect_channel_from(
+    path: &Path,
+    home: &Path,
+    receipt_exists: bool,
+    brew_present: bool,
+) -> Channel {
+    let path_channel = classify_exe_path(path, home);
+    if matches!(path_channel, Channel::Brew | Channel::Cargo) {
+        return path_channel;
+    }
+    if receipt_exists {
+        return Channel::CargoDist;
+    }
+    if brew_present {
+        return Channel::Brew;
+    }
+    path_channel // Source or Unknown
+}
+
+/// Pure, path-only classification: the branches that never shell out to `brew`
+/// or touch the cargo-dist receipt. `detect_channel_from` composes this with the
+/// two external checks at the contract's exact order.
 pub(crate) fn classify_exe_path(path: &Path, home: &Path) -> Channel {
     if is_cellar(path) {
         return Channel::Brew;
@@ -231,12 +234,32 @@ fn brew_list_has_shipmates() -> bool {
         .unwrap_or(false)
 }
 
-fn cargo_dist_receipt_exists(home: &Path) -> bool {
-    let data_home = std::env::var_os("XDG_DATA_HOME")
-        .filter(|v| !v.is_empty())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| home.join(".local").join("share"));
-    data_home.join("shipmates").join("receipt.txt").is_file()
+fn cargo_dist_receipt_exists() -> bool {
+    cargo_dist_data_dirs()
+        .into_iter()
+        .any(|dir| dir.join("shipmates").join("receipt.txt").is_file())
+}
+
+/// Platform data directories the cargo-dist installer may have written to,
+/// checked in precedence order: `$XDG_DATA_HOME`, `~/.local/share`, macOS
+/// `~/Library/Application Support`, and Windows `%APPDATA%`. The location is
+/// best-effort: the file-existence signal is the only check, and an absent
+/// receipt refuses safely (the channel falls through to the remaining evidence).
+fn cargo_dist_data_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(xdg) = std::env::var_os("XDG_DATA_HOME").filter(|v| !v.is_empty()) {
+        dirs.push(PathBuf::from(xdg));
+    }
+    if let Some(home) = home::home_dir() {
+        dirs.push(home.join(".local").join("share"));
+        #[cfg(target_os = "macos")]
+        dirs.push(home.join("Library").join("Application Support"));
+    }
+    #[cfg(target_os = "windows")]
+    if let Some(appdata) = std::env::var_os("APPDATA").filter(|v| !v.is_empty()) {
+        dirs.push(PathBuf::from(appdata));
+    }
+    dirs
 }
 
 /// Walk the exe's ancestors looking for a `Cargo.toml` that names `shipmates`.
@@ -407,6 +430,54 @@ mod tests {
         .unwrap();
         let exe = dir.path().join("bin").join("shipmates");
         assert_eq!(classify_exe_path(&exe, dir.path()), Channel::Unknown);
+    }
+
+    #[test]
+    fn channel_detection_prefers_cargo_path_over_brew_present() {
+        // Path evidence wins: a cargo-bin path is Cargo even when the `brew list`
+        // fallback would say Brew (no real brew call happens here).
+        let home = Path::new("/Users/me");
+        let exe = Path::new("/Users/me/.cargo/bin/shipmates");
+        assert_eq!(detect_channel_from(exe, home, false, true), Channel::Cargo);
+    }
+
+    #[test]
+    fn channel_detection_prefers_cellar_over_everything() {
+        let home = Path::new("/Users/me");
+        let exe = Path::new("/opt/homebrew/Cellar/shipmates/0.12.0/bin/shipmates");
+        assert_eq!(detect_channel_from(exe, home, true, false), Channel::Brew);
+    }
+
+    #[test]
+    fn channel_detection_receipt_before_brew_fallback() {
+        let home = Path::new("/Users/me");
+        let exe = Path::new("/usr/local/bin/shipmates");
+        assert_eq!(
+            detect_channel_from(exe, home, true, true),
+            Channel::CargoDist
+        );
+    }
+
+    #[test]
+    fn channel_detection_brew_fallback_before_source() {
+        let home = Path::new("/Users/me");
+        let exe = Path::new("/usr/local/bin/shipmates");
+        assert_eq!(detect_channel_from(exe, home, false, true), Channel::Brew);
+    }
+
+    #[test]
+    fn channel_detection_source_is_last() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"shipmates\"\nversion = \"0.12.0\"\n",
+        )
+        .unwrap();
+        let exe = dir.path().join("shipmates");
+        assert_eq!(
+            detect_channel_from(&exe, dir.path(), false, false),
+            Channel::Source
+        );
     }
 
     #[test]

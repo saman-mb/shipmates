@@ -84,7 +84,7 @@ from anything hardcoded into the role.
 | `/shipmates-upgrade [apply] [pre] [file-bugs]` | Checks for a newer Shipmates release and refreshes, audits, and repairs every known install — check-and-report by default; `apply` runs the upgrade/repair/filing steps |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
-worktree, and hands you a pull request — your checkout is left as you left it. `/shipmates-report-bug` and the opt-in `--file-bugs` path of
+worktree, and hands you a pull request — your checkout is left as you left it. `/shipmates-report-bug` and the opt-in `file-bugs` token of
 `/shipmates-upgrade` write to the upstream Shipmates repo, not your project. `/shipmates-release` is the one
 exception: the release commit has to land on the branch being tagged, so it commits, pushes and tags
 straight in your checkout instead of an unmerged side branch. `/shipmates-pr-review` and the default

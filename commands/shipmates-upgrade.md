@@ -75,18 +75,17 @@ mutates the index; `--check` is a read-only three-way version report.
 
 ## Stage 2 — Binary upgrade  (orchestrator)
 
-If a newer release exists, show the exact channel command the CLI reports for this install (brew or
-cargo-dist). In `MODE=apply`, run:
+If a newer release exists, show the exact channel command the CLI reports for this install (brew,
+cargo-dist, or cargo). In `MODE=apply`, run:
 
 ```bash
 shipmates upgrade --self
 ```
 
-The CLI executes only for the brew and cargo-dist channels and **refuses source checkouts and unknown
-channels**; `--dry-run` prints what would change without executing anything. For a source checkout or
-unknown channel, do **not** attempt a self-upgrade — print the manual path (for a source checkout,
-`git pull` and rebuild; for a package manager, its own update command) and continue to Stage 3.
-Degrade, never break.
+The CLI executes only for the brew and cargo-dist channels. A cargo install, a source checkout, or an
+unknown channel is refused: the CLI prints the manual command (`cargo install shipmates --locked`,
+`git pull` and rebuild, or the package manager's own update command) and continues to Stage 3.
+`--dry-run` prints what would change without executing anything. Degrade, never break.
 
 ## Stage 3 — Refresh + audit  (orchestrator)
 

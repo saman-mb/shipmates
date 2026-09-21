@@ -7,10 +7,12 @@
 //! `update --dir <root>` path — the payload is embedded in the binary, so it is
 //! always the running version that lands.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::time::{Duration, SystemTime};
 
 use anyhow::Context;
 use semver::Version;
@@ -40,6 +42,7 @@ pub struct UpgradeOpts {
     pub dirs: Vec<PathBuf>,
     pub file_bugs: bool,
     pub self_upgrade: bool,
+    pub resume: bool,
 }
 
 /// The `upgrade --json` payload (field names are part of the stable contract).
@@ -124,10 +127,10 @@ pub fn run_upgrade(opts: &UpgradeOpts) -> anyhow::Result<i32> {
     let source = CatalogSource::Embedded;
     let (roles, cmds, tools) = load_catalog(&source)?;
 
-    let _lock = if opts.dry_run {
-        None
-    } else {
+    let _lock = if should_acquire_lock(opts) {
         Some(acquire_lock()?)
+    } else {
+        None
     };
 
     let running_version = env!("CARGO_PKG_VERSION").to_string();
@@ -158,8 +161,9 @@ pub fn run_upgrade(opts: &UpgradeOpts) -> anyhow::Result<i32> {
     };
 
     // 3./4. Self-upgrade: never downgrade; only the channels that can execute;
-    // Source/Unknown refuse with a clear line; dry-run prints only.
-    if opts.self_upgrade && !running_is_newer {
+    // Source/Unknown refuse with a clear line; dry-run prints only. A re-exec
+    // (`--resume`) never re-enters this branch.
+    if should_self_upgrade(opts, running_is_newer) {
         if upgrade_available {
             if can_exec_self_upgrade(channel) {
                 if opts.dry_run {
@@ -177,14 +181,15 @@ pub fn run_upgrade(opts: &UpgradeOpts) -> anyhow::Result<i32> {
                     if !status.success() {
                         anyhow::bail!("self-upgrade failed ({command}): {status}");
                     }
+                    // Drop the upgrade lock before the re-exec so the fresh
+                    // binary is free to take it again (and `--resume` skips it).
+                    drop(_lock);
                     // Re-exec the freshly-upgraded binary to refresh payloads.
-                    let exe =
-                        std::env::current_exe().context("resolving the current executable")?;
+                    // Prefer the channel's binary on `PATH`: after a brew
+                    // upgrade the running image's Cellar path may be gone.
+                    let exe = resolve_self_binary();
                     let mut child = Command::new(&exe);
-                    child.arg("upgrade").arg("--resume");
-                    for dir in &opts.dirs {
-                        child.arg("--dir").arg(dir);
-                    }
+                    child.args(reexec_args(opts));
                     let status = child
                         .status()
                         .with_context(|| format!("re-executing {}", exe.display()))?;
@@ -203,8 +208,9 @@ pub fn run_upgrade(opts: &UpgradeOpts) -> anyhow::Result<i32> {
     let mut index = InstallsIndex::load(&index_file)?;
     let roots = discover_roots(&opts.dirs, &index)?;
 
-    // 6. Prune dead index records (persisted; the one write this run owns).
-    let pruned = index.prune_dead(&index_file)?;
+    // 6. Prune dead index records. `--dry-run` reports them read-only; a real
+    // run persists the prune (the one write this run owns).
+    let pruned = prune_index(opts, &mut index, &index_file)?;
 
     // 7. Per root: refresh, fix, then a full audit of each install.
     let mut installs: Vec<InstallReport> = Vec::new();
@@ -479,7 +485,11 @@ fn refresh_root(root: &Path, capture: bool) -> anyhow::Result<()> {
     }
     let exe = std::env::current_exe().context("resolving the current executable")?;
     let mut command = Command::new(&exe);
-    command.args(["update", "--dir"]).arg(root);
+    command
+        .args(["update", "--dir"])
+        .arg(root)
+        .args(["--harness", "all"])
+        .stdin(Stdio::null());
 
     if capture {
         let output = command.output().with_context(|| {
@@ -503,6 +513,89 @@ fn refresh_root(root: &Path, capture: bool) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+/// The argv for the post-upgrade re-exec: `upgrade --resume` plus the captain's
+/// forwarded flags. Never forwards `--self` or `--dry-run`; always `--resume`.
+fn reexec_args(opts: &UpgradeOpts) -> Vec<String> {
+    let mut args = vec!["upgrade".to_string(), "--resume".to_string()];
+    if opts.json {
+        args.push("--json".to_string());
+    }
+    if opts.pre {
+        args.push("--pre".to_string());
+    }
+    if opts.fix {
+        args.push("--fix".to_string());
+    }
+    if opts.file_bugs {
+        args.push("--file-bugs".to_string());
+    }
+    for dir in &opts.dirs {
+        args.push("--dir".to_string());
+        args.push(dir.to_string_lossy().into_owned());
+    }
+    args
+}
+
+/// The post-upgrade binary to re-exec: the first `shipmates` on `PATH` when one
+/// exists, else the running executable. After `brew upgrade`, the running
+/// image's Cellar path may already be gone, so `PATH` is preferred.
+fn resolve_self_binary() -> PathBuf {
+    resolve_self_binary_with(std::env::var_os("PATH").as_deref())
+}
+
+fn resolve_self_binary_with(path_var: Option<&OsStr>) -> PathBuf {
+    if let Some(exe) = path_var.and_then(first_shipmates_on_path) {
+        return exe;
+    }
+    std::env::current_exe().unwrap_or_else(|_| PathBuf::from("shipmates"))
+}
+
+fn first_shipmates_on_path(path_var: &OsStr) -> Option<PathBuf> {
+    for dir in std::env::split_paths(path_var) {
+        let candidate = dir.join("shipmates");
+        if candidate.is_file() && is_executable(&candidate) {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+#[cfg(unix)]
+fn is_executable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::metadata(path)
+        .map(|meta| meta.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn is_executable(path: &Path) -> bool {
+    path.is_file()
+}
+
+/// The upgrade lock is skipped for `--dry-run` and for the post-upgrade re-exec.
+fn should_acquire_lock(opts: &UpgradeOpts) -> bool {
+    !opts.dry_run && !opts.resume
+}
+
+/// A re-exec (`--resume`) never re-enters the self-upgrade branch.
+fn should_self_upgrade(opts: &UpgradeOpts, running_is_newer: bool) -> bool {
+    opts.self_upgrade && !opts.resume && !running_is_newer
+}
+
+/// Report (and, outside `--dry-run`, persist) dead index records.
+fn prune_index(
+    opts: &UpgradeOpts,
+    index: &mut InstallsIndex,
+    index_file: &Path,
+) -> anyhow::Result<Vec<PrunedRoot>> {
+    if opts.dry_run {
+        Ok(dead_index_roots(index))
+    } else {
+        index.prune_dead(index_file)
+    }
 }
 
 /// Precedence-ordered exit aggregation: 3 (upgrade/refresh failed) beats 4
@@ -568,6 +661,7 @@ fn lock_path() -> anyhow::Result<PathBuf> {
     Ok(home.join(".shipmates").join("upgrade.lock"))
 }
 
+#[derive(Debug)]
 struct LockGuard {
     path: PathBuf,
 }
@@ -578,30 +672,70 @@ impl Drop for LockGuard {
     }
 }
 
-/// Take the non-blocking upgrade lock. A held lock is a clear error.
+/// A lock older than this is presumed stale (left by a crashed run) and retaken.
+const STALE_LOCK_AGE: Duration = Duration::from_secs(60 * 60);
+
+/// Take the non-blocking upgrade lock. A fresh held lock is a clear error; a
+/// lock older than [`STALE_LOCK_AGE`] is removed and retaken.
 fn acquire_lock() -> anyhow::Result<LockGuard> {
     let path = lock_path()?;
+    acquire_lock_at(&path)
+}
+
+fn acquire_lock_at(path: &Path) -> anyhow::Result<LockGuard> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("creating lock directory {}", parent.display()))?;
     }
+    match try_acquire_lock(path) {
+        Ok(guard) => Ok(guard),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            if is_stale_lock(path) {
+                eprintln!("warning: removing stale upgrade lock {}", path.display());
+                fs::remove_file(path)
+                    .with_context(|| format!("removing stale upgrade lock {}", path.display()))?;
+                try_acquire_lock(path).map_err(|e| {
+                    anyhow::Error::new(e)
+                        .context(format!("acquiring upgrade lock {}", path.display()))
+                })
+            } else {
+                Err(anyhow::anyhow!(
+                    "another shipmates upgrade is already running (lock {} is held); retry when it finishes",
+                    path.display()
+                ))
+            }
+        }
+        Err(error) => {
+            Err(anyhow::Error::new(error)
+                .context(format!("acquiring upgrade lock {}", path.display())))
+        }
+    }
+}
+
+fn try_acquire_lock(path: &Path) -> std::io::Result<LockGuard> {
     let mut file = fs::OpenOptions::new()
         .write(true)
         .create_new(true)
-        .open(&path)
-        .map_err(|error| {
-            if error.kind() == std::io::ErrorKind::AlreadyExists {
-                anyhow::anyhow!(
-                    "another shipmates upgrade is already running (lock {} is held); retry when it finishes",
-                    path.display()
-                )
-            } else {
-                anyhow::Error::new(error)
-                    .context(format!("acquiring upgrade lock {}", path.display()))
-            }
-        })?;
+        .open(path)?;
     let _ = file.write_all(format!("{}\n", std::process::id()).as_bytes());
-    Ok(LockGuard { path })
+    Ok(LockGuard {
+        path: path.to_path_buf(),
+    })
+}
+
+/// A lock left behind by a crashed run is not held by anyone; after an hour it
+/// is presumed stale rather than permanent.
+fn is_stale_lock(path: &Path) -> bool {
+    let Ok(meta) = fs::metadata(path) else {
+        return false;
+    };
+    let Ok(modified) = meta.modified() else {
+        return false;
+    };
+    SystemTime::now()
+        .duration_since(modified)
+        .map(|age| age > STALE_LOCK_AGE)
+        .unwrap_or(false)
 }
 
 fn state_str(state: InstallState) -> &'static str {
@@ -790,5 +924,139 @@ mod tests {
         assert!(receipt_harnesses(missing).unwrap().is_empty());
         // And a refresh of a missing root is a no-op that spawns nothing.
         refresh_root(missing, false).unwrap();
+    }
+
+    fn opts(overrides: impl FnOnce(&mut UpgradeOpts)) -> UpgradeOpts {
+        let mut opts = UpgradeOpts {
+            json: false,
+            pre: false,
+            dry_run: false,
+            fix: false,
+            dirs: vec![],
+            file_bugs: false,
+            self_upgrade: false,
+            resume: false,
+        };
+        overrides(&mut opts);
+        opts
+    }
+
+    #[test]
+    fn resume_skips_the_upgrade_lock() {
+        assert!(!should_acquire_lock(&opts(|o| o.resume = true)));
+        assert!(should_acquire_lock(&opts(|_| {})));
+        assert!(!should_acquire_lock(&opts(|o| o.dry_run = true)));
+    }
+
+    #[test]
+    fn resume_skips_the_self_upgrade_branch() {
+        assert!(!should_self_upgrade(
+            &opts(|o| {
+                o.self_upgrade = true;
+                o.resume = true;
+            }),
+            false
+        ));
+        assert!(should_self_upgrade(&opts(|o| o.self_upgrade = true), false));
+        assert!(!should_self_upgrade(&opts(|o| o.self_upgrade = true), true));
+    }
+
+    #[test]
+    fn reexec_forwards_flags_but_never_self_or_dry_run() {
+        let dirs = vec![PathBuf::from("/a"), PathBuf::from("/b")];
+        let args = reexec_args(&opts(|o| {
+            o.json = true;
+            o.pre = true;
+            o.fix = true;
+            o.file_bugs = true;
+            o.dirs = dirs.clone();
+            o.self_upgrade = true;
+            o.dry_run = true;
+        }));
+        assert_eq!(args[0], "upgrade");
+        assert!(args.contains(&"--resume".to_string()));
+        for flag in ["--json", "--pre", "--fix", "--file-bugs"] {
+            assert!(args.contains(&flag.to_string()), "missing {flag}: {args:?}");
+        }
+        assert!(!args.contains(&"--self".to_string()));
+        assert!(!args.contains(&"--dry-run".to_string()));
+        let dir_positions: Vec<usize> = args
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| *a == "--dir")
+            .map(|(i, _)| i)
+            .collect();
+        assert_eq!(dir_positions.len(), 2);
+        for (idx, dir) in dirs.iter().enumerate() {
+            assert_eq!(args[dir_positions[idx] + 1], dir.to_string_lossy());
+        }
+    }
+
+    #[test]
+    fn dry_run_reports_dead_roots_without_persisting() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("installs.json");
+        let gone = dir.path().join("gone");
+        let mut index = InstallsIndex::default();
+        index
+            .register(&path, &gone, "claude-code", "0.12.0", "skills")
+            .unwrap();
+
+        let pruned = prune_index(&opts(|o| o.dry_run = true), &mut index, &path).unwrap();
+        assert_eq!(pruned.len(), 1);
+        assert_eq!(pruned[0].root, gone.to_string_lossy());
+
+        // The record survives on disk: dry-run reports, never persists.
+        let reloaded = InstallsIndex::load(&path).unwrap();
+        assert_eq!(reloaded.records.len(), 1);
+        assert_eq!(reloaded.records[0].root, gone.to_string_lossy());
+    }
+
+    fn write_lock_file(path: &Path, age: Duration) {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        let file = std::fs::File::create(path).unwrap();
+        let modified = SystemTime::now() - age;
+        file.set_times(std::fs::FileTimes::new().set_modified(modified))
+            .unwrap();
+    }
+
+    #[test]
+    fn stale_lock_is_taken_over() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("upgrade.lock");
+        write_lock_file(&path, STALE_LOCK_AGE + Duration::from_secs(60));
+
+        let guard = acquire_lock_at(&path).unwrap();
+        assert!(path.exists());
+        drop(guard);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn fresh_lock_is_not_stale() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("upgrade.lock");
+        write_lock_file(&path, Duration::from_secs(60));
+
+        let error = acquire_lock_at(&path).unwrap_err();
+        assert!(error.to_string().contains("already running"), "{error}");
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn resolve_self_binary_prefers_path_lookup() {
+        let dir = tempfile::tempdir().unwrap();
+        let bin = dir.path().join("shipmates");
+        std::fs::write(&bin, "#!/bin/sh\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        let path_var = std::ffi::OsStr::new(dir.path().to_str().unwrap());
+        assert_eq!(resolve_self_binary_with(Some(path_var)), bin);
     }
 }

@@ -272,3 +272,68 @@ EOF
   assert_success
   assert_output "1"
 }
+
+# --- refresh path ----------------------------------------------------------
+
+@test "upgrade --json refreshes a multi-harness root without prompting (no hang)" {
+  install_claude_code "$SANDBOX/app"
+  run "$SHIPMATES_BIN" install --harness opencode --dir "$SANDBOX/app" --with-tools none
+  assert_success
+
+  local feed="$BATS_TEST_TMPDIR/feed-older"
+  write_release_feed "$feed" '[{"draft":false,"prerelease":false,"tag_name":"v0.1.0","html_url":"https://example.invalid"}]'
+  export SHIPMATES_CURL="$feed"
+
+  run "$SHIPMATES_BIN" upgrade --json --dir "$SANDBOX/app"
+  assert_success
+  local json="$output"
+  run jq -e '.installs | length == 2' <<< "$json"
+  assert_success
+  run jq -e '.installs | map(.harness) | sort == ["claude-code", "opencode"]' <<< "$json"
+  assert_success
+}
+
+@test "upgrade --dry-run reports pruned roots without persisting them" {
+  install_claude_code "$SANDBOX/app"
+  local index="$HOME/.shipmates/installs.json"
+  [ -f "$index" ]
+  rm -rf "$SANDBOX/app"
+
+  local feed="$BATS_TEST_TMPDIR/feed-older"
+  write_release_feed "$feed" '[{"draft":false,"prerelease":false,"tag_name":"v0.1.0","html_url":"https://example.invalid"}]'
+  export SHIPMATES_CURL="$feed"
+
+  run "$SHIPMATES_BIN" upgrade --dry-run --json
+  assert_success
+  run jq -e '.pruned | length == 1 and .[0].reason == "missing"' <<< "$output"
+  assert_success
+  # The dead record survives on disk: --dry-run reports, never persists.
+  run jq -e '.records | length == 1' "$index"
+  assert_success
+}
+
+@test "upgrade --json reports and continues on a read-only root" {
+  install_claude_code "$SANDBOX/app"
+  chmod 0555 "$SANDBOX/app"
+
+  # Where 0555 is a no-op (root user, or a filesystem that ignores modes) the
+  # assertion below cannot hold, so skip instead of failing on the environment.
+  if touch "$SANDBOX/app/.write-probe" 2>/dev/null; then
+    rm -f "$SANDBOX/app/.write-probe"
+    skip "chmod is a no-op on this platform/path"
+  fi
+
+  local feed="$BATS_TEST_TMPDIR/feed-older"
+  write_release_feed "$feed" '[{"draft":false,"prerelease":false,"tag_name":"v0.1.0","html_url":"https://example.invalid"}]'
+  export SHIPMATES_CURL="$feed"
+
+  run "$SHIPMATES_BIN" upgrade --json --dir "$SANDBOX/app"
+  # Never a hard abort (exit 1): the refresh either succeeds (0) or its failure
+  # is recorded as a finding and the run continues (3).
+  [ "$status" -eq 0 ] || [ "$status" -eq 3 ]
+  run jq -e '.installs | length >= 1' <<< "$output"
+  assert_success
+
+  # Restore write permission so the throwaway sandbox can be cleaned up.
+  chmod 0755 "$SANDBOX/app"
+}

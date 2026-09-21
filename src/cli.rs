@@ -65,7 +65,11 @@ fn shell_single_quote(value: &str) -> String {
 ///
 /// `with_tools` is the raw CLI value (`none`, `all`, or a comma-joined list).
 /// Pass `None` when the flag was omitted (install default).
-pub fn install_force_hint(harness: &str, location: &LocationOpts, with_tools: Option<&str>) -> String {
+pub fn install_force_hint(
+    harness: &str,
+    location: &LocationOpts,
+    with_tools: Option<&str>,
+) -> String {
     let mut parts = vec![
         "shipmates install".to_string(),
         format!("--harness {harness}"),
@@ -320,8 +324,10 @@ Examples:
 binary, audit each, and optionally repair drift (--fix) or file upstream bugs
 (--file-bugs).
 
---self executes the detected channel's upgrade command (brew / cargo-dist) with
-everything else printed only. --pre includes prereleases in the release check.
+--self executes the detected channel's upgrade command (brew / cargo-dist), then
+re-executes the new binary to refresh and audit with the other flags you passed;
+without --self the channel command is printed, never executed. --pre includes
+prereleases in the release check.
 
 Examples:
   shipmates upgrade --check
@@ -370,7 +376,7 @@ read-only three-way version report."
         #[arg(long, help_heading = "Safety")]
         file_bugs: bool,
 
-        /// Execute the detected channel's upgrade command (brew / cargo-dist)
+        /// Execute the detected channel's upgrade command (brew / cargo-dist), then refresh and audit with the other flags passed; --dry-run makes it print-only
         #[arg(long = "self", help_heading = "What")]
         self_upgrade: bool,
 

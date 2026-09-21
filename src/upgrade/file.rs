@@ -220,7 +220,7 @@ fn issue_body(finding: &Finding) -> String {
         issue_title(finding),
         finding.harness,
         sanitize_root(&finding.root),
-        sanitize_text(&finding.detail),
+        sanitize_detail(&finding.detail, &finding.root),
         marker_for(finding),
     )
 }
@@ -230,7 +230,7 @@ fn comment_body(finding: &Finding) -> String {
         "Still present on shipmates v{} ({}).\n\n**Detail:** {}\n\n{}\n",
         env!("CARGO_PKG_VERSION"),
         class_slug(finding.class),
-        sanitize_text(&finding.detail),
+        sanitize_detail(&finding.detail, &finding.root),
         marker_for(finding),
     )
 }
@@ -253,6 +253,19 @@ fn sanitize_text(text: &str) -> String {
         Some(home) => text.replace(&home.to_string_lossy().to_string(), "~"),
         None => text.to_string(),
     }
+}
+
+/// Sanitise a finding's free-text detail: replace `$HOME` with `~`, then replace
+/// the finding's own root with its sanitized form (`~/…` under home,
+/// `<project-root>` outside it). A detail that embeds `root.display()` — the
+/// refresh-failure message does — must never leak a project root.
+fn sanitize_detail(detail: &str, root: &str) -> String {
+    let text = sanitize_text(detail);
+    if root.is_empty() {
+        return text;
+    }
+    let replacement = sanitize_root(root);
+    text.replace(root, &replacement)
 }
 
 #[cfg(test)]
@@ -386,5 +399,25 @@ mod tests {
         } else {
             assert!(logged.contains("<project-root>"), "{logged}");
         }
+    }
+
+    #[test]
+    fn detail_never_leaks_a_project_root_outside_home() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("secret-project");
+        let root_str = root.to_string_lossy().into_owned();
+        let finding = Finding {
+            class: FindingClass::RefreshFailed,
+            harness: "claude-code".to_string(),
+            root: root_str.clone(),
+            detail: format!("refresh failed for {root_str}: exit 1"),
+            fingerprint: fingerprint("claude-code", FindingClass::RefreshFailed),
+        };
+        let gh = write_fake_gh(dir.path(), "[]", "[]");
+
+        file_bugs(&[finding], &opts(&gh, 3, vec![])).unwrap();
+        let logged = log(dir.path());
+        assert!(!logged.contains(&root_str), "leaked root: {logged}");
+        assert!(logged.contains("<project-root>"), "{logged}");
     }
 }

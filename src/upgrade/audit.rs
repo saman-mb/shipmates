@@ -57,6 +57,16 @@ impl AuditOutcome {
     }
 }
 
+/// A harness this binary's adapters cannot resolve is reported as unrepairable
+/// drift rather than an error that would abort the whole run.
+fn unsupported_harness_outcome(report: InstallReport, harness: &str) -> AuditOutcome {
+    AuditOutcome::Problems {
+        report,
+        detail: format!("unsupported harness `{harness}` — this binary cannot audit its install"),
+        classes: vec![FindingClass::UnrepairableDrift],
+    }
+}
+
 /// Read-only audit of ONE install. Reuses `doctor::diagnose`; never writes.
 pub fn audit_install(
     root: &Path,
@@ -135,6 +145,13 @@ pub fn audit_install(
             let mut classes: Vec<FindingClass> = Vec::new();
             let mut parts: Vec<String> = Vec::new();
             let mut drift_count = 0usize;
+
+            // A retired/unknown harness receipt must not abort the whole run
+            // with a diagnose/select error: report it as unrepairable drift.
+            if adapters::select(harness).is_err() {
+                report.state = InstallState::Drift;
+                return Ok(unsupported_harness_outcome(report, harness));
+            }
 
             // 3. doctor's content/payload comparison. A doctor error means the
             // receipt cannot be trusted to describe the tree, which is a corrupt
@@ -492,6 +509,30 @@ mod tests {
                 assert!(classes.contains(&FindingClass::ToolFailure));
             }
             AuditOutcome::Clean { .. } => panic!("expected ToolFailure at Full depth"),
+        }
+    }
+
+    #[test]
+    fn unknown_harness_is_unrepairable_drift_not_error() {
+        let report = InstallReport {
+            root: "/tmp/example".to_string(),
+            harness: "gemini".to_string(),
+            receipt_version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            layout: Some("skills".to_string()),
+            managed: true,
+            drift_count: 0,
+            tools: Vec::new(),
+            state: InstallState::Drift,
+        };
+        let outcome = unsupported_harness_outcome(report, "gemini");
+        match outcome {
+            AuditOutcome::Problems {
+                classes, detail, ..
+            } => {
+                assert_eq!(classes, vec![FindingClass::UnrepairableDrift]);
+                assert!(detail.contains("gemini"), "{detail}");
+            }
+            other => panic!("expected Problems, got {other:?}"),
         }
     }
 }

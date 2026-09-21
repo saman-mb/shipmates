@@ -522,8 +522,7 @@ fn install_harness(
     // the whole install aborted on a path that was already correct. Every skipped
     // path is named below, and the tools summary / returned tool list reflect
     // what actually landed — never the requested set (#489).
-    let (built, mut skipped_symlinked) =
-        partition_symlinked(target_dir, &payload_prefix, built)?;
+    let (built, mut skipped_symlinked) = partition_symlinked(target_dir, &payload_prefix, built)?;
     let (tools_payload, skipped_tools) =
         partition_symlinked(target_dir, &payload_prefix, tools_payload)?;
     skipped_symlinked.extend(skipped_tools);
@@ -755,10 +754,7 @@ fn install_harness(
             harness, result.written, tool_change
         );
     } else {
-        let names: Vec<&str> = landed_tools
-            .iter()
-            .map(|tool| tool.name.as_str())
-            .collect();
+        let names: Vec<&str> = landed_tools.iter().map(|tool| tool.name.as_str()).collect();
         println!(
             "Installed harness: {} ({} files written, {} — {})",
             harness,
@@ -940,7 +936,7 @@ fn main() -> Result<()> {
             let install_steering = source.steering_for_target(&target_dir)?;
             let harnesses = resolve_install_harnesses(harness, Some(&target_dir))?;
 
-            run_install_loop(
+            let install_result = run_install_loop(
                 &target_dir,
                 &harnesses,
                 ToolSelection::Explicit(selected_tools),
@@ -952,7 +948,7 @@ fn main() -> Result<()> {
                 force,
                 install_steering.is_some(),
                 &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
-            )?;
+            );
 
             // Global steering is user-scope only (#489). A project --local/--dir
             // install must not rewrite ~/.claude/CLAUDE.md (and friends); that
@@ -986,6 +982,7 @@ fn main() -> Result<()> {
                 }
             }
             register_installs(&target_dir, &harnesses);
+            install_result?;
         }
         Command::Uninstall {
             harness,
@@ -1106,7 +1103,7 @@ fn main() -> Result<()> {
                 None => ToolSelection::FromReceipt,
             };
             let install_steering = source.steering_for_target(&target_dir)?;
-            run_install_loop(
+            let install_result = run_install_loop(
                 &target_dir,
                 &harnesses,
                 tools,
@@ -1118,7 +1115,7 @@ fn main() -> Result<()> {
                 true,
                 install_steering.is_some(),
                 &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
-            )?;
+            );
 
             // Refresh canonical global steering only on a global/$HOME target (#489).
             if installer::manifest_db::is_global_target(&target_dir)
@@ -1130,6 +1127,7 @@ fn main() -> Result<()> {
                 }
             }
             register_installs(&target_dir, &harnesses);
+            install_result?;
         }
         Command::Doctor {
             harness,
@@ -1146,8 +1144,7 @@ fn main() -> Result<()> {
             // Replay the tools posture the receipt claims so a foreign-collision
             // force hint does not silently broaden a crew-only install (#392 nit).
             let with_tools = with_tools_flag_from_receipt(&target_dir, &harness, &tools);
-            let force_hint =
-                install_force_hint(&harness, &location, with_tools.as_deref());
+            let force_hint = install_force_hint(&harness, &location, with_tools.as_deref());
 
             let report = if fix {
                 doctor::fix(
@@ -1190,7 +1187,7 @@ fn main() -> Result<()> {
             dir,
             file_bugs,
             self_upgrade,
-            resume: _,
+            resume,
         } => {
             let dirs: Vec<PathBuf> = dir.into_iter().map(PathBuf::from).collect();
             let code = if check {
@@ -1204,6 +1201,7 @@ fn main() -> Result<()> {
                     dirs,
                     file_bugs,
                     self_upgrade,
+                    resume,
                 })?
             };
             std::process::exit(code);
@@ -1318,7 +1316,6 @@ fn combine_rollback_error(error: anyhow::Error, rollback: Result<()>) -> anyhow:
         Err(rollback) => error.context(rollback.to_string()),
     }
 }
-
 
 #[cfg(test)]
 mod tests {
