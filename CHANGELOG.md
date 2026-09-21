@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-09-21
+
+### Fixed
+
+- **Unmanaged scan no longer walks harness runtime dirs.** Receipt unmanaged detection
+  stays in the payload's own subtrees and does not walk sessions, plugins, or synced
+  runtime dirs (#518).
+- **`doctor --fix` prunes installer-shaped steering bak siblings** when steering is
+  current (#518).
+- **PO docs/content ACs need a machine pin or `manual-only`.** Silent ACCEPT from
+  reading the page is forbidden (#528).
+- **Pi `runtime_verified` records `crew_resolve`/`command_e2e` as `no`.** A spawn-dead
+  child-launch is a named stop, never an inline board or silent `board=off` (#525).
+
 ## [0.11.0] - 2026-09-21
 
 ### Removed

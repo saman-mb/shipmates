@@ -512,12 +512,12 @@
       },
       "runtime_verified": {
         "status": "partial",
-        "verified_on": "2026-09-18",
+        "verified_on": "2026-09-20",
         "argument_passing": "unknown",
-        "command_e2e": "unknown",
+        "command_e2e": "no",
         "commands_exercised": [],
-        "crew_resolve": "unknown",
-        "notes": "Captain-attested live run (#497, 2026-09-18). Pi crew resolve depends on the third-party pi-subagents extension; granular criteria not separately logged (unknown). Not a Tier-A /shipmates-issue proof."
+        "crew_resolve": "no",
+        "notes": "#525 (2026-09-20): empty ~/.pi/agent/npm/node_modules/@earendil-works/ peer slot; pi-subagents child-session import of @earendil-works/pi-coding-agent dies before any crew role produces output — crew_resolve=no, command_e2e=no; argument_passing still unknown. #497 attestation still stands for a live run existing. Does not claim spawn works."
       }
     },
     "grok-build": {

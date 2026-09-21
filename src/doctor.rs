@@ -223,7 +223,34 @@ fn scan_hygiene(
             collect_husks(target_dir, &tree_rel, &live, &mut hygiene)?;
         }
     }
+    collect_current_steering_hygiene(target_dir, harness, payload, &mut hygiene);
     Ok(hygiene)
+}
+
+/// Installer-shaped siblings of a *current* global steering file are spent
+/// backups, the same way payload sidecars are. Drifted steering keeps its
+/// sidecar (it may be the undo). Hand-named `*.bak-mine` never matches.
+fn collect_current_steering_hygiene(
+    target_dir: &Path,
+    harness: &str,
+    payload: &BTreeMap<String, String>,
+    hygiene: &mut Hygiene,
+) {
+    let content = crate::catalog::load_global_steering_embedded().unwrap_or_default();
+    let Ok(crate::steering::GlobalSteeringStatus::Installed {
+        path,
+        up_to_date: true,
+    }) = crate::steering::check_global_steering(harness, target_dir, &content)
+    else {
+        return;
+    };
+    if let Ok(rel) = path.strip_prefix(target_dir) {
+        let rel = rel.to_string_lossy().replace('\\', "/");
+        if payload.contains_key(&rel) {
+            return;
+        }
+    }
+    hygiene.superseded.extend(plan::sibling_install_backups(&path));
 }
 
 /// Collect the husks directly under one install tree (`.agents/skills`).
@@ -2480,6 +2507,64 @@ mod tests {
             interrupted.exists(),
             "the sidecar of a file that was drifted at report time stays"
         );
+    }
+
+    #[test]
+    fn test_hygiene_prunes_current_global_steering_bak_and_leaves_the_rest() {
+        let dir = tempdir().unwrap();
+        let target = dir.path();
+        let roles = [role("architect")];
+        let cmds = [cmd("ship-issue")];
+        install_healthy(target, &roles, &cmds);
+        write_receipt(target, &roles, &cmds, &[]);
+
+        let content = crate::catalog::load_global_steering_embedded().unwrap();
+        crate::steering::install_global_steering("claude-code", target, &content).unwrap();
+        let steering = target.join(".claude/CLAUDE.md");
+        let bak = steering.with_file_name("CLAUDE.md.bak-1700000000-4242-0");
+        atomic_write(&bak, "old steering\n").unwrap();
+        let mine = steering.with_file_name("CLAUDE.md.bak-mine");
+        atomic_write(&mine, "hand named\n").unwrap();
+
+        let before = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
+        assert_ne!(
+            sev(&before, "Hygiene"),
+            Severity::Ok,
+            "installer-shaped steering bak must not read as shipshape: {:?}",
+            before
+                .checks
+                .iter()
+                .find(|c| c.name == "Hygiene")
+                .map(|c| &c.detail)
+        );
+
+        let after = fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert!(!bak.exists(), "current steering bak must be pruned");
+        assert!(
+            mine.exists(),
+            "a hand-named backup is not shipmates' to prune"
+        );
+        assert_eq!(sev(&after, "Hygiene"), Severity::Ok);
+
+        atomic_write(
+            &steering,
+            concat!(
+                "<!-- shipmates:global-steering -->\n",
+                "drifted\n",
+                "<!-- /shipmates:global-steering -->\n",
+            ),
+        )
+        .unwrap();
+        atomic_write(&bak, "undo copy\n").unwrap();
+        let drifted = diagnose(target, "claude-code", &roles, &cmds, &[]).unwrap();
+        assert_eq!(
+            sev(&drifted, "Hygiene"),
+            Severity::Ok,
+            "bak beside drifted steering is the undo, not litter"
+        );
+        fix(target, "claude-code", &roles, &cmds, &[], false).unwrap();
+        assert!(bak.exists(), "sidecar beside drifted steering must remain");
+        assert!(mine.exists());
     }
 
     #[test]
