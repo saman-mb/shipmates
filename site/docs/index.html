@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Docs — install, harnesses, troubleshooting, architecture · Shipmates</title>
-  <meta name="description" content="Reference documentation for installing, configuring, and understanding Shipmates — install flags, the harness matrix, troubleshooting, and architecture.">
+  <title>Docs — install, how commands work, harnesses, troubleshooting, architecture · Shipmates</title>
+  <meta name="description" content="Reference and how-to documentation for Shipmates — install flags, how commands work, the harness matrix, troubleshooting, and architecture.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/docs/">
   <link rel="icon" href="../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="Shipmates docs">
-  <meta property="og:description" content="Reference documentation for installing, configuring, and understanding Shipmates — install flags, the harness matrix, troubleshooting, and architecture.">
+  <meta property="og:description" content="Reference and how-to documentation for Shipmates — install flags, how commands work, the harness matrix, troubleshooting, and architecture.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/docs/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Shipmates docs">
-  <meta name="twitter:description" content="Reference documentation for installing, configuring, and understanding Shipmates — install flags, the harness matrix, troubleshooting, and architecture.">
+  <meta name="twitter:description" content="Reference and how-to documentation for Shipmates — install flags, how commands work, the harness matrix, troubleshooting, and architecture.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../styles.css">
@@ -33,7 +33,9 @@
     "url": "https://saman-mb.github.io/shipmates/docs/",
     "hasPart": [
       { "@type": "TechArticle", "name": "Install reference", "url": "https://saman-mb.github.io/shipmates/docs/install/" },
+      { "@type": "TechArticle", "name": "How commands work", "url": "https://saman-mb.github.io/shipmates/docs/how-commands-work/" },
       { "@type": "TechArticle", "name": "Harness matrix", "url": "https://saman-mb.github.io/shipmates/docs/harnesses/" },
+      { "@type": "TechArticle", "name": "GitHub Copilot quickstart", "url": "https://saman-mb.github.io/shipmates/docs/github-copilot/" },
       { "@type": "TechArticle", "name": "Troubleshooting", "url": "https://saman-mb.github.io/shipmates/docs/troubleshooting/" },
       { "@type": "TechArticle", "name": "Architecture", "url": "https://saman-mb.github.io/shipmates/docs/architecture/" }
     ]
@@ -85,13 +87,18 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="pages-title">The reference pages</h2>
-          <p class="section__lead">Five references for installing and running the crew. Every fact is sourced straight from the repo, so nothing here drifts from what the CLI actually does.</p>
+          <p class="section__lead">Six references for installing and running the crew. Every fact is sourced straight from the repo, so nothing here drifts from what the CLI actually does.</p>
         </div>
         <ul class="orders__grid">
           <li class="command-card">
             <h3 class="command-card__cmd"><a class="command-card__link" href="install/">Install reference</a></h3>
             <p class="command-card__desc">Every flag, scope, and path the installer touches — per-harness roots, the manifest, backups, verify, and uninstall.</p>
             <span class="command-card__more" aria-hidden="true">Read the reference →</span>
+          </li>
+          <li class="command-card">
+            <h3 class="command-card__cmd"><a class="command-card__link" href="how-commands-work/">How commands work</a></h3>
+            <p class="command-card__desc">The shared machinery under every command — worktree isolation, the CI gate, the acceptance board, merge modes, and cost discipline.</p>
+            <span class="command-card__more" aria-hidden="true">See how a run behaves →</span>
           </li>
           <li class="command-card">
             <h3 class="command-card__cmd"><a class="command-card__link" href="harnesses/">Harness matrix</a></h3>
@@ -125,6 +132,7 @@
         <nav class="command-siblings" aria-label="Docs pages">
           <ul class="command-siblings__list" role="list">
             <li class="command-siblings__item"><a class="command-siblings__link" href="install/">Install reference</a></li>
+            <li class="command-siblings__item"><a class="command-siblings__link" href="how-commands-work/">How commands work</a></li>
             <li class="command-siblings__item"><a class="command-siblings__link" href="harnesses/">Harness matrix</a></li>
             <li class="command-siblings__item"><a class="command-siblings__link" href="github-copilot/">GitHub Copilot quickstart</a></li>
             <li class="command-siblings__item"><a class="command-siblings__link" href="troubleshooting/">Troubleshooting</a></li>
