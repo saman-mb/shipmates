@@ -92,7 +92,7 @@ While Shipmates is runtime-verified on **Claude Code** today, the CLI compiles n
 - **GitHub Copilot**: `.agents/skills/` and `.github/agents/`
 - **Pi**: `.agents/skills/` and `.pi/agents/`
 - **Grok Build**: `.grok/skills/` and `.grok/agents/`
-- **Windsurf**: `.windsurf/skills/`
+- **Devin CLI**: `.devin/skills/` (the legacy `.windsurf/skills/` tree is still read by the product and adopted on install)
 
 ---
 

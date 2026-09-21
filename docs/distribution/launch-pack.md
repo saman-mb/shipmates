@@ -27,7 +27,7 @@ How it works:
 6. Opens a clean PR with a concise ledger of decisions.
 
 Multi-harness support:
-Runtime-verified on Claude Code today, with native build adapters for OpenCode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot, Pi, Grok Build, and Windsurf.
+Runtime-verified on Claude Code today, with native build adapters for OpenCode, Antigravity CLI, Codex CLI, Cursor, GitHub Copilot, Pi, Grok Build, and Devin CLI.
 
 Written in Rust as a single binary:
 `brew install saman-mb/tap/shipmates` or `cargo install shipmates`
@@ -109,7 +109,7 @@ Shipmates is built in Rust with native compilation adapters for 9 harnesses:
 • GitHub Copilot
 • Pi
 • Grok Build
-• Windsurf
+• Devin CLI (Devin Desktop, formerly Windsurf)
 
 ### Tweet 5 (Get Started)
 Try it in under 60 seconds:
