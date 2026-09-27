@@ -517,14 +517,8 @@ pub(crate) fn global_root(harness: &str) -> Option<&'static str> {
 /// else, such as `.shipmates/contributor-steering.md`, stays put.
 ///
 /// The resource is taken from the second path component rather than the first,
-/// because pi keeps its crew and its skills in *different* payload dotdirs
-/// (`.pi/agents/…` and `.agents/skills/…`) while both belong under
-/// `~/.pi/agent/` once installed globally.
-/// True when `rel` is a command/tool skill path (`…/skills/<name>/…`).
-fn is_skill_rel(rel: &str) -> bool {
-    rel.split('/').any(|part| part == "skills")
-}
-
+/// so paths like `.pi/agents/…` and `.pi/skills/…` relocate to `{global_root}/agents/…`
+/// and `{global_root}/skills/…`.
 pub(crate) fn global_relocate(harness: &str, rel: &str) -> Option<String> {
     let root = global_root(harness)?;
     let mut parts = rel.splitn(3, '/');
@@ -578,20 +572,10 @@ pub fn relocate_payload(
     let mut out = HashMap::with_capacity(built.len());
     for (key, content) in built {
         let new_key = match key.strip_prefix(&prefix) {
-            Some(rel) => {
-                // #513: Pi loads user-scope `~/.pi/agent/skills` and project
-                // `.agents/skills` / `.pi/skills` in the same session. Writing
-                // command skills into the user tree is what collides with a
-                // project or sibling shared-tree install. Global pi keeps crew;
-                // skills stay project-local at `.pi/skills`.
-                if harness == "pi" && is_skill_rel(rel) {
-                    continue;
-                }
-                match global_relocate(harness, rel) {
-                    Some(relocated) => format!("{prefix}{relocated}"),
-                    None => key.clone(),
-                }
-            }
+            Some(rel) => match global_relocate(harness, rel) {
+                Some(relocated) => format!("{prefix}{relocated}"),
+                None => key.clone(),
+            },
             None => key.clone(),
         };
         out.insert(new_key, content.clone());

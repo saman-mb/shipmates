@@ -155,13 +155,13 @@
       "name": "pi",
       "vendor": "Earendil Works",
       "source": "shipped-target",
-      "tree": "shared",
+      "tree": "native",
       "subagents": "yes",
       "verdict": "shipped",
       "evidence": {
         "url": "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/skills.md",
-        "checked_on": "2026-09-22",
-        "quote": ".agents/skills (crew at .pi/agents/)"
+        "checked_on": "2026-09-27",
+        "quote": ".pi/skills/<name>/SKILL.md, crew .pi/agents/<name>.md"
       },
       "reason": "A named target: adapter, payload digest, install lifecycle, harness matrix entry and receipt. Runtime verification is tracked separately per harness; the harness matrix records which axes have been observed live."
     },

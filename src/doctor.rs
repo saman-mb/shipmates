@@ -628,13 +628,9 @@ fn expected_at(
     }
     expected
         .into_iter()
-        .filter_map(|(rel, content)| {
-            // Mirror install: global pi omits command/tool skills (#513).
-            if harness == "pi" && rel.split('/').any(|part| part == "skills") {
-                return None;
-            }
+        .map(|(rel, content)| {
             let relocated = manifest_db::global_relocate(harness, &rel).unwrap_or(rel);
-            Some((relocated, content))
+            (relocated, content)
         })
         .collect()
 }
@@ -1538,7 +1534,7 @@ fn pi_dual_skill_tree_check(target_dir: &Path) -> Check {
             name: "Pi skill trees".into(),
             severity: Severity::Warn,
             detail: format!(
-                "Pi loads user-scope and project skill trees in the same session; these Shipmates names appear in more than one: {}. Prefer one tree — project `.agents/skills` via `--dir` — and do not also keep command skills under ~/.pi/agent/skills.",
+                "Pi loads user-scope and project skill trees in the same session; these Shipmates names appear in more than one: {}. Prefer one tree — project `.pi/skills` via `--dir` — or global `~/.pi/agent/skills`, not both.",
                 overlap.join("; ")
             ),
             fixable: false,

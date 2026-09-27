@@ -503,8 +503,8 @@ fn test_non_claude_targets_build_via_cli() {
             String::from_utf8_lossy(&output.stderr)
         );
     }
-    // Every harness that reads the open Agent Skills tree ships its skills to the
-    // shared `.agents/skills/` location, not a harness-private one.
+    // Harnesses that read the open Agent Skills tree ship skills to the
+    // shared `.agents/skills/` location.
     let codex_skill = temp_dir
         .path()
         .join("harnesses/codex/.agents/skills/shipmates-ship-issue/SKILL.md");
@@ -516,21 +516,22 @@ fn test_non_claude_targets_build_via_cli() {
         copilot_skill.is_file(),
         "copilot shipmates-ship-issue skill not emitted"
     );
+    // Pi ships to its native `.pi/skills/` tree
     let pi_skill = temp_dir
         .path()
-        .join("harnesses/pi/.agents/skills/shipmates-ship-issue/SKILL.md");
+        .join("harnesses/pi/.pi/skills/shipmates-ship-issue/SKILL.md");
     assert!(pi_skill.is_file(), "pi shipmates-ship-issue skill not emitted");
-    // ...and the shared rendering is byte-identical across those harnesses.
+    let pi_content = std::fs::read_to_string(&pi_skill).unwrap();
+    assert!(pi_content.contains("allowed-tools:"), "pi must carry allowed-tools: {pi_content}");
+    assert!(pi_content.contains("disable-model-invocation: true"), "pi must carry guard: {pi_content}");
+    assert!(pi_content.contains("/skill:"), "pi must use /skill: routing: {pi_content}");
+
+    // ...and the shared rendering is byte-identical across the shared harnesses.
     let codex_bytes = std::fs::read(&codex_skill).unwrap();
     let copilot_bytes = std::fs::read(&copilot_skill).unwrap();
-    let pi_bytes = std::fs::read(&pi_skill).unwrap();
     assert_eq!(
         codex_bytes, copilot_bytes,
         "shared skill must be identical across harnesses"
-    );
-    assert_eq!(
-        codex_bytes, pi_bytes,
-        "pi shared skill must be identical across harnesses"
     );
 }
 
@@ -769,10 +770,18 @@ fn test_pi_global_install_prints_project_local_guidance() {
         "missing install line: {global_out}"
     );
     assert!(
-        global_out.contains(".agents/skills")
-            && global_out.contains("--local")
-            && global_out.contains("command skills"),
+        global_out.contains("~/.pi/agent/") && global_out.contains("/skill:"),
         "missing pi home-install guidance: {global_out}"
+    );
+    assert!(
+        home.path()
+            .join(".pi/agent/skills/shipmates-ship-issue/SKILL.md")
+            .is_file(),
+        "global pi install must write command skills to ~/.pi/agent/skills/"
+    );
+    assert!(
+        home.path().join(".pi/agent/agents/architect.md").is_file(),
+        "global pi install must write crew to ~/.pi/agent/agents/"
     );
 
     let local = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
@@ -800,52 +809,31 @@ fn test_pi_global_install_prints_project_local_guidance() {
         "missing install line: {local_out}"
     );
     assert!(
-        !local_out.contains("nearest ancestor") && !local_out.contains("shadowed"),
+        !local_out.contains("nearest ancestor") && !local_out.contains("shadow"),
         "project-local pi install must not print the home-shadow hint: {local_out}"
+    );
+    assert!(
+        project
+            .path()
+            .join(".pi/skills/shipmates-ship-issue/SKILL.md")
+            .is_file(),
+        "project pi install must write command skills to .pi/skills/"
+    );
+    assert!(
+        project.path().join(".pi/agents/architect.md").is_file(),
+        "project pi install must write crew to .pi/agents/"
     );
 }
 
-/// Pi-visible skill directory names under `home` + `project` (the trees Pi
-/// loads: user `~/.pi/agent/skills` and `~/.agents/skills`, project `.pi/skills`
-/// and `.agents/skills`).
-fn pi_visible_skill_names(home: &std::path::Path, project: &std::path::Path) -> std::collections::BTreeMap<String, Vec<std::path::PathBuf>> {
-    use std::collections::BTreeMap;
-    let roots = [
-        home.join(".pi/agent/skills"),
-        home.join(".agents/skills"),
-        project.join(".pi/skills"),
-        project.join(".agents/skills"),
-    ];
-    let mut by_name: BTreeMap<String, Vec<std::path::PathBuf>> = BTreeMap::new();
-    for root in roots {
-        let Ok(entries) = std::fs::read_dir(&root) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            if !(name.starts_with("ship-") || name.starts_with("shipmates-")) {
-                continue;
-            }
-            if entry.path().join("SKILL.md").is_file() {
-                by_name.entry(name).or_default().push(entry.path());
-            }
-        }
-    }
-    by_name
-}
 
-/// #513: a global Pi install plus a project Pi install (non-git dir under
-/// $HOME, so Pi would walk `.agents/skills` all the way up) must not leave the
-/// same Shipmates skill name in two trees Pi loads.
+/// #548: A global Pi install ships command and tool skills to ~/.pi/agent/skills/,
+/// and crew to ~/.pi/agent/agents/. When both a global and project Pi install
+/// exist, doctor warns about the overlapping skill trees (#513).
 #[test]
-fn test_pi_global_plus_project_install_does_not_duplicate_skill_names() {
+fn test_pi_global_and_project_installs_ship_to_their_respective_roots() {
     let home = tempfile::tempdir().unwrap();
     let project = home.path().join("workdir");
     std::fs::create_dir_all(&project).unwrap();
-    assert!(
-        !project.join(".git").exists(),
-        "repro is a non-git directory under $HOME"
-    );
 
     let global = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
         .env("HOME", home.path())
@@ -864,6 +852,16 @@ fn test_pi_global_plus_project_install_does_not_duplicate_skill_names() {
         "stdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&global.stdout),
         String::from_utf8_lossy(&global.stderr)
+    );
+    assert!(
+        home.path()
+            .join(".pi/agent/skills/shipmates-ship-issue/SKILL.md")
+            .is_file(),
+        "global pi install must ship skills to ~/.pi/agent/skills/"
+    );
+    assert!(
+        home.path().join(".pi/agent/agents/architect.md").is_file(),
+        "global pi install must ship crew to ~/.pi/agent/agents/"
     );
 
     let local = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
@@ -885,84 +883,79 @@ fn test_pi_global_plus_project_install_does_not_duplicate_skill_names() {
         String::from_utf8_lossy(&local.stdout),
         String::from_utf8_lossy(&local.stderr)
     );
-
-    let by_name = pi_visible_skill_names(home.path(), &project);
-    let dupes: Vec<_> = by_name
-        .iter()
-        .filter(|(_, paths)| paths.len() > 1)
-        .collect();
     assert!(
-        dupes.is_empty(),
-        "Pi would load the same Shipmates skill from more than one tree (#513): {dupes:?}"
+        project
+            .join(".pi/skills/shipmates-ship-issue/SKILL.md")
+            .is_file(),
+        "project pi install must ship skills to .pi/skills/"
     );
     assert!(
-        by_name.keys().any(|name| name.contains("issue")),
-        "expected at least one shipmates issue skill in a Pi-visible tree, got {by_name:?}"
+        project.join(".pi/agents/architect.md").is_file(),
+        "project pi install must ship crew to .pi/agents/"
+    );
+
+    let doc = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .env("HOME", home.path())
+        .args([
+            "doctor",
+            "--harness",
+            "pi",
+            "--dir",
+            project.to_str().unwrap(),
+        ])
+        .output()
+        .expect("doctor check");
+    let doc_out = String::from_utf8_lossy(&doc.stdout);
+    assert!(
+        doc_out.contains("Pi skill trees") && doc_out.contains("shipmates-ship-issue"),
+        "doctor must warn when global and project pi skill trees overlap (#513): {doc_out}"
     );
 }
 
-/// #513: global Pi plus a sibling shared-tree harness in a project under
-/// $HOME must not leave duplicate Shipmates skill names in trees Pi loads.
+/// #553, #554: Pi native skills in project carry tool scoping, user guard,
+/// and /skill: routing.
 #[test]
-fn test_pi_global_plus_shared_tree_project_install_does_not_duplicate_skill_names() {
+fn test_pi_project_install_ships_native_skills_with_scoping() {
     let home = tempfile::tempdir().unwrap();
     let project = home.path().join("workdir");
     std::fs::create_dir_all(&project).unwrap();
 
-    let global = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+    let local = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
         .env("HOME", home.path())
         .args([
             "install",
             "--harness",
             "pi",
-            "--global",
-            "--with-tools",
-            "none",
-        ])
-        .output()
-        .expect("global pi install");
-    assert!(
-        global.status.success(),
-        "stdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&global.stdout),
-        String::from_utf8_lossy(&global.stderr)
-    );
-
-    let sibling = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
-        .env("HOME", home.path())
-        .args([
-            "install",
-            "--harness",
-            "antigravity",
             "--dir",
             project.to_str().unwrap(),
             "--with-tools",
             "none",
         ])
         .output()
-        .expect("project antigravity install");
-    assert!(
-        sibling.status.success(),
-        "stdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&sibling.stdout),
-        String::from_utf8_lossy(&sibling.stderr)
-    );
+        .expect("project pi install");
+    assert!(local.status.success());
 
-    let by_name = pi_visible_skill_names(home.path(), &project);
-    let dupes: Vec<_> = by_name
-        .iter()
-        .filter(|(_, paths)| paths.len() > 1)
-        .collect();
+    let skill_path = project.join(".pi/skills/shipmates-ship-issue/SKILL.md");
+    let content = std::fs::read_to_string(&skill_path).unwrap();
     assert!(
-        dupes.is_empty(),
-        "Pi would load the same Shipmates skill from more than one tree after a sibling shared-tree install (#513): {dupes:?}"
+        content.contains("allowed-tools: bash read write edit subagent grep find web_search fetch_content\n"),
+        "{content}"
     );
+    assert!(
+        content.contains("disable-model-invocation: true\n"),
+        "{content}"
+    );
+    assert!(
+        content.contains("argument-hint: "),
+        "{content}"
+    );
+    assert!(content.contains("/skill:shipmates-"), "{content}");
 }
 
-/// #513: project Pi + a sibling shared-tree harness must share one
-/// `.agents/skills` copy, not plant `.pi/skills` beside it.
+/// #548, #554: Project Pi and a shared-tree sibling (Antigravity) install to
+/// their respective native trees (.pi/skills and .agents/skills).
 #[test]
-fn test_project_pi_plus_sibling_shared_tree_is_one_copy() {
+fn test_project_pi_and_shared_tree_sibling_install_to_their_respective_trees() {
     let home = tempfile::tempdir().unwrap();
     let project = home.path().join("workdir");
     std::fs::create_dir_all(&project).unwrap();
@@ -989,22 +982,30 @@ fn test_project_pi_plus_sibling_shared_tree_is_one_copy() {
         );
     }
 
-    let by_name = pi_visible_skill_names(home.path(), &project);
-    let dupes: Vec<_> = by_name
-        .iter()
-        .filter(|(_, paths)| paths.len() > 1)
-        .collect();
     assert!(
-        dupes.is_empty(),
-        "project pi + sibling must not duplicate Shipmates skill names across Pi-visible trees: {dupes:?}"
+        project.join(".pi/skills/shipmates-ship-issue/SKILL.md").is_file(),
+        "Pi native skills must land at .pi/skills/"
     );
     assert!(
         project.join(".agents/skills/shipmates-ship-issue/SKILL.md").is_file(),
-        "the shared copy must exist"
+        "Antigravity shared skills must land at .agents/skills/"
     );
+
+    let doc = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+        .env("HOME", home.path())
+        .args([
+            "doctor",
+            "--harness",
+            "pi",
+            "--dir",
+            project.to_str().unwrap(),
+        ])
+        .output()
+        .expect("doctor check");
+    let doc_out = String::from_utf8_lossy(&doc.stdout);
     assert!(
-        !project.join(".pi/skills/shipmates-ship-issue/SKILL.md").exists(),
-        "project pi must not also write .pi/skills beside the shared tree"
+        doc_out.contains("Pi skill trees") && doc_out.contains("shipmates-ship-issue"),
+        "doctor must warn when pi skills and shared skills both exist in project: {doc_out}"
     );
 }
 
