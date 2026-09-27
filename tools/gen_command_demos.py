@@ -240,6 +240,19 @@ COMMANDS = {
         ],
         "closer": "Filed — graded, grouped, yours to choose. ⚓",
     },
+    "shipmates-upgrade": {
+        "arg": "",
+        "stages": [
+            ("INTAKE", "tokens -> report | apply · pre · file-bugs"),
+            ("SURVEY", "upgrade --check --json + status --json"),
+            ("UPGRADE", "newer release? --self (brew / cargo-dist)"),
+            ("REFRESH", "--fix --json, per root"),
+            ("FINDINGS", "class · harness · root · fingerprint"),
+            ("FILE", "apply + file-bugs -> upstream, deduped"),
+            ("REPORT", "what changed + restart the harness"),
+        ],
+        "closer": "Upgraded — every install refreshed and audited. ⚓",
+    },
 }
 
 

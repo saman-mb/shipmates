@@ -109,6 +109,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://saman-mb.github.io/shipmates/commands/shipmates-upgrade/</loc>
+    <lastmod>2026-07-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://saman-mb.github.io/shipmates/agents/architect/</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>monthly</changefreq>

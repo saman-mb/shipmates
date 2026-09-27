@@ -81,14 +81,15 @@ from anything hardcoded into the role.
 | `/shipmates-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/shipmates-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
 | `/shipmates-deslop [target] [file|ship]` | Audits the codebase for health debt — dead code, duplication, misplaced layers, dependency and config rot — grades each finding by risk, and files it as an epic behind a human gate |
+| `/shipmates-upgrade [apply] [pre] [file-bugs]` | Checks for a newer Shipmates release and refreshes, audits, and repairs every known install — check-and-report by default; `apply` runs the upgrade/repair/filing steps |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
-worktree, and hands you a pull request — your checkout is left as you left it. `/shipmates-report-bug` writes to
-the upstream Shipmates repo (preview by default), not your project. `/shipmates-release` is the one
+worktree, and hands you a pull request — your checkout is left as you left it. `/shipmates-report-bug` and the opt-in `file-bugs` token of
+`/shipmates-upgrade` write to the upstream Shipmates repo, not your project. `/shipmates-release` is the one
 exception: the release commit has to land on the branch being tagged, so it commits, pushes and tags
 straight in your checkout instead of an unmerged side branch. `/shipmates-pr-review` and the default
-`report` mode of `/shipmates-harden`, `/shipmates-consolidate-issues` and `/shipmates-deslop` write nothing at
-all. Writing straight into the working tree is opt-in
+`report` mode of `/shipmates-harden`, `/shipmates-consolidate-issues`, `/shipmates-deslop` and
+`/shipmates-upgrade` write nothing at all. Writing straight into the working tree is opt-in
 (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
 **There's deliberately no `code-reviewer`.** Review is split by discipline instead of pooled into one
@@ -200,7 +201,7 @@ devin            .devin/           agents + skills   (Devin CLI / Devin Desktop 
 ```
 
 Every harness compiles the same canonical crew and commands. Eight receive the thirteen specialists as
-agents; cursor ships the seventeen commands as skills only. Pi's crew resolve through the
+agents; cursor ships the eighteen commands as skills only. Pi's crew resolve through the
 third-party `pi-subagents` extension — core pi documents no subagent schema of its own — so a pi
 install without that extension resolves no crew. Pi reads its crew from the nearest ancestor directory
 carrying `.pi/` or `.agents/`, so install into your project: a home-directory install only takes effect
@@ -306,7 +307,7 @@ The CI smoke is deliberately layout/install-only; neither path proves Codex runt
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
 thing: its *skills* are model-invoked — it loads one on demand through a native `skill` tool — and
 `disable-model-invocation` is not a frontmatter key a `SKILL.md` recognises there, so declaring it
-would be silently dropped. The seventeen create worktrees, push branches and open pull requests, so
+would be silently dropped. The eighteen create worktrees, push branches and open pull requests, so
 shipping them as skills would let the model start one unprompted. `commands/` is `/`-invoked only,
 which keeps user-invoked-only structural rather than dependent on a key the target ignores.
 
@@ -538,7 +539,7 @@ universal one.
 **Where each harness stands.** Every target's payload is compiled and digest-checked in CI; the
 question is whether it's been *run*.
 
-- **Runtime-verified (`full`)** — Claude Code: the full crew and all 17 commands, with crew resolve,
+- **Runtime-verified (`full`)** — Claude Code: the full crew and all 18 commands, with crew resolve,
   argument passing, and `/shipmates-ship-issue` proven end to end.
 - **Live run (`partial`)** — Antigravity CLI, Cursor, Pi, and opencode: captain-attested live runs
   recorded in `tools/harness_matrix.json` under `runtime_verified` (2026-09-18, #497; Pi cells 2026-09-20, #525). Granular cells
@@ -554,11 +555,11 @@ question is whether it's been *run*.
   builds for.
 
 **Crew vs skills (payload shape, independent of runtime status).** opencode, Antigravity, Codex CLI,
-GitHub Copilot, Pi and Grok Build get the full crew + all 17 commands (Pi's crew land at `.pi/agents/`
+GitHub Copilot, Pi and Grok Build get the full crew + all 18 commands (Pi's crew land at `.pi/agents/`
 and resolve through the third-party `pi-subagents` extension; Grok Build's land at `.grok/agents/`);
-Cursor ships the 17 skills only.
+Cursor ships the 18 skills only.
 
-Why that's credible: the crew's system prompts name no harness, and the seventeen commands ship in the
+Why that's credible: the crew's system prompts name no harness, and the eighteen commands ship in the
 [Agent Skills](https://agentskills.io) open-standard shape rather than a Claude-specific one — so most
 of a port is mapping frontmatter fields and rendering dialect tokens, not rewriting the crew. The
 opencode adapter is the first test of that claim: it reused every persona and workflow body unchanged,
@@ -581,7 +582,7 @@ see [on the horizon](#-on-the-horizon) for where each harness stands.
 **What are Claude Code subagents and skills?**
 Subagents are focused AI agents defined in `.claude/agents/*.md`; skills are reusable workflows defined
 in `.claude/skills/<name>/SKILL.md` and invoked as commands, like `/shipmates-ship-issue`. Shipmates ships 13 agents
-and 17 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
+and 18 commands you drop into a repo's `.claude/` with `shipmates install` (or `.opencode/` for opencode,
 `.codex/` for codex, and so on). See [install](#-come-aboard-install).
 
 **Is this an official Anthropic project?**

@@ -66,6 +66,7 @@ SLUGS = (
     "shipmates-onboard",
     "shipmates-refactor",
     "shipmates-deslop",
+    "shipmates-upgrade",
 )
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
