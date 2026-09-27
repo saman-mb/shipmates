@@ -195,7 +195,7 @@ antigravity      .agents/          agents + skills   (agy — the successor to t
 codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
 cursor           .cursor/          skills only (first-party tree; slash picker reads it)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
-pi               .pi/ + .agents/     crew (.md) at .pi/agents, skills at .agents/skills (global: crew only)
+pi               .pi/              crew (.md) at .pi/agents, skills at .pi/skills
 grok-build       .grok/            agents + skills
 devin            .devin/           agents + skills   (Devin CLI / Devin Desktop — formerly Windsurf)
 ```
@@ -206,15 +206,13 @@ third-party `pi-subagents` extension — core pi documents no subagent schema of
 install without that extension resolves no crew. Pi reads its crew from the nearest ancestor directory
 carrying `.pi/` or `.agents/`, so install into your project: a home-directory install only takes effect
 when no nearer ancestor carries either.
-Four harnesses (codex, antigravity, github-copilot, pi) read the open [Agent Skills](https://agentskills.io)
+Three harnesses (codex, antigravity, github-copilot) read the open [Agent Skills](https://agentskills.io)
 location `.agents/skills/`, so their skills are rendered once, in a neutral dialect, and shared there —
 one source of truth, byte-identical, so a multi-harness repo gets a single copy instead of colliding
-ones. Their crew still land in each harness's own native format. A **global** Pi install is the
-exception: Pi also always loads `~/.pi/agent/skills/`, so that install writes crew only — command
-skills stay project-local on the shared tree, or Pi prints `[Skill conflicts]` for every duplicated
-name. `cursor` reads that open tree too, but only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and nowhere else — one copy, never two. `claude-code` keeps its own `.claude/skills/`, and `devin` its `.devin/skills/`. `grok-build`
-keeps its own `.grok/skills/` for a different reason: its commands ship the native
-`disable-model-invocation` guard, which the neutral dialect the shared tree carries does not express.
+ones. Their crew still land in each harness's own native format. `cursor` reads that open tree too,
+but only its first-party `.cursor/skills/` reaches the slash-command picker, so its skills ship there and nowhere else — one copy, never two. `claude-code` keeps its own `.claude/skills/`, and `devin` its `.devin/skills/`. `pi` and `grok-build`
+keep their own native skill trees (`.pi/skills/` and `.grok/skills/`): their commands ship native
+guards (`disable-model-invocation: true`, tool scoping, and `/skill:` command routing on Pi), which the neutral dialect the shared tree carries does not express.
 
 ### opencode quickstart
 

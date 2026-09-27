@@ -180,7 +180,7 @@ mod tests {
             "cursor must not double-ship into the shared tree"
         );
 
-        for target in ["codex", "github-copilot", "antigravity", "pi"] {
+        for target in ["codex", "github-copilot", "antigravity"] {
             let adapter = select(target).unwrap();
             let files = adapter.build(&[], &commands).unwrap();
             assert!(
@@ -193,5 +193,20 @@ mod tests {
                 "{target} drifted from the neutral skill rendering"
             );
         }
+
+        let pi = select("pi").unwrap();
+        let pi_files = pi.build(&[], &commands).unwrap();
+        assert!(
+            !pi_files.keys().any(|path| path.contains("/.cursor/")),
+            "pi must not emit into cursor's dotdir"
+        );
+        assert!(
+            !pi_files.keys().any(|path| path.contains("/.agents/")),
+            "pi must not emit into shared .agents tree"
+        );
+        assert!(
+            pi_files.contains_key("harnesses/pi/.pi/skills/ship-issue/SKILL.md"),
+            "pi must emit into native .pi/skills"
+        );
     }
 }

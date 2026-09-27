@@ -191,12 +191,22 @@ pub fn strip_global_steering_block(existing: &str) -> String {
         .to_string()
 }
 
+pub fn render_global_steering_content(harness: &str, content: &str) -> String {
+    if harness == "pi" {
+        let re = regex::Regex::new(r"(^|[^a-zA-Z0-9._])/shipmates-").expect("static regex");
+        re.replace_all(content, "${1}/skill:shipmates-").into_owned()
+    } else {
+        content.to_string()
+    }
+}
+
 /// Check global steering status for a harness without modifying disk.
 pub fn check_global_steering(
     harness: &str,
     home: &Path,
     expected_content: &str,
 ) -> Result<GlobalSteeringStatus> {
+    let rendered_expected = render_global_steering_content(harness, expected_content);
     match global_steering_tier(harness) {
         GlobalSteeringTier::Gap(msg) => Ok(GlobalSteeringStatus::Gap(msg)),
         GlobalSteeringTier::TierA => {
@@ -206,7 +216,7 @@ pub fn check_global_steering(
                 return Ok(GlobalSteeringStatus::Missing { path });
             }
             let current = fs::read_to_string(&path)?;
-            let want = render_tier_a(expected_content);
+            let want = render_tier_a(&rendered_expected);
             let up_to_date = current.trim() == want.trim();
             Ok(GlobalSteeringStatus::Installed { path, up_to_date })
         }
@@ -221,7 +231,7 @@ pub fn check_global_steering(
                 return Ok(GlobalSteeringStatus::Missing { path });
             }
             let extracted = extract_global_steering_block(&current).unwrap_or_default();
-            let up_to_date = extracted.trim() == expected_content.trim();
+            let up_to_date = extracted.trim() == rendered_expected.trim();
             Ok(GlobalSteeringStatus::Installed { path, up_to_date })
         }
     }
@@ -233,12 +243,13 @@ pub fn install_global_steering(
     home: &Path,
     content: &str,
 ) -> Result<SteeringOutcome> {
+    let rendered_content = render_global_steering_content(harness, content);
     match global_steering_tier(harness) {
         GlobalSteeringTier::Gap(msg) => Ok(SteeringOutcome::Gap(msg)),
         GlobalSteeringTier::TierA => {
             let path = global_steering_path(harness, home)
                 .context("resolving global steering path")?;
-            let want = render_tier_a(content);
+            let want = render_tier_a(&rendered_content);
             if path.is_file() {
                 let current = fs::read_to_string(&path)?;
                 if current.trim() == want.trim() {
@@ -258,14 +269,14 @@ pub fn install_global_steering(
             let managed_block = format!(
                 "{}{}\n{}",
                 GLOBAL_STEERING_START,
-                content.trim(),
+                rendered_content.trim(),
                 GLOBAL_STEERING_END
             );
             if path.is_file() {
                 let current = fs::read_to_string(&path)?;
                 if has_global_steering_block(&current) {
                     let extracted = extract_global_steering_block(&current).unwrap_or_default();
-                    if extracted.trim() == content.trim() {
+                    if extracted.trim() == rendered_content.trim() {
                         return Ok(SteeringOutcome::Unchanged(path));
                     }
                     // Replace existing block
@@ -476,5 +487,27 @@ mod tests {
         let after_uninstall = fs::read_to_string(&user_claude).unwrap();
         assert!(after_uninstall.contains("# My Personal Preferences"));
         assert!(!has_global_steering_block(&after_uninstall));
+    }
+
+    #[test]
+    fn test_pi_global_steering_routes_to_skill_prefix() {
+        let home = tempfile::tempdir().unwrap();
+        let content = "## Routing\n- **Ship a ticket** → `/shipmates-ship-issue`\n";
+        let outcome = install_global_steering("pi", home.path(), content).unwrap();
+        let pi_agents = home.path().join(".pi").join("agent").join("AGENTS.md");
+        assert_eq!(outcome, SteeringOutcome::Created(pi_agents.clone()));
+
+        let text = fs::read_to_string(&pi_agents).unwrap();
+        assert!(text.contains("`/skill:shipmates-ship-issue`"));
+        assert!(!text.contains("`/shipmates-ship-issue`"));
+
+        let status = check_global_steering("pi", home.path(), content).unwrap();
+        assert_eq!(
+            status,
+            GlobalSteeringStatus::Installed {
+                path: pi_agents,
+                up_to_date: true,
+            }
+        );
     }
 }

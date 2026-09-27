@@ -194,7 +194,7 @@ eval only runs where a credential exists. Install tree and crew mechanic come fr
 | codex | `.agents/skills/` (shared) | yes (TOML) | `none` | ✅ | needs a doc check | exec subcommand — **re-verify** |
 | antigravity | `.agents/skills/` (shared) | yes | `partial` | ✅ | needs a doc check | ✅ documented headless mode |
 | github-copilot | `.agents/skills/` (shared) | yes | `none` | ✅ | needs a doc check | non-interactive CLI documented — **re-verify** |
-| pi | `.agents/skills/` (shared) | yes¹ | `partial` | ✅ | needs a doc check | needs a doc check |
+| pi | `.pi/skills/` | yes¹ | `partial` | ✅ | needs a doc check | needs a doc check |
 | cursor | `.cursor/skills/` | no (skills only) | `partial` | ✅ | needs a doc check | needs a doc check |
 | windsurf | `.windsurf/skills/` | no (skills only) | `none` | ✅ | needs a doc check | no surface recorded |
 | grok-build | `.grok/skills/` | yes | `none` | ✅ | ✅ `inspect` reports discovered skills/agents/rules | ✅ documented headless mode |

@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-09-27
+
+### Fixed
+
+- **Pi commands ship to native `.pi/skills/` and route via `/skill:<name>`.**
+  Pi exposes skills strictly as `/skill:<name>` commands rather than `/<name>`
+  (which Pi reserves for prompt templates). The dialect and steering engine now
+  rewrite command references for Pi to the `/skill:` prefix, steering guides the
+  captain with accurate invocation syntax, and command and tool skills ship to
+  `.pi/skills/` instead of the shared `.agents/skills/` tree (#553).
+- **A global Pi install delivers skills to `~/.pi/agent/skills/`.** Removed the
+  defunct omit-guard in `manifest_db.rs` that suppressed skills on global Pi installs.
+  Skills now cleanly relocate from `.pi/skills/` to `~/.pi/agent/skills/` during
+  global install, and `shipmates doctor` verifies the expected path while warning if
+  dual-tree collisions are detected (#548).
+- **Pi skills retain `disable-model-invocation: true`, `allowed-tools`, and `argument-hint`.**
+  By emitting Pi skills into its native tree with Pi-specific tool vocabulary mapping
+  (space-separated `allowed-tools`, matching Pi's Agent Skills parser), Pi preserves
+  the user-invoked-only guard and tool scoping that were previously dropped by the
+  strict two-key shared `.agents/skills/` emitter (#554).
+
 ## [0.14.0] - 2026-09-22
 
 ### Added

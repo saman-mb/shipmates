@@ -21,6 +21,7 @@ pub struct Dialect {
     pub general_purpose: &'static str,
     pub planner: &'static str,
     pub args_token: &'static str,
+    pub cmd_prefix: &'static str,
 }
 
 const SENTINEL: &str = "\u{00A7}agents-instructions";
@@ -121,6 +122,10 @@ pub fn render_body(text: &str, d: &Dialect) -> String {
     );
     out = render_token(&out, "{{role:sdet}}", "subagent_type: sdet");
     out = render_token(&out, "{{role-reference}}", "`subagent_type`");
+    if d.cmd_prefix != "/" {
+        let re = Regex::new(r"(^|[^a-zA-Z0-9._])/shipmates-").expect("static regex");
+        out = re.replace_all(&out, format!("${{1}}{}shipmates-", d.cmd_prefix)).into_owned();
+    }
     out
 }
 
@@ -183,8 +188,12 @@ pub fn emit_steering_at(
     dialect: &Dialect,
     body: &str,
 ) -> HashMap<String, String> {
-    let rendered =
+    let mut rendered =
         render_instructions(body, dialect.instructions_primary, dialect.instructions_fallback);
+    if dialect.cmd_prefix != "/" {
+        let re = Regex::new(r"(^|[^a-zA-Z0-9._])/shipmates-").expect("static regex");
+        rendered = re.replace_all(&rendered, format!("${{1}}{}shipmates-", dialect.cmd_prefix)).into_owned();
+    }
     let content = match target.format {
         SteeringFormat::PlainMarkdown => rendered,
         SteeringFormat::CursorMdc { description } => {
@@ -216,6 +225,7 @@ pub const CLAUDE_CODE: Dialect = Dialect {
     general_purpose: "general-purpose",
     planner: "Plan",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/",
 };
 
 /// opencode's dialect.
@@ -227,6 +237,7 @@ pub const OPENCODE: Dialect = Dialect {
     general_purpose: "general",
     planner: "architect",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/",
 };
 
 /// The neutral dialect for the shared open Agent Skills tree (`.agents/skills/`).
@@ -258,6 +269,7 @@ pub const AGENT_SKILLS: Dialect = Dialect {
     general_purpose: "general-purpose",
     planner: "architect",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/",
 };
 
 /// Antigravity's project-instruction fallback is `GEMINI.md`, not the
@@ -270,6 +282,7 @@ pub const ANTIGRAVITY: Dialect = Dialect {
     general_purpose: "general-purpose",
     planner: "architect",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/",
 };
 
 // Antigravity (`agy`, the retired Gemini CLI's successor) reads skills from the
@@ -284,31 +297,20 @@ pub const CODEX: Dialect = Dialect {
     general_purpose: "general-purpose",
     planner: "planner",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/",
 };
 
-/// Pi's crew dialect.
+/// Pi's crew and native command dialect.
 ///
 /// Pi's crew mechanic comes from the third-party `pi-subagents` extension
 /// (github.com/nicobailon/pi-subagents) — core pi documents no declarative
-/// subagent schema. It reads agent
-/// definitions from `.pi/agents/**/*.md` as its canonical project scope and from
-/// `~/.pi/agent/agents/**/*.md` as its canonical user scope. Pi also still reads
-/// the legacy `.agents/**` tree "for compatibility", and that is the path
-/// shipmates installs Antigravity's crew to.
+/// subagent schema. It reads agent definitions from `.pi/agents/**/*.md` as
+/// its canonical project scope and from `~/.pi/agent/agents/**/*.md` as its
+/// canonical user scope.
 ///
-/// Pi's *commands and tools* stay on the shared neutral `.agents/skills/` tree
-/// so a sibling harness in the same repo is one copy. A global install omits
-/// those skills (#513) because Pi also loads `~/.pi/agent/skills` in the same
-/// session. Note what that implies: pi's command skills are rendered through
-/// `AGENT_SKILLS`, so the command-only tokens below (`agents_glob`,
-/// `session_key`, `general_purpose`, `planner`, `args_token`) reach *no emitted
-/// pi byte* — only `instructions_primary`/`instructions_fallback` do, through the
-/// crew bodies. They are set to pi's real values anyway, so the dialect is
-/// correct;
-/// `general_purpose` is `worker` because pi ships that builtin and would resolve
-/// the neutral `general-purpose` to nothing. And `.pi/agents/` wins only within
-/// the directory pi resolves as its project root — see `pi.rs` for the scope
-/// caveat.
+/// Pi's commands ship to its native `.pi/skills/` tree (relocating to
+/// `~/.pi/agent/skills/` on global install). Pi exposes skills as
+/// `/skill:<name>`, so `cmd_prefix` is `"/skill:"`.
 pub const PI: Dialect = Dialect {
     agents_glob: ".pi/agents",
     session_key: "Pi-Session",
@@ -317,6 +319,7 @@ pub const PI: Dialect = Dialect {
     general_purpose: "worker",
     planner: "architect",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/skill:",
 };
 
 // Cursor has no crew mechanic here, so it renders no personas of its own; its
@@ -332,6 +335,7 @@ pub const GITHUB_COPILOT: Dialect = Dialect {
     general_purpose: "general-purpose",
     planner: "planner",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/",
 };
 
 /// Grok Build (the xAI `grok` CLI)'s dialect.
@@ -349,6 +353,7 @@ pub const GROK_BUILD: Dialect = Dialect {
     general_purpose: "general-purpose",
     planner: "plan",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/",
 };
 
 /// Devin CLI / Devin Desktop's dialect. Devin is what Windsurf became on
@@ -362,6 +367,7 @@ pub const DEVIN: Dialect = Dialect {
     general_purpose: "general-purpose",
     planner: "planner",
     args_token: "$ARGUMENTS",
+    cmd_prefix: "/",
 };
 
 pub struct CrewFormat {
@@ -932,5 +938,15 @@ mod tests {
             !Regex::new(r"\$[0-9]").unwrap().is_match(&out),
             "block must carry no `$` followed by a digit — a command file is scanned whole"
         );
+    }
+
+    #[test]
+    fn test_pi_cmd_prefix_rewrites_command_invocations() {
+        let text = "Run `/shipmates-ship-issue` or /shipmates-fix-bug. See .shipmates/worktrees/shipmates-refactor-slug.";
+        let out = render_body(text, &PI);
+        assert!(out.contains("`/skill:shipmates-ship-issue`"));
+        assert!(out.contains("/skill:shipmates-fix-bug"));
+        // Does not rewrite paths
+        assert!(out.contains(".shipmates/worktrees/shipmates-refactor-slug"));
     }
 }

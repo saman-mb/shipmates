@@ -1,6 +1,6 @@
 use super::Adapter;
 use super::render::{
-    CrewFormat, CrewLayout, PI, emit_crew_files, emit_shared_skills, emit_shared_tool_skills,
+    CrewFormat, CrewLayout, PI, emit_crew_files, emit_tool_files, render_command_body,
     yaml_scalar,
 };
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool};
@@ -25,12 +25,11 @@ use std::collections::HashMap;
 /// `~/.pi/agent/agents/` is loaded before legacy `~/.agents/`, so no user-scope path outranks a
 /// foreign `~/.agents/agents/`. Tracked separately; see `tools/capability_registry.json`.
 ///
-/// Skills and tools stay on the shared neutral `.agents/skills/` tree so a
-/// project Pi install and a sibling shared-tree harness share one copy (#513).
-/// Pi also loads user-scope `~/.pi/agent/skills/` in the same session, so a
-/// **global** install omits command/tool skills (crew still land at
-/// `~/.pi/agent/agents/`) — writing both trees is what produced
-/// `[Skill conflicts]` for every `ship-*` name.
+/// Commands and tools ship to Pi's native `.pi/skills/` tree (relocating to
+/// `~/.pi/agent/skills/` on global install). Pi exposes skills as `/skill:<name>`,
+/// so `cmd_prefix` is `"/skill:"`. Emitting native skills allows Pi to retain
+/// `disable-model-invocation: true`, tool scoping via `allowed-tools`, and
+/// `argument-hint`, which the neutral shared tree drops.
 ///
 /// See https://github.com/earendil-works/pi and the `pi-subagents` package's
 /// `Agents and chains` documentation for the discovery paths and the frontmatter
@@ -183,6 +182,70 @@ fn serialize(role: &CanonicalRole, body: &str, tools: &[String]) -> anyhow::Resu
     Ok(content)
 }
 
+fn map_pi_command_tools(allowed_tools: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for token in allowed_tools.split(',') {
+        let trimmed = token.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let mapped = match trimmed {
+            "Bash" => "bash",
+            "Read" => "read",
+            "Write" => "write",
+            "Edit" => "edit",
+            "Agent" => "subagent",
+            "Grep" => "grep",
+            "Glob" => "find",
+            "WebSearch" => "web_search",
+            "WebFetch" => "fetch_content",
+            other => other,
+        };
+        if !out.iter().any(|t| t == mapped) {
+            out.push(mapped.to_string());
+        }
+    }
+    out
+}
+
+fn emit_pi_command_skills(
+    base_dir: &str,
+    commands: &[CanonicalCommand],
+) -> anyhow::Result<HashMap<String, String>> {
+    let mut files = HashMap::new();
+    for command in commands {
+        let mut content = String::new();
+        content.push_str("---\n");
+        content.push_str(&format!("name: {}\n", command.name));
+        content.push_str(&format!(
+            "description: {}\n",
+            yaml_scalar(&command.description)
+        ));
+        if !command.argument_hint.is_empty() {
+            content.push_str(&format!(
+                "argument-hint: {}\n",
+                yaml_scalar(&command.argument_hint)
+            ));
+        }
+        if !command.allowed_tools.is_empty() {
+            let tools = map_pi_command_tools(&command.allowed_tools);
+            if !tools.is_empty() {
+                content.push_str(&format!("allowed-tools: {}\n", tools.join(" ")));
+            }
+        }
+        if command.disable_model_invocation {
+            content.push_str("disable-model-invocation: true\n");
+        }
+        content.push_str("---\n");
+        content.push_str(&render_command_body(command, &PI)?);
+        files.insert(
+            format!("{}/skills/{}/SKILL.md", base_dir, command.name),
+            content,
+        );
+    }
+    Ok(files)
+}
+
 const CREW_FORMAT: CrewFormat = CrewFormat {
     file_suffix: ".md",
     dialect: &PI,
@@ -193,11 +256,11 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
 
 impl Adapter for PiAdapter {
     fn base_dir(&self) -> &'static str {
-        "harnesses/pi/.agents"
+        "harnesses/pi/.pi"
     }
 
     fn digest_root(&self) -> &'static str {
-        // Pi writes crew into `.pi/agents/` and skills into `.agents/`, so the
+        // Pi writes crew and skills into `.pi/` and steering into `.shipmates/`, so the
         // digest root is the container, not `base_dir`.
         self.container()
     }
@@ -218,13 +281,13 @@ impl Adapter for PiAdapter {
         roles: &[CanonicalRole],
         commands: &[CanonicalCommand],
     ) -> anyhow::Result<HashMap<String, String>> {
-        let mut files = emit_crew_files(&format!("{}/.pi", self.container()), roles, &CREW_FORMAT)?;
-        files.extend(emit_shared_skills(self.container(), commands)?);
+        let mut files = emit_crew_files(self.base_dir(), roles, &CREW_FORMAT)?;
+        files.extend(emit_pi_command_skills(self.base_dir(), commands)?);
         Ok(files)
     }
 
     fn build_tools(&self, tools: &[CanonicalTool]) -> HashMap<String, String> {
-        emit_shared_tool_skills(self.container(), tools)
+        emit_tool_files(self.base_dir(), tools, &PI, false)
     }
 }
 
@@ -285,8 +348,8 @@ mod tests {
                 keys
             },
             vec![
-                "harnesses/pi/.agents/skills/ship-fix-bug/SKILL.md",
                 "harnesses/pi/.pi/agents/sdet.md",
+                "harnesses/pi/.pi/skills/ship-fix-bug/SKILL.md",
             ]
         );
         // The shared crew tree belongs to Antigravity. Pi must never write there:
@@ -297,21 +360,60 @@ mod tests {
         );
     }
 
-    /// #513: project Pi stays on the shared `.agents/skills` tree so a sibling
-    /// shared-tree harness in the same repo is one copy, not two. Dual-scope
-    /// collision is closed by omitting skills from a *global* install.
+    /// Native `.pi/skills` tree (#548, #553, #554): Pi command skills ship to
+    /// `.pi/skills/`, retaining `allowed-tools`, `argument-hint`, and
+    /// `disable-model-invocation: true`, with command references rendered with
+    /// `/skill:` prefix.
     #[test]
-    fn test_pi_project_skills_share_the_agents_tree() {
-        let files = PiAdapter.build(&[], &[command()]).unwrap();
+    fn test_pi_command_skills_land_in_native_tree_with_scoping() {
+        let mut cmd = command();
+        cmd.argument_hint = "<issue>".to_string();
+        cmd.allowed_tools = "Bash, Read, Edit, Agent".to_string();
+        cmd.disable_model_invocation = true;
+        cmd.narrative = "Run `/shipmates-ship-issue` to begin.".to_string();
+
+        let files = PiAdapter.build(&[], &[cmd]).unwrap();
+        let path = "harnesses/pi/.pi/skills/ship-fix-bug/SKILL.md";
         assert!(
-            files.keys().any(|path| path.contains(".agents/skills/")),
-            "project pi skills must share .agents/skills with sibling harnesses (#513): {:?}",
+            files.contains_key(path),
+            "command skill must land at .pi/skills/: {:?}",
             files.keys().collect::<Vec<_>>()
         );
+        let content = &files[path];
+        assert!(content.contains("name: ship-fix-bug\n"), "{content}");
+        assert!(content.contains("argument-hint: \"<issue>\"\n"), "{content}");
         assert!(
-            !files.keys().any(|path| path.contains(".pi/skills/")),
-            "project pi must not also write .pi/skills (that doubles with .agents/skills): {:?}",
-            files.keys().collect::<Vec<_>>()
+            content.contains("allowed-tools: bash read edit subagent\n"),
+            "{content}"
+        );
+        assert!(
+            content.contains("disable-model-invocation: true\n"),
+            "{content}"
+        );
+        // Dialect check: command routing rewritten to /skill:
+        assert!(
+            content.contains("`/skill:shipmates-ship-issue`"),
+            "{content}"
+        );
+    }
+
+    #[test]
+    fn test_pi_command_tools_mapping_covers_all_catalogue_tools() {
+        let canonical = "Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch";
+        let mapped = map_pi_command_tools(canonical);
+        assert_eq!(
+            mapped,
+            vec![
+                "bash",
+                "read",
+                "write",
+                "edit",
+                "subagent",
+                "grep",
+                "find",
+                "web_search",
+                "fetch_content",
+            ]
         );
     }
 

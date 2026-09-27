@@ -100,7 +100,8 @@ harness_skill_path() {
     opencode) echo ".opencode/commands/$name.md" ;;
     cursor) echo ".cursor/skills/$name" ;;
     devin) echo ".devin/skills/$name" ;;
-    codex | antigravity | github-copilot | pi) echo ".agents/skills/$name" ;;
+    pi) echo ".pi/skills/$name" ;;
+    codex | antigravity | github-copilot) echo ".agents/skills/$name" ;;
     *)
       echo "harness_skill_path: unknown harness '$harness'" >&2
       return 1
