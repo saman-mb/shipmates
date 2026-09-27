@@ -628,13 +628,9 @@ fn expected_at(
     }
     expected
         .into_iter()
-        .filter_map(|(rel, content)| {
-            // Mirror install: global pi omits command/tool skills (#513).
-            if harness == "pi" && rel.split('/').any(|part| part == "skills") {
-                return None;
-            }
+        .map(|(rel, content)| {
             let relocated = manifest_db::global_relocate(harness, &rel).unwrap_or(rel);
-            Some((relocated, content))
+            (relocated, content)
         })
         .collect()
 }
