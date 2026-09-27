@@ -1534,7 +1534,7 @@ fn pi_dual_skill_tree_check(target_dir: &Path) -> Check {
             name: "Pi skill trees".into(),
             severity: Severity::Warn,
             detail: format!(
-                "Pi loads user-scope and project skill trees in the same session; these Shipmates names appear in more than one: {}. Prefer one tree — project `.agents/skills` via `--dir` — and do not also keep command skills under ~/.pi/agent/skills.",
+                "Pi loads user-scope and project skill trees in the same session; these Shipmates names appear in more than one: {}. Prefer one tree — project `.pi/skills` via `--dir` — or global `~/.pi/agent/skills`, not both.",
                 overlap.join("; ")
             ),
             fixable: false,
