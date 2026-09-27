@@ -5,7 +5,7 @@ Format-ready snippets for submitting Shipmates to curated AI and developer tool 
 ---
 
 ## Canonical One-Line Description
-> **[Shipmates](https://github.com/saman-mb/shipmates)** - A crew of 13 domain-neutral specialist AI agents and 17 command workflows that drive GitHub issues to reviewed, CI-green pull requests autonomously.
+> **[Shipmates](https://github.com/saman-mb/shipmates)** - A crew of 13 domain-neutral specialist AI agents and 18 command workflows that drive GitHub issues to reviewed, CI-green pull requests autonomously.
 
 ---
 
@@ -15,7 +15,7 @@ Format-ready snippets for submitting Shipmates to curated AI and developer tool 
 **Category**: Developer Tools / Subagents & Workflows / Orchestration
 **Markdown Link**:
 ```markdown
-- [Shipmates](https://github.com/saman-mb/shipmates) - A crew of 13 specialist AI subagents and 17 command workflows that autonomously take a GitHub issue from open to a reviewed, CI-green PR using isolated git worktrees.
+- [Shipmates](https://github.com/saman-mb/shipmates) - A crew of 13 specialist AI subagents and 18 command workflows that autonomously take a GitHub issue from open to a reviewed, CI-green PR using isolated git worktrees.
 ```
 
 ### 2. `awesome-ai-agents` / `awesome-autonomous-agents`

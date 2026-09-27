@@ -63,7 +63,7 @@ name it in the run's own guidance; that is an explicit spawn value and outranks 
 ## Consequences
 
 - `docs/COST.md`'s routing block drops from 8,377 to 7,347 bytes, and its ceiling from 8,400 to 7,500 —
-  the block is inlined into all seventeen commands on all nine targets.
+  the block is inlined into all eighteen commands on all nine targets.
 - `tools/harness_matrix.json` **keeps** `declared_pool`, because that records each *target's own* native
   allow-list mechanism — a capability fact, not a captain-authored config. Its `empty_pool_fallback` key
   is renamed `empty_surface_fallback` for the same reason.

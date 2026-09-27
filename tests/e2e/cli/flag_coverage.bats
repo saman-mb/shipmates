@@ -13,7 +13,7 @@ load helpers
   local missing=()
 
   local cmd flags flag invocations
-  for cmd in install update uninstall doctor build check; do
+  for cmd in install update uninstall doctor status upgrade build check; do
     run "$SHIPMATES_BIN" help "$cmd"
     assert_success
     flags="$(printf '%s\n' "$output" | awk '/^Options:/{found=1;next} found' \

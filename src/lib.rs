@@ -8,3 +8,4 @@ pub mod embedded;
 pub mod installer;
 pub(crate) mod manifest;
 pub mod steering;
+pub mod upgrade;

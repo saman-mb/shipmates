@@ -17,6 +17,7 @@ target=pi
 .agents/skills/shipmates-ship-epic/SKILL.md 29fe4ba28d9ea993e3bb9a74966137ea10c8f1491311a6a436430cb9408460f3
 .agents/skills/shipmates-ship-issue/SKILL.md c0a380a966eb890c77f60c15f7e08f789a44d44cdf5be912515c4de955d5c18e
 .agents/skills/shipmates-spike/SKILL.md 4b55907a7998396bba433adda492594fd36ec4475bdeb18b84e706d99118f5c2
+.agents/skills/shipmates-upgrade/SKILL.md 163fefab98248dadd6adc02adea812d26c8819f0e5244d974b231ee2f7419af1
 .pi/agents/architect.md 7c05490d12d7ea4d7135d2483f738711d9af923c40b78f484e5aff337e6ee25f
 .pi/agents/art-director.md b4c25efc51d35041dd909575d5ce99e3ddb080897271ddda5c12448f753078c9
 .pi/agents/data-scientist.md b1763eb41bfdd97ad9299d7d4f97b764c0266777b247d51529a4115b5b77c507

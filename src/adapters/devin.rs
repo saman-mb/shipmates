@@ -11,10 +11,10 @@ use std::collections::HashMap;
 /// `.devin/skills/<name>/SKILL.md`, project rules at `.devin/rules/*.md`.
 ///
 /// Why the native `.devin/` tree and not the shared `.agents/skills/` one, even
-/// though Devin reads both: the seventeen commands are user-invoked only, and
+/// though Devin reads both: the eighteen commands are user-invoked only, and
 /// the key that keeps them that way is `triggers: [user]`. The neutral shared
 /// rendering emits the Agent Skills standard's `name`/`description` pair alone,
-/// which drops the guard and hands the agent seventeen workflows to invoke on
+/// which drops the guard and hands the agent eighteen workflows to invoke on
 /// its own. The same reasoning put Grok Build on its native tree.
 ///
 /// Devin documents both trees first-party: `.agents/skills/<name>/SKILL.md` is
@@ -251,7 +251,7 @@ mod tests {
     }
 
     /// The guard is the whole reason this adapter is native rather than shared:
-    /// losing it hands the agent seventeen workflows to invoke on its own.
+    /// losing it hands the agent eighteen workflows to invoke on its own.
     #[test]
     fn test_devin_commands_are_user_invoked_only() {
         let files = DevinAdapter

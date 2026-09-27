@@ -65,7 +65,11 @@ fn shell_single_quote(value: &str) -> String {
 ///
 /// `with_tools` is the raw CLI value (`none`, `all`, or a comma-joined list).
 /// Pass `None` when the flag was omitted (install default).
-pub fn install_force_hint(harness: &str, location: &LocationOpts, with_tools: Option<&str>) -> String {
+pub fn install_force_hint(
+    harness: &str,
+    location: &LocationOpts,
+    with_tools: Option<&str>,
+) -> String {
     let mut parts = vec![
         "shipmates install".to_string(),
         format!("--harness {harness}"),
@@ -285,6 +289,100 @@ Examples:
         /// Diagnose against this directory's source trees instead of the embedded payload
         #[arg(long = "from-cwd", help_heading = "Source")]
         from_cwd: bool,
+    },
+
+    /// Report every known install (harness, root, version, drift, tools)
+    #[command(
+        long_about = "Report every known install across the global install index and any --dir roots.
+
+Read-only: never writes to disk or changes an install. Lists each install's harness, root,
+receipt version, drift, and claimed tools. --json emits the machine-readable report.
+
+Examples:
+  shipmates status
+  shipmates status --json
+  shipmates status --dir ~/work/app"
+    )]
+    Status {
+        /// Emit the report as JSON
+        #[arg(long, help_heading = "Output")]
+        json: bool,
+
+        /// Extra root directory to scan (repeatable)
+        #[arg(
+            long,
+            value_name = "PATH",
+            action = clap::ArgAction::Append,
+            help_heading = "Where"
+        )]
+        dir: Vec<String>,
+    },
+
+    /// Check for a newer release and refresh every known install from this binary
+    #[command(
+        long_about = "Check for a newer shipmates release, refresh every known install from this
+binary, audit each, and optionally repair drift (--fix) or file upstream bugs
+(--file-bugs).
+
+--self executes the detected channel's upgrade command (brew / cargo-dist), then
+re-executes the new binary to refresh and audit with the other flags you passed;
+without --self the channel command is printed, never executed. --pre includes
+prereleases in the release check.
+
+Examples:
+  shipmates upgrade --check
+  shipmates upgrade --json
+  shipmates upgrade --fix
+  shipmates upgrade --self
+  shipmates upgrade --dir ~/work/app",
+        after_help = "Tip: --dry-run prints what would change without executing; --check is a
+read-only three-way version report."
+    )]
+    Upgrade {
+        /// Check for a newer release only (read-only); conflicts with --fix, --file-bugs, --self
+        #[arg(
+            long,
+            conflicts_with_all = ["fix", "file_bugs", "self_upgrade"],
+            help_heading = "What"
+        )]
+        check: bool,
+
+        /// Emit the report as JSON
+        #[arg(long, help_heading = "Output")]
+        json: bool,
+
+        /// Include prereleases in the release check
+        #[arg(long, help_heading = "What")]
+        pre: bool,
+
+        /// Print what would change without executing (allowed with --self)
+        #[arg(long, help_heading = "Safety")]
+        dry_run: bool,
+
+        /// Repair drift in each install after refresh
+        #[arg(long, help_heading = "Repair")]
+        fix: bool,
+
+        /// Extra root directory to refresh (repeatable)
+        #[arg(
+            long,
+            value_name = "PATH",
+            action = clap::ArgAction::Append,
+            help_heading = "Where"
+        )]
+        dir: Vec<String>,
+
+        /// File deduped upstream bugs for findings (requires gh)
+        #[arg(long, help_heading = "Safety")]
+        file_bugs: bool,
+
+        /// Execute the detected channel's upgrade command (brew / cargo-dist), then refresh and audit with the other flags passed; --dry-run makes it print-only
+        #[arg(long = "self", help_heading = "What")]
+        self_upgrade: bool,
+
+        /// Internal re-exec after a successful self-upgrade
+        #[arg(long, hide = true)]
+        resume: bool,
     },
 
     /// List harness names this binary can install (`--harness` / `--target` values)
