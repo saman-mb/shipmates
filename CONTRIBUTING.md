@@ -99,6 +99,10 @@ are correct; which one belongs in a given sentence is set by the
 
 ## Testing your change
 
+The deterministic gates below are what exists today; [`docs/EVALS.md`](docs/EVALS.md) describes the
+layered test-and-eval pipeline being built on top of them (#419) — what each layer proves, where it
+runs, and which decisions stay with a human.
+
 Prompt-cost rules are documented in [`docs/COST.md`](docs/COST.md). Keep command instructions
 cache-friendly: stable workflow text first, one runtime `$ARGUMENTS` section last; ask subagents for
 compact structured decisions rather than transcripts. The shared preamble markers are expanded by
