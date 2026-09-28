@@ -308,20 +308,24 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
           persist-credentials: true
           repository: "saman-mb/homebrew-tap"
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
       # So we have access to the formula
       - name: Fetch homebrew formulae
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: artifacts-*
-          path: Formula/
+          path: tap/Formula/
           merge-multiple: true
       # This is extra complex because you can make your Formula name not match your app name
       # so we need to find releases with a *.rb file, and publish with that filename.
       - name: Commit formula files
-        run: bash .github/scripts/commit-homebrew-formula.sh
+        run: bash .github/scripts/commit-homebrew-formula.sh tap
 
   custom-publish-cargo:
     needs:
