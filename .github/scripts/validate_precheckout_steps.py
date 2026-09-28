@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assert no workflow step above `actions/checkout` reads a path in the repo.
+"""Assert workflow steps executing repo scripts check out the host repository.
 
 An `actions/checkout` step materialises the repository. Before it runs, the
 runner's workspace is empty, so a step listed above it can only call the shell,
@@ -8,17 +8,17 @@ tree. Cargo-dist generates the one legitimate exception, the Windows longpaths
 git config, and it inlines the command rather than calling a script precisely
 because that file would not exist yet.
 
-That exception is why this gate exists. Extracting the step's body into
-`.github/scripts/` looks like the house style everywhere else in a workflow,
-and it works in every job that checks out first — but here it dies with exit
-127 on a clean runner, and on the release path the failure is invisible from a
-pull request because the release jobs are skipped there. It only shows up on
-the push that was supposed to publish, which is a whole release too late.
+Similarly, a job that checks out only an external repository (e.g. an external
+Homebrew tap) does not materialise this repository: its workspace contains the
+external files, so calling `.github/scripts/` dies with exit code 127 (#559).
 
-The rule: in any job that has a checkout, a step above the checkout must not
-name a path in this repository, and must not use a local action. Escape hatch
-for a step that genuinely has to run first: keep its command self-contained, or
-mark it with a `# pre-checkout-ok` comment and say why.
+The rule: in any job that executes a script or local action from this repository,
+the host repository must be checked out at the workspace root before that step
+runs. A step above checkout, in a job without checkout, or in a job that checked
+out only an external repository, must not name a path in this repository or use
+a local action. Escape hatch for a step that genuinely has to run first: keep
+its command self-contained, or mark it with a `# pre-checkout-ok` comment and
+say why.
 
 Stdlib only. Exposes validate(root) -> list[str] for the regression tests.
 """

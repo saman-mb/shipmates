@@ -141,6 +141,8 @@ class ValidatePrecheckoutStepsTests(unittest.TestCase):
             "        run: ${{ matrix.packages_install }}\n"
             "      - uses: actions/checkout@v6\n"
         )
+        self.assertEqual(self._validate_fixture(workflow), [])
+
     def test_external_repo_checkout_alone_cannot_run_repo_scripts(self):
         """A job checking out only an external repo cannot run scripts from the host repo."""
         workflow = _fixture_workflow(
