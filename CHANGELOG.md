@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.2] - 2026-09-28
+
+### Fixed
+
+- **Cargo-dist scripts expand `TAG_FLAG` without double-quoting.** In `build-dist-artifacts.sh`,
+  `build-global-dist.sh`, and `host-release.sh`, unquoted `${TAG_FLAG}` allows word splitting
+  so `dist build` and `dist host` receive `--tag=<TAG>` and `--force-tag` as distinct arguments
+  rather than a single combined string, fixing release publishing on GitHub Actions (#557).
+
 ## [0.14.1] - 2026-09-27
 
 ### Fixed

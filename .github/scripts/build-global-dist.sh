@@ -3,7 +3,10 @@
 # Environment: TAG_FLAG, GITHUB_OUTPUT, BUILD_MANIFEST_NAME
 set -euo pipefail
 
-dist build "$TAG_FLAG" --output-format=json "--artifacts=global" > dist-manifest.json
+# TAG_FLAG is a space-separated flag list ("--tag=... --force-tag" or empty),
+# so word splitting is intentional.
+# shellcheck disable=SC2086
+dist build ${TAG_FLAG} --output-format=json "--artifacts=global" > dist-manifest.json
 echo "dist ran successfully"
 
 {
