@@ -57,6 +57,7 @@ class Step:
     name: str
     uses: str
     run: str
+    with_params: dict[str, str]
     text: str  # whole entry, for the escape-hatch marker
 
 
@@ -126,7 +127,9 @@ def _scalar(entry: list[str], index: int, value: str) -> str:
 def _parse_step(entry: list[str], line_index: int) -> Step:
     dash = next((i for i, line in enumerate(entry) if STEP_RE.match(line)), 0)
     name = uses = run = ""
+    with_params: dict[str, str] = {}
     head = STEP_KEY_RE.match(entry[dash])
+    in_with = False
     if head:
         key, value = head.group(1), head.group(2).strip()
         if key == "name":
@@ -135,25 +138,62 @@ def _parse_step(entry: list[str], line_index: int) -> Step:
             uses = value
         elif key == "run":
             run = _scalar(entry, dash, value)
+        elif key == "with":
+            in_with = True
     for offset in range(dash + 1, len(entry)):
-        match = KEY_RE.match(entry[offset])
-        if not match:
-            continue
         line = entry[offset]
-        key, value = match.group(1), match.group(2).strip()
-        if key == "name" and not name:
-            name = value
-        elif key == "uses" and not uses:
-            uses = value
-        elif key == "run" and not run:
-            run = _scalar(entry, offset, value)
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        ind = _indent(line)
+        match = KEY_RE.match(line)
+        if match:
+            key, value = match.group(1), match.group(2).strip()
+            in_with = (key == "with")
+            if key == "name" and not name:
+                name = value
+            elif key == "uses" and not uses:
+                uses = value
+            elif key == "run" and not run:
+                run = _scalar(entry, offset, value)
+            continue
+        if in_with and ind > 8 and ":" in stripped:
+            w_key, w_val = stripped.split(":", 1)
+            with_params[w_key.strip()] = w_val.strip().strip("'\"")
+        elif ind <= 8:
+            in_with = False
     return Step(
         line=line_index + 1,
         name=name,
         uses=uses,
         run=run,
+        with_params=with_params,
         text="\n".join(entry),
     )
+
+
+def _is_host_checkout_at_root(step: Step) -> bool:
+    """True if step checks out the host repo into the workspace root."""
+    if not step.uses.startswith(CHECKOUT_PREFIX):
+        return False
+    repo = step.with_params.get("repository", "").strip()
+    if repo:
+        repo_lower = repo.lower()
+        is_host = repo == "${{ github.repository }}" or repo_lower.endswith("/shipmates")
+        if not is_host:
+            return False
+    path = step.with_params.get("path", "").strip()
+    return not path or path == "."
+
+
+def _external_checkout_target(step: Step) -> str | None:
+    """Return external repository name if step checks out a non-host repository."""
+    if not step.uses.startswith(CHECKOUT_PREFIX):
+        return None
+    repo = step.with_params.get("repository", "").strip()
+    if repo and repo != "${{ github.repository }}" and not repo.lower().endswith("/shipmates"):
+        return repo
+    return None
 
 
 def _repo_paths(command: str, root: Path, top_level: frozenset[str]) -> list[str]:
@@ -192,13 +232,18 @@ def validate(root: Path | None = None) -> list[str]:
         for job_id, job_start, job_end in _job_blocks(lines):
             entries = _step_entries(lines, job_start, job_end)
             parsed = [_parse_step(entry, index) for index, entry in entries]
-            checkout_at = next(
-                (i for i, step in enumerate(parsed) if step.uses.startswith(CHECKOUT_PREFIX)),
-                None,
-            )
-            if checkout_at is None:
-                continue
-            for step in parsed[:checkout_at]:
+            host_checked_out = False
+            last_external_repo: str | None = None
+
+            for step in parsed:
+                if _is_host_checkout_at_root(step):
+                    host_checked_out = True
+                ext = _external_checkout_target(step)
+                if ext:
+                    last_external_repo = ext
+
+                if host_checked_out:
+                    continue
                 if ALLOW_MARKER in step.text:
                     continue
                 if step.uses.startswith("./") or step.uses.startswith("../"):
@@ -210,12 +255,21 @@ def validate(root: Path | None = None) -> list[str]:
                     continue
                 hits = sorted(set(_repo_paths(step.run, repo_root, top_level)))
                 if hits:
-                    errors.append(
-                        f"{display}:{step.line}: step {step.name or '(unnamed)'!r} in job "
-                        f"{job_id!r} runs before actions/checkout but reads "
-                        f"{', '.join(hits)} — the workspace is empty until checkout runs. "
-                        f"Inline the command, or mark the step `# {ALLOW_MARKER}` and say why."
-                    )
+                    if last_external_repo:
+                        errors.append(
+                            f"{display}:{step.line}: step {step.name or '(unnamed)'!r} in job "
+                            f"{job_id!r} runs without checking out the host repository (only "
+                            f"external repository {last_external_repo!r} was checked out) but reads "
+                            f"{', '.join(hits)} — host scripts cannot exist on the runner. "
+                            f"Check out the host repository, or mark the step `# {ALLOW_MARKER}` and say why."
+                        )
+                    else:
+                        errors.append(
+                            f"{display}:{step.line}: step {step.name or '(unnamed)'!r} in job "
+                            f"{job_id!r} runs before actions/checkout but reads "
+                            f"{', '.join(hits)} — the workspace is empty until checkout runs. "
+                            f"Inline the command, or mark the step `# {ALLOW_MARKER}` and say why."
+                        )
     return errors
 
 
