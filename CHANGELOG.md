@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.3] - 2026-09-28
+
+### Fixed
+
+- **Homebrew tap checkout in release workflow checks out host repository alongside tap.**
+  In `release.yml`, `publish-homebrew-formula` now checks out `saman-mb/shipmates` at the
+  workspace root and checks out `saman-mb/homebrew-tap` into `tap/`, enabling
+  `commit-homebrew-formula.sh` to run successfully without exit code 127 (#559).
+- **Pre-checkout workflow validator detects external-only checkouts and checkout-less jobs.**
+  In `.github/scripts/validate_precheckout_steps.py`, the validator now inspects `with.repository`
+  and `with.path` to assert that jobs calling repo scripts or local actions check out the host
+  repository at the workspace root, closing the blindspot where jobs checking out only external
+  repositories passed PR validation (#559).
+- **Release scripts test suite exercises `commit-homebrew-formula.sh`.** Added automated tests
+  in `tests/test_release_scripts.py` verifying tap directory handling and commit creation.
+- **PR pipeline validates `cargo package --locked`.** Added cargo package verification to
+  `pages.yml` to prevent publishing failures on release builds.
+
 ## [0.14.2] - 2026-09-28
 
 ### Fixed
