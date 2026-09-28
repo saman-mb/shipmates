@@ -141,6 +141,40 @@ class ValidatePrecheckoutStepsTests(unittest.TestCase):
             "        run: ${{ matrix.packages_install }}\n"
             "      - uses: actions/checkout@v6\n"
         )
+    def test_external_repo_checkout_alone_cannot_run_repo_scripts(self):
+        """A job checking out only an external repo cannot run scripts from the host repo."""
+        workflow = _fixture_workflow(
+            "      - uses: actions/checkout@v6\n"
+            "        with:\n"
+            "          repository: saman-mb/homebrew-tap\n"
+            "      - name: commit\n"
+            "        run: bash .github/scripts/commit-homebrew-formula.sh\n"
+        )
+        errors = self._validate_fixture(workflow)
+        self.assertTrue(errors, "external-only checkout must not allow host repo scripts")
+        self.assertIn("commit-homebrew-formula.sh", "\n".join(errors))
+
+    def test_job_with_no_checkout_cannot_run_repo_scripts(self):
+        """A job with no checkout step at all cannot run repo scripts."""
+        workflow = _fixture_workflow(
+            "      - name: build\n"
+            "        run: bash .github/scripts/build.sh\n"
+        )
+        errors = self._validate_fixture(workflow)
+        self.assertTrue(errors, "job without checkout must not allow repo scripts")
+        self.assertIn("build.sh", "\n".join(errors))
+
+    def test_external_repo_with_path_alongside_host_checkout_passes(self):
+        """Host repo checked out at root plus external repo in subdirectory can run host scripts."""
+        workflow = _fixture_workflow(
+            "      - uses: actions/checkout@v6\n"
+            "      - uses: actions/checkout@v6\n"
+            "        with:\n"
+            "          repository: saman-mb/homebrew-tap\n"
+            "          path: tap\n"
+            "      - name: commit\n"
+            "        run: bash .github/scripts/commit-homebrew-formula.sh tap\n"
+        )
         self.assertEqual(self._validate_fixture(workflow), [])
 
 
