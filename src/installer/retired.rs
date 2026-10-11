@@ -14,7 +14,7 @@
 //! copied into a per-run backup tree before it is removed, so the move is
 //! reversible and idempotent — a second run finds nothing left to do.
 
-use crate::catalog::{CanonicalCommand, CanonicalTool};
+use crate::catalog::{CanonicalCommand, CanonicalTool, parse_frontmatter_from};
 use crate::digest;
 use crate::installer::manifest_db::{ReceiptRepository, is_global_target, resolve_target_relative};
 use anyhow::{Context, Result};
@@ -120,28 +120,108 @@ pub fn adopt(target_dir: &Path, harness: &str) -> Result<Option<RetiredReport>> 
 /// why the checks below are gated on a home/global target.
 pub const SUPERSEDED_HOME_SKILLS: &str = ".agents/skills";
 
+/// Every rendered payload description opens with this. It is the second half of
+/// the ownership proof: a captain's own skill can reuse a payload name, but it
+/// will not carry our brand prefix — and the prefix survives renames and
+/// re-renders, so a superseded copy from an older release still proves ours.
+const SHIPMATES_DESCRIPTION_PREFIX: &str = "Shipmates:";
+
+/// Whether the bytes at a payload path are provably a rendered Shipmates
+/// payload: the frontmatter declares the name its directory implies **and**
+/// carries the brand-prefixed description every rendered payload is stamped
+/// with.
+///
+/// The name alone is not proof. A captain's own skill that reuses a payload
+/// name declares `name: shipmates-…` too, so deleting it on the name would be
+/// exactly the mistake this module exists to avoid — and it would delete the
+/// target of a symlink farm's link.
+fn declares_our_payload(content: &str, name: &str) -> bool {
+    match parse_frontmatter_from(content, name) {
+        Ok((frontmatter, _)) => {
+            frontmatter
+                .get("name")
+                .map(|value| value == name)
+                .unwrap_or(false)
+                && frontmatter.get("description").is_some_and(|value| {
+                    unquoted(value).starts_with(SHIPMATES_DESCRIPTION_PREFIX)
+                })
+        }
+        Err(_) => false,
+    }
+}
+
+/// A frontmatter value with any surrounding quotes removed.
+///
+/// Rendered payloads quote the description (`description: "Shipmates: …"`) and
+/// the frontmatter reader hands it back verbatim, quotes included; a
+/// pre-quoting release left it bare. Both have to classify as ours.
+fn unquoted(value: &str) -> &str {
+    let value = value.trim();
+    let value = value
+        .strip_prefix('"')
+        .or_else(|| value.strip_prefix('\''))
+        .unwrap_or(value);
+    value
+        .strip_suffix('"')
+        .or_else(|| value.strip_suffix('\''))
+        .unwrap_or(value)
+}
+
+/// Whether every component of `path` down from `base` — `base` itself
+/// included — is free of symlinks.
+///
+/// The containment rule the installer already applies to the paths it writes
+/// (#462): a symlinked skills tree is a normal thing to want (a dotfiles repo,
+/// a skills manager), so it is skipped rather than followed. Missing trailing
+/// components are allowed; a symlink anywhere in the chain is not.
+fn path_is_symlink_free(base: &Path, path: &Path) -> bool {
+    let Ok(relative) = path.strip_prefix(base) else {
+        return false;
+    };
+    if fs::symlink_metadata(base)
+        .map(|metadata| metadata.file_type().is_symlink())
+        .unwrap_or(false)
+    {
+        return false;
+    }
+    let mut current = base.to_path_buf();
+    for component in relative.components() {
+        current.push(component.as_os_str());
+        match fs::symlink_metadata(&current) {
+            Ok(metadata) if metadata.file_type().is_symlink() => return false,
+            Ok(_) => {}
+            Err(_) => return true,
+        }
+    }
+    true
+}
+
 /// Payload-named entries of a superseded `.agents/skills/` tree, split by
 /// whether Shipmates can prove ownership.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SupersededSkills {
-    /// Entries whose frontmatter `name:` equals the directory name — provably
-    /// Shipmates' own, safe to retire.
+    /// Entries whose own frontmatter declares a rendered Shipmates payload at
+    /// this name — provably ours, safe to retire.
     pub ours: Vec<String>,
-    /// Entries at a payload name that declare a different identity (or none),
-    /// so they are not ours to delete.
+    /// Entries at a payload name that declare a different identity or origin
+    /// (or none), so they are not ours to delete.
     pub foreign: Vec<String>,
+    /// Entries reached through a symlink: left exactly as found, because a
+    /// symlinked skills tree is the captain's own arrangement.
+    pub linked: Vec<String>,
 }
 
 /// Classify `<root>/<name>/SKILL.md` for every payload skill name (`cmds` +
 /// `tools`), where `root` is a `.agents/skills/` directory.
 ///
-/// Ownership is decided from the file's own declaration, exactly as
+/// Ownership is proved from the file's own declaration, exactly as
 /// `adopt::classify` does: a skill is ours only when its frontmatter `name:`
-/// equals the name its directory implies. A directory of the captain's own that
-/// happens to share a payload name, or an unreadable/missing `SKILL.md`, is at
-/// worst reported as foreign and never deleted — this is a path under `$HOME`.
-/// A name outside the payload is ignored entirely, so a foreign harness's own
-/// skills in that tree are invisible to us.
+/// equals the name its directory implies **and** its description carries the
+/// brand prefix every rendered payload is stamped with. A captain's own skill
+/// that merely reuses a payload name, an unreadable/missing `SKILL.md`, and
+/// anything reached through a symlink are at worst reported and never deleted —
+/// this is a path under `$HOME`. A name outside the payload is ignored
+/// entirely, so a foreign harness's own skills in that tree are invisible to us.
 pub fn classify_superseded_skills(
     root: &Path,
     cmds: &[CanonicalCommand],
@@ -161,10 +241,15 @@ pub fn classify_superseded_skills(
         if !payload.contains(name.as_str()) {
             continue;
         }
-        let Ok(content) = fs::read_to_string(entry.path().join("SKILL.md")) else {
+        let skill = entry.path().join("SKILL.md");
+        if !path_is_symlink_free(root, &skill) {
+            out.linked.push(name);
+            continue;
+        }
+        let Ok(content) = fs::read_to_string(&skill) else {
             continue;
         };
-        if crate::installer::adopt::frontmatter_name_matches(&content, &name) {
+        if declares_our_payload(&content, &name) {
             out.ours.push(name);
         } else {
             out.foreign.push(name);
@@ -205,6 +290,11 @@ pub fn retire_superseded_home_tree(
     let mut backups_written = false;
     for name in &tree.ours {
         let path = root.join(name).join("SKILL.md");
+        // Belt and braces: the classifier already put symlinked entries in
+        // `linked`, and a delete under `$HOME` is worth re-checking.
+        if !path_is_symlink_free(target_dir, &path) {
+            continue;
+        }
         let Ok(bytes) = fs::read(&path) else {
             // Already gone: nothing to retire, nothing to report.
             continue;
@@ -384,7 +474,7 @@ mod tests {
         let root = dir.path().join(SUPERSEDED_HOME_SKILLS);
         write(
             &root.join("shipmates-ship-issue/SKILL.md"),
-            "---\nname: shipmates-ship-issue\ndescription: d\n---\nbody\n",
+            "---\nname: shipmates-ship-issue\ndescription: \"Shipmates: superseded fixture\"\n---\nbody\n",
         );
         // A payload name whose frontmatter claims a different identity.
         write(
@@ -405,6 +495,62 @@ mod tests {
         );
         assert_eq!(tree.ours, vec!["shipmates-ship-issue"]);
         assert_eq!(tree.foreign, vec!["shipmates-termgif"]);
+    }
+
+    /// A captain's own skill that reuses a payload name is not ours. The
+    /// frontmatter name is not proof on its own — their file declares it too —
+    /// so it must fail closed to foreign and never be deleted.
+    #[test]
+    fn a_payload_named_skill_with_a_foreign_description_is_never_retired() {
+        let dir = tempdir().unwrap();
+        let root = dir.path().join(SUPERSEDED_HOME_SKILLS);
+        write(
+            &root.join("shipmates-ship-issue/SKILL.md"),
+            "---\nname: shipmates-ship-issue\ndescription: mine\n---\nbody\n",
+        );
+        let tree = classify_superseded_skills(&root, &[cmd("shipmates-ship-issue")], &[]);
+        assert!(tree.ours.is_empty(), "ours: {:?}", tree.ours);
+        assert_eq!(tree.foreign, vec!["shipmates-ship-issue"]);
+        assert!(
+            retire_superseded_home_tree(dir.path(), &[cmd("shipmates-ship-issue")], &[])
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            root.join("shipmates-ship-issue/SKILL.md").is_file(),
+            "a captain's own file must survive"
+        );
+    }
+
+    /// A symlinked skills tree is the captain's own arrangement (#462): it is
+    /// skipped and reported, never followed — so nothing behind the link is
+    /// deleted, however Shipmates-looking the target is.
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_home_skills_tree_is_left_alone() {
+        let dir = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let target = outside.path().join("skills");
+        write(
+            &target.join("shipmates-ship-issue/SKILL.md"),
+            "---\nname: shipmates-ship-issue\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+        );
+        let linked = dir.path().join(SUPERSEDED_HOME_SKILLS);
+        fs::create_dir_all(linked.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(&target, &linked).unwrap();
+
+        let tree = classify_superseded_skills(&linked, &[cmd("shipmates-ship-issue")], &[]);
+        assert!(tree.ours.is_empty(), "ours must stay empty: {:?}", tree.ours);
+        assert_eq!(tree.linked, vec!["shipmates-ship-issue"]);
+        assert!(
+            retire_superseded_home_tree(dir.path(), &[cmd("shipmates-ship-issue")], &[])
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            target.join("shipmates-ship-issue/SKILL.md").is_file(),
+            "the symlink target must survive"
+        );
     }
 
     /// The retirement is home-scope only: a project-scope `.agents/skills/` tree

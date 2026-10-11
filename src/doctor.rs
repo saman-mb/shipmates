@@ -1488,10 +1488,11 @@ fn diagnose_built(
 ///
 /// `None` unless `target_dir` is the user's home — at project scope the same
 /// path is the shared tree three harnesses legitimately write. A `Problem` when
-/// the tree holds files their own frontmatter proves are ours (so `upgrade`'s
+/// the tree holds files whose own frontmatter proves them ours (so `upgrade`'s
 /// audit counts the drift and `--fix` retires them); a `Warn` naming a
-/// copy-pasteable removal when a payload name is present but the file declares a
-/// different identity and so is not ours to delete.
+/// copy-pasteable removal when a payload name is present but the file is not
+/// ours to delete — either because it declares a different identity, or because
+/// it is reached through a symlink and is therefore left exactly as found.
 fn superseded_home_skills_check(
     target_dir: &Path,
     cmds: &[CanonicalCommand],
@@ -1514,6 +1515,20 @@ fn superseded_home_skills_check(
                 tree.ours.join(", ")
             ),
             fixable: true,
+        }
+    } else if !tree.linked.is_empty() {
+        Check {
+            name: "Superseded skill tree".into(),
+            severity: Severity::Warn,
+            detail: format!(
+                "{} skill(s) sit at a payload name in a home-scope tree reached through a \
+                 symlink, so they were left exactly as found — a symlinked skills tree is the \
+                 captain's own arrangement and Shipmates does not follow it to delete files: {}. \
+                 Move them aside by hand if they are a superseded copy.",
+                tree.linked.len(),
+                tree.linked.join(", ")
+            ),
+            fixable: false,
         }
     } else if !tree.foreign.is_empty() {
         let removal = tree
