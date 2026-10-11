@@ -189,13 +189,34 @@ fn ship_epic_force_push_stays_lease_scoped_to_its_own_story_branch() {
     );
 }
 
+/// Is `after` the remainder of a genuine lease-scoped force flag — exactly
+/// `-with-lease` / `-if-includes`, optionally followed by `=ref` or punctuation?
+/// A near-miss such as `-with-lease-x` is not a real Git option, so it is
+/// treated as a bare force (fail-closed).
+fn lease_suffix_is_well_formed(after: &str) -> bool {
+    for form in ["-with-lease", "-if-includes"] {
+        if let Some(rest) = after.strip_prefix(form) {
+            return rest.is_empty()
+                || rest.chars().next().is_some_and(|c| {
+                    c.is_whitespace()
+                        || matches!(
+                            c,
+                            '=' | ':' | ',' | ';' | '`' | '"' | '\'' | ')' | ']'
+                        )
+                });
+        }
+    }
+    false
+}
+
 /// Does this line instruct a push that is not a lease-scoped force?
 ///
-/// A `--force-with-lease` mention *anywhere else on the same line* does not
-/// excuse a bare `--force`: the first revision of this guard suppressed
-/// detection whenever the line contained the lease form at all, so a trailing
-/// comment defeated it. Every `--force` occurrence must itself be the lease
-/// (or `force-if-includes`) long form.
+/// Two revisions of this guard were bypassed, and both forms are pinned by
+/// tests below: a `--force-with-lease` mention elsewhere on the line used to
+/// excuse a bare `--force`, and the short flag used to be matched as the
+/// literal substring `"push -f"`, which missed `push  -f`, a tab, `push -f;`,
+/// and similar shell separators. Detection is per long-flag occurrence and, for
+/// the short flag, token-based.
 fn bare_force_push(line: &str) -> bool {
     let lowered = line.to_ascii_lowercase();
     if !lowered.contains("push") {
@@ -204,19 +225,16 @@ fn bare_force_push(line: &str) -> bool {
     let mut rest = lowered.as_str();
     while let Some(position) = rest.find("--force") {
         let after = &rest[position + "--force".len()..];
-        if !(after.starts_with("-with-lease") || after.starts_with("-if-includes")) {
+        if !lease_suffix_is_well_formed(after) {
             return true;
         }
         rest = after;
     }
-    if let Some(position) = lowered.find("push -f") {
-        let trailing = lowered[position + "push -f".len()..].chars().next();
-        let ends_the_flag = trailing.is_none_or(|c| c.is_whitespace() || c == '`');
-        if ends_the_flag {
-            return true;
-        }
-    }
-    false
+    lowered
+        .split(|c: char| {
+            c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')' | '`' | '"' | '\'')
+        })
+        .any(|token| token == "-f")
 }
 
 /// #420: the no-force-push guardrail is repo-wide, not a property of the two
@@ -272,12 +290,30 @@ fn a_lease_mention_elsewhere_on_a_force_line_does_not_excuse_it() {
     assert!(bare_force_push(
         "git push --force origin main # --force-with-lease is the ship-epic exception"
     ));
-    assert!(bare_force_push("git push -f origin main"));
     assert!(bare_force_push("run `git push --force origin main`"));
-    assert!(bare_force_push("git push --force-with-lease origin a && git push --force origin b"));
+    assert!(bare_force_push(
+        "git push --force-with-lease origin a && git push --force origin b"
+    ));
     assert!(!bare_force_push("git push --force-with-lease origin <BRANCH>"));
     assert!(!bare_force_push("git push --force-if-includes origin <BRANCH>"));
+    assert!(bare_force_push("git push --force-with-lease-x origin main"));
     assert!(!bare_force_push("the worker force-pushes with lease to its own branch"));
+    assert!(!bare_force_push("no push on this line"));
+}
+
+/// The second revision matched the short flag as the literal substring
+/// `"push -f"`, so double spaces, a tab, and a trailing shell separator escaped
+/// it. Detection is token-based now: a push line carrying the exact token `-f`
+/// is a violation whatever the whitespace or separator.
+#[test]
+fn a_short_force_flag_is_caught_whatever_the_spacing_or_separator() {
+    assert!(bare_force_push("git push -f origin main"));
+    assert!(bare_force_push("git push  -f origin main"));
+    assert!(bare_force_push("git push\t-f origin main"));
+    assert!(bare_force_push("git push -f; git status"));
+    assert!(bare_force_push("git push origin main -f"));
+    assert!(!bare_force_push("git push --force-with-lease=origin/main origin main"));
+    assert!(!bare_force_push("git push --atomic origin main"));
     assert!(!bare_force_push("no push on this line"));
 }
 
