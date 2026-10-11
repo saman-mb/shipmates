@@ -189,13 +189,44 @@ fn ship_epic_force_push_stays_lease_scoped_to_its_own_story_branch() {
     );
 }
 
+/// Does this line instruct a push that is not a lease-scoped force?
+///
+/// A `--force-with-lease` mention *anywhere else on the same line* does not
+/// excuse a bare `--force`: the first revision of this guard suppressed
+/// detection whenever the line contained the lease form at all, so a trailing
+/// comment defeated it. Every `--force` occurrence must itself be the lease
+/// (or `force-if-includes`) long form.
+fn bare_force_push(line: &str) -> bool {
+    let lowered = line.to_ascii_lowercase();
+    if !lowered.contains("push") {
+        return false;
+    }
+    let mut rest = lowered.as_str();
+    while let Some(position) = rest.find("--force") {
+        let after = &rest[position + "--force".len()..];
+        if !(after.starts_with("-with-lease") || after.starts_with("-if-includes")) {
+            return true;
+        }
+        rest = after;
+    }
+    if let Some(position) = lowered.find("push -f") {
+        let trailing = lowered[position + "push -f".len()..].chars().next();
+        let ends_the_flag = trailing.is_none_or(|c| c.is_whitespace() || c == '`');
+        if ends_the_flag {
+            return true;
+        }
+    }
+    false
+}
+
 /// #420: the no-force-push guardrail is repo-wide, not a property of the two
 /// commands that happen to own the safety contract. `git push --force` — bare,
 /// or with the short flag — must not appear in *any* command; ship-epic's
-/// lease-scoped rebase rule is the single deliberate exception (asserted above).
-/// This is the check that makes the epic's "a guardrail removal from any command
-/// fails CI" claim true for the strongest guardrail, rather than only for the
-/// two commands its named contracts live in.
+/// lease-scoped rebase rule is the single deliberate exception, and it is the
+/// only command allowed to name the lease form at all. This is the check that
+/// makes the epic's "a guardrail removal from any command fails CI" claim true
+/// for the strongest guardrail, rather than only for the two commands its named
+/// contracts live in.
 #[test]
 fn no_command_instructs_a_bare_force_push() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("commands");
@@ -207,16 +238,18 @@ fn no_command_instructs_a_bare_force_push() {
             continue;
         }
         seen += 1;
+        let is_ship_epic = path.file_stem().and_then(|stem| stem.to_str()) == Some("shipmates-ship-epic");
         let body = std::fs::read_to_string(&path).expect("read command");
         for (index, line) in body.lines().enumerate() {
             let lowered = line.to_ascii_lowercase();
-            if !lowered.contains("push") {
-                continue;
+            let context = format!("{}:{}: {}", path.display(), index + 1, line.trim());
+            if bare_force_push(line) {
+                violations.push(format!("bare force push: {context}"));
             }
-            let bare_force = lowered.contains("--force") && !lowered.contains("--force-with-lease");
-            let short_force = lowered.contains("push -f ") || lowered.contains("push -f`");
-            if bare_force || short_force {
-                violations.push(format!("{}:{}: {}", path.display(), index + 1, line.trim()));
+            if !is_ship_epic && lowered.contains("force-with-lease") {
+                violations.push(format!(
+                    "only shipmates-ship-epic may name the lease-scoped force: {context}"
+                ));
             }
         }
     }
@@ -226,9 +259,26 @@ fn no_command_instructs_a_bare_force_push() {
     );
     assert!(
         violations.is_empty(),
-        "no command may instruct a bare force push; only ship-epic's lease-scoped rebase rule is allowed:\n{}",
+        "no command may instruct a bare force push, and only ship-epic may carry the lease-scoped form:\n{}",
         violations.join("\n")
     );
+}
+
+/// The first revision of the repo-wide guard let a `--force-with-lease` mention
+/// elsewhere on a line excuse a bare force on that same line. This pins the fix:
+/// detection is per `--force` occurrence, not per line.
+#[test]
+fn a_lease_mention_elsewhere_on_a_force_line_does_not_excuse_it() {
+    assert!(bare_force_push(
+        "git push --force origin main # --force-with-lease is the ship-epic exception"
+    ));
+    assert!(bare_force_push("git push -f origin main"));
+    assert!(bare_force_push("run `git push --force origin main`"));
+    assert!(bare_force_push("git push --force-with-lease origin a && git push --force origin b"));
+    assert!(!bare_force_push("git push --force-with-lease origin <BRANCH>"));
+    assert!(!bare_force_push("git push --force-if-includes origin <BRANCH>"));
+    assert!(!bare_force_push("the worker force-pushes with lease to its own branch"));
+    assert!(!bare_force_push("no push on this line"));
 }
 
 /// #420: an acceptance → fix → re-acceptance loop with no cap can burn a run
