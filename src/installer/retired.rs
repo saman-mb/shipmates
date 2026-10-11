@@ -215,7 +215,11 @@ fn payload_file_names(
     }
     let mut files = vec!["SKILL.md".to_string()];
     if let Some(tool) = tool {
-        files.extend(tool.assets.iter().map(|(rel, _)| rel.clone()));
+        for (relative, _) in &tool.assets {
+            if !files.iter().any(|file| file == relative) {
+                files.push(relative.clone());
+            }
+        }
     }
     Some(files)
 }
@@ -251,7 +255,8 @@ pub struct SupersededSkills {
 /// brand prefix every rendered payload is stamped with. A captain's own skill
 /// that merely reuses a payload name, a `SKILL.md` that is missing or
 /// unreadable, and anything reached through a symlink are each at worst
-/// reported as foreign and never deleted — this is a path under `$HOME`. A name
+/// reported — the symlink case as `linked`, the others as `foreign` — and never
+/// deleted; this is a path under `$HOME`. A name
 /// outside the payload is ignored entirely, so a foreign harness's own skills in
 /// that tree are invisible to us. An entry is a candidate while any file of its
 /// name's payload set is present, so an orphan script left by a partial retire

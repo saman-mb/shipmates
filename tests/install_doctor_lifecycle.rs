@@ -1968,6 +1968,86 @@ fn doctor_fix_retires_a_superseded_home_agents_skills_tree() {
     );
 }
 
+/// #561: the guards run at home scope too, where the delete actually happens — a
+/// symlinked entry and a foreign entry must survive `doctor --fix` while a
+/// provably-ours entry in the same tree, skill *and* script, is retired. The
+/// unit-test shapes cannot reach this: a tempdir is never `$HOME`, so the
+/// retreat there returns before the guards run.
+#[cfg(unix)]
+#[test]
+fn doctor_fix_leaves_symlinked_and_foreign_home_entries_alone() {
+    let home = tempdir().unwrap();
+    let outside = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &[
+            "install",
+            "--harness",
+            "pi",
+            "--global",
+            "--with-tools",
+            "none",
+        ],
+    );
+    assert!(
+        install.status.success(),
+        "pi global install failed: {}",
+        output_text(&install)
+    );
+
+    // A symlinked entry: the entry itself is the link.
+    let real = outside.path().join("elsewhere");
+    fs::create_dir_all(&real).unwrap();
+    fs::write(
+        real.join("SKILL.md"),
+        "---\nname: shipmates-qa\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+    )
+    .unwrap();
+    let linked = home.path().join(".agents/skills/shipmates-qa");
+    fs::create_dir_all(linked.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&real, &linked).unwrap();
+
+    // A foreign entry: a payload name, not our declaration.
+    let foreign = home.path().join(".agents/skills/shipmates-gh/SKILL.md");
+    fs::create_dir_all(foreign.parent().unwrap()).unwrap();
+    let foreign_body = "---\nname: shipmates-gh\ndescription: mine\n---\nkeep me\n";
+    fs::write(&foreign, foreign_body).unwrap();
+
+    // A provably-ours entry in the same tree, with its script beside it.
+    let ours = home.path().join(".agents/skills/shipmates-badge");
+    fs::create_dir_all(&ours).unwrap();
+    fs::write(
+        ours.join("SKILL.md"),
+        "---\nname: shipmates-badge\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+    )
+    .unwrap();
+    fs::write(ours.join("badge.py"), "print('ours')\n").unwrap();
+
+    let report = run_home(home.path(), &["doctor", "--harness", "pi", "--fix"]);
+    let text = output_text(&report);
+    assert!(
+        real.join("SKILL.md").is_file() && linked.is_symlink(),
+        "a symlinked entry and its target must survive: {text}"
+    );
+    assert_eq!(
+        fs::read_to_string(&foreign).unwrap(),
+        foreign_body,
+        "a foreign file must never be removed: {text}"
+    );
+    assert!(
+        text.contains("reached through a symlink"),
+        "the symlink clause must be named: {text}"
+    );
+    assert!(
+        text.contains("rm -rf"),
+        "the foreign clause must carry a removal command: {text}"
+    );
+    assert!(
+        !ours.join("SKILL.md").exists() && !ours.join("badge.py").exists(),
+        "a provably-ours entry and its script must be retired: {text}"
+    );
+}
+
 /// #561: a foreign file sitting at a home-scope payload name is reported with a
 /// copy-pasteable removal command, never touched — `doctor` deletes only what a
 /// file's own frontmatter proves to be Shipmates'.

@@ -1535,9 +1535,10 @@ fn superseded_home_skills_check(
             .collect::<Vec<_>>()
             .join(" ");
         clauses.push(format!(
-            "{} file(s) sit at a home-scope payload name but their frontmatter does not \
-             declare it, so they are not provably Shipmates' and were left untouched: {}. \
-             Remove them by hand if they are a superseded copy: rm -rf {removal}",
+            "{} entry(ies) sit at a home-scope payload name but are not provably Shipmates' — \
+             their `SKILL.md` is missing or unreadable, or its frontmatter does not declare \
+             both the payload name and Shipmates' own description — so they were left \
+             untouched: {}. Remove them by hand if they are a superseded copy: rm -rf {removal}",
             tree.foreign.len(),
             tree.foreign.join(", ")
         ));
