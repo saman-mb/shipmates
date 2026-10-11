@@ -742,7 +742,7 @@ fn install_harness(
         && report.changed()
     {
         println!(
-            "Retired {} superseded home-tree skill file(s) (backup: {})",
+            "Retired {} superseded home-tree payload file(s) (backup: {})",
             report.adopted.len(),
             report
                 .backup_root

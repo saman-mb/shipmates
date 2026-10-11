@@ -1487,12 +1487,13 @@ fn diagnose_built(
 /// it, harness-general: the duplicate is Shipmates' footprint at every target.
 ///
 /// `None` unless `target_dir` is the user's home — at project scope the same
-/// path is the shared tree three harnesses legitimately write. A `Problem` when
-/// the tree holds files whose own frontmatter proves them ours (so `upgrade`'s
-/// audit counts the drift and `--fix` retires them); a `Warn` naming a
-/// copy-pasteable removal when a payload name is present but the file is not
-/// ours to delete — either because it declares a different identity, or because
-/// it is reached through a symlink and is therefore left exactly as found.
+/// path is the shared tree three harnesses legitimately write. Every applicable
+/// clause is reported in the one detail line, because a tree can be mixed:
+/// `our` files (with the `--fix` instruction), symlinked entries (left as
+/// found, a symlinked tree is the captain's own arrangement) and foreign
+/// entries (with a copy-pasteable removal command). A `Problem` when anything is
+/// provably ours (so `upgrade`'s audit counts the drift and `--fix` retires it),
+/// a `Warn` when anything is only linked or foreign, else `Ok`.
 fn superseded_home_skills_check(
     target_dir: &Path,
     cmds: &[CanonicalCommand],
@@ -1503,59 +1504,61 @@ fn superseded_home_skills_check(
     }
     let root = target_dir.join(retired::SUPERSEDED_HOME_SKILLS);
     let tree = retired::classify_superseded_skills(target_dir, cmds, tools);
-    Some(if !tree.ours.is_empty() {
-        Check {
-            name: "Superseded skill tree".into(),
-            severity: Severity::Problem,
-            detail: format!(
-                "{} Shipmates skill(s) sit in a home-scope tree a pre-relocation install left \
-                 behind and no receipt claims, so a harness that still reads it loads each name \
-                 twice: {}. `shipmates doctor --fix` retires them to a backup.",
-                tree.ours.len(),
-                tree.ours.join(", ")
-            ),
-            fixable: true,
-        }
-    } else if !tree.linked.is_empty() {
-        Check {
-            name: "Superseded skill tree".into(),
-            severity: Severity::Warn,
-            detail: format!(
-                "{} skill(s) sit at a payload name in a home-scope tree reached through a \
-                 symlink, so they were left exactly as found — a symlinked skills tree is the \
-                 captain's own arrangement and Shipmates does not follow it to delete files: {}. \
-                 Move them aside by hand if they are a superseded copy.",
-                tree.linked.len(),
-                tree.linked.join(", ")
-            ),
-            fixable: false,
-        }
-    } else if !tree.foreign.is_empty() {
+    // Every applicable remedy is named in the one line: naming only the first
+    // bucket would hide the fix for the rest, and a harness still conflicts on
+    // a foreign or symlinked entry a clean bucket never mentioned.
+    let mut clauses: Vec<String> = Vec::new();
+    if !tree.ours.is_empty() {
+        clauses.push(format!(
+            "{} Shipmates skill(s) sit in a home-scope tree a pre-relocation install left \
+             behind and no receipt claims, so a harness that still reads it loads each name \
+             twice: {}. `shipmates doctor --fix` retires them to a backup.",
+            tree.ours.len(),
+            tree.ours.join(", ")
+        ));
+    }
+    if !tree.linked.is_empty() {
+        clauses.push(format!(
+            "{} skill(s) sit at a payload name in a home-scope tree reached through a \
+             symlink, so they were left exactly as found — a symlinked skills tree is the \
+             captain's own arrangement and Shipmates does not follow it to delete files: {}. \
+             Move them aside by hand if they are a superseded copy.",
+            tree.linked.len(),
+            tree.linked.join(", ")
+        ));
+    }
+    if !tree.foreign.is_empty() {
         let removal = tree
             .foreign
             .iter()
             .map(|name| root.join(name).display().to_string())
             .collect::<Vec<_>>()
             .join(" ");
-        Check {
-            name: "Superseded skill tree".into(),
-            severity: Severity::Warn,
-            detail: format!(
-                "{} file(s) sit at a home-scope payload name but their frontmatter does not \
-                 declare it, so they are not provably Shipmates' and were left untouched: {}. \
-                 Remove them by hand if they are a superseded copy: rm -rf {removal}",
-                tree.foreign.len(),
-                tree.foreign.join(", ")
-            ),
-            fixable: false,
-        }
+        clauses.push(format!(
+            "{} file(s) sit at a home-scope payload name but their frontmatter does not \
+             declare it, so they are not provably Shipmates' and were left untouched: {}. \
+             Remove them by hand if they are a superseded copy: rm -rf {removal}",
+            tree.foreign.len(),
+            tree.foreign.join(", ")
+        ));
+    }
+    let severity = if !tree.ours.is_empty() {
+        Severity::Problem
+    } else if !tree.linked.is_empty() || !tree.foreign.is_empty() {
+        Severity::Warn
     } else {
-        Check {
-            name: "Superseded skill tree".into(),
-            severity: Severity::Ok,
-            detail: "no superseded home-scope skill tree".into(),
-            fixable: false,
-        }
+        Severity::Ok
+    };
+    let detail = if clauses.is_empty() {
+        "no superseded home-scope skill tree".to_string()
+    } else {
+        clauses.join(" ")
+    };
+    Some(Check {
+        name: "Superseded skill tree".into(),
+        severity,
+        detail,
+        fixable: !tree.ours.is_empty(),
     })
 }
 
@@ -2056,7 +2059,7 @@ pub fn fix(
         && report.changed()
     {
         println!(
-            "Retired {} superseded home-tree skill file(s) (backup: {})",
+            "Retired {} superseded home-tree payload file(s) (backup: {})",
             report.adopted.len(),
             report
                 .backup_root

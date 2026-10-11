@@ -18,7 +18,6 @@ use crate::catalog::{CanonicalCommand, CanonicalTool, parse_frontmatter_from};
 use crate::digest;
 use crate::installer::manifest_db::{ReceiptRepository, is_global_target, resolve_target_relative};
 use anyhow::{Context, Result};
-use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -197,6 +196,30 @@ fn path_is_symlink_free(base: &Path, path: &Path) -> bool {
     true
 }
 
+/// The files a rendered payload installs under its own skill directory: the
+/// manifest `SKILL.md` first, then the installed filenames of a canonical
+/// tool's bundled assets (a command bundles none). `None` when `name` is not a
+/// payload name at all.
+///
+/// This is the set a superseded tree can orphan one file at a time: a retire
+/// that keys on `SKILL.md` alone leaves a tool's script behind, and a leftover
+/// script proves the payload name as surely as the manifest does.
+fn payload_file_names(
+    name: &str,
+    cmds: &[CanonicalCommand],
+    tools: &[CanonicalTool],
+) -> Option<Vec<String>> {
+    let tool = tools.iter().find(|tool| tool.name == name);
+    if tool.is_none() && !cmds.iter().any(|command| command.name == name) {
+        return None;
+    }
+    let mut files = vec!["SKILL.md".to_string()];
+    if let Some(tool) = tool {
+        files.extend(tool.assets.iter().map(|(rel, _)| rel.clone()));
+    }
+    Some(files)
+}
+
 /// Payload-named entries of a superseded `.agents/skills/` tree, split by
 /// whether Shipmates can prove ownership.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -230,42 +253,49 @@ pub struct SupersededSkills {
 /// unreadable, and anything reached through a symlink are each at worst
 /// reported as foreign and never deleted — this is a path under `$HOME`. A name
 /// outside the payload is ignored entirely, so a foreign harness's own skills in
-/// that tree are invisible to us.
+/// that tree are invisible to us. An entry is a candidate while any file of its
+/// name's payload set is present, so an orphan script left by a partial retire
+/// is still reported rather than read as an empty tree.
 pub fn classify_superseded_skills(
     target_dir: &Path,
     cmds: &[CanonicalCommand],
     tools: &[CanonicalTool],
 ) -> SupersededSkills {
     let root = target_dir.join(SUPERSEDED_HOME_SKILLS);
-    let payload: BTreeSet<&str> = cmds
-        .iter()
-        .map(|command| command.name.as_str())
-        .chain(tools.iter().map(|tool| tool.name.as_str()))
-        .collect();
     let mut out = SupersededSkills::default();
     let Ok(entries) = fs::read_dir(&root) else {
         return out;
     };
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().into_owned();
-        if !payload.contains(name.as_str()) {
+        let Some(files) = payload_file_names(&name, cmds, tools) else {
+            continue;
+        };
+        let dir = entry.path();
+        // A candidate holds a file of the name's payload set — the manifest
+        // *or* a bundled script a partial retire left behind. A directory
+        // holding only the captain's own files is not ours to report, let alone
+        // remove, and an empty one is not a tree at all.
+        let present: Vec<PathBuf> = files
+            .iter()
+            .map(|file| dir.join(file))
+            .filter(|path| fs::symlink_metadata(path).is_ok())
+            .collect();
+        if present.is_empty() {
             continue;
         }
-        let skill = entry.path().join("SKILL.md");
-        if !path_is_symlink_free(target_dir, &skill) {
+        if present
+            .iter()
+            .any(|path| !path_is_symlink_free(target_dir, path))
+        {
             out.linked.push(name);
             continue;
         }
-        let Ok(content) = fs::read_to_string(&skill) else {
-            // A payload name with no readable `SKILL.md` declares nothing, so it
-            // is not ours to delete — reported, not silently skipped.
-            out.foreign.push(name);
-            continue;
-        };
-        if declares_our_payload(&content, &name) {
-            out.ours.push(name);
-        } else {
-            out.foreign.push(name);
+        match fs::read_to_string(dir.join("SKILL.md")) {
+            Ok(content) if declares_our_payload(&content, &name) => out.ours.push(name),
+            // No readable `SKILL.md`, or one whose declaration is not ours:
+            // nothing proves ownership, so it is reported and never deleted.
+            _ => out.foreign.push(name),
         }
     }
     out.ours.sort();
@@ -278,6 +308,12 @@ pub fn classify_superseded_skills(
 /// tree (`<home>/.agents/skills/`), with the same backup semantics as
 /// [`adopt`] — every file is copied into a per-run backup tree before it is
 /// removed, so the move is reversible.
+///
+/// "Every file" is the whole payload set for the name, not only `SKILL.md`: a
+/// rendered tool skill is its manifest **plus** the bundled script, so retiring
+/// the manifest alone would leave the script orphaned and the tree unclaimable.
+/// Each file is symlink-checked immediately before it is acted on, and a file
+/// the payload does not name — the captain's own — is left exactly where it is.
 ///
 /// Returns `None` when the target is not the user's home, when there is no such
 /// tree, or when nothing in it is provably ours; a foreign entry is left exactly
@@ -303,33 +339,38 @@ pub fn retire_superseded_home_tree(
     };
     let mut backups_written = false;
     for name in &tree.ours {
-        let path = root.join(name).join("SKILL.md");
-        // Belt and braces: the classifier already put symlinked entries in
-        // `linked`, and a delete under `$HOME` is worth re-checking.
-        if !path_is_symlink_free(target_dir, &path) {
-            continue;
-        }
-        let Ok(bytes) = fs::read(&path) else {
-            // Already gone: nothing to retire, nothing to report.
+        let Some(files) = payload_file_names(name, cmds, tools) else {
             continue;
         };
-        let relative = path
-            .strip_prefix(target_dir)
-            .map_err(|error| anyhow::anyhow!("superseded path escaped target: {error}"))?
-            .to_path_buf();
-        let backup = backup_root.join(&relative);
-        if let Some(parent) = backup.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("creating backup dir {}", parent.display()))?;
+        for file in files {
+            let path = root.join(name).join(&file);
+            // Belt and braces: the classifier already put symlinked entries in
+            // `linked`, and a delete under `$HOME` is worth re-checking.
+            if !path_is_symlink_free(target_dir, &path) {
+                continue;
+            }
+            let Ok(bytes) = fs::read(&path) else {
+                // Not part of this entry, or already gone: nothing to retire.
+                continue;
+            };
+            let relative = path
+                .strip_prefix(target_dir)
+                .map_err(|error| anyhow::anyhow!("superseded path escaped target: {error}"))?
+                .to_path_buf();
+            let backup = backup_root.join(&relative);
+            if let Some(parent) = backup.parent() {
+                fs::create_dir_all(parent)
+                    .with_context(|| format!("creating backup dir {}", parent.display()))?;
+            }
+            crate::installer::atomic_write_bytes(&backup, &bytes)
+                .with_context(|| format!("backing up {}", path.display()))?;
+            // The backup is on disk before the original goes, the same ordering
+            // rule the retired-name adoption uses, so a file is never lost.
+            fs::remove_file(&path).with_context(|| format!("removing {}", path.display()))?;
+            backups_written = true;
+            report.adopted.push(relative);
+            report.backups.push(backup);
         }
-        crate::installer::atomic_write_bytes(&backup, &bytes)
-            .with_context(|| format!("backing up {}", path.display()))?;
-        // The backup is on disk before the original goes, the same ordering
-        // rule the retired-name adoption uses, so a file is never lost.
-        fs::remove_file(&path).with_context(|| format!("removing {}", path.display()))?;
-        backups_written = true;
-        report.adopted.push(relative);
-        report.backups.push(backup);
     }
     prune_empty_dirs(target_dir, &report.adopted);
     if !backups_written && backup_root.exists() {
@@ -468,14 +509,54 @@ mod tests {
     }
 
     fn tool(name: &str) -> CanonicalTool {
+        tool_with_assets(name, &[])
+    }
+
+    fn tool_with_assets(name: &str, assets: &[&str]) -> CanonicalTool {
         CanonicalTool {
             name: name.into(),
             description: "d".into(),
             body: "b".into(),
-            assets: vec![],
+            assets: assets
+                .iter()
+                .map(|asset| ((*asset).to_string(), String::new()))
+                .collect(),
             requires: vec![],
             source: PathBuf::from(""),
         }
+    }
+
+    /// #561: a tool's rendered skill is a `SKILL.md` *and* its bundled script,
+    /// so a name is a candidate while the manifest, the script, or both are
+    /// present — an orphan script a partial retire left behind is still
+    /// reported, not read as an empty tree. A directory holding only the
+    /// captain's own files is not in the payload set and is invisible.
+    #[test]
+    fn classifies_a_tool_by_any_file_of_its_payload_set() {
+        let dir = tempdir().unwrap();
+        let root = dir.path().join(SUPERSEDED_HOME_SKILLS);
+        write(
+            &root.join("shipmates-termgif/SKILL.md"),
+            "---\nname: shipmates-termgif\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+        );
+        write(&root.join("shipmates-termgif/termgif.py"), "print('hi')\n");
+        // An orphan script whose `SKILL.md` a partial retire already removed.
+        write(&root.join("shipmates-badge/badge.py"), "print('orphan')\n");
+        // A payload name holding only the captain's own file: not a file of the
+        // payload set, so it is never a candidate — not reported, not removed.
+        write(&root.join("shipmates-harden/notes.txt"), "mine\n");
+
+        let tree = classify_superseded_skills(
+            dir.path(),
+            &[cmd("shipmates-harden")],
+            &[
+                tool_with_assets("shipmates-termgif", &["termgif.py"]),
+                tool_with_assets("shipmates-badge", &["badge.py"]),
+            ],
+        );
+        assert_eq!(tree.ours, vec!["shipmates-termgif"]);
+        assert_eq!(tree.foreign, vec!["shipmates-badge"]);
+        assert!(tree.linked.is_empty(), "linked: {:?}", tree.linked);
     }
 
     /// #561: a superseded tree is split into the files whose own frontmatter
