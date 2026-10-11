@@ -189,6 +189,48 @@ fn ship_epic_force_push_stays_lease_scoped_to_its_own_story_branch() {
     );
 }
 
+/// #420: the no-force-push guardrail is repo-wide, not a property of the two
+/// commands that happen to own the safety contract. `git push --force` — bare,
+/// or with the short flag — must not appear in *any* command; ship-epic's
+/// lease-scoped rebase rule is the single deliberate exception (asserted above).
+/// This is the check that makes the epic's "a guardrail removal from any command
+/// fails CI" claim true for the strongest guardrail, rather than only for the
+/// two commands its named contracts live in.
+#[test]
+fn no_command_instructs_a_bare_force_push() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("commands");
+    let mut violations = Vec::new();
+    let mut seen = 0;
+    for entry in std::fs::read_dir(&dir).expect("read commands/") {
+        let path = entry.expect("dir entry").path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        seen += 1;
+        let body = std::fs::read_to_string(&path).expect("read command");
+        for (index, line) in body.lines().enumerate() {
+            let lowered = line.to_ascii_lowercase();
+            if !lowered.contains("push") {
+                continue;
+            }
+            let bare_force = lowered.contains("--force") && !lowered.contains("--force-with-lease");
+            let short_force = lowered.contains("push -f ") || lowered.contains("push -f`");
+            if bare_force || short_force {
+                violations.push(format!("{}:{}: {}", path.display(), index + 1, line.trim()));
+            }
+        }
+    }
+    assert!(
+        seen >= 18,
+        "expected the command tree to hold every canonical command, saw {seen} files"
+    );
+    assert!(
+        violations.is_empty(),
+        "no command may instruct a bare force push; only ship-epic's lease-scoped rebase rule is allowed:\n{}",
+        violations.join("\n")
+    );
+}
+
 /// #420: an acceptance → fix → re-acceptance loop with no cap can burn a run
 /// indefinitely, so the cap is declared and the exhausted path escalates
 /// instead of pushing on.
