@@ -40,6 +40,11 @@ jobs:
         run: python3 tools/validate_skill_names.py --check
       - name: Check generated command pages are up to date
         run: python3 tools/gen_command_pages.py --check
+      # The root documents quote command names and config values, so they can
+      # drift from commands/ the way any copy can. The SLUGS-versus-tree half is
+      # already covered by the generator check above.
+      - name: Validate README/CONTRIBUTING/AGENTS against the commands
+        run: python3 tools/validate_docs.py
       # Gates every target payload against its reference digest
       - name: Check target payload digests
         run: bash .github/scripts/check-payload-digests.sh
