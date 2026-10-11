@@ -321,6 +321,7 @@ fn run_install_loop(
             roles,
             cmds,
             &selected_tools,
+            available_tools,
             install_steering,
             &provision_filenames,
             no_migrate,
@@ -472,6 +473,7 @@ fn install_harness(
     roles: &[catalog::CanonicalRole],
     cmds: &[catalog::CanonicalCommand],
     selected_tools: &[catalog::CanonicalTool],
+    available_tools: &[catalog::CanonicalTool],
     install_steering: Option<&str>,
     provision_filenames: &std::collections::HashSet<String>,
     no_migrate: bool,
@@ -512,6 +514,17 @@ fn install_harness(
         None
     } else {
         installer::retired::adopt(target_dir, harness)?
+    };
+    // #561: a pre-relocation Shipmates left its commands and tools in a
+    // home-scope `.agents/skills/` tree that no current payload writes and no
+    // receipt claims, but that a harness reading legacy locations still loads.
+    // Retire the provably-ours files with the same backup semantics, so a plain
+    // install clears the duplicate too. The whole catalogue is the ownership
+    // key, not just this run's tool selection: the orphan predates it.
+    let superseded_report = if no_migrate {
+        None
+    } else {
+        installer::retired::retire_superseded_home_tree(target_dir, cmds, available_tools)?
     };
 
     // A path behind a symlink is SKIPPED — not written through and not fatal.
@@ -724,6 +737,19 @@ fn install_harness(
                     .join(", ")
             );
         }
+    }
+    if let Some(report) = superseded_report.as_ref()
+        && report.changed()
+    {
+        println!(
+            "Retired {} superseded home-tree skill file(s) (backup: {})",
+            report.adopted.len(),
+            report
+                .backup_root
+                .as_ref()
+                .map(|path| path.display().to_string())
+                .unwrap_or_else(|| target_dir.display().to_string())
+        );
     }
     for warning in &result.warnings {
         println!("{}", warning);

@@ -14,9 +14,11 @@
 //! copied into a per-run backup tree before it is removed, so the move is
 //! reversible and idempotent — a second run finds nothing left to do.
 
+use crate::catalog::{CanonicalCommand, CanonicalTool};
 use crate::digest;
-use crate::installer::manifest_db::{ReceiptRepository, resolve_target_relative};
+use crate::installer::manifest_db::{ReceiptRepository, is_global_target, resolve_target_relative};
 use anyhow::{Context, Result};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -106,6 +108,131 @@ pub fn adopt(target_dir: &Path, harness: &str) -> Result<Option<RetiredReport>> 
         return Ok(Some(report));
     }
     Ok(None)
+}
+
+/// The home-scope skill tree the pre-`global_relocate` Shipmates wrote and no
+/// current payload writes: `<home>/.agents/skills/`.
+///
+/// Every harness's current global tree is its own private one (`.pi/agent/`,
+/// `.codex/`, `.gemini/config/`, `.copilot/`, …) or the workspace dotdir joined
+/// to home, so this tree is superseded at every target. At project scope it is
+/// NOT superseded — the shared-tree harnesses legitimately write it — which is
+/// why the checks below are gated on a home/global target.
+pub const SUPERSEDED_HOME_SKILLS: &str = ".agents/skills";
+
+/// Payload-named entries of a superseded `.agents/skills/` tree, split by
+/// whether Shipmates can prove ownership.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SupersededSkills {
+    /// Entries whose frontmatter `name:` equals the directory name — provably
+    /// Shipmates' own, safe to retire.
+    pub ours: Vec<String>,
+    /// Entries at a payload name that declare a different identity (or none),
+    /// so they are not ours to delete.
+    pub foreign: Vec<String>,
+}
+
+/// Classify `<root>/<name>/SKILL.md` for every payload skill name (`cmds` +
+/// `tools`), where `root` is a `.agents/skills/` directory.
+///
+/// Ownership is decided from the file's own declaration, exactly as
+/// `adopt::classify` does: a skill is ours only when its frontmatter `name:`
+/// equals the name its directory implies. A directory of the captain's own that
+/// happens to share a payload name, or an unreadable/missing `SKILL.md`, is at
+/// worst reported as foreign and never deleted — this is a path under `$HOME`.
+/// A name outside the payload is ignored entirely, so a foreign harness's own
+/// skills in that tree are invisible to us.
+pub fn classify_superseded_skills(
+    root: &Path,
+    cmds: &[CanonicalCommand],
+    tools: &[CanonicalTool],
+) -> SupersededSkills {
+    let payload: BTreeSet<&str> = cmds
+        .iter()
+        .map(|command| command.name.as_str())
+        .chain(tools.iter().map(|tool| tool.name.as_str()))
+        .collect();
+    let mut out = SupersededSkills::default();
+    let Ok(entries) = fs::read_dir(root) else {
+        return out;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !payload.contains(name.as_str()) {
+            continue;
+        }
+        let Ok(content) = fs::read_to_string(entry.path().join("SKILL.md")) else {
+            continue;
+        };
+        if crate::installer::adopt::frontmatter_name_matches(&content, &name) {
+            out.ours.push(name);
+        } else {
+            out.foreign.push(name);
+        }
+    }
+    out.ours.sort();
+    out.foreign.sort();
+    out
+}
+
+/// Retire the provably-ours files of a superseded home-scope `.agents/skills/`
+/// tree (`<home>/.agents/skills/`), with the same backup semantics as
+/// [`adopt`] — every file is copied into a per-run backup tree before it is
+/// removed, so the move is reversible.
+///
+/// Returns `None` when the target is not the user's home, when there is no such
+/// tree, or when nothing in it is provably ours; a foreign entry is left exactly
+/// where it is. Only the home/global target is in scope: at project scope this
+/// path is the shared tree the codex/antigravity/github-copilot payloads write.
+pub fn retire_superseded_home_tree(
+    target_dir: &Path,
+    cmds: &[CanonicalCommand],
+    tools: &[CanonicalTool],
+) -> Result<Option<RetiredReport>> {
+    if !is_global_target(target_dir) {
+        return Ok(None);
+    }
+    let root = target_dir.join(SUPERSEDED_HOME_SKILLS);
+    let tree = classify_superseded_skills(&root, cmds, tools);
+    if tree.ours.is_empty() {
+        return Ok(None);
+    }
+    let backup_root = crate::installer::migrate::new_backup_root(target_dir);
+    let mut report = RetiredReport {
+        name: SUPERSEDED_HOME_SKILLS.to_string(),
+        ..RetiredReport::default()
+    };
+    let mut backups_written = false;
+    for name in &tree.ours {
+        let path = root.join(name).join("SKILL.md");
+        let Ok(bytes) = fs::read(&path) else {
+            // Already gone: nothing to retire, nothing to report.
+            continue;
+        };
+        let relative = path
+            .strip_prefix(target_dir)
+            .map_err(|error| anyhow::anyhow!("superseded path escaped target: {error}"))?
+            .to_path_buf();
+        let backup = backup_root.join(&relative);
+        if let Some(parent) = backup.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("creating backup dir {}", parent.display()))?;
+        }
+        crate::installer::atomic_write_bytes(&backup, &bytes)
+            .with_context(|| format!("backing up {}", path.display()))?;
+        // The backup is on disk before the original goes, the same ordering
+        // rule the retired-name adoption uses, so a file is never lost.
+        fs::remove_file(&path).with_context(|| format!("removing {}", path.display()))?;
+        backups_written = true;
+        report.adopted.push(relative);
+        report.backups.push(backup);
+    }
+    prune_empty_dirs(target_dir, &report.adopted);
+    if !backups_written && backup_root.exists() {
+        let _ = fs::remove_dir_all(&backup_root);
+    }
+    report.backup_root = backups_written.then_some(backup_root);
+    Ok(Some(report))
 }
 
 /// Remove the directories an adopted file left behind, deepest first, stopping
@@ -219,5 +346,83 @@ mod tests {
         let dir = tempdir().unwrap();
         assert!(retired_names_for("claude-code").is_empty());
         assert!(adopt(dir.path(), "claude-code").unwrap().is_none());
+    }
+
+    fn cmd(name: &str) -> CanonicalCommand {
+        CanonicalCommand {
+            name: name.into(),
+            description: "d".into(),
+            argument_hint: String::new(),
+            allowed_tools: String::new(),
+            disable_model_invocation: true,
+            arguments: vec![],
+            narrative: "n".into(),
+            invocation: String::new(),
+            board: String::new(),
+            source: PathBuf::from(""),
+        }
+    }
+
+    fn tool(name: &str) -> CanonicalTool {
+        CanonicalTool {
+            name: name.into(),
+            description: "d".into(),
+            body: "b".into(),
+            assets: vec![],
+            requires: vec![],
+            source: PathBuf::from(""),
+        }
+    }
+
+    /// #561: a superseded tree is split into the files whose own frontmatter
+    /// proves they are ours and the ones it does not — the deleting decision
+    /// reads the file's declaration, never the directory name alone, and a
+    /// name outside the payload is invisible.
+    #[test]
+    fn classifies_the_ours_half_of_a_superseded_tree_and_leaves_the_rest() {
+        let dir = tempdir().unwrap();
+        let root = dir.path().join(SUPERSEDED_HOME_SKILLS);
+        write(
+            &root.join("shipmates-ship-issue/SKILL.md"),
+            "---\nname: shipmates-ship-issue\ndescription: d\n---\nbody\n",
+        );
+        // A payload name whose frontmatter claims a different identity.
+        write(
+            &root.join("shipmates-termgif/SKILL.md"),
+            "---\nname: my-own-thing\n---\nkeep me\n",
+        );
+        // Not a payload name at all: ignored, even though its frontmatter
+        // declares a Shipmates name.
+        write(
+            &root.join("someone-elses/SKILL.md"),
+            "---\nname: shipmates-ship-issue\n---\n",
+        );
+
+        let tree = classify_superseded_skills(
+            &root,
+            &[cmd("shipmates-ship-issue")],
+            &[tool("shipmates-termgif")],
+        );
+        assert_eq!(tree.ours, vec!["shipmates-ship-issue"]);
+        assert_eq!(tree.foreign, vec!["shipmates-termgif"]);
+    }
+
+    /// The retirement is home-scope only: a project-scope `.agents/skills/` tree
+    /// is the shared tree three harnesses legitimately write, and is never in
+    /// scope — even when it carries provably-Shipmates files.
+    #[test]
+    fn never_retires_a_project_scope_agents_tree() {
+        let dir = tempdir().unwrap();
+        let root = dir.path().join(SUPERSEDED_HOME_SKILLS);
+        write(
+            &root.join("shipmates-ship-issue/SKILL.md"),
+            "---\nname: shipmates-ship-issue\n---\nbody\n",
+        );
+        assert!(
+            retire_superseded_home_tree(dir.path(), &[cmd("shipmates-ship-issue")], &[])
+                .unwrap()
+                .is_none()
+        );
+        assert!(root.join("shipmates-ship-issue/SKILL.md").is_file());
     }
 }

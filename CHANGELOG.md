@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.4] - 2026-09-30
+
+### Fixed
+
+- **A superseded home-scope `.agents/skills/` tree is detected and retired, ending Pi's duplicate-skill conflicts.**
+  An install that predates the harness-specific relocation left its commands and tools in
+  `$HOME/.agents/skills/` — a tree no current payload writes and no receipt claims — while Pi reads that tree
+  *and* `~/.pi/agent/skills/`, so every session printed one `[Skill conflicts]` line per command name and skipped
+  one copy. `doctor` now reports a harness-general `Superseded skill tree` check, so the drift surfaces for every
+  harness (and in `upgrade`'s audit, which counts problems), not only under `--harness pi`; `doctor --fix`,
+  `install` and `upgrade` retire the provably-Shipmates files to a `.shipmates-backup/<stamp>/` backup before
+  removing them. Classification reads each file's own frontmatter `name:`, so a tree that is not provably ours is
+  reported with a copy-pasteable removal command and left untouched, and project-scope `.agents/skills/` trees —
+  the shared tree codex, antigravity and github-copilot legitimately write — are never in scope (#561).
+
 ## [0.14.3] - 2026-09-28
 
 ### Fixed

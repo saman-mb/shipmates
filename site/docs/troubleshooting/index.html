@@ -222,6 +222,15 @@
               <p><strong>Cause:</strong> a command&#x27;s instructions reference the project-instructions file your harness actually reads — <code>CLAUDE.md</code> on Claude Code, <code>AGENTS.md</code> on most others. An install targeted at the wrong harness gets the wrong dialect. <strong>Fix:</strong> uninstall the wrong tree and re-run <code>shipmates install --harness &lt;correct-name&gt;</code>. The rendered body tells you which file the harness reads.</p>
             </div>
           </details>
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span class="faq__q-text"><code>[Skill conflicts]</code> for <code>shipmates-*</code> names every session</span>
+              <span class="faq__marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__a">
+              <p><strong>Cause:</strong> an earlier Shipmates wrote its commands and tools to the home-scope <code>$HOME/.agents/skills/</code> tree. Later releases relocate every global install into the harness&#x27;s own user-scope tree (for example <code>~/.pi/agent/skills/</code>), so that shared tree is superseded — no current payload writes it and no receipt claims it — but a harness that still reads legacy locations loads each name from both, printing one conflict line per command and injecting one copy. <strong>Fix:</strong> run <code>shipmates doctor --fix</code>, or a plain <code>shipmates install</code>. It reports the tree as a <code>Superseded skill tree</code> problem for every harness (<code>shipmates upgrade</code> counts the same drift), retires the files whose own frontmatter <code>name:</code> proves they are Shipmates&#x27; to a <code>.shipmates-backup/</code> tree, and leaves the rest. A file at a payload name whose frontmatter declares a different identity is never touched; <code>doctor</code> names it and prints the exact <code>rm -rf</code> command instead.</p>
+            </div>
+          </details>
         </div>
       </div>
     </section>

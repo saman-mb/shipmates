@@ -30,6 +30,17 @@ fn install(target: &Path) -> Output {
     run(target, &["install", "--harness", HARNESS])
 }
 
+/// Run `shipmates` with `HOME` redirected and no `--dir`, so the default target
+/// is the user's home — the global scope doctor's cross-tree checks key off.
+fn run_home(home: &Path, args: &[&str]) -> Output {
+    Command::new(bin())
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .env("HOME", home)
+        .args(args)
+        .output()
+        .expect("failed to execute shipmates")
+}
+
 fn install_ok(target: &Path) {
     let output = install(target);
     assert!(
@@ -1808,5 +1819,140 @@ fn install_leaves_unowned_previous_identity_and_writes_new() {
     assert!(
         text.contains("left") || text.contains("not ours"),
         "install should notice the unowned previous identity: {text}"
+    );
+}
+
+/// #561: a pre-relocation install wrote a home-scope `.agents/skills/` tree that
+/// no current payload writes and no receipt claims. A harness that reads that
+/// tree as well as its own (`pi`) loads every payload name twice. `doctor` must
+/// detect the superseded tree for **any** harness, and `doctor --fix` must
+/// retire it with a backup, leaving no Shipmates name in more than one tree.
+#[test]
+fn doctor_fix_retires_a_superseded_home_agents_skills_tree() {
+    let home = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &[
+            "install",
+            "--harness",
+            "pi",
+            "--global",
+            "--with-tools",
+            "termgif",
+        ],
+    );
+    assert!(
+        install.status.success(),
+        "pi global install failed: {}",
+        output_text(&install)
+    );
+
+    // Plant the superseded home tree exactly as a pre-relocation install wrote
+    // it: the native skill files, names and frontmatter intact.
+    let native = home.path().join(".pi/agent/skills");
+    let superseded = home.path().join(".agents/skills");
+    for name in ["shipmates-ship-issue", "shipmates-termgif"] {
+        let source = native.join(name).join("SKILL.md");
+        assert!(source.is_file(), "pi global install must land {name}");
+        fs::create_dir_all(superseded.join(name)).unwrap();
+        fs::copy(&source, superseded.join(name).join("SKILL.md")).unwrap();
+    }
+
+    // Detected for a harness that is not pi either — this is not a pi-only check.
+    let non_pi = run_home(home.path(), &["doctor", "--harness", "codex"]);
+    let non_pi_text = output_text(&non_pi);
+    assert_eq!(
+        non_pi.status.code(),
+        Some(2),
+        "the superseded tree must be a Problem for a non-pi harness: {non_pi_text}"
+    );
+    assert!(
+        non_pi_text.contains("Superseded skill tree"),
+        "a non-pi harness must still name the superseded tree: {non_pi_text}"
+    );
+
+    // pi: the superseded tree is a Problem, and Pi's own dual-tree warn fires.
+    let report = run_home(home.path(), &["doctor", "--harness", "pi"]);
+    let report_text = output_text(&report);
+    assert_eq!(
+        report.status.code(),
+        Some(2),
+        "doctor must report the superseded tree as a problem: {report_text}"
+    );
+    assert!(
+        report_text.contains("Superseded skill tree") && report_text.contains("Pi skill trees"),
+        "doctor must name both the superseded tree and Pi's dual-tree warn: {report_text}"
+    );
+
+    // Repair: retire the superseded tree with a backup.
+    let fixed = run_home(home.path(), &["doctor", "--harness", "pi", "--fix"]);
+    assert!(
+        fixed.status.success(),
+        "doctor --fix must clear the superseded tree: {}",
+        output_text(&fixed)
+    );
+
+    // No Shipmates name stays in more than one tree Pi loads; the native copy
+    // survives and the retired copy is recoverable from a backup.
+    for name in ["shipmates-ship-issue", "shipmates-termgif"] {
+        assert!(
+            !superseded.join(name).exists(),
+            "{name} must be gone from the superseded tree after --fix"
+        );
+        assert!(
+            native.join(name).join("SKILL.md").is_file(),
+            "{name} must survive in pi's native tree"
+        );
+    }
+    assert!(
+        !backup_files(home.path()).is_empty(),
+        "retiring the superseded tree must keep a backup"
+    );
+
+    // The fresh report is clean: no payload name sits in two trees Pi loads.
+    let after = run_home(home.path(), &["doctor", "--harness", "pi"]);
+    let after_text = output_text(&after);
+    assert!(
+        after.status.success(),
+        "doctor must be clean after the repair: {after_text}"
+    );
+    assert!(
+        after_text.contains("no Shipmates skill name appears in more than one tree"),
+        "Pi's dual-tree check must be clear after --fix: {after_text}"
+    );
+}
+
+/// #561: a foreign file sitting at a home-scope payload name is reported with a
+/// copy-pasteable removal command, never touched — `doctor` deletes only what a
+/// file's own frontmatter proves to be Shipmates'.
+#[test]
+fn doctor_reports_a_foreign_home_tree_at_a_payload_name_without_touching_it() {
+    let home = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &["install", "--harness", "pi", "--global", "--with-tools", "none"],
+    );
+    assert!(
+        install.status.success(),
+        "pi global install failed: {}",
+        output_text(&install)
+    );
+
+    // A directory named like a payload skill, but whose frontmatter claims a
+    // different identity: not provably ours.
+    let foreign = home.path().join(".agents/skills/shipmates-ship-issue/SKILL.md");
+    fs::create_dir_all(foreign.parent().unwrap()).unwrap();
+    fs::write(&foreign, "---\nname: my-own-thing\n---\nkeep me\n").unwrap();
+
+    let report = run_home(home.path(), &["doctor", "--harness", "pi", "--fix"]);
+    let text = output_text(&report);
+    assert_eq!(fs::read_to_string(&foreign).unwrap(), "---\nname: my-own-thing\n---\nkeep me\n");
+    assert!(
+        foreign.is_file(),
+        "a foreign file must never be removed: {text}"
+    );
+    assert!(
+        text.contains("Superseded skill tree") && text.contains("rm -rf"),
+        "a foreign tree must be named with a copy-pasteable removal command: {text}"
     );
 }

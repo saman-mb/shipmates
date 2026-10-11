@@ -9,7 +9,7 @@
 use crate::adapters::{self, Adapter};
 use crate::catalog::{CanonicalCommand, CanonicalRole, CanonicalTool, CatalogSource};
 use crate::digest;
-use crate::installer::{adopt, manifest_db, migrate, plan, rename};
+use crate::installer::{adopt, manifest_db, migrate, plan, rename, retired};
 use anyhow::{Context, Result};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
@@ -606,7 +606,7 @@ pub fn diagnose(
     let adapter = adapters::select(harness)?;
     let steering = source.steering_for_target(target_dir)?;
     let built = adapters::build_payload(adapter.as_ref(), roles, cmds, steering.as_deref())?;
-    diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools, force_hint)
+    diagnose_built(target_dir, harness, adapter.as_ref(), &built, cmds, tools, force_hint)
 }
 
 /// `expected`, rewritten into the harness's global layout when `target_dir` is
@@ -695,6 +695,7 @@ fn diagnose_built(
     harness: &str,
     adapter: &dyn Adapter,
     built: &HashMap<String, String>,
+    cmds: &[CanonicalCommand],
     tools: &[CanonicalTool],
     force_hint: &str,
 ) -> Result<Report> {
@@ -1462,11 +1463,85 @@ fn diagnose_built(
         }
     }
 
+    // 10. A superseded home-scope `.agents/skills/` tree (#561). Detected for
+    // every harness, not only Pi: the tree is a pre-relocation install's
+    // footprint at every target, and one reader colliding with it is one too
+    // many. Placed here rather than inside the Pi arm because it is not Pi's.
+    if let Some(check) = superseded_home_skills_check(target_dir, cmds, tools) {
+        checks.push(check);
+    }
+
     if harness == "pi" {
         checks.push(pi_dual_skill_tree_check(target_dir));
     }
 
     Ok(Report { checks })
+}
+
+/// The `Superseded skill tree` check.
+///
+/// A pre-relocation Shipmates wrote its commands and tools to `<home>/.agents/skills/`,
+/// a tree no current payload writes and no receipt claims. A harness that still
+/// reads that tree as a legacy location (`pi`) loads each payload name twice,
+/// which is the duplicate `doctor` and Pi both report. This is the detector for
+/// it, harness-general: the duplicate is Shipmates' footprint at every target.
+///
+/// `None` unless `target_dir` is the user's home — at project scope the same
+/// path is the shared tree three harnesses legitimately write. A `Problem` when
+/// the tree holds files their own frontmatter proves are ours (so `upgrade`'s
+/// audit counts the drift and `--fix` retires them); a `Warn` naming a
+/// copy-pasteable removal when a payload name is present but the file declares a
+/// different identity and so is not ours to delete.
+fn superseded_home_skills_check(
+    target_dir: &Path,
+    cmds: &[CanonicalCommand],
+    tools: &[CanonicalTool],
+) -> Option<Check> {
+    if !manifest_db::is_global_target(target_dir) {
+        return None;
+    }
+    let root = target_dir.join(retired::SUPERSEDED_HOME_SKILLS);
+    let tree = retired::classify_superseded_skills(&root, cmds, tools);
+    Some(if !tree.ours.is_empty() {
+        Check {
+            name: "Superseded skill tree".into(),
+            severity: Severity::Problem,
+            detail: format!(
+                "{} Shipmates skill(s) sit in a home-scope tree a pre-relocation install left \
+                 behind and no receipt claims, so a harness that still reads it loads each name \
+                 twice: {}. `shipmates doctor --fix` retires them to a backup.",
+                tree.ours.len(),
+                tree.ours.join(", ")
+            ),
+            fixable: true,
+        }
+    } else if !tree.foreign.is_empty() {
+        let removal = tree
+            .foreign
+            .iter()
+            .map(|name| root.join(name).display().to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        Check {
+            name: "Superseded skill tree".into(),
+            severity: Severity::Warn,
+            detail: format!(
+                "{} file(s) sit at a home-scope payload name but their frontmatter does not \
+                 declare it, so they are not provably Shipmates' and were left untouched: {}. \
+                 Remove them by hand if they are a superseded copy: rm -rf {removal}",
+                tree.foreign.len(),
+                tree.foreign.join(", ")
+            ),
+            fixable: false,
+        }
+    } else {
+        Check {
+            name: "Superseded skill tree".into(),
+            severity: Severity::Ok,
+            detail: "no superseded home-scope skill tree".into(),
+            fixable: false,
+        }
+    })
 }
 
 fn shipmates_skill_dir_names(root: &Path) -> BTreeSet<String> {
@@ -1957,9 +2032,28 @@ pub fn fix(
         }
     }
 
+    // 3b. Retire a superseded home-scope `.agents/skills/` tree (#561) with the
+    // same backup-then-remove semantics as the retired-name adoption, so the
+    // captain can recover it. Skipped with `--no-migrate` — parity with install,
+    // which leaves superseded trees alone under the same flag.
+    if !no_migrate
+        && let Some(report) = retired::retire_superseded_home_tree(target_dir, cmds, tools)?
+        && report.changed()
+    {
+        println!(
+            "Retired {} superseded home-tree skill file(s) (backup: {})",
+            report.adopted.len(),
+            report
+                .backup_root
+                .as_ref()
+                .map(|path| path.display().to_string())
+                .unwrap_or_else(|| target_dir.display().to_string())
+        );
+    }
+
     // 4. Re-diagnose and hand back the fresh report — reusing the single built
     // payload rather than rebuilding it.
-    diagnose_built(target_dir, harness, adapter.as_ref(), &built, tools, force_hint)
+    diagnose_built(target_dir, harness, adapter.as_ref(), &built, cmds, tools, force_hint)
 }
 
 fn relative_to_target(target_dir: &Path, path: &Path) -> String {
