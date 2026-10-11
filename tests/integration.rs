@@ -2462,14 +2462,6 @@ fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
     out
 }
 
-fn file_count(dir: &std::path::Path) -> usize {
-    std::fs::read_dir(dir)
-        .unwrap()
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().is_file())
-        .count()
-}
-
 fn directory_names(dir: &std::path::Path) -> BTreeSet<String> {
     std::fs::read_dir(dir)
         .unwrap_or_else(|error| panic!("missing directory {dir:?}: {error}"))
