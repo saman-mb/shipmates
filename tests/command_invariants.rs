@@ -3,6 +3,9 @@
 //! These read the canonical `commands/*.md` sources (and the shared preamble
 //! they expand from). A missing guardrail is a missing sentence here.
 
+use shipmates::adapters;
+use shipmates::catalog;
+
 fn command(name: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("commands")
@@ -24,6 +27,13 @@ fn section<'a>(body: &'a str, heading: &str) -> &'a str {
     let rest = &body[start + heading.len()..];
     let end = rest.find("\n## ").unwrap_or(rest.len());
     &rest[..end]
+}
+
+/// Command prose is hard-wrapped, so a sentence-level guardrail is asserted
+/// against the reflowed text: a deliberate rewrap must never look like a
+/// deleted sentence.
+fn prose(body: &str) -> String {
+    body.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// #516: dangling keep issues must be reconciled into existing open epics
@@ -138,4 +148,281 @@ fn cost_discipline_verifies_third_party_platform_claims() {
         lower.contains("third-party") && lower.contains("platform"),
         "docs/COST.md must extend citation verification to third-party platform behaviour:\n{cost}"
     );
+}
+
+/// #420: the standalone story command must never force-push. Only
+/// `/shipmates-ship-epic`'s rebase protocol is allowed a lease-scoped force, and
+/// only to its own story branch — so a force flag appearing here at all is a
+/// contract break, not a wording choice.
+#[test]
+fn ship_issue_never_force_pushes() {
+    let body = command("shipmates-ship-issue");
+    assert!(
+        !body.contains("--force"),
+        "shipmates-ship-issue must not carry a force-push flag; a story PR is never force-pushed"
+    );
+    assert!(
+        !body.contains("force-with-lease"),
+        "shipmates-ship-issue must not carry even a lease-scoped force; that belongs to ship-epic"
+    );
+    for line in body.lines().filter(|line| line.contains("push")) {
+        assert!(
+            !line.contains(" -f"),
+            "a push in shipmates-ship-issue must not carry the short force flag: {line}"
+        );
+    }
+}
+
+/// #420: the epic's in-flight rebase force-push is lease-scoped to the
+/// worker's own story branch and explicitly not to the shared integration line.
+#[test]
+fn ship_epic_force_push_stays_lease_scoped_to_its_own_story_branch() {
+    let body = command("shipmates-ship-epic");
+    let body = prose(&body);
+    assert!(
+        body.contains("git push --force-with-lease origin <BRANCH>"),
+        "ship-epic's rebase protocol must spell the lease-scoped force push: `git push --force-with-lease origin <BRANCH>`"
+    );
+    assert!(
+        body.contains("NOT to the shared integration branch"),
+        "the lease-scoped force must say it never targets the shared integration branch"
+    );
+}
+
+/// Is `after` the remainder of a genuine lease-scoped force flag — exactly
+/// `-with-lease` / `-if-includes`, optionally followed by `=ref` or punctuation?
+/// A near-miss such as `-with-lease-x` is not a real Git option, so it is
+/// treated as a bare force (fail-closed).
+fn lease_suffix_is_well_formed(after: &str) -> bool {
+    for form in ["-with-lease", "-if-includes"] {
+        if let Some(rest) = after.strip_prefix(form) {
+            return rest.is_empty()
+                || rest.chars().next().is_some_and(|c| {
+                    c.is_whitespace()
+                        || matches!(
+                            c,
+                            '=' | ':' | ',' | ';' | '`' | '"' | '\'' | ')' | ']'
+                        )
+                });
+        }
+    }
+    false
+}
+
+/// Does this line instruct a push that is not a lease-scoped force?
+///
+/// Two revisions of this guard were bypassed, and both forms are pinned by
+/// tests below: a `--force-with-lease` mention elsewhere on the line used to
+/// excuse a bare `--force`, and the short flag used to be matched as the
+/// literal substring `"push -f"`, which missed `push  -f`, a tab, `push -f;`,
+/// and similar shell separators. Detection is per long-flag occurrence and, for
+/// the short flag, token-based.
+fn bare_force_push(line: &str) -> bool {
+    let lowered = line.to_ascii_lowercase();
+    if !lowered.contains("push") {
+        return false;
+    }
+    let mut rest = lowered.as_str();
+    while let Some(position) = rest.find("--force") {
+        let after = &rest[position + "--force".len()..];
+        if !lease_suffix_is_well_formed(after) {
+            return true;
+        }
+        rest = after;
+    }
+    lowered
+        .split(|c: char| {
+            c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')' | '`' | '"' | '\'')
+        })
+        .any(|token| token == "-f")
+}
+
+/// #420: the no-force-push guardrail is repo-wide, not a property of the two
+/// commands that happen to own the safety contract. `git push --force` — bare,
+/// or with the short flag — must not appear in *any* command; ship-epic's
+/// lease-scoped rebase rule is the single deliberate exception, and it is the
+/// only command allowed to name the lease form at all. This is the check that
+/// makes the epic's "a guardrail removal from any command fails CI" claim true
+/// for the strongest guardrail, rather than only for the two commands its named
+/// contracts live in.
+#[test]
+fn no_command_instructs_a_bare_force_push() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("commands");
+    let mut violations = Vec::new();
+    let mut seen = 0;
+    for entry in std::fs::read_dir(&dir).expect("read commands/") {
+        let path = entry.expect("dir entry").path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            continue;
+        }
+        seen += 1;
+        let is_ship_epic = path.file_stem().and_then(|stem| stem.to_str()) == Some("shipmates-ship-epic");
+        let body = std::fs::read_to_string(&path).expect("read command");
+        for (index, line) in body.lines().enumerate() {
+            let lowered = line.to_ascii_lowercase();
+            let context = format!("{}:{}: {}", path.display(), index + 1, line.trim());
+            if bare_force_push(line) {
+                violations.push(format!("bare force push: {context}"));
+            }
+            if !is_ship_epic && lowered.contains("force-with-lease") {
+                violations.push(format!(
+                    "only shipmates-ship-epic may name the lease-scoped force: {context}"
+                ));
+            }
+        }
+    }
+    assert!(
+        seen >= 18,
+        "expected the command tree to hold every canonical command, saw {seen} files"
+    );
+    assert!(
+        violations.is_empty(),
+        "no command may instruct a bare force push, and only ship-epic may carry the lease-scoped form:\n{}",
+        violations.join("\n")
+    );
+}
+
+/// The first revision of the repo-wide guard let a `--force-with-lease` mention
+/// elsewhere on a line excuse a bare force on that same line. This pins the fix:
+/// detection is per `--force` occurrence, not per line.
+#[test]
+fn a_lease_mention_elsewhere_on_a_force_line_does_not_excuse_it() {
+    assert!(bare_force_push(
+        "git push --force origin main # --force-with-lease is the ship-epic exception"
+    ));
+    assert!(bare_force_push("run `git push --force origin main`"));
+    assert!(bare_force_push(
+        "git push --force-with-lease origin a && git push --force origin b"
+    ));
+    assert!(!bare_force_push("git push --force-with-lease origin <BRANCH>"));
+    assert!(!bare_force_push("git push --force-if-includes origin <BRANCH>"));
+    assert!(bare_force_push("git push --force-with-lease-x origin main"));
+    assert!(!bare_force_push("the worker force-pushes with lease to its own branch"));
+    assert!(!bare_force_push("no push on this line"));
+}
+
+/// The second revision matched the short flag as the literal substring
+/// `"push -f"`, so double spaces, a tab, and a trailing shell separator escaped
+/// it. Detection is token-based now: a push line carrying the exact token `-f`
+/// is a violation whatever the whitespace or separator.
+#[test]
+fn a_short_force_flag_is_caught_whatever_the_spacing_or_separator() {
+    assert!(bare_force_push("git push -f origin main"));
+    assert!(bare_force_push("git push  -f origin main"));
+    assert!(bare_force_push("git push\t-f origin main"));
+    assert!(bare_force_push("git push -f; git status"));
+    assert!(bare_force_push("git push origin main -f"));
+    assert!(!bare_force_push("git push --force-with-lease=origin/main origin main"));
+    assert!(!bare_force_push("git push --atomic origin main"));
+    assert!(!bare_force_push("no push on this line"));
+}
+
+/// #420: an acceptance → fix → re-acceptance loop with no cap can burn a run
+/// indefinitely, so the cap is declared and the exhausted path escalates
+/// instead of pushing on.
+#[test]
+fn ship_issue_bounds_its_fix_loops_and_escalates() {
+    let body = command("shipmates-ship-issue");
+    assert!(
+        body.contains("`MAX_FIX_ROUNDS` = `3`"),
+        "ship-issue must declare `MAX_FIX_ROUNDS` as a bounded default in Config"
+    );
+    assert!(
+        body.matches("MAX_FIX_ROUNDS").count() >= 4,
+        "the remediation stages must each bound themselves by MAX_FIX_ROUNDS, not only the declaration"
+    );
+    assert!(
+        prose(&body)
+            .matches("stop and escalate to the user")
+            .count()
+            >= 2,
+        "both bounded loops (the CI gate and the acceptance loop) must stop and escalate to the user when rounds run out"
+    );
+}
+
+/// #420: GitHub only auto-closes the issues it is told individually, so the
+/// per-issue `Closes #<n>` repetition has to stay explicit in both the snippet
+/// and the sentence that explains it.
+#[test]
+fn ship_issue_repeats_the_closes_keyword_per_issue() {
+    let body = command("shipmates-ship-issue");
+    assert!(
+        body.contains("ISSUES_CLOSES=$(echo \"<issues>\""),
+        "the PR body snippet must build the close keywords from the validated <issues> list"
+    );
+    assert!(
+        body.contains("sed 's/ / · Closes #/g; s/^/Closes #/'"),
+        "ISSUES_CLOSES must repeat `Closes #` for every issue via the sed substitution"
+    );
+    assert!(
+        prose(&body).contains("silently leaves all but the first open"),
+        "the command must say why the repetition matters: a comma-separated list closes only the first"
+    );
+}
+
+/// #420: a merge to the base branch is the captain's decision by default, and
+/// the epic PR never auto-merges at all.
+#[test]
+fn manual_merge_is_the_default_and_epic_prs_never_auto_merge() {
+    let issue = command("shipmates-ship-issue");
+    assert!(
+        issue.contains("`MERGE_MODE` = `manual`"),
+        "ship-issue must default `MERGE_MODE` to `manual` — a green PR waits for the captain"
+    );
+
+    let epic = command("shipmates-ship-epic");
+    assert!(
+        epic.contains("`EPIC_MERGE_MODE` = `manual`"),
+        "ship-epic must fix `EPIC_MERGE_MODE` to `manual`"
+    );
+    assert!(
+        prose(&epic).contains("**no** auto-merge path for epic PRs"),
+        "ship-epic must state that there is no auto-merge path for epic PRs"
+    );
+}
+
+/// #420: the four contracts above are canonical-source facts, but what a
+/// captain installs is the *rendered* command. A dialect rule that rewrote a
+/// guardrail away would ship an unguarded workflow, so render each target
+/// in-process and re-assert the contracts against its output.
+#[test]
+fn every_target_renders_the_ship_issue_contracts_intact() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let roles = catalog::load_roles(&root.join("crew")).expect("load crew");
+    let commands = catalog::load_commands(&root.join("commands")).expect("load commands");
+
+    for target in adapters::targets() {
+        let adapter = adapters::select(target).expect("select target");
+        let payload = adapters::build_payload(adapter.as_ref(), &roles, &commands, None)
+            .unwrap_or_else(|error| panic!("build {target} payload: {error}"));
+        let rendered: Vec<&String> = payload
+            .iter()
+            .filter(|(path, _)| path.contains("shipmates-ship-issue"))
+            .map(|(_, body)| body)
+            .collect();
+        assert!(
+            !rendered.is_empty(),
+            "{target} payload carries no shipmates-ship-issue command — the guard cannot be checked"
+        );
+
+        for body in rendered {
+            let body = prose(body);
+            assert!(
+                !body.contains("--force"),
+                "{target} renders a force-push into shipmates-ship-issue"
+            );
+            assert!(
+                body.contains("stop and escalate to the user"),
+                "{target} renders ship-issue without its escalation sentence"
+            );
+            assert!(
+                body.contains("silently leaves all but the first open"),
+                "{target} renders ship-issue without the repeated-`Closes` rationale"
+            );
+            assert!(
+                body.contains("`MERGE_MODE` = `manual`"),
+                "{target} renders ship-issue without its manual-merge default"
+            );
+        }
+    }
 }
