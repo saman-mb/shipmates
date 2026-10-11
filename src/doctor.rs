@@ -1502,7 +1502,7 @@ fn superseded_home_skills_check(
         return None;
     }
     let root = target_dir.join(retired::SUPERSEDED_HOME_SKILLS);
-    let tree = retired::classify_superseded_skills(&root, cmds, tools);
+    let tree = retired::classify_superseded_skills(target_dir, cmds, tools);
     Some(if !tree.ours.is_empty() {
         Check {
             name: "Superseded skill tree".into(),

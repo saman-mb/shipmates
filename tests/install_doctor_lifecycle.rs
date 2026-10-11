@@ -1904,9 +1904,23 @@ fn doctor_fix_retires_a_superseded_home_agents_skills_tree() {
             "{name} must survive in pi's native tree"
         );
     }
+    let backups = backup_files(home.path());
     assert!(
-        !backup_files(home.path()).is_empty(),
+        !backups.is_empty(),
         "retiring the superseded tree must keep a backup"
+    );
+    // Recoverability is this change's whole safety story, so pin the bytes and
+    // the relative path the retirement recorded, not merely that a backup exists.
+    let recovered = backups
+        .iter()
+        .find(|path| path.ends_with(".agents/skills/shipmates-ship-issue/SKILL.md"))
+        .unwrap_or_else(|| {
+            panic!("the backup must hold the retired file at its relative path: {backups:?}")
+        });
+    assert_eq!(
+        fs::read(recovered).unwrap(),
+        fs::read(native.join("shipmates-ship-issue/SKILL.md")).unwrap(),
+        "the backup must hold the bytes that were retired"
     );
 
     // The fresh report is clean: no payload name sits in two trees Pi loads.

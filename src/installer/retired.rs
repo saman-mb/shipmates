@@ -35,7 +35,8 @@ pub fn retired_names_for(harness: &str) -> &'static [&'static str] {
 
 #[derive(Debug, Clone, Default)]
 pub struct RetiredReport {
-    /// The retired target name whose install was adopted.
+    /// The retired entry: a target id for a retired-target adoption, or the
+    /// tree's relative path for a superseded home-scope tree.
     pub name: String,
     /// Files removed after their backup was written, relative to the target.
     pub adopted: Vec<PathBuf>,
@@ -211,29 +212,38 @@ pub struct SupersededSkills {
     pub linked: Vec<String>,
 }
 
-/// Classify `<root>/<name>/SKILL.md` for every payload skill name (`cmds` +
-/// `tools`), where `root` is a `.agents/skills/` directory.
+/// Classify the payload-named skill directories of
+/// `<target_dir>/.agents/skills/`.
+///
+/// `target_dir` — not the tree root — is the base for the containment walk. A
+/// symlinked `.agents` (a dotfiles repo's usual shape) has to be caught, and a
+/// base of `<target_dir>/.agents/skills` would never inspect it: the walk would
+/// start below the link, classify a real file behind it as ours, and then the
+/// retire step — which *does* walk from the target — would refuse it, leaving a
+/// problem `--fix` could never clear.
 ///
 /// Ownership is proved from the file's own declaration, exactly as
 /// `adopt::classify` does: a skill is ours only when its frontmatter `name:`
 /// equals the name its directory implies **and** its description carries the
 /// brand prefix every rendered payload is stamped with. A captain's own skill
-/// that merely reuses a payload name, an unreadable/missing `SKILL.md`, and
-/// anything reached through a symlink are at worst reported and never deleted —
-/// this is a path under `$HOME`. A name outside the payload is ignored
-/// entirely, so a foreign harness's own skills in that tree are invisible to us.
+/// that merely reuses a payload name, a `SKILL.md` that is missing or
+/// unreadable, and anything reached through a symlink are each at worst
+/// reported as foreign and never deleted — this is a path under `$HOME`. A name
+/// outside the payload is ignored entirely, so a foreign harness's own skills in
+/// that tree are invisible to us.
 pub fn classify_superseded_skills(
-    root: &Path,
+    target_dir: &Path,
     cmds: &[CanonicalCommand],
     tools: &[CanonicalTool],
 ) -> SupersededSkills {
+    let root = target_dir.join(SUPERSEDED_HOME_SKILLS);
     let payload: BTreeSet<&str> = cmds
         .iter()
         .map(|command| command.name.as_str())
         .chain(tools.iter().map(|tool| tool.name.as_str()))
         .collect();
     let mut out = SupersededSkills::default();
-    let Ok(entries) = fs::read_dir(root) else {
+    let Ok(entries) = fs::read_dir(&root) else {
         return out;
     };
     for entry in entries.flatten() {
@@ -242,11 +252,14 @@ pub fn classify_superseded_skills(
             continue;
         }
         let skill = entry.path().join("SKILL.md");
-        if !path_is_symlink_free(root, &skill) {
+        if !path_is_symlink_free(target_dir, &skill) {
             out.linked.push(name);
             continue;
         }
         let Ok(content) = fs::read_to_string(&skill) else {
+            // A payload name with no readable `SKILL.md` declares nothing, so it
+            // is not ours to delete — reported, not silently skipped.
+            out.foreign.push(name);
             continue;
         };
         if declares_our_payload(&content, &name) {
@@ -257,6 +270,7 @@ pub fn classify_superseded_skills(
     }
     out.ours.sort();
     out.foreign.sort();
+    out.linked.sort();
     out
 }
 
@@ -278,7 +292,7 @@ pub fn retire_superseded_home_tree(
         return Ok(None);
     }
     let root = target_dir.join(SUPERSEDED_HOME_SKILLS);
-    let tree = classify_superseded_skills(&root, cmds, tools);
+    let tree = classify_superseded_skills(target_dir, cmds, tools);
     if tree.ours.is_empty() {
         return Ok(None);
     }
@@ -489,7 +503,7 @@ mod tests {
         );
 
         let tree = classify_superseded_skills(
-            &root,
+            dir.path(),
             &[cmd("shipmates-ship-issue")],
             &[tool("shipmates-termgif")],
         );
@@ -508,7 +522,7 @@ mod tests {
             &root.join("shipmates-ship-issue/SKILL.md"),
             "---\nname: shipmates-ship-issue\ndescription: mine\n---\nbody\n",
         );
-        let tree = classify_superseded_skills(&root, &[cmd("shipmates-ship-issue")], &[]);
+        let tree = classify_superseded_skills(dir.path(), &[cmd("shipmates-ship-issue")], &[]);
         assert!(tree.ours.is_empty(), "ours: {:?}", tree.ours);
         assert_eq!(tree.foreign, vec!["shipmates-ship-issue"]);
         assert!(
@@ -539,7 +553,7 @@ mod tests {
         fs::create_dir_all(linked.parent().unwrap()).unwrap();
         std::os::unix::fs::symlink(&target, &linked).unwrap();
 
-        let tree = classify_superseded_skills(&linked, &[cmd("shipmates-ship-issue")], &[]);
+        let tree = classify_superseded_skills(dir.path(), &[cmd("shipmates-ship-issue")], &[]);
         assert!(tree.ours.is_empty(), "ours must stay empty: {:?}", tree.ours);
         assert_eq!(tree.linked, vec!["shipmates-ship-issue"]);
         assert!(
@@ -550,6 +564,37 @@ mod tests {
         assert!(
             target.join("shipmates-ship-issue/SKILL.md").is_file(),
             "the symlink target must survive"
+        );
+    }
+
+    /// A symlinked `.agents` parent — the shape a dotfiles repo usually has —
+    /// must be caught as well. If the containment base were the tree root rather
+    /// than the target, a real file behind a linked parent would classify as
+    /// ours, `--fix` would then refuse it, and the Problem would persist with a
+    /// detail line promising a repair that never comes.
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_agents_parent_is_left_alone() {
+        let dir = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let target = outside.path().join("agents");
+        write(
+            &target.join("skills/shipmates-ship-issue/SKILL.md"),
+            "---\nname: shipmates-ship-issue\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+        );
+        std::os::unix::fs::symlink(&target, dir.path().join(".agents")).unwrap();
+
+        let tree = classify_superseded_skills(dir.path(), &[cmd("shipmates-ship-issue")], &[]);
+        assert!(tree.ours.is_empty(), "ours must stay empty: {:?}", tree.ours);
+        assert_eq!(tree.linked, vec!["shipmates-ship-issue"]);
+        assert!(
+            retire_superseded_home_tree(dir.path(), &[cmd("shipmates-ship-issue")], &[])
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            target.join("skills/shipmates-ship-issue/SKILL.md").is_file(),
+            "nothing behind a linked parent may be deleted"
         );
     }
 
