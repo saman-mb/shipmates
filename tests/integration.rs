@@ -7,7 +7,7 @@ use shipmates::catalog::{
     load_commands, load_roles, load_tools, reject_positional, CanonicalCommand, CanonicalRole,
 };
 use shipmates::digest;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
 use regex::Regex;
 
@@ -110,62 +110,295 @@ fn test_opencode_cli_build_matches_golden_payload() {
     assert_eq!(actual, expected, "opencode build drifted from golden payload");
 }
 
+/// This verifies installed-artifact presence, format, and identity only. It does
+/// NOT verify that a harness runtime discovers or loads these artifacts (#542).
 #[test]
-fn test_opencode_embedded_install_fidelity() {
-    let empty_cwd = tempfile::tempdir().unwrap();
-    let sandbox = tempfile::tempdir().unwrap();
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
-        // No checkout source is visible here. `install` must use the payload
-        // embedded in the test binary, as a packaged CLI does.
-        .current_dir(empty_cwd.path())
-        .args([
-            "install",
-            "--harness",
-            "opencode",
-            "--dir",
-            sandbox.path().to_str().unwrap(),
-            "--with-tools",
-            "none",
-        ])
-        .output()
-        .expect("failed to execute opencode install");
-    assert!(
-        output.status.success(),
-        "opencode install failed: {}",
-        String::from_utf8_lossy(&output.stderr)
+fn test_keyless_installed_tree_fidelity_all_targets() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let generator = std::fs::read_to_string(root.join("tools/gen_command_pages.py")).unwrap();
+    let slug_block = generator
+        .split_once("SLUGS = (")
+        .and_then(|(_, rest)| rest.split_once(')'))
+        .map(|(slugs, _)| slugs)
+        .expect("tools/gen_command_pages.py must define SLUGS");
+    let command_slugs: Vec<String> = slug_block
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            line.trim()
+                .strip_prefix('\"')
+                .and_then(|line| line.strip_suffix("\","))
+                .unwrap_or_else(|| panic!("invalid command slug in generator: {line}"))
+                .to_string()
+        })
+        .collect();
+    let expected_commands: BTreeSet<String> = command_slugs.iter().cloned().collect();
+    assert_eq!(command_slugs.len(), 18, "canonical command list changed");
+    assert_eq!(
+        expected_commands.len(),
+        command_slugs.len(),
+        "command slugs must be unique"
+    );
+    let command_sources: BTreeSet<String> = load_commands(&root.join("commands"))
+        .unwrap()
+        .into_iter()
+        .map(|command| command.name)
+        .collect();
+    assert_eq!(
+        expected_commands, command_sources,
+        "generator SLUGS and command sources differ"
     );
 
-    let agents = sandbox.path().join(".opencode/agents");
-    let commands = sandbox.path().join(".opencode/commands");
-    let expected_roles = [
-        "architect",
-        "art-director",
-        "data-scientist",
-        "devops-engineer",
-        "performance-engineer",
-        "principal-engineer",
-        "product-manager",
-        "sdet",
-        "security-engineer",
-        "senior-engineer",
-        "site-reliability-engineer",
-        "technical-writer",
-        "ux-ui-designer",
-    ];
+    let expected_roles: BTreeSet<String> = direct_files_by_suffix(&root.join("crew"), ".md")
+        .keys()
+        .cloned()
+        .collect();
+    let role_sources: BTreeSet<String> = load_roles(&root.join("crew"))
+        .unwrap()
+        .into_iter()
+        .map(|role| role.name)
+        .collect();
+    assert_eq!(expected_roles.len(), 13, "canonical crew set changed");
+    assert_eq!(
+        expected_roles, role_sources,
+        "crew filenames and role identities differ"
+    );
 
-    for role in expected_roles {
-        let path = agents.join(format!("{role}.md"));
-        let content = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("missing {path:?}"));
-        assert!(content.contains("mode: subagent\n"), "{path:?} is not a subagent");
-        assert!(content.contains("permission:\n"), "{path:?} has no permission map");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("tools/manifest.json")).unwrap())
+            .expect("tools/manifest.json must be valid JSON");
+    let manifest_targets = manifest
+        .get("targets")
+        .and_then(serde_json::Value::as_array)
+        .expect("tools/manifest.json must have a targets array");
+    let targets: Vec<String> = manifest_targets
+        .iter()
+        .map(|target| {
+            target
+                .as_str()
+                .expect("manifest target names must be strings")
+                .to_string()
+        })
+        .collect();
+    let target_set: BTreeSet<String> = targets.iter().cloned().collect();
+    assert_eq!(
+        target_set.len(),
+        targets.len(),
+        "manifest targets must be unique"
+    );
+    assert_eq!(
+        targets.len(),
+        9,
+        "installed-tree coverage must include all nine targets"
+    );
+    let adapter_targets: BTreeSet<String> = shipmates::adapters::targets()
+        .iter()
+        .map(|target| (*target).to_string())
+        .collect();
+    assert_eq!(
+        target_set, adapter_targets,
+        "manifest and implemented targets differ"
+    );
+
+    let empty_cwd = tempfile::tempdir().unwrap();
+    for target in targets {
+        assert!(
+            walk(empty_cwd.path()).is_empty(),
+            "install cwd must stay empty"
+        );
+        let sandbox = tempfile::tempdir().unwrap();
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_shipmates"))
+            // No checkout source is visible here. `install` must use the payload
+            // embedded in the test binary, as a packaged CLI does.
+            .current_dir(empty_cwd.path())
+            .args([
+                "install",
+                "--harness",
+                target.as_str(),
+                "--dir",
+                sandbox.path().to_str().unwrap(),
+                "--with-tools",
+                "none",
+            ])
+            .output()
+            .unwrap_or_else(|error| panic!("failed to execute {target} install: {error}"));
+        assert!(
+            output.status.success(),
+            "{target} install failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            walk(empty_cwd.path()).is_empty(),
+            "{target} install must not use the current working directory"
+        );
+
+        let (command_dir_rel, skill_tree) = match target.as_str() {
+            "claude-code" => (".claude/skills", true),
+            "opencode" => (".opencode/commands", false),
+            "antigravity" | "codex" | "github-copilot" => (".agents/skills", true),
+            "cursor" => (".cursor/skills", true),
+            "pi" => (".pi/skills", true),
+            "grok-build" => (".grok/skills", true),
+            "devin" => (".devin/skills", true),
+            unknown => panic!("no installed command layout for manifest target {unknown}"),
+        };
+        let command_dir = sandbox.path().join(command_dir_rel);
+        if skill_tree {
+            assert_eq!(
+                directory_names(&command_dir),
+                expected_commands,
+                "{target} installed skill directory set differs from canonical commands"
+            );
+            for identity in &expected_commands {
+                let skill_dir = command_dir.join(identity);
+                let path = skill_dir.join("SKILL.md");
+                assert_eq!(
+                    path.parent(),
+                    Some(skill_dir.as_path()),
+                    "{target} skill path must be nested under its identity"
+                );
+                let files = walk(&skill_dir);
+                assert_eq!(
+                    files,
+                    vec![path.clone()],
+                    "{target} {identity} skill has unexpected files"
+                );
+                let parsed = assert_installed_markdown_identity(&path, identity, &target, true);
+                if target == "grok-build" {
+                    assert_eq!(
+                        parsed
+                            .get("disable-model-invocation")
+                            .and_then(serde_yaml::Value::as_bool),
+                        Some(true),
+                        "{target} {identity} must keep the user-invoked-only guard"
+                    );
+                }
+                if target == "devin" {
+                    let has_user_trigger = parsed
+                        .get("triggers")
+                        .and_then(serde_yaml::Value::as_sequence)
+                        .is_some_and(|triggers| {
+                            triggers
+                                .iter()
+                                .any(|trigger| trigger.as_str() == Some("user"))
+                        });
+                    assert!(
+                        has_user_trigger,
+                        "{target} {identity} must keep the user trigger"
+                    );
+                }
+            }
+        } else {
+            let commands = direct_files_by_suffix(&command_dir, ".md");
+            assert_eq!(
+                commands.keys().cloned().collect::<BTreeSet<_>>(),
+                expected_commands,
+                "{target} installed command file set differs from canonical commands"
+            );
+            for (identity, path) in &commands {
+                assert_eq!(path.parent(), Some(command_dir.as_path()));
+                assert_installed_markdown_identity(path, identity, &target, false);
+            }
+            let report_order = std::fs::read_to_string(command_dir.join("shipmates-harden.md"))
+                .expect("OpenCode harden command must be installed");
+            assert!(
+                report_order.contains("report"),
+                "harden order lost report-only mode"
+            );
+            assert!(
+                report_order.contains("$ARGUMENTS"),
+                "harden order lost argument passing"
+            );
+            assert!(
+                !report_order.contains("{{"),
+                "neutral argument placeholder leaked"
+            );
+        }
+
+        let (agent_dir_rel, agent_layout) = match target.as_str() {
+            "claude-code" => (Some(".claude/agents"), "markdown"),
+            "opencode" => (Some(".opencode/agents"), "opencode"),
+            "antigravity" => (Some(".agents/agents"), "antigravity"),
+            "codex" => (Some(".codex/agents"), "codex"),
+            "cursor" => (None, "none"),
+            "github-copilot" => (Some(".github/agents"), "copilot"),
+            "pi" => (Some(".pi/agents"), "markdown"),
+            "grok-build" => (Some(".grok/agents"), "markdown"),
+            "devin" => (Some(".devin/agents"), "markdown"),
+            unknown => panic!("no installed crew layout for manifest target {unknown}"),
+        };
+        if agent_layout == "none" {
+            assert!(!sandbox.path().join(".cursor/agents").exists());
+            assert!(!sandbox.path().join(".agents/skills").exists());
+        } else {
+            let agent_dir = sandbox.path().join(agent_dir_rel.unwrap());
+            if agent_layout == "antigravity" {
+                assert_eq!(
+                    directory_names(&agent_dir),
+                    expected_roles,
+                    "{target} must use one per-role directory"
+                );
+                for identity in &expected_roles {
+                    let role_dir = agent_dir.join(identity);
+                    let path = role_dir.join("agent.md");
+                    assert_eq!(
+                        walk(&role_dir),
+                        vec![path.clone()],
+                        "{target} {identity} must be the sole artifact in its role directory"
+                    );
+                    assert_installed_markdown_identity(&path, identity, &target, true);
+                }
+            } else {
+                let suffix = match agent_layout {
+                    "codex" => ".toml",
+                    "copilot" => ".agent.md",
+                    _ => ".md",
+                };
+                let agents = direct_files_by_suffix(&agent_dir, suffix);
+                assert_eq!(
+                    agents.keys().cloned().collect::<BTreeSet<_>>(),
+                    expected_roles,
+                    "{target} installed crew set differs from canonical roles"
+                );
+                for (identity, path) in &agents {
+                    assert_eq!(path.parent(), Some(agent_dir.as_path()));
+                    if agent_layout == "codex" {
+                        assert_installed_codex_identity(path, identity, &target);
+                    } else {
+                        let parsed = assert_installed_markdown_identity(
+                            path,
+                            identity,
+                            &target,
+                            agent_layout != "opencode",
+                        );
+                        if agent_layout == "opencode" {
+                            assert_eq!(
+                                parsed.get("mode").and_then(serde_yaml::Value::as_str),
+                                Some("subagent"),
+                                "{target} {identity} must retain subagent mode"
+                            );
+                            assert!(
+                                parsed
+                                    .get("permission")
+                                    .and_then(serde_yaml::Value::as_mapping)
+                                    .is_some_and(|permission| !permission.is_empty()),
+                                "{target} {identity} must retain a permission map"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        let receipt = sandbox
+            .path()
+            .join(".shipmates/receipts")
+            .join(format!("{target}.json"));
+        assert!(
+            receipt.is_file(),
+            "{target} install must write its receipt"
+        );
     }
-    assert_eq!(file_count(&agents), expected_roles.len());
-    assert_eq!(file_count(&commands), 18);
-
-    let report_order = std::fs::read_to_string(commands.join("shipmates-harden.md")).unwrap();
-    assert!(report_order.contains("report"), "harden order lost report-only mode");
-    assert!(report_order.contains("$ARGUMENTS"), "harden order lost argument passing");
-    assert!(!report_order.contains("{{"), "neutral argument placeholder leaked");
 }
 
 #[test]
@@ -2229,12 +2462,87 @@ fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
     out
 }
 
-fn file_count(dir: &std::path::Path) -> usize {
+fn directory_names(dir: &std::path::Path) -> BTreeSet<String> {
     std::fs::read_dir(dir)
-        .unwrap()
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().is_file())
-        .count()
+        .unwrap_or_else(|error| panic!("missing directory {dir:?}: {error}"))
+        .map(|entry| {
+            let entry = entry.unwrap();
+            assert!(
+                entry.file_type().unwrap().is_dir(),
+                "unexpected non-directory artifact in {dir:?}: {:?}",
+                entry.path()
+            );
+            entry.file_name().to_string_lossy().into_owned()
+        })
+        .collect()
+}
+
+fn direct_files_by_suffix(dir: &std::path::Path, suffix: &str) -> BTreeMap<String, PathBuf> {
+    std::fs::read_dir(dir)
+        .unwrap_or_else(|error| panic!("missing directory {dir:?}: {error}"))
+        .map(|entry| {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            assert!(
+                entry.file_type().unwrap().is_file(),
+                "unexpected non-file artifact in {dir:?}: {path:?}"
+            );
+            let file_name = entry.file_name().to_string_lossy().into_owned();
+            let identity = file_name
+                .strip_suffix(suffix)
+                .unwrap_or_else(|| panic!("unexpected file in {dir:?}: {file_name}"))
+                .to_string();
+            assert!(!identity.is_empty(), "empty artifact identity in {dir:?}");
+            (identity, path)
+        })
+        .collect()
+}
+
+fn assert_installed_markdown_identity(
+    path: &std::path::Path,
+    identity: &str,
+    target: &str,
+    require_name: bool,
+) -> serde_yaml::Value {
+    let content = std::fs::read_to_string(path)
+        .unwrap_or_else(|error| panic!("cannot read {target} artifact {path:?}: {error}"));
+    let frontmatter = frontmatter_block(&content)
+        .unwrap_or_else(|| panic!("{target} artifact {path:?} has no frontmatter"));
+    let parsed: serde_yaml::Value = serde_yaml::from_str(frontmatter)
+        .unwrap_or_else(|error| panic!("{target} artifact {path:?} has invalid YAML: {error}"));
+    match parsed.get("name") {
+        Some(name) => assert_eq!(
+            name.as_str(),
+            Some(identity),
+            "{target} artifact {path:?} name must equal its path identity"
+        ),
+        // OpenCode commands and agents deliberately use exact filename identity;
+        // their emitted frontmatter carries description/mode/permission, not name.
+        None => assert!(
+            !require_name,
+            "{target} artifact {path:?} must declare name {identity}"
+        ),
+    }
+    parsed
+}
+
+fn assert_installed_codex_identity(path: &std::path::Path, identity: &str, target: &str) {
+    let content = std::fs::read_to_string(path)
+        .unwrap_or_else(|error| panic!("cannot read {target} artifact {path:?}: {error}"));
+    let parsed = parse_emitted_codex_toml(&content).unwrap_or_else(|error| {
+        panic!("{target} artifact {path:?} has invalid emitted TOML: {error}")
+    });
+    for key in ["name", "description", "developer_instructions"] {
+        assert!(
+            parsed.get(key).is_some_and(|value| !value.is_empty()),
+            "{target} artifact {path:?} is missing TOML key {key}"
+        );
+    }
+    assert_eq!(
+        parsed.get("name").map(String::as_str),
+        Some(identity),
+        "{target} artifact {path:?} TOML name must equal its path identity"
+    );
 }
 
 fn read_payload_digest(path: &std::path::Path) -> BTreeMap<String, String> {
