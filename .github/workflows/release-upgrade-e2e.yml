@@ -1,6 +1,10 @@
 name: Release upgrade e2e
 
 on:
+  # TEMPORARY PROBE TRIGGER — exists only on this disposable branch to prove the
+  # Linux lifecycle runs green before the real workflow lands on the default
+  # branch. This branch is never merged; the real workflow has no PR trigger.
+  pull_request:
   release:
     types: [published]
   schedule:
