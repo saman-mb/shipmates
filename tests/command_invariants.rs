@@ -145,12 +145,24 @@ fn mutating_knobs_are_token_gated_in_zero_required_parameter_tables() {
                 .lines()
                 .find(|line| line.trim_start().starts_with(&format!("| {token} |")))
                 .unwrap_or_else(|| panic!("{name} Parameters table must declare a `{token}` row"));
-            assert!(
-                row.contains("| yes |"),
+            let cells: Vec<&str> = row
+                .trim()
+                .trim_matches('|')
+                .split('|')
+                .map(str::trim)
+                .collect();
+            assert_eq!(
+                cells.get(5).copied(),
+                Some("yes"),
                 "{name} must mark its `{token}` knob `Mutates: yes`:\n{row}"
             );
-            assert!(
-                row.contains(safe_default),
+            // Compare the Default cell itself, never the whole row: the safe
+            // token also appears in the Values cell of several tables, so a
+            // `contains` check would pass even if the Default were flipped to
+            // the mutating value — the exact regression this pin exists for.
+            assert_eq!(
+                cells.get(4).copied(),
+                Some(*safe_default),
                 "{name} `{token}` must keep its safe Default `{safe_default}`:\n{row}"
             );
         }

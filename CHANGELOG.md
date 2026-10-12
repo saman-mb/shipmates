@@ -11,7 +11,7 @@ All notable changes to this project are documented here. The format follows
 - **Intake can no longer skip the confirmation turn on a mutating default (#564).** A `## Parameters`
   table with no required row was "fully specified" for any non-empty argument, so the defaults card
   and its single OK-or-change question could never fire for seven commands — and several of them
-  mutate on their default path. Those tables now mark the knob that gates the write with a `Mutates`
+  mutate on their default path. Those tables now mark the knob (or knobs) that gate the write with a `Mutates`
   column, and the shared intake contract requires every mutation-gating knob to be tokenized before
   the ask is skipped; the eleven commands that do declare required rows behave exactly as before.
 - **`/shipmates-consolidate-issues` merges duplicate tickets instead of only tagging them (#565).**
@@ -26,12 +26,12 @@ All notable changes to this project are documented here. The format follows
   file is left exactly as found; a brand-stamped tree at a name the current catalogue no longer ships
   (a retired `ship-*` name or a removed tool) is detected and reported instead of reading as
   shipshape; and `--no-migrate` prints the repair it skipped instead of staying silent about it.
-- **`/shipmates-ship-epic` no longer stalls on the permission layer for the writes its own contract
-  authorizes (#532).** Claude Code's auto mode routes shell calls through a classifier while narrow
-  Bash allow rules are resolved before it, so the claude-code payload now carries command-scoped
-  narrow rules for the documented unit-PR merge and landed-story close on `/shipmates-ship-epic` and
-  `/shipmates-ship-issue`. Both commands also surface the documented remedy — never a second captain
-  gate, never a mid-loop stall — when a permission layer still blocks a documented action.
+- **`/shipmates-ship-epic` and `/shipmates-ship-issue` carry command-scoped narrow permission rules for their documented unit merges and story closes (#532).**
+  Claude Code's auto mode routes shell calls through a classifier while narrow Bash allow rules are
+  resolved before it, so the claude-code payload now pre-approves exactly those two documented
+  actions on those two commands — never a blanket grant. Both commands also surface the documented
+  remedy — never a second captain gate, never a mid-loop stall — when a permission layer still
+  blocks a documented action.
 
 ## [0.14.4] - 2026-10-11
 
