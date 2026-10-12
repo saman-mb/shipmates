@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.4] - 2026-10-11
+
+### Fixed
+
+- **A superseded home-scope `.agents/skills/` tree is detected and retired, ending Pi's duplicate-skill conflicts.**
+  An install that predates the harness-specific relocation left its commands and tools in
+  `$HOME/.agents/skills/` — a tree no current payload writes and no receipt claims — while Pi reads that tree
+  *and* `~/.pi/agent/skills/`, so every session printed one `[Skill conflicts]` line per command name and skipped
+  one copy. `doctor` now reports a harness-general `Superseded skill tree` check, so the drift surfaces for every
+  harness (and in `upgrade`'s audit, which counts problems), not only under `--harness pi`; `doctor --fix`,
+  `install` and `upgrade` retire the provably-Shipmates payload files to a `.shipmates-backup/<stamp>/`
+  backup before removing them — the whole payload set for a name, so a tool's `SKILL.md` **and** its bundled
+  script (`termgif.py`, `badge.py`, …) both go, never an orphaned script left behind to keep the tree
+  unclaimable. Ownership needs both halves of the file's own declaration — the payload name **and** the
+  brand-stamped description every rendered payload carries — so a skill of the captain's own that merely reuses
+  a name is reported with a copy-pasteable removal command instead of being deleted, and an entry reached
+  through a symlink is left exactly as found. `doctor` names every applicable remedy in one line: the retire
+  instruction for the files that are ours, the removal command for the foreign ones, and the note that a
+  symlinked entry was left as found — a mixed tree no longer hides one behind another. An orphan script whose
+  manifest already went is reported the same way, so the tree is never read as empty while files remain.
+  Project-scope `.agents/skills/` trees — the shared tree codex, antigravity and
+  github-copilot legitimately write — are never in scope (#561).
+
 ## [0.14.3] - 2026-09-28
 
 ### Fixed

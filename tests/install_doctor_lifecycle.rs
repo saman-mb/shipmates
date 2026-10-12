@@ -30,6 +30,17 @@ fn install(target: &Path) -> Output {
     run(target, &["install", "--harness", HARNESS])
 }
 
+/// Run `shipmates` with `HOME` redirected and no `--dir`, so the default target
+/// is the user's home — the global scope doctor's cross-tree checks key off.
+fn run_home(home: &Path, args: &[&str]) -> Output {
+    Command::new(bin())
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .env("HOME", home)
+        .args(args)
+        .output()
+        .expect("failed to execute shipmates")
+}
+
 fn install_ok(target: &Path) {
     let output = install(target);
     assert!(
@@ -1808,5 +1819,375 @@ fn install_leaves_unowned_previous_identity_and_writes_new() {
     assert!(
         text.contains("left") || text.contains("not ours"),
         "install should notice the unowned previous identity: {text}"
+    );
+}
+
+/// #561: a pre-relocation install wrote a home-scope `.agents/skills/` tree that
+/// no current payload writes and no receipt claims. A harness that reads that
+/// tree as well as its own (`pi`) loads every payload name twice. `doctor` must
+/// detect the superseded tree for **any** harness, and `doctor --fix` must
+/// retire it with a backup, leaving no Shipmates name in more than one tree.
+#[test]
+fn doctor_fix_retires_a_superseded_home_agents_skills_tree() {
+    let home = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &[
+            "install",
+            "--harness",
+            "pi",
+            "--global",
+            "--with-tools",
+            "termgif",
+        ],
+    );
+    assert!(
+        install.status.success(),
+        "pi global install failed: {}",
+        output_text(&install)
+    );
+
+    // Plant the superseded home tree exactly as a pre-relocation install wrote
+    // it: the native skill files, names and frontmatter intact.
+    let native = home.path().join(".pi/agent/skills");
+    let superseded = home.path().join(".agents/skills");
+    for name in ["shipmates-ship-issue", "shipmates-termgif"] {
+        let source = native.join(name).join("SKILL.md");
+        assert!(source.is_file(), "pi global install must land {name}");
+        fs::create_dir_all(superseded.join(name)).unwrap();
+        fs::copy(&source, superseded.join(name).join("SKILL.md")).unwrap();
+    }
+    // `shipmates-termgif` is a tool, so its rendered skill is a `SKILL.md` plus
+    // a bundled script. Plant the script too: the retire path must take the
+    // whole payload file set, not only the manifest (the earlier bug left the
+    // orphan script behind and still reported a clean tree).
+    let planted_script = native.join("shipmates-termgif/termgif.py");
+    assert!(
+        planted_script.is_file(),
+        "pi global install must land the termgif script"
+    );
+    fs::copy(
+        &planted_script,
+        superseded.join("shipmates-termgif/termgif.py"),
+    )
+    .unwrap();
+
+    // Detected for a harness that is not pi either — this is not a pi-only check.
+    let non_pi = run_home(home.path(), &["doctor", "--harness", "codex"]);
+    let non_pi_text = output_text(&non_pi);
+    assert_eq!(
+        non_pi.status.code(),
+        Some(2),
+        "the superseded tree must be a Problem for a non-pi harness: {non_pi_text}"
+    );
+    assert!(
+        non_pi_text.contains("Superseded skill tree"),
+        "a non-pi harness must still name the superseded tree: {non_pi_text}"
+    );
+
+    // pi: the superseded tree is a Problem, and Pi's own dual-tree warn fires.
+    let report = run_home(home.path(), &["doctor", "--harness", "pi"]);
+    let report_text = output_text(&report);
+    assert_eq!(
+        report.status.code(),
+        Some(2),
+        "doctor must report the superseded tree as a problem: {report_text}"
+    );
+    assert!(
+        report_text.contains("Superseded skill tree") && report_text.contains("Pi skill trees"),
+        "doctor must name both the superseded tree and Pi's dual-tree warn: {report_text}"
+    );
+
+    // Repair: retire the superseded tree with a backup.
+    let fixed = run_home(home.path(), &["doctor", "--harness", "pi", "--fix"]);
+    assert!(
+        fixed.status.success(),
+        "doctor --fix must clear the superseded tree: {}",
+        output_text(&fixed)
+    );
+
+    // No Shipmates name stays in more than one tree Pi loads; the native copy
+    // survives and the retired copy is recoverable from a backup.
+    for name in ["shipmates-ship-issue", "shipmates-termgif"] {
+        assert!(
+            !superseded.join(name).exists(),
+            "{name} must be gone from the superseded tree after --fix"
+        );
+        assert!(
+            native.join(name).join("SKILL.md").is_file(),
+            "{name} must survive in pi's native tree"
+        );
+    }
+    let backups = backup_files(home.path());
+    assert!(
+        !backups.is_empty(),
+        "retiring the superseded tree must keep a backup"
+    );
+    // Recoverability is this change's whole safety story, so pin the bytes and
+    // the relative path the retirement recorded, not merely that a backup exists.
+    let recovered = backups
+        .iter()
+        .find(|path| path.ends_with(".agents/skills/shipmates-ship-issue/SKILL.md"))
+        .unwrap_or_else(|| {
+            panic!("the backup must hold the retired file at its relative path: {backups:?}")
+        });
+    assert_eq!(
+        fs::read(recovered).unwrap(),
+        fs::read(native.join("shipmates-ship-issue/SKILL.md")).unwrap(),
+        "the backup must hold the bytes that were retired"
+    );
+    // The tool's script is part of the payload, so it retires with the manifest
+    // and lands in the backup at its own relative path — the acceptance the
+    // manifest-only retire failed.
+    assert!(
+        !superseded.join("shipmates-termgif/termgif.py").exists(),
+        "the tool's script must be retired with its SKILL.md"
+    );
+    let recovered_script = backups
+        .iter()
+        .find(|path| path.ends_with(".agents/skills/shipmates-termgif/termgif.py"))
+        .unwrap_or_else(|| {
+            panic!("the backup must hold the retired script at its relative path: {backups:?}")
+        });
+    assert_eq!(
+        fs::read(recovered_script).unwrap(),
+        fs::read(&planted_script).unwrap(),
+        "the backup must hold the script's bytes"
+    );
+
+    // The fresh report is clean: no payload name sits in two trees Pi loads.
+    let after = run_home(home.path(), &["doctor", "--harness", "pi"]);
+    let after_text = output_text(&after);
+    assert!(
+        after.status.success(),
+        "doctor must be clean after the repair: {after_text}"
+    );
+    assert!(
+        after_text.contains("no Shipmates skill name appears in more than one tree"),
+        "Pi's dual-tree check must be clear after --fix: {after_text}"
+    );
+}
+
+/// #561: the guards run at home scope too, where the delete actually happens — a
+/// symlinked entry and a foreign entry must survive `doctor --fix` while a
+/// provably-ours entry in the same tree, skill *and* script, is retired. The
+/// unit-test shapes cannot reach this: a tempdir is never `$HOME`, so the
+/// retreat there returns before the guards run.
+#[cfg(unix)]
+#[test]
+fn doctor_fix_leaves_symlinked_and_foreign_home_entries_alone() {
+    let home = tempdir().unwrap();
+    let outside = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &[
+            "install",
+            "--harness",
+            "pi",
+            "--global",
+            "--with-tools",
+            "none",
+        ],
+    );
+    assert!(
+        install.status.success(),
+        "pi global install failed: {}",
+        output_text(&install)
+    );
+
+    // A symlinked entry: the entry itself is the link.
+    let real = outside.path().join("elsewhere");
+    fs::create_dir_all(&real).unwrap();
+    fs::write(
+        real.join("SKILL.md"),
+        "---\nname: shipmates-qa\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+    )
+    .unwrap();
+    let linked = home.path().join(".agents/skills/shipmates-qa");
+    fs::create_dir_all(linked.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&real, &linked).unwrap();
+
+    // A foreign entry: a payload name, not our declaration.
+    let foreign = home.path().join(".agents/skills/shipmates-gh/SKILL.md");
+    fs::create_dir_all(foreign.parent().unwrap()).unwrap();
+    let foreign_body = "---\nname: shipmates-gh\ndescription: mine\n---\nkeep me\n";
+    fs::write(&foreign, foreign_body).unwrap();
+
+    // A provably-ours entry in the same tree, with its script beside it.
+    let ours = home.path().join(".agents/skills/shipmates-badge");
+    fs::create_dir_all(&ours).unwrap();
+    fs::write(
+        ours.join("SKILL.md"),
+        "---\nname: shipmates-badge\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+    )
+    .unwrap();
+    fs::write(ours.join("badge.py"), "print('ours')\n").unwrap();
+
+    let report = run_home(home.path(), &["doctor", "--harness", "pi", "--fix"]);
+    let text = output_text(&report);
+    assert!(
+        real.join("SKILL.md").is_file() && linked.is_symlink(),
+        "a symlinked entry and its target must survive: {text}"
+    );
+    assert_eq!(
+        fs::read_to_string(&foreign).unwrap(),
+        foreign_body,
+        "a foreign file must never be removed: {text}"
+    );
+    assert!(
+        text.contains("reached through a symlink"),
+        "the symlink clause must be named: {text}"
+    );
+    assert!(
+        text.contains("rm -rf"),
+        "the foreign clause must carry a removal command: {text}"
+    );
+    assert!(
+        !ours.join("SKILL.md").exists() && !ours.join("badge.py").exists(),
+        "a provably-ours entry and its script must be retired: {text}"
+    );
+}
+
+/// #561: a foreign file sitting at a home-scope payload name is reported with a
+/// copy-pasteable removal command, never touched — `doctor` deletes only what a
+/// file's own frontmatter proves to be Shipmates'.
+#[test]
+fn doctor_reports_a_foreign_home_tree_at_a_payload_name_without_touching_it() {
+    let home = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &["install", "--harness", "pi", "--global", "--with-tools", "none"],
+    );
+    assert!(
+        install.status.success(),
+        "pi global install failed: {}",
+        output_text(&install)
+    );
+
+    // A directory named like a payload skill, but whose frontmatter claims a
+    // different identity: not provably ours.
+    let foreign = home.path().join(".agents/skills/shipmates-ship-issue/SKILL.md");
+    fs::create_dir_all(foreign.parent().unwrap()).unwrap();
+    fs::write(&foreign, "---\nname: my-own-thing\n---\nkeep me\n").unwrap();
+
+    let report = run_home(home.path(), &["doctor", "--harness", "pi", "--fix"]);
+    let text = output_text(&report);
+    assert_eq!(fs::read_to_string(&foreign).unwrap(), "---\nname: my-own-thing\n---\nkeep me\n");
+    assert!(
+        foreign.is_file(),
+        "a foreign file must never be removed: {text}"
+    );
+    assert!(
+        text.contains("Superseded skill tree") && text.contains("rm -rf"),
+        "a foreign tree must be named with a copy-pasteable removal command: {text}"
+    );
+}
+
+/// #561: a tool's orphaned script — its `SKILL.md` already gone — still sits at
+/// a payload name, so it must be reported with a removal command rather than
+/// read as an empty tree, and never deleted: nothing there proves ownership.
+#[test]
+fn doctor_reports_an_orphan_payload_script_without_touching_it() {
+    let home = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &["install", "--harness", "pi", "--global", "--with-tools", "termgif"],
+    );
+    assert!(
+        install.status.success(),
+        "pi global install failed: {}",
+        output_text(&install)
+    );
+
+    let orphan = home
+        .path()
+        .join(".agents/skills/shipmates-termgif/termgif.py");
+    fs::create_dir_all(orphan.parent().unwrap()).unwrap();
+    fs::write(&orphan, "print('orphan')\n").unwrap();
+
+    let report = run_home(home.path(), &["doctor", "--harness", "pi"]);
+    let text = output_text(&report);
+    assert!(
+        text.contains("Superseded skill tree")
+            && text.contains("rm -rf")
+            && text.contains("shipmates-termgif"),
+        "an orphan script must be named with a removal command, not read as clean: {text}"
+    );
+
+    // `--fix` retires only what it can prove, so the orphan survives.
+    let fixed = run_home(home.path(), &["doctor", "--harness", "pi", "--fix"]);
+    assert!(
+        fixed.status.success(),
+        "an unprovable orphan is a warning, not a hard problem: {}",
+        output_text(&fixed)
+    );
+    assert!(
+        orphan.is_file() && fs::read_to_string(&orphan).unwrap() == "print('orphan')\n",
+        "an orphan is never ours to delete: {}",
+        output_text(&fixed)
+    );
+}
+
+/// #561: a mixed superseded tree must name **every** applicable remedy in the
+/// one detail line — the fixable `ours` clause, the foreign removal command,
+/// and the symlinked entry left as found. Naming only the first bucket would
+/// hide the remedy for the rest, and the harness still conflicts on them.
+#[cfg(unix)]
+#[test]
+fn doctor_names_every_remedy_in_a_mixed_home_tree() {
+    let home = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &["install", "--harness", "pi", "--global", "--with-tools", "termgif"],
+    );
+    assert!(
+        install.status.success(),
+        "pi global install failed: {}",
+        output_text(&install)
+    );
+
+    let native = home.path().join(".pi/agent/skills");
+    let superseded = home.path().join(".agents/skills");
+
+    // ours: a provably Shipmates skill copied from the native tree.
+    fs::create_dir_all(superseded.join("shipmates-ship-issue")).unwrap();
+    fs::copy(
+        native.join("shipmates-ship-issue/SKILL.md"),
+        superseded.join("shipmates-ship-issue/SKILL.md"),
+    )
+    .unwrap();
+
+    // foreign: a payload name whose frontmatter claims another identity.
+    let foreign = superseded.join("shipmates-termgif/SKILL.md");
+    fs::create_dir_all(foreign.parent().unwrap()).unwrap();
+    fs::write(&foreign, "---\nname: my-own-thing\n---\nkeep me\n").unwrap();
+
+    // linked: a payload name reached through a symlink, left exactly as found.
+    let outside = tempdir().unwrap();
+    fs::write(
+        outside.path().join("SKILL.md"),
+        "---\nname: shipmates-harden\ndescription: \"Shipmates: linked\"\n---\nbody\n",
+    )
+    .unwrap();
+    std::os::unix::fs::symlink(outside.path(), superseded.join("shipmates-harden")).unwrap();
+
+    let report = run_home(home.path(), &["doctor", "--harness", "pi"]);
+    let text = output_text(&report);
+    assert_eq!(
+        report.status.code(),
+        Some(2),
+        "a provably-ours entry makes the tree a Problem: {text}"
+    );
+    assert!(
+        text.contains("retires them to a backup"),
+        "the ours remedy must be named: {text}"
+    );
+    assert!(
+        text.contains("rm -rf") && text.contains("shipmates-termgif"),
+        "the foreign removal command must be named too: {text}"
+    );
+    assert!(
+        text.contains("symlink") && text.contains("shipmates-harden"),
+        "the linked entry must be named as left as found: {text}"
     );
 }
