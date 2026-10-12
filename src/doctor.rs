@@ -1518,13 +1518,22 @@ fn superseded_home_skills_check(
         ));
     }
     if !tree.linked.is_empty() {
+        // Name each entry's path, so the captain can act without reconstructing
+        // it — but never as a command: deleting through the link is out of bounds.
+        let linked_paths = tree
+            .linked
+            .iter()
+            .map(|name| format!("{} ({})", name, root.join(name).display()))
+            .collect::<Vec<_>>()
+            .join(", ");
         clauses.push(format!(
             "{} skill(s) sit at a payload name in a home-scope tree reached through a \
              symlink, so they were left exactly as found — a symlinked skills tree is the \
              captain's own arrangement and Shipmates does not follow it to delete files: {}. \
-             Move them aside by hand if they are a superseded copy.",
+             Move the linked entry aside by hand, never through the link, if it is a \
+             superseded copy.",
             tree.linked.len(),
-            tree.linked.join(", ")
+            linked_paths
         ));
     }
     if !tree.foreign.is_empty() {
