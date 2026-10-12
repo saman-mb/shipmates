@@ -4,6 +4,35 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.5] - 2026-10-12
+
+### Fixed
+
+- **Intake can no longer skip the confirmation turn on a mutating default (#564).** A `## Parameters`
+  table with no required row was "fully specified" for any non-empty argument, so the defaults card
+  and its single OK-or-change question could never fire for seven commands — and several of them
+  mutate on their default path. Those tables now mark the knob that gates the write with a `Mutates`
+  column, and the shared intake contract requires every mutation-gating knob to be tokenized before
+  the ask is skipped; the eleven commands that do declare required rows behave exactly as before.
+- **`/shipmates-consolidate-issues` merges duplicate tickets instead of only tagging them (#565).**
+  The dedupe path closed a duplicate without carrying its substance into the survivor, so a
+  "slimmed" backlog could be slimmer only because detail had been abandoned. Stage 5 now grows a
+  **merge** step between migrate and close: the duplicate's body sections, acceptance criteria, repro
+  steps, links and comment digest land on the named survivor, attributed to the source and
+  de-duplicated, and only then is the duplicate closed as a duplicate of it. The report counts merged
+  duplicates as their own bucket, and a run that neither closes nor merges anything says so outright.
+- **The superseded home-scope skill repair now fixes what it finds (#578).** A symlinked asset no
+  longer demotes its whole entry — the provably-ours manifest beside it is retired while the symlinked
+  file is left exactly as found; a brand-stamped tree at a name the current catalogue no longer ships
+  (a retired `ship-*` name or a removed tool) is detected and reported instead of reading as
+  shipshape; and `--no-migrate` prints the repair it skipped instead of staying silent about it.
+- **`/shipmates-ship-epic` no longer stalls on the permission layer for the writes its own contract
+  authorizes (#532).** Claude Code's auto mode routes shell calls through a classifier while narrow
+  Bash allow rules are resolved before it, so the claude-code payload now carries command-scoped
+  narrow rules for the documented unit-PR merge and landed-story close on `/shipmates-ship-epic` and
+  `/shipmates-ship-issue`. Both commands also surface the documented remedy — never a second captain
+  gate, never a mid-loop stall — when a permission layer still blocks a documented action.
+
 ## [0.14.4] - 2026-10-11
 
 ### Fixed

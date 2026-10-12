@@ -36,6 +36,127 @@ fn prose(body: &str) -> String {
     body.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// #565: a dedupe must *consolidate* — the duplicate's substance reaches the
+/// named survivor before the duplicate is closed, so the open count falls
+/// because the work moved rather than because detail was dropped. The merge is
+/// a numbered sub-step of Stage 5, never a `## Stage` heading: the demo-GIF reel
+/// is generated from the parsed stage headings (`tools/gen_command_demos.py`).
+#[test]
+fn consolidate_merges_duplicate_substance_into_the_survivor_before_closing() {
+    let body = command("shipmates-consolidate-issues");
+
+    let stage_list = body
+        .lines()
+        .find(|line| line.starts_with("# /shipmates-consolidate-issues"))
+        .expect("H1 stage list");
+    let merge = stage_list.find("merge").expect("stage list must name merge");
+    assert!(
+        stage_list[..merge].contains("migrate") && stage_list[merge..].contains("bundle"),
+        "the H1 stage list must place merge between migrate and bundle:\n{stage_list}"
+    );
+
+    let stage2 = prose(&section(&body, "## Stage 2"));
+    assert!(
+        stage2.contains("dedupe map") && stage2.contains("payload to carry over"),
+        "Stage 2's dedupe map must carry the content to carry over, not just a pairing:\n{stage2}"
+    );
+    for carried in [
+        "body sections",
+        "acceptance criteria",
+        "repro steps",
+        "comment thread",
+    ] {
+        assert!(
+            stage2.contains(carried),
+            "the Stage 2 dedupe-map payload must name {carried} as content to carry over:\n{stage2}"
+        );
+    }
+
+    let stage5 = section(&body, "## Stage 5");
+    let migrated = stage5.find("**Migrate**").expect("Stage 5 migrate step");
+    let merged = stage5
+        .find("**Merge**")
+        .expect("Stage 5 must carry a merge sub-step");
+    let closed = stage5.find("**Close**").expect("Stage 5 close step");
+    assert!(
+        migrated < merged && merged < closed,
+        "the merge sub-step must sit between migrate and close in Stage 5's apply order:\n{stage5}"
+    );
+
+    let staged = prose(stage5);
+    assert!(
+        staged.contains("only **after** its merge has landed"),
+        "a duplicate must not be closed until its merge has landed:\n{stage5}"
+    );
+    assert!(
+        staged.contains("reported, not closed") && staged.contains("Never close-and-drop"),
+        "an unmerged pair is reported, not closed — no close-and-drop path may exist:\n{stage5}"
+    );
+    assert!(
+        staged.contains("closed as a duplicate of `#X` (substance merged into `#X`)"),
+        "the report must count merged duplicates as their own bucket:\n{stage5}"
+    );
+    assert!(
+        staged.contains("neither closed nor merged anything"),
+        "a run that only tagged must say so outright:\n{stage5}"
+    );
+
+    let guardrails = prose(&section(&body, "### Guardrails"));
+    assert!(
+        guardrails.contains("Never lose intent")
+            && guardrails.contains("distinct from both `migrate` and `bundle`")
+            && guardrails.contains("never closed-and-dropped"),
+        "Never-lose-intent must bind the dedupe/merge path, naming merge distinct from migrate and bundle:\n{guardrails}"
+    );
+}
+
+/// #564: a zero-required Parameters table used to skip the intake ask even when
+/// the captain never tokenized the knob that decides whether the run mutates —
+/// `skip and execute` won on *any* non-empty argument, so no defaults card and
+/// no OK-or-change question could ever fire. Each of the seven zero-required
+/// commands must mark its mutation-gating knob(s) `Mutates: yes` (with the safe
+/// value as Default), and the shared preamble must redefine "fully specified"
+/// so those knobs gate the skip, not merely the Required column.
+#[test]
+fn mutating_knobs_are_token_gated_in_zero_required_parameter_tables() {
+    let cost = prose(&cost_preamble());
+    assert!(
+        cost.contains(
+            "every Required=yes row present/parseable AND every `Mutates: yes` row explicitly tokenized"
+        ),
+        "docs/COST.md must redefine fully-specified to require tokenized mutation-gating knobs:\n{cost}"
+    );
+
+    // command -> (mutation-gating token name, its safe Default)
+    let gated: &[(&str, &[(&str, &str)])] = &[
+        ("shipmates-consolidate-issues", &[("apply", "report")]),
+        ("shipmates-deslop", &[("mode", "report")]),
+        ("shipmates-onboard", &[("mode", "`pr`"), ("merge_mode", "manual")]),
+        ("shipmates-pr-review", &[("mode", "report")]),
+        ("shipmates-release", &[("publish_mode", "manual")]),
+        ("shipmates-report-bug", &[("apply", "omit (`MODE=report`)")]),
+        ("shipmates-upgrade", &[("apply", "omit (`MODE=report`)")]),
+    ];
+
+    for (name, knobs) in gated {
+        let body = command(name);
+        for (token, safe_default) in *knobs {
+            let row = body
+                .lines()
+                .find(|line| line.trim_start().starts_with(&format!("| {token} |")))
+                .unwrap_or_else(|| panic!("{name} Parameters table must declare a `{token}` row"));
+            assert!(
+                row.contains("| yes |"),
+                "{name} must mark its `{token}` knob `Mutates: yes`:\n{row}"
+            );
+            assert!(
+                row.contains(safe_default),
+                "{name} `{token}` must keep its safe Default `{safe_default}`:\n{row}"
+            );
+        }
+    }
+}
+
 /// #516: dangling keep issues must be reconciled into existing open epics
 /// *before* Stage 4 invents a new bundle for them.
 #[test]

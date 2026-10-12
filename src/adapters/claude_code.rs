@@ -106,6 +106,30 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     layout: CrewLayout::Flat,
 };
 
+/// Per-command narrow Bash allow rules, appended to the rendered `allowed-tools`
+/// value for this target only (#532).
+///
+/// Claude Code resolves a narrow rule such as `Bash(npm test)` **before** the
+/// auto-mode classifier, while a broad `Bash` / `Bash(*)` grant is suspended in
+/// auto mode (first-party docs, 2026-10-12). `/shipmates-ship-epic` and
+/// `/shipmates-ship-issue` are spec'd to merge a green unit PR into the epic
+/// integration branch and close a landed story issue without stopping for the
+/// captain, so each carries the two narrow rules that keep those documented
+/// actions out of the classifier's way. The grant is a documented best effort,
+/// not a verified bypass: org `allowManagedPermissionRulesOnly` and
+/// `autoMode.classifyAllShell: true` can neutralise it, and the classifier also
+/// reads the project's instruction file. The canonical `allowed-tools` stays
+/// untouched — this is a rendering rule, not a new frontmatter key — and every
+/// other command's output is unchanged.
+fn command_extra_bash_rules(name: &str) -> &'static [&'static str] {
+    match name {
+        "shipmates-ship-epic" | "shipmates-ship-issue" => {
+            &["Bash(gh pr merge:*)", "Bash(gh issue close:*)"]
+        }
+        _ => &[],
+    }
+}
+
 pub struct ClaudeCodeAdapter;
 
 impl Adapter for ClaudeCodeAdapter {
@@ -148,11 +172,15 @@ impl Adapter for ClaudeCodeAdapter {
                     yaml_scalar(&command.argument_hint)
                 ));
             }
-            if !command.allowed_tools.is_empty() {
-                content.push_str(&format!(
-                    "allowed-tools: {}\n",
-                    yaml_scalar(&command.allowed_tools)
-                ));
+            let mut allowed_tools = command.allowed_tools.clone();
+            for rule in command_extra_bash_rules(&command.name) {
+                if !allowed_tools.is_empty() {
+                    allowed_tools.push_str(", ");
+                }
+                allowed_tools.push_str(rule);
+            }
+            if !allowed_tools.is_empty() {
+                content.push_str(&format!("allowed-tools: {}\n", yaml_scalar(&allowed_tools)));
             }
             if command.disable_model_invocation {
                 content.push_str("disable-model-invocation: true\n");
@@ -324,5 +352,56 @@ mod tests {
             .get("harnesses/claude-code/.claude/skills/termgif/termgif.py")
             .unwrap();
         assert_eq!(asset, "print('hi')");
+    }
+
+    fn command(name: &str, allowed_tools: &str) -> CanonicalCommand {
+        CanonicalCommand {
+            name: name.to_string(),
+            description: "desc".to_string(),
+            argument_hint: "<arg>".to_string(),
+            allowed_tools: allowed_tools.to_string(),
+            disable_model_invocation: true,
+            arguments: vec![],
+            narrative: "body".to_string(),
+            invocation: String::new(),
+            board: String::new(),
+            source: std::path::PathBuf::from(""),
+        }
+    }
+
+    #[test]
+    fn epic_and_ship_issue_carry_narrow_bash_merge_close_rules() {
+        for name in ["shipmates-ship-epic", "shipmates-ship-issue"] {
+            let files = ClaudeCodeAdapter
+                .build(&[], &[command(name, "Bash, Read, Write")])
+                .unwrap();
+            let content = files
+                .get(&format!(
+                    "harnesses/claude-code/.claude/skills/{name}/SKILL.md"
+                ))
+                .unwrap();
+            assert!(
+                content.contains(
+                    "allowed-tools: \"Bash, Read, Write, Bash(gh pr merge:*), Bash(gh issue close:*)\"\n"
+                ),
+                "{content}"
+            );
+        }
+    }
+
+    #[test]
+    fn unrelated_command_allowed_tools_render_unchanged() {
+        let files = ClaudeCodeAdapter
+            .build(&[], &[command("shipmates-report-bug", "Bash, Read, Write")])
+            .unwrap();
+        let content = files
+            .get("harnesses/claude-code/.claude/skills/shipmates-report-bug/SKILL.md")
+            .unwrap();
+        assert!(
+            content.contains("allowed-tools: \"Bash, Read, Write\"\n"),
+            "{content}"
+        );
+        assert!(!content.contains("gh pr merge"), "{content}");
+        assert!(!content.contains("gh issue close"), "{content}");
     }
 }

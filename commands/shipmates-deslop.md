@@ -496,14 +496,14 @@ is `/ship-harden`; a genericisation needing a new abstraction with no precedent 
 
 ## Parameters
 
-| Name | Required | Token | Values | Default | Help |
-|------|----------|-------|--------|---------|------|
-| scope | no | free text | path / module / package | whole repo | Narrow the survey to one subtree; empty audits everything. |
-| language | no | `language=<name>` | a language name | all detected | Narrow a multi-language repo to one language's files. |
-| mode | no | `file`  /  `ship` | report  /  file  /  ship | report | `file` files the epic and stops at the human gate; `ship` continues past a confirmed gate into election and hand-off. |
-| sequential | no | `sequential` | sequential  /  (absent→fanout) | fanout | Run discovery shards one at a time instead of fan-out. |
-| budget | no | `budget=<n>` | a finding count or wall-clock | repo default | Stop cleanly at the cap and report what was not scanned. |
-| max_sub_issues | no | `max-sub-issues=<n>` | a count | 12 | Ceiling on sub-issues filed in one run; the remainder is summarised and left in the ledger. |
+| Name | Required | Token | Values | Default | Mutates | Help |
+|------|----------|-------|--------|---------|---------|------|
+| scope | no | free text | path / module / package | whole repo | — | Narrow the survey to one subtree; empty audits everything. |
+| language | no | `language=<name>` | a language name | all detected | — | Narrow a multi-language repo to one language's files. |
+| mode | no | `file`  /  `ship` | report  /  file  /  ship | report | yes | `file` files the epic and stops at the human gate; `ship` continues past a confirmed gate into election and hand-off. |
+| sequential | no | `sequential` | sequential  /  (absent→fanout) | fanout | — | Run discovery shards one at a time instead of fan-out. |
+| budget | no | `budget=<n>` | a finding count or wall-clock | repo default | — | Stop cleanly at the cap and report what was not scanned. |
+| max_sub_issues | no | `max-sub-issues=<n>` | a count | 12 | — | Ceiling on sub-issues filed in one run; the remainder is summarised and left in the ledger. |
 
 ## Runtime input
 

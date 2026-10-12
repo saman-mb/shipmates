@@ -587,6 +587,12 @@ the captain sees what batching saved. **Never** report `EPIC_PR: n/a` or `EPIC_B
   link and wait unless a hard-limit row actually fired (`gate`, `unit merge manual`). The only human
   merge gate for shipped code is the **epic PR** into `MAIN_BRANCH` at Stage 4; security still
   surfaces as the `/shipmates-harden` recommendation plus the integration board, not a per-unit pause.
+- **A blocked permission is not a pause** — when the harness's permission layer blocks a **documented**
+  unit-PR merge into `<EPIC_BRANCH>` or the close of a landed story, do **not** stall the loop and do
+  **not** invent a second captain gate. Surface the documented remedy — allow that specific action in
+  the project's permission policy, or restate the intent in the next message so the harness's approval
+  step clears it — and record the denial and its remedy in the run report. The only human gate in an
+  epic remains the epic PR at Stage 4.
 - **CI every unit** — economy comes from fewer Planner/board **invocations**, not from skipping
   validation or acceptance on shipped code. **Integration board** at epic closure is never skipped on
   full closure — it is the holistic review of the combined epic PR.
