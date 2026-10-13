@@ -69,7 +69,7 @@ from anything hardcoded into the role.
 | `/shipmates-fix-bug <n>` | Fixes a bug the honest way — reproduce as a failing test first, root-cause, minimal fix, red→green proof |
 | `/shipmates-report-bug [symptom] [apply]` | Files a structured bug report on `saman-mb/shipmates` from a live run — preview by default; `apply` creates the issue |
 | `/shipmates-plan-epics <brief>` | Turns a brief (or several) into GitHub epics + linked, labelled user stories, authored in parallel |
-| `/shipmates-consolidate-issues [filter] [apply]` | Reviews every open issue against git history — closes what's done or stale, migrates legacy ones, bundles the rest by theme so they ship together |
+| `/shipmates-consolidate-issues [filter] [apply]` | Reviews every open issue against git history — merges duplicates into their survivors, closes what's done or stale, migrates legacy ones, bundles the rest by theme so they ship together |
 | `/shipmates-harden <surface>` | Threat-models a surface and ranks every finding — read-only by default; remediation on a branch, opt-in |
 | `/shipmates-spike <question>` | De-risks a decision — prototypes the options in parallel, judges them, records the pick as an ADR |
 | `/shipmates-migrate <from→to>` | Sweeps a mechanical migration across the codebase — every call site, verified, no remnants left |

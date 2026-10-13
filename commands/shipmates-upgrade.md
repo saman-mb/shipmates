@@ -154,11 +154,11 @@ point at `/shipmates-report-bug` for a manual upstream report instead.
 
 ## Parameters
 
-| Name | Required | Token | Values | Default | Help |
-|------|----------|-------|--------|---------|------|
-| apply | no | `apply` | `apply` | omit (`MODE=report`) | Run the upgrade/repair/filing steps after showing the plan; default is check-and-report only. |
-| pre | no | `pre` | `pre` | omit (stable only) | Include prereleases in the release check. |
-| file-bugs | no | `file-bugs` | `file-bugs` | omit | Allow filing or updating upstream issues for shipmates-attributable findings; requires apply. |
+| Name | Required | Token | Values | Default | Mutates | Help |
+|------|----------|-------|--------|---------|---------|------|
+| apply | no | `apply` | `apply` | omit (`MODE=report`) | yes | Run the upgrade/repair/filing steps after showing the plan; default is check-and-report only. |
+| pre | no | `pre` | `pre` | omit (stable only) | — | Include prereleases in the release check. |
+| file-bugs | no | `file-bugs` | `file-bugs` | omit | — | Allow filing or updating upstream issues for shipmates-attributable findings; requires apply. |
 
 ## Runtime input
 

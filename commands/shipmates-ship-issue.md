@@ -689,6 +689,12 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
   Default nested layout lives under `.shipmates/worktrees/` (gitignored); `worktree-root=sibling`
   restores legacy `../<repo>--…` paths.
 - Respect `MERGE_MODE` — do not auto-merge unless it is explicitly set to `auto`.
+- **A blocked permission is not a stall.** When the harness's permission layer blocks the documented
+  `MERGE_MODE=auto` merge into `BASE_BRANCH` or the auto-close of a landed issue, do **not** stall and
+  do **not** add a second captain gate the command's contract does not have. Surface the documented
+  remedy — allow that specific action in the project's permission policy, or restate the intent in
+  the next message so the harness's approval step clears it — and record the denial and remedy in
+  the final report.
 - If genuinely blocked (ambiguous scope, unsatisfiable hard gate, a missing toolchain the test plan
   requires), stop and surface it — autonomy does not mean forcing a bad merge.
 - **Secrets & security hygiene.** Never write secrets, tokens, or credentials into commits, PR/issue

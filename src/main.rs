@@ -509,7 +509,7 @@ fn install_harness(
     // over the retired install's tree. Adopt it first — receipt-verified,
     // backed up, and only while the harness still reads those files — so the
     // captain never ends up with two copies of every command. `--no-migrate`
-    // leaves it alone on purpose and says so.
+    // leaves it alone on purpose.
     let retired_report = if no_migrate {
         None
     } else {
@@ -521,7 +521,15 @@ fn install_harness(
     // Retire the provably-ours files with the same backup semantics, so a plain
     // install clears the duplicate too. The whole catalogue is the ownership
     // key, not just this run's tool selection: the orphan predates it.
+    // `--no-migrate` leaves a superseded tree alone on purpose and says so.
     let superseded_report = if no_migrate {
+        if installer::manifest_db::is_global_target(target_dir)
+            && !installer::retired::classify_superseded_skills(target_dir, cmds, available_tools)
+                .ours
+                .is_empty()
+        {
+            println!("Skipped the superseded home-tree repair (--no-migrate)");
+        }
         None
     } else {
         installer::retired::retire_superseded_home_tree(target_dir, cmds, available_tools)?

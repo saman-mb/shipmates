@@ -62,11 +62,21 @@ preamble itself, so the substitution order in `render_body` is load-bearing.
 
 ## Argument intake
 
+- A **mutation-gating knob** is a Parameters row whose `Mutates` column is `yes`: choosing a
+  non-default value performs a write (closing issues, filing upstream, rewriting an installed crew)
+  that the command would not otherwise perform. Only the seven commands whose table declares one
+  carry the column.
 - Before any mutating step, classify `$ARGUMENTS`: **empty**, **partial**, or **fully specified**.
   Empty or partial → run intake; fully specified → skip and execute.
 - Completeness: Empty = blank/whitespace. Partial = non-empty but ≥1 Required=yes Parameters row
-  unresolved. Fully specified = every Required=yes row present/parseable (missing optionals keep
-  Defaults).
+  unresolved, or a mutation-gating knob left un-tokenized. Fully specified = every Required=yes row
+  present/parseable AND every `Mutates: yes` row explicitly tokenized — naming either the mutating
+  token or the safe token explicitly. A knob whose safe value is expressed by omission (an
+  `apply`-style row) is tokenized only by naming its mutating token: omitting it runs intake.
+  Missing optionals otherwise keep Defaults.
+- A command whose table declares no `Mutates: yes` row keeps today's behaviour: supplying its
+  Required=yes rows still skips the ask, so the 11 required-row commands (e.g.
+  `/shipmates-ship-issue 42`) are unchanged.
 - **Always show every Parameters row.** The defaults card lists **each** Name with its current or
   Default value (and a one-line Help hint when useful) — requireds and optionals alike — so the
   captain can see knobs like `board`, `merge_mode`, `dry_run`, or `mode` without memorizing tokens.
@@ -86,7 +96,9 @@ preamble itself, so the substitution order in `render_body` is load-bearing.
 - Prefer the harness native ask/choice surface when present; else a short chat prompt. Never invent
   a TUI outside the session. Canonical prose must NOT name harness-specific tool IDs.
 - Non-interactive / no user-turn: **fail closed** if any required is missing (clear missing-arg
-  message); apply Defaults for optionals. Never hang; never invent irreversible choices.
+  message); apply Defaults for optionals, and an un-tokenized mutation-gating knob keeps its
+  Default — the value that does not perform the gated write — and the run proceeds. Never hang;
+  never invent irreversible choices.
 - After intake, restate one resolved invocation line (`/<command> <tokens…>`), then proceed with the
   existing workflow unchanged.
 - Per-command files only declare `## Parameters`; do not copy these intake rules into each command.

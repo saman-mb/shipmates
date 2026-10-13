@@ -126,6 +126,21 @@ pub const SUPERSEDED_HOME_SKILLS: &str = ".agents/skills";
 /// re-renders, so a superseded copy from an older release still proves ours.
 const SHIPMATES_DESCRIPTION_PREFIX: &str = "Shipmates:";
 
+/// Whether the bytes carry the brand-prefixed description every rendered
+/// payload is stamped with.
+///
+/// This is the marker that survives renames, re-renders and removal from the
+/// live catalogue — which is exactly what makes it the candidacy key for a
+/// superseded copy at a name we no longer ship.
+fn declares_shipmates_brand(content: &str) -> bool {
+    match parse_frontmatter_from(content, "SKILL.md") {
+        Ok((frontmatter, _)) => frontmatter
+            .get("description")
+            .is_some_and(|value| unquoted(value).starts_with(SHIPMATES_DESCRIPTION_PREFIX)),
+        Err(_) => false,
+    }
+}
+
 /// Whether the bytes at a payload path are provably a rendered Shipmates
 /// payload: the frontmatter declares the name its directory implies **and**
 /// carries the brand-prefixed description every rendered payload is stamped
@@ -142,12 +157,19 @@ fn declares_our_payload(content: &str, name: &str) -> bool {
                 .get("name")
                 .map(|value| value == name)
                 .unwrap_or(false)
-                && frontmatter.get("description").is_some_and(|value| {
-                    unquoted(value).starts_with(SHIPMATES_DESCRIPTION_PREFIX)
-                })
+                && declares_shipmates_brand(content)
         }
         Err(_) => false,
     }
+}
+
+/// `path`, made relative to `target_dir` — how a payload file is identified in
+/// the `linked` bucket. `path` is always under `target_dir` (it is a file in the
+/// superseded tree), so the fallback is unreachable in practice.
+fn relative_to_target(target_dir: &Path, path: &Path) -> PathBuf {
+    path.strip_prefix(target_dir)
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|_| path.to_path_buf())
 }
 
 /// A frontmatter value with any surrounding quotes removed.
@@ -234,13 +256,18 @@ pub struct SupersededSkills {
     /// Entries at a payload name that declare a different identity or origin
     /// (or none), so they are not ours to delete.
     pub foreign: Vec<String>,
-    /// Entries reached through a symlink: left exactly as found, because a
-    /// symlinked skills tree is the captain's own arrangement.
-    pub linked: Vec<String>,
+    /// Individual payload files left exactly as found because a symlink sits in
+    /// their path, relative to `target_dir`. A symlinked file no longer demotes
+    /// its whole directory: a provably-ours manifest beside it is still retired.
+    pub linked: Vec<PathBuf>,
+    /// Entries at a name outside the live catalogue whose `SKILL.md` carries
+    /// Shipmates' brand — a retired `ship-*` name or a removed tool. Detected
+    /// and reported, never deleted.
+    pub unknown: Vec<String>,
 }
 
-/// Classify the payload-named skill directories of
-/// `<target_dir>/.agents/skills/`.
+/// Classify the skill directories of `<target_dir>/.agents/skills/`, split by
+/// whether Shipmates can prove ownership.
 ///
 /// `target_dir` — not the tree root — is the base for the containment walk. A
 /// symlinked `.agents` (a dotfiles repo's usual shape) has to be caught, and a
@@ -249,18 +276,21 @@ pub struct SupersededSkills {
 /// retire step — which *does* walk from the target — would refuse it, leaving a
 /// problem `--fix` could never clear.
 ///
-/// Ownership is proved from the file's own declaration, exactly as
-/// `adopt::classify` does: a skill is ours only when its frontmatter `name:`
-/// equals the name its directory implies **and** its description carries the
-/// brand prefix every rendered payload is stamped with. A captain's own skill
-/// that merely reuses a payload name, a `SKILL.md` that is missing or
-/// unreadable, and anything reached through a symlink are each at worst
-/// reported — the symlink case as `linked`, the others as `foreign` — and never
-/// deleted; this is a path under `$HOME`. A name
-/// outside the payload is ignored entirely, so a foreign harness's own skills in
-/// that tree are invisible to us. An entry is a candidate while any file of its
-/// name's payload set is present, so an orphan script left by a partial retire
-/// is still reported rather than read as an empty tree.
+/// Ownership is proved per file, from its own declaration: a skill is ours only
+/// when its `SKILL.md` is symlink-free and its frontmatter `name:` equals the
+/// name its directory implies **and** its description carries the brand prefix.
+/// A symlinked file goes to `linked` at path level without demoting its whole
+/// directory, so a provably-ours manifest beside a symlinked asset is still
+/// retired while the asset is left exactly as found. A `SKILL.md` that is
+/// missing, unreadable or declares another identity is `foreign` and never
+/// deleted; this is a path under `$HOME`.
+///
+/// A name outside the live catalogue is a candidate only when its `SKILL.md` is
+/// present, symlink-free and brand-stamped — then it is `unknown`, detected and
+/// reported but never deleted. A captain's own skill at an unknown name without
+/// the brand stays invisible, exactly as before. An entry is a candidate while
+/// any file of its name's payload set is present, so an orphan script left by a
+/// partial retire is still reported rather than read as an empty tree.
 pub fn classify_superseded_skills(
     target_dir: &Path,
     cmds: &[CanonicalCommand],
@@ -273,10 +303,22 @@ pub fn classify_superseded_skills(
     };
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().into_owned();
+        let dir = entry.path();
+        let skill = dir.join("SKILL.md");
         let Some(files) = payload_file_names(&name, cmds, tools) else {
+            // A name outside the live catalogue — a retired `ship-*` name or a
+            // removed tool. Only a brand-stamped manifest makes it a candidate,
+            // and then only to be reported, never deleted.
+            if fs::symlink_metadata(&skill).is_ok()
+                && path_is_symlink_free(target_dir, &skill)
+                && fs::read_to_string(&skill)
+                    .map(|content| declares_shipmates_brand(&content))
+                    .unwrap_or(false)
+            {
+                out.unknown.push(name);
+            }
             continue;
         };
-        let dir = entry.path();
         // A candidate holds a file of the name's payload set — the manifest
         // *or* a bundled script a partial retire left behind. A directory
         // holding only the captain's own files is not ours to report, let alone
@@ -289,15 +331,31 @@ pub fn classify_superseded_skills(
         if present.is_empty() {
             continue;
         }
-        if present
-            .iter()
-            .any(|path| !path_is_symlink_free(target_dir, path))
-        {
-            out.linked.push(name);
+        // The manifest drives ownership: a symlinked `SKILL.md` cannot be read
+        // through the link, so nothing is retired for the entry and the manifest
+        // is reported at path level.
+        if fs::symlink_metadata(&skill).is_ok() && !path_is_symlink_free(target_dir, &skill) {
+            out.linked.push(relative_to_target(target_dir, &skill));
             continue;
         }
-        match fs::read_to_string(dir.join("SKILL.md")) {
-            Ok(content) if declares_our_payload(&content, &name) => out.ours.push(name),
+        match fs::read_to_string(&skill) {
+            Ok(content) if declares_our_payload(&content, &name) => {
+                out.ours.push(name);
+                // The unchanged retire loop removes each symlink-free payload
+                // file of an `ours` entry; a symlinked sibling is left in place
+                // and reported at path level, never demoting the whole entry.
+                for file in &files {
+                    if file == "SKILL.md" {
+                        continue;
+                    }
+                    let path = dir.join(file);
+                    if fs::symlink_metadata(&path).is_ok()
+                        && !path_is_symlink_free(target_dir, &path)
+                    {
+                        out.linked.push(relative_to_target(target_dir, &path));
+                    }
+                }
+            }
             // No readable `SKILL.md`, or one whose declaration is not ours:
             // nothing proves ownership, so it is reported and never deleted.
             _ => out.foreign.push(name),
@@ -306,6 +364,7 @@ pub fn classify_superseded_skills(
     out.ours.sort();
     out.foreign.sort();
     out.linked.sort();
+    out.unknown.sort();
     out
 }
 
@@ -349,7 +408,7 @@ pub fn retire_superseded_home_tree(
         };
         for file in files {
             let path = root.join(name).join(&file);
-            // Belt and braces: the classifier already put symlinked entries in
+            // Belt and braces: the classifier already put symlinked files in
             // `linked`, and a delete under `$HOME` is worth re-checking.
             if !path_is_symlink_free(target_dir, &path) {
                 continue;
@@ -411,6 +470,36 @@ fn prune_empty_dirs(target_dir: &Path, adopted: &[PathBuf]) {
             continue;
         }
         let _ = fs::remove_dir(&absolute);
+    }
+}
+
+/// Test-only seam to point `$HOME` at an isolated tempdir.
+///
+/// `retire_superseded_home_tree` and the doctor checks gate on
+/// `is_global_target`, which resolves the user's home from the process
+/// environment. Mutating `$HOME` is process-global, so it is serialised behind
+/// a lock shared by every caller in the lib test binary.
+#[cfg(test)]
+pub(crate) mod test_env {
+    use std::path::Path;
+    use std::sync::Mutex;
+
+    static HOME_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Run `f` with `HOME` pointed at `dir`, restoring the previous value after.
+    pub(crate) fn with_isolated_home(dir: &Path, f: impl FnOnce()) {
+        let _guard = HOME_LOCK.lock().unwrap();
+        let previous = std::env::var_os("HOME");
+        // SAFETY: every writer of `HOME` in this crate goes through HOME_LOCK,
+        // so no two threads mutate the environment at once; readers
+        // (`home::home_dir`) use `var_os`, which observes whichever value is
+        // currently set.
+        unsafe { std::env::set_var("HOME", dir) };
+        f();
+        match previous {
+            Some(home) => unsafe { std::env::set_var("HOME", home) },
+            None => unsafe { std::env::remove_var("HOME") },
+        }
     }
 }
 
@@ -641,7 +730,9 @@ mod tests {
 
         let tree = classify_superseded_skills(dir.path(), &[cmd("shipmates-ship-issue")], &[]);
         assert!(tree.ours.is_empty(), "ours must stay empty: {:?}", tree.ours);
-        assert_eq!(tree.linked, vec!["shipmates-ship-issue"]);
+        assert_eq!(tree.linked, vec![PathBuf::from(format!(
+            "{SUPERSEDED_HOME_SKILLS}/shipmates-ship-issue/SKILL.md"
+        ))]);
         assert!(
             retire_superseded_home_tree(dir.path(), &[cmd("shipmates-ship-issue")], &[])
                 .unwrap()
@@ -672,7 +763,9 @@ mod tests {
 
         let tree = classify_superseded_skills(dir.path(), &[cmd("shipmates-ship-issue")], &[]);
         assert!(tree.ours.is_empty(), "ours must stay empty: {:?}", tree.ours);
-        assert_eq!(tree.linked, vec!["shipmates-ship-issue"]);
+        assert_eq!(tree.linked, vec![PathBuf::from(format!(
+            "{SUPERSEDED_HOME_SKILLS}/shipmates-ship-issue/SKILL.md"
+        ))]);
         assert!(
             retire_superseded_home_tree(dir.path(), &[cmd("shipmates-ship-issue")], &[])
                 .unwrap()
@@ -701,5 +794,119 @@ mod tests {
                 .is_none()
         );
         assert!(root.join("shipmates-ship-issue/SKILL.md").is_file());
+    }
+
+    /// Gap 1 (#578): a provably-ours `SKILL.md` beside a symlinked asset is
+    /// still retired — the symlink no longer demotes the whole directory. The
+    /// manifest is removed, the symlink (and its target) survive, and `linked`
+    /// holds only the symlinked asset's path.
+    #[cfg(unix)]
+    #[test]
+    fn retires_the_manifest_beside_a_symlinked_sibling() {
+        let dir = tempdir().unwrap();
+        let home = dir.path();
+        let outside = tempdir().unwrap();
+        let root = home.join(SUPERSEDED_HOME_SKILLS);
+        let manifest = root.join("shipmates-termgif/SKILL.md");
+        write(
+            &manifest,
+            "---\nname: shipmates-termgif\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+        );
+        // A captain shares the bundled script via a symlink (a dotfiles repo).
+        let asset_target = outside.path().join("termgif.py");
+        write(&asset_target, "print('shared')\n");
+        let asset_link = root.join("shipmates-termgif/termgif.py");
+        std::os::unix::fs::symlink(&asset_target, &asset_link).unwrap();
+
+        let cmds: Vec<CanonicalCommand> = vec![];
+        let tools = [tool_with_assets("shipmates-termgif", &["termgif.py"])];
+
+        test_env::with_isolated_home(home, || {
+            let tree = classify_superseded_skills(home, &cmds, &tools);
+            assert_eq!(tree.ours, vec!["shipmates-termgif"]);
+            assert_eq!(
+                tree.linked,
+                vec![PathBuf::from(format!(
+                    "{SUPERSEDED_HOME_SKILLS}/shipmates-termgif/termgif.py"
+                ))]
+            );
+            assert!(tree.foreign.is_empty());
+            assert!(tree.unknown.is_empty());
+
+            let report = retire_superseded_home_tree(home, &cmds, &tools)
+                .unwrap()
+                .expect("an ours manifest beside a symlink must still retire");
+            assert!(!manifest.exists(), "the manifest is retired");
+            assert_eq!(
+                report.adopted,
+                vec![PathBuf::from(format!(
+                    "{SUPERSEDED_HOME_SKILLS}/shipmates-termgif/SKILL.md"
+                ))]
+            );
+            assert!(
+                fs::symlink_metadata(&asset_link).is_ok(),
+                "the symlink survives"
+            );
+            assert_eq!(
+                fs::read_to_string(&asset_target).unwrap(),
+                "print('shared')\n",
+                "the symlink target survives"
+            );
+        });
+    }
+
+    /// Gap 2 (#578): a brand-stamped `SKILL.md` at a name outside the live
+    /// catalogue is detected as `unknown` and reported, never deleted — a
+    /// retired `ship-*` name or a removed tool no longer vanishes silently.
+    #[test]
+    fn reports_a_branded_non_catalogue_name_as_unknown_and_never_deletes() {
+        let dir = tempdir().unwrap();
+        let home = dir.path();
+        let root = home.join(SUPERSEDED_HOME_SKILLS);
+        let manifest = root.join("ship-ship-issue/SKILL.md");
+        write(
+            &manifest,
+            "---\nname: ship-ship-issue\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+        );
+        // `ship-ship-issue` is NOT in this catalogue.
+        let cmds = [cmd("shipmates-ship-issue")];
+
+        test_env::with_isolated_home(home, || {
+            let tree = classify_superseded_skills(home, &cmds, &[]);
+            assert_eq!(tree.unknown, vec!["ship-ship-issue"]);
+            assert!(tree.ours.is_empty());
+            assert!(tree.foreign.is_empty());
+            assert!(tree.linked.is_empty());
+            assert!(
+                retire_superseded_home_tree(home, &cmds, &[]).unwrap().is_none(),
+                "an unknown entry is never ours to retire"
+            );
+            assert!(manifest.is_file(), "an unknown entry must survive");
+        });
+    }
+
+    /// A payload name whose `SKILL.md` declares a different identity is
+    /// `foreign`, never deleted — fail-closed, under an isolated home so the
+    /// retire path (not only the classifier) is exercised.
+    #[test]
+    fn reports_a_foreign_manifest_at_a_payload_name_and_never_deletes() {
+        let dir = tempdir().unwrap();
+        let home = dir.path();
+        let root = home.join(SUPERSEDED_HOME_SKILLS);
+        let manifest = root.join("shipmates-ship-issue/SKILL.md");
+        write(&manifest, "---\nname: my-own-thing\n---\nkeep me\n");
+        let cmds = [cmd("shipmates-ship-issue")];
+
+        test_env::with_isolated_home(home, || {
+            let tree = classify_superseded_skills(home, &cmds, &[]);
+            assert_eq!(tree.foreign, vec!["shipmates-ship-issue"]);
+            assert!(tree.ours.is_empty());
+            assert!(tree.linked.is_empty());
+            assert!(tree.unknown.is_empty());
+            assert!(
+                retire_superseded_home_tree(home, &cmds, &[]).unwrap().is_none()
+            );
+            assert!(manifest.is_file(), "a foreign entry must survive");
+        });
     }
 }

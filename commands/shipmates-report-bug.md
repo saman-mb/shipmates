@@ -118,10 +118,10 @@ pivots to fixing Shipmates itself), and which mode ran.
 
 ## Parameters
 
-| Name | Required | Token | Values | Default | Help |
-|------|----------|-------|--------|---------|------|
-| symptom | no | free text | symptom prose | — (harvest from session) | Optional symptom context for the draft; omit to harvest from the current session alone. |
-| apply | no | `apply` | `apply` | omit (`MODE=report`) | File on GitHub after captain approval; default is report-only preview. |
+| Name | Required | Token | Values | Default | Mutates | Help |
+|------|----------|-------|--------|---------|---------|------|
+| symptom | no | free text | symptom prose | — (harvest from session) | — | Optional symptom context for the draft; omit to harvest from the current session alone. |
+| apply | no | `apply` | `apply` | omit (`MODE=report`) | yes | File on GitHub after captain approval; default is report-only preview. |
 
 ## Runtime input
 

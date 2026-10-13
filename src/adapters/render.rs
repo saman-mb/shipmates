@@ -835,6 +835,16 @@ mod tests {
 
         assert!(command.contains("## Cost discipline"));
         assert!(command.contains("## Argument intake"));
+        // #564 — the shared preamble redefines "fully specified" so a
+        // zero-required Parameters table still asks; the sentence must survive
+        // rendering or the mutation-gating knobs silently stop gating.
+        let flat = command.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(
+            flat.contains(
+                "every Required=yes row present/parseable AND every `Mutates: yes` row explicitly tokenized"
+            ),
+            "rendered command lost the mutation-gating definition"
+        );
         assert!(command.contains("Mandatory seats"));
         assert!(command.contains("Integration questions"));
         assert!(command.contains("Why merge this"));

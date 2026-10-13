@@ -1489,11 +1489,12 @@ fn diagnose_built(
 /// `None` unless `target_dir` is the user's home — at project scope the same
 /// path is the shared tree three harnesses legitimately write. Every applicable
 /// clause is reported in the one detail line, because a tree can be mixed:
-/// `our` files (with the `--fix` instruction), symlinked entries (left as
-/// found, a symlinked tree is the captain's own arrangement) and foreign
-/// entries (with a copy-pasteable removal command). A `Problem` when anything is
-/// provably ours (so `upgrade`'s audit counts the drift and `--fix` retires it),
-/// a `Warn` when anything is only linked or foreign, else `Ok`.
+/// `ours` files (with the `--fix` instruction), symlinked files (left as found,
+/// a symlinked tree is the captain's own arrangement), unknown-branded entries
+/// at names outside the catalogue and foreign entries (each with a manual
+/// remedy). A `Problem` when anything is provably ours (so `upgrade`'s audit
+/// counts the drift and `--fix` retires it), a `Warn` when anything is only
+/// linked, unknown or foreign, else `Ok`.
 fn superseded_home_skills_check(
     target_dir: &Path,
     cmds: &[CanonicalCommand],
@@ -1518,19 +1519,20 @@ fn superseded_home_skills_check(
         ));
     }
     if !tree.linked.is_empty() {
-        // Name each entry's path, so the captain can act without reconstructing
-        // it — but never as a command: deleting through the link is out of bounds.
+        // Name each file's full path, so the captain can act without
+        // reconstructing it — but never as a command: deleting through the link
+        // is out of bounds.
         let linked_paths = tree
             .linked
             .iter()
-            .map(|name| format!("{} ({})", name, root.join(name).display()))
+            .map(|path| target_dir.join(path).display().to_string())
             .collect::<Vec<_>>()
             .join(", ");
         clauses.push(format!(
-            "{} skill(s) sit at a payload name in a home-scope tree reached through a \
+            "{} payload file(s) sit in a home-scope tree reached through a \
              symlink, so they were left exactly as found — a symlinked skills tree is the \
              captain's own arrangement and Shipmates does not follow it to delete files: {}. \
-             Move the linked entry aside by hand, never through the link, if it is a \
+             Move the linked file aside by hand, never through the link, if it is a \
              superseded copy.",
             tree.linked.len(),
             linked_paths
@@ -1552,9 +1554,24 @@ fn superseded_home_skills_check(
             tree.foreign.join(", ")
         ));
     }
+    if !tree.unknown.is_empty() {
+        let removal = tree
+            .unknown
+            .iter()
+            .map(|name| root.join(name).display().to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        clauses.push(format!(
+            "{} entry(ies) carry Shipmates' brand at a name outside the current payload — \
+             a retired name or a removed tool — so they were detected and left untouched, \
+             never deleted: {}. Remove them by hand if they are a superseded copy: rm -rf {removal}",
+            tree.unknown.len(),
+            tree.unknown.join(", ")
+        ));
+    }
     let severity = if !tree.ours.is_empty() {
         Severity::Problem
-    } else if !tree.linked.is_empty() || !tree.foreign.is_empty() {
+    } else if !tree.linked.is_empty() || !tree.unknown.is_empty() || !tree.foreign.is_empty() {
         Severity::Warn
     } else {
         Severity::Ok
@@ -2062,10 +2079,19 @@ pub fn fix(
 
     // 3b. Retire a superseded home-scope `.agents/skills/` tree (#561) with the
     // same backup-then-remove semantics as the retired-name adoption, so the
-    // captain can recover it. Skipped with `--no-migrate` — parity with install,
-    // which leaves superseded trees alone under the same flag.
-    if !no_migrate
-        && let Some(report) = retired::retire_superseded_home_tree(target_dir, cmds, tools)?
+    // captain can recover it. `--no-migrate` leaves it alone on purpose and
+    // says so — parity with install, which prints the same skip.
+    if no_migrate {
+        if manifest_db::is_global_target(target_dir)
+            && !retired::classify_superseded_skills(target_dir, cmds, tools)
+                .ours
+                .is_empty()
+        {
+            println!("Skipped the superseded home-tree repair (--no-migrate)");
+            #[cfg(test)]
+            test_stdout_push("Skipped the superseded home-tree repair (--no-migrate)");
+        }
+    } else if let Some(report) = retired::retire_superseded_home_tree(target_dir, cmds, tools)?
         && report.changed()
     {
         println!(
@@ -3116,6 +3142,78 @@ mod tests {
         assert!(target.join(".claude/commands/ship-issue.md").exists());
         // And the report still flags the un-migrated legacy layout as a Problem.
         assert_eq!(sev(&after, "Layout"), Severity::Problem);
+    }
+
+    /// #578 gap 1: an `ours` superseded manifest is retired by `--fix`, so the
+    /// "Superseded skill tree" check drops its actionable `Problem` (the
+    /// duplicate `doctor` can act on) — leaving at most a `Warn` for what
+    /// remains.
+    #[test]
+    fn fix_retires_an_ours_superseded_skill_and_clears_the_duplicate_check() {
+        let dir = tempdir().unwrap();
+        let home = dir.path();
+        let root = home.join(crate::installer::retired::SUPERSEDED_HOME_SKILLS);
+        let manifest = root.join("shipmates-ship-issue/SKILL.md");
+        atomic_write(
+            &manifest,
+            "---\nname: shipmates-ship-issue\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+        )
+        .unwrap();
+        let roles = [role("architect")];
+        let cmds = [cmd("shipmates-ship-issue")];
+
+        crate::installer::retired::test_env::with_isolated_home(home, || {
+            let before = diagnose(home, "claude-code", &roles, &cmds, &[]).unwrap();
+            let before_check = before
+                .checks
+                .iter()
+                .find(|c| c.name == "Superseded skill tree")
+                .unwrap();
+            assert_eq!(before_check.severity, Severity::Problem);
+            assert!(before_check.fixable);
+
+            let after = fix(home, "claude-code", &roles, &cmds, &[], false).unwrap();
+            let after_check = after
+                .checks
+                .iter()
+                .find(|c| c.name == "Superseded skill tree")
+                .unwrap();
+            assert_ne!(
+                after_check.severity,
+                Severity::Problem,
+                "the actionable duplicate is gone: {after_check:?}"
+            );
+            assert!(!after_check.fixable);
+            assert!(!manifest.exists(), "the manifest was retired");
+        });
+    }
+
+    /// #578 gap 3: `--no-migrate` says what it skipped instead of leaving the
+    /// superseded home-tree repair silent.
+    #[test]
+    fn fix_no_migrate_says_it_skipped_the_superseded_repair() {
+        let dir = tempdir().unwrap();
+        let home = dir.path();
+        let root = home.join(crate::installer::retired::SUPERSEDED_HOME_SKILLS);
+        let manifest = root.join("shipmates-ship-issue/SKILL.md");
+        atomic_write(
+            &manifest,
+            "---\nname: shipmates-ship-issue\ndescription: \"Shipmates: superseded\"\n---\nbody\n",
+        )
+        .unwrap();
+        let roles = [role("architect")];
+        let cmds = [cmd("shipmates-ship-issue")];
+
+        crate::installer::retired::test_env::with_isolated_home(home, || {
+            let stdout = capture_test_stdout(|| {
+                fix(home, "claude-code", &roles, &cmds, &[], true).unwrap();
+            });
+            assert!(
+                stdout.contains("Skipped the superseded home-tree repair (--no-migrate)"),
+                "skip stdout must name the skipped repair:\n{stdout}"
+            );
+            assert!(manifest.is_file(), "no_migrate must not retire the manifest");
+        });
     }
 
     #[test]

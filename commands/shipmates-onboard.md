@@ -163,11 +163,11 @@ passed on.
 
 ## Parameters
 
-| Name | Required | Token | Values | Default | Help |
-|------|----------|-------|--------|---------|------|
-| path | no | path | repo path | current repository | Repository to onboard; omit to use the current checkout. |
-| mode | no | `edit-in-place` or `MODE=edit-in-place` | `pr` / `edit-in-place` | `pr` | Where the context file lands — PR (default) or write in the calling tree. |
-| merge_mode | no | `MERGE_MODE=auto` / `auto` | manual / auto | manual | Under `MODE=pr`, merge the PR when CI is green. |
+| Name | Required | Token | Values | Default | Mutates | Help |
+|------|----------|-------|--------|---------|---------|------|
+| path | no | path | repo path | current repository | — | Repository to onboard; omit to use the current checkout. |
+| mode | no | `edit-in-place` or `MODE=edit-in-place` | `pr` / `edit-in-place` | `pr` | yes | Where the context file lands — PR (default) or write in the calling tree. |
+| merge_mode | no | `MERGE_MODE=auto` / `auto` | manual / auto | manual | yes | Under `MODE=pr`, merge the PR when CI is green. |
 
 ## Runtime input
 
