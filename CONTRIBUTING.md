@@ -55,7 +55,8 @@ are correct; which one belongs in a given sentence is set by the
    but prefer restructuring so you don't, e.g. `cut -f2` rather than an `awk` field reference.
    `cargo run -- check` enforces this over the whole file, fenced or not.
 5. Every catalogue command ships interactive argument intake by default: declare a `## Parameters`
-   table (Name / Required / Token / Values / Default / Help) immediately above Runtime input —
+   table (Name / Required / Token / Values / Default / Mutates / Help — `Mutates` optional on commands
+   whose table declares a mutation-gating knob) immediately above Runtime input —
    every captain-facing knob is its own row with a Default, never a catch-all; shared picker rules
    live in `docs/COST.md`'s command-preamble (always show every row; enums show default plus other
    choices; then OK or type what to change) — do not copy them into the command.

@@ -5,7 +5,7 @@ argument-hint: [scope filter such as label/area] [apply] — no args: the whole 
 allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
-# /shipmates-consolidate-issues — inventory → cross-check history → close → migrate → bundle
+# /shipmates-consolidate-issues — inventory → cross-check history → close → migrate → merge → bundle
 <!-- shipmates:command-preamble -->
 
 Turn a drifting issue tracker back into a plan. The whole open-issue set is pulled, every issue is
@@ -22,9 +22,9 @@ The scope and the go-ahead to change anything come from the Runtime input sectio
 ## Config
 
 - `MODE` = `report` (default) — **read-only**: inventory, cross-check, triage, bundle. It changes
-  nothing on the tracker. `apply` — do the work, only with an explicit request: close the
-  evidence-backed ones, migrate the legacy ones, add the bundle labels. When ambiguous, default to
-  `report` and state which mode you ran.
+  nothing on the tracker. `apply` — do the work, only with an explicit request: merge the dedupe
+  pairs into their survivors, close the evidence-backed ones, migrate the legacy ones, add the bundle
+  labels. When ambiguous, default to `report` and state which mode you ran.
 - `SCOPE` = optional narrowing of the triage — a label or comma-separated labels, an area, an owner,
   or an age/activity filter. Empty means the entire open-issue set.
 - `TRAILER` = the session's required session/author trailer line, read from context; never invent
@@ -79,8 +79,12 @@ Then spawn ONE `product-manager` with the remaining borderline set: the `DONE`-a
 a one-line reason, and for a `migrate` verdict that's a dangling-into-epic match, a `target_epic`
 number naming which one — never `keep` an issue that clearly belongs under an existing epic, since
 `keep` routes straight into Stage 4's fresh bundling and would leave it homeless there. It also
-returns a dedupe map (issue → canonical issue) only where the overlap is unmistakable. It never
-closes, migrates, or attaches anything itself.
+returns a **dedupe map** only where the overlap is unmistakable: per pair, the duplicate, the
+canonical survivor it collapses into, and the **payload to carry over** — the duplicate's body
+sections, acceptance criteria, repro steps and links, plus a digest of its comment thread. A
+pairing with no payload is not a dedupe-map entry: Stage 5's merge step carries that payload into
+the survivor before the duplicate is closed, so an entry without one leaves nothing to carry. It
+never closes, migrates, merges, or attaches anything itself.
 
 The orchestrator merges the two: mechanical rules are final; the subagent's judgment calls are
 adopted as its recommendation, and every recommendation the user would want to veto is surfaced
@@ -156,26 +160,38 @@ with its labels, and the proposed closes/migrations. **Change nothing.**
 If `MODE=apply`, execute in this order, re-verifying each before acting:
 1. **Labels** — create any missing `bundle:<name>` labels.
 2. **Migrate** — rewrite the flagged legacy issues to the current shape (with the `TRAILER`).
-3. **Close** — close each `DONE` and `STALE` issue with a comment naming its evidence; on a dedupe,
-   comment the canonical issue and cross-link the pair.
-4. **Tag bundles** — apply each bundle's label to its issues and note the bundle in a comment, so
+3. **Merge** — for each Stage 2 dedupe pair, migrate the duplicate's substance into its named
+   survivor **first**: append the carried body sections, acceptance criteria, repro steps and links
+   under an attribution line naming the source issue, and digest its comment thread the same way,
+   dropping whatever the survivor already states. Merging is not migrating: it rewrites the
+   **survivor** from a second issue's content, where `migrate` rewrites an issue's own shape. The
+   duplicate is not edited or closed here — a pair whose merge did not land is reported as a gap,
+   never handed to the close below.
+4. **Close** — close each `DONE` and `STALE` issue with a comment naming its evidence. Close a
+   dedupe's duplicate only **after** its merge has landed, as a duplicate of the **named survivor**:
+   the closing comment names that survivor and the pair is cross-linked from both sides. Never
+   close-and-drop — nothing is closed that its survivor did not first absorb, and an unmerged pair
+   is reported, not closed.
+5. **Tag bundles** — apply each bundle's label to its issues and note the bundle in a comment, so
    `/shipmates-ship-issue` can be run per bundle.
 
 Then verify (re-fetch and grep; don't assume): every planned close happened, every migration landed,
-every bundle label is on exactly its issue set. Report the before/after: how many issues were in
-scope, how many closed (with the count that were already done), how many migrated — broken out as
-**how many were reattached to an existing epic** vs. other shape migrations — vs. how many remaining
-`keep` issues were bundled fresh, and the bundle tree ready to hand to `/shipmates-ship-issue` — one
-bundle at a time.
+every merge landed as an attributed block on its survivor, every bundle label is on exactly its issue
+set. Report the before/after: how many issues were in scope, how many closed — broken out as
+**closed as done**, **closed as stale**, and **closed as a duplicate of `#X` (substance merged into
+`#X`)** — how many migrated — broken out as **how many were reattached to an existing epic** vs.
+other shape migrations — vs. how many remaining `keep` issues were bundled fresh, and the bundle tree
+ready to hand to `/shipmates-ship-issue` — one bundle at a time. A run that neither closed nor merged
+anything says so outright: bundle labels alone are tagging, not consolidation.
 
 ---
 
 ## Parameters
 
-| Name | Required | Token | Values | Default | Help |
-|------|----------|-------|--------|---------|------|
-| scope | no | label/area filter | label, area, owner, or age filter | whole open backlog | Narrow which open issues to triage. |
-| apply | no | `apply` | `apply` | report | When present, execute closes/migrations/labels; otherwise `MODE=report` only. |
+| Name | Required | Token | Values | Default | Mutates | Help |
+|------|----------|-------|--------|---------|---------|------|
+| scope | no | label/area filter | label, area, owner, or age filter | whole open backlog | — | Narrow which open issues to triage. |
+| apply | no | `apply` | `apply` | report | yes | When present, execute merges/closes/migrations/labels; otherwise `MODE=report` only. |
 
 ## Runtime input
 
@@ -194,7 +210,12 @@ makes, not the default.
 - **The orchestrator owns all `gh`/`git`.** `product-manager` subagents only return structured
   verdicts and bundles — they never close, migrate, or edit issues themselves.
 - **Never lose intent.** Migrating preserves the issue's substance; a migration that would change
-  meaning is reported, not performed. Dedupe only on unmistakable overlap, and always cross-link.
+  meaning is reported, not performed. The dedupe/merge path is bound by the same rule: **merge** is
+  a step distinct from both `migrate` and `bundle` — it carries a duplicate's body, acceptance
+  criteria, repro steps, links and comment digest into its named survivor, attributed to the source
+  issue and de-duplicated, **before** the duplicate is closed as a duplicate of that survivor. A
+  duplicate is never closed-and-dropped; a merge that would change meaning is reported, not
+  performed. Dedupe only on unmistakable overlap, and always cross-link.
 - **A dangling issue with a matching epic is never left standalone.** Stage 2 checks every
   non-epic, non-`Part of #…` issue against the Stage 0 open-epic set before verdicting `keep`; a
   clear match is `migrate` with a `target_epic`, reattached in Stage 3 — not swept into a Stage 4
