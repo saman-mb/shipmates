@@ -113,9 +113,10 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
 /// auto-mode classifier, while a broad `Bash` / `Bash(*)` grant is suspended in
 /// auto mode (first-party docs, 2026-10-12). `/shipmates-ship-epic` and
 /// `/shipmates-ship-issue` are spec'd to merge a green unit PR into the epic
-/// integration branch and close a landed story issue without stopping for the
-/// captain, so each carries the two narrow rules that keep those documented
-/// actions out of the classifier's way. The grant is a documented best effort,
+/// integration branch, tick an epic checklist item, refresh an epic/PR body and
+/// close a landed story issue without stopping for the captain, so each carries
+/// the narrow rules that keep those documented actions out of the classifier's
+/// way. The grant is a documented best effort,
 /// not a verified bypass: org `allowManagedPermissionRulesOnly` and
 /// `autoMode.classifyAllShell: true` can neutralise it, and the classifier also
 /// reads the project's instruction file. The canonical `allowed-tools` stays
@@ -123,9 +124,12 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
 /// other command's output is unchanged.
 fn command_extra_bash_rules(name: &str) -> &'static [&'static str] {
     match name {
-        "shipmates-ship-epic" | "shipmates-ship-issue" => {
-            &["Bash(gh pr merge:*)", "Bash(gh issue close:*)"]
-        }
+        "shipmates-ship-epic" | "shipmates-ship-issue" => &[
+            "Bash(gh pr merge:*)",
+            "Bash(gh issue close:*)",
+            "Bash(gh issue edit:*)",
+            "Bash(gh pr edit:*)",
+        ],
         _ => &[],
     }
 }
@@ -370,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn epic_and_ship_issue_carry_narrow_bash_merge_close_rules() {
+    fn epic_and_ship_issue_carry_narrow_bash_rules() {
         for name in ["shipmates-ship-epic", "shipmates-ship-issue"] {
             let files = ClaudeCodeAdapter
                 .build(&[], &[command(name, "Bash, Read, Write")])
@@ -382,7 +386,7 @@ mod tests {
                 .unwrap();
             assert!(
                 content.contains(
-                    "allowed-tools: \"Bash, Read, Write, Bash(gh pr merge:*), Bash(gh issue close:*)\"\n"
+                    "allowed-tools: \"Bash, Read, Write, Bash(gh pr merge:*), Bash(gh issue close:*), Bash(gh issue edit:*), Bash(gh pr edit:*)\"\n"
                 ),
                 "{content}"
             );
@@ -403,5 +407,7 @@ mod tests {
         );
         assert!(!content.contains("gh pr merge"), "{content}");
         assert!(!content.contains("gh issue close"), "{content}");
+        assert!(!content.contains("gh issue edit"), "{content}");
+        assert!(!content.contains("gh pr edit"), "{content}");
     }
 }
