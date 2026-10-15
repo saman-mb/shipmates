@@ -261,13 +261,13 @@
         "notes": "Capability, not emission. First-party docs checked 2026-09-13: https://developers.openai.com/codex/cli/reference.md ; https://developers.openai.com/codex/models ; https://learn.chatgpt.com/docs/agent-configuration/subagents"
       },
       "runtime_verified": {
-        "status": "none",
-        "verified_on": "",
-        "crew_resolve": "no",
-        "argument_passing": "no",
-        "command_e2e": "no",
+        "status": "partial",
+        "verified_on": "2026-09-20",
+        "crew_resolve": "unknown",
+        "argument_passing": "unknown",
+        "command_e2e": "unknown",
         "commands_exercised": [],
-        "notes": "No live harness run recorded. Payload format and digest verification only."
+        "notes": "Captain-attested live run (#510 close / #46, 2026-09-20). The captain now includes Codex in the verified set alongside Claude Code, opencode, Cursor, Antigravity and Pi. Granular criteria were not separately logged — recorded as unknown rather than inferred; this is attestation, not a Tier-A /shipmates-ship-issue proof."
       }
     },
     "cursor": {
@@ -462,7 +462,7 @@
         "command_e2e": "unknown",
         "commands_exercised": [],
         "crew_resolve": "unknown",
-        "notes": "Captain-attested live run (#497, 2026-09-18). Granular criteria not separately logged (unknown). Does not close #31/#32 — those track explicit Tier-A / sandbox checklist ticks, not attestation alone."
+        "notes": "Captain-attested live run (#497, 2026-09-18). Granular criteria not separately logged (unknown). The opencode flagship tickets #31/#32 are closed; this record is attestation only, not a Tier-A /shipmates-ship-issue proof."
       }
     },
     "pi": {
@@ -511,7 +511,7 @@
         "command_e2e": "no",
         "commands_exercised": [],
         "crew_resolve": "no",
-        "notes": "#525 (2026-09-20): empty ~/.pi/agent/npm/node_modules/@earendil-works/ peer slot; pi-subagents child-session import of @earendil-works/pi-coding-agent dies before any crew role produces output — crew_resolve=no, command_e2e=no; argument_passing still unknown. #497 attestation still stands for a live run existing. Does not claim spawn works."
+        "notes": "#525 (closed 2026-09-21, recorded via #535): empty ~/.pi/agent/npm/node_modules/@earendil-works/ peer slot; pi-subagents child-session import of @earendil-works/pi-coding-agent dies before any crew role produces output — crew_resolve=no, command_e2e=no; argument_passing still unknown. #497 attestation still stands for a live run existing. Does not claim spawn works."
       }
     },
     "grok-build": {

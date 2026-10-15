@@ -201,6 +201,21 @@ class ValidateDocsTests(unittest.TestCase):
             root, "README.md", r"README\.md", "`MODE=banana`", "edit-in-place, report"
         )
 
+    def test_case_different_config_value_fails_with_file_line(self):
+        # `MODE=EDIT` is the same defect as `MODE=banana` but spelled in caps: the
+        # value pattern must capture it and resolve it, not read a bare `MODE`
+        # token and pass.
+        root = self.sandbox(
+            {
+                "README.md": VALID_README + "\nSet `MODE=EDIT` for that.\n",
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+            }
+        )
+        self.assert_fails_at(
+            root, "README.md", r"README\.md", "`MODE=EDIT`", "edit-in-place, report"
+        )
+
     def test_undeclared_config_token_fails(self):
         # NITS_MODE is a token the documents may speak in, but this fixture
         # command declares nothing for it.

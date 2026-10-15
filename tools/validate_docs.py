@@ -110,10 +110,12 @@ ENUM_VALUE_RE = re.compile(r"[a-z][a-z0-9-]*")
 # Config token referenced in a root document, with the value assigned to it when
 # the reference carries one (`MODE=pr`); a bare reference (`DRY_RUN`) has none.
 # Built from CONFIG_TOKENS so the vocabulary has one home; the lookbehind keeps
-# `MODE` from matching inside `MERGE_MODE`.
+# `MODE` from matching inside `MERGE_MODE`. The value is matched case-insensitively
+# on its first character so a mistyped assignment (`MODE=EDIT`) is captured and
+# resolved (and fails) rather than read as a bare token and waved through.
 CONFIG_REF_RE = re.compile(
     r"(?<![A-Za-z0-9_])(" + "|".join(CONFIG_TOKENS) + r")"
-    r"(?![A-Za-z0-9_])(?:=([a-z][a-z0-9-]*))?"
+    r"(?![A-Za-z0-9_])(?:=([A-Za-z][A-Za-z0-9-]*))?"
 )
 
 # `/slug` in a root document. The lookbehind rejects a slash that continues a

@@ -233,9 +233,10 @@ and commands, the exact opencode golden payload, and the translated report-only 
 not use model credentials and do not claim that opencode runtime behavior is fully verified. A
 captain-attested live run is recorded as `runtime_verified.status = partial` (#497); those CI smokes
 do not fill the `unknown` cells or promote past `partial`. Full crew resolution,
-argument passing, permission enforcement,
-parallel board execution, and `/shipmates-ship-issue` end-to-end remain open for [#31](https://github.com/saman-mb/shipmates/issues/31)
-and [#32](https://github.com/saman-mb/shipmates/issues/32).
+argument passing, permission enforcement, and parallel board execution are not separately recorded for
+opencode, and the flagship tickets [#31](https://github.com/saman-mb/shipmates/issues/31) and
+[#32](https://github.com/saman-mb/shipmates/issues/32) are closed — this stands as attestation, not a
+Tier-A `/shipmates-ship-issue` proof.
 
 One caveat worth knowing before you pick Codex: it documents no per-agent tool allowlist, so its
 crew inherit whatever the session can do rather than the least-privilege set every other target
@@ -297,9 +298,9 @@ headlessly in that temporary sandbox:
 CODEX_SMOKE=1 bash tests/test_codex_smoke.sh
 ```
 
-The CI smoke is deliberately layout/install-only; neither path proves Codex runtime support or Tier C
-`/shipmates-ship-issue` completion. Tier C still needs the external orchestrator tracked in
-[#13](https://github.com/saman-mb/shipmates/issues/13); see the
+The CI smoke is deliberately layout/install-only; neither path is itself the runtime proof — Codex is
+`partial` on a captain-attested live run (2026-09-20, #510 close), and its granular cells stay
+`unknown` until separately logged. See the
 [Codex quickstart](https://saman-mb.github.io/shipmates/docs/harnesses/#codex).
 
 **Why opencode gets `commands/` and not `skills/`.** opencode has both, and they are not the same
@@ -316,12 +317,11 @@ last-match-wins, so the ordering is the mechanism. The result is marginally stro
 allowlist: a tool a wildcard denies is hidden from the model rather than refused at call time.
 
 > ⚠️ **Runtime status is per harness in `tools/harness_matrix.json` → `runtime_verified`.** Claude Code
-> is `full` (crew, arguments, `/shipmates-ship-issue` end to end). Antigravity, Cursor, Pi and opencode have
-> captain-attested live runs (`partial` — Pi `crew_resolve`/`command_e2e` are `no` per #525; other granular cells may still be `unknown`). Codex CLI,
-> GitHub Copilot, Grok Build and Devin remain format/digest-verified only. Opencode's Tier-A
-> checklist is
-> still tracked in [#31](https://github.com/saman-mb/shipmates/issues/31) and
-> [#32](https://github.com/saman-mb/shipmates/issues/32).
+> is `full` (crew, arguments, `/shipmates-ship-issue` end to end). opencode, Antigravity, Cursor, Pi and
+> Codex CLI have captain-attested live runs (`partial` — Pi `crew_resolve`/`command_e2e` are `no` per
+> #525, closed 2026-09-21; other granular cells may still be `unknown`). GitHub Copilot, Grok Build and
+> Devin remain format/digest-verified only — Copilot is the crew-bearing target still without a live
+> run. The opencode flagship tickets #31 and #32 are closed.
 
 > 🔁 First time a `skills/` or `agents/` dir got created? Restart your harness so it spots them.
 
@@ -539,16 +539,16 @@ question is whether it's been *run*.
 
 - **Runtime-verified (`full`)** — Claude Code: the full crew and all 18 commands, with crew resolve,
   argument passing, and `/shipmates-ship-issue` proven end to end.
-- **Live run (`partial`)** — Antigravity CLI, Cursor, Pi, and opencode: captain-attested live runs
-  recorded in `tools/harness_matrix.json` under `runtime_verified` (2026-09-18, #497; Pi cells 2026-09-20, #525). Granular cells
+- **Live run (`partial`)** — opencode, Antigravity CLI, Cursor, Pi and Codex CLI: captain-attested
+  live runs recorded in `tools/harness_matrix.json` under `runtime_verified` (2026-09-18, #497; Codex
+  2026-09-20, #510 close / #46). Granular cells
   (`crew_resolve`, `argument_passing`, `command_e2e`) stay `unknown` where they were not separately
-  logged — attestation is not Tier-A proof. Pi's `crew_resolve` and `command_e2e` are `no` (#525);
-  `argument_passing` is still unknown. Opencode's Tier-A / sandbox checklist remains open in
-  [#31](https://github.com/saman-mb/shipmates/issues/31) and
-  [#32](https://github.com/saman-mb/shipmates/issues/32).
-- **Builds, not runtime-verified (`none`)** — Codex CLI, GitHub Copilot, Grok Build and Devin build
+  logged — attestation is not Tier-A proof. Pi's `crew_resolve` and `command_e2e` are `no` (#525,
+  closed 2026-09-21 and recorded via #535); `argument_passing` is still unknown.
+- **Builds, not runtime-verified (`none`)** — GitHub Copilot, Grok Build and Devin build
   from `shipmates install --harness <name>`, and each payload's format was verified against that
-  harness's parsing source and first-party docs, but no live run is recorded. The Gemini CLI is retired — the
+  harness's parsing source and first-party docs, but no live run is recorded. Copilot is the one
+  crew-bearing target still without a live run (#41). The Gemini CLI is retired — the
   Antigravity CLI (`agy`) is its successor and reads `.agents/`, so that is the target Shipmates
   builds for.
 
