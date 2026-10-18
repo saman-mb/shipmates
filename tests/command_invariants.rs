@@ -405,7 +405,7 @@ fn no_command_instructs_a_bare_force_push() {
         }
     }
     assert!(
-        seen >= 18,
+        seen >= 19,
         "expected the command tree to hold every canonical command, saw {seen} files"
     );
     assert!(
@@ -558,4 +558,37 @@ fn every_target_renders_the_ship_issue_contracts_intact() {
             );
         }
     }
+}
+
+/// #584: /shipmates-auto-trunk commits directly to trunk, so its guardrails are
+/// load-bearing: safe defaults, bounded loops, test-first, and a protected-branch
+/// degrade path.
+#[test]
+fn auto_trunk_defaults_safe_and_degrades_on_protected_trunk() {
+    let body = command("shipmates-auto-trunk");
+
+    assert!(
+        body.contains("`MODE` = `plan`"),
+        "auto-trunk must default to plan mode so it does not silently mutate trunk"
+    );
+    assert!(
+        body.contains("`PUSH_MODE` = `no-push`"),
+        "auto-trunk must default to no-push so remote writes are opt-in"
+    );
+    assert!(
+        body.contains("protected branch") && body.contains("branch+PR"),
+        "auto-trunk must detect a protected default branch and degrade to branch+PR or stop loudly"
+    );
+    assert!(
+        body.contains("`MAX_RED_ROUNDS` = `3`") && body.contains("`STOP_AFTER` = `10`"),
+        "auto-trunk must declare bounded loops"
+    );
+    assert!(
+        prose(&body).contains("failing test first") || prose(&body).contains("failing test"),
+        "auto-trunk must require a failing test before each source change when tests exist"
+    );
+    assert!(
+        !body.contains("--force"),
+        "auto-trunk must never force-push"
+    );
 }

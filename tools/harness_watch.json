@@ -87,7 +87,7 @@
       ],
       "expect_absent": [],
       "verified_on": "2026-09-27",
-      "note": "Native .pi tree, not the shared .agents one: the eighteen commands ship disable-model-invocation and tool scoping via allowed-tools, and command routing targets /skill:<name>. Pi also reads ~/.pi/agent/skills/ at user scope. Crew are pi-native via pi-subagents: .pi/agents/<name>.md (project) and ~/.pi/agent/agents/ (user)."
+      "note": "Native .pi tree, not the shared .agents one: the nineteen commands ship disable-model-invocation and tool scoping via allowed-tools, and command routing targets /skill:<name>. Pi also reads ~/.pi/agent/skills/ at user scope. Crew are pi-native via pi-subagents: .pi/agents/<name>.md (project) and ~/.pi/agent/agents/ (user)."
     },
     "grok-build": {
       "docs_url": "https://docs.x.ai/build/features/skills-plugins-marketplaces",
@@ -98,7 +98,7 @@
       ],
       "expect_absent": [],
       "verified_on": "2026-09-20",
-      "note": "Native .grok tree, not the shared .agents one: the eighteen commands ship disable-model-invocation, which the neutral two-key rendering would drop. Grok also scans .agents/.claude trees but resolves .grok first. If the docs URL stops resolving the strings, switch to check: reachable rather than invent a path."
+      "note": "Native .grok tree, not the shared .agents one: the nineteen commands ship disable-model-invocation, which the neutral two-key rendering would drop. Grok also scans .agents/.claude trees but resolves .grok first. If the docs URL stops resolving the strings, switch to check: reachable rather than invent a path."
     },
     "devin": {
       "docs_url": "https://docs.devin.ai/cli/extensibility/skills/creating-skills",
@@ -110,7 +110,7 @@
       ],
       "expect_absent": [],
       "verified_on": "2026-09-22",
-      "note": "Renamed from `windsurf` on 2026-09-22 (Windsurf became Devin Desktop 2026-06-02; Cascade was replaced by Devin Local, which spawns subagents). Devin documents THREE skill trees - `.agents/skills/` (recommended, shared), `.devin/skills/` (native, precedence) and `.windsurf/skills/` (legacy, still read) - and we ship the native one because the eighteen commands must stay user-invoked only and the guard is the vendor key `triggers: [user]`, which the neutral shared rendering would drop. Crew are `.devin/agents/<name>.md`. If the `triggers` key disappears from this page, re-check before trusting the guard."
+      "note": "Renamed from `windsurf` on 2026-09-22 (Windsurf became Devin Desktop 2026-06-02; Cascade was replaced by Devin Local, which spawns subagents). Devin documents THREE skill trees - `.agents/skills/` (recommended, shared), `.devin/skills/` (native, precedence) and `.windsurf/skills/` (legacy, still read) - and we ship the native one because the nineteen commands must stay user-invoked only and the guard is the vendor key `triggers: [user]`, which the neutral shared rendering would drop. Crew are `.devin/agents/<name>.md`. If the `triggers` key disappears from this page, re-check before trusting the guard."
     }
   }
 }
