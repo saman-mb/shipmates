@@ -67,6 +67,7 @@ SLUGS = (
     "shipmates-refactor",
     "shipmates-deslop",
     "shipmates-upgrade",
+    "shipmates-auto-trunk",
 )
 
 # Legacy redirect stubs for renamed commands (old slug -> new slug). Emitted
@@ -3336,9 +3337,15 @@ def _demo_assets(slug: str) -> tuple:
 
 def render_demo(cmd: Command) -> str:
     """A playable terminal figure at the top of the page: poster by default, a
-    button swaps in the animated GIF (WCAG 2.2.2 — motion is user-initiated)."""
+    button swaps in the animated GIF (WCAG 2.2.2 — motion is user-initiated).
+
+    If a command has no committed demo poster, the section is omitted rather
+    than emitting a broken image."""
     _gif, poster = _demo_assets(cmd.slug)
-    w, h = _png_size(ROOT / "site" / "assets" / poster)
+    poster_path = ROOT / "site" / "assets" / poster
+    if not poster_path.is_file():
+        return ""
+    w, h = _png_size(poster_path)
     if cmd.slug == "shipmates-qa":
         alt = (
             f"Illustrative terminal recording of an interactive /{esc(cmd.slug)} "
@@ -3375,6 +3382,8 @@ def render_demo_script(cmd: Command) -> str:
     """Inline, self-contained toggle: no external src, so the page stays
     self-contained per the site's own gate."""
     gif, _poster = _demo_assets(cmd.slug)
+    if not (ROOT / "site" / "assets" / _poster).is_file():
+        return ""
     return f"""  <script>
   (function () {{
     var img = document.getElementById('demo-media');
