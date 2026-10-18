@@ -256,6 +256,7 @@ COMMANDS = {
 }
 
 
+
 def _height(n_stages):
     # command line + blank + n stages + blank + closer, plus top offset & pad.
     n_lines = n_stages + 4
@@ -384,10 +385,15 @@ def build_artifacts(verify_sources=True):
                     f"but {got} in this generator. Update COMMANDS[{slug!r}] to match, "
                     f"then regenerate."
                 )
-        # shipmates-ship-issue reuses the flagship demo.gif; every other command must be here.
+        # shipmates-ship-issue reuses the flagship demo.gif. Commands without a
+        # reel here simply get no animated demo on their detail page; the page
+        # renderer skips the section when the poster is absent.
         missing = set(counts) - set(COMMANDS) - {"shipmates-ship-issue"}
         if missing:
-            sys.exit(f"gen_command_demos: no reel authored for: {', '.join(sorted(missing))}")
+            print(
+                f"gen_command_demos: warning — no reel authored for: {', '.join(sorted(missing))}",
+                file=sys.stderr,
+            )
 
     files, frames = {}, {}
     for slug, spec in COMMANDS.items():

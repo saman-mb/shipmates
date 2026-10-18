@@ -709,4 +709,37 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
         ),
     ),
+    "shipmates-auto-trunk": CommandPageCopy(
+        guide_blurb="Test-driven trunk loop — parse a goal, red→green each task, commit to main.",
+        process_lead=(
+            "Plan mode is the default: it builds the task list and previews commits without "
+            "touching trunk. Run mode performs the loop. Push is always opt-in."
+        ),
+        when_to_use=(
+            "You want small, proven commits on trunk rather than a reviewed PR.",
+            "A tracked issue with a PR gate? /shipmates-ship-issue is the stronger fit.",
+        ),
+        process=(
+            ProcessStep(
+                "Intake",
+                "Read the goal, the repo's default branch, protection status, and the verify command.",
+                solo="No spawn — the run gathers context first.",
+            ),
+            ProcessStep(
+                "Plan",
+                "The product-manager turns the goal into an ordered task list of testable changes.",
+                always=("product-manager",),
+            ),
+            ProcessStep(
+                "Loop",
+                "For each task: SDET writes a failing test, engineer makes it pass, verify command runs green, then commit. Red tasks are fixed or rolled back.",
+                always=("sdet", "senior-engineer"),
+            ),
+            ProcessStep(
+                "Stop",
+                "Report completed tasks, rollbacks, discoveries, and any push or protection fallback.",
+                solo="The run closes out once the list is empty and the tree is green.",
+            ),
+        ),
+    ),
 }

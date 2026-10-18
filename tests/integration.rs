@@ -133,7 +133,7 @@ fn test_keyless_installed_tree_fidelity_all_targets() {
         })
         .collect();
     let expected_commands: BTreeSet<String> = command_slugs.iter().cloned().collect();
-    assert_eq!(command_slugs.len(), 18, "canonical command list changed");
+    assert_eq!(command_slugs.len(), 19, "canonical command list changed");
     assert_eq!(
         expected_commands.len(),
         command_slugs.len(),
@@ -418,7 +418,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
     let commands = load_commands(&root.join("commands")).unwrap();
     let roles = load_roles(&root.join("crew")).unwrap();
 
-    assert_eq!(commands.len(), 18, "cost preamble must cover every command");
+    assert_eq!(commands.len(), 19, "cost preamble must cover every command");
     let re_tokens = regex::Regex::new(r"\{\{[a-zA-Z:-]+\}\}").unwrap();
     for command in &commands {
         assert_eq!(
@@ -558,7 +558,7 @@ fn test_emitted_frontmatter_strict_parses_and_names_stay_bare() {
     let roles = load_roles(&root.join("crew")).unwrap();
     let commands = load_commands(&root.join("commands")).unwrap();
     let tools = load_tools(&root.join("toolbox")).unwrap();
-    assert_eq!(commands.len(), 18);
+    assert_eq!(commands.len(), 19);
     assert!(!tools.is_empty(), "toolbox/ must hold tools for build_tools");
 
     // Negative control: `description: Shipmates: take an issue` is a nested
@@ -2142,7 +2142,7 @@ fn test_shipped_model_routing_table_matches_the_matrix() {
         shipped.push(target.to_string());
     }
 
-    // This table is inlined into every command on every target (18 commands × 8
+    // This table is inlined into every command on every target (19 commands × 8
     // targets), so its size is a cost decision, not a formatting one. #450
     // trimmed it to the record's enums plus the one clamp clause the orchestrator
     // acts on; this ceiling is what stops a gloss growing back silently.

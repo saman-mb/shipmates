@@ -1,6 +1,7 @@
 payload_digest_version=1
 target=cursor
 .cursor/rules/shipmates-contributor.mdc 2018bdaea8980f10c85d4b83080e0d3afef64c2b6cf7b30b7c880635bfc3c5d5
+.cursor/skills/shipmates-auto-trunk/SKILL.md 71e85f5382372fb7b16e4ad24ac753a82391031dbddd3eb16c9f85876fb2ca9c
 .cursor/skills/shipmates-consolidate-issues/SKILL.md 4868be1640d22bd7ecf5cb16d013ad3353594be5240bda71e40b921d3beb5483
 .cursor/skills/shipmates-deslop/SKILL.md ba88dd3e21b3897f39a2f5e9063f75a94f14f919820fdcf13e1b8930a084b9ff
 .cursor/skills/shipmates-document/SKILL.md cc7f228235458642cd1765daa23274aaa49f71cf2295f321e2c563fc0bc5fcb8
