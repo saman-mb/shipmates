@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-10-18
+
+### Added
+
+- **`/shipmates-auto-trunk`** — a test-driven, trunk-based development loop. Parse a goal into an
+  ordered task list, write or update a failing test before every source change, implement the
+  smallest green change, run the repo's own verification command, and commit each green result to
+  the default branch. Plan mode is the default; commits and pushes are opt-in, with a protected-branch
+  degrade path and bounded red-task / stop-after limits.
+
 ## [0.14.5] - 2026-10-12
 
 ### Fixed
