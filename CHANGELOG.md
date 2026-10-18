@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1] - 2026-10-18
+
+### Fixed
+
+- **The `shipmates-svgflow` shim can find `diagram.py` again (#588).** The deprecation alias
+  resolved its sibling through a hardcoded `../diagram/` path segment, which the `shipmates-*`
+  tool rename left pointing at a directory that no longer exists. Since that rename shipped in
+  v0.1.15, every call to `python3 svgflow.py …` printed its deprecation notice and then failed with
+  "could not find diagram.py to forward to" — on every harness and every install method, because the
+  shim ships in the embedded payload. (Installs from v0.1.4–v0.1.14 predate the rename and were
+  unaffected.) The resolver now tries the namespaced sibling first, then the pre-rename directory
+  name, then a colocated `diagram.py`, so current installs, pre-rename installs and flat layouts
+  (opencode's `.opencode/tools/`) all forward. A caller who followed the notice's own instruction
+  now gets a render instead of an exit `1`, and `shipmates upgrade --fix` stops reporting a false
+  tool failure on an otherwise up-to-date install. Covered by a new regression test that runs the
+  shim against all three
+  layouts, plus a render that must come out byte-identical to a direct `diagram.py` call.
+
 ## [0.15.0] - 2026-10-18
 
 ### Added
