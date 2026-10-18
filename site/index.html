@@ -464,7 +464,7 @@
           <div class="section__head">
             <p class="section__eyebrow"><span aria-hidden="true">🌊</span> What's next</p>
             <h2 class="section__title" id="next-title">Which harnesses the crew runs on</h2>
-            <p class="section__lead">Claude Code is fully runtime-verified; antigravity, cursor, pi and opencode have captain-attested live runs; codex, GitHub Copilot, grok-build and devin remain format-only. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> <code>runtime_verified</code> record rather than a promise.</p>
+            <p class="section__lead">Claude Code is fully runtime-verified; opencode, antigravity, cursor, pi and codex have captain-attested live runs; GitHub Copilot, grok-build and devin remain format-only. Every claim is auditable against the <a href="docs/harnesses/">harness matrix</a> <code>runtime_verified</code> record rather than a promise.</p>
           </div>
           <div class="order-prose">
             <ul>
@@ -473,24 +473,25 @@
                   <li>Claude Code — the full crew and all 19 commands; crew resolve, argument passing, and <code>/shipmates-ship-issue</code> end to end.</li>
                 </ul>
               </li>
-              <li><strong>Live run (<code>partial</code>)</strong> — captain-attested live runs in <code>tools/harness_matrix.json</code> (<a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>). Granular criteria stay <code>unknown</code> until separately logged, except pi <code>crew_resolve</code> and <code>command_e2e</code> which are <code>no</code> (<a href="https://github.com/saman-mb/shipmates/issues/525">#525</a>).
+              <li><strong>Live run (<code>partial</code>)</strong> — captain-attested live runs in <code>tools/harness_matrix.json</code> (<a href="https://github.com/saman-mb/shipmates/issues/497">#497</a>; codex <a href="https://github.com/saman-mb/shipmates/issues/510">#510</a>). Granular criteria stay <code>unknown</code> until separately logged, except pi <code>crew_resolve</code> and <code>command_e2e</code> which are <code>no</code> (<a href="https://github.com/saman-mb/shipmates/issues/525">#525</a>).
                 <ul>
-                  <li>opencode — full crew + all 19 commands as <code>.opencode/</code>; Tier-A checklist still open in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>.</li>
+                  <li>opencode — full crew + all 19 commands as <code>.opencode/</code>; flagship tickets <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a> are closed.</li>
                   <li>antigravity (the Antigravity CLI, <code>agy</code> — successor to the retired Gemini CLI) — full crew + all 19 commands as <code>.agents/</code>.</li>
                   <li>pi — full crew + all 19 commands at <code>.pi/agents/</code> via <code>pi-subagents</code>; <code>crew_resolve</code> and <code>command_e2e</code> are <code>no</code>.</li>
                   <li>cursor — the 19 skills only (crew resolve N/A).</li>
+                  <li>codex — full crew + all 19 commands; crew are TOML and inherit the session's tools (no per-agent allowlist).</li>
                 </ul>
               </li>
               <li><strong>Builds, not runtime-verified (<code>none</code>)</strong>
                 <ul>
-                  <li>codex, github-copilot — the full crew and all 19 commands. Codex agents are TOML and inherit the session's tools (no per-agent allowlist).</li>
+                  <li>github-copilot — the full crew and all 19 commands; the crew-bearing target still without a live run (<a href="https://github.com/saman-mb/shipmates/issues/41">#41</a>).</li>
                   <li>grok-build — the full crew and all 19 commands in its own <code>.grok/</code> tree: the one non-Claude target that keeps the native <code>disable-model-invocation</code> guard, and it enforces a per-agent tool allowlist too.</li>
                   <li>devin — the full crew and all 19 commands in <code>.devin/</code> (Devin CLI / Devin Desktop, formerly Windsurf), with the legacy <code>.windsurf/</code> tree adopted on install.</li>
                 </ul>
               </li>
               <li><strong>Next</strong>
                 <ul>
-                  <li>Promote <code>partial</code> rows to <code>full</code> by logging crew resolve, argument passing, and a named command E2E — opencode Tier-A in <a href="https://github.com/saman-mb/shipmates/issues/31">#31</a> and <a href="https://github.com/saman-mb/shipmates/issues/32">#32</a>; live runs for codex and GitHub Copilot.</li>
+                  <li>Promote <code>partial</code> rows to <code>full</code> by logging crew resolve, argument passing, and a named command E2E; a live run for GitHub Copilot (<a href="https://github.com/saman-mb/shipmates/issues/41">#41</a>).</li>
                 </ul>
               </li>
             </ul>

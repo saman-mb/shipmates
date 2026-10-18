@@ -14,6 +14,31 @@ All notable changes to this project are documented here. The format follows
   the default branch. Plan mode is the default; commits and pushes are opt-in, with a protected-branch
   degrade path and bounded red-task / stop-after limits.
 
+## [0.14.6] - 2026-10-13
+
+### Fixed
+
+- **`/shipmates-ship-epic` no longer stalls on its own documented `gh issue edit` / `gh pr edit`
+  writes (#580).** #532's grant covered `gh pr merge` and `gh issue close` but not the epic checklist
+  tick (`gh issue edit <epic> --body-file …`) or the epic/PR body refresh, so an auto-mode classifier
+  could still stop the loop on an action the command's own contract authorizes. The claude-code
+  payload now pre-approves exactly those two subcommands — never a broad `Bash` — on the same
+  per-command narrow-rule table.
+- **`tools/validate_docs.py` catches a case-different config assignment (#574).** The
+  config-reference pattern matched lowercase values only, so `MODE=EDIT` was read as a bare `MODE`
+  token and passed. The value now matches case-insensitively and resolves against the declared set, so
+  a mistyped assignment fails with a `file:line` diagnostic; a negative fixture pins it.
+
+### Changed
+
+- **Runtime claims now match the recorded live runs (#515).** `tools/harness_matrix.json` records
+  Codex as `partial` on a captain-attested live run (2026-09-20, #510 close), the opencode notes stop
+  pointing at the now-closed #31/#32, and the Pi note records #525 as closed (recorded via #535).
+  `AGENTS.md`, `README.md` and the site pages are updated to match: Claude Code `full`; opencode,
+  Antigravity, Cursor, Pi and Codex `partial`; GitHub Copilot, Grok Build and Devin format-only, with
+  Copilot named as the crew-bearing target still without a live run. No `unknown` cell is promoted to
+  `yes`.
+
 ## [0.14.5] - 2026-10-12
 
 ### Fixed
