@@ -512,20 +512,29 @@ pub(crate) fn global_root(harness: &str) -> Option<&'static str> {
 ///
 /// The payload is built once, in its workspace shape, and the committed digest
 /// pins exactly those bytes — so a global install relocates **at write time**
-/// rather than shipping a second, scope-variant payload. Only the two resource
-/// subtrees that have a global meaning (`agents/`, `skills/`) move; anything
-/// else, such as `.shipmates/contributor-steering.md`, stays put.
+/// rather than shipping a second, scope-variant payload. Only the subtrees that
+/// have a global meaning move: `agents/` and `skills/` on every harness with a
+/// global root, plus `extensions/` on pi alone, whose crew plugin is an
+/// extension rather than an agent or a skill. Anything else, such as
+/// `.shipmates/contributor-steering.md`, stays put.
 ///
 /// The resource is taken from the second path component rather than the first,
-/// so paths like `.pi/agents/…` and `.pi/skills/…` relocate to `{global_root}/agents/…`
-/// and `{global_root}/skills/…`.
+/// so paths like `.pi/agents/…` and `.pi/extensions/…` relocate to
+/// `{global_root}/agents/…` and `{global_root}/extensions/…`.
+///
+/// `extensions` is pi-only on purpose. No other harness ships an extension file,
+/// and every other harness with a global root reads that directory there for the
+/// *captain's* extensions, so widening the predicate would give a Shipmates
+/// payload deletion authority over files nobody installed.
 pub(crate) fn global_relocate(harness: &str, rel: &str) -> Option<String> {
     let root = global_root(harness)?;
     let mut parts = rel.splitn(3, '/');
     let _dotdir = parts.next()?;
     let resource = parts.next()?;
     let rest = parts.next()?;
-    if resource != "agents" && resource != "skills" {
+    let relocates = matches!(resource, "agents" | "skills")
+        || (harness == "pi" && resource == "extensions");
+    if !relocates {
         return None;
     }
     Some(format!("{root}/{resource}/{rest}"))
@@ -744,8 +753,8 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                 // Global scope: `~/.pi/agent/agents/<name>.md` and
                 // `~/.pi/agent/skills/<name>/…`. Kept as tight as the
                 // workspace arms above: the harness's global tree is a lived-in
-                // config directory, so only the two resource subtrees are
-                // claimable, and only at the depths Shipmates writes.
+                // config directory, so only the resource subtrees Shipmates
+                // writes are claimable, and only at the depths it writes them.
                 || (parts.len() == 4
                     && root == ".pi"
                     && parts[1] == "agent"
@@ -758,6 +767,17 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && !parts[3].is_empty()
                     && (parts[4] == "SKILL.md"
                         || (parts.len() == 5 && parts[4].ends_with(".py"))))
+                // #590: the pi crew plugin is ONE bundled extension file, emitted
+                // with `policy.mjs` inlined into it, in either scope. Exact
+                // equality rather than an `extensions/*.ts` arm: pi loads every
+                // file it finds in an extensions directory, so a widened arm
+                // would hand a receipt deletion authority over the captain's own
+                // extensions — and would let a sibling `policy.mjs` or a nested
+                // helper be installed unannounced. `settings.json`,
+                // `models.json` and `auth.json` sit in both of these trees and
+                // are the captain's, so nothing here may reach them.
+                || path == ".pi/extensions/shipmates-crew/index.ts"
+                || path == ".pi/agent/extensions/shipmates-crew/index.ts"
         }
         "grok-build" => {
             is_steering_receipt_path(harness, path)
@@ -978,7 +998,7 @@ mod tests {
             global_relocate("github-copilot", ".agents/skills/ship-issue/SKILL.md").as_deref(),
             Some(".copilot/skills/ship-issue/SKILL.md")
         );
-        // Only the two resource subtrees move; steering and anything else stay.
+        // Only the resource subtrees move; steering and anything else stay.
         assert_eq!(global_relocate("pi", ".shipmates/contributor-steering.md"), None);
         assert_eq!(
             global_relocate("antigravity", ".shipmates/contributor-steering.md"),
@@ -1269,6 +1289,196 @@ mod tests {
         assert!(!allowed_receipt_path("pi", ".pi/settings.json"));
         assert!(!allowed_receipt_path("pi", ".pi/agents/evil.sh"));
         assert!(!allowed_receipt_path("pi", ".pi/agents/nested/sdet.md"));
+    }
+
+    /// #590: the pi crew switch ships as ONE extension file, `index.ts`, with its
+    /// policy inlined. pi loads every file it finds in an extensions directory,
+    /// and a receipt is deletion authority, so the allowance is two exact paths —
+    /// the workspace shape and its global relocation — not an extensions subtree.
+    #[test]
+    fn pi_receipt_owns_the_crew_plugin_file_and_nothing_beside_it() {
+        for path in [
+            ".pi/extensions/shipmates-crew/index.ts",
+            ".pi/agent/extensions/shipmates-crew/index.ts",
+        ] {
+            assert!(allowed_receipt_path("pi", path), "pi must own {path}");
+        }
+        // Every other path is refused, and the rejects are named rather than
+        // counted: a future change to this arm is most likely to be a widening
+        // of it, so each entry below is a thing a widened version WOULD allow.
+        for path in [
+            // The policy module. Inlined into `index.ts` at build time, never
+            // installed beside it, and never receipt-allowed.
+            ".pi/extensions/shipmates-crew/policy.mjs",
+            ".pi/agent/extensions/shipmates-crew/policy.mjs",
+            // Other suffixes of the same base name.
+            ".pi/extensions/shipmates-crew/index.js",
+            ".pi/extensions/shipmates-crew/index.ts.map",
+            ".pi/agent/extensions/shipmates-crew/index.js",
+            // Nested junk, at any depth, in either tree.
+            ".pi/extensions/shipmates-crew/lib/util.ts",
+            ".pi/extensions/shipmates-crew/index.ts/junk",
+            ".pi/agent/extensions/shipmates-crew/lib/util.ts",
+            // Another extension's name. The captain's own plugins live here and
+            // pi reads them, so they are not ours to claim or to delete.
+            ".pi/extensions/other-ext/index.ts",
+            ".pi/agent/extensions/other-ext/index.ts",
+            // pi's own config, which lives in both of these trees.
+            ".pi/settings.json",
+            ".pi/agent/settings.json",
+            ".pi/models.json",
+            ".pi/agent/models.json",
+            ".pi/auth.json",
+            ".pi/agent/auth.json",
+        ] {
+            assert!(!allowed_receipt_path("pi", path), "pi must not own {path}");
+        }
+    }
+
+    /// No other harness reads a `shipmates-crew` plugin, and several of them run
+    /// code out of a similarly-shaped tree, so both new paths must be refused
+    /// everywhere else — including the two harnesses whose arms already accept
+    /// code files.
+    #[test]
+    fn no_other_harness_claims_a_pi_crew_plugin_path() {
+        // The complete name set rather than a hand-picked subset: `targets()` is
+        // everything the installer can be pointed at, and `windsurf` still
+        // validates because a pre-rename receipt has to load. An assertion that
+        // skips grok-build and devin proves nothing about the two arms that
+        // would most plausibly match a `.ts` path.
+        let mut harnesses: Vec<&str> = crate::adapters::targets()
+            .into_iter()
+            .filter(|target| *target != "pi")
+            .collect();
+        harnesses.push("windsurf");
+        assert!(harnesses.contains(&"grok-build"));
+        assert!(harnesses.contains(&"devin"));
+        assert_eq!(harnesses.len(), 9, "every harness must be in the negative set");
+
+        for path in [
+            ".pi/extensions/shipmates-crew/index.ts",
+            ".pi/agent/extensions/shipmates-crew/index.ts",
+        ] {
+            for harness in &harnesses {
+                assert!(
+                    !allowed_receipt_path(harness, path),
+                    "{harness} must not claim {path}"
+                );
+            }
+        }
+    }
+
+    /// #590: a pi plugin is an `extensions` subtree, and a global pi install
+    /// reads it from `~/.pi/agent/extensions/`, so that subtree relocates — for
+    /// pi alone. The other harnesses with a global root ship no extension file,
+    /// and an unconditional third resource would move the captain's own.
+    #[test]
+    fn only_pi_relocates_an_extensions_subtree() {
+        assert_eq!(
+            global_relocate("pi", ".pi/extensions/shipmates-crew/index.ts").as_deref(),
+            Some(".pi/agent/extensions/shipmates-crew/index.ts")
+        );
+
+        // Devin keeps its `extensions` path where it is, at policy level and
+        // through the payload rewrite the installer actually calls. The second
+        // arm is the negative control: without it, a `global_relocate` that
+        // never matched anything would look identical to a correct one.
+        assert_eq!(global_relocate("devin", ".devin/extensions/x.ts"), None);
+        let mut built = HashMap::new();
+        built.insert(
+            "harnesses/pi/.pi/extensions/shipmates-crew/index.ts".to_string(),
+            "plugin".to_string(),
+        );
+        built.insert(
+            "harnesses/pi/.pi/agents/sdet.md".to_string(),
+            "crew".to_string(),
+        );
+        let relocated = relocate_payload("pi", "harnesses/pi", &built);
+        let mut keys = relocated.keys().cloned().collect::<Vec<_>>();
+        keys.sort();
+        assert_eq!(
+            keys,
+            [
+                "harnesses/pi/.pi/agent/agents/sdet.md",
+                "harnesses/pi/.pi/agent/extensions/shipmates-crew/index.ts"
+            ],
+            "a global pi install must move both the crew file and the plugin"
+        );
+
+        let mut devin_built = HashMap::new();
+        devin_built.insert(
+            "harnesses/devin/.devin/extensions/x.ts".to_string(),
+            "theirs".to_string(),
+        );
+        assert!(
+            relocate_payload("devin", "harnesses/devin", &devin_built)
+                .contains_key("harnesses/devin/.devin/extensions/x.ts"),
+            "devin must leave an extensions path alone"
+        );
+
+        // The rest of the global-root harnesses are just as immovable, and each
+        // of these must actually have a global root — otherwise the assertion
+        // would pass for a harness that cannot relocate anything anyway.
+        for (harness, path) in [
+            ("antigravity", ".agents/extensions/x.ts"),
+            ("codex", ".codex/extensions/x.ts"),
+            ("github-copilot", ".copilot/extensions/x.ts"),
+        ] {
+            assert!(
+                global_root(harness).is_some(),
+                "{harness} needs a global root for this to mean anything"
+            );
+            assert_eq!(global_relocate(harness, path), None, "{harness} must keep {path}");
+        }
+    }
+
+    /// `allowed_receipt_path` is only half of what a receipt has to clear:
+    /// `validate` also requires every file to sit under a declared root. A
+    /// pi install declares `.pi` and `.shipmates`, so both plugin shapes have
+    /// to survive the whole chain, save and reload included — uninstall deletes
+    /// from the reloaded receipt, not from the predicate.
+    #[test]
+    fn pi_receipt_round_trips_the_crew_plugin_in_either_scope() {
+        let dir = tempdir().unwrap();
+        let repository = ReceiptRepository::new(dir.path());
+        let expected = InstallReceipt::new(
+            "0.16.0",
+            "pi",
+            LAYOUT_SKILLS,
+            vec![".pi".into(), ".shipmates".into()],
+            vec![
+                file(".pi/agent/agents/sdet.md", HASH),
+                file(".pi/agent/extensions/shipmates-crew/index.ts", HASH),
+                file(".pi/agents/sdet.md", HASH),
+                file(".pi/extensions/shipmates-crew/index.ts", HASH),
+            ],
+        )
+        .expect("a pi receipt must accept the crew plugin in both scopes");
+
+        repository.save(&expected).unwrap();
+
+        let loaded = repository.load("pi").unwrap().expect("receipt must reload");
+        assert_eq!(loaded, expected);
+        // The two paths are what uninstall and doctor read back, so a lookup by
+        // path is the behaviour that actually matters.
+        assert!(loaded.file(".pi/extensions/shipmates-crew/index.ts").is_some());
+        assert!(loaded.file(".pi/agent/extensions/shipmates-crew/index.ts").is_some());
+
+        // And the same chain still refuses the captain's own config, which is
+        // the reason the arm is two exact paths rather than a directory.
+        for path in [".pi/agent/settings.json", ".pi/agent/models.json", ".pi/auth.json"] {
+            assert!(
+                InstallReceipt::new(
+                    "0.16.0",
+                    "pi",
+                    LAYOUT_SKILLS,
+                    vec![".pi".into(), ".shipmates".into()],
+                    vec![file(path, HASH)],
+                )
+                .is_err(),
+                "a receipt must not claim {path}"
+            );
+        }
     }
 
     #[test]
