@@ -60,8 +60,11 @@ fn tools_for(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
     // That is exactly what #437 was: Antigravity's YAML-list shape parsed into a
     // single unmatchable token, so nothing matched. A partially-unmatched list
     // would merely be narrower than intended, which is why this vocabulary stays
-    // limited to names pi actually ships (`web_search` / `fetch_content` come
-    // from the separate `pi-web-access` extension — recorded in the registry).
+    // limited to names a bare pi install can resolve. `web_search` and
+    // `fetch_content` come from the separate `pi-web-access` extension, which
+    // this install does not provision, and a declared-but-missing tool aborts
+    // the seat before a model turn (#583). The `web` capability is therefore
+    // not emitted. `bash` remains for a fetch.
     let mut tools = if !role.tool_order.is_empty() {
         let mut ordered = Vec::new();
         for scope in &role.tool_order {
@@ -94,21 +97,8 @@ fn tools_for(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
                 "edit" => out.extend(["write", "edit"].map(str::to_string)),
                 "bash" => out.push("bash".to_string()),
                 "web" => {
-                    let scopes: Vec<String> = if role.web_scopes.is_empty() {
-                        vec!["web-search".to_string(), "web-fetch".to_string()]
-                    } else {
-                        role.web_scopes
-                            .iter()
-                            .map(|scope| format!("web-{scope}"))
-                            .collect()
-                    };
-                    for scope in scopes {
-                        out.push(
-                            scope_tool(&scope)
-                                .ok_or_else(|| anyhow::anyhow!("unknown web scope {scope:?}"))?
-                                .to_string(),
-                        );
-                    }
+                    // Not emitted. See the comment on `tools_for`. A role that
+                    // declares `web` keeps its other tools; bash covers a fetch.
                 }
                 "agent" => out.push("subagent".to_string()),
                 other => anyhow::bail!("unmapped capability {other:?} for pi"),
@@ -124,6 +114,8 @@ fn tools_for(role: &CanonicalRole) -> anyhow::Result<Vec<String>> {
         }
         seen
     };
+    // #583: never declare a tool a bare pi install cannot resolve.
+    tools.retain(|tool| tool != "web_search" && tool != "fetch_content");
     // Floor, and it is a privilege floor rather than a convenience one: pi
     // pushes `--tools` only when the list is non-empty, so an empty list would
     // hand the seat pi's FULL default toolset instead of none. Never emit an
@@ -443,13 +435,28 @@ mod tests {
                     "bash",
                     "edit",
                     "write",
-                    "web_search",
-                    "fetch_content",
                     "subagent"
                 ]
                 .contains(&tool),
                 "unresolvable pi tool name {tool:?} in {content}"
             );
+        }
+    }
+
+    #[test]
+    fn test_pi_does_not_emit_web_tools_a_bare_install_cannot_resolve() {
+        let mut manager = role("product-manager", "Accepts the work");
+        manager.capabilities = vec!["read".to_string(), "bash".to_string(), "web".to_string()];
+        manager.web_scopes = vec!["search".to_string(), "fetch".to_string()];
+        let mut director = role("art-director", "Directs the picture");
+        director.capabilities = vec!["read".to_string(), "bash".to_string(), "web".to_string()];
+        director.web_scopes = vec!["search".to_string()];
+        let files = PiAdapter.build(&[manager, director], &[]).unwrap();
+        for name in ["product-manager", "art-director"] {
+            let content = &files[&format!("harnesses/pi/.pi/agents/{name}.md")];
+            assert!(!content.contains("web_search"), "{content}");
+            assert!(!content.contains("fetch_content"), "{content}");
+            assert!(content.contains("bash"), "{content}");
         }
     }
 
