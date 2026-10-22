@@ -800,6 +800,11 @@ fn install_harness(
     // #454: guidance only — do not remap the target or invent a doctor check.
     // Global pi crew lands under ~/.pi/agent/; a nearer ancestor carrying
     // `.pi/` or `.agents/` still shadows that home tree from a nested cwd.
+    if harness == "pi" {
+        println!(
+            "Pi crew plugin installed. Run /shipmates-crew once. The switch starts at Off and does not change /model."
+        );
+    }
     if let Some(hint) = pi_global_install_hint(harness, global) {
         println!("{hint}");
     }
