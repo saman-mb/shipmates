@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.2] - 2026-10-22
+
+### Fixed
+
+- **Pi crew seats no longer declare web tools a bare install cannot load (#583).** `product-manager` and `art-director` named `web_search` and `fetch_content`, which come from a separate extension Shipmates does not install. Pi aborted both seats before a model turn, so the required product-owner review could not run. Those names are no longer emitted. The seats keep `bash` for a fetch.
+
 ## [0.15.1] - 2026-10-18
 
 ### Fixed
