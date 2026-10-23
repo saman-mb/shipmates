@@ -131,7 +131,7 @@ TOOL_REDIRECTS = {
 
 # Hand-authored docs pages under site/docs/. The generator discovers them on
 # disk and includes them in the sitemap — it never generates them.
-DOCS_SLUGS = ("install", "how-commands-work", "harnesses", "troubleshooting", "architecture", "github-copilot")
+DOCS_SLUGS = ("install", "how-commands-work", "harnesses", "troubleshooting", "architecture", "github-copilot", "pi-crew")
 FLAGSHIP_SLUG = "shipmates-ship-issue"
 
 # Canonical crew order — the homepage crew grid's order. Drives the agent page

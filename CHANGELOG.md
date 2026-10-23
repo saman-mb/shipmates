@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`docs/UI.md` — the website's UI/UX guidelines.** Layout and rhythm, type and colour, components, tables, images and demos, content structure, the steps for adding a docs page, and the measure-don't-eyeball verification pass. Written after a card grid shipped flush against the paragraph above it because the spacing lived in a container the grid was not inside.
+- **`termgif` takes a reading pace and a final hold.** `"speed"` scales every frame's on-screen time, and `"hold"` pauses on the completed screen before the loop restarts, so a committed demo can be read without hand-editing the GIF afterwards. Both are spec fields, so the same spec still renders the same file.
+- **A docs page for the pi crew switch.** `site/docs/pi-crew/` explains Off, Split, and Local, what the switch refuses and why, and what is not wired yet. It carries an animated terminal demo and two seat maps built as native HTML rather than fixed-pixel SVGs, because a rendered SVG is downscaled by the 760px prose column and its labels become unreadable.
+
 ## [0.16.0] - 2026-10-22
 
 ### Added
