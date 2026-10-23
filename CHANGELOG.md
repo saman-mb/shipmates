@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **A docs page for the pi crew switch.** `site/docs/pi-crew/` explains Off, Split, and Local, what the switch refuses and why, and what is not wired yet. It carries two rendered diagrams — who runs where in a run, and one run seat by seat — committed as SVG rather than left as a mermaid block for a runtime the site does not load.
+
 ## [0.16.0] - 2026-10-22
 
 ### Added

@@ -1266,6 +1266,19 @@ summary::-webkit-details-marker{ display:none; }
 
 /* Fenced blocks inside a stage body. Deliberately NOT .codeblock* — that family
    carries a copy-button reserve (:731-735) detail pages never need (C4). */
+.order-figure{
+  margin-top:var(--space-4);
+}
+/* The diagram SVG paints its own rounded dark panel, so the figure adds no
+   second frame — it only supplies rhythm and the caption. */
+.order-figure img{ display:block; width:100%; height:auto; border-radius:var(--radius-md); }
+.order-figure figcaption{
+  margin-top:var(--space-2);
+  color:var(--text-muted);
+  font-size:var(--fs-300);
+  line-height:1.5;
+}
+
 .order-code{
   margin-top:var(--space-3);
   padding:var(--space-4);
