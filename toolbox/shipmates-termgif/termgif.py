@@ -226,6 +226,18 @@ def build(spec):
     width = int(spec.get("width", 860))
     term = Term(width, spec.get("title", "terminal"))
 
+    # Reading pace is part of the artifact, not a preference of whoever renders
+    # it: `speed` scales every frame's on-screen time (1.0 = the built-in pace,
+    # 1.5 = half again as long per frame), and `hold` is a final pause on the
+    # completed screen, in milliseconds, before the loop restarts. Both are
+    # spec fields so the same spec always renders the same GIF.
+    speed = float(spec.get("speed", 1.0))
+    if speed <= 0:
+        raise ValueError("spec.speed must be greater than 0")
+    hold = int(spec.get("hold", 0))
+    if hold < 0:
+        raise ValueError("spec.hold must be 0 or more milliseconds")
+
     # Final line count → height (a command line + committed output lines).
     n_lines = sum(1 for b in beats if b.get("type") != "command") + \
         sum(1 for b in beats if b.get("type") == "command")
@@ -237,7 +249,7 @@ def build(spec):
 
     def emit(lines, dur, cursor_line=None):
         frames.append(term.frame(H, lines, cursor_line))
-        durations.append(dur)
+        durations.append(max(1, int(round(dur * speed))))
 
     for beat in beats:
         kind = beat.get("type")
@@ -281,6 +293,10 @@ def build(spec):
 
     for _ in range(4):
         emit(log, 300)
+    if hold:
+        # A single long final frame, not N duplicated frames: same pause, a
+        # fraction of the file size, and the loop still restarts cleanly.
+        durations[-1] = hold
     return frames, durations
 
 
