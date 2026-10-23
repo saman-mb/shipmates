@@ -8,7 +8,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- **A docs page for the pi crew switch.** `site/docs/pi-crew/` explains Off, Split, and Local, what the switch refuses and why, and what is not wired yet. It carries two rendered diagrams — who runs where in a run, and one run seat by seat — committed as SVG rather than left as a mermaid block for a runtime the site does not load.
+- **`termgif` takes a reading pace and a final hold.** `"speed"` scales every frame's on-screen time, and `"hold"` pauses on the completed screen before the loop restarts, so a committed demo can be read without hand-editing the GIF afterwards. Both are spec fields, so the same spec still renders the same file.
+- **A docs page for the pi crew switch.** `site/docs/pi-crew/` explains Off, Split, and Local, what the switch refuses and why, and what is not wired yet. It carries an animated terminal demo and two seat maps built as native HTML rather than fixed-pixel SVGs, because a rendered SVG is downscaled by the 760px prose column and its labels become unreadable.
 
 ## [0.16.0] - 2026-10-22
 
