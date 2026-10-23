@@ -76,6 +76,21 @@
       </div>
     </section>
 
+    <section class="section" id="demo" aria-labelledby="demo-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="demo-title">Watch it work</h2>
+        </div>
+        <div class="order-prose">
+          <p>Setting the switch, then a run where a doer is refused for naming a cloud model and then starts on a local one.</p>
+        </div>
+        <figure class="order-figure">
+          <img src="assets/demo.gif" alt="Animated terminal: /shipmates-crew sets the switch to Split, then a ship-issue run plans on a cloud model, refuses a senior-engineer that named a cloud model, and builds, tests and accepts with the doers on local models." width="760" height="520" loading="lazy">
+          <figcaption>The switch is set once. After that every seat is checked at spawn.</figcaption>
+        </figure>
+      </div>
+    </section>
+
     <section class="section" id="who-runs-where" aria-labelledby="who-title">
       <div class="container container--prose">
         <div class="section__head">
@@ -85,10 +100,24 @@
           <p>The captain is the chat you type into. It stays on whatever you picked with <code>/model</code>. The crew is the thirteen specialists a command spawns along the way. Two of them carry out orders &mdash; the builder and the tester. The rest judge: the planner, the product owner, the principal reviewer, and the design and delivery seats.</p>
           <p>On the default <strong>Split</strong> setting, a doer runs locally and a judge stays on a cloud model. The planner needs to think, so it stays cloud. The builder needs to follow a written order, so it goes local.</p>
         </div>
-        <figure class="order-figure">
-          <img src="assets/who-runs-where.svg" alt="Planner on a cloud model, then builder and tester on local models, then the acceptance board on a cloud model, then a pull request." width="1408" height="149" loading="lazy">
-          <figcaption>One ship-issue run. The captain types; the crew is spawned seat by seat.</figcaption>
-        </figure>
+        <ol class="crew-map crew-map--rail">
+          <li class="crew-step">
+            <span class="crew-step__who">Planner <span class="crew-tag crew-tag--cloud">cloud</span></span>
+            <span class="crew-step__duty">Reads the issue and cuts the work into units. Needs to think, so it stays in the cloud.</span>
+          </li>
+          <li class="crew-step">
+            <span class="crew-step__who">Builder <span class="crew-tag crew-tag--local">local</span></span>
+            <span class="crew-step__duty">Follows a written order from the planner, one unit per seat, on the models you ticked.</span>
+          </li>
+          <li class="crew-step">
+            <span class="crew-step__who">Tester <span class="crew-tag crew-tag--local">local</span></span>
+            <span class="crew-step__duty">Runs the build, the tests and the linters the plan named. Also local.</span>
+          </li>
+          <li class="crew-step">
+            <span class="crew-step__who">Acceptance board <span class="crew-tag crew-tag--cloud">cloud</span></span>
+            <span class="crew-step__duty">The product owner and the principal reviewer judge the pushed pull request.</span>
+          </li>
+        </ol>
       </div>
     </section>
 
@@ -100,10 +129,22 @@
         <div class="order-prose">
           <p>Every crew seat reaches pi through one call, and the extension sees it before it starts. It reads the role, reads the model the captain named, and decides. A seat that passes starts; a seat that fails stops with a reason and the free models it could use instead.</p>
         </div>
-        <figure class="order-figure">
-          <img src="assets/run.svg" alt="Sequence: the captain spawns a senior-engineer on a local model through the crew switch, then a product-manager on a cloud model. Both checks pass and both seats answer." width="885" height="512" loading="lazy">
-          <figcaption>A doer and a judge in one run. The switch checks the spawn; it never changes your chat model.</figcaption>
-        </figure>
+        <ol class="crew-map">
+          <li class="crew-step">
+            <span class="crew-step__who">You <span class="crew-tag crew-tag--cloud">cloud</span></span>
+            <span class="crew-step__duty">Type <code>/skill:shipmates-ship-issue 590</code> and answer the setup card. Nothing about your chat model changes.</span>
+          </li>
+          <li class="crew-arrow">One seat at a time</li>
+          <li class="crew-step">
+            <span class="crew-step__who">Doer <span class="crew-tag crew-tag--local">local</span></span>
+            <span class="crew-step__duty">The spawn names a local model. The switch checks the tag, the tick list, the ceiling and the order &mdash; then the seat runs.</span>
+          </li>
+          <li class="crew-arrow">Then a judge</li>
+          <li class="crew-step">
+            <span class="crew-step__who">Judge <span class="crew-tag crew-tag--cloud">cloud</span></span>
+            <span class="crew-step__duty">The spawn names a cloud model. It passes the same check on the other tag and returns a verdict.</span>
+          </li>
+        </ol>
       </div>
     </section>
 

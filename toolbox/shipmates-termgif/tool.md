@@ -49,6 +49,20 @@ echo '{"title":"…","beats":[…]}' | python3 termgif.py --out demo.gif
 }
 ```
 
+Reading pace is part of the spec, so a GIF committed next to a doc renders the
+same for everyone:
+
+- `"speed"` (default `1.0`) scales every frame's on-screen time. `1.5` gives each
+  frame half again as long; use it when the default pace reads too fast.
+- `"hold"` (default `0`, milliseconds) is a final pause on the completed screen
+  before the loop restarts. A long hold is what makes the last state readable —
+  `10000` holds for ten seconds without duplicating frames, so the file stays
+  small.
+
+```json
+{ "title": "shipmates — /ship-issue", "speed": 1.6, "hold": 10000, "beats": [] }
+```
+
 Beat types: `command` (typed after a `$` prompt), `stage` (spinner then a green
 check, with a `label` and `detail`; an optional `color` overrides the auto-cycled
 accent), `line` (a revealed output line — `text`+`color`, or a `segments` array
