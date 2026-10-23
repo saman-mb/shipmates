@@ -4,13 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.16.1] - 2026-10-23
 
 ### Added
 
 - **`docs/UI.md` — the website's UI/UX guidelines.** Layout and rhythm, type and colour, components, tables, images and demos, content structure, the steps for adding a docs page, and the measure-don't-eyeball verification pass. Written after a card grid shipped flush against the paragraph above it because the spacing lived in a container the grid was not inside.
 - **`termgif` takes a reading pace and a final hold.** `"speed"` scales every frame's on-screen time, and `"hold"` pauses on the completed screen before the loop restarts, so a committed demo can be read without hand-editing the GIF afterwards. Both are spec fields, so the same spec still renders the same file.
 - **A docs page for the pi crew switch.** `site/docs/pi-crew/` explains Off, Split, and Local, what the switch refuses and why, and what is not wired yet. It carries an animated terminal demo and two seat maps built as native HTML rather than fixed-pixel SVGs, because a rendered SVG is downscaled by the 760px prose column and its labels become unreadable.
+
+### Fixed
+
+- **A global install is now a whole install (#549, #550, #551).** Three defects in one chain, all reachable from `shipmates install --harness all --global`, proved against a nine-target run on a clean machine.
+  - Devin's user-scope tree is `~/.config/devin/`, which the receipt validator did not accept: the install wrote all 32 payload files and then failed its own validation, leaving a tree no receipt owned that `doctor` could not audit and `uninstall` could not remove. The install now validates and publishes a receipt, with the claim narrowed to the two resource subtrees so a receipt never gains authority over the rest of the shared `~/.config` directory.
+  - One failing harness ended the install loop by exiting the process, which skipped canonical global steering and the installs-index registration for every harness that *had* installed — one bad target left eight half-installs that `status` and `upgrade` could not even see. The loop now reports the failure and returns, so those steps run. The run still exits non-zero, and still names what failed.
+  - `doctor` printed an absent global steering file as `[ok]`, so none of the above was visible from the surface a captain uses to decide whether an install is trustworthy. Absence is now a warning; a harness that genuinely has no global instruction file still reads as fine.
 
 ## [0.16.0] - 2026-10-22
 

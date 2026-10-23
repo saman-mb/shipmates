@@ -404,7 +404,27 @@ fn run_install_loop(
                 env!("CARGO_PKG_VERSION")
             );
         }
-        std::process::exit(1);
+        // #550: return rather than exit the process here.
+        //
+        // `main` installs canonical global steering and registers the installs
+        // index *after* this loop returns, so `process::exit(1)` skipped both.
+        // One failing harness therefore degraded every harness that *did*
+        // install: no steering file, and no entry in the installs index, which
+        // is the only thing `status` and `upgrade` use to find installs at all.
+        // Verified on a clean home with nine targets: eight installed, and the
+        // run wrote zero steering files and no index.
+        //
+        // Returning `Err` keeps the two properties the old exit was protecting:
+        // the run is still reported as failed, and it still exits non-zero (the
+        // caller propagates this with `?`), so the e2e suites that assert a
+        // multi-harness failure is non-zero keep passing. It also fixes the
+        // self-perpetuating case — Devin failed the same way on every run, so
+        // every subsequent `--harness all` skipped the same two steps forever.
+        bail!(
+            "{} of {} harnesses failed",
+            failures.len(),
+            harnesses.len()
+        );
     }
     Ok(())
 }

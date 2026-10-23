@@ -1440,9 +1440,20 @@ fn diagnose_built(
                     });
                 }
                 Ok(crate::steering::GlobalSteeringStatus::Missing { path }) => {
+                    // #551: absence was reported as `[ok]`. `Gap` is the
+                    // legitimate "this harness has no global instruction file"
+                    // case and stays ok; `Missing` means the harness DOES read a
+                    // user instruction file and none is installed, which is a
+                    // real defect — and the old green reading made it invisible.
+                    // It also produced a loop: doctor said "run `shipmates
+                    // install`", and (with #550) that command skipped the step
+                    // that would have installed it. Kept `fixable: false`
+                    // because `doctor --fix` does not write steering — the
+                    // install command does — so the summary must not promise a
+                    // repair that does not exist.
                     checks.push(Check {
                         name: "Global steering".into(),
-                        severity: Severity::Ok,
+                        severity: Severity::Warn,
                         detail: format!(
                             "not installed at {}; run `shipmates install` to install",
                             path.display()
