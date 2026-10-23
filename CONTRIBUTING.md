@@ -104,7 +104,7 @@ The deterministic gates below are what exists today; [`docs/EVALS.md`](docs/EVAL
 layered test-and-eval pipeline being built on top of them (#419) — what each layer proves, where it
 runs, and which decisions stay with a human.
 
-Prompt-cost rules are documented in [`docs/COST.md`](docs/COST.md). Keep command instructions
+Website changes follow [`docs/UI.md`](docs/UI.md) — layout, type, colour, components, images, and the visual check a page needs before it is done. It applies to every change under `site/`, not just new pages. Prompt-cost rules are documented in [`docs/COST.md`](docs/COST.md). Keep command instructions
 cache-friendly: stable workflow text first, one runtime `$ARGUMENTS` section last; ask subagents for
 compact structured decisions rather than transcripts. The shared preamble markers are expanded by
 the renderer, so update the doctrine instead of copying its wording into commands or crew.

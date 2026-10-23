@@ -71,7 +71,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">&#127754;</span> Pi</p>
           <h1 class="order-detail__title" id="pi-crew-title">Pi crew switch</h1>
           <p class="order-detail__tagline">Keep the captain on a cloud model. Put the crew on the local models you pick.</p>
-          <p class="order-detail__desc">A pi install now ships one small extension. It watches the seats a ship command spawns and checks each one against a switch you control. It starts <strong>Off</strong>, so installing it changes nothing until you turn it on.</p>
+          <p class="order-detail__desc">A <a href="https://pi.dev">pi</a> install now ships one small extension. It watches the seats a ship command spawns and checks each one against a switch you control. It starts <strong>Off</strong>, so installing it changes nothing until you turn it on.</p>
         </div>
       </div>
     </section>
@@ -84,9 +84,12 @@
         <div class="order-prose">
           <p>Setting the switch, then a run where a doer is refused for naming a cloud model and then starts on a local one.</p>
         </div>
-        <figure class="order-figure">
-          <img src="assets/demo.gif" alt="Animated terminal: /shipmates-crew sets the switch to Split, then a ship-issue run plans on a cloud model, refuses a senior-engineer that named a cloud model, and builds, tests and accepts with the doers on local models." width="760" height="520" loading="lazy">
-          <figcaption>The switch is set once. After that every seat is checked at spawn.</figcaption>
+        <figure class="demo">
+          <picture>
+            <source media="(prefers-reduced-motion: reduce)" srcset="assets/demo-poster.png">
+            <img class="demo__media" src="assets/demo.gif" alt="Terminal demo: /shipmates-crew sets the switch to Split, then a ship-issue run plans on a cloud model, refuses a senior-engineer that named a cloud model, and builds, tests and accepts with the doers on local models." width="760" height="520">
+          </picture>
+          <figcaption>The switch is set once. After that every seat is checked at spawn. The finished screen holds for ten seconds.</figcaption>
         </figure>
       </div>
     </section>
@@ -100,7 +103,7 @@
           <p>The captain is the chat you type into. It stays on whatever you picked with <code>/model</code>. The crew is the thirteen specialists a command spawns along the way. Two of them carry out orders &mdash; the builder and the tester. The rest judge: the planner, the product owner, the principal reviewer, and the design and delivery seats.</p>
           <p>On the default <strong>Split</strong> setting, a doer runs locally and a judge stays on a cloud model. The planner needs to think, so it stays cloud. The builder needs to follow a written order, so it goes local.</p>
         </div>
-        <ol class="crew-map crew-map--rail">
+        <ol class="crew-map crew-map--rail" role="list">
           <li class="crew-step">
             <span class="crew-step__who">Planner <span class="crew-tag crew-tag--cloud">cloud</span></span>
             <span class="crew-step__duty">Reads the issue and cuts the work into units. Needs to think, so it stays in the cloud.</span>
@@ -117,6 +120,10 @@
             <span class="crew-step__who">Acceptance board <span class="crew-tag crew-tag--cloud">cloud</span></span>
             <span class="crew-step__duty">The product owner and the principal reviewer judge the pushed pull request.</span>
           </li>
+          <li class="crew-step">
+            <span class="crew-step__who">Pull request</span>
+            <span class="crew-step__duty">Handed to you to merge. Nothing here merges on its own unless you asked it to.</span>
+          </li>
         </ol>
       </div>
     </section>
@@ -129,20 +136,26 @@
         <div class="order-prose">
           <p>Every crew seat reaches pi through one call, and the extension sees it before it starts. It reads the role, reads the model the captain named, and decides. A seat that passes starts; a seat that fails stops with a reason and the free models it could use instead.</p>
         </div>
-        <ol class="crew-map">
+        <ol class="crew-map crew-map--steps" role="list">
           <li class="crew-step">
+            <span class="crew-step__lead">You start it</span>
             <span class="crew-step__who">You <span class="crew-tag crew-tag--cloud">cloud</span></span>
             <span class="crew-step__duty">Type <code>/skill:shipmates-ship-issue 590</code> and answer the setup card. Nothing about your chat model changes.</span>
           </li>
-          <li class="crew-arrow">One seat at a time</li>
           <li class="crew-step">
-            <span class="crew-step__who">Doer <span class="crew-tag crew-tag--local">local</span></span>
-            <span class="crew-step__duty">The spawn names a local model. The switch checks the tag, the tick list, the ceiling and the order &mdash; then the seat runs.</span>
+            <span class="crew-step__lead">Before the seat starts</span>
+            <span class="crew-step__who">Crew switch</span>
+            <span class="crew-step__duty">Reads the role, the model you named, your ticked list and your ceiling. It allows the spawn or refuses it with a reason.</span>
           </li>
-          <li class="crew-arrow">Then a judge</li>
           <li class="crew-step">
+            <span class="crew-step__lead">A doer carries out the order</span>
+            <span class="crew-step__who">Doer <span class="crew-tag crew-tag--local">local</span></span>
+            <span class="crew-step__duty">The order must name its outcome, owned paths, done-when and out of scope. Then it builds on the local model you chose.</span>
+          </li>
+          <li class="crew-step">
+            <span class="crew-step__lead">A judge decides</span>
             <span class="crew-step__who">Judge <span class="crew-tag crew-tag--cloud">cloud</span></span>
-            <span class="crew-step__duty">The spawn names a cloud model. It passes the same check on the other tag and returns a verdict.</span>
+            <span class="crew-step__duty">Passes the same check on the other tag, then returns a verdict on the pushed work.</span>
           </li>
         </ol>
       </div>
@@ -206,9 +219,9 @@
         </div>
         <div class="order-prose">
           <pre class="order-code" tabindex="0"><code>shipmates install --harness pi
-# Pi crew plugin installed. Run /shipmates-crew once.
-# The switch starts at Off and does not change /model.</code></pre>
-          <p>Then open pi and run <code>/shipmates-crew</code>. It shows the current position and asks you to pick one. The extension lands at <code>.pi/extensions/shipmates-crew/index.ts</code>, or <code>~/.pi/agent/extensions/shipmates-crew/index.ts</code> on a global install.</p>
+<span class="order-code__comment"># Pi crew plugin installed. Run /shipmates-crew once.</span>
+<span class="order-code__comment"># The switch starts at Off and does not change /model.</span></code></pre>
+          <p>Then open <a href="https://pi.dev">pi</a> and run <code>/shipmates-crew</code>. It shows the current position and asks you to pick one. The extension lands at <code>.pi/extensions/shipmates-crew/index.ts</code>, or <code>~/.pi/agent/extensions/shipmates-crew/index.ts</code> on a global install.</p>
           <p>The plugin reads its settings from <code>~/.pi/agent/shipmates-crew.json</code>. That file holds the switch, any role tags you flipped, the models you ticked, and your concurrency ceiling. An absent file means Off.</p>
           <pre class="order-code" tabindex="0"><code>{
   "schemaVersion": 1,

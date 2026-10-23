@@ -1257,6 +1257,8 @@ summary::-webkit-details-marker{ display:none; }
    :not(.order-code > code) would be tidier, except a combinator inside :not()
    is Selectors L4 — a browser that cannot parse it drops the WHOLE rule and
    inline code loses its pill everywhere. A plain descendant reset always parses. */
+.order-code + *{ margin-top:var(--space-4); }
+.order-code__comment{ color:var(--text-muted); }
 .order-code code{
   background:none;
   color:inherit;
@@ -1271,10 +1273,27 @@ summary::-webkit-details-marker{ display:none; }
    the 760px prose column, which shrank 15px labels to about 8px; text set in
    the page's own type scale stays legible, zooms with the browser, and can be
    read by a screen reader. No JavaScript. */
-.order-figure{ margin-top:var(--space-4); }
+.order-figure{ margin-top:var(--space-5); }
 .order-figure img{ display:block; width:100%; height:auto; border-radius:var(--radius-md); }
 .order-figure figcaption{
-  margin-top:var(--space-2);
+  margin-top:var(--space-3);
+  color:var(--text-muted);
+  font-size:var(--fs-300);
+  line-height:1.5;
+}
+
+/* The demo gets a larger radius and a shadow because it is the one element on
+   the page that stands in for something running rather than something read. */
+.demo{ margin-top:var(--space-5); }
+.demo__media{
+  display:block;
+  width:100%;
+  height:auto;
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-2);
+}
+.demo figcaption{
+  margin-top:var(--space-3);
   color:var(--text-muted);
   font-size:var(--fs-300);
   line-height:1.5;
@@ -1295,10 +1314,17 @@ summary::-webkit-details-marker{ display:none; }
   border:1px solid var(--border);
   border-radius:var(--radius-md);
 }
+.crew-step__lead{
+  color:var(--text-muted);
+  font-size:var(--fs-300);
+  font-variant:small-caps;
+  letter-spacing:.04em;
+}
 .crew-step__who{
   display:flex;
   flex-wrap:wrap;
-  align-items:center;
+  align-items:baseline;
+  justify-content:space-between;
   gap:var(--space-2);
   font-size:var(--fs-500);
   font-weight:var(--fw-semibold);
@@ -1309,48 +1335,52 @@ summary::-webkit-details-marker{ display:none; }
    card wider than the viewport, so let it break inside the card instead. */
 .crew-step__duty code{ overflow-wrap:anywhere; }
 /* The tag carries its word first and only then its shape, so colour is never
-   the only signal: `cloud` is dashed/outlined, `local` is solid/tinted. */
+   the only signal: `cloud` is outlined, `local` is tinted and outlined. */
 .crew-tag{
   display:inline-flex;
   align-items:center;
-  padding:var(--space-1) var(--space-2);
+  padding:var(--space-1) var(--space-3);
   border-radius:var(--radius-pill);
   font-size:var(--fs-300);
   font-weight:var(--fw-semibold);
-  letter-spacing:.06em;
+  letter-spacing:.02em;
   text-transform:uppercase;
   white-space:nowrap;
 }
-.crew-tag--cloud{ border:1px dashed var(--border-strong); color:var(--text-muted); }
-/* `local` uses --btn-primary-bg as its fill and --btn-primary-fg as its ink:
-   both are already contrast-checked against each other in each theme, which is
-   exactly the pairing this tag needs. */
-.crew-tag--local{ border:1px solid var(--btn-primary-bg); background:var(--btn-primary-bg); color:var(--btn-primary-fg); }
-.crew-arrow{
-  display:flex;
-  align-items:center;
-  gap:var(--space-2);
-  color:var(--text-muted);
-  font-size:var(--fs-300);
-  padding-left:var(--space-5);
-  /* The grid gap already separates the cards; the arrow row only needs to
-     bridge them, so it pulls in by half a step instead of adding a full one. */
-  margin-block:calc(var(--space-2) * -1);
+.crew-tag--cloud{ border:1px solid var(--border-strong); color:var(--text-muted); }
+/* --accent-strong is the token for accent read as small text; the button fill
+   would read as a call to action on a passive label. */
+.crew-tag--local{
+  border:1px solid var(--accent-strong);
+  background:var(--surface);
+  color:var(--accent-strong);
 }
-.crew-arrow::before{ content:"\2193"; font-size:var(--fs-500); }
 
 /* Two up, not four across: the prose column is 760px, so four cards would be
    ~170px each and the labels would wrap into a wall. */
 @media (min-width:620px){
   .crew-map--rail{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .crew-map--rail .crew-step{ align-content:start; }
+  /* An odd number of steps leaves one card alone on the last row; let it take
+     the full width rather than sit beside a hole. */
+  .crew-map--rail .crew-step:last-child:nth-child(odd){ grid-column:1 / -1; }
 }
 @media (max-width:619px){
   .crew-map--rail{ grid-template-columns:1fr; }
 }
 
+/* The timeline is one spine, not a stack of cards with arrows between them:
+   the left border is the connector, so no glyph competes with it. */
+.crew-map--steps{ gap:0; }
+.crew-map--steps .crew-step{
+  border-left:3px solid var(--border-strong);
+  border-radius:0 var(--radius-md) var(--radius-md) 0;
+}
+.crew-map--steps .crew-step + .crew-step{ margin-top:var(--space-2); }
+
+.order-table + .order-prose{ margin-top:var(--space-4); }
 .order-code{
-  margin-top:var(--space-3);
+  margin-top:var(--space-4);
   padding:var(--space-4);
   background:var(--code-bg);
   color:var(--code-text);
