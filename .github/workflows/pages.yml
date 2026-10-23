@@ -67,6 +67,8 @@ jobs:
       # .github/scripts/ is outside its reach, so this is that gate.
       - name: Lint the extracted workflow scripts
         run: bash .github/scripts/lint-shell.sh
+      - name: Test the pi crew switch policy
+        run: bash .github/scripts/test-pi-crew-policy.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
         # Both are pinned: the artifacts are compared as pixels, and the pixels
         # come from Pillow's bundled freetype and this exact font version. An

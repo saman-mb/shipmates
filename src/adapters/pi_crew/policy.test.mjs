@@ -1,0 +1,233 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  ORDER_PREAMBLE,
+  SHIPPED_TAG,
+  decideSpawn,
+  liveCap,
+  parseState,
+} from "./policy.mjs";
+
+const LOCAL = "local-a";
+const LOCAL_B = "local-b";
+const LOCAL_C = "local-c";
+const CLOUD = "cloud-a";
+
+const ticks = [LOCAL, LOCAL_B, LOCAL_C];
+const loaded = [LOCAL, LOCAL_B, LOCAL_C];
+
+function state(over = {}) {
+  return parseState({
+    schemaVersion: 1,
+    switch: "Split",
+    roles: {},
+    ticks,
+    ceiling: 5,
+    ...over,
+  });
+}
+
+const order = "Outcome: x\nOwned paths: a\nDone-when: b\nOut of scope: c";
+
+test("absent and bad files behave as Off and do not refuse", () => {
+  for (const raw of ["", "not-json", { switch: "maybe" }, { schemaVersion: 2, switch: "Split" }]) {
+    const parsed = parseState(raw);
+    assert.equal(parsed.switch, "Off");
+    assert.equal(decideSpawn({ state: parsed, role: "senior-engineer" }).action, "allow");
+  }
+});
+
+test("a null ceiling stays unset and does not force Off", () => {
+  const parsed = parseState({ switch: "Split", ticks, ceiling: null });
+  assert.equal(parsed.switch, "Split");
+  assert.equal(parsed.ceiling, null);
+});
+
+test("Split honours a matching tag and refuses the other", () => {
+  const ok = decideSpawn({
+    state: state(),
+    role: "senior-engineer",
+    model: LOCAL,
+    modelTag: "local",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(ok.action, "allow");
+  assert.equal(ok.honoured, true);
+  assert.equal(ok.prepend, ORDER_PREAMBLE);
+
+  const bad = decideSpawn({
+    state: state(),
+    role: "senior-engineer",
+    model: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(bad.action, "block");
+  assert.match(bad.reason, /tagged local/);
+  assert.match(bad.reason, /will not substitute/);
+});
+
+test("Local refuses a cloud name and does not read the tag table", () => {
+  const flipped = state({ switch: "Local", roles: { architect: "cloud" } });
+  const refused = decideSpawn({
+    state: flipped,
+    role: "architect",
+    model: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: "review",
+  });
+  assert.equal(refused.action, "block");
+  assert.match(refused.reason, /ticked loaded local/);
+  assert.equal(SHIPPED_TAG.architect, "cloud");
+});
+
+test("a missing model is refused and not selected", () => {
+  const result = decideSpawn({
+    state: state(),
+    role: "architect",
+    model: null,
+    modelTag: null,
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+  });
+  assert.equal(result.action, "block");
+  assert.match(result.reason, /will not substitute/);
+  assert.equal(result.model, undefined);
+});
+
+test("an unknown role is refused", () => {
+  const result = decideSpawn({
+    state: state(),
+    role: "intern",
+    model: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+  });
+  assert.equal(result.action, "block");
+});
+
+test("doer checklist fires for sdet even if flipped to cloud, not for architect in Local", () => {
+  const thin = decideSpawn({
+    state: state({ roles: { sdet: "cloud" } }),
+    role: "sdet",
+    model: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: "run the tests",
+  });
+  assert.equal(thin.action, "block");
+  assert.match(thin.reason, /Outcome:/);
+
+  const judge = decideSpawn({
+    state: state({ switch: "Local" }),
+    role: "architect",
+    model: LOCAL,
+    modelTag: "local",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: "think",
+  });
+  assert.equal(judge.action, "allow");
+  assert.equal(judge.prepend, undefined);
+});
+
+test("cap stays at a captain ceiling above the loaded count, then drops", () => {
+  assert.equal(liveCap(5, ticks, loaded), 5);
+  assert.equal(liveCap(5, ticks, [LOCAL, LOCAL_B]), 4);
+  assert.equal(liveCap(5, ticks, []), 0);
+});
+
+test("Split ignores cloud seats and Local counts every crew seat", () => {
+  const split = decideSpawn({
+    state: state(),
+    role: "architect",
+    model: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 5,
+    runningAll: 9,
+  });
+  assert.equal(split.action, "allow");
+
+  const local = decideSpawn({
+    state: state({ switch: "Local" }),
+    role: "architect",
+    model: LOCAL,
+    modelTag: "local",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 5,
+  });
+  assert.equal(local.action, "block");
+  assert.match(local.reason, /live cap is 5, 5 already running/);
+});
+
+test("an absent ceiling on Split or Local refuses", () => {
+  const result = decideSpawn({
+    state: state({ ceiling: null }),
+    role: "architect",
+    model: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+  });
+  assert.equal(result.action, "block");
+  assert.match(result.reason, /no ceiling/);
+});
+
+test("user-facing reasons do not say login, logout, or official, and the module has no ceiling literal", () => {
+  const reasons = [
+    decideSpawn({
+      state: state(),
+      role: "senior-engineer",
+      model: CLOUD,
+      modelTag: "cloud",
+      loaded,
+      busy: [],
+      cloudModels: [],
+      runningLocal: 0,
+      runningAll: 0,
+      task: order,
+    }).reason,
+  ];
+  for (const reason of reasons) {
+    assert.doesNotMatch(reason, /login|logout|official/i);
+  }
+  assert.equal(JSON.stringify(SHIPPED_TAG).includes("gpt"), false);
+});
