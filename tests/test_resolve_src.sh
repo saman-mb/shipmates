@@ -109,6 +109,8 @@ assert "pi: crew under .pi/agents" test -f "$D/.pi/agents/sdet.md"
 # own crew with an inert one (#437).
 assert "pi: no crew in the shared .agents tree" test ! -d "$D/.agents/agents"
 assert "pi: tools are a comma scalar, not a YAML list" grep -q '^tools: read, grep, find' "$D/.pi/agents/sdet.md"
+assert "pi: crew switch is one extension file" test -f "$D/.pi/extensions/shipmates-crew/index.ts"
+assert "pi: other harnesses do not receive the crew switch" test ! -e "$WORK/claude-code/.claude/extensions/shipmates-crew/index.ts"
 
 # grok-build: skills, crew and steering are ALL native under .grok/, never the
 # shared .agents tree — the shared two-key rendering emits only name/description

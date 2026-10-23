@@ -246,6 +246,19 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     layout: CrewLayout::Flat,
 };
 
+fn bundle_pi_crew_extension() -> String {
+    const POLICY: &str = include_str!("pi_crew/policy.mjs");
+    const HOOKS: &str = include_str!("pi_crew/index.ts");
+    let hooks = HOOKS.replace(
+        "import { decideSpawn, offState, parseState, ORDER_PREAMBLE } from \"./policy.mjs\";\n",
+        "",
+    );
+    if hooks.contains("policy.mjs") {
+        panic!("pi crew extension still imports a sibling; emit must inline policy");
+    }
+    format!("{POLICY}\n{hooks}")
+}
+
 impl Adapter for PiAdapter {
     fn base_dir(&self) -> &'static str {
         "harnesses/pi/.pi"
@@ -275,6 +288,10 @@ impl Adapter for PiAdapter {
     ) -> anyhow::Result<HashMap<String, String>> {
         let mut files = emit_crew_files(self.base_dir(), roles, &CREW_FORMAT)?;
         files.extend(emit_pi_command_skills(self.base_dir(), commands)?);
+        files.insert(
+            format!("{}/extensions/shipmates-crew/index.ts", self.base_dir()),
+            bundle_pi_crew_extension(),
+        );
         Ok(files)
     }
 
@@ -318,6 +335,19 @@ mod tests {
     }
 
     #[test]
+    fn test_pi_emits_one_inlined_crew_extension() {
+        let files = PiAdapter.build(&[role("sdet", "Tests")], &[command()]).unwrap();
+        let bundled = files
+            .get("harnesses/pi/.pi/extensions/shipmates-crew/index.ts")
+            .expect("pi payload must include the crew extension");
+        assert!(bundled.contains("registerCommand(\"shipmates-crew\""));
+        assert!(bundled.contains("export function decideSpawn"));
+        assert!(!bundled.contains("policy.mjs"));
+        assert!(!bundled.contains("login"));
+        assert!(!files.keys().any(|path| path.contains("claude") && path.contains("shipmates-crew")));
+    }
+
+    #[test]
     fn test_pi_steering_target_is_shared_plain_markdown() {
         let target = PiAdapter.steering_target().expect("pi must emit steering");
         assert_eq!(
@@ -341,6 +371,7 @@ mod tests {
             },
             vec![
                 "harnesses/pi/.pi/agents/sdet.md",
+                "harnesses/pi/.pi/extensions/shipmates-crew/index.ts",
                 "harnesses/pi/.pi/skills/ship-fix-bug/SKILL.md",
             ]
         );

@@ -198,7 +198,7 @@ antigravity      .agents/          agents + skills   (agy — the successor to t
 codex            .codex/ + .agents/  crew (TOML) at .codex/agents, skills at .agents/skills
 cursor           .cursor/          skills only (first-party tree; slash picker reads it)
 github-copilot   .github/ + .agents/  crew (.agent.md) at .github/agents, skills at .agents/skills
-pi               .pi/              crew (.md) at .pi/agents, skills at .pi/skills
+pi               .pi/              crew (.md) at .pi/agents, skills at .pi/skills, crew switch at .pi/extensions/shipmates-crew/index.ts
 grok-build       .grok/            agents + skills
 devin            .devin/           agents + skills   (Devin CLI / Devin Desktop — formerly Windsurf)
 ```
