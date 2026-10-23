@@ -2191,3 +2191,164 @@ fn doctor_names_every_remedy_in_a_mixed_home_tree() {
         "the linked entry must be named as left as found: {text}"
     );
 }
+
+/// #549: Devin's user-scope tree is `~/.config/devin/`, which the receipt
+/// validator must accept. Before this the install wrote all 32 payload files and
+/// then failed its own validation, leaving a tree no receipt owned — `doctor`
+/// reported "ownership is unknown", `uninstall` had nothing to act on, and the
+/// same failure repeated on every later run because the written files made the
+/// tree detectable.
+#[test]
+fn global_devin_install_publishes_a_receipt_that_owns_the_config_devin_tree() {
+    let home = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &["install", "--harness", "devin", "--global", "--with-tools", "none"],
+    );
+    assert!(
+        install.status.success(),
+        "a global Devin install must succeed: {}",
+        output_text(&install)
+    );
+
+    let receipt_path = home.path().join(".shipmates/receipts/devin.json");
+    let text = fs::read_to_string(&receipt_path).unwrap_or_else(|error| {
+        panic!("a global Devin install must publish a receipt at {receipt_path:?}: {error}")
+    });
+    let receipt: Value = serde_json::from_str(&text).expect("receipt must parse");
+    assert_eq!(
+        receipt["harness"].as_str(),
+        Some("devin"),
+        "the receipt must be Devin's: {text}"
+    );
+    assert_eq!(
+        receipt["roots"].as_array().map(|roots| roots.len()),
+        Some(1),
+        "Devin's global footprint is the one relocated root: {text}"
+    );
+    let files = receipt["files"]
+        .as_array()
+        .expect("receipt files must be a list");
+    assert!(
+        !files.is_empty(),
+        "the receipt must claim what the install wrote: {text}"
+    );
+    for entry in files {
+        let path = entry["path"].as_str().expect("a receipt file path");
+        assert!(
+            path.starts_with(".config/devin/agents/") || path.starts_with(".config/devin/skills/"),
+            "a Devin receipt may only claim the two relocated resource subtrees, got {path}"
+        );
+    }
+
+    // The point of the receipt is that the install is manageable: doctor must be
+    // able to audit it rather than declaring ownership unknown.
+    let report = run_home(home.path(), &["doctor", "--harness", "devin"]);
+    let text = output_text(&report);
+    assert!(
+        text.contains("install receipt is valid"),
+        "Devin's global install must report an owned tree: {text}"
+    );
+    assert!(
+        !text.contains("ownership is unknown"),
+        "a written-but-unowned tree is exactly what #549 shipped: {text}"
+    );
+}
+
+/// #550: one failing harness must not abandon the steps that follow the install
+/// loop. The loop used to end in `process::exit(1)`, which skipped canonical
+/// global steering *and* the installs-index registration for every harness that
+/// did install — so a single bad target left eight half-installs invisible to
+/// `status` and `upgrade`.
+#[test]
+fn a_failing_harness_still_installs_steering_and_registers_the_good_ones() {
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+
+    let home = tempdir().unwrap();
+    let outside = tempdir().unwrap();
+    // Block one target the way a lived-in home does it: a path that is not ours
+    // to write through.
+    #[cfg(unix)]
+    symlink(outside.path(), home.path().join(".claude")).unwrap();
+
+    let output = run_home(
+        home.path(),
+        &["install", "--harness", "all", "--global", "--with-tools", "none"],
+    );
+    let text = output_text(&output);
+
+    // Both properties the old exit protected must survive the change to it.
+    assert!(
+        !output.status.success(),
+        "a failed harness must still make the run non-zero: {text}"
+    );
+    assert!(
+        text.contains("claude-code: failed"),
+        "the failed harness must still be named: {text}"
+    );
+
+    // …and the two steps it used to skip must now happen.
+    let index_text = fs::read_to_string(home.path().join(".shipmates/installs.json"))
+        .unwrap_or_default();
+    assert!(
+        index_text.contains("\"codex\""),
+        "a harness that installed must still be registered in the installs index, \
+         otherwise `status` and `upgrade` cannot see it: {index_text}"
+    );
+    assert!(
+        home.path().join(".codex/AGENTS.md").is_file(),
+        "global steering must still be installed when another harness failed: {text}"
+    );
+}
+
+/// #551: an absent global steering file was printed as `[ok]`, so a harness that
+/// reads a user instruction file and has none looked like a healthy install —
+/// and the hint told the captain to run the very command that had just skipped
+/// the step. `Gap` (a harness with no instruction file at all) stays ok; only
+/// absence is a finding.
+#[test]
+fn a_missing_global_steering_file_is_reported_as_a_warning() {
+    let home = tempdir().unwrap();
+    let install = run_home(
+        home.path(),
+        &["install", "--harness", "claude-code", "--global", "--with-tools", "none"],
+    );
+    assert!(
+        install.status.success(),
+        "the control install must succeed: {}",
+        output_text(&install)
+    );
+
+    let steering = home.path().join(".claude/CLAUDE.md");
+    assert!(
+        steering.is_file(),
+        "the control install must write the steering file first: {}",
+        output_text(&install)
+    );
+    let healthy = output_text(&run_home(home.path(), &["doctor", "--harness", "claude-code"]));
+    assert!(
+        healthy.contains("installed and up to date"),
+        "the control run must be clean before the file is removed: {healthy}"
+    );
+
+    fs::remove_file(&steering).unwrap();
+    let report = run_home(home.path(), &["doctor", "--harness", "claude-code"]);
+    let text = output_text(&report);
+    assert!(
+        report.status.success(),
+        "absence is a warning, not a Problem, so the exit status must not change: {text}"
+    );
+    assert!(
+        text.contains("[warn] Global steering — not installed"),
+        "an absent steering file must read as a finding: {text}"
+    );
+    assert!(
+        !text.contains("[ok  ] Global steering — not installed"),
+        "absence must never print as healthy: {text}"
+    );
+    assert!(
+        !text.contains("All shipshape"),
+        "a tree missing its steering must not report clean: {text}"
+    );
+}
