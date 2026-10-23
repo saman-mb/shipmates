@@ -28,6 +28,7 @@ The briefs come from the Runtime input section at the end of this workflow.
 - Issue-body trailer: `{{session-key}}: ...` on every epic and story (read from the harness/session
   context; do not invent).
 - `DRY_RUN` = on if the caller says "dry run" / "preview": print the full plan and create NOTHING.
+- `APPLY` = on if the caller says `apply`; otherwise `MODE=report` only — plan and return without mutating the tracker.
 - `MAX_PANEL_ADDITIONS` = `2` — non-PM specialists added beyond the always-present PM; cost discipline
   says spend seats only where their decision can change the backlog shape.
 
@@ -116,11 +117,11 @@ Stage 3 — prefer specialist fixes that sharpen acceptance criteria over PM rew
 
 ## Stage 3 — Create the issues  (orchestrator, deterministic)
 
-If `DRY_RUN`: print **`<panel>` and `<panel-reasons>`**, then the epic→story tree (titles, criteria,
+If `DRY_RUN` or `APPLY` is unset: print **`<panel>` and `<panel-reasons>`**, then the epic→story tree (titles, criteria,
 labels, order), then the **attachment plan** — which stories would become sub-issues of which epic —
 and STOP. Create nothing and attach nothing.
 
-Otherwise, in this order (numbers must exist before they're referenced):
+If `APPLY` is set, proceed in this order (numbers must exist before they're referenced):
 1. **Labels** — ensure `epic`, `user-story`, and any needed `area:*` exist (`gh label create` the
    missing ones; note which you created). Don't spam the namespace — only labels you'll actually use.
 2. **Epics first** — `gh issue create` each epic: body = the why/goal + scope/non-goals + a **story
@@ -173,8 +174,8 @@ Otherwise, in this order (numbers must exist before they're referenced):
 - **The sub-issue graph is the relationship source of truth**; the epic's checklist is display and
   progress copy for human readers. Write **both** — never treat a tidy checklist as evidence that the
   parent/child link exists, and never drop the checklist because the graph is populated.
-- Respect `DRY_RUN` — when set, create nothing and attach nothing; still print the selected panel and
-  the attachment plan.
+- Respect `DRY_RUN` and `APPLY` — when `DRY_RUN` is set, or `APPLY` is unset, create nothing and attach nothing; still print the selected panel and
+  the attachment plan. `APPLY` must be explicitly set to mutate the tracker.
 - Every epic and story must be individually valuable and traceable (`Part of #`), so the backlog is
   ready to hand to `/shipmates-ship-epic <epic#>` or `/shipmates-ship-issue` one story at a time.
 - If a role doesn't resolve to a shipped crew role, fall back to a general-purpose agent with the
@@ -182,15 +183,16 @@ Otherwise, in this order (numbers must exist before they're referenced):
 
 ## Parameters
 
-| Name | Required | Token | Values | Default | Help |
-|------|----------|-------|--------|---------|------|
-| brief | yes | free text / path(s) | text  /  path  /  multi | — | One or more briefs: inline text, a file or directory path, or several separated by `---` or numbering. |
-| area_hints | no | free text | area/label names | — | Optional area or label hints for the backlog. |
-| dry_run | no | `dry-run` / `dry run` / `preview` | on  /  off | off | Print the full plan (panel, tree, attachment plan) and create nothing. |
-| role_hints | no | `also involve …` free text | crew role names | — | Explicit planning-panel roles; overrides auto selection. |
+| Name | Required | Token | Values | Default | Mutates | Help |
+|------|----------|-------|--------|---------|---------|------|
+| brief | yes | free text / path(s) | text  /  path  /  multi | — | — | One or more briefs: inline text, a file or directory path, or several separated by `---` or numbering. |
+| area_hints | no | free text | area/label names | — | — | Optional area or label hints for the backlog. |
+| dry_run | no | `dry-run` / `dry run` / `preview` | on  /  off | off | — | Print the full plan (panel, tree, attachment plan) and create nothing. |
+| apply | no | `apply` | `apply` | report | yes | When present, create epics/stories/labels; otherwise `MODE=report` only — plan and return without mutating the tracker. |
+| role_hints | no | `also involve …` free text | crew role names | — | — | Explicit planning-panel roles; overrides auto selection. |
 
 ## Runtime input
 
 Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake token string; parse Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as authoritative for this run.
 
-A brief may be inline text, a path to a file or directory, or several briefs separated by `---` or numbering. Optional role hints ("also involve …") travel with the brief text and override auto panel selection. `dry-run` / `dry run` / `preview` sets `DRY_RUN`.
+A brief may be inline text, a path to a file or directory, or several briefs separated by `---` or numbering. Optional role hints ("also involve …") travel with the brief text and override auto panel selection. `dry-run` / `dry run` / `preview` sets `DRY_RUN`. `apply` sets `APPLY` to mutate the tracker; omit it for `MODE=report`.
