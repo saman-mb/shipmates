@@ -459,7 +459,15 @@ pub(crate) fn allowed_roots(harness: &str) -> &'static [&'static str] {
         // Devin CLI (formerly Windsurf) keeps crew, skills and rules in
         // `.devin/`; `.windsurf` is legacy-only — nothing writes there any
         // more, but a pre-rename install's files must still be swept.
-        "devin" => &[".devin", ".windsurf", ".shipmates"],
+        // `.config` is the **global-scope** root: Devin's user-scope tree is
+        // `~/.config/devin/` (#549), which `global_root` already returns, so
+        // leaving it out made every global Devin install fail its own receipt
+        // validation. Naming a root grants nothing on its own — a receipt's
+        // deletion authority comes from its file list, gated by
+        // `allowed_receipt_path` below, which stays narrowed to the two
+        // resource subtrees. That narrowing is load-bearing: `~/.config` is a
+        // shared directory holding the captain's own per-app config.
+        "devin" => &[".config", ".devin", ".windsurf", ".shipmates"],
         "windsurf" => &[".windsurf", ".shipmates"],
         _ => &[],
     }
@@ -799,6 +807,25 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && parts[1] == "agents"
                     && parts[2].ends_with(".md"))
                 || is_skill_tree(".devin")
+                // Global scope (#549): `~/.config/devin/agents/<name>.md` and
+                // `~/.config/devin/skills/<name>/…`. Kept as tight as the pi
+                // and codex global arms for the same reason — `~/.config` is
+                // lived-in, so only the resource subtrees Shipmates writes are
+                // claimable, and only at the depths it writes them. A
+                // `.config/devin/<anything>` arm would hand a receipt delete
+                // authority over the captain's own Devin settings.
+                || (parts.len() == 4
+                    && root == ".config"
+                    && parts[1] == "devin"
+                    && parts[2] == "agents"
+                    && parts[3].ends_with(".md"))
+                || (parts.len() >= 5
+                    && root == ".config"
+                    && parts[1] == "devin"
+                    && parts[2] == "skills"
+                    && !parts[3].is_empty()
+                    && (parts[4] == "SKILL.md"
+                        || (parts.len() == 5 && parts[4].ends_with(".py"))))
                 // Legacy read side: a `windsurf`-era receipt's skill files
                 // must validate so their entry is removed on upgrade rather
                 // than left behind.
@@ -1210,7 +1237,11 @@ mod tests {
         assert!(validate_harness("devin").is_ok());
         // The retired name still validates: it is what old receipts say.
         assert!(validate_harness("windsurf").is_ok());
-        assert_eq!(allowed_roots("devin"), &[".devin", ".windsurf", ".shipmates"]);
+        // `.config` is present for the global-scope tree only (#549).
+        assert_eq!(
+            allowed_roots("devin"),
+            &[".config", ".devin", ".windsurf", ".shipmates"]
+        );
         assert_eq!(global_root("devin"), Some(".config/devin"));
         assert!(allowed_receipt_path("devin", ".devin/agents/sdet.md"));
         assert!(allowed_receipt_path("devin", ".devin/skills/ship-issue/SKILL.md"));
@@ -1247,6 +1278,51 @@ mod tests {
         assert!(!allowed_receipt_path("devin", ".devin/agents/nested/sdet.md"));
         assert!(!allowed_receipt_path("devin", ".devin/rules/other.md"));
         assert!(!allowed_receipt_path("devin", ".windsurf/agents/sdet.md"));
+    }
+
+    /// #549: a global Devin install relocates to `~/.config/devin/`, and the
+    /// receipt validator must claim exactly the files that relocation writes.
+    /// Before this, both gates refused them — the root list had no `.config`
+    /// and no path arm covered `.config/devin/…` — so every global Devin
+    /// install wrote its files and then failed validation, leaving a 32-file
+    /// tree no receipt owned: `doctor` could not audit it, `uninstall` could
+    /// not remove it, and `update` could not refresh it.
+    #[test]
+    fn devin_global_receipt_claims_the_config_devin_tree_and_nothing_else_in_config() {
+        // What the global payload actually writes.
+        assert!(allowed_receipt_path(
+            "devin",
+            ".config/devin/agents/sdet.md"
+        ));
+        assert!(allowed_receipt_path(
+            "devin",
+            ".config/devin/skills/ship-issue/SKILL.md"
+        ));
+        assert!(allowed_receipt_path(
+            "devin",
+            ".config/devin/skills/shipmates-termgif/termgif.py"
+        ));
+        // A root entry is not a licence: everything else under the shared
+        // `~/.config` directory stays somebody else's.
+        assert!(!allowed_receipt_path("devin", ".config/devin/settings.json"));
+        assert!(!allowed_receipt_path("devin", ".config/devin/AGENTS.md"));
+        assert!(!allowed_receipt_path(
+            "devin",
+            ".config/devin/agents/nested/sdet.md"
+        ));
+        assert!(!allowed_receipt_path("devin", ".config/devin/agents/evil.sh"));
+        assert!(!allowed_receipt_path(
+            "devin",
+            ".config/devin/skills/ship-issue/run.sh"
+        ));
+        assert!(!allowed_receipt_path(
+            "devin",
+            ".config/opencode/opencode.json"
+        ));
+        assert!(!allowed_receipt_path("devin", ".config/gcloud/config_default"));
+        // And the whole `.config` root is rejected for a harness that does not
+        // relocate into it.
+        assert!(!allowed_roots("claude-code").contains(&".config"));
     }
 
     #[test]
