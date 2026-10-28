@@ -372,7 +372,11 @@ async function cancel(runtime, params, deliveries) {
     deliveries.push(() => entry.parked.reject(rpcError(-32004, "cancelled")));
     return { cancelled: true, runId: params.runId, queued: true };
   }
-  const lease = fence(runtime, params);
+  // Abort may race the grant. The caller may not have the generation yet, so
+  // cancel by runId without generation fencing. The normal release path still
+  // requires a generation to prevent stale releases.
+  const lease = runtime.leases.get(params.runId);
+  if (!lease) throw rpcError(-32002, "unknown run");
   spendLease(runtime, lease, "cancel");
   await drain(runtime, deliveries);
   return { cancelled: true, runId: lease.runId, queued: false };
