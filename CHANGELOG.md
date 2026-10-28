@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.4] - 2026-10-28
+
+### Fixed
+
+- **Pi crew gate no longer blocks management and workflow `subagent` calls (#608).** `action: status|list|guide|cancel|message` and `workflow: true` pass through; only real spawns are gated.
+- **`model: "inherit"` resolves to the session model before tagging (#608).** Doer seats are no longer refused because the literal string `inherit` was treated as a cloud id.
+- **Pi crew availability comes from pi's model list; `ticks` is an optional narrow (#599).** Empty ticks no longer block local seats pi already lists.
+- **`shipmates doctor` / `upgrade --fix` health-check the pi crew extension (#606).** Node syntax, `npm:pi-subagents` in settings, and `shipmates-crew.json` schema; `--fix` provisions a safe default config when missing or corrupt.
+- **Global uninstall removes relocated trees (#597).** Known-payload lookup uses the same relocated paths receipts store; blocked/empty uninstalls no longer look like success.
+- **Worktree-creating commands fast-forward the base branch before cutting a feature branch (#587).** Diverging local base stops loudly instead of branching from a stale tip.
+- **Pi parallel board/builder fan-out documents the workflow/async shape (#605).** Multiple blocking `subagent` calls in one turn are a lost board on Pi; rejected seats fail the run.
+- **Builders are told canonical command sources are flat `commands/<name>.md`**, not the installed `.pi/skills/<name>/SKILL.md` layout, so worktree edits stop ENOENT-ing.
+
 ## [0.16.3] - 2026-10-28
 
 ### Fixed
