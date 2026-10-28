@@ -137,7 +137,8 @@ regression test, `Closes #<issue>`, and the green-CI link. Dispose sibling bugs 
 with the same **nit disposition** ladder as `/shipmates-ship-issue` Stage 7 (default absorb-first for cheap
 in-scope leftovers; cap and batch any filed issues; never open one ticket per trivial leftover).
 Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, disposition counts,
-and the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
+and the absolute `<WORKTREE_DIR>` path (for cleanup or resume). List each disposed finding (fixed,
+filed, or declined with a reason), not only counts.
 
 <!-- shipmates:why-merge-pr -->
 

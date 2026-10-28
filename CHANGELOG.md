@@ -10,6 +10,10 @@ All notable changes to this project are documented here. The format follows
 
 - **Pi crew can opt into one machine-wide resource broker (#601, #615).** The crew switch still starts Off, and Off starts no broker. A separate `resources` setting stays `off` until a captain sets `shadow` or `enforce`. Shadow asks the broker and still allows the spawn, recording a would-be queue. Enforce waits for a grant and stops the spawn if the broker cannot be reached. A named model is never substituted. A lease follows the tool call or the run id, not the model, and is released when that tool call ends. The captain's own chat is reserved in Local mode whenever the broker is on. Engine URLs, context, and headroom are settings. The first session starts one shared broker and does not shut it down for the others on session end (multi-session socket race fix). If no engine reports a loaded model, enforce allows one local seat at a time instead of waiting forever for a model it cannot see. This is not a live proof that pi crew spawn works.
 
+### Changed
+
+- **Review findings now have a disposition, and a docs or visual acceptance has to name what was actually inspected (#602).** A review keeps each finding in working memory and ends it as fixed, filed, or declined with a reason. The summary lives on the pull request or in the session report. A docs or visual sign-off names the rendered result that was opened, or says inspection was unavailable, instead of accepting from the source or the builder's account. The run does not write a findings ledger into the repository.
+
 ### Fixed
 
 - **Pi crew gate no longer blocks management and workflow `subagent` calls (#608).** `action: status|list|guide|cancel|message` and `workflow: true` pass through; only real spawns are gated.

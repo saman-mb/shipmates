@@ -167,7 +167,8 @@ paragraph, the characterization tests and that they are unmodified, any pre-exis
 touched and why, and the green-CI link. Bugs found while refactoring still must not be mixed into
 the refactor (see Guardrails) — file them with the `/shipmates-ship-issue` Stage 7 disposition rules
 (prefer one batched issue; cap; dedupe). In-scope polish on already-touched refactor paths may be
-absorbed when behaviour-preserving and within absorb budgets.
+absorbed when behaviour-preserving and within absorb budgets. The delivery report lists each disposed
+finding (fixed, filed, or declined with a reason), not only counts.
 
 <!-- shipmates:why-merge-pr -->
 

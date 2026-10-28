@@ -173,7 +173,11 @@ reviewer's remaining notes. Escalate; don't spin.
 ## Stage 4 — Report
 
 Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the
-number of rounds, and a short before → after of what changed. Dispose allowed nits with the
+number of rounds, and a short before → after of what changed. Stage 1 stays the inspection. The report
+names the rendered artifact path opened, or states inspection was unavailable and does not ACCEPT that surface. Findings stay in working memory
+and are fixed, filed, or declined with a reason there, not only as counts. Captures stay in the
+worktree and are not committed as a ledger — never a per-run findings ledger under `.shipmates/`
+(`.shipmates/worktrees/` stays allowed). Dispose allowed nits with the
 `/shipmates-ship-issue` Stage 7 ladder (absorb when cheap; else PR-note or capped/batched issues — never one
 ticket per nit by default). Under `MODE=pr`, commit the rounds — staging only the paths the rounds actually
 touched, never `git add -A`, since the tree may hold unrelated uncommitted work — then push per
