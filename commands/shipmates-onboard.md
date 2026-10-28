@@ -145,7 +145,11 @@ place with the PR open. The context file only exists on that branch until it's m
 or check out `BRANCH` before running other commands in this session if you need it in place now, or
 pass `MODE=edit-in-place` up front instead. Report: the file written, the undo path (the backup, or
 the branch), which commands were proven versus recorded as unverified, and the verification round it
-passed on.
+passed on. Delivery names the rendered artifact — the instruction file the fresh agent was given — or
+states that inspection was unavailable. Do not give that agent the writer's narrative, and do not ACCEPT
+the file from that narrative. Gaps stay in working memory and are fixed, filed, or declined with a reason
+in the delivery, not only as counts. Do not write a per-run findings ledger under `.shipmates/`
+(`.shipmates/worktrees/` stays allowed).
 
 ---
 

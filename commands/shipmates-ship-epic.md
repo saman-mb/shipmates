@@ -508,7 +508,11 @@ On pause, include `<epic-log>` and a link to the progress comment in the pause r
 4. Post completion summary with **epic PR `<EPIC_PR>`** link, green CI link, **integration board
    verdicts**, pointer to epic progress comment, checklist state. **Stop** — the captain merges the
    epic PR into `MAIN_BRANCH` once satisfied. Do **not** auto-merge the epic PR. Do **not** ask the
-   captain to merge individual unit PRs.
+   captain to merge individual unit PRs. Closure notes list each integration-board finding kept in
+   working memory as fixed, filed, or declined with a reason — not only counts. Do not file unit nits
+   again at the epic layer, and do not write a per-run findings ledger under `.shipmates/`
+   (`.shipmates/worktrees/` stays allowed). A docs or visual acceptance names the rendered artifact
+   inspected, or states that inspection was unavailable.
 5. **`EPIC_CLOSE_MODE`** — `manual`: propose closing epic `<epic>`; `auto`: `gh issue close <epic>`.
 
 **Crew-complete (owner residuals remain)** — when `- [ ] #n` lines still exist but **every** pending

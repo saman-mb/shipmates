@@ -126,7 +126,9 @@ and rank them: **blocking** (correctness, security, data loss, a criterion the P
 misses) above **nits** (style, naming, taste). Attribute each finding to the role that raised it so
 the author can weigh it. For nits, recommend the `/shipmates-ship-issue` Stage 7 disposition (absorb in a
 follow-on fix when cheap and in-scope; PR-comment otherwise; file only when cross-cutting or
-decision-shaped) — do not urge opening one backlog ticket per nit. One verdict for the PR:
+decision-shaped) — do not urge opening one backlog ticket per nit. The consolidated review is the
+accountable record: list each finding's recommended disposition (fixed, filed, or declined with a
+reason), not only counts. Stay read-only — do not fix, file, or start filing. One verdict for the PR:
 `APPROVE` / `APPROVE-WITH-NITS` / `REQUEST-CHANGES`.
 
 If a visual specialist could not actually render the change, carry its **"needs a human visual pass"**
@@ -152,7 +154,9 @@ gh pr review <PR#> --comment --body-file "$REVIEW_BODY_FILE"
 ```
 
 Use `--comment`, not `--approve`/`--request-changes`, unless the caller explicitly asked for a binding
-verdict — an automated approval carries weight the crew hasn't earned on someone else's work.
+verdict — an automated approval carries weight the crew hasn't earned on someone else's work. The posted
+comment carries that same list — each finding's recommended disposition, not only counts — and still does
+not start filing.
 
 ---
 

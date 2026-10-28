@@ -1853,6 +1853,164 @@ fn test_acceptance_board_docs_acs_require_machine_pin_or_manual_only() {
     );
 }
 
+/// Review findings stay accountable in the shared board, and a rendered
+/// acceptance must name the artifact that was actually inspected. The contract
+/// also forbids a persistent per-run ledger under `.shipmates/`.
+#[test]
+fn test_review_findings_are_accountable_without_a_local_ledger() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let doctrine = std::fs::read_to_string(root.join("docs/COST.md")).unwrap();
+    let board = doctrine
+        .split_once("<!-- acceptance-board:start -->")
+        .expect("cost doctrine has no acceptance-board start marker")
+        .1
+        .split_once("<!-- acceptance-board:end -->")
+        .expect("cost doctrine has no acceptance-board end marker")
+        .0;
+    let epic = doctrine
+        .split_once("<!-- epic-integration-board:start -->")
+        .expect("cost doctrine has no epic-integration-board start marker")
+        .1
+        .split_once("<!-- epic-integration-board:end -->")
+        .expect("cost doctrine has no epic-integration-board end marker")
+        .0;
+
+    for (name, slice) in [("acceptance-board", board), ("epic-integration-board", epic)] {
+        for phrase in [
+            "working memory",
+            "fixed",
+            "filed",
+            "declined",
+            "rendered artifact",
+            ".shipmates/worktrees/",
+            "per-run findings ledger",
+        ] {
+            assert!(
+                slice.contains(phrase),
+                "{name} must contain `{phrase}`"
+            );
+        }
+        for forbidden in [
+            ".shipmates/findings",
+            ".shipmates/reviews",
+            ".shipmates/reports",
+        ] {
+            assert!(
+                !slice.contains(forbidden),
+                "{name} must not name a ledger path `{forbidden}`"
+            );
+        }
+    }
+    assert!(
+        doctrine.contains("must not copy a second nit ladder"),
+        "authoring checklist must point at the acceptance-board block"
+    );
+
+    const BOARD_COMMANDS: &[&str] = &[
+        "shipmates-ship-issue",
+        "shipmates-pr-review",
+        "shipmates-fix-bug",
+        "shipmates-refactor",
+        "shipmates-migrate",
+    ];
+    const LOCAL_COMMANDS: &[&str] = &[
+        "shipmates-ship-epic",
+        "shipmates-harden",
+        "shipmates-document",
+        "shipmates-polish",
+        "shipmates-qa",
+        "shipmates-deslop",
+        "shipmates-onboard",
+    ];
+    const CREW: &[&str] = &[
+        "technical-writer",
+        "ux-ui-designer",
+        "art-director",
+        "product-manager",
+        "principal-engineer",
+    ];
+
+    let commands = load_commands(&root.join("commands")).unwrap();
+    let files = ClaudeCodeAdapter.build(&[], &commands).unwrap();
+    for name in BOARD_COMMANDS {
+        let path = format!("harnesses/claude-code/.claude/skills/{name}/SKILL.md");
+        let rendered = files
+            .get(&path)
+            .unwrap_or_else(|| panic!("no rendered payload for {path}"));
+        assert!(
+            rendered.contains("per-run findings ledger")
+                && rendered.contains("working memory")
+                && rendered.contains("rendered artifact")
+                && rendered.contains(".shipmates/worktrees/"),
+            "{name}: rendered board must carry the accountability contract"
+        );
+        assert!(
+            !rendered.contains("shipmates:acceptance-board"),
+            "{name}: the acceptance-board marker must not survive into the payload"
+        );
+        for forbidden in [
+            ".shipmates/findings",
+            ".shipmates/reviews",
+            ".shipmates/reports",
+        ] {
+            assert!(!rendered.contains(forbidden), "{name}: must not name `{forbidden}`");
+        }
+    }
+
+    let epic_path = "harnesses/claude-code/.claude/skills/shipmates-ship-epic/SKILL.md";
+    let epic_rendered = files
+        .get(epic_path)
+        .unwrap_or_else(|| panic!("no rendered payload for {epic_path}"));
+    assert!(
+        epic_rendered.contains("per-run findings ledger")
+            && epic_rendered.contains("rendered artifact"),
+        "ship-epic: rendered integration board must carry the accountability contract"
+    );
+    assert!(
+        !epic_rendered.contains("shipmates:epic-integration-board"),
+        "ship-epic: the epic-board marker must not survive into the payload"
+    );
+
+    for name in LOCAL_COMMANDS.iter().chain(BOARD_COMMANDS.iter()) {
+        let canonical = std::fs::read_to_string(root.join("commands").join(format!("{name}.md")))
+            .unwrap_or_else(|e| panic!("read commands/{name}.md: {e}"));
+        for phrase in ["fixed", "filed", "declined"] {
+            assert!(
+                canonical.contains(phrase),
+                "{name}: command must account for a `{phrase}` disposition"
+            );
+        }
+    }
+    for name in LOCAL_COMMANDS {
+        let canonical = std::fs::read_to_string(root.join("commands").join(format!("{name}.md")))
+            .unwrap_or_else(|e| panic!("read commands/{name}.md: {e}"));
+        assert!(
+            canonical.contains("working memory")
+                && canonical.contains("rendered artifact")
+                && canonical.contains("per-run findings ledger")
+                && canonical.contains(".shipmates/worktrees/"),
+            "{name}: local review command must carry the locked accountability phrases"
+        );
+    }
+
+    let report_bug = files
+        .get("harnesses/claude-code/.claude/skills/shipmates-report-bug/SKILL.md")
+        .expect("rendered report-bug");
+    assert!(
+        !report_bug.contains("per-run findings ledger"),
+        "a non-review command must not gain the findings-ledger contract"
+    );
+
+    for name in CREW {
+        let body = std::fs::read_to_string(root.join("crew").join(format!("{name}.md")))
+            .unwrap_or_else(|e| panic!("read crew/{name}.md: {e}"));
+        assert!(
+            body.contains("rendered artifact"),
+            "{name}: reviewer must name the rendered artifact"
+        );
+    }
+}
+
 /// The model-routing ruleset is a *global* one. It is expanded from the shared
 /// cost-discipline preamble, so **every** command carries it — not only the two
 /// that spawn the most subagents. A marker left in a single command would make

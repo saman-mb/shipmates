@@ -116,7 +116,11 @@ declare a surface hardened while a Critical/High stands.
 
 Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk /
 deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config
-changes outside the repo). Under `report` (the default) that report **is** the deliverable and the
+changes outside the repo). Findings stay in working memory until that report. Keep fixed /
+accepted-risk / deferred: accepted-risk is declined with a reason, and deferred with an issue is filed.
+Do not write a per-run findings ledger under `.shipmates/` or elsewhere in the repository
+(`.shipmates/worktrees/` stays allowed). A docs or visual acceptance names the rendered artifact
+inspected, or states inspection was unavailable. Under `report` (the default) that report **is** the deliverable and the
 working tree is exactly as you found it — say so explicitly. Under `pr`, commit and push `<BRANCH>`
 and open the PR, same as `/shipmates-ship-issue`'s commit-push-PR stage, with the same trailers.
 

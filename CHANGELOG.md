@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.4] - 2026-10-28
+
+### Changed
+
+- **Review findings now have a disposition, and a docs or visual acceptance has to name what was actually inspected.** A review keeps each finding in working memory and ends it as fixed, filed, or declined with a reason. The summary lives on the pull request or in the session report. A docs or visual sign-off names the rendered result that was opened, or says inspection was unavailable, instead of accepting from the source or the builder's account. The run does not write a findings ledger into the repository.
+
 ## [0.16.3] - 2026-10-28
 
 ### Fixed

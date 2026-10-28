@@ -152,6 +152,12 @@ report:
 4. **Verdict** — `QA-PASS` / `QA-PASS-WITH-DEFERRALS` / `QA-FAIL` (any non-deferred fail → fail).
 5. **Next** — optional handoff offers only (see Stage 6); no silent side effects.
 
+Findings stay in working memory and this Stage 5 summary. The default is not filed unless the captain
+asks; when a disposition is recorded it is fixed, filed, or declined with a reason, not only a count.
+No ledger file — do not write a per-run findings ledger under `.shipmates/` (`.shipmates/worktrees/`
+stays allowed). A docs or visual step names the rendered artifact inspected, or states inspection was
+unavailable.
+
 ## Stage 6 — Optional fix handoff + Re-QA
 
 Only when the captain asks after Stage 5 (`FIX_HANDOFF=yes` for this turn):

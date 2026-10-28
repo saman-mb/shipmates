@@ -107,7 +107,12 @@ escalate to the user with the failing log rather than looping. Never advance a r
 unless `MERGE_MODE=auto`, in which case merge the PR and remove `<WORKTREE_DIR>`; the manual default
 leaves the worktree in place with the PR open. `edit-in-place`: leave the finished docs in the working
 tree and report. Report: what was documented, the doc type, the fresh-reader's final result (in its
-words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).
+words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps). The
+fresh-reader gate stays the inspection. Delivery names the rendered artifact — the doc path the fresh
+reader followed — or states that inspection was unavailable, and does not ACCEPT that surface from the
+writer's narrative. Reader findings stay in working memory and are fixed, filed, or declined with a
+reason in that delivery, not only as counts. Do not write a per-run findings ledger under `.shipmates/`
+(`.shipmates/worktrees/` stays allowed).
 
 ---
 

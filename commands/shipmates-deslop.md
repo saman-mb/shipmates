@@ -326,8 +326,14 @@ Produce both artifacts, in every mode, and write neither into the tree under aud
   artifact you hand back to the captain — printed in the session, posted on the epic, or written outside
   the repository entirely. A repository whose own audit shows up as a diff has been changed by the thing
   that was supposed to be reading it. When you want the run diff to survive between runs, write it
-  somewhere durable (`$TMPDIR` is not) and name that location in the report.
-- **The JSON ledger** alongside it — the same findings and stable IDs, machine readable, so two runs can
+  somewhere durable outside the repository (`$TMPDIR` is not, and never under `.shipmates/`) and name
+  that location in the report. Do not delete an out-of-repo ledger. The epic and sub-issues remain the
+  tracked record: each finding kept in working memory is fixed, filed, or declined with a reason there,
+  not only as counts. A docs acceptance names the rendered artifact inspected, or states inspection was
+  unavailable. `.shipmates/worktrees/` stays allowed for temporary captures that leave with cleanup; it
+  is not the durable ledger. The census contract above is unchanged. Do not write a per-run findings ledger under `.shipmates/`.
+- **The JSON ledger** alongside it, in that same place outside the repository and never under
+  `.shipmates/` — the same findings and stable IDs, machine readable, so two runs can
   be diffed, CI can consume them, and a sub-issue can reference a finding ID directly. Emitting it is
   what makes Stage 1's determinism checkable rather than aspirational.
 - **The run diff** against the previous report: new, resolved, carried-over.

@@ -20,4 +20,4 @@ When reviewing built UI: before any verdict, state your coverage — which scree
 
 Rendering caveat: layout genuinely can't be trusted from a static read — constraint/container bugs only surface when running. If you can render/preview the real UI (a harness, a running instance), do so and critique what you see. If you cannot, review statically and explicitly flag **"needs a human visual pass"** rather than implying it's visually confirmed.
 
-Verdict: `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics.
+Verdict: `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics. Name the rendered artifact opened, or say inspection was unavailable — **"needs a human visual pass"** — and do not ACCEPT that surface.
