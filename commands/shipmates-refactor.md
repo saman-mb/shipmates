@@ -80,8 +80,15 @@ task rather than stalling in speculative design.
 2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — idempotently ensure
    `.shipmates/worktrees/` is in `<repo>/.gitignore` (append only when missing; create with a one-line
    Shipmates comment if absent). Never rewrite unrelated rules.
-3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required;
-   stop if fetch fails. Fresh `worktree add … origin/<BASE_BRANCH>` is pull-latest.
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`.
+   - **`git -C <repo> fetch origin`** is required; stop if fetch fails.
+   - Check out the local base branch: `git -C <repo> checkout <BASE_BRANCH>`.
+   - Fast-forward it to the fetched tip: `git -C <repo> pull --ff-only` (equivalently
+     `git -C <repo> reset --hard origin/<BASE_BRANCH>`). If the local branch has diverging commits
+     that cannot be fast-forwarded, **stop loudly** and ask the captain to reconcile — never silently
+     branch from a stale or overridden tip.
+   - Record `BASE_SHA=$(git -C <repo> rev-parse origin/<BASE_BRANCH>)` in the run report.
+   Fresh `worktree add … origin/<BASE_BRANCH>` now starts from the fresh tip.
 4. **Resume / reuse** — re-fetch; rebase onto `BASE_REF` when behind (sync conflicts → `MAX_FIX_ROUNDS`).
 5. **Create the worktree** (when branch/worktree do not yet exist):
 
@@ -97,6 +104,13 @@ git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
   independent, file-disjoint seams or decoupled modules, spawn multiple Builders (`senior-engineer` × N)
   concurrently in a single message up to `MAX_CONCURRENT_WORKERS`, each with a machine-checkable
   **owned-paths manifest** (diffed against `git status` and `git diff --name-only` upon return to prevent seam collisions).
+
+  **Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+  one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+  in progress. For parallel builder fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+  call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+  status polling. A rejected builder is a failed run — never silently shrink the refactor team.
+
 - Under `EXECUTION=sequential`, execute refactoring transforms serially one seam at a time.
 - For single-seam refactors, spawn a single `senior-engineer`.
 

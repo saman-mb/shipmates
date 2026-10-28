@@ -150,6 +150,12 @@ reason. Silent truncation is a failure of the run, not a smaller run.
   above), an `architect` per structural or
   near-duplicate class — each returning rows in the one shape below. **A generic worker is not a
   substitute for a named role here**: the class a worker is assigned is the specialism it must bring.
+
+  **Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+  one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+  in progress. For parallel census fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+  call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+  status polling. A rejected specialist is a failed run — never silently shrink the discovery team.
 - Every finding is one row: **stable ID**, `file:line`, **class**, a one-line rationale, the evidence
   that produced it, and the proposed action. A row without evidence is a hunch, not a finding.
 

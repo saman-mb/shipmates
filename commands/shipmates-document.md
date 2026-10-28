@@ -74,7 +74,13 @@ Drafting, the fresh-reader run and every fix round happen inside `<WORKTREE_DIR>
 Under `EXECUTION=fanout` (default), when the scope covers several file-disjoint docs, spawn one
 `technical-writer` per doc concurrently in a single message (up to `MAX_CONCURRENT_WORKERS`), each with
 a machine-checkable **owned-paths manifest** (diffed against `git status` and `git diff --name-only` upon
-return to prevent collision); under `EXECUTION=sequential`, draft them one at a time. Each writer works
+return to prevent collision); under `EXECUTION=sequential`, draft them one at a time.
+
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel writer fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected writer is a failed run — never silently shrink the documentation team. Each writer works
 **from the real source** — verify citations (actual signatures, flags, paths, config, and outputs) with
 `grep` or inspection first; every command, parameter,
 and result must match what the repo does *today*. Minimal (least that gets to done), scannable, consistent

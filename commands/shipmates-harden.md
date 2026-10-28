@@ -97,6 +97,12 @@ each with a machine-checkable **owned-paths manifest** (diffed against `git stat
 upon return to prevent collision). Under `EXECUTION=sequential`, fix one blocker at a time. For
 single-file or cohesive fixes, spawn one builder either way.
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel builder fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected builder is a failed run — never silently shrink the remediation team.
+
 Apply **scoped** fixes (parameterise the query, add the authz check, move the secret to config,
 pin/upgrade the dep) — no unrelated rewrites. Where a fix changes behaviour, add/adjust a test so it's
 covered. Rotate any exposed secret is a human action — flag it loudly; don't just delete it from the

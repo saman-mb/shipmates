@@ -104,7 +104,15 @@ runtime signal is unconfirmed.
 ## Stage 2 — The board  (specialist agents, in parallel, against `headRefOid`)
 
 Spawn in a single message so they run concurrently, each pinned to the **head commit**. Use the Stage 0
-flags for scaled optional seats. **`/shipmates-pr-review`-specific additions** on top of the shared board:
+flags for scaled optional seats.
+
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel board fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected seat is a failed run — never silently convene a smaller board.
+
+**`/shipmates-pr-review`-specific additions** on top of the shared board:
 
 | `{{role-reference}}` | Runs |
 |---|---|

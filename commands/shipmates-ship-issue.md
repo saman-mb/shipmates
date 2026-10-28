@@ -279,7 +279,11 @@ the cohesion bundle widening in step 2.5.
      all affected files and assign them explicitly to an owning unit in the build plan,
    - **shared repo facts**: on multi-unit or High-complexity runs, record a compact shared facts block
      (shared token/theme names, test fixture/helper paths, generated-file rules, CI quirks) once so
-     builders read it directly rather than rediscovering repo facts independently,
+     builders read it directly rather than rediscovering repo facts independently. Always include
+     this project's source-layout fact when builders edit commands or crew: canonical sources are
+     flat `commands/<name>.md` and `crew/<role>.md` in the repo; the installed harness tree is
+     separate (e.g. `.pi/skills/<name>/SKILL.md`). Never tell a builder to open
+     `commands/<name>/SKILL.md` inside a worktree — that path does not exist and fails with ENOENT.
    - **explicit, checkable acceptance criteria** (functional + the quality bar above), including the
      project's **Definition of Done** where it states one (tests, docs/changelog, non-functional bars),
    - a **test/validation plan** (the commands the SDET should run: unit tests, lint, type-check,
@@ -339,6 +343,12 @@ BEFORE any Builder runs, spawn whichever apply, **in parallel** (a story can nee
 Each writes NO code — it returns a spec document, fed verbatim to every Stage 2 Builder whose files
 its work governs. Skip this stage entirely when none of the flags are set.
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })` call
+with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by status
+polling. A rejected seat is a failed run — never silently convene a smaller board or drop a builder.
+
 - **`ux-ui-designer`** (only if `IS_UI_STORY`) — a UI design spec: wireframes, a shared-token/theme
   plan, responsive container layout (no hardcoded positions), focus order + interaction states, and
   accessibility/contrast, consistent with the project's design system.
@@ -369,10 +379,16 @@ empirical measurement task ("measure X, then act on the result").
    `.shipmates/worktrees/` as a path prefix. If `.gitignore` is missing, create it with the comment
    `# Shipmates isolated command worktrees (auto-managed)` and the entry `.shipmates/worktrees/`.
    Never rewrite unrelated ignore rules.
-3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required
-   before any worktree create or resume work; **stop with a clear error if fetch fails**. A **new**
-   branch cut from `BASE_REF` via `worktree add` **is** the pull-latest mechanism — no separate
-   `git pull` in a fresh worktree.
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`.
+   - **`git -C <repo> fetch origin`** is required before any worktree create or resume work;
+     **stop with a clear error if fetch fails**.
+   - Check out the local base branch: `git -C <repo> checkout <BASE_BRANCH>`.
+   - Fast-forward it to the fetched tip: `git -C <repo> pull --ff-only` (equivalently
+     `git -C <repo> reset --hard origin/<BASE_BRANCH>`). If the local branch has diverging commits
+     that cannot be fast-forwarded, **stop loudly** and ask the captain to reconcile — never silently
+     branch from a stale or overridden tip.
+   - Record `BASE_SHA=$(git -C <repo> rev-parse origin/<BASE_BRANCH>)` in the run report.
+   A **new** branch cut from `BASE_REF` via `worktree add` now starts from the fresh tip.
 4. **Resume / reuse** — when `<WORKTREE_DIR>` and `<BRANCH>` already exist, re-run fetch, then if the
    branch is behind `BASE_REF`, rebase onto `BASE_REF` inside the worktree (merge `BASE_REF` instead
    when the repo's contributing docs prefer merge). Sync conflicts count toward `MAX_FIX_ROUNDS`; stop
@@ -401,12 +417,22 @@ shipmates install --harness <HARNESS> --dir <WORKTREE_DIR> --with-tools none
     file-disjoint slices (sub-tasks), spawn Builders (`senior-engineer` × N) concurrently in a single message
     up to `MAX_CONCURRENT_WORKERS`.
   - When `EXECUTION=sequential`, walk the planned work units one at a time serially.
+
+    **Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+    one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+    in progress. For parallel builder fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+    call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+    status polling. A rejected builder is a failed run — never silently shrink the build team.
 - Spawn one **Builder** (`{{role:senior-engineer}}`) per independent work unit from the plan,
-  **in a single message** under `fanout` so they run concurrently. Each Builder is told: its machine-checkable
+  **in a single message** under `fanout` so they run concurrently. (On Pi, use a workflow/async shape;
+  see the portability note above.) Each Builder is told: its machine-checkable
   **owned-paths manifest** (replacing repeated prose scope fences across prompts and specs), the acceptance criteria
-  it must satisfy, any shared repo facts from Stage 0, the worktree path, to follow {{project-instructions}}
+  it must satisfy, any shared repo facts from Stage 0 (including the canonical vs installed layout
+  fact when editing commands/crew), the worktree path, to follow {{project-instructions}}
   for project style/conventions, to inspect `git log` and `git blame` on the files it touches for context,
-  any Stage 1.5 spec that governs its files, and to match existing code style/idioms.
+  any Stage 1.5 spec that governs its files, and to match existing code style/idioms. Confirm owned
+  paths exist with `ls`/`find` before Read — do not assume the installed skill layout
+  (`…/SKILL.md` under a directory) is the checkout layout.
 - Builders write code only — they do **not** commit, push, or open PRs (the orchestrator owns git).
 - After they report done, **verify the files on disk yourself** (Read/Grep) and diff `git status` and
   `git diff --name-only` against the unit's **owned-paths manifest**. Reject any changes outside its assigned
@@ -552,6 +578,12 @@ delegation modes), skip Stage 5 and Stage 6 and proceed to Stage 7 / Stage 8. A 
 milestone board that will review the integrated artifact; without one, treat the token as unset and
 convene the board.
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel board fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected seat is a failed run — never silently convene a smaller board.
+
 Use the Stage 0 classification flags to decide which **scaled optional seats** join the mandatory
 PE+PO core. Pass each reviewer the acceptance criteria, quality bar, and (for visual roles) any
 Stage 1.5 spec.
@@ -630,8 +662,8 @@ Do **not** let nits block delivery.
 ## Final report to the user
 
 One concise summary: PR link (and merge state), commit(s), the absolute **worktree path**
-(`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), fetch outcome, and whether a resume
-sync/rebase ran, which specialists reviewed it and their
+(`<WORKTREE_DIR>`), **`BASE_REF`** used (`origin/<BASE_BRANCH>`), the **base SHA** (`BASE_SHA`),
+fetch outcome, and whether a resume sync/rebase ran, which specialists reviewed it and their
 verdicts (`re-run` / `carried ACCEPT` / `newly seated` / `still gated` after any fix round — a `still
 gated` seat is named with the flag that gated it), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
 (tier, whether the identity was observed on the target or inherited, the model identity the harness accepted, effort requested and resolved, and
