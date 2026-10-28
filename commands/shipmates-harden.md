@@ -116,9 +116,11 @@ declare a surface hardened while a Critical/High stands.
 
 Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk /
 deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config
-changes outside the repo). Findings stay in working memory until that report. Keep fixed /
-accepted-risk / deferred: accepted-risk is declined with a reason, and deferred with an issue is filed.
-Do not write a per-run findings ledger under `.shipmates/` or elsewhere in the repository
+changes outside the repo). Findings stay in working memory until that report, and the report lists each one as fixed, filed,
+or declined with a reason — including under `report`, which files nothing. Keep fixed /
+accepted-risk / deferred as the table's own words, and map them: accepted-risk is declined with a
+reason, deferred with an issue is filed, and deferred without an issue is declined with that deferral
+as the reason. Do not write a per-run findings ledger under `.shipmates/` or elsewhere in the repository
 (`.shipmates/worktrees/` stays allowed). A docs or visual acceptance names the rendered artifact
 inspected, or states inspection was unavailable. Under `report` (the default) that report **is** the deliverable and the
 working tree is exactly as you found it — say so explicitly. Under `pr`, commit and push `<BRANCH>`

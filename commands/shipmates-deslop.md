@@ -327,9 +327,11 @@ Produce both artifacts, in every mode, and write neither into the tree under aud
   the repository entirely. A repository whose own audit shows up as a diff has been changed by the thing
   that was supposed to be reading it. When you want the run diff to survive between runs, write it
   somewhere durable outside the repository (`$TMPDIR` is not, and never under `.shipmates/`) and name
-  that location in the report. Do not delete an out-of-repo ledger. The epic and sub-issues remain the
-  tracked record: each finding kept in working memory is fixed, filed, or declined with a reason there,
-  not only as counts. A docs acceptance names the rendered artifact inspected, or states inspection was
+  that location in the report. Do not delete an out-of-repo ledger. Each finding kept in working memory is fixed, filed, or declined with a reason in the session
+  report — not only as counts, and not only in epic sub-issues that `report` mode does not create.
+  Under `report`, nothing is filed, so a finding that is not fixed is declined with a reason in that
+  report. When an epic is filed, its sub-issues are an additional tracked record, not a substitute for
+  the report. A docs acceptance names the rendered artifact inspected, or states inspection was
   unavailable. `.shipmates/worktrees/` stays allowed for temporary captures that leave with cleanup; it
   is not the durable ledger. The census contract above is unchanged. Do not write a per-run findings ledger under `.shipmates/`.
 - **The JSON ledger** alongside it, in that same place outside the repository and never under
@@ -342,8 +344,9 @@ Produce both artifacts, in every mode, and write neither into the tree under aud
   it changes how every grade below should be read.
 - **The coverage-of-the-scan footer** and the unscanned remainder from Stage 1.
 
-Under `MODE=report` the run **stops here**, stating plainly that these findings are not durable work and
-what it would take to make them so.
+Under `MODE=report` the run **stops here**. The session report is the accountable record: each finding
+is fixed, filed, or declined with a reason. State plainly that nothing was filed, and what it would take
+to make the findings tracked work.
 
 ---
 

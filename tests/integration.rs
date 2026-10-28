@@ -2009,6 +2009,26 @@ fn test_review_findings_are_accountable_without_a_local_ledger() {
             "{name}: reviewer must name the rendered artifact"
         );
     }
+
+    let qa = std::fs::read_to_string(root.join("commands/shipmates-qa.md")).unwrap();
+    assert!(
+        !qa.contains("when a disposition is recorded"),
+        "qa must not make a disposition optional"
+    );
+    assert!(
+        qa.contains("The default is declined"),
+        "qa's default report must decline an unfiled finding rather than leave it unrecorded"
+    );
+    let harden = std::fs::read_to_string(root.join("commands/shipmates-harden.md")).unwrap();
+    assert!(
+        harden.contains("deferred without an issue is declined"),
+        "harden report mode must map an unfiled deferral to declined"
+    );
+    let deslop = std::fs::read_to_string(root.join("commands/shipmates-deslop.md")).unwrap();
+    assert!(
+        deslop.contains("not only in epic sub-issues") && deslop.contains("The session report is the accountable record"),
+        "deslop report mode must account for findings in the session report"
+    );
 }
 
 /// The model-routing ruleset is a *global* one. It is expanded from the shared
