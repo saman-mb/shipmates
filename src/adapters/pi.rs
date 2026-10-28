@@ -250,7 +250,7 @@ fn bundle_pi_crew_extension() -> String {
     const POLICY: &str = include_str!("pi_crew/policy.mjs");
     const HOOKS: &str = include_str!("pi_crew/index.ts");
     let hooks = HOOKS.replace(
-        "import { decideSpawn, offState, parseState, ORDER_PREAMBLE } from \"./policy.mjs\";\n",
+        "import { decideSpawn, offState, parseState, switchChoices, ORDER_PREAMBLE } from \"./policy.mjs\";\n",
         "",
     );
     if hooks.contains("policy.mjs") {

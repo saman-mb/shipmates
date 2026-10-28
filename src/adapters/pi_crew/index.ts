@@ -1,4 +1,4 @@
-import { decideSpawn, offState, parseState, ORDER_PREAMBLE } from "./policy.mjs";
+import { decideSpawn, offState, parseState, switchChoices, ORDER_PREAMBLE } from "./policy.mjs";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -57,7 +57,7 @@ export default function (pi) {
     handler: async (_args, ctx) => {
       const current = readState();
       ctx.ui.notify(`Switch is ${current.switch}. Setup does not turn it on.`, "info");
-      const next = await ctx.ui.select("Switch", ["Off", "Split", "Local"]);
+      const next = await ctx.ui.select(`Switch (current: ${current.switch})`, switchChoices(current.switch));
       if (!next || next === current.switch) {
         ctx.ui.notify(`Switch is ${current.switch}. This chat's model is unchanged.`, "info");
         return;

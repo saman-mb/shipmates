@@ -386,6 +386,7 @@ mod tests {
 
     #[test]
     fn home_paths_are_sanitised_to_tilde() {
+        let _home = crate::installer::retired::test_env::lock_home();
         let dir = tempfile::tempdir().unwrap();
         let finding = finding("claude-code", FindingClass::UnrepairableDrift);
         let gh = write_fake_gh(dir.path(), "[]", "[]");
@@ -403,6 +404,7 @@ mod tests {
 
     #[test]
     fn detail_never_leaks_a_project_root_outside_home() {
+        let _home = crate::installer::retired::test_env::lock_home();
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join("secret-project");
         let root_str = root.to_string_lossy().into_owned();
