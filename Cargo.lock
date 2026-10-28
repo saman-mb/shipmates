@@ -446,7 +446,7 @@ dependencies = [
 
 [[package]]
 name = "shipmates"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "anyhow",
  "clap",
