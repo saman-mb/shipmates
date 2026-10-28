@@ -821,6 +821,20 @@ fn install_harness(
     // Global pi crew lands under ~/.pi/agent/; a nearer ancestor carrying
     // `.pi/` or `.agents/` still shadows that home tree from a nested cwd.
     if harness == "pi" {
+        // Seed a safe default crew config so doctor is clean after install and
+        // the extension has a schema-valid file before the captain runs
+        // /shipmates-crew (#606).
+        if let Some(home) = home::home_dir() {
+            let agent_dir = home.join(".pi").join("agent");
+            match doctor::fix_pi_crew_config(&agent_dir) {
+                Ok(true) => println!(
+                    "Pi crew config: wrote default shipmates-crew.json (switch Off) at {}",
+                    agent_dir.join("shipmates-crew.json").display()
+                ),
+                Ok(false) => {}
+                Err(error) => eprintln!("Pi crew config: could not write default: {error}"),
+            }
+        }
         println!(
             "Pi crew plugin installed. Run /shipmates-crew once. The switch starts at Off and does not change /model."
         );
@@ -1020,29 +1034,16 @@ fn main() -> Result<()> {
                         println!("\nInstalling canonical global steering...");
                         for h in &harnesses {
                             match h.as_str() {
+                                // Copilot has no user-scope instruction file. Its
+                                // bootstrap/steering is project-scope
+                                // (`.github/instructions/…`). A home/global install
+                                // must not create `~/.github/` — that is not a
+                                // project root and collides with the global layout
+                                // contract (skills under `~/.copilot` only).
                                 "github-copilot" => {
-                                    match steering::install_project_steering(
-                                        h,
-                                        &target_dir,
-                                        &steering_content,
-                                    ) {
-                                        Ok(steering::SteeringOutcome::Created(p)) => {
-                                            println!("  {} — installed global steering at {}", h, p.display());
-                                        }
-                                        Ok(steering::SteeringOutcome::Updated(p)) => {
-                                            println!("  {} — updated global steering at {}", h, p.display());
-                                        }
-                                        Ok(steering::SteeringOutcome::Unchanged(p)) => {
-                                            println!("  {} — global steering up to date at {}", h, p.display());
-                                        }
-                                        Ok(steering::SteeringOutcome::Gap(msg)) => {
-                                            println!("  {} — note: {}", h, msg);
-                                        }
-                                        Ok(steering::SteeringOutcome::Removed(_)) => {}
-                                        Err(e) => {
-                                            eprintln!("  {} — failed to install global steering: {}", h, e);
-                                        }
-                                    }
+                                    println!(
+                                        "  {h} — note: bootstrap/steering is project-scope; install into a repo to write .github/instructions/shipmates.instructions.md"
+                                    );
                                 }
                                 _ => match steering::install_global_steering(h, &home_path, &steering_content) {
                                     Ok(steering::SteeringOutcome::Created(p)) => {

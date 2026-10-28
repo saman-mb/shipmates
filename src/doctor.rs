@@ -1774,7 +1774,10 @@ pub(crate) fn pi_crew_health(agent_dir: &Path, extension_file: &Path) -> Vec<Che
         }
     }
 
-    // 2. The pi-subagents package must be listed in settings.json.
+    // 2. The pi-subagents package must be listed in settings.json when that
+    // file already exists. A fresh home with no settings yet is not a defect —
+    // the captain has not configured pi — so we stay Ok and only warn once
+    // settings are present without the package (#606).
     let settings_path = agent_dir.join("settings.json");
     match pi_subagents_enabled(&settings_path) {
         Some(true) => checks.push(Check {
@@ -1783,10 +1786,19 @@ pub(crate) fn pi_crew_health(agent_dir: &Path, extension_file: &Path) -> Vec<Che
             detail: "npm:pi-subagents is listed in settings.json".into(),
             fixable: false,
         }),
-        Some(false) | None => checks.push(Check {
+        Some(false) => checks.push(Check {
             name: "Pi subagents package".into(),
             severity: Severity::Warn,
             detail: format!("npm:pi-subagents is not listed in {}. The pi crew extension needs it to spawn subagents; install it through pi's package manager.", settings_path.display()),
+            fixable: false,
+        }),
+        None => checks.push(Check {
+            name: "Pi subagents package".into(),
+            severity: Severity::Ok,
+            detail: format!(
+                "no settings.json yet at {}; add npm:pi-subagents when configuring pi",
+                settings_path.display()
+            ),
             fixable: false,
         }),
     }
@@ -1842,7 +1854,7 @@ fn read_pi_crew_config(path: &Path) -> Result<PiCrewConfig, String> {
 
 /// Provision a default `shipmates-crew.json` if it is missing or corrupt.
 /// Returns `true` when a file was written.
-pub(crate) fn fix_pi_crew_config(agent_dir: &Path) -> Result<bool> {
+pub fn fix_pi_crew_config(agent_dir: &Path) -> Result<bool> {
     let config_path = agent_dir.join("shipmates-crew.json");
     if read_pi_crew_config(&config_path).is_ok() {
         return Ok(false);
