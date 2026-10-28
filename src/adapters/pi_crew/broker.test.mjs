@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -370,6 +370,45 @@ test("ipc path is a named pipe on Windows and a socket path elsewhere, never a T
   } finally {
     if (socket) socket.end();
     await started.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a live broker path is not unlinked on EADDRINUSE from a second startBroker", async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "sm-broker-live-"));
+  const sock = path.join(dir, "admission.sock");
+  const first = await startBroker({
+    path: sock,
+    probe: async () => snapshot({ confidence: "measured" }),
+    journal: { append() {} },
+  });
+  try {
+    assert.equal(existsSync(sock), true);
+    await assert.rejects(
+      () =>
+        startBroker({
+          path: sock,
+          probe: async () => snapshot({ confidence: "measured" }),
+          journal: { append() {} },
+        }),
+      /EADDRINUSE|listen/,
+    );
+    assert.equal(
+      existsSync(sock),
+      true,
+      "a second startBroker must not unlink a live peer socket on EADDRINUSE",
+    );
+    // Peer can still dial the original broker.
+    await new Promise((resolve, reject) => {
+      const socket = net.connect(sock, resolve);
+      socket.on("error", reject);
+      socket.on("connect", () => {
+        socket.end();
+        resolve();
+      });
+    });
+  } finally {
+    await first.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });

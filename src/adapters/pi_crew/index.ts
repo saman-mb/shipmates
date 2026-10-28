@@ -1,11 +1,11 @@
 import { brokerWanted, captainReserved, decideSpawn, offState, parseState, switchChoices, ORDER_PREAMBLE } from "./policy.mjs";
-import { ipcListenPath, startBroker } from "./broker.mjs";
+import { brokerEndpoint, ipcListenPath, startBroker } from "./broker.mjs";
 import { createMessageConnection, createRpcClient } from "./protocol.mjs";
 import { probe } from "./telemetry.mjs";
 import net from "node:net";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
 import { freemem, homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -15,6 +15,7 @@ const STATE_NAME = "shipmates-crew.json";
 // Exact pins. The runtime self-provisions these; tests never install them.
 export const RUNTIME_PINS = {
   "systeminformation": "5.33.18",
+  "vscode-jsonrpc": "10.0.0",
 };
 
 function agentDir() {
@@ -223,6 +224,19 @@ async function runtimeProbeHost() {
 }
 
 async function rpcOver(socket) {
+  const vendoredRpc = await vendored("vscode-jsonrpc", "lib/node/main.js");
+  if (vendoredRpc?.createMessageConnection && vendoredRpc.StreamMessageReader && vendoredRpc.StreamMessageWriter) {
+    const connection = vendoredRpc.createMessageConnection(
+      new vendoredRpc.StreamMessageReader(socket),
+      new vendoredRpc.StreamMessageWriter(socket),
+    );
+    connection.listen();
+    return {
+      request(method, params) {
+        return connection.sendRequest(method, params);
+      },
+    };
+  }
   const connection = createMessageConnection(socket, socket);
   const client = createRpcClient(connection);
   return {
@@ -230,6 +244,85 @@ async function rpcOver(socket) {
       return client.request(method, params);
     },
   };
+}
+
+function spawnDaemon(endpoint) {
+  const child = spawn(process.execPath, [
+    "--experimental-strip-types",
+    fileURLToPath(import.meta.url),
+    "--shipmates-broker-daemon",
+  ], {
+    detached: true,
+    stdio: "ignore",
+    env: {
+      ...process.env,
+      SHIPMATES_BROKER_HOME: endpoint.home,
+      SHIPMATES_BROKER_PATH: endpoint.listenPath,
+    },
+  });
+  child.unref();
+}
+
+async function waitForBroker(listenPath) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const client = await tryConnect(listenPath);
+    if (client) return client;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return null;
+}
+
+function lockIsLive(lockPath) {
+  try {
+    const pid = Number(readFileSync(lockPath, "utf8"));
+    if (!Number.isInteger(pid) || pid <= 0) return false;
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function startDaemon() {
+  const home = process.env.SHIPMATES_BROKER_HOME;
+  const listenPath = process.env.SHIPMATES_BROKER_PATH;
+  if (!home || !listenPath) throw new Error("broker daemon is missing its endpoint");
+  mkdirSync(home, { recursive: true });
+  const lockPath = join(home, "broker.lock");
+  if (!takeLock(lockPath)) return;
+  writeFileSync(join(home, "endpoint.json"), JSON.stringify({
+    protocolVersion: 1,
+    listenPath,
+    pid: process.pid,
+  }));
+  await startBroker({
+    path: listenPath,
+    journal: fileJournal(home),
+    probe: () => probe({
+      probeHost: runtimeProbeHost,
+      engineBaseUrls: readState().engineBaseUrls,
+      headroomBytes: readState().headroomBytes,
+    }),
+  });
+  setInterval(() => {}, 1 << 30);
+}
+
+function takeLock(lockPath) {
+  try {
+    const fd = openSync(lockPath, "wx");
+    writeSync(fd, String(process.pid));
+    closeSync(fd);
+    return true;
+  } catch (error) {
+    if (error?.code !== "EEXIST") return false;
+    if (lockIsLive(lockPath)) return false;
+    try {
+      unlinkSync(lockPath);
+    } catch {
+      return false;
+    }
+    return takeLock(lockPath);
+  }
 }
 
 function tryConnect(listenPath) {
@@ -256,6 +349,7 @@ function admitParams(runId, sessionId, role, model, waiting) {
     role: role || "crew",
     model,
     pinned: true,
+    protocolVersion: 1,
     contextTokens: 0,
     outputReserveTokens: 0,
     priority: 0,
@@ -291,26 +385,14 @@ export function install(pi, deps = {}) {
   }
 
   async function openClient() {
-    const listenPath = ipcListenPath();
-    const existing = await tryConnect(listenPath);
+    const endpoint = brokerEndpoint(agentDir());
+    const existing = await tryConnect(endpoint.listenPath);
     if (existing) return existing;
-    try {
-      await ensureRuntimePackages();
-      brokerHandle = await startBroker({
-        probe: () => probe({ probeHost: runtimeProbeHost }),
-        path: listenPath,
-        journal: fileJournal(join(agentDir(), "shipmates-resource-broker")),
-      });
-    } catch (error) {
-      if (error?.code === "EADDRINUSE") {
-        const other = await tryConnect(listenPath);
-        if (other) return other;
-      }
-      throw error;
-    }
-    const client = await tryConnect(listenPath);
-    if (!client) throw new Error("broker did not accept a connection");
-    return client;
+    await ensureRuntimePackages();
+    spawnDaemon(endpoint);
+    const started = await waitForBroker(endpoint.listenPath);
+    if (started) return started;
+    throw new Error("broker did not accept a connection");
   }
 
   function busyModels() {
@@ -393,6 +475,8 @@ export function install(pi, deps = {}) {
     try {
       const response = client.request("admit", {
         ...admitParams(runId, sessionId, role, model),
+        contextTokens: state.contextTokens,
+        outputReserveTokens: state.contextTokens,
         wait: !shadow,
       });
       const result = await (signal
@@ -486,13 +570,13 @@ export function install(pi, deps = {}) {
     for (const record of [...leases.values()]) await releaseRecord(record);
     seats.clear();
     captainKey = null;
-    if (brokerHandle && typeof brokerHandle.close === "function") {
-      try {
-        await brokerHandle.close();
-      } catch {
-        // The socket is already gone.
-      }
-    }
+    // Do not close/unlink the machine-wide broker here. Another pi session may
+    // still be connected to the same admission socket; tearing it down races them
+    // (ENOENT/ECONNREFUSED on heartbeat and admit). Process exit drops the listen
+    // handle; a later startBroker only unlinks a path after a failed dial proves
+    // it is stale.
+    brokerHandle = null;
+    clientPromise = null;
   });
 
   pi.on("turn_start", async (event, ctx) => {
@@ -625,4 +709,11 @@ export function install(pi, deps = {}) {
 
 export default function (pi) {
   return install(pi);
+}
+
+if (process.argv.includes("--shipmates-broker-daemon")) {
+  startDaemon().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 }

@@ -37,6 +37,21 @@ export function ipcListenPath(platform = process.platform, name = DEFAULT_NAME, 
   return path.join(runtimeDir, `${safe}-${uid}.sock`);
 }
 
+export function brokerEndpoint(agentDir, platform = process.platform, uid = userUid()) {
+  const home = path.join(agentDir, "shipmates-resource-broker");
+  if (platform === "win32") {
+    const hash = simpleHash(home);
+    return { home, listenPath: `\\\\.\\pipe\\shipmates-admission-${uid}-${hash}` };
+  }
+  return { home, listenPath: path.join(home, "broker.sock") };
+}
+
+function simpleHash(value) {
+  let hash = 0;
+  for (const char of String(value)) hash = (hash * 33 + char.charCodeAt(0)) >>> 0;
+  return hash.toString(16);
+}
+
 function userUid() {
   if (typeof process.getuid === "function") return String(process.getuid());
   if (process.env.SUDO_UID) return process.env.SUDO_UID;
@@ -93,9 +108,15 @@ function adoptLedger(ledger) {
   return ledger;
 }
 
+const PROTOCOL_VERSION = 1;
+const MAX_QUEUE = 64;
+
 function admissionRequest(params, waiting, now) {
   if (!params || typeof params !== "object" || Array.isArray(params)) {
     throw rpcError(-32602, "admission params must be an object");
+  }
+  if (params.protocolVersion != null && params.protocolVersion !== PROTOCOL_VERSION) {
+    throw rpcError(-32005, "unsupported protocol version");
   }
   if (typeof params.runId !== "string" || params.runId.length === 0) {
     throw rpcError(-32602, "runId is required");
@@ -332,6 +353,9 @@ async function admit(runtime, connection, params, deliveries) {
   if (plan.action === "grant") return issueGrant(runtime, planned, plan);
   if (plan.action !== "queue") throw rpcError(-32603, "capacity returned an unknown action");
 
+  if (runtime.queue.length >= MAX_QUEUE) {
+    throw rpcError(-32006, "queue is full");
+  }
   const queued = { ...request, waiting: [] };
   const wait = params.wait !== false;
   const entry = enqueue(runtime, queued, connection, wait);
@@ -536,6 +560,26 @@ export function createBroker(options = {}) {
   };
 }
 
+function tryDial(listenPath, timeoutMs = 200) {
+  return new Promise((resolve) => {
+    if (process.platform === "win32") {
+      resolve(false);
+      return;
+    }
+    const socket = net.connect(listenPath);
+    const finish = (ok) => {
+      socket.removeAllListeners();
+      socket.on("error", () => {});
+      socket.destroy();
+      resolve(ok);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => finish(true));
+    socket.once("timeout", () => finish(false));
+    socket.once("error", () => finish(false));
+  });
+}
+
 export async function startBroker(options = {}) {
   const listenPath = options.path ?? ipcListenPath(options.platform, options.name, options.tmpdir);
   assertIpcPath(listenPath);
@@ -546,19 +590,28 @@ export async function startBroker(options = {}) {
   });
   server.on("error", () => {});
   return new Promise((resolve, reject) => {
-    const fail = (error) => {
-      if (process.platform !== "win32" && error?.code === "EADDRINUSE") {
-        try {
-          unlinkSync(listenPath);
-        } catch {
-          // Not a stale socket we can remove.
-        }
-      }
-      reject(error);
+    const onListenError = (error) => {
+      // Only unlink a path that looks *stale*. A live broker owned by another
+      // session must keep its socket path; unlinking it mid-flight makes peer
+      // sessions fail with ENOENT on the next connect/heartbeat.
+      Promise.resolve()
+        .then(async () => {
+          if (process.platform !== "win32" && error?.code === "EADDRINUSE") {
+            const live = await tryDial(listenPath);
+            if (!live) {
+              try {
+                unlinkSync(listenPath);
+              } catch {
+                // Not a stale socket we can remove.
+              }
+            }
+          }
+        })
+        .finally(() => reject(error));
     };
-    server.once("error", fail);
+    server.once("error", onListenError);
     server.listen(listenPath, () => {
-      server.off("error", fail);
+      server.off("error", onListenError);
       resolve({
         path: listenPath,
         address() {
@@ -568,13 +621,9 @@ export async function startBroker(options = {}) {
           broker.close();
           return new Promise((done, deny) => {
             server.close((error) => {
-              if (process.platform !== "win32") {
-                try {
-                  unlinkSync(listenPath);
-                } catch {
-                  // Already removed.
-                }
-              }
+              // Do not unlink here. Other pi sessions may still hold connections
+              // to this path; removing it races them. Stale paths are cleared on
+              // the next startBroker EADDRINUSE only after tryDial fails.
               if (error) deny(error);
               else done();
             });
