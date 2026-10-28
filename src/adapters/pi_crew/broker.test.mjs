@@ -325,7 +325,17 @@ test("unknown methods are rejected and the journal never stores prompts", async 
 });
 
 test("ipc path is a named pipe on Windows and a socket path elsewhere, never a TCP port", async () => {
-  const uid = typeof process.getuid === "function" ? String(process.getuid()) : process.env.SUDO_UID || "unknown";
+  const uid = (() => {
+    if (typeof process.getuid === "function") return String(process.getuid());
+    if (process.env.SUDO_UID) return process.env.SUDO_UID;
+    try {
+      const info = os.userInfo();
+      if (info?.username) return info.username;
+    } catch {
+      // Fall through.
+    }
+    return process.env.USERNAME || process.env.USER || "unknown";
+  })();
   const previous = process.env.XDG_RUNTIME_DIR;
   delete process.env.XDG_RUNTIME_DIR;
   try {

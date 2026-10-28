@@ -40,7 +40,13 @@ export function ipcListenPath(platform = process.platform, name = DEFAULT_NAME, 
 function userUid() {
   if (typeof process.getuid === "function") return String(process.getuid());
   if (process.env.SUDO_UID) return process.env.SUDO_UID;
-  return "unknown";
+  try {
+    const info = os.userInfo();
+    if (info?.username) return info.username;
+  } catch {
+    // Fall through.
+  }
+  return process.env.USERNAME || process.env.USER || "unknown";
 }
 
 function assertIpcPath(listenPath) {
@@ -539,15 +545,17 @@ export async function startBroker(options = {}) {
     broker.attach(createMessageConnection(socket, socket));
   });
   server.on("error", () => {});
-  if (process.platform !== "win32") {
-    try {
-      unlinkSync(listenPath);
-    } catch {
-      // No stale socket.
-    }
-  }
   return new Promise((resolve, reject) => {
-    const fail = (error) => reject(error);
+    const fail = (error) => {
+      if (process.platform !== "win32" && error?.code === "EADDRINUSE") {
+        try {
+          unlinkSync(listenPath);
+        } catch {
+          // Not a stale socket we can remove.
+        }
+      }
+      reject(error);
+    };
     server.once("error", fail);
     server.listen(listenPath, () => {
       server.off("error", fail);
