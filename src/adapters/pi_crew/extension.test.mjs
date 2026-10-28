@@ -195,6 +195,24 @@ test("run id extraction does not invent a hold hook", () => {
   assert.deepEqual(runIdsIn({ content: [{ type: "text", text: "no id here" }] }), []);
 });
 
+test("an aborted enforce wait cancels without throwing", async () => {
+  const abort = new AbortController();
+  const { handlers } = harness(parsed({ switch: "Local", resources: "enforce" }), async (method) => {
+    if (method === "admit") {
+      abort.abort();
+      return new Promise(() => {});
+    }
+    if (method === "cancel") throw new Error("cancel failed");
+    return {};
+  });
+  const event = seatEvent();
+  const started = { toolName: "subagent", toolCallId: "call-1", args: event.input };
+  await handlers.tool_execution_start(started, { signal: abort.signal });
+  const result = await handlers.tool_call(event);
+  assert.equal(result.block, true);
+  assert.match(result.reason, /Aborted/);
+});
+
 test("the captain chat is reserved only for Local enforce and released when the turn ends", async () => {
   const previous = process.env.PI_SUBAGENT_CHILD;
   delete process.env.PI_SUBAGENT_CHILD;
