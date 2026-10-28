@@ -59,6 +59,12 @@ export function parseState(raw) {
   return { schemaVersion: 1, switch: obj.switch, roles, ticks, ceiling };
 }
 
+export function switchChoices(current) {
+  const all = ["Off", "Split", "Local"];
+  const active = all.includes(current) ? current : "Off";
+  return [active, ...all.filter((mode) => mode !== active)];
+}
+
 export function isDoer(role) {
   return DOERS.includes(role);
 }

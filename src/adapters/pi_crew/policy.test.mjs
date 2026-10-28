@@ -272,14 +272,16 @@ test("/shipmates-crew menu places the saved switch first so re-running does not 
 
     // Second run: menu opens with Split already saved. The first option (index 0,
     // pre-highlighted by pi's ExtensionSelectorComponent) must be the saved switch
-    // ("Split"), not "Off", and pressing Enter on index 0 must keep "Split".
+    // ("Split"), not "Off", the selector title names the current switch, and
+    // pressing Enter on index 0 must keep "Split".
     await commandHandler("", makeCtx(0));
+    assert.match(selects[1].title, /Split/);
     assert.equal(
       selects[1].options[0],
       "Split",
       `expected saved switch "Split" to be pre-selected first, got options: ${JSON.stringify(selects[1].options)}`,
     );
-    assert.deepEqual([...selects[1].options].sort(), ["Local", "Off", "Split"]);
+    assert.deepEqual(selects[1].options, ["Split", "Off", "Local"]);
     assert.equal(parseState(readFileSync(join(dir, "shipmates-crew.json"), "utf8")).switch, "Split");
   } finally {
     if (prevDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
