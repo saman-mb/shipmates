@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.2] - 2026-10-23
+
+### Changed
+
+- **`/shipmates-plan-epics` plans by default and files only when asked (#111).** The command used to
+  create the epics, user stories and labels on the target tracker as soon as it finished planning,
+  guarded only by an opt-out dry-run flag. Writing a scatter of issues and labels into someone's
+  tracker is not something a single command can undo, so it now sits with `MERGE_MODE=auto` and
+  `MODE=post` as an explicit opt-in: the run returns the planning panel, the epic→story tree and the
+  sub-issue attachment plan, and only an `apply` token files them. `dry-run` / `preview` are still
+  accepted and simply name that default, so there is one switch for the one decision rather than two
+  that could disagree.
+
 ## [0.16.1] - 2026-10-23
 
 ### Added
