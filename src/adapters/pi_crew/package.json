@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Runtime pins for the pi crew resource broker. The extension self-provisions these beside an installed copy. Tests stay offline and do not install them.",
   "dependencies": {
-    "systeminformation": "5.33.18"
+    "systeminformation": "5.33.18",
+    "vscode-jsonrpc": "10.0.0"
   }
 }

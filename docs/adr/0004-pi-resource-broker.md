@@ -54,7 +54,7 @@ A shared inference server used by several machines is a separate deployment of t
 - No claim that pi crew spawn works. The harness row remains the evidence.
 - No claim that engine adapters, sockets, named pipes, or telemetry probes have been proven because they are named in #601.
 - No claim that another application is coordinated because its memory use is visible.
-- No claim that this pull request ships a detached daemon, a broker lock, a settings field for engine URLs, context, or headroom, a package lockfile, an audit or licence CI gate, a bounded queue or journal, or a protocol-version refusal. Those are labeled gaps, not shipped behaviour.
+- No claim of a live broker run on macOS, Linux, and Windows. No claim that a launch this extension cannot watch is held until the child ends. No claim of an audit or licence CI gate for the optional runtime packages.
 
 ## Consequences
 

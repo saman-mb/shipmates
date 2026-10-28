@@ -300,7 +300,7 @@ fn bundle_pi_crew_extension() -> String {
         "import net from \"node:net\";\n\
 import os, { freemem, homedir } from \"node:os\";\n\
 import path, { dirname, join } from \"node:path\";\n\
-import { unlinkSync, mkdirSync, readFileSync, renameSync, writeFileSync } from \"node:fs\";\n\
+import { closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync, writeSync } from \"node:fs\";\n\
 import { PassThrough } from \"node:stream\";\n\
 import { spawn } from \"node:child_process\";\n\
 import { randomUUID } from \"node:crypto\";\n\

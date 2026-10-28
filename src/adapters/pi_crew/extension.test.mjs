@@ -237,10 +237,16 @@ test("the captain chat is reserved only for Local enforce and released when the 
     assert.equal(local.calls.some((call) => call.method === "release"), true);
     assert.equal(local.leases.size, 0);
 
+    const shadow = harness(parsed({ switch: "Local", resources: "shadow", contextTokens: 128 }));
+    await shadow.handlers.turn_start({ turnIndex: 0 }, ctx);
+    assert.equal(shadow.calls[0].method, "admit");
+    assert.equal(shadow.calls[0].params.contextTokens, 128);
+    assert.equal(shadow.calls[0].params.protocolVersion, 1);
+
     for (const state of [
-      parsed({ switch: "Local", resources: "shadow" }),
       parsed({ switch: "Split", resources: "enforce" }),
       parsed({ switch: "Off", resources: "enforce" }),
+      parsed({ switch: "Local", resources: "off" }),
     ]) {
       const other = harness(state);
       await other.handlers.turn_start({ turnIndex: 0 }, ctx);

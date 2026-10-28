@@ -52,7 +52,7 @@ test("resources defaults off, preserves shadow or enforce, and a newer schema ca
   assert.equal(brokerWanted(parseState({ switch: "Split", resources: "off" })), false);
   assert.equal(brokerWanted(parseState({ switch: "Local", resources: "shadow" })), true);
   assert.equal(captainReserved(parseState({ switch: "Local", resources: "enforce" })), true);
-  assert.equal(captainReserved(parseState({ switch: "Local", resources: "shadow" })), false);
+  assert.equal(captainReserved(parseState({ switch: "Local", resources: "shadow" })), true);
   assert.equal(captainReserved(parseState({ switch: "Split", resources: "enforce" })), false);
   assert.equal(captainReserved(parseState({ schemaVersion: 2, switch: "Local", resources: "enforce" })), false);
 });
