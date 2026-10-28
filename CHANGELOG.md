@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.3] - 2026-10-28
+
+### Fixed
+
+- **`/shipmates-crew` on pi now opens with the saved switch selected instead of `Off`.** Pi's `ctx.ui.select(title, options)` always highlights `options[0]`, and `ctx.ui.notify(...)` writes a status line to the chat transcript that the selector immediately replaces in the editor slot. Passing a static `["Off", "Split", "Local"]` list meant re-running `/shipmates-crew` after switching to `Split` or `Local` always opened with `→ Off` highlighted, and pressing Enter reset the saved switch back to `Off`. The command now places the active switch first (`switchChoices(current.switch)`) and shows `(current: <switch>)` in the selector header so re-running the menu shows and preserves the active mode.
+
 ## [0.16.2] - 2026-10-23
 
 ### Changed

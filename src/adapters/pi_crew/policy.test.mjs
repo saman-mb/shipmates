@@ -231,3 +231,60 @@ test("user-facing reasons do not say login, logout, or official, and the module 
   }
   assert.equal(JSON.stringify(SHIPPED_TAG).includes("gpt"), false);
 });
+
+test("/shipmates-crew menu places the saved switch first so re-running does not highlight Off", async () => {
+  const { mkdtempSync, readFileSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const extension = (await import("./index.ts")).default;
+
+  const dir = mkdtempSync(join(tmpdir(), "shipmates-crew-menu-"));
+  const prevDir = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = dir;
+  try {
+    writeFileSync(
+      join(dir, "shipmates-crew.json"),
+      JSON.stringify({ schemaVersion: 1, switch: "Off", roles: {}, ticks: [LOCAL], ceiling: 1 }),
+    );
+    let commandHandler;
+    extension({
+      registerCommand(name, spec) {
+        if (name === "shipmates-crew") commandHandler = spec.handler;
+      },
+      on() {},
+    });
+    assert.equal(typeof commandHandler, "function");
+
+    const selects = [];
+    const makeCtx = (pickIndex) => ({
+      ui: {
+        notify() {},
+        async select(title, options) {
+          selects.push({ title, options });
+          return options[pickIndex];
+        },
+      },
+    });
+
+    // First run: state is Off, captain changes switch to Split (index 1).
+    await commandHandler("", makeCtx(1));
+    assert.equal(parseState(readFileSync(join(dir, "shipmates-crew.json"), "utf8")).switch, "Split");
+
+    // Second run: menu opens with Split already saved. The first option (index 0,
+    // pre-highlighted by pi's ExtensionSelectorComponent) must be the saved switch
+    // ("Split"), not "Off", the selector title names the current switch, and
+    // pressing Enter on index 0 must keep "Split".
+    await commandHandler("", makeCtx(0));
+    assert.match(selects[1].title, /Split/);
+    assert.equal(
+      selects[1].options[0],
+      "Split",
+      `expected saved switch "Split" to be pre-selected first, got options: ${JSON.stringify(selects[1].options)}`,
+    );
+    assert.deepEqual(selects[1].options, ["Split", "Off", "Local"]);
+    assert.equal(parseState(readFileSync(join(dir, "shipmates-crew.json"), "utf8")).switch, "Split");
+  } finally {
+    if (prevDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = prevDir;
+  }
+});

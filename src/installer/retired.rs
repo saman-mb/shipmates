@@ -486,9 +486,16 @@ pub(crate) mod test_env {
 
     static HOME_LOCK: Mutex<()> = Mutex::new(());
 
+    /// Serialise any test that reads `$HOME` with the writers below. A reader
+    /// that skips this can observe a borrowed home mid-test and sanitise a path
+    /// against the wrong prefix.
+    pub(crate) fn lock_home() -> std::sync::MutexGuard<'static, ()> {
+        HOME_LOCK.lock().unwrap()
+    }
+
     /// Run `f` with `HOME` pointed at `dir`, restoring the previous value after.
     pub(crate) fn with_isolated_home(dir: &Path, f: impl FnOnce()) {
-        let _guard = HOME_LOCK.lock().unwrap();
+        let _guard = lock_home();
         let previous = std::env::var_os("HOME");
         // SAFETY: every writer of `HOME` in this crate goes through HOME_LOCK,
         // so no two threads mutate the environment at once; readers
