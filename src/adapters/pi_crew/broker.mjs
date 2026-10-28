@@ -28,8 +28,19 @@ const JOURNAL_FIELDS = [
 
 export function ipcListenPath(platform = process.platform, name = DEFAULT_NAME, tmpdir = os.tmpdir()) {
   const safe = typeof name === "string" && /^[a-z0-9-]+$/.test(name) ? name : DEFAULT_NAME;
-  if (platform === "win32") return `\\\\.\\pipe\\${safe}`;
-  return path.join(tmpdir, `${safe}.sock`);
+  if (platform === "win32") {
+    const uid = userUid();
+    return `\\\\.\\pipe\\${safe}-${uid}`;
+  }
+  const runtimeDir = process.env.XDG_RUNTIME_DIR || tmpdir;
+  const uid = userUid();
+  return path.join(runtimeDir, `${safe}-${uid}.sock`);
+}
+
+function userUid() {
+  if (typeof process.getuid === "function") return String(process.getuid());
+  if (process.env.SUDO_UID) return process.env.SUDO_UID;
+  return "unknown";
 }
 
 function assertIpcPath(listenPath) {

@@ -325,8 +325,9 @@ test("unknown methods are rejected and the journal never stores prompts", async 
 });
 
 test("ipc path is a named pipe on Windows and a socket path elsewhere, never a TCP port", async () => {
-  assert.equal(ipcListenPath("win32", "shipmates-admission"), "\\\\.\\pipe\\shipmates-admission");
-  assert.equal(ipcListenPath("darwin", "shipmates-admission", "/tmp"), "/tmp/shipmates-admission.sock");
+  const uid = typeof process.getuid === "function" ? String(process.getuid()) : process.env.SUDO_UID || "unknown";
+  assert.equal(ipcListenPath("win32", "shipmates-admission"), `\\\\.\\pipe\\shipmates-admission-${uid}`);
+  assert.equal(ipcListenPath("darwin", "shipmates-admission", "/tmp"), `/tmp/shipmates-admission-${uid}.sock`);
   await assert.rejects(() => startBroker({ path: "9", probe: async () => snapshot() }), /TCP/);
   await assert.rejects(() => startBroker({ path: "127.0.0.1:9", probe: async () => snapshot() }), /TCP/);
 

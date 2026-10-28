@@ -14,7 +14,6 @@ const STATE_NAME = "shipmates-crew.json";
 
 // Exact pins. The runtime self-provisions these; tests never install them.
 export const RUNTIME_PINS = {
-  "vscode-jsonrpc": "10.0.0",
   "systeminformation": "5.33.18",
 };
 
@@ -224,19 +223,6 @@ async function runtimeProbeHost() {
 }
 
 async function rpcOver(socket) {
-  const vendoredRpc = await vendored("vscode-jsonrpc", "lib/node/main.js");
-  if (vendoredRpc?.createMessageConnection && vendoredRpc.StreamMessageReader && vendoredRpc.StreamMessageWriter) {
-    const connection = vendoredRpc.createMessageConnection(
-      new vendoredRpc.StreamMessageReader(socket),
-      new vendoredRpc.StreamMessageWriter(socket),
-    );
-    connection.listen();
-    return {
-      request(method, params) {
-        return connection.sendRequest(method, params);
-      },
-    };
-  }
   const connection = createMessageConnection(socket, socket);
   const client = createRpcClient(connection);
   return {
@@ -280,6 +266,7 @@ function admitParams(runId, sessionId, role, model, waiting) {
 }
 
 export function install(pi, deps = {}) {
+  let seatAbortSignals = deps.seatAbortSignals ?? new Map();
   const read = deps.readState ?? readState;
   const connect = deps.connect ?? defaultConnect;
   const notes = deps.notes ?? [];
@@ -307,12 +294,20 @@ export function install(pi, deps = {}) {
     const listenPath = ipcListenPath();
     const existing = await tryConnect(listenPath);
     if (existing) return existing;
-    await ensureRuntimePackages();
-    brokerHandle = await startBroker({
-      probe: () => probe({ probeHost: runtimeProbeHost }),
-      path: listenPath,
-      journal: fileJournal(join(agentDir(), "shipmates-resource-broker")),
-    });
+    try {
+      await ensureRuntimePackages();
+      brokerHandle = await startBroker({
+        probe: () => probe({ probeHost: runtimeProbeHost }),
+        path: listenPath,
+        journal: fileJournal(join(agentDir(), "shipmates-resource-broker")),
+      });
+    } catch (error) {
+      if (error?.code === "EADDRINUSE") {
+        const other = await tryConnect(listenPath);
+        if (other) return other;
+      }
+      throw error;
+    }
     const client = await tryConnect(listenPath);
     if (!client) throw new Error("broker did not accept a connection");
     return client;
@@ -380,7 +375,7 @@ export function install(pi, deps = {}) {
     }
   }
 
-  async function askBroker(state, runId, role, model) {
+  async function askBroker(state, runId, role, model, signal) {
     const shadow = state.resources === "shadow";
     let client;
     try {
@@ -396,10 +391,20 @@ export function install(pi, deps = {}) {
       };
     }
     try {
-      const result = await client.request("admit", {
+      const response = client.request("admit", {
         ...admitParams(runId, sessionId, role, model),
         wait: !shadow,
       });
+      const result = await (signal
+        ? Promise.race([
+            response,
+            new Promise((_, reject) => {
+              if (signal.aborted) return reject(new Error("aborted"));
+              signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+            }),
+          ])
+        : response);
+      if (signal?.aborted) throw new Error("aborted");
       if (shadow) {
         notes.push({
           type: "shadow",
@@ -421,7 +426,15 @@ export function install(pi, deps = {}) {
         ? result.reason
         : "Waiting: the resource broker did not grant this seat.";
       return { ok: false, reason: `${reason} This seat stays on ${model}. I will not substitute a model.` };
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) {
+        try {
+          client.request("cancel", { runId });
+        } catch {
+          // The cancel is best effort. Lease expiry is the backstop.
+        }
+        return { ok: false, reason: "Aborted: this seat was cancelled while waiting." };
+      }
       if (shadow) {
         notes.push({ type: "shadow", action: "unreachable", model, runId, reason: "broker unreachable" });
         return { ok: true };
@@ -561,7 +574,8 @@ export function install(pi, deps = {}) {
       const seatKey = `${toolCallId}#${index}`;
       if (brokerWanted(state) && localSeat(state, named, localIds)) {
         const before = notes.length;
-        const admission = await askBroker(state, seatKey, seat.role, named);
+        const signal = seatAbortSignals.get(toolCallId);
+        const admission = await askBroker(state, seatKey, seat.role, named, signal);
         if (state.resources === "shadow" && notes.length > before) {
           const note = notes[notes.length - 1];
           const where = note.queuePosition == null ? "not queued" : `queue position ${note.queuePosition}`;
@@ -594,9 +608,19 @@ export function install(pi, deps = {}) {
 
   // pi publishes tool_execution_end. pi-subagents does not publish a hold hook
   // this extension can see, so a lease is not described as covering more than that.
+  pi.on("tool_execution_start", async (event, ctx) => {
+    if (event.toolName !== "subagent") return;
+    if (!event.toolCallId || !ctx?.signal) return;
+    seatAbortSignals.set(event.toolCallId, ctx.signal);
+    ctx.signal.addEventListener("abort", () => {
+      seatAbortSignals.delete(event.toolCallId);
+    }, { once: true });
+  });
+
   pi.on("tool_execution_end", async (event) => {
     if (event.toolName !== "subagent") return;
     if (!event.toolCallId) return;
+    seatAbortSignals.delete(event.toolCallId);
     await releaseToolCall(event.toolCallId, event.result);
   });
 

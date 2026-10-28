@@ -304,7 +304,8 @@ import { unlinkSync, mkdirSync, readFileSync, renameSync, writeFileSync } from \
 import { PassThrough } from \"node:stream\";\n\
 import { spawn } from \"node:child_process\";\n\
 import { randomUUID } from \"node:crypto\";\n\
-import { fileURLToPath, pathToFileURL } from \"node:url\";\n\n",
+import { fileURLToPath, pathToFileURL } from \"node:url\";\n\n\
+const process = { getuid: () => (typeof globalThis.process?.getuid === \"function\" ? globalThis.process.getuid() : undefined), env: globalThis.process?.env ?? {} };\n\n",
     );
     bundled.push_str(POLICY);
     bundled.push('\n');

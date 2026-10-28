@@ -195,27 +195,7 @@ function nonNegInt(value) {
 }
 
 async function defaultProbeHost() {
-  const reported = await hostFromSystemInformation();
-  if (reported) return reported;
   return hostFromOs();
-}
-
-async function hostFromSystemInformation() {
-  try {
-    const mod = await import("systeminformation");
-    const mem = typeof mod.mem === "function" ? mod.mem : mod.default?.mem;
-    if (typeof mem !== "function") return null;
-    const info = await mem();
-    const available = nonNegInt(info?.available) ?? nonNegInt(info?.free);
-    if (available == null) return null;
-    return {
-      confidence: "reported",
-      pressure: available === 0 ? "high" : "ok",
-      pools: [{ id: "host", availableBytes: available }],
-    };
-  } catch {
-    return null;
-  }
 }
 
 function hostFromOs() {
