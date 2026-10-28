@@ -242,6 +242,14 @@ When a seat is re-spawned, they review the **pushed SHA**. The report lists `re-
 If `principal-engineer` or any role does not resolve to a shipped crew role (skill-only harnesses until crew agents ship), fall back to a general-purpose agent with the role brief inlined and note the fallback — never silently skip a mandatory seat.
 If the child-launch / subagent runtime cannot load (spawn dies before any role resolves), **stop** and name the diagnostic — never silently run the board inline, never silently set `board=off`.
 
+**Finding accountability**
+
+Each finding kept in working memory has a stable id for the run. Its final disposition is exactly one of fixed, filed, or declined with a reason. Counts alone are not accountability. The list lives in the PR completion comment, the posted review comment, or the session report when the command opens no PR, plus any issue actually filed — do not tell a later agent to read a local run history. Do not write a per-run findings ledger, JSON dump, or report under `.shipmates/` or anywhere else in the repository, committed or not. Temporary captures stay in the run's existing temporary worktree and leave with that command's existing cleanup. This does not forbid `.shipmates/worktrees/`, install receipts, contributor steering, or an existing config file such as `.shipmates/deslop.toml`.
+
+A blocker is fixed or the run stops and escalates — it is not declined in order to ship. Nits are not auto-filed; they follow the command's existing ladder. Map, do not replace: absorb = fixed, file = filed, pr-note = declined with that note as the reason. Do not change `NITS_MODE` tokens. A read-only review records a recommended disposition in the review comment; it does not fix, file, or write a ledger. Security accepted-risk is declined with a reason, not a new status — do not rename it.
+
+When the change affects documentation or a visual artifact, the accepting reviewer was not given the builder's narrative and names the rendered artifact actually inspected (path or URL). If direct inspection is unavailable, the verdict states that limitation ("needs a human visual pass" is allowed) and does not ACCEPT that surface silently. A machine-checkable pin does not replace that inspection.
+
 ## Reusable epic integration board
 
 Spawn reviewers **in parallel** against epic PR `<EPIC_PR>` head — the integration artifact that
@@ -297,6 +305,13 @@ Convene when the integrated epic plausibly trips the concern; name gated-out sea
 **Harness fallback**
 
 Same as the unit acceptance board — never silently skip a mandatory seat.
+
+Integration findings stay in working memory until closure notes list each one as fixed, filed, or
+declined with a reason — not only counts, and not a second filing of unit nits. Do not write a
+per-run findings ledger under `.shipmates/` or elsewhere in the repository; temporary captures stay in
+the existing worktree and leave with cleanup. `.shipmates/worktrees/` stays allowed. A docs or visual
+acceptance names the rendered artifact inspected, or states that inspection was unavailable and does
+not ACCEPT that surface.
 
 ## Reusable subagent preamble
 

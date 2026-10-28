@@ -2075,17 +2075,29 @@ fn test_review_findings_are_accountable_without_a_local_ledger() {
 
     let commands = load_commands(&root.join("commands")).unwrap();
     let files = ClaudeCodeAdapter.build(&[], &commands).unwrap();
+
+    // With harness-native bootstrap (#609), Claude Code uses Pointer mode: the full
+    // acceptance-board / accountability contract lives in the shared bootstrap prose
+    // (installed via steering), not re-inlined into every skill. Skills must still
+    // point at project instructions and must not reintroduce the old markers.
+    let bootstrap = shipmates::adapters::render::bootstrap_content();
+    assert!(
+        bootstrap.contains("per-run findings ledger")
+            && bootstrap.contains("working memory")
+            && bootstrap.contains("rendered artifact")
+            && bootstrap.contains(".shipmates/worktrees/"),
+        "steering/bootstrap.md must carry the accountability contract for pointer harnesses"
+    );
+
     for name in BOARD_COMMANDS {
         let path = format!("harnesses/claude-code/.claude/skills/{name}/SKILL.md");
         let rendered = files
             .get(&path)
             .unwrap_or_else(|| panic!("no rendered payload for {path}"));
         assert!(
-            rendered.contains("per-run findings ledger")
-                && rendered.contains("working memory")
-                && rendered.contains("rendered artifact")
-                && rendered.contains(".shipmates/worktrees/"),
-            "{name}: rendered board must carry the accountability contract"
+            rendered.contains("Shared Shipmates bootstrap principles")
+                || rendered.contains("per-run findings ledger"),
+            "{name}: rendered skill must point at bootstrap or carry the accountability contract"
         );
         assert!(
             !rendered.contains("shipmates:acceptance-board"),
@@ -2105,9 +2117,10 @@ fn test_review_findings_are_accountable_without_a_local_ledger() {
         .get(epic_path)
         .unwrap_or_else(|| panic!("no rendered payload for {epic_path}"));
     assert!(
-        epic_rendered.contains("per-run findings ledger")
-            && epic_rendered.contains("rendered artifact"),
-        "ship-epic: rendered integration board must carry the accountability contract"
+        epic_rendered.contains("Shared Shipmates bootstrap principles")
+            || (epic_rendered.contains("per-run findings ledger")
+                && epic_rendered.contains("rendered artifact")),
+        "ship-epic: rendered skill must point at bootstrap or carry the integration accountability contract"
     );
     assert!(
         !epic_rendered.contains("shipmates:epic-integration-board"),
