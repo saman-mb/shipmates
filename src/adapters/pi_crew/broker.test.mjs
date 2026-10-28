@@ -326,8 +326,15 @@ test("unknown methods are rejected and the journal never stores prompts", async 
 
 test("ipc path is a named pipe on Windows and a socket path elsewhere, never a TCP port", async () => {
   const uid = typeof process.getuid === "function" ? String(process.getuid()) : process.env.SUDO_UID || "unknown";
-  assert.equal(ipcListenPath("win32", "shipmates-admission"), `\\\\.\\pipe\\shipmates-admission-${uid}`);
-  assert.equal(ipcListenPath("darwin", "shipmates-admission", "/tmp"), `/tmp/shipmates-admission-${uid}.sock`);
+  const previous = process.env.XDG_RUNTIME_DIR;
+  delete process.env.XDG_RUNTIME_DIR;
+  try {
+    assert.equal(ipcListenPath("win32", "shipmates-admission"), `\\\\.\\pipe\\shipmates-admission-${uid}`);
+    assert.equal(ipcListenPath("darwin", "shipmates-admission", "/tmp"), `/tmp/shipmates-admission-${uid}.sock`);
+    assert.equal(ipcListenPath("linux", "shipmates-admission", "/tmp"), `/tmp/shipmates-admission-${uid}.sock`);
+  } finally {
+    if (previous !== undefined) process.env.XDG_RUNTIME_DIR = previous;
+  }
   await assert.rejects(() => startBroker({ path: "9", probe: async () => snapshot() }), /TCP/);
   await assert.rejects(() => startBroker({ path: "127.0.0.1:9", probe: async () => snapshot() }), /TCP/);
 
