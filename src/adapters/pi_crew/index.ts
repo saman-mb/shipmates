@@ -72,7 +72,9 @@ export default function (pi) {
         if (ctx.modelRegistry?.find) {
           const [provider, ...rest] = choice.split("/");
           const found = ctx.modelRegistry.find(provider, rest.join("/"));
-          if (found) await ctx.setModel(found);
+          if (found && typeof pi.setModel === "function") {
+            await pi.setModel(found);
+          }
         }
         ctx.ui.notify(`Switch is Local. This chat is now on ${choice}.`, "info");
         return;
