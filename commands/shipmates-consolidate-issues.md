@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-consolidate-issues — inventory → cross-check history → close → migrate → merge → bundle
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Turn a drifting issue tracker back into a plan. The whole open-issue set is pulled, every issue is
 checked against the project's git history and merged PRs to see what is **already done**, the done
 and stale ones are closed, legacy-shaped issues are migrated to the tracker's current conventions,

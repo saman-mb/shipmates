@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-migrate — discover → transform each → verify → sweep clean
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Carry a repeated, mechanical change across an entire codebase without missing a site or leaving it
 half-migrated. Discover **every** occurrence, transform each independently in isolation, verify per site,
 and close only when a **grep for the old pattern comes back empty** and the suite is green. The gate is
@@ -88,8 +88,6 @@ non-mechanical sites individually** — never blind-replace where semantics diff
 
 ## Stage 5 — Review & deliver  (agents, on the pushed PR head)
 
-<!-- shipmates:acceptance-board -->
-
 **Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
 modes), skip the board and proceed to opening (or, `auto`, merging) the PR; `epic-deferred` must name the
 milestone board that will run the review, and `board=off` is recorded in the report and PR body.
@@ -103,8 +101,6 @@ milestone board that will run the review, and `board=off` is recorded in the rep
 Any `REJECT`/`FAIL` → fixer loop, re-push, re-gate (bounded), then **Retry** the board from the
 fixer delta (shared rule), then escalate. Open (or, `auto`, merge) the
 PR: body lists the census counts, sites migrated, sites excluded (with reasons), and the green-CI link.
-
-<!-- shipmates:why-merge-pr -->
 
 ## Stage 6 — Report
 

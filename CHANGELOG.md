@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-10-28
+
+### Changed
+
+- **Shared Shipmates principles now ship through a single bootstrap file instead of being inlined into every command and crew role (#609).** A new `steering/bootstrap.md` holds the cost discipline, argument intake, model routing, acceptance board, epic integration board, subagent preamble, and why-merge-PR doctrine. The installer writes this block to each harness's native instructions/rules file, and every rendered command and role points to it with a short pointer. This removes per-file duplication and makes a rule change update one source rather than nineteen commands and thirteen roles.
+
+### Added
+
+- `tools/harness_matrix.json` now records a `bootstrap_surface_schema` with per-harness notes on how an installed package can inject shared context and what instruction-file surfaces exist as fallback.
+
 ## [0.16.3] - 2026-10-28
 
 ### Fixed

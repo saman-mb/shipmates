@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-ship-epic — wave fan-out epic delivery
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Deliver a whole **epic** by driving the `/shipmates-ship-issue` pipeline over its unchecked story checklist —
 in **shipping units** (one story or a small cohesive bundle), dependency order preserved — until
 every non-gate story lands on a shared **epic integration branch**, then hand the captain **one**
@@ -255,8 +255,6 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
    - **Integration** — epic issue link, integration branch name, and explicit note: **human review
      required** — merge only when satisfied with the epic scope.
 
-<!-- shipmates:why-merge-pr -->
-
    Record `<EPIC_PR>`.
 7. **Persist state** — post or **edit** the single `<!-- shipmates-ship-epic-progress -->` comment on epic
    `<epic>` (see **Stage 3.5**). Include machine-readable lines `EPIC_BRANCH:`, `EPIC_PR:`, `MAIN_BRANCH:`,
@@ -493,8 +491,6 @@ On pause, include `<epic-log>` and a link to the progress comment in the pause r
    pushing unreviewed commits straight to `<EPIC_BRANCH>` — bounded by `MAX_FIX_ROUNDS`.
 2. **Epic integration board** — **never skip on full closure** (not crew-complete with owner
    residuals). After step 1 is green, convene specialists on epic PR `<EPIC_PR>` head to review the consolidated epic diff:
-
-<!-- shipmates:epic-integration-board -->
 
    Fix any REJECT in a dedicated fixer worktree (a branch and a PR into `<EPIC_BRANCH>`), push, re-poll
    step 1, **Retry** the board from the fixer delta (shared rule) — bounded by `MAX_FIX_ROUNDS`.

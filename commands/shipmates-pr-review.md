@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-pr-review — classify → convene the board → consolidate
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Point the crew at a pull request **somebody else wrote** — a teammate's, an outside contributor's, a
 dependency bump, or one you opened by hand before you thought to use Shipmates. Every other command
 assumes the crew authored the change; this one doesn't, and that single fact sets its shape: **no
@@ -102,8 +102,6 @@ not a loop. If checks are still pending, say so and review the diff on its merit
 runtime signal is unconfirmed.
 
 ## Stage 2 — The board  (specialist agents, in parallel, against `headRefOid`)
-
-<!-- shipmates:acceptance-board -->
 
 Spawn in a single message so they run concurrently, each pinned to the **head commit**. Use the Stage 0
 flags for scaled optional seats. **`/shipmates-pr-review`-specific additions** on top of the shared board:

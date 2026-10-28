@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Agent, Grep, Glob
 disable-model-invocation: true
 ---
 # /shipmates-deslop — audit the debt, file it as an epic, let the captain choose what ships
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Every repository carries debt no issue tracks: an import nothing imports, two copies of one function
 that have quietly drifted apart, a wrapper that only passes its arguments through, a subsystem with
 seven internal states whose only caller reads a boolean, a feature flag that has read `true` since the

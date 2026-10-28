@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-spike — prototype the options, recommend with an ADR
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Answer a hard "which way should we build this?" question with evidence instead of a hunch. Frame the
 decision, have engineers prototype **several approaches in parallel as disposable spikes**, judge them
 against the project's real constraints, and record the outcome as an **ADR** (Architecture Decision
@@ -105,8 +105,6 @@ a red check means pulling the failing log, fixing it, re-pushing, and re-polling
 looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`, in which case merge the PR and
 remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with the PR open. Under
 `MODE=edit-in-place`, there's nothing to deliver — the ADR is already in the tree.
-
-<!-- shipmates:why-merge-pr -->
 
 ## Stage 4 — Report & hand off
 

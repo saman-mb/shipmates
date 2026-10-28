@@ -236,7 +236,7 @@ fn collect_current_steering_hygiene(
     payload: &BTreeMap<String, String>,
     hygiene: &mut Hygiene,
 ) {
-    let content = crate::catalog::load_global_steering_embedded().unwrap_or_default();
+    let content = crate::catalog::load_combined_steering_embedded().unwrap_or_default();
     let Ok(crate::steering::GlobalSteeringStatus::Installed {
         path,
         up_to_date: true,
@@ -1418,8 +1418,8 @@ fn diagnose_built(
     // 9. Global steering check (only when diagnosing user's home directory)
     if let Some(home_path) = home::home_dir() {
         if target_dir == home_path {
-            let global_content = crate::catalog::load_global_steering_embedded().unwrap_or_default();
-            match crate::steering::check_global_steering(harness, &home_path, &global_content) {
+            let steering_content = crate::catalog::load_combined_steering_embedded().unwrap_or_default();
+            match crate::steering::check_global_steering(harness, &home_path, &steering_content) {
                 Ok(crate::steering::GlobalSteeringStatus::Installed { path, up_to_date: true }) => {
                     checks.push(Check {
                         name: "Global steering".into(),
@@ -2684,7 +2684,7 @@ mod tests {
         install_healthy(target, &roles, &cmds);
         write_receipt(target, &roles, &cmds, &[]);
 
-        let content = crate::catalog::load_global_steering_embedded().unwrap();
+        let content = crate::catalog::load_combined_steering_embedded().unwrap();
         crate::steering::install_global_steering("claude-code", target, &content).unwrap();
         let steering = target.join(".claude/CLAUDE.md");
         let bak = steering.with_file_name("CLAUDE.md.bak-1700000000-4242-0");

@@ -1007,33 +1007,85 @@ fn main() -> Result<()> {
                 &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
             );
 
-            // Global steering is user-scope only (#489). A project --local/--dir
-            // install must not rewrite ~/.claude/CLAUDE.md (and friends); that
-            // used to fire on every install after #438.
-            if installer::manifest_db::is_global_target(&target_dir)
-                && let Some(home_path) = home::home_dir()
-                && let Ok(global_content) = source.load_global_steering()
-            {
-                println!(
-                    "\nInstalling canonical global steering (heuristics and workflow routing)..."
-                );
-                for h in &harnesses {
-                    match steering::install_global_steering(h, &home_path, &global_content) {
-                        Ok(steering::SteeringOutcome::Created(p)) => {
-                            println!("  {} — installed global steering at {}", h, p.display());
+            // Install the canonical shared bootstrap into each harness's native
+            // instructions/rules file. User-scope files are updated on global
+            // installs; GitHub Copilot's bootstrap is project-scope.
+            // Install the canonical shared steering (global heuristics + bootstrap
+            // principles) into each harness's native instructions/rules file.
+            // User-scope files are updated on global installs; GitHub Copilot's
+            // steering is project-scope because it has no documented user-scope file.
+            if let Ok(steering_content) = source.load_combined_steering() {
+                if installer::manifest_db::is_global_target(&target_dir) {
+                    if let Some(home_path) = home::home_dir() {
+                        println!("\nInstalling canonical global steering...");
+                        for h in &harnesses {
+                            match h.as_str() {
+                                "github-copilot" => {
+                                    match steering::install_project_steering(
+                                        h,
+                                        &target_dir,
+                                        &steering_content,
+                                    ) {
+                                        Ok(steering::SteeringOutcome::Created(p)) => {
+                                            println!("  {} — installed global steering at {}", h, p.display());
+                                        }
+                                        Ok(steering::SteeringOutcome::Updated(p)) => {
+                                            println!("  {} — updated global steering at {}", h, p.display());
+                                        }
+                                        Ok(steering::SteeringOutcome::Unchanged(p)) => {
+                                            println!("  {} — global steering up to date at {}", h, p.display());
+                                        }
+                                        Ok(steering::SteeringOutcome::Gap(msg)) => {
+                                            println!("  {} — note: {}", h, msg);
+                                        }
+                                        Ok(steering::SteeringOutcome::Removed(_)) => {}
+                                        Err(e) => {
+                                            eprintln!("  {} — failed to install global steering: {}", h, e);
+                                        }
+                                    }
+                                }
+                                _ => match steering::install_global_steering(h, &home_path, &steering_content) {
+                                    Ok(steering::SteeringOutcome::Created(p)) => {
+                                        println!("  {} — installed global steering at {}", h, p.display());
+                                    }
+                                    Ok(steering::SteeringOutcome::Updated(p)) => {
+                                        println!("  {} — updated global steering at {}", h, p.display());
+                                    }
+                                    Ok(steering::SteeringOutcome::Unchanged(p)) => {
+                                        println!("  {} — global steering up to date at {}", h, p.display());
+                                    }
+                                    Ok(steering::SteeringOutcome::Gap(msg)) => {
+                                        println!("  {} — note: {}", h, msg);
+                                    }
+                                    Ok(steering::SteeringOutcome::Removed(_)) => {}
+                                    Err(e) => {
+                                        eprintln!("  {} — failed to install global steering: {}", h, e);
+                                    }
+                                },
+                            }
                         }
-                        Ok(steering::SteeringOutcome::Updated(p)) => {
-                            println!("  {} — updated global steering at {}", h, p.display());
-                        }
-                        Ok(steering::SteeringOutcome::Unchanged(p)) => {
-                            println!("  {} — global steering up to date at {}", h, p.display());
-                        }
-                        Ok(steering::SteeringOutcome::Gap(msg)) => {
-                            println!("  {} — note: {}", h, msg);
-                        }
-                        Ok(steering::SteeringOutcome::Removed(_)) => {}
-                        Err(e) => {
-                            eprintln!("  {} — failed to install global steering: {}", h, e);
+                    }
+                } else {
+                    for h in &harnesses {
+                        if h == "github-copilot" {
+                            match steering::install_project_steering(h, &target_dir, &steering_content) {
+                                Ok(steering::SteeringOutcome::Created(p)) => {
+                                    println!("  {} — installed global steering at {}", h, p.display());
+                                }
+                                Ok(steering::SteeringOutcome::Updated(p)) => {
+                                    println!("  {} — updated global steering at {}", h, p.display());
+                                }
+                                Ok(steering::SteeringOutcome::Unchanged(p)) => {
+                                    println!("  {} — global steering up to date at {}", h, p.display());
+                                }
+                                Ok(steering::SteeringOutcome::Gap(msg)) => {
+                                    println!("  {} — note: {}", h, msg);
+                                }
+                                Ok(steering::SteeringOutcome::Removed(_)) => {}
+                                Err(e) => {
+                                    eprintln!("  {} — failed to install global steering: {}", h, e);
+                                }
+                            }
                         }
                     }
                 }
@@ -1090,6 +1142,20 @@ fn main() -> Result<()> {
                     | Ok(steering::SteeringOutcome::Updated(_)) => {}
                     Err(e) => {
                         eprintln!("  failed to remove global steering: {e}");
+                    }
+                }
+            }
+            if harness_name == "github-copilot" {
+                match steering::uninstall_project_steering(&harness_name, &target_dir) {
+                    Ok(steering::SteeringOutcome::Removed(p)) => {
+                        println!("  removed project bootstrap at {}", p.display());
+                    }
+                    Ok(steering::SteeringOutcome::Unchanged(_))
+                    | Ok(steering::SteeringOutcome::Gap(_))
+                    | Ok(steering::SteeringOutcome::Created(_))
+                    | Ok(steering::SteeringOutcome::Updated(_)) => {}
+                    Err(e) => {
+                        eprintln!("  failed to remove project bootstrap: {e}");
                     }
                 }
             }
@@ -1174,13 +1240,36 @@ fn main() -> Result<()> {
                 &|h| install_force_hint(h, &location, with_tools_flag.as_deref()),
             );
 
-            // Refresh canonical global steering only on a global/$HOME target (#489).
-            if installer::manifest_db::is_global_target(&target_dir)
-                && let Some(home_path) = home::home_dir()
-                && let Ok(global_content) = source.load_global_steering()
-            {
-                for h in &harnesses {
-                    let _ = steering::install_global_steering(h, &home_path, &global_content);
+            // Refresh the canonical shared steering (global heuristics + bootstrap
+            // principles) in each harness's native instructions/rules file.
+            if let Ok(steering_content) = source.load_combined_steering() {
+                if installer::manifest_db::is_global_target(&target_dir) {
+                    if let Some(home_path) = home::home_dir() {
+                        for h in &harnesses {
+                            match h.as_str() {
+                                "github-copilot" => {
+                                    let _ = steering::install_project_steering(
+                                        h,
+                                        &target_dir,
+                                        &steering_content,
+                                    );
+                                }
+                                _ => {
+                                    let _ = steering::install_global_steering(
+                                        h,
+                                        &home_path,
+                                        &steering_content,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    for h in &harnesses {
+                        if h == "github-copilot" {
+                            let _ = steering::install_project_steering(h, &target_dir, &steering_content);
+                        }
+                    }
                 }
             }
             register_installs(&target_dir, &harnesses);

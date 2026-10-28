@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-harden — threat-model → remediate → re-review
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Take a surface and make it defensibly secure: a `security-engineer` threat-models it, findings are
 ranked and fixed, and the loop closes only when **every finding is either remediated or carries an
 explicit, reasoned accepted-risk note** — and the secrets/dependency scans are clean. The gate is
@@ -119,8 +119,6 @@ deferred), the remaining risk in plain words, and any human follow-ups (secret r
 changes outside the repo). Under `report` (the default) that report **is** the deliverable and the
 working tree is exactly as you found it — say so explicitly. Under `pr`, commit and push `<BRANCH>`
 and open the PR, same as `/shipmates-ship-issue`'s commit-push-PR stage, with the same trailers.
-
-<!-- shipmates:why-merge-pr -->
 
 Then gate on
 CI: poll `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing

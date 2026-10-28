@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-ship-issue — autonomous ticket delivery
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Take **one or more issues / stories (`#<issue>`..)** from open all the way to a **reviewed, CI-green
 pull request** on the base branch, autonomously — using an isolated git worktree and a board of
 specialist subagents. Merging is gated by `MERGE_MODE` (see Config): by default the run stops with
@@ -491,8 +491,6 @@ a `Closes #<issue>` keyword repeated for every issue in `<issues>` — GitHub on
 it's told individually, so a single comma-separated `Closes #1, #2, #3` silently leaves all but the
 first open.
 
-<!-- shipmates:why-merge-pr -->
-
 ## Stage 4.5 — CI gate: wait for green, fix if red  (orchestrator + Fixer)  ⛔ HARD GATE
 
 **When there is no local toolchain to fully validate, CI is the ONLY real runtime gate — the Stage 3
@@ -553,8 +551,6 @@ exhaust `MAX_FIX_ROUNDS` first, then escalate from `/shipmates-ship-issue` so th
 delegation modes), skip Stage 5 and Stage 6 and proceed to Stage 7 / Stage 8. A deferral must name the
 milestone board that will review the integrated artifact; without one, treat the token as unset and
 convene the board.
-
-<!-- shipmates:acceptance-board -->
 
 Use the Stage 0 classification flags to decide which **scaled optional seats** join the mandatory
 PE+PO core. Pass each reviewer the acceptance criteria, quality bar, and (for visual roles) any

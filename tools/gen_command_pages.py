@@ -1974,8 +1974,24 @@ def command_page_copy(cmd: Command) -> CommandPageCopy:
 
 
 def derive_called_by(skills_dir: Path, roles: tuple) -> dict:
-    """role -> slugs of the commands mentioning the role."""
+    """role -> slugs of the commands mentioning the role.
+
+    Shared principles now live in `steering/bootstrap.md` and are referenced by
+    every command through the `<!-- shipmates:bootstrap -->` marker, so a role
+    named in the bootstrap is effectively called by every command.
+    """
     called = {role: [] for role in roles}
+    bootstrap_path = Path(__file__).parent.parent / "steering" / "bootstrap.md"
+    bootstrap_text = (
+        bootstrap_path.read_text(encoding="utf-8")
+        if bootstrap_path.is_file()
+        else ""
+    )
+    all_slugs = tuple(SLUGS)
+    for role in roles:
+        if re.search(r"\b" + re.escape(role) + r"\b", bootstrap_text):
+            called[role] = list(all_slugs)
+
     for slug in SLUGS:
         path = skills_dir / f"{slug}.md"
         if not path.is_file():
@@ -1985,7 +2001,8 @@ def derive_called_by(skills_dir: Path, roles: tuple) -> dict:
         text = path.read_text(encoding="utf-8")
         for role in roles:
             if re.search(r"\b" + re.escape(role) + r"\b", text):
-                called[role].append(slug)
+                if slug not in called[role]:
+                    called[role].append(slug)
     return {role: tuple(slugs) for role, slugs in called.items()}
 
 

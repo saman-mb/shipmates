@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-document — draft from the code → fresh-reader test → fix drift
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Produce docs that get a reader to *done*, gated on the one check that catches bad docs: a **fresh agent
 with no prior context follows the instructions against the real repo and must reach the stated result**.
 Docs that drift from the code or can't be completed are rejected and fixed. The gate is "a newcomer can
@@ -98,8 +98,6 @@ reader's outstanding blockers — don't ship docs that don't work.
 
 `pr` (the default): commit on the worktree branch — staging only the paths this run produced, never
 `git add -A` — push, and open the PR against `BASE_BRANCH`.
-
-<!-- shipmates:why-merge-pr -->
 
 Then gate on CI: poll `gh pr checks` until nothing is pending; a red check means pulling the failing
 log, fixing it, re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and

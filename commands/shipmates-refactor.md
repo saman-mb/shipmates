@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 ---
 # /shipmates-refactor — pin behaviour → transform → prove equivalence
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 A refactor that quietly changes behaviour is a bug with good PR copy. The gate here is the one thing
 that distinguishes the two: **behaviour is pinned in tests written before the change, and those tests
 pass unmodified afterwards.** If a test had to be edited to make the refactor pass, it wasn't a
@@ -127,8 +127,6 @@ Then the full suite green, and the **CI gate**: poll `gh pr checks` until done; 
 
 ## Stage 5 — Review  (agents, on the pushed PR head)
 
-<!-- shipmates:acceptance-board -->
-
 **Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
 modes), skip Stage 5 and proceed to Stage 6; `epic-deferred` must name the milestone board that will run
 the review, and `board=off` is recorded in the report and PR body.
@@ -154,8 +152,6 @@ touched and why, and the green-CI link. Bugs found while refactoring still must 
 the refactor (see Guardrails) — file them with the `/shipmates-ship-issue` Stage 7 disposition rules
 (prefer one batched issue; cap; dedupe). In-scope polish on already-touched refactor paths may be
 absorbed when behaviour-preserving and within absorb budgets.
-
-<!-- shipmates:why-merge-pr -->
 
 ---
 

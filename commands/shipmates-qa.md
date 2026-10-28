@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-qa — context → checklist → one step per turn → summary
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Point the crew at a change that needs **human eyes on a running build** — a PR, an issue's branch,
 or a named branch — and walk the captain through local QA **one check at a time**. CI and
 `/ship-pr-review` cover automated gates and the specialist board; this command covers what those

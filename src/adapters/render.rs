@@ -22,6 +22,7 @@ pub struct Dialect {
     pub planner: &'static str,
     pub args_token: &'static str,
     pub cmd_prefix: &'static str,
+    pub bootstrap_mode: BootstrapMode,
 }
 
 const SENTINEL: &str = "\u{00A7}agents-instructions";
@@ -31,7 +32,9 @@ const EPIC_INTEGRATION_BOARD_MARKER: &str = "<!-- shipmates:epic-integration-boa
 const SUBAGENT_PREAMBLE_MARKER: &str = "<!-- shipmates:subagent-preamble -->";
 const WHY_MERGE_PR_MARKER: &str = "<!-- shipmates:why-merge-pr -->";
 const MODEL_ROUTING_MARKER: &str = "<!-- shipmates:model-routing -->";
+const BOOTSTRAP_MARKER: &str = "<!-- shipmates:bootstrap -->";
 const COST_DOCTRINE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/COST.md"));
+const BOOTSTRAP_CONTENT: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/steering/bootstrap.md"));
 
 fn render_token(text: &str, token: &str, value: &str) -> String {
     text.replace(token, value)
@@ -80,11 +83,42 @@ fn why_merge_pr() -> &'static str {
     doctrine_section("<!-- why-merge-pr:start -->", "<!-- why-merge-pr:end -->")
 }
 
+/// How a harness wants the shared bootstrap delivered in rendered bodies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BootstrapMode {
+    /// Inline the full bootstrap prose. Used when the harness has no auto-loaded
+    /// instruction file that already carries it.
+    Inline,
+    /// Replace the marker with a short pointer to the project instructions file.
+    /// Used when the harness auto-loads the bootstrap from an instructions file.
+    Pointer,
+    /// Drop the marker entirely. Used when the bootstrap is injected by another
+    /// surface and no inline reference is wanted.
+    Omit,
+}
+
+/// The canonical shared bootstrap prose installed or referenced by every harness.
+pub fn bootstrap_content() -> &'static str {
+    BOOTSTRAP_CONTENT
+}
+
+fn bootstrap_pointer() -> &'static str {
+    "Shared Shipmates bootstrap principles are provided by the project instructions file ({{project-instructions}}); consult them for cost discipline, argument intake, model routing, acceptance review, epic integration, subagent return discipline, and PR impact."
+}
+
+fn expand_bootstrap(text: &str, mode: BootstrapMode) -> String {
+    match mode {
+        BootstrapMode::Inline => text.replace(BOOTSTRAP_MARKER, bootstrap_content()),
+        BootstrapMode::Pointer => text.replace(BOOTSTRAP_MARKER, bootstrap_pointer()),
+        BootstrapMode::Omit => text.replace(BOOTSTRAP_MARKER, ""),
+    }
+}
+
 /// Resolve explicit repo-instructions tokens in neutral prose.
 ///
 /// Primary and fallback remain separate, so literal filenames in prose are not
 /// rewritten accidentally.
-fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
+pub fn render_instructions(text: &str, primary: &str, fallback: &str) -> String {
     let mut out = text.to_string();
     out = render_token(&out, "{{project-instructions}}", primary);
     render_token(&out, "{{project-instructions-fallback}}", fallback)
@@ -105,6 +139,7 @@ pub fn render_body(text: &str, d: &Dialect) -> String {
     out = out.replace(SUBAGENT_PREAMBLE_MARKER, subagent_preamble());
     out = out.replace(WHY_MERGE_PR_MARKER, why_merge_pr());
     out = out.replace(MODEL_ROUTING_MARKER, model_routing());
+    out = expand_bootstrap(&out, d.bootstrap_mode);
     out = render_instructions(&out, d.instructions_primary, d.instructions_fallback);
     out = render_token(&out, "{{agents-glob}}", &format!("{}/*.md", d.agents_glob));
     out = render_token(&out, "{{session-key}}", d.session_key);
@@ -226,6 +261,7 @@ pub const CLAUDE_CODE: Dialect = Dialect {
     planner: "Plan",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
 
 /// opencode's dialect.
@@ -238,6 +274,7 @@ pub const OPENCODE: Dialect = Dialect {
     planner: "architect",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
 
 /// The neutral dialect for the shared open Agent Skills tree (`.agents/skills/`).
@@ -270,6 +307,7 @@ pub const AGENT_SKILLS: Dialect = Dialect {
     planner: "architect",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
 
 /// Antigravity's project-instruction fallback is `GEMINI.md`, not the
@@ -283,6 +321,7 @@ pub const ANTIGRAVITY: Dialect = Dialect {
     planner: "architect",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
 
 // Antigravity (`agy`, the retired Gemini CLI's successor) reads skills from the
@@ -298,6 +337,7 @@ pub const CODEX: Dialect = Dialect {
     planner: "planner",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
 
 /// Pi's crew and native command dialect.
@@ -320,6 +360,7 @@ pub const PI: Dialect = Dialect {
     planner: "architect",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/skill:",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
 
 // Cursor has no crew mechanic here, so it renders no personas of its own; its
@@ -336,6 +377,7 @@ pub const GITHUB_COPILOT: Dialect = Dialect {
     planner: "planner",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
 
 /// Grok Build (the xAI `grok` CLI)'s dialect.
@@ -354,6 +396,7 @@ pub const GROK_BUILD: Dialect = Dialect {
     planner: "plan",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
 
 /// Devin CLI / Devin Desktop's dialect. Devin is what Windsurf became on
@@ -368,7 +411,27 @@ pub const DEVIN: Dialect = Dialect {
     planner: "planner",
     args_token: "$ARGUMENTS",
     cmd_prefix: "/",
+    bootstrap_mode: BootstrapMode::Pointer,
 };
+
+/// Return the canonical dialect for a harness name, when one exists.
+///
+/// Cursor ships through the shared Agent Skills tree, so it resolves to
+/// [`AGENT_SKILLS`].
+pub fn dialect_for(harness: &str) -> Option<&'static Dialect> {
+    match harness {
+        "claude-code" => Some(&CLAUDE_CODE),
+        "opencode" => Some(&OPENCODE),
+        "antigravity" => Some(&ANTIGRAVITY),
+        "codex" => Some(&CODEX),
+        "cursor" => Some(&AGENT_SKILLS),
+        "github-copilot" => Some(&GITHUB_COPILOT),
+        "pi" => Some(&PI),
+        "grok-build" => Some(&GROK_BUILD),
+        "devin" => Some(&DEVIN),
+        _ => None,
+    }
+}
 
 pub struct CrewFormat {
     pub file_suffix: &'static str,

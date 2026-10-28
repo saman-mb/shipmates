@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-plan-epics — briefs → GitHub epics + user stories
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Turn the supplied brief(s) into a planned backlog: one or more **epics** (labelled `epic`), each
 broken into **user stories** (labelled `user-story` + area tags), cross-linked once filed. A
 **planning panel** — always including `product-manager`, plus up to two context-derived specialists

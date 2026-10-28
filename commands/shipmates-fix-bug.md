@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-fix-bug — reproduce → root-cause → fix → prove
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Take a bug from report to a **reviewed, CI-green PR** — but gated on the one signal that actually
 proves a bug is fixed: a **regression test that fails before the change and passes after**. No repro,
 no fix. Symptom-patching without a root cause is rejected.
@@ -102,8 +102,6 @@ nothing). Then push and run the **CI gate**: poll `gh pr checks` until done; if 
 
 ## Stage 5 — Review  (agents, on the pushed PR head)
 
-<!-- shipmates:acceptance-board -->
-
 **Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
 modes), skip Stage 5 and proceed to Stage 6; `epic-deferred` must name the milestone board that will run
 the review, and `board=off` is recorded in the report and PR body.
@@ -125,8 +123,6 @@ with the same **nit disposition** ladder as `/shipmates-ship-issue` Stage 7 (def
 in-scope leftovers; cap and batch any filed issues; never open one ticket per trivial leftover).
 Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, disposition counts,
 and the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
-
-<!-- shipmates:why-merge-pr -->
 
 ---
 
