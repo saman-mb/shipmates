@@ -118,7 +118,8 @@ PR: body lists the census counts, sites migrated, sites excluded (with reasons),
 ## Stage 6 — Report
 
 The inventory (found / migrated / excluded), the clean-sweep confirmation, review verdicts, fix rounds,
-and the PR link. Be explicit about anything deliberately left behind.
+and the PR link. Be explicit about anything deliberately left behind. List each review finding's
+disposition (fixed, filed, or declined with a reason), not only counts. The census contract is unchanged.
 
 ---
 

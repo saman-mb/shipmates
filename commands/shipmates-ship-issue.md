@@ -634,13 +634,15 @@ them when missing and the captain's repo clearly uses labelled follow-ups). Link
 Do **not** let nits block delivery.
 
 **4. Audit.** Completion comment and final report must show counts: absorbed / pr-noted / filed
-(with links). Security findings are never silent-absorbed — name them in the report and keep the
+(with links), and list each finding's id and disposition — fixed, filed, or declined with a reason —
+not only those counts. Security findings are never silent-absorbed — name them in the report and keep the
 `/shipmates-harden` path when `IS_SECURITY_SENSITIVE`.
 
 ## Stage 8 — Deliver  (orchestrator)
 
 - **If `MERGE_MODE=manual`** (default): stop here. Post a completion comment on the PR (what shipped,
-  how validated, the green CI link, nit disposition counts — absorbed / pr-noted / filed with links)
+  how validated, the green CI link, nit disposition counts — absorbed / pr-noted / filed with links —
+  and each finding's id and disposition: fixed, filed, or declined with a reason, not only counts)
   and hand the user the PR link to merge into
   **`BASE_BRANCH`**. Leave
   the worktree in place, or remove it and keep the branch — your choice, state which. Nothing closes
@@ -667,7 +669,7 @@ fetch outcome, and whether a resume sync/rebase ran, which specialists reviewed 
 verdicts (`re-run` / `carried ACCEPT` / `newly seated` / `still gated` after any fix round — a `still
 gated` seat is named with the flag that gated it), number of fix rounds, the `MODEL ROUTING:` line for every agent spawned
 (tier, whether the identity was observed on the target or inherited, the model identity the harness accepted, effort requested and resolved, and
-`honoured` / `substituted` / `inherit`), nit disposition counts (absorbed / pr-noted / filed with links), the confirmed-green CI link,
+`honoured` / `substituted` / `inherit`), each finding's disposition (fixed, filed, or declined with a reason — not only absorbed / pr-noted / filed counts, with links), the confirmed-green CI link,
 
 anything that could only be validated statically, and — when `IS_SECURITY_SENSITIVE` was set at
 Stage 0 — the `/shipmates-harden` recommendation, carried here mechanically rather than decided now. When
@@ -704,7 +706,7 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 - Reviewers always evaluate the **pushed PR head**: for a **seated or re-run** reviewer, "accepted" == "what merges". A **carried ACCEPT** was taken on the delta that reviewer actually saw, so it is only valid while that delta stands.
 - Never skip PE+PO on the **first** board once a PR head exists
   (retries may carry a PE/PO ACCEPT when the fixer delta cannot invalidate it). Never silently drop a
-  nit — absorb it, note it on the PR, or file it (with reason); report the disposition counts.
+  nit — absorb it, note it on the PR, or file it (with reason); report each finding's disposition, not only the counts.
 - **Never assume a push is green.** After every push (Stage 4 and every Stage 6 fix), run the Stage
   4.5 CI gate: poll `gh pr checks` until done, and if red pull `gh run view --log-failed`, fix,
   re-push, re-poll. The static SDET pass does NOT substitute for a confirmed-green CI run.
@@ -740,7 +742,7 @@ Keep **DELIVERED** and **REVIEWS** scannable — the captain reads them on the e
 - Static review cannot verify pixels, and no reviewer can verify what it didn't examine. When neither
   the `ux-ui-designer` (UI) nor the `art-director` (visual-art) could actually render and inspect the
   result, surface their **"needs human visual pass"** flag in the final report rather than implying
-  the visuals are confirmed. The same holds for any Stage 5 reviewer that names a gap in what it
+  the visuals are confirmed. A docs acceptance names the rendered artifact or states that direct inspection was unavailable. The same holds for any Stage 5 reviewer that names a gap in what it
   covered — carry it into the final report; never let an ACCEPT/PASS silently stand in for ground it
   didn't see. Both visual roles are auto-gated by the Planner's `IS_UI_STORY` / `IS_VISUAL_STORY`
   flags, as `architect` is by `IS_ARCH_SIGNIFICANT`.

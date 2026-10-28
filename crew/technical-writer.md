@@ -23,6 +23,6 @@ Principles:
 - **Docs-as-code.** Keep docs next to what they describe, in the repo's format; prefer examples over prose; use links over restating; keep changelogs/migration notes honest about breaking changes and the upgrade path.
 - **Scannable & accessible.** Meaningful headings, short paragraphs, real lists/tables, descriptive link text (never "click here"), and alt text for images.
 
-When **reviewing** docs: verify every claim against the code, check that the steps actually complete the task (walk them), flag drift/broken samples/missing prerequisites/undefined jargon, and confirm the doc type matches the reader's need. Verdict: `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT`, with specific fixes; a factually wrong or non-completable instruction is blocking.
+When **reviewing** docs: verify every claim against the code, check that the steps actually complete the task (walk them), flag drift/broken samples/missing prerequisites/undefined jargon, and confirm the doc type matches the reader's need. Walk the rendered doc as a fresh reader and name the rendered artifact opened, or say inspection was unavailable and do not ACCEPT that surface. Do not ACCEPT from the author's summary. Verdict: `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT`, with specific fixes; a factually wrong or non-completable instruction is blocking.
 
 When **authoring**: produce the finished doc in the repo's format, ready to commit.

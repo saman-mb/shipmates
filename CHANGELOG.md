@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 
 - **Shared Shipmates principles now ship through a single bootstrap file instead of being inlined into every command and crew role (#609).** A new `steering/bootstrap.md` holds the cost discipline, argument intake, model routing, acceptance board, epic integration board, subagent preamble, and why-merge-PR doctrine. The installer writes this block to each harness's native instructions/rules file, and every rendered command and role points to it with a short pointer. This removes per-file duplication and makes a rule change update one source rather than nineteen commands and thirteen roles.
+- **Review findings now have a disposition, and a docs or visual acceptance has to name what was actually inspected (#602).** A review keeps each finding in working memory and ends it as fixed, filed, or declined with a reason. The summary lives on the pull request or in the session report. A docs or visual sign-off names the rendered result that was opened, or says inspection was unavailable, instead of accepting from the source or the builder's account. The run does not write a findings ledger into the repository.
 
 ### Added
 
