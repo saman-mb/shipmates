@@ -230,11 +230,17 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
    own checkout:
    ```bash
    git -C <repo> fetch origin
+   # If a local <EPIC_BRANCH> exists, check it out and fast-forward it; stop loudly on divergence.
+   if git -C <repo> show-ref --verify --quiet refs/heads/<EPIC_BRANCH>; then
+     git -C <repo> checkout <EPIC_BRANCH>
+     git -C <repo> pull --ff-only || { echo "Local <EPIC_BRANCH> has diverged; reconcile manually first"; exit 1; }
+   fi
    git -C <repo> worktree add <kickoff-wt> -B <EPIC_BRANCH> origin/<EPIC_BRANCH>
    git -C <kickoff-wt> commit --allow-empty -m "chore: epic kickoff"
    git -C <kickoff-wt> push origin <EPIC_BRANCH>
    git -C <repo> worktree remove <kickoff-wt>
    ```
+   Record the kickoff base SHA (`git -C <repo> rev-parse origin/<EPIC_BRANCH>`) in the run report.
    That is the normal kickoff path, not an error-recovery footnote. Skip when the tips already differ
    (reconstruction or landed work). Never stack a second kickoff commit. Skip in `DRY_RUN` (print that
    a kickoff commit would be made).

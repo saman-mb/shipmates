@@ -1484,6 +1484,9 @@ fn diagnose_built(
 
     if harness == "pi" {
         checks.push(pi_dual_skill_tree_check(target_dir));
+        if let Some((agent_dir, extension_file)) = pi_crew_paths(target_dir, harness) {
+            checks.extend(pi_crew_health(&agent_dir, &extension_file));
+        }
     }
 
     Ok(Report { checks })
@@ -1671,6 +1674,185 @@ fn pi_dual_skill_tree_check(target_dir: &Path) -> Check {
             fixable: false,
         }
     }
+}
+
+// --- Pi crew extension health (#606) ---
+
+/// Runtime configuration for the pi crew extension. Lives in the pi agent
+/// directory (e.g. `~/.pi/agent/shipmates-crew.json`) and is read by the
+/// extension itself.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+struct PiCrewConfig {
+    #[serde(rename = "schemaVersion")]
+    schema_version: i64,
+    switch: String,
+    #[serde(default)]
+    roles: HashMap<String, String>,
+    #[serde(default)]
+    ticks: Vec<String>,
+    ceiling: Option<i64>,
+}
+
+impl PiCrewConfig {
+    fn default_config() -> Self {
+        Self {
+            schema_version: 1,
+            switch: "Off".into(),
+            roles: HashMap::new(),
+            ticks: Vec::new(),
+            ceiling: None,
+        }
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if self.schema_version != 1 {
+            return Err(format!("schemaVersion must be 1, got {}", self.schema_version));
+        }
+        if !matches!(self.switch.as_str(), "Off" | "Split" | "Local") {
+            return Err(format!("switch must be Off, Split, or Local, got {:?}", self.switch));
+        }
+        if let Some(c) = self.ceiling {
+            if c < 0 {
+                return Err(format!("ceiling must be non-negative or null, got {c}"));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+enum NodeCheckError {
+    NodeNotFound,
+    Syntax(String),
+}
+
+/// Resolve the pi agent directory and the installed extension file for a harness
+/// install. `agent_dir` is where the extension keeps its state and where pi's
+/// `settings.json` lives. `extension_file` is the bundled `index.ts` Shipmates
+/// installs, which may be under the project tree or the global agent tree.
+pub(crate) fn pi_crew_paths(target_dir: &Path, harness: &str) -> Option<(PathBuf, PathBuf)> {
+    if harness != "pi" {
+        return None;
+    }
+    let home_dir = home::home_dir()?;
+    let agent_dir = home_dir.join(".pi/agent");
+    let extension_file = if target_dir == home_dir.as_path() {
+        agent_dir.join("extensions/shipmates-crew/index.ts")
+    } else {
+        target_dir.join(".pi/extensions/shipmates-crew/index.ts")
+    };
+    Some((agent_dir, extension_file))
+}
+
+/// Read-only health checks for the pi crew extension: Node syntax of the
+/// bundled extension, presence of the `pi-subagents` package, and validity of
+/// `shipmates-crew.json`.
+pub(crate) fn pi_crew_health(agent_dir: &Path, extension_file: &Path) -> Vec<Check> {
+    let mut checks = Vec::new();
+
+    // 1. Syntax check of the bundled extension.
+    if extension_file.exists() {
+        match node_check_syntax(extension_file) {
+            Ok(()) => checks.push(Check {
+                name: "Pi crew extension syntax".into(),
+                severity: Severity::Ok,
+                detail: "extension loads without a Node syntax error".into(),
+                fixable: false,
+            }),
+            Err(NodeCheckError::Syntax(msg)) => checks.push(Check {
+                name: "Pi crew extension syntax".into(),
+                severity: Severity::Problem,
+                detail: format!("Node reports a syntax error in {}: {msg}", extension_file.display()),
+                fixable: false,
+            }),
+            Err(NodeCheckError::NodeNotFound) => checks.push(Check {
+                name: "Pi crew extension syntax".into(),
+                severity: Severity::Warn,
+                detail: "node is not available; cannot verify extension syntax".into(),
+                fixable: false,
+            }),
+        }
+    }
+
+    // 2. The pi-subagents package must be listed in settings.json.
+    let settings_path = agent_dir.join("settings.json");
+    match pi_subagents_enabled(&settings_path) {
+        Some(true) => checks.push(Check {
+            name: "Pi subagents package".into(),
+            severity: Severity::Ok,
+            detail: "npm:pi-subagents is listed in settings.json".into(),
+            fixable: false,
+        }),
+        Some(false) | None => checks.push(Check {
+            name: "Pi subagents package".into(),
+            severity: Severity::Warn,
+            detail: format!("npm:pi-subagents is not listed in {}. The pi crew extension needs it to spawn subagents; install it through pi's package manager.", settings_path.display()),
+            fixable: false,
+        }),
+    }
+
+    // 3. shipmates-crew.json schema validation.
+    let config_path = agent_dir.join("shipmates-crew.json");
+    match read_pi_crew_config(&config_path) {
+        Ok(_) => checks.push(Check {
+            name: "Pi crew config".into(),
+            severity: Severity::Ok,
+            detail: "shipmates-crew.json is present and valid".into(),
+            fixable: true,
+        }),
+        Err(msg) => checks.push(Check {
+            name: "Pi crew config".into(),
+            severity: Severity::Problem,
+            detail: format!("shipmates-crew.json is invalid: {msg}"),
+            fixable: true,
+        }),
+    }
+
+    checks
+}
+
+fn node_check_syntax(path: &Path) -> Result<(), NodeCheckError> {
+    let output = std::process::Command::new("node")
+        .arg("--check")
+        .arg(path)
+        .output()
+        .map_err(|_| NodeCheckError::NodeNotFound)?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(NodeCheckError::Syntax(stderr.to_string()))
+    }
+}
+
+fn pi_subagents_enabled(settings_path: &Path) -> Option<bool> {
+    let text = std::fs::read_to_string(settings_path).ok()?;
+    let settings: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let packages = settings.get("packages")?.as_array()?;
+    Some(packages.iter().any(|p| p.as_str() == Some("npm:pi-subagents")))
+}
+
+fn read_pi_crew_config(path: &Path) -> Result<PiCrewConfig, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let text = String::from_utf8(bytes).map_err(|_| "shipmates-crew.json is not valid UTF-8".to_string())?;
+    let config: PiCrewConfig = serde_json::from_str(&text).map_err(|e| format!("invalid JSON: {e}"))?;
+    config.validate()?;
+    Ok(config)
+}
+
+/// Provision a default `shipmates-crew.json` if it is missing or corrupt.
+/// Returns `true` when a file was written.
+pub(crate) fn fix_pi_crew_config(agent_dir: &Path) -> Result<bool> {
+    let config_path = agent_dir.join("shipmates-crew.json");
+    if read_pi_crew_config(&config_path).is_ok() {
+        return Ok(false);
+    }
+    std::fs::create_dir_all(agent_dir).map_err(|e| anyhow::anyhow!("cannot create {}: {e}", agent_dir.display()))?;
+    let default = PiCrewConfig::default_config();
+    let text = serde_json::to_string_pretty(&default).map_err(|e| anyhow::anyhow!("cannot serialize default config: {e}"))?;
+    crate::installer::atomic_write_bytes(&config_path, text.as_bytes())
+        .map_err(|e| anyhow::anyhow!("cannot write {}: {e}", config_path.display()))?;
+    Ok(true)
 }
 
 /// Repair an install: identity-rename leftover superseded names, migrate
@@ -2114,6 +2296,17 @@ pub fn fix(
                 .map(|path| path.display().to_string())
                 .unwrap_or_else(|| target_dir.display().to_string())
         );
+    }
+
+    // 3c. Provision the pi crew extension's runtime config if it is missing or
+    // corrupt. The file lives in the pi agent directory, outside the install
+    // tree, so it is not restored by the payload repair above (#606).
+    if harness == "pi" {
+        if let Some((agent_dir, _)) = pi_crew_paths(target_dir, harness) {
+            if let Err(error) = fix_pi_crew_config(&agent_dir) {
+                println!("Warning: could not provision pi crew config at {}: {error}", agent_dir.display());
+            }
+        }
     }
 
     // 4. Re-diagnose and hand back the fresh report — reusing the single built
@@ -3650,6 +3843,109 @@ mod tests {
             "doctor must name the colliding skill: {}",
             check.detail
         );
+    }
+
+    // --- Pi crew extension health (#606) ---
+
+    fn pi_agent_dir() -> (tempfile::TempDir, PathBuf, PathBuf) {
+        let dir = tempdir().unwrap();
+        let agent_dir = dir.path().join("agent");
+        let ext = dir.path().join("extensions/shipmates-crew/index.ts");
+        fs::create_dir_all(&agent_dir).unwrap();
+        fs::create_dir_all(ext.parent().unwrap()).unwrap();
+        fs::write(&ext, "export default function () {}\n").unwrap();
+        (dir, agent_dir, ext)
+    }
+
+    #[test]
+    fn pi_crew_health_flags_missing_config() {
+        let (_dir, agent_dir, ext) = pi_agent_dir();
+        fs::write(agent_dir.join("settings.json"), r#"{"packages": ["npm:pi-subagents"]}"#).unwrap();
+
+        let checks = pi_crew_health(&agent_dir, &ext);
+        let config = checks.iter().find(|c| c.name == "Pi crew config").unwrap();
+        assert_eq!(config.severity, Severity::Problem);
+        assert!(config.fixable);
+        assert!(config.detail.contains("shipmates-crew.json"));
+    }
+
+    #[test]
+    fn pi_crew_health_flags_corrupt_config() {
+        let (_dir, agent_dir, ext) = pi_agent_dir();
+        fs::write(agent_dir.join("settings.json"), r#"{"packages": ["npm:pi-subagents"]}"#).unwrap();
+        fs::write(agent_dir.join("shipmates-crew.json"), r#"{"switch": "Bad"}"#).unwrap();
+
+        let checks = pi_crew_health(&agent_dir, &ext);
+        let config = checks.iter().find(|c| c.name == "Pi crew config").unwrap();
+        assert_eq!(config.severity, Severity::Problem);
+        assert!(config.fixable);
+    }
+
+    #[test]
+    fn pi_crew_health_flags_missing_pi_subagents() {
+        let (_dir, agent_dir, ext) = pi_agent_dir();
+        fs::write(agent_dir.join("settings.json"), r#"{"packages": ["other"]}"#).unwrap();
+        fs::write(agent_dir.join("shipmates-crew.json"), r#"{"schemaVersion": 1, "switch": "Off", "roles": {}, "ticks": [], "ceiling": null}"#).unwrap();
+
+        let checks = pi_crew_health(&agent_dir, &ext);
+        let pkg = checks.iter().find(|c| c.name == "Pi subagents package").unwrap();
+        assert_eq!(pkg.severity, Severity::Warn);
+        assert!(pkg.detail.contains("npm:pi-subagents"));
+    }
+
+    #[test]
+    fn pi_crew_health_flags_node_syntax_failure() {
+        let (_dir, agent_dir, ext) = pi_agent_dir();
+        fs::write(&ext, "const x = {\n").unwrap();
+        fs::write(agent_dir.join("settings.json"), r#"{"packages": ["npm:pi-subagents"]}"#).unwrap();
+        fs::write(agent_dir.join("shipmates-crew.json"), r#"{"schemaVersion": 1, "switch": "Off", "roles": {}, "ticks": [], "ceiling": null}"#).unwrap();
+
+        let checks = pi_crew_health(&agent_dir, &ext);
+        let syntax = checks.iter().find(|c| c.name == "Pi crew extension syntax").unwrap();
+        assert_ne!(syntax.severity, Severity::Ok, "syntax failure must be flagged: {}", syntax.detail);
+    }
+
+    #[test]
+    fn fix_pi_crew_config_writes_defaults_when_missing() {
+        let dir = tempdir().unwrap();
+        let agent_dir = dir.path().join("agent");
+        assert!(fix_pi_crew_config(&agent_dir).unwrap());
+        let path = agent_dir.join("shipmates-crew.json");
+        assert!(path.exists());
+        let text = fs::read_to_string(&path).unwrap();
+        assert!(text.contains(r#""switch": "Off""#));
+        assert!(text.contains(r#""schemaVersion": 1"#));
+        assert!(text.contains(r#""ceiling": null"#));
+    }
+
+    #[test]
+    fn fix_pi_crew_config_writes_defaults_when_corrupt() {
+        let dir = tempdir().unwrap();
+        let agent_dir = dir.path().join("agent");
+        fs::create_dir_all(&agent_dir).unwrap();
+        fs::write(agent_dir.join("shipmates-crew.json"), "not json").unwrap();
+        assert!(fix_pi_crew_config(&agent_dir).unwrap());
+        let config = read_pi_crew_config(&agent_dir.join("shipmates-crew.json")).unwrap();
+        assert_eq!(config.switch, "Off");
+        assert!(config.roles.is_empty());
+        assert!(config.ticks.is_empty());
+        assert_eq!(config.ceiling, None);
+    }
+
+    #[test]
+    fn fix_pi_crew_config_leaves_valid_config_alone() {
+        let dir = tempdir().unwrap();
+        let agent_dir = dir.path().join("agent");
+        fs::create_dir_all(&agent_dir).unwrap();
+        fs::write(
+            agent_dir.join("shipmates-crew.json"),
+            r#"{"schemaVersion": 1, "switch": "Local", "roles": {"architect": "cloud"}, "ticks": ["lmstudio/model-a"], "ceiling": 3}"#,
+        )
+        .unwrap();
+        assert!(!fix_pi_crew_config(&agent_dir).unwrap());
+        let config = read_pi_crew_config(&agent_dir.join("shipmates-crew.json")).unwrap();
+        assert_eq!(config.switch, "Local");
+        assert_eq!(config.ceiling, Some(3));
     }
 }
 

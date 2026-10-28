@@ -8,7 +8,18 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- **Pi crew can opt into one machine-wide resource broker (#601).** The crew switch still starts Off, and Off starts no broker. A separate `resources` setting stays `off` until a captain sets `shadow` or `enforce`. Shadow asks the broker and still allows the spawn, recording a would-be queue. Enforce waits for a grant and stops the spawn if the broker cannot be reached. A named model is never substituted. A lease follows the tool call or the run id, not the model, and is released when that tool call ends. The captain's own chat is reserved in Local mode whenever the broker is on. Engine URLs, context, and headroom are settings. The first session starts one shared broker and does not shut it down for the others. If no engine reports a loaded model, enforce allows one local seat at a time instead of waiting forever for a model it cannot see. This is not a live proof that pi crew spawn works.
+- **Pi crew can opt into one machine-wide resource broker (#601, #615).** The crew switch still starts Off, and Off starts no broker. A separate `resources` setting stays `off` until a captain sets `shadow` or `enforce`. Shadow asks the broker and still allows the spawn, recording a would-be queue. Enforce waits for a grant and stops the spawn if the broker cannot be reached. A named model is never substituted. A lease follows the tool call or the run id, not the model, and is released when that tool call ends. The captain's own chat is reserved in Local mode whenever the broker is on. Engine URLs, context, and headroom are settings. The first session starts one shared broker and does not shut it down for the others on session end (multi-session socket race fix). If no engine reports a loaded model, enforce allows one local seat at a time instead of waiting forever for a model it cannot see. This is not a live proof that pi crew spawn works.
+
+### Fixed
+
+- **Pi crew gate no longer blocks management and workflow `subagent` calls (#608).** `action: status|list|guide|cancel|message` and `workflow: true` pass through; only real spawns are gated.
+- **`model: "inherit"` resolves to the session model before tagging (#608, #613).** Doer seats are no longer refused because the literal string `inherit` was treated as a cloud id.
+- **Pi crew availability comes from pi's model list; `ticks` is an optional narrow (#599).** Empty ticks no longer block local seats pi already lists.
+- **`shipmates doctor` / `upgrade --fix` health-check the pi crew extension (#606).** Node syntax, `npm:pi-subagents` in settings, and `shipmates-crew.json` schema; `--fix` provisions a safe default config when missing or corrupt.
+- **Global uninstall removes relocated trees (#597).** Known-payload lookup uses the same relocated paths receipts store; blocked/empty uninstalls no longer look like success.
+- **Worktree-creating commands fast-forward the base branch before cutting a feature branch (#587).** Diverging local base stops loudly instead of branching from a stale tip.
+- **Pi parallel board/builder fan-out documents the workflow/async shape (#605).** Multiple blocking `subagent` calls in one turn are a lost board on Pi; rejected seats fail the run.
+- **Builders are told canonical command sources are flat `commands/<name>.md` (#614)**, not the installed `.pi/skills/<name>/SKILL.md` layout, so worktree edits stop ENOENT-ing.
 
 ## [0.16.3] - 2026-10-28
 

@@ -61,6 +61,12 @@ to measure the criteria (does it work, how complex, how fast, how much migration
 they built, what they learned, evidence against the criteria (numbers where measurable), and the sharp
 edges they hit. Explicitly disposable — no polish, no tests-for-keeps.
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel prototyper fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected prototyper is a failed run — never silently drop an approach.
+
 ## Stage 2 — Judge  (agent: `architect` + any axis-specific judges)
 
 Spawn the `JUDGE`(s) to score every prototype against the Stage 0 criteria **side by side** — honest

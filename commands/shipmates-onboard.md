@@ -91,6 +91,12 @@ instead.
 
 Spawn these in a single message. Each returns findings, not prose:
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel recon fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected agent is a failed run — never silently shrink the recon team.
+
 - **`architect`** — the real structure: module boundaries, layering, where business logic lives,
   which invariants matter, and what a newcomer would break first.
 - **`sdet`** — **runs** the build, test, lint and type-check commands. This is the point of the

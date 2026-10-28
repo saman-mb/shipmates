@@ -288,3 +288,70 @@ test("runtime pins match package.json and tests do not install them", () => {
   assert.deepEqual(pkg.dependencies, RUNTIME_PINS);
   assert.equal(process.env.NODE_TEST_CONTEXT !== undefined, true);
 });
+
+function registryCtx(extra = {}) {
+  return {
+    modelRegistry: {
+      getAvailable: () => [
+        { provider: "local", id: "a", cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } },
+        { provider: "cloud", id: "a", cost: { input: 3, output: 9, cacheRead: 0, cacheWrite: 0 } },
+      ],
+    },
+    ...extra,
+  };
+}
+
+test('subagent({ action: "status" }) is not blocked', async () => {
+  const { handlers } = harness(parsed({ switch: "Split", resources: "enforce" }));
+  const result = await handlers.tool_call(
+    { toolName: "subagent", input: { action: "status", id: "7e0ccd59" } },
+    registryCtx(),
+  );
+  assert.equal(result, undefined);
+});
+
+test("subagent management actions and workflow pass through", async () => {
+  const { handlers } = harness(parsed({ switch: "Split", resources: "enforce" }));
+  for (const action of ["list", "guide", "cancel", "message"]) {
+    const result = await handlers.tool_call(
+      { toolName: "subagent", input: { action, id: "abc" } },
+      registryCtx(),
+    );
+    assert.equal(result, undefined, `action ${action}`);
+  }
+  const workflow = await handlers.tool_call(
+    { toolName: "subagent", input: { workflow: true, async: true, model: CLOUD } },
+    registryCtx(),
+  );
+  assert.equal(workflow, undefined);
+});
+
+test('model: "inherit" resolves to the session model before tagging', async () => {
+  const sessionLocal = "lmstudio/model-a";
+  const { handlers, calls } = harness(
+    parsed({ switch: "Local", resources: "off", ticks: [sessionLocal] }),
+  );
+  const event = seatEvent({ model: "inherit" });
+  const result = await handlers.tool_call(event, {
+    modelRegistry: {
+      getAvailable: () => [
+        {
+          provider: "lmstudio",
+          id: "model-a",
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        },
+      ],
+    },
+    model: { provider: "lmstudio", id: "model-a" },
+  });
+  assert.equal(result, undefined);
+  assert.equal(calls.length, 0);
+  assert.equal(event.input.model, "inherit"); // input left as-is; resolved only for the gate
+});
+
+test('model: "inherit" without a session model is refused clearly', async () => {
+  const { handlers } = harness(parsed({ switch: "Local", resources: "off", ticks: [LOCAL] }));
+  const result = await handlers.tool_call(seatEvent({ model: "inherit" }), registryCtx());
+  assert.equal(result.block, true);
+  assert.match(result.reason, /inherit needs a session model/);
+});

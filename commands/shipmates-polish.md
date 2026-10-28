@@ -156,6 +156,13 @@ Each round:
    prevent collision); apply the changes where Stage 0 put you — the
    worktree branch under `MODE=pr`, the working tree under `MODE=edit-in-place`. Keep the change scoped
    to the notes — no unrelated drift.
+
+   **Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+   one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+   in progress. For parallel builder fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+   call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+   status polling. A rejected builder is a failed run — never silently shrink the fix team.
+
 4. **Re-produce** — re-run the harness and capture the new artifact.
 5. Keep a one-line changelog per round, naming that round's capture-matrix coverage, so the trajectory
    and the coverage are both visible.

@@ -55,8 +55,15 @@ them for careful individual handling rather than a blind sweep. Batch the invent
 2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — idempotently ensure
    `.shipmates/worktrees/` is in `<repo>/.gitignore` (append only when missing; create with a one-line
    Shipmates comment if absent). Never rewrite unrelated rules.
-3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required;
-   stop if fetch fails. Fresh `worktree add … origin/<BASE_BRANCH>` is pull-latest.
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`.
+   - **`git -C <repo> fetch origin`** is required; stop if fetch fails.
+   - Check out the local base branch: `git -C <repo> checkout <BASE_BRANCH>`.
+   - Fast-forward it to the fetched tip: `git -C <repo> pull --ff-only` (equivalently
+     `git -C <repo> reset --hard origin/<BASE_BRANCH>`). If the local branch has diverging commits
+     that cannot be fast-forwarded, **stop loudly** and ask the captain to reconcile — never silently
+     branch from a stale or overridden tip.
+   - Record `BASE_SHA=$(git -C <repo> rev-parse origin/<BASE_BRANCH>)` in the run report.
+   Fresh `worktree add … origin/<BASE_BRANCH>` now starts from the fresh tip.
 4. **Resume / reuse** — re-fetch; rebase onto `BASE_REF` when behind (sync conflicts → `MAX_FIX_ROUNDS`).
 5. **Create the worktree** (when branch/worktree do not yet exist):
 
@@ -71,7 +78,13 @@ All transforms land in the worktree; the base branch stays clean.
 Under `EXECUTION=fanout` (default), spawn one `TRANSFORMER` per batch **in a single message** (concurrent,
 up to `MAX_CONCURRENT_WORKERS`), each with a machine-checkable **owned-paths manifest** (diffed against
 `git status` and `git diff --name-only` upon completion to prevent collision; use `isolation: worktree` if
-they'd otherwise collide); under `EXECUTION=sequential`, walk batches one at a time. Each applies the exact
+they'd otherwise collide); under `EXECUTION=sequential`, walk batches one at a time.
+
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel transformer fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected transformer is a failed run — never silently shrink the migration team. Each applies the exact
 transform to its sites,
 preserves behaviour, matches surrounding style, and reports the sites it changed. **Handle the flagged
 non-mechanical sites individually** — never blind-replace where semantics differ.
