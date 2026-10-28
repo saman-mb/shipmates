@@ -30,7 +30,7 @@ The switch stays the policy for who may run local or cloud. This record decides 
 
 Enforce is not the install default. Shadow is the step that must exist first. Automatic model loading is a later opt-in, after loaded-only admission, and is not part of turning the broker on.
 
-**Queue instead of silent substitution.** An explicit model pin is never replaced with another model, a smaller one, or a cloud model. If it cannot fit, the job waits or stops with a reason. A smaller later job may pass a waiting job only when that does not starve the older job.
+**Queue instead of silent substitution.** An explicit model pin is never replaced with another model, a smaller one, or a cloud model. If it cannot fit, the job waits or stops with a reason. The queue is head of line: a later job does not pass a waiting job.
 
 **A lease is not a seat counter.** A lease reserves the resources of one run — memory pools, context, and an execution slot — and is keyed by run id for the whole run, not by model id and not by the launch call. Shared resident weights are charged once. Each workload still pays its own context and slot. The existing ceiling may remain as an optional extra seat cap. It never substitutes for measured capacity.
 
@@ -54,6 +54,7 @@ A shared inference server used by several machines is a separate deployment of t
 - No claim that pi crew spawn works. The harness row remains the evidence.
 - No claim that engine adapters, sockets, named pipes, or telemetry probes have been proven because they are named in #601.
 - No claim that another application is coordinated because its memory use is visible.
+- No claim that this pull request ships a detached daemon, a broker lock, a settings field for engine URLs, context, or headroom, a package lockfile, an audit or licence CI gate, a bounded queue or journal, or a protocol-version refusal. Those are labeled gaps, not shipped behaviour.
 
 ## Consequences
 
