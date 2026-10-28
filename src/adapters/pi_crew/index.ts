@@ -428,11 +428,7 @@ export function install(pi, deps = {}) {
       return { ok: false, reason: `${reason} This seat stays on ${model}. I will not substitute a model.` };
     } catch (error) {
       if (signal?.aborted) {
-        try {
-          client.request("cancel", { runId });
-        } catch {
-          // The cancel is best effort. Lease expiry is the backstop.
-        }
+        client.request("cancel", { runId }).catch(() => {});
         return { ok: false, reason: "Aborted: this seat was cancelled while waiting." };
       }
       if (shadow) {
