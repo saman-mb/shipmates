@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "name": "Pi crew switch",
-    "description": "Which agent harnesses Shipmates builds for today, which are in development, and the safety verification behind the rollout.",
+    "description": "Keep the captain on a cloud model and put the crew on the local models you choose, with one switch that starts off.",
     "url": "https://saman-mb.github.io/shipmates/docs/pi-crew/",
     "isPartOf": { "@type": "CollectionPage", "url": "https://saman-mb.github.io/shipmates/docs/" }
   }
@@ -71,7 +71,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">&#127754;</span> Pi</p>
           <h1 class="order-detail__title" id="pi-crew-title">Pi crew switch</h1>
           <p class="order-detail__tagline">Keep the captain on a cloud model. Put the crew on the local models you pick.</p>
-          <p class="order-detail__desc">A <a href="https://pi.dev">pi</a> install now ships one small extension. It watches the seats a ship command spawns and checks each one against a switch you control. It starts <strong>Off</strong>, so installing it changes nothing until you turn it on.</p>
+          <p class="order-detail__desc">A <a href="https://pi.dev">pi</a> install now ships one small extension. It watches the seats a ship command spawns and checks each one against a switch you control. It starts <strong>Off</strong>, so installing it changes nothing until you turn it on. <strong>Off starts no broker.</strong></p>
         </div>
       </div>
     </section>
@@ -222,15 +222,46 @@
 <span class="order-code__comment"># Pi crew plugin installed. Run /shipmates-crew once.</span>
 <span class="order-code__comment"># The switch starts at Off and does not change /model.</span></code></pre>
           <p>Then open <a href="https://pi.dev">pi</a> and run <code>/shipmates-crew</code>. It shows the current position and asks you to pick one. The extension lands at <code>.pi/extensions/shipmates-crew/index.ts</code>, or <code>~/.pi/agent/extensions/shipmates-crew/index.ts</code> on a global install.</p>
-          <p>The plugin reads its settings from <code>~/.pi/agent/shipmates-crew.json</code>. That file holds the switch, any role tags you flipped, the models you ticked, and your concurrency ceiling. An absent file means Off.</p>
+          <p>The plugin reads its settings from <code>~/.pi/agent/shipmates-crew.json</code>. That file holds the switch, any role tags you flipped, the models you ticked, your concurrency ceiling, and the resource policy. An absent file means Off. <code>resources</code> stays <code>off</code> until you set it, and Off still starts no broker.</p>
           <pre class="order-code" tabindex="0"><code>{
   "schemaVersion": 1,
   "switch": "Split",
   "roles": {},
   "ticks": ["&lt;provider&gt;/&lt;model&gt;"],
-  "ceiling": 4
+  "ceiling": 4,
+  "resources": "off"
 }</code></pre>
           <p><strong>The ceiling is yours, not a shipped number.</strong> It is how many crew seats may run at once while your ticked models are loaded. A sensible starting point is one seat per loaded model. It is not a default the plugin assumes.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="resources" aria-labelledby="resources-title">
+      <div class="container container--prose">
+        <div class="section__head">
+          <h2 class="section__title" id="resources-title">One broker for the machine</h2>
+        </div>
+        <div class="order-prose">
+          <p>Local work can opt into one broker for this OS user on this machine. Every pi session that routes local model work through it shares that broker. It is not a second copy per repo, per worktree, or per chat.</p>
+          <p><strong>A lease is not a seat counter.</strong> A lease reserves one run: memory, context, and an execution slot, held for that run. Four small seats on one loaded model may fit. Two large models may not. The ceiling, if you still set one, is only an extra cap on how many seats may run. It does not measure the machine, and it is not the lease.</p>
+          <p><strong>Off starts no broker.</strong> Leave the switch at <code>Off</code> and nothing is measured, queued, or refused by a broker.</p>
+        </div>
+        <div class="order-table" tabindex="0">
+          <table>
+            <thead><tr><th scope="col">Resources</th><th scope="col">What it does</th></tr></thead>
+            <tbody>
+              <tr><td><code>off</code></td><td>No broker. Nothing is measured or queued.</td></tr>
+              <tr><td><code>shadow</code></td><td>Measure and report. Do not block a launch. This is the step before enforce.</td></tr>
+              <tr><td><code>enforce</code></td><td>Work that fits starts. Work that does not fit waits. A named model is never swapped for another.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="order-prose">
+          <p><strong>Shadow before enforce.</strong> Report-only comes first. Enforce is a later opt-in, not what install turns on. Under enforce, a broker that is down does not mean unlimited parallel launches. Local work waits or stops. Cloud-only work is left alone.</p>
+          <p><strong>It queues instead of silent substitution.</strong> A model you named stays that model. If it cannot fit, the job waits in a queue or stops with a reason. It is not moved to another model, and it is not sent to the cloud to skip the queue.</p>
+          <p><strong>Other applications are outside coordination.</strong> The broker coordinates pi sessions that use it. Another application, or a model client that does not go through the broker, is not governed. Memory it can already see still reduces what pi may reserve. It does not unload those models, and it does not kill that work.</p>
+          <p><strong>A launch the extension cannot observe for its whole lifetime is not fully governed.</strong> The lease has to cover the run, not only the call that started it. If this extension never sees the end, that launch is not described as held and released for its whole life.</p>
+          <p><strong>No live proof is claimed here.</strong> This page does not claim a live broker run on macOS, Linux, or Windows. The contract is <code>docs/adr/0004-pi-resource-broker.md</code>. Pi crew spawn is not proven.</p>
         </div>
       </div>
     </section>
@@ -245,7 +276,8 @@
           <ul>
             <li><strong>The command sets the switch.</strong> It does not yet walk you through connecting local servers, ticking their models, or choosing the ceiling. Today those live in the settings file.</li>
             <li><strong>It does not ask your servers what is loaded.</strong> The ticked list is treated as the available set. If you unload a model, remove it from the list.</li>
-            <li><strong>The ceiling is checked against seats in flight, not against machine load.</strong> It cannot see what another client is doing to the same model.</li>
+            <li><strong>The ceiling is still a seat cap in this session.</strong> It is not a lease, and it is not the broker. Other applications stay outside coordination even if you opt in.</li>
+            <li><strong>The broker is not a live proof.</strong> <code>off</code>, <code>shadow</code>, and <code>enforce</code> are the resource policy. This page does not claim they have been shown on macOS, Linux, or Windows, and it does not claim a launch this extension cannot watch for its whole life is fully governed.</li>
             <li><strong>Pi's crew spawn has not been proven end to end.</strong> The harness row records pi's <code>crew_resolve</code> as <code>no</code> — see the <a href="../harnesses/">harness matrix</a> for the current evidence rather than taking this page's word for it.</li>
           </ul>
         </div>

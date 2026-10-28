@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-10-28
+
+### Added
+
+- **Pi crew can opt into one machine-wide resource broker (#601).** The crew switch still starts Off, and Off starts no broker. A separate `resources` setting stays `off` until a captain sets `shadow` or `enforce`. Shadow asks the broker and still allows the spawn, recording a would-be queue. Enforce waits for a grant and stops the spawn if the broker cannot be reached. A named model is never substituted. A lease follows the tool call or the run id, not the model, and is released when that tool call ends. The captain's own chat is reserved only when the switch is Local and resources are enforce. This is not a live proof that pi crew spawn works.
+
 ## [0.16.3] - 2026-10-28
 
 ### Fixed

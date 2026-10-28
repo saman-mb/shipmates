@@ -28,8 +28,25 @@ export const ORDER_HEADINGS = ["Outcome:", "Owned paths:", "Done-when:", "Out of
 export const ORDER_PREAMBLE =
   "Follow the order. Do not widen it. Stop and report if it is ambiguous.";
 
+export const RESOURCE_MODES = ["off", "shadow", "enforce"];
+
 export function offState() {
-  return { schemaVersion: 1, switch: "Off", roles: {}, ticks: [], ceiling: null };
+  return { schemaVersion: 1, switch: "Off", roles: {}, ticks: [], ceiling: null, resources: "off" };
+}
+
+export function resourcesMode(value) {
+  return RESOURCE_MODES.includes(value) ? value : "off";
+}
+
+/** A missing or newer schema never turns the broker on. Switch Off never does either. */
+export function brokerWanted(state) {
+  if (!state || state.switch === "Off") return false;
+  return state.resources === "shadow" || state.resources === "enforce";
+}
+
+/** The captain chat is a reservation only for Local work that fails closed. */
+export function captainReserved(state) {
+  return Boolean(state && state.switch === "Local" && state.resources === "enforce");
 }
 
 export function parseState(raw) {
@@ -55,8 +72,9 @@ export function parseState(raw) {
   const ticks = Array.isArray(obj.ticks) ? obj.ticks.filter((item) => typeof item === "string") : [];
   let ceiling = null;
   if (Number.isInteger(obj.ceiling) && obj.ceiling >= 0) ceiling = obj.ceiling;
+  const resources = resourcesMode(obj.resources);
 
-  return { schemaVersion: 1, switch: obj.switch, roles, ticks, ceiling };
+  return { schemaVersion: 1, switch: obj.switch, roles, ticks, ceiling, resources };
 }
 
 export function switchChoices(current) {
