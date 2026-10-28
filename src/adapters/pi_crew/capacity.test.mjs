@@ -206,6 +206,22 @@ test("pinned-model is never substituted", () => {
   );
   assert.equal(honoured.code, "grant");
   assert.equal(honoured.reservation.modelId, MODEL_B);
+
+  const unseen = planAdmission(
+    request({ model: MODEL_A, pinned: true, runId: "run-unseen" }),
+    snapshot({ models: [], confidence: "reported" }),
+    ledger(),
+  );
+  assert.equal(unseen.action, "grant");
+  assert.equal(unseen.code, "grant");
+  assert.equal(unseen.reservation.modelId, MODEL_A);
+  const second = planAdmission(
+    request({ model: MODEL_B, pinned: true, runId: "run-unseen-2" }),
+    snapshot({ models: [], confidence: "reported" }),
+    applyGrant(ledger(), unseen),
+  );
+  assert.equal(second.action, "queue");
+  assert.equal(second.code, "queued-unknown");
 });
 
 test("headroom is subtracted from available bytes before a grant", () => {

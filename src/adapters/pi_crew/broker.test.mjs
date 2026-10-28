@@ -147,6 +147,39 @@ test("a frame without Content-Length is rejected", () => {
   assert.equal(failed, true);
 });
 
+test("a pinned admit with no observed engine grants instead of parking", async () => {
+  const { broker } = harness({
+    snapshot: {
+      observedAtMs: 1_000,
+      confidence: "reported",
+      pressure: "ok",
+      pools: [{ id: "host", availableBytes: 100_000_000_000 }],
+      models: [],
+      headroomBytes: 0,
+    },
+  });
+  const client = pair(broker);
+  const grant = await Promise.race([
+    client.request("admit", admitParams("run-unseen", { wait: true, contextTokens: 0, outputReserveTokens: 0 })),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("parked")), 500)),
+  ]);
+  assert.equal(grant.action, "grant");
+  assert.equal(grant.lease.modelId, MODEL);
+  const second = pair(broker);
+  const queued = second.request("admit", admitParams("run-unseen-2", { wait: true, model: "engine/model-b" }));
+  const status = await until(async () => {
+    const current = await client.request("status", {});
+    return current.queue.length === 1 ? current : null;
+  }, "expected the second unseen seat to queue");
+  assert.equal(status.reservations.length, 1);
+  await client.request("release", { runId: "run-unseen", generation: grant.generation });
+  const followed = await Promise.race([
+    queued,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("second seat stayed parked")), 500)),
+  ]);
+  assert.equal(followed.action, "grant");
+});
+
 test("two concurrent clients: one reservation wins and the queued client proceeds after release", async () => {
   const { broker, journal } = harness();
   const watcher = pair(broker);

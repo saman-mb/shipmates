@@ -34,7 +34,7 @@ Enforce is not the install default. Shadow is the step that must exist first. Au
 
 **A lease is not a seat counter.** A lease reserves the resources of one run — memory pools, context, and an execution slot — and is keyed by run id for the whole run, not by model id and not by the launch call. Shared resident weights are charged once. Each workload still pays its own context and slot. The existing ceiling may remain as an optional extra seat cap. It never substitutes for measured capacity.
 
-Admission uses a fresh measurement of what is available, minus pending reservations that telemetry does not yet show, minus captain-configured headroom. There is no shipped default that is claimed to be right for every machine. Unknown or low-confidence telemetry does not unlock automatic loading. It falls back to serial local admission.
+Admission uses a fresh measurement of what is available, minus pending reservations that telemetry does not yet show, minus captain-configured headroom. There is no shipped default that is claimed to be right for every machine. Unknown or low-confidence telemetry does not unlock automatic loading. It falls back to serial local admission. If no engine reports a loaded model, enforce does the same: one local seat at a time, never an endless wait for a model the probe cannot see, and never a silent substitution.
 
 The broker does not kill running work, and it does not unload a model it does not own.
 

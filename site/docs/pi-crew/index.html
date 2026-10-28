@@ -257,7 +257,7 @@
           </table>
         </div>
         <div class="order-prose">
-          <p><strong>Shadow before enforce.</strong> Report-only comes first. Enforce is a later opt-in, not what install turns on. Under enforce, a broker that is down does not mean unlimited parallel launches. Local work waits or stops. Cloud-only work is left alone.</p>
+          <p><strong>Shadow before enforce.</strong> Report-only comes first. Enforce is a later opt-in, not what install turns on. Under enforce, a broker that is down does not mean unlimited parallel launches. Local work waits or stops. Cloud-only work is left alone. If no engine reports a loaded model, enforce runs one local seat at a time. It does not wait forever for a model it cannot see, and it does not swap the model you named.</p>
           <p><strong>It queues instead of silent substitution.</strong> A model you named stays that model. If it cannot fit, the job waits in a queue or stops with a reason. It is not moved to another model, and it is not sent to the cloud to skip the queue.</p>
           <p><strong>Other applications are outside coordination.</strong> The broker coordinates pi sessions that use it. Another application, or a model client that does not go through the broker, is not governed. Memory it can already see still reduces what pi may reserve. It does not unload those models, and it does not kill that work.</p>
           <p><strong>A launch the extension cannot observe for its whole lifetime is not fully governed.</strong> The lease has to cover the run, not only the call that started it. If this extension never sees the end, that launch is not described as held and released for its whole life.</p>

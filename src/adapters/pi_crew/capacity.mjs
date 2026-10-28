@@ -26,6 +26,9 @@ export function planAdmission(request, snapshot, ledger) {
   }
 
   const model = snapshot.models.find((row) => row.id === request.model) ?? null;
+  // An empty model list means no engine was observed. That is not a pin wait:
+  // the named model can never appear, so parking would hang the caller.
+  if (!model && snapshot.models.length === 0) return unseenEngineAdmission(request, ledger);
   if (request.pinned && !model) {
     return queued("queued-pin", `Waiting: ${request.model} is pinned. Not substituted.`, request);
   }
@@ -104,6 +107,32 @@ export function reconcileLedger(ledger, snapshot) {
     });
   }
   return next;
+}
+
+function unseenEngineAdmission(request, ledger) {
+  const invisible = ledger.reservations.filter((row) => !row.visible).length;
+  if (invisible >= 1) {
+    return queued(
+      "queued-unknown",
+      "Waiting: no engine reported a loaded model. At most one local reservation can be not yet visible.",
+      request,
+    );
+  }
+  const contextCharge = request.contextTokens + request.outputReserveTokens;
+  return decision(
+    "grant",
+    "grant",
+    `Granted: ${request.model} reserved serially because no engine reported a loaded model.`,
+    {
+      runId: request.runId,
+      modelId: request.model,
+      pendingBytes: contextCharge,
+      contextTokens: contextCharge,
+      slots: 1,
+      visible: false,
+    },
+    null,
+  );
 }
 
 function cannotFit(request) {
