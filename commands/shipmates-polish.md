@@ -167,7 +167,7 @@ reviewer's remaining notes. Escalate; don't spin.
 
 Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the
 number of rounds, and a short before → after of what changed. Stage 1 stays the inspection. The report
-names the rendered artifact path opened, or states inspection was unavailable. Findings stay in working memory
+names the rendered artifact path opened, or states inspection was unavailable and does not ACCEPT that surface. Findings stay in working memory
 and are fixed, filed, or declined with a reason there, not only as counts. Captures stay in the
 worktree and are not committed as a ledger — never a per-run findings ledger under `.shipmates/`
 (`.shipmates/worktrees/` stays allowed). Dispose allowed nits with the

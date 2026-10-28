@@ -139,8 +139,8 @@ orchestrate the ones that exist, and say which ones were missing.
 
 ## Stage 1 — Discovery census  ⛔ the contract  (agents: `sdet`, `security-engineer`, `technical-writer`, `architect` × N, parallel across classes)
 
-**This census is the contract.** Every finding it records ends filed or explicitly excluded, with a
-reason. Silent truncation is a failure of the run, not a smaller run.
+**This census is the contract.** Every finding it records ends filed or declined — explicitly excluded,
+with a reason. Silent truncation is a failure of the run, not a smaller run.
 
 - Run the Stage 0 analysers and complement them with agent-driven reading. Under `EXECUTION=fanout`,
   split the survey by finding class (or by subtree for a large repo) across named crew subagents up to
@@ -333,7 +333,7 @@ Produce both artifacts, in every mode, and write neither into the tree under aud
   report. When an epic is filed, its sub-issues are an additional tracked record, not a substitute for
   the report. A docs acceptance names the rendered artifact inspected, or states inspection was
   unavailable. `.shipmates/worktrees/` stays allowed for temporary captures that leave with cleanup; it
-  is not the durable ledger. The census contract above is unchanged. Do not write a per-run findings ledger under `.shipmates/`.
+  is not the durable ledger. The census contract above is unchanged. Do not write a per-run findings ledger under `.shipmates/` or anywhere else in the repository.
 - **The JSON ledger** alongside it, in that same place outside the repository and never under
   `.shipmates/` — the same findings and stable IDs, machine readable, so two runs can
   be diffed, CI can consume them, and a sub-issue can reference a finding ID directly. Emitting it is
