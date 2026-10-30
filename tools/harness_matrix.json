@@ -878,9 +878,10 @@
     },
     "gated-command-composition": {
       "applies_to": [
-        "skills"
+        "skills",
+        "commands"
       ],
-      "definition": "Mid-run reuse of a captain-gated command by Read of the installed/rendered target file and in-session stage execution. Not Skill/skill-tool subroutine. Frontmatter disable-model-invocation stays true where emitted.",
+      "definition": "Mid-run reuse of a captain-gated command across installed skill files and command files (.opencode/commands/). Contracted portable source of truth is Read of the installed/rendered target file and in-session stage execution, with native Skill/skill invocation only as an optional acceleration on targets where the command name appears in the active listing because disable-model-invocation was dropped. Frontmatter disable-model-invocation stays true where emitted.",
       "harnesses": {
         "claude-code": {
           "supported": true,
@@ -888,19 +889,19 @@
         },
         "github-copilot": {
           "supported": true,
-          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path → execute is the contracted portable source of truth (Skill/skill is an optional acceleration only when listed)."
         },
         "codex": {
           "supported": true,
-          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path → execute is the contracted portable source of truth (Skill/skill is an optional acceleration only when listed)."
         },
         "cursor": {
           "supported": true,
-          "reason": "disable-model-invocation is dropped; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is dropped; Read of the installed skill path → execute is the contracted portable source of truth (Skill/skill is an optional acceleration only when listed)."
         },
         "antigravity": {
           "supported": true,
-          "reason": "disable-model-invocation is not supported; Read of the installed skill path still works — contracted path is Read→execute."
+          "reason": "disable-model-invocation is not supported; Read of the installed skill path → execute is the contracted portable source of truth (Skill/skill is an optional acceleration only when listed)."
         },
         "opencode": {
           "supported": true,

@@ -6,7 +6,7 @@ target=pi
 .pi/agents/devops-engineer.md 35e22e2d332472a57e562a0743520a6733f658ab59021ce9f3d3fc0c308c5daf
 .pi/agents/performance-engineer.md 2c29995414b08f2257c82a16c09520a8e7fe3cdadb060df8096d860dfed08e88
 .pi/agents/principal-engineer.md f966d8413697a77821274b570ce2a7d42de82bcf55dfbb6e802564a39b4b14e4
-.pi/agents/product-manager.md 5cd32ab5486ddc5873bddf4a4ca1e088ae80dd17b8b5d41cd7cc694312ca7a3c
+.pi/agents/product-manager.md 3928da47df6f2d1bba093bf8e216aab7661612b19784f8e10a0855189824513d
 .pi/agents/sdet.md 28a9459f63a627741faa10097686c8725b612f4efbc2863f40fc423883323ae5
 .pi/agents/security-engineer.md dd134b14bd86b30bc92815ef08eb9b61692e73eeecb53a6838a8de679fa6df2e
 .pi/agents/senior-engineer.md f5f88797be6394a83ba29890ff50399c05c336c97b9397b749f6016b5251e42a
@@ -29,7 +29,7 @@ target=pi
 .pi/skills/shipmates-refactor/SKILL.md df802d6b1270f7da07580e8e521ace41351943ebf1ef2246fef6c868f3bdb1e3
 .pi/skills/shipmates-release/SKILL.md 779afe6cc9c88b655e2f767ec2862d21e39bbaa10e89c7e96cf3e1f3de3fe127
 .pi/skills/shipmates-report-bug/SKILL.md a53adfc64ad6cc1fdf5ab6e1a585d5e2e411a2a3bcc954757e660e072f8cebcf
-.pi/skills/shipmates-ship-epic/SKILL.md 73e280f8f0d041d0faec3d93a282bf6a983cae99b7146cb1cb46f0d8d31d2d91
+.pi/skills/shipmates-ship-epic/SKILL.md 7dd077a78521df3461b319a1fc3152aebf6aa5b7ff2904f41be0901e9fa5d429
 .pi/skills/shipmates-ship-issue/SKILL.md 57d7a1ff8b953abaf2d0041fe287b17e58a8aa7012d9ccbbabded0d9159749fb
 .pi/skills/shipmates-spike/SKILL.md c0880672482629edd491a092ceeb6d957e365eaaf770b752c530649f7001a5b8
 .pi/skills/shipmates-upgrade/SKILL.md 0ed27e0f358b75350cc25a2dcaa070123a86d93ebf3d1b43c3a7e616cd5060cc

@@ -4,17 +4,38 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.17.1] - 2026-10-30
+## [0.17.2] - 2026-10-30
 
 ### Fixed
 
 - **Shadow mode no longer queues work it will never run (#601).** A shadow seat was admitted into the shared broker queue and then left there: shadow asked with a queue-only request, and a pinned model the broker cannot see never fits, so the entry never drained. Repeating a turn grew the queue until it hit the depth limit, where real enforce work would start being refused. Shadow is now a true dry run — the broker reports the decision and takes no queue slot, no reservation, and no lease.
 - **A cloud chat is no longer reserved by the local broker (#601).** In Local mode with the broker on, the captain's own chat was admitted like a local seat. On a cloud model it queued forever and, under enforce, would have stopped the captain's chat for no reason. A chat model the model registry reports as cloud is now skipped; an unreadable registry keeps the old behaviour.
 - **The macOS arm release build no longer asks for a retired runner.** `aarch64-apple-darwin` was pinned to `macos-14`, whose images GitHub deprecated and retires on 2026-11-02; a job on that label is cancelled a second after it starts, without a runner, so every job that needed it was skipped and the release published nothing. The target now pins `macos-15` in `dist-workspace.toml`.
+- **A `manual-only` label can no longer stand in for a check on an acceptance criterion (#611).** The product-manager role already refused a label as a pass, but the acceptance-board doctrine the same agent reads still allowed an explicit `manual-only` label in place of a machine-checkable pin — the exact escape the role rule was meant to close, shipped twice through `steering/bootstrap.md` and its `docs/COST.md` mirror. A label no longer substitutes: where no pin is possible the criterion is recorded unverified and fails, unless the issue itself or the captain defers it, and `ACCEPT-WITH-NITS` is now refused alongside `ACCEPT` while any criterion fails.
+- **The role says what it means about a documented gap, and names `unproven` as a non-answer (#611).** "A doc, changelog line, review note" could be read as forbidding the seat from requiring updated docs at all, which pulled against the Definition of Done bullet directly beneath it; it now says a line that *merely describes the gap* is not a pass. The generated agent page no longer advertises `ACCEPT-WITH-NITS` as an available verdict.
+- **The test that guards the acceptance-board doctrine asserts the rule it now guards (#611).** It still required the board to "name the `manual-only` escape", so it passed only because the phrase survived inside a negation: it would have failed a legitimate cleanup and passed a reinstated escape.
 
 ### Added
 
 - `.github/scripts/validate_runner_labels.py` fails when a workflow or a dist target names a retired runner label, and when a target whose cargo-dist default is a retired image has no explicit pin. Without it the failure mode is a cancelled job and a skipped publish, not a readable error.
+
+## [0.17.1] - 2026-10-30
+
+### Added
+
+- **`tools/validate_docs.py` enforces byte-for-byte doctrine parity between `steering/bootstrap.md` and `docs/COST.md` (#620).** Both files are embedded into installed payloads through different surfaces; a one-sided edit to any shared section (`six-principles`, `command-preamble`, `model-routing`, `acceptance-board`, `epic-integration-board`, `subagent-preamble`, `why-merge-pr`) now fails CI with file and line reporting instead of shipping divergent rules.
+- **E2E bats coverage for home-scope superseded-tree repair and `--no-migrate` (#581).** Exercises `shipmates install --global --no-migrate` and `shipmates doctor --fix` against a redirected `$HOME/.agents/skills/` tree holding a branded manifest with a symlinked sibling, a foreign entry, and a retired `ship-*` entry.
+- **Demo video `TypeOn` over-length guard and Beat 5 mid-ramp counter (#369, #376, #390).** `assertTypeOnWindow` and `legibility-check.ts` fail loudly if storyboard copy exceeds its type-on frame budget; Beat 5 (`PRTimelapse.tsx`) renders a live main-frame child-PR counter across ticks 4–15 so the 1/s → 3/s speed ramp is visible without watching only the corner inset; `PhaseChecklist` shares `FRAME_MARGIN` from `theme.ts`.
+
+### Changed
+
+- **Clarified gated-command composition vocabulary and `applies_to` coverage (#478, #479).** `/shipmates-ship-epic` Stage 2 renames its composition step from `Delegate (compose)` to `Compose (Read + execute)`, `gated-command-composition` in `tools/harness_matrix.json` covers both `skills` and `commands` (`.opencode/commands/`), and `AGENTS.md` / `commands/shipmates-ship-epic.md` state explicitly that `Read` of the installed file is the portable source of truth while `Skill`/`skill` is an optional acceleration only when listed.
+- **PR CI gates `release-upgrade-e2e.sh --self-test` and pins its doctor check to the real binary (#571).** `.github/workflows/pages.yml` runs `--self-test` on every PR, and the self-test verifies `DOCTOR_HEALTHY_LINE` against both `src/doctor.rs` and the compiled `shipmates` binary's `doctor` output.
+
+### Fixed
+
+- **`InstallsIndex::save` no longer clobbers a future-schema `~/.shipmates/installs.json` (#544).** When an older binary encounters an on-disk `installs.json` with `schema_version` newer than it supports, `load` marks the in-memory index read-only and `save` checks the on-disk header before writing, refusing to downgrade the file or drop records written by a newer Shipmates release.
+- **`upgrade::file::tests::home_paths_are_sanitised_to_tilde` is deterministic across full-suite test runs (#598).** Isolates `$HOME` from `$TMPDIR` and locks the home environment mutex across `upgrade::file` tests so concurrent `with_isolated_home` mutations or `$HOME`-rooted temp paths cannot flake `cargo test --all-targets`.
 
 ## [0.17.0] - 2026-10-28
 
@@ -41,6 +62,12 @@ All notable changes to this project are documented here. The format follows
 - **Worktree-creating commands fast-forward the base branch before cutting a feature branch (#587).** Diverging local base stops loudly instead of branching from a stale tip.
 - **Pi parallel board/builder fan-out documents the workflow/async shape (#605).** Multiple blocking `subagent` calls in one turn are a lost board on Pi; rejected seats fail the run.
 - **Builders are told canonical command sources are flat `commands/<name>.md` (#614)**, not the installed `.pi/skills/<name>/SKILL.md` layout, so worktree edits stop ENOENT-ing.
+
+## [0.17.1] - 2026-10-30
+
+### Fixed
+
+- **A release builds its macOS arm64 binary on a supported runner again, so a green rest of CI no longer hides a lost release.** cargo-dist pins `aarch64-apple-darwin` to the `macos-14` image in every version we could ship (0.32.0 and 0.33.1 both), and GitHub now fails jobs on that image — during scheduled brownouts until it retires macOS 14 on November 2, 2026, and permanently after. The failure is one build job ending in zero seconds, which skips every job gated on the build (`build-global-artifacts`, `host`, `custom-publish-cargo`, `publish-homebrew-formula`, `announce`): the release publishes nothing while the plan, e2e and the other four platform builds all report success. `dist-workspace.toml` now pins that target to `macos-15` through `github-custom-runners`, matching the `macos-15-intel` image the x86_64 macOS target already used, so a release no longer depends on the one runner label dist defaulted to.
 
 ## [0.16.3] - 2026-10-28
 

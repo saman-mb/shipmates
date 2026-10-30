@@ -18,11 +18,11 @@ repeated instructions and low-signal output out of the main context.
    bottom. Keep a shared stable prefix before role-specific instructions across subagent spawns.
 5. **Return decisions, not transcripts.** Require compact structured output: status or verdict first,
    criterion-level findings and only supporting evidence next, then blockers, changed files, rationale,
-   and next action. Do not return command logs or a narrative of every step.
+   and next action as applicable. Omit raw command logs and a narrative of every step.
 6. **Avoid paid repetition.** Reuse context and results already proven in the current run. Repeat a
    check only when new information or a changed artifact makes it decision-relevant; record what was
    checked rather than replaying a transcript. Cut rework before builders run: verify spec citations
-   with grep, emit blast radius for shared APIs at plan time, give units machine-checkable owned-paths
+   with `grep`, emit blast radius for shared APIs at plan time, give units machine-checkable owned-paths
    manifests, and route empirical questions to whoever can run code.
 
 ## Reusable command preamble
@@ -117,7 +117,7 @@ Spawn reviewers **in parallel** against the PR head commit — they review exact
 
 **Mandatory seats (never skip)**
 
-- **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / {{project-instructions}} / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion. For each docs/content AC that claims specific wording or a registry fact, PO cannot `ACCEPT` without a **machine-checkable pin** (unittest string assert, `--check` golden, or validator content rule) or an explicit `manual-only` label on that criterion in the verdict — silent ACCEPT from reading the page is forbidden.
+- **`product-manager`** (PO): checks every acceptance criterion AND the quality bar (README / {{project-instructions}} / contributing). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with specifics per criterion. For each docs/content AC that claims specific wording or a registry fact, PO cannot return `ACCEPT` or `ACCEPT-WITH-NITS` without a **machine-checkable pin** (unittest string assert, `--check` golden, or validator content rule). A `manual-only` label does not stand in for the pin: where no pin is possible, the verdict records that criterion as unverified and it fails, unless the issue itself defers it or the captain recorded a deferral. Silent acceptance from reading the page is forbidden.
 - **`principal-engineer`** (PE): principal-level diff review — correctness, edge cases, naming, test meaningfulness, scope discipline, security hygiene at review depth (not a `/shipmates-harden` pass). Verifies the PR satisfied the repo's **mandatory ship checklist** for this change class (regenerated generated pages, updated fixture digests, version/changelog when required, site validation, no hand-edited generated paths). Returns `ACCEPT` / `ACCEPT-WITH-NITS` / `REJECT` with `file:line` evidence.
 
 Tiered execution may lean the build path on Simple/Medium, but **must not skip PE+PO** on the **first** board once a PR head exists. Later rounds follow **Retry** below — a PE/PO ACCEPT may be carried when the fixer delta cannot invalidate it.

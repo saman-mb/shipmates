@@ -4,8 +4,7 @@
 Runs identically in a local self-check and in CI, with no arguments and no
 network: the three root documents are what a contributor — and the model reading
 them — uses to decide what to run, so a stale claim there is a wrong instruction
-delivered to everyone who reads it. Two mechanical claims are checked, both at
-grep level, deliberately without any prose understanding:
+delivered to everyone who reads it. Three mechanical claims are checked:
 
 1. Config tokens (`MODE`, `MERGE_MODE`, `PUBLISH_MODE`, `NITS_MODE`, `DRY_RUN`)
    referenced in a root document. The token must be declared by at least one
@@ -32,6 +31,12 @@ grep level, deliberately without any prose understanding:
    A slash token that is not invocation-shaped — a path, a URL tail, an HTML tag
    (`</p>`), a path segment (`<name>/index.html`) — is not a reference and is
    skipped. FOREIGN is where a genuine exception goes, never the regex.
+
+3. Shared bootstrap doctrine sync. The doctrine blocks shared between
+   docs/COST.md and steering/bootstrap.md (six-principles, command-preamble,
+   model-routing, acceptance-board, epic-integration-board, subagent-preamble,
+   why-merge-pr) must be identical byte-for-byte so agents receive one
+   unambiguous ruleset.
 
 This checker does not re-implement the SLUGS-versus-tree gate: `load_skills()`
 in tools/gen_command_pages.py already enforces it in both directions — a command
@@ -240,6 +245,137 @@ def check_doc(rel: str, declared: dict[str, set[str]], current: set[str]) -> Non
         )
 
 
+def find_drift_lines(
+    c_text: str, c_start: int, c_end: int, c_content: str,
+    b_text: str, b_start: int, b_end: int, b_content: str,
+) -> tuple[int, int]:
+    """Return 1-based (cost_lineno, boot_lineno) where drift starts."""
+    c_lines = c_content.splitlines()
+    b_lines = b_content.splitlines()
+    for cl, bl in zip(c_lines, b_lines):
+        if cl != bl:
+            c_idx = c_text.find(cl, c_start)
+            b_idx = b_text.find(bl, b_start)
+            c_line = c_text[:c_idx].count("\n") + 1 if c_idx != -1 else c_text[:c_start].count("\n") + 1
+            b_line = b_text[:b_idx].count("\n") + 1 if b_idx != -1 else b_text[:b_start].count("\n") + 1
+            return c_line, b_line
+    if len(c_lines) > len(b_lines):
+        extra = c_lines[len(b_lines)]
+        c_idx = c_text.find(extra, c_start)
+        c_line = c_text[:c_idx].count("\n") + 1 if c_idx != -1 else c_text[:c_end].count("\n") + 1
+        b_line = b_text[:b_end].count("\n") + 1
+        return c_line, b_line
+    elif len(b_lines) > len(c_lines):
+        extra = b_lines[len(c_lines)]
+        b_idx = b_text.find(extra, b_start)
+        b_line = b_text[:b_idx].count("\n") + 1 if b_idx != -1 else b_text[:b_end].count("\n") + 1
+        c_line = c_text[:c_end].count("\n") + 1
+        return c_line, b_line
+    return c_text[:c_start].count("\n") + 1, b_text[:b_start].count("\n") + 1
+
+
+def check_bootstrap_cost_sync() -> None:
+    """Shared doctrine blocks must be identical between docs/COST.md and steering/bootstrap.md."""
+    cost_path = ROOT / "docs/COST.md"
+    boot_path = ROOT / "steering/bootstrap.md"
+
+    if not cost_path.is_file():
+        fail("docs/COST.md: file not found — required for shared bootstrap doctrine validation")
+        return
+    if not boot_path.is_file():
+        fail("steering/bootstrap.md: file not found — required for shared bootstrap doctrine validation")
+        return
+
+    cost_text = cost_path.read_text(encoding="utf-8")
+    boot_text = boot_path.read_text(encoding="utf-8")
+
+    markers = [
+        ("command-preamble", "<!-- command-preamble:start -->", "<!-- command-preamble:end -->"),
+        ("acceptance-board", "<!-- acceptance-board:start -->", "<!-- acceptance-board:end -->"),
+        ("epic-integration-board", "<!-- epic-integration-board:start -->", "<!-- epic-integration-board:end -->"),
+        ("subagent-preamble", "<!-- subagent-preamble:start -->", "<!-- subagent-preamble:end -->"),
+        ("model-routing", "<!-- model-routing:start -->", "<!-- model-routing:end -->"),
+        ("why-merge-pr", "<!-- why-merge-pr:start -->", "<!-- why-merge-pr:end -->"),
+    ]
+    cost_blocks: dict[str, tuple[str, int, int]] = {}
+    for name, start_m, end_m in markers:
+        if start_m not in cost_text or end_m not in cost_text:
+            fail(f"docs/COST.md: missing markers for block `{name}`")
+            continue
+        s = cost_text.index(start_m)
+        e = cost_text.index(end_m, s)
+        content = cost_text[s + len(start_m):e].strip()
+        cost_blocks[name] = (content, s, e)
+
+    if "## Six principles" in cost_text:
+        s = cost_text.index("## Six principles")
+        e = cost_text.find("\n## ", s + len("## Six principles"))
+        if e == -1:
+            e = len(cost_text)
+        content = cost_text[s + len("## Six principles"):e].strip()
+        cost_blocks["six-principles"] = (content, s, e)
+    else:
+        fail("docs/COST.md: missing `## Six principles` section")
+
+    if "command-preamble" in cost_blocks and "model-routing" in cost_blocks:
+        cp_content, cp_s, cp_e = cost_blocks["command-preamble"]
+        mr_content, _, _ = cost_blocks["model-routing"]
+        expanded_cp = cp_content.replace("<!-- shipmates:model-routing -->", mr_content).strip()
+        cost_blocks["command-preamble"] = (expanded_cp, cp_s, cp_e)
+
+    sections = [
+        ("six-principles", "## Six principles", "## Cost discipline", False),
+        ("command-preamble", "## Cost discipline", "## Reusable acceptance board", True),
+        ("model-routing", "## Model routing — what the orchestrator may pick from", "## Reusable acceptance board", True),
+        ("acceptance-board", "## Reusable acceptance board", "## Reusable epic integration board", False),
+        ("epic-integration-board", "## Reusable epic integration board", "## Reusable subagent preamble", False),
+        ("subagent-preamble", "## Reusable subagent preamble", "## Why merge this (PR body)", False),
+        ("why-merge-pr", "## Why merge this (PR body)", None, False),
+    ]
+    boot_blocks: dict[str, tuple[str, int, int]] = {}
+    for name, start_h, end_h, include_heading in sections:
+        if start_h not in boot_text:
+            fail(f"steering/bootstrap.md: missing section `{start_h}` for block `{name}`")
+            continue
+        s = boot_text.index(start_h)
+        content_start = s if include_heading else s + len(start_h)
+        if end_h and end_h in boot_text:
+            e = boot_text.index(end_h, s)
+            content = boot_text[content_start:e].strip()
+        else:
+            e = len(boot_text)
+            content = boot_text[content_start:].strip()
+        boot_blocks[name] = (content, s, e)
+
+    matched = 0
+    for name in sorted(cost_blocks.keys()):
+        if name not in boot_blocks:
+            continue
+        c_content, c_s, c_e = cost_blocks[name]
+        b_content, b_s, b_e = boot_blocks[name]
+        if c_content == b_content:
+            matched += 1
+        else:
+            c_drift_line, b_drift_line = find_drift_lines(
+                cost_text, c_s, c_e, c_content,
+                boot_text, b_s, b_e, b_content,
+            )
+            fail(
+                f"docs/COST.md:{c_drift_line}: block `{name}` drifted from "
+                f"steering/bootstrap.md:{b_drift_line} — shared doctrine blocks must stay identical"
+            )
+            fail(
+                f"steering/bootstrap.md:{b_drift_line}: block `{name}` drifted from "
+                f"docs/COST.md:{c_drift_line} — shared doctrine blocks must stay identical"
+            )
+
+    if matched == len(cost_blocks) and len(cost_blocks) == len(boot_blocks):
+        ok(
+            f"steering/bootstrap.md and docs/COST.md: {matched} shared doctrine "
+            f"block(s) are synchronized"
+        )
+
+
 def main() -> int:
     if not COMMANDS.is_dir():
         fail(
@@ -261,6 +397,8 @@ def main() -> int:
 
     for rel in DOCS:
         check_doc(rel, declared, current)
+
+    check_bootstrap_cost_sync()
     return report()
 
 

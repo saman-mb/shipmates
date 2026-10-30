@@ -102,3 +102,60 @@ load helpers
   assert_success
   [ "$(skill_dirs "$SANDBOX")" -eq 19 ]
 }
+
+@test "superseded home-scope tree repair is skipped by --no-migrate and retired safely by doctor --fix" {
+  mkdir -p "$HOME/.agents/skills/shipmates-badge"
+  mkdir -p "$HOME/.agents/skills/shipmates-scrub"
+  mkdir -p "$HOME/.agents/skills/ship-harden"
+
+  printf 'external\n' > "$BATS_TEST_TMPDIR/external-badge.py"
+  ln -s "$BATS_TEST_TMPDIR/external-badge.py" "$HOME/.agents/skills/shipmates-badge/badge.py"
+
+  cat <<'EOF' > "$HOME/.agents/skills/shipmates-badge/SKILL.md"
+---
+name: shipmates-badge
+description: "Shipmates: Render a shields-style status badge"
+---
+badge body
+EOF
+
+  cat <<'EOF' > "$HOME/.agents/skills/shipmates-scrub/SKILL.md"
+---
+name: shipmates-scrub
+description: "My custom local skill"
+---
+scrub body
+EOF
+
+  cat <<'EOF' > "$HOME/.agents/skills/ship-harden/SKILL.md"
+---
+name: ship-harden
+description: "Shipmates: retired skill"
+---
+retired body
+EOF
+
+  # Step A: install --no-migrate skips the superseded home-tree repair
+  run "$SHIPMATES_BIN" install --harness claude-code --global --with-tools none --no-migrate
+  assert_success
+  assert_output --partial "Skipped the superseded home-tree repair (--no-migrate)"
+  [ -f "$HOME/.agents/skills/shipmates-badge/SKILL.md" ]
+
+  # Step B: doctor --fix retires provably-ours manifests and preserves foreign/linked/retired entries
+  run "$SHIPMATES_BIN" doctor --harness claude-code --global --fix
+  assert_success
+  assert_output --partial "Retired 1 superseded home-tree payload file(s)"
+  assert_output --partial "Superseded skill tree"
+  assert_output --partial "Mostly shipshape — see the warnings above"
+
+  # The provably-ours manifest was retired into a backup
+  [ ! -f "$HOME/.agents/skills/shipmates-badge/SKILL.md" ]
+  [ -d "$HOME/.shipmates-backup" ]
+  find "$HOME/.shipmates-backup" -name "SKILL.md" | grep -q .
+
+  # Symlinked sibling, foreign entry, and retired entry are preserved untouched
+  [ -L "$HOME/.agents/skills/shipmates-badge/badge.py" ]
+  [ -f "$HOME/.agents/skills/shipmates-scrub/SKILL.md" ]
+  [ -f "$HOME/.agents/skills/ship-harden/SKILL.md" ]
+}
+
