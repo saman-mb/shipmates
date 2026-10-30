@@ -175,6 +175,8 @@ stated finding.
 | grok-build | query | per-spawn | abort | separate key · model-defined menu, no clamp documented |
 | devin | inherit | session-level | none | none · only an interactive cycle |
 
+**Pi.** A zero-cost local endpoint is not necessarily reachable. Only pick local when crew switch routes local seats; otherwise prefer cloud or `inherit`.
+
 **Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is
 still the primary cost gate, and the target's surface decides only **which** capable model runs a
 mechanical unit — never **whether** a lighter execution path is chosen.
