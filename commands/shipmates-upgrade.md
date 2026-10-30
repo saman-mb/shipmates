@@ -127,11 +127,17 @@ If the installed CLI predates this command's flags (Stage 0's `--help` does not 
 `upgrade`), fall back to the pre-`status`/`upgrade` path and **say which path ran**. `MODE` governs the
 fallback exactly as it governs the main path, so `report` changes nothing here either:
 
+In `MODE=apply` (the default), refresh then repair drift:
+
 ```bash
-# MODE=apply (the default) — refresh, then repair drift
 shipmates update --harness all
 shipmates doctor --fix
-# MODE=report — report only: never run the update, and run doctor without --fix
+```
+
+In `MODE=report`, run neither of those. Survey only:
+
+```bash
+shipmates doctor
 ```
 
 The release check degrades to "unknown" here, and filing is not available — report both plainly, and
