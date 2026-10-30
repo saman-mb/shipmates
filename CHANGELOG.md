@@ -48,6 +48,12 @@ All notable changes to this project are documented here. The format follows
 - **Pi parallel board/builder fan-out documents the workflow/async shape (#605).** Multiple blocking `subagent` calls in one turn are a lost board on Pi; rejected seats fail the run.
 - **Builders are told canonical command sources are flat `commands/<name>.md` (#614)**, not the installed `.pi/skills/<name>/SKILL.md` layout, so worktree edits stop ENOENT-ing.
 
+## [0.17.1] - 2026-10-30
+
+### Fixed
+
+- **A release builds its macOS arm64 binary on a supported runner again, so a green rest of CI no longer hides a lost release.** cargo-dist pins `aarch64-apple-darwin` to the `macos-14` image in every version we could ship (0.32.0 and 0.33.1 both), and GitHub now fails jobs on that image — during scheduled brownouts until it retires macOS 14 on November 2, 2026, and permanently after. The failure is one build job ending in zero seconds, which skips every job gated on the build (`build-global-artifacts`, `host`, `custom-publish-cargo`, `publish-homebrew-formula`, `announce`): the release publishes nothing while the plan, e2e and the other four platform builds all report success. `dist-workspace.toml` now pins that target to `macos-15` through `github-custom-runners`, matching the `macos-15-intel` image the x86_64 macOS target already used, so a release no longer depends on the one runner label dist defaulted to.
+
 ## [0.16.3] - 2026-10-28
 
 ### Fixed
