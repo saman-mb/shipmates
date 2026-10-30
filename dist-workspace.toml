@@ -19,3 +19,14 @@ publish-jobs = ["homebrew", "./publish-cargo"]
 allow-dirty = ["ci"]
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+
+# Runner labels, per target. dist's built-in map is a floor, not a fact: it
+# pins aarch64-apple-darwin to macos-14 in both 0.32.0 and 0.33.1, and GitHub
+# fails jobs on a host image it is retiring — first during scheduled brownouts,
+# then permanently. A retired image kills one build job in 0s, which skips every
+# job gated on the build (global artifacts, host, cargo, homebrew, announce), so
+# the whole release is lost while the rest of CI stays green. Pin the current
+# image here instead of waiting for dist to catch up; the x86_64 mac target is
+# pinned to macos-15-intel for the same reason.
+[dist.github-custom-runners]
+aarch64-apple-darwin = "macos-15"
