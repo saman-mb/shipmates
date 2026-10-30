@@ -18,7 +18,9 @@ import {
   CHECK,
   FAIL,
   PROMPT,
+  TYPE_ON_CHARS_PER_SECOND,
 } from '../theme';
+import { assertTypeOnWindow } from '../components/TypeOn';
 
 export const FPS = 30;
 
@@ -98,6 +100,61 @@ export const BEAT3 = {
 export const BEAT3_PASS_FRAME =
   BEAT3.timeline.failFrame + BEAT3.timeline.failHoldFrames; // 258
 
+/**
+ * Over-length guard budgets (#369): maps each typed beat line to its
+ * storyboard frame window duration at 30 fps.
+ */
+export const TYPE_ON_BUDGETS = {
+  beat1Hook: {
+    text: BEAT1.hookLine,
+    durationFrames: BEAT1.strikeStartFrame - BEAT1.typeStartFrame, // 68
+    label: 'BEAT1.hookLine',
+  },
+  beat2Roster: {
+    text: BEAT2.rosterLine,
+    durationFrames: 180 - BEAT2.rosterTypeStartFrame, // 150 (Beat 2 ends at f180)
+    label: 'BEAT2.rosterLine',
+  },
+  beat3Worktree: {
+    text: BEAT3.lines.worktree,
+    durationFrames: BEAT3.timeline.worktreePass - BEAT3.timeline.worktreeStart, // 35
+    label: 'BEAT3.lines.worktree',
+  },
+  beat3Planner: {
+    text: BEAT3.lines.planner,
+    durationFrames: BEAT3.timeline.plannerPass - BEAT3.timeline.plannerStart, // 62
+    label: 'BEAT3.lines.planner',
+  },
+  beat3Builder: {
+    text: BEAT3.lines.builder,
+    durationFrames: BEAT3.timeline.builderPass - BEAT3.timeline.builderStart, // 72
+    label: 'BEAT3.lines.builder',
+  },
+  beat3TestRun: {
+    text: BEAT3.lines.testRun,
+    durationFrames: BEAT3.timeline.failFrame - BEAT3.timeline.testStart, // 31
+    label: 'BEAT3.lines.testRun',
+  },
+} as const;
+
+/**
+ * Asserts every typed beat line fits inside its allocated frame window (#369).
+ * Runs at module load to prevent silent storyboard truncation if copy is edited.
+ */
+export const validateBeatTypeOnWindows = (): void => {
+  for (const budget of Object.values(TYPE_ON_BUDGETS)) {
+    assertTypeOnWindow(
+      budget.text,
+      budget.durationFrames,
+      FPS,
+      TYPE_ON_CHARS_PER_SECOND,
+      budget.label,
+    );
+  }
+};
+
+validateBeatTypeOnWindows();
+
 /* ------------------------------------------------------------------ */
 /* Beat 4 — Gates · 0:22–0:29                                          */
 /* ------------------------------------------------------------------ */
@@ -130,6 +187,10 @@ export const BEAT5 = {
   mergedLabel: 'merged',
   pendingLabel: '…',
   spawnCommand: '/ship-issue',
+  /** Mid-ramp fanout counter signal constants (#376). */
+  fanoutTotalTicks: 15,
+  fanoutPrefix: '… fanning out',
+  fanoutSuffix: 'child PRs merged',
   /** Board sign-off stamps (§2 beat 5: `architect ✓ sdet ✓ pm ✓ security ✓`). */
   stampLabels: ['architect', 'sdet', 'pm', 'security'],
   /**

@@ -27,11 +27,28 @@ pub struct InstallRecord {
     pub last_seen: u64,
 }
 
+#[derive(Deserialize)]
+struct SchemaHeader {
+    schema_version: u32,
+}
+
+fn on_disk_future_schema(path: &Path) -> Option<u32> {
+    let content = std::fs::read_to_string(path).ok()?;
+    let header: SchemaHeader = serde_json::from_str(&content).ok()?;
+    if header.schema_version > CURRENT_SCHEMA_VERSION {
+        Some(header.schema_version)
+    } else {
+        None
+    }
+}
+
 /// The persisted index file.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InstallsIndex {
     pub schema_version: u32,
     pub records: Vec<InstallRecord>,
+    #[serde(skip)]
+    pub read_only: bool,
 }
 
 impl InstallsIndex {
@@ -67,13 +84,27 @@ impl InstallsIndex {
                 path.display(),
                 index.schema_version
             );
-            return Ok(Self::empty());
+            return Ok(Self {
+                schema_version: index.schema_version,
+                records: Vec::new(),
+                read_only: true,
+            });
         }
         Ok(index)
     }
 
     /// Persist the index atomically via `installer::atomic_write`.
     pub fn save(&self, path: &Path) -> anyhow::Result<()> {
+        let on_disk_ver = on_disk_future_schema(path);
+        if self.read_only || on_disk_ver.is_some() {
+            let ver = on_disk_ver.unwrap_or(self.schema_version);
+            eprintln!(
+                "warning: refusing to overwrite installs index {} (schema_version {} is newer than this binary supports {CURRENT_SCHEMA_VERSION})",
+                path.display(),
+                ver
+            );
+            return Ok(());
+        }
         let mut index = self.clone();
         index.schema_version = CURRENT_SCHEMA_VERSION;
         let json = serde_json::to_string_pretty(&index).context("serializing installs index")?;
@@ -110,7 +141,9 @@ impl InstallsIndex {
                 last_seen: now,
             });
         }
-        self.schema_version = CURRENT_SCHEMA_VERSION;
+        if !self.read_only {
+            self.schema_version = CURRENT_SCHEMA_VERSION;
+        }
         self.save(path)
     }
 
@@ -167,6 +200,7 @@ impl InstallsIndex {
         Self {
             schema_version: CURRENT_SCHEMA_VERSION,
             records: Vec::new(),
+            read_only: false,
         }
     }
 }
@@ -239,6 +273,48 @@ mod tests {
 
         let index = InstallsIndex::load(&path).unwrap();
         assert!(index.records.is_empty());
+        assert!(index.read_only);
+        assert_eq!(index.schema_version, 99);
+    }
+
+    #[test]
+    fn future_schema_index_is_not_clobbered_by_save_or_register() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("installs.json");
+        let initial_json = r#"{"schema_version":99,"records":[{"root":"/x","harness":"claude-code","version":"1.0.0","layout":"skills","last_seen":1}]}"#;
+        std::fs::write(&path, initial_json).unwrap();
+
+        let mut index = InstallsIndex::load(&path).unwrap();
+        assert!(index.read_only);
+        assert_eq!(index.schema_version, 99);
+        assert!(index.records.is_empty());
+
+        let new_root = dir.path().join("project");
+        index
+            .register(&path, &new_root, "opencode", "2.0.0", "skills")
+            .unwrap();
+        index.save(&path).unwrap();
+
+        let on_disk = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(on_disk, initial_json);
+    }
+
+    #[test]
+    fn future_schema_on_disk_is_not_clobbered_by_unaware_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("installs.json");
+        let initial_json = r#"{"schema_version":99,"records":[{"root":"/x","harness":"claude-code","version":"1.0.0","layout":"skills","last_seen":1}]}"#;
+        std::fs::write(&path, initial_json).unwrap();
+
+        let mut empty = InstallsIndex::empty();
+        assert!(!empty.read_only);
+        let new_root = dir.path().join("project");
+        empty
+            .register(&path, &new_root, "claude-code", "0.12.0", "skills")
+            .unwrap();
+
+        let on_disk = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(on_disk, initial_json);
     }
 
     #[test]

@@ -10,7 +10,7 @@ ISSUE_TITLE="$ISSUE_MARKER"
 # lifecycle mock below prints it verbatim and the self-test asserts the
 # success path saw the whole line, so a mock shortened to fit an assertion
 # cannot pass — the assertion follows the binary, not the mock.
-DOCTOR_HEALTHY_LINE='All shipshape. Your crew is aboard and current.'
+export DOCTOR_HEALTHY_LINE='All shipshape. Your crew is aboard and current.'
 ASSET='shipmates-x86_64-unknown-linux-gnu.tar.xz'
 CHECKSUM_ASSET="${ASSET}.sha256"
 DOWNLOAD_ATTEMPTS=3
@@ -513,7 +513,7 @@ case "$command_name" in
     # The real healthy line, verbatim from src/doctor.rs. Anything shorter
     # would let an exact-equality assertion pass against a binary it does not
     # match, which is how this assertion drifted from the binary before.
-    printf 'All shipshape. Your crew is aboard and current.\n'
+    printf '%s\n' "${MOCK_DOCTOR_LINE:-$DOCTOR_HEALTHY_LINE}"
     ;;
   uninstall)
     rm -f -- "$HOME/.claude/agents/mock.md" "$HOME/.shipmates/receipts/claude-code.json"
@@ -543,6 +543,13 @@ make_tool_path() {
 }
 
 self_test() {
+  local initial_branch_bin="${BRANCH_BINARY:-}"
+  local repo_root
+  local real_bin=''
+  local real_doctor_probe
+  local real_doctor_home
+  local real_doctor_output
+  local real_doctor_last
   local self_root
   local fixture_tree
   local mock_bin
@@ -555,9 +562,50 @@ self_test() {
   local doctor_line
   local bash_path
 
+  repo_root="$(cd -- "$(dirname -- "$SCRIPT_PATH")/../.." && pwd)"
+
+  # Assert src/doctor.rs matches DOCTOR_HEALTHY_LINE when source is present.
+  if [[ -f "$repo_root/src/doctor.rs" ]]; then
+    if ! grep -Fq "\"$DOCTOR_HEALTHY_LINE\"" "$repo_root/src/doctor.rs"; then
+      printf 'self-test: DOCTOR_HEALTHY_LINE does not match src/doctor.rs: %s\n' "$DOCTOR_HEALTHY_LINE" >&2
+      return 1
+    fi
+  fi
+
+  # Locate or compile the real shipmates binary to verify doctor output.
+  if [[ -n "$initial_branch_bin" && -x "$initial_branch_bin" ]]; then
+    real_bin="$initial_branch_bin"
+  elif [[ -x "$repo_root/target/debug/shipmates" ]]; then
+    real_bin="$repo_root/target/debug/shipmates"
+  elif [[ -x "$repo_root/target/release/shipmates" ]]; then
+    real_bin="$repo_root/target/release/shipmates"
+  elif command -v cargo >/dev/null 2>&1; then
+    cargo build --quiet --manifest-path "$repo_root/Cargo.toml" --bin shipmates
+    real_bin="$repo_root/target/debug/shipmates"
+  fi
+
+  if [[ -z "$real_bin" || ! -x "$real_bin" ]]; then
+    printf 'self-test: could not locate or build real shipmates binary to verify doctor control\n' >&2
+    return 1
+  fi
+
   self_root=$(mktemp -d "${RUNNER_TEMP}/release-upgrade-self-test.XXXXXX")
   SELF_TEST_DIR=$self_root
   trap 'cleanup_self_test' RETURN
+
+  # Probe the real binary in a clean environment to ensure DOCTOR_HEALTHY_LINE
+  # matches its actual doctor output.
+  real_doctor_probe="$self_root/real-doctor-probe"
+  real_doctor_home="$self_root/real-doctor-home"
+  mkdir -p -- "$real_doctor_probe" "$real_doctor_home"
+  HOME="$real_doctor_home" "$real_bin" install --harness claude-code --dir "$real_doctor_probe" --with-tools none >/dev/null 2>&1
+  real_doctor_output=$(HOME="$real_doctor_home" "$real_bin" doctor --harness claude-code --dir "$real_doctor_probe" 2>/dev/null)
+  real_doctor_last=$(awk 'NF { last = $0 } END { print last }' <<< "$real_doctor_output")
+  if [[ "$real_doctor_output" != *"$DOCTOR_HEALTHY_LINE"* || "$real_doctor_last" != "$DOCTOR_HEALTHY_LINE" ]]; then
+    printf 'self-test: DOCTOR_HEALTHY_LINE does not match real binary doctor output: expected %s, got %s\n' \
+      "$DOCTOR_HEALTHY_LINE" "$real_doctor_last" >&2
+    return 1
+  fi
   fixture_tree="$self_root/release-tree/shipmates-x86_64-unknown-linux-gnu"
   mock_bin="$self_root/mock-bin"
   mkdir -p -- "$fixture_tree" "$mock_bin" "$self_root/fixture-assets"
@@ -761,6 +809,29 @@ RELEASED_MOCK_BINARY
     }
   done
   unset FAIL_LIFECYCLE_COMMAND
+
+  # When doctor exits 0 but does not finish with "All shipshape.", verify_doctor_result
+  # must catch it and report FAILED STEP: doctor.
+  output_file="$self_root/failure-doctor-corrupt.log"
+  report_path="$self_root/failure-doctor-corrupt-report.md"
+  export MOCK_DOCTOR_LINE='corrupted doctor output without expected suffix'
+  export FAIL_LIFECYCLE_COMMAND=''
+  export REPORT_FILE="$report_path"
+  if bash "$SCRIPT_PATH" --run > "$output_file" 2>&1; then
+    printf 'self-test: corrupted doctor output was not reported as a failure\n' >&2
+    return 1
+  fi
+  if [[ "$(grep -Fxc "FAILED STEP: doctor" "$output_file")" != '1' ]] \
+    || [[ "$(grep -Fxc "FAILED STEP: doctor" "$report_path")" != '1' ]]; then
+    cat -- "$output_file" >&2
+    printf 'self-test: corrupted doctor output did not report FAILED STEP: doctor\n' >&2
+    return 1
+  fi
+  grep -Fq 'doctor did not finish with "All shipshape."' "$report_path" || {
+    printf 'self-test: corrupted doctor report omitted expected reason\n' >&2
+    return 1
+  }
+  unset MOCK_DOCTOR_LINE
 
   # Reporting the same failure twice must create at most one open issue.
   export REPORT_FILE="$self_root/failure-update-report.md"

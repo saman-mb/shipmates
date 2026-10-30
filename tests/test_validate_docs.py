@@ -109,8 +109,20 @@ class ValidateDocsTests(unittest.TestCase):
             (root / "commands" / "shipmates-fixture-issue.md").write_text(
                 OTHER_COMMAND, encoding="utf-8"
             )
+        if "docs/COST.md" not in docs:
+            (root / "docs").mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / "docs/COST.md", root / "docs/COST.md")
+        if "steering/bootstrap.md" not in docs:
+            (root / "steering").mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / "steering/bootstrap.md", root / "steering/bootstrap.md")
         for name, text in docs.items():
-            (root / name).write_text(text, encoding="utf-8")
+            target = root / name
+            if text is None:
+                if target.exists():
+                    target.unlink()
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
         return root
 
     def run_validator(self, root):
@@ -301,6 +313,122 @@ class ValidateDocsTests(unittest.TestCase):
             command=None,
         )
         self.assert_fails(root, "commands/")
+
+    # --- shared bootstrap and cost sync ------------------------------------
+
+    def test_bootstrap_cost_sync_passes(self):
+        root = self.sandbox(
+            {
+                "README.md": VALID_README,
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+            }
+        )
+        result = self.run_validator(root)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("shared doctrine block(s) are synchronized", result.stdout)
+
+    def test_missing_cost_md_fails(self):
+        root = self.sandbox(
+            {
+                "README.md": VALID_README,
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+                "docs/COST.md": None,
+            }
+        )
+        self.assert_fails(root, "docs/COST.md: file not found")
+
+    def test_missing_bootstrap_md_fails(self):
+        root = self.sandbox(
+            {
+                "README.md": VALID_README,
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+                "steering/bootstrap.md": None,
+            }
+        )
+        self.assert_fails(root, "steering/bootstrap.md: file not found")
+
+    def test_drift_in_acceptance_board_in_cost_md_fails(self):
+        cost = (ROOT / "docs/COST.md").read_text(encoding="utf-8")
+        drifted_cost = cost.replace(
+            "Spawn reviewers **in parallel** against the PR head commit",
+            "Spawn reviewers **in serial** against the PR head commit",
+        )
+        root = self.sandbox(
+            {
+                "README.md": VALID_README,
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+                "docs/COST.md": drifted_cost,
+            }
+        )
+        self.assert_fails_at(
+            root, "docs/COST.md", r"docs/COST\.md", "acceptance-board", "drifted from"
+        )
+
+    def test_drift_in_acceptance_board_in_bootstrap_md_fails(self):
+        boot = (ROOT / "steering/bootstrap.md").read_text(encoding="utf-8")
+        drifted_boot = boot.replace(
+            "Spawn reviewers **in parallel** against the PR head commit",
+            "Spawn reviewers **in serial** against the PR head commit",
+        )
+        root = self.sandbox(
+            {
+                "README.md": VALID_README,
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+                "steering/bootstrap.md": drifted_boot,
+            }
+        )
+        self.assert_fails_at(
+            root, "steering/bootstrap.md", r"steering/bootstrap\.md", "acceptance-board", "drifted from"
+        )
+
+    def test_drift_in_six_principles_fails(self):
+        boot = (ROOT / "steering/bootstrap.md").read_text(encoding="utf-8")
+        drifted_boot = boot.replace("Amortize fixed overhead.", "Amortize variable overhead.")
+        root = self.sandbox(
+            {
+                "README.md": VALID_README,
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+                "steering/bootstrap.md": drifted_boot,
+            }
+        )
+        self.assert_fails_at(
+            root, "steering/bootstrap.md", r"steering/bootstrap\.md", "six-principles", "drifted from"
+        )
+
+    def test_missing_marker_in_cost_md_fails(self):
+        cost = (ROOT / "docs/COST.md").read_text(encoding="utf-8")
+        corrupted = cost.replace("<!-- acceptance-board:start -->\n", "")
+        root = self.sandbox(
+            {
+                "README.md": VALID_README,
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+                "docs/COST.md": corrupted,
+            }
+        )
+        self.assert_fails(root, "docs/COST.md: missing markers for block `acceptance-board`")
+
+    def test_missing_section_in_bootstrap_md_fails(self):
+        boot = (ROOT / "steering/bootstrap.md").read_text(encoding="utf-8")
+        corrupted = boot.replace("## Reusable acceptance board\n", "")
+        root = self.sandbox(
+            {
+                "README.md": VALID_README,
+                "CONTRIBUTING.md": VALID_CONTRIBUTING,
+                "AGENTS.md": VALID_AGENTS,
+                "steering/bootstrap.md": corrupted,
+            }
+        )
+        self.assert_fails(
+            root,
+            "steering/bootstrap.md: missing section `## Reusable acceptance board` for block `acceptance-board`",
+        )
 
     # --- the allowlist's own hygiene ---------------------------------------
 

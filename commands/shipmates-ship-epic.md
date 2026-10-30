@@ -373,7 +373,7 @@ For each `<unit>` (sequentially, or concurrently within a wave):
       console work.
 
    Do **not** pause the whole epic because one story is *partly* blocked or *fully* owner-only.
-5. **Build delegation guidance** (compact prose, not a transcript). Include:
+5. **Build composition guidance** (compact prose, not a transcript). Include:
    - `epic-run` — story numbers in this unit belong to epic `<epic>`; do **not** scan the wider
      backlog or propose bundle widening beyond this unit's story list.
    - `epic-id=<epic>` — parent epic issue number; `/shipmates-ship-issue` must return an **Epic unit record**
@@ -399,14 +399,15 @@ For each `<unit>` (sequentially, or concurrently within a wave):
      include `complexity tier: simple` so `/shipmates-ship-issue` takes the Simple path. When all are
      `trivial` or `standard` with no arch/security/delivery flags, include `complexity tier: medium`.
      Otherwise omit (full High path).
-6. **Delegate (compose)** — Read the installed `/shipmates-ship-issue` command file for this harness; execute
-   its stages in-session for **all story numbers in the unit scope** (after step 1 trimming), with
-   the guidance from step 5 as that run's arguments/context. Example shape: story numbers `101 102`
-   plus `epic-run …` for a two-story unit; singleton: `103` plus `epic-run …`. Do **not** set
-   `BUNDLE=off` — explicit multi-story tokens **are** the bundle; singletons behave as today. Do
-   **not** call Skill/`skill` for `shipmates-ship-issue` unless that name appears in the harness's available
-   Skill / `skill` listing. Do **not** author a parallel unit pipeline. Keep `epic-run` /
-   `epic-base` / `MERGE_MODE` guidance semantics from step 5.
+6. **Compose (Read + execute)** — Read the installed `/shipmates-ship-issue` command/skill file for this harness and
+   execute its stages in-session as the portable source of truth for **all story numbers in the unit scope**
+   (after step 1 trimming), with the guidance from step 5 as that run's arguments/context. Example shape: story
+   numbers `101 102` plus `epic-run …` for a two-story unit; singleton: `103` plus `epic-run …`. Do **not** set
+   `BUNDLE=off` — explicit multi-story tokens **are** the bundle; singletons behave as today. Calling
+   Skill/`skill` for `shipmates-ship-issue` is an optional acceleration **only** when that name appears in
+   the harness's available Skill / `skill` listing; when absent, Read + execute is the contracted path.
+   Do **not** author a parallel unit pipeline. Keep `epic-run` / `epic-base` / `MERGE_MODE` guidance semantics
+   from step 5.
 7. **Outcome:**
    - **Success (auto-merged)** — unit used `MERGE_MODE=auto` and landed on `<EPIC_BRANCH>` → Stage 3 for
      **each** story in the unit (tick every checklist line the unit closed), **Stage 3.5** (append unit

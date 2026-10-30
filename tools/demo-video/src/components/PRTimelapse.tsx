@@ -33,6 +33,7 @@ export const PRTimelapse: React.FC = () => {
 
   const tick = beat5TickIndex(frame);
   const landed = Math.floor(tick);
+  const fanoutCount = Math.min(landed, BEAT5.fanoutTotalTicks);
 
   const rows = BEAT5.childPRs.map((pr, i) => {
     const ticked = landed >= i + 1;
@@ -91,8 +92,33 @@ export const PRTimelapse: React.FC = () => {
           ))}
         </div>
 
+        {/* Mid-ramp fanout counter signal (#376) */}
+        {landed >= BEAT5.childPRs.length && (
+          <div
+            style={{
+              marginTop: 24,
+              fontSize: FONT_SIZES.terminal,
+              lineHeight: 1.5,
+              color:
+                landed >= BEAT5.fanoutTotalTicks ? COLORS.green : COLORS.blue,
+              fontWeight: landed >= BEAT5.fanoutTotalTicks ? 700 : 400,
+              whiteSpace: 'pre',
+            }}
+          >
+            {landed >= BEAT5.fanoutTotalTicks
+              ? `${CHECK} ${BEAT5.fanoutTotalTicks}/${BEAT5.fanoutTotalTicks} ${BEAT5.fanoutSuffix}`
+              : `${BEAT5.fanoutPrefix} ${fanoutCount}/${BEAT5.fanoutTotalTicks} ${BEAT5.fanoutSuffix}`}
+          </div>
+        )}
+
         {/* Board sign-off stamps — stagger in on the final ticks */}
-        <div style={{ marginTop: 72, display: 'flex', gap: 48 }}>
+        <div
+          style={{
+            marginTop: landed >= BEAT5.childPRs.length ? 48 : 72,
+            display: 'flex',
+            gap: 48,
+          }}
+        >
           {BEAT5.stampLabels.map((label, i) => {
             const stampTick = BEAT5.stampStartTick + i;
             if (tick < stampTick) {

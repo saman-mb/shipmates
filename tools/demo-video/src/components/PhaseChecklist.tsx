@@ -6,6 +6,7 @@ import {
   FAIL,
   FONT_MONO,
   FONT_SIZES,
+  FRAME_MARGIN,
 } from '../theme';
 
 /**
@@ -53,7 +54,7 @@ export const PhaseChecklist: React.FC<{
       style={{
         position: 'absolute',
         top: CHECKLIST_TOP,
-        right: 64,
+        right: FRAME_MARGIN,
         display: 'flex',
         gap: 28,
         fontFamily: FONT_MONO,

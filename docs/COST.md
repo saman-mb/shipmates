@@ -18,11 +18,11 @@ repeated instructions and low-signal output out of the main context.
    bottom. Keep a shared stable prefix before role-specific instructions across subagent spawns.
 5. **Return decisions, not transcripts.** Require compact structured output: status or verdict first,
    criterion-level findings and only supporting evidence next, then blockers, changed files, rationale,
-   and next action. Do not return command logs or a narrative of every step.
+   and next action as applicable. Omit raw command logs and a narrative of every step.
 6. **Avoid paid repetition.** Reuse context and results already proven in the current run. Repeat a
    check only when new information or a changed artifact makes it decision-relevant; record what was
    checked rather than replaying a transcript. Cut rework before builders run: verify spec citations
-   with grep, emit blast radius for shared APIs at plan time, give units machine-checkable owned-paths
+   with `grep`, emit blast radius for shared APIs at plan time, give units machine-checkable owned-paths
    manifests, and route empirical questions to whoever can run code.
 
 ## Reusable command preamble
