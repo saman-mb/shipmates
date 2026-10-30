@@ -340,7 +340,12 @@ fn run_smoke(entry: &Path, timeout: Duration) -> bool {
 
 /// Payload paths (relative to the install root, container prefix stripped) that
 /// are missing or empty on disk. Uses the same global relocation the installer
-/// applies, so a global antigravity/pi install is checked at its real paths.
+/// applies, so a global antigravity/pi install is checked at its real paths — and
+/// only a global one, because scope is inferred from the destination there too: a
+/// project install writes into the workspace tree, so relocating it would look for
+/// the user-scope tree under the project root and report the entire payload
+/// missing. That phantom drift is `unrepairable-drift` by definition (the files
+/// were never meant to be there), so `--fix` can never clear it (#625).
 fn missing_payload_paths(
     root: &Path,
     harness: &str,
@@ -351,11 +356,15 @@ fn missing_payload_paths(
     let adapter = adapters::select(harness)?;
     let steering = source.steering_for_target(root)?;
     let built = adapters::build_payload(adapter.as_ref(), roles, cmds, steering.as_deref())?;
-    let relocated = manifest_db::relocate_payload(harness, adapter.container(), &built);
+    let payload = if manifest_db::is_global_target(root) {
+        manifest_db::relocate_payload(harness, adapter.container(), &built)
+    } else {
+        built
+    };
     let prefix = format!("{}/", adapter.container());
 
     let mut missing: Vec<String> = Vec::new();
-    for key in relocated.keys() {
+    for key in payload.keys() {
         let rel = key
             .strip_prefix(&prefix)
             .ok_or_else(|| anyhow::anyhow!("payload path outside install container: {key}"))?;
@@ -388,6 +397,75 @@ mod tests {
         )
         .unwrap();
         ReceiptRepository::new(root).save(&receipt).unwrap();
+    }
+
+    fn sample_role(name: &str) -> CanonicalRole {
+        CanonicalRole {
+            name: name.to_string(),
+            description: format!("{name} role"),
+            capabilities: Vec::new(),
+            writes: false,
+            web_scopes: Vec::new(),
+            read_scopes: Vec::new(),
+            tool_order: Vec::new(),
+            effort: None,
+            source: PathBuf::new(),
+            body: "Do the work.".to_string(),
+        }
+    }
+
+    fn sample_command(name: &str) -> CanonicalCommand {
+        CanonicalCommand {
+            name: name.to_string(),
+            description: format!("{name} command"),
+            argument_hint: String::new(),
+            allowed_tools: String::new(),
+            disable_model_invocation: true,
+            arguments: Vec::new(),
+            narrative: "Body.".to_string(),
+            invocation: String::new(),
+            board: String::new(),
+            source: PathBuf::new(),
+        }
+    }
+
+    /// A project-root install writes into the workspace tree, and only a global
+    /// install ($HOME) uses the harness's user-scope tree. Relocating a project
+    /// install made `missing_payload_paths` look under `.pi/agent/…` inside the
+    /// project, so a freshly installed, untouched project pi install reported
+    /// its whole payload missing — and `--fix` could never clear it, because
+    /// those global paths are never supposed to exist there (#625).
+    #[test]
+    fn project_install_is_checked_in_place_not_in_the_global_tree() {
+        let dir = tempfile::tempdir().unwrap();
+        let roles = vec![sample_role("architect")];
+        let cmds = vec![sample_command("shipmates-spike")];
+        let source = CatalogSource::Embedded;
+        let adapter = adapters::select("pi").unwrap();
+        let steering = source.steering_for_target(dir.path()).unwrap();
+        let built =
+            adapters::build_payload(adapter.as_ref(), &roles, &cmds, steering.as_deref()).unwrap();
+        let prefix = format!("{}/", adapter.container());
+        assert!(
+            !built.is_empty(),
+            "the fixture must lay down a real payload, or this proves nothing"
+        );
+
+        // Lay the payload down exactly as a project install would.
+        for (key, content) in &built {
+            let rel = key
+                .strip_prefix(&prefix)
+                .unwrap_or_else(|| panic!("payload path outside container: {key}"));
+            let path = dir.path().join(rel);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, content).unwrap();
+        }
+
+        let missing = missing_payload_paths(dir.path(), "pi", &roles, &cmds, &source).unwrap();
+        assert!(
+            missing.is_empty(),
+            "a project install must be checked where it was written, got: {missing:?}"
+        );
     }
 
     fn scrub_tool() -> CanonicalTool {
