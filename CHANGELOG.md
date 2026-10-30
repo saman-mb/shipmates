@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1] - 2026-10-30
+
+### Added
+
+- **`tools/validate_docs.py` enforces byte-for-byte doctrine parity between `steering/bootstrap.md` and `docs/COST.md` (#620).** Both files are embedded into installed payloads through different surfaces; a one-sided edit to any shared section (`six-principles`, `command-preamble`, `model-routing`, `acceptance-board`, `epic-integration-board`, `subagent-preamble`, `why-merge-pr`) now fails CI with file and line reporting instead of shipping divergent rules.
+- **E2E bats coverage for home-scope superseded-tree repair and `--no-migrate` (#581).** Exercises `shipmates install --global --no-migrate` and `shipmates doctor --fix` against a redirected `$HOME/.agents/skills/` tree holding a branded manifest with a symlinked sibling, a foreign entry, and a retired `ship-*` entry.
+- **Demo video `TypeOn` over-length guard and Beat 5 mid-ramp counter (#369, #376, #390).** `assertTypeOnWindow` and `legibility-check.ts` fail loudly if storyboard copy exceeds its type-on frame budget; Beat 5 (`PRTimelapse.tsx`) renders a live main-frame child-PR counter across ticks 4–15 so the 1/s → 3/s speed ramp is visible without watching only the corner inset; `PhaseChecklist` shares `FRAME_MARGIN` from `theme.ts`.
+
+### Changed
+
+- **Clarified gated-command composition vocabulary and `applies_to` coverage (#478, #479).** `/shipmates-ship-epic` Stage 2 renames its composition step from `Delegate (compose)` to `Compose (Read + execute)`, `gated-command-composition` in `tools/harness_matrix.json` covers both `skills` and `commands` (`.opencode/commands/`), and `AGENTS.md` / `commands/shipmates-ship-epic.md` state explicitly that `Read` of the installed file is the portable source of truth while `Skill`/`skill` is an optional acceleration only when listed.
+- **PR CI gates `release-upgrade-e2e.sh --self-test` and pins its doctor check to the real binary (#571).** `.github/workflows/pages.yml` runs `--self-test` on every PR, and the self-test verifies `DOCTOR_HEALTHY_LINE` against both `src/doctor.rs` and the compiled `shipmates` binary's `doctor` output.
+
+### Fixed
+
+- **`InstallsIndex::save` no longer clobbers a future-schema `~/.shipmates/installs.json` (#544).** When an older binary encounters an on-disk `installs.json` with `schema_version` newer than it supports, `load` marks the in-memory index read-only and `save` checks the on-disk header before writing, refusing to downgrade the file or drop records written by a newer Shipmates release.
+- **`upgrade::file::tests::home_paths_are_sanitised_to_tilde` is deterministic across full-suite test runs (#598).** Isolates `$HOME` from `$TMPDIR` and locks the home environment mutex across `upgrade::file` tests so concurrent `with_isolated_home` mutations or `$HOME`-rooted temp paths cannot flake `cargo test --all-targets`.
+
 ## [0.17.0] - 2026-10-28
 
 ### Added

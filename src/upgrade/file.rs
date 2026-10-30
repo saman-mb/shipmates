@@ -325,6 +325,7 @@ mod tests {
 
     #[test]
     fn match_comments_instead_of_creating() {
+        let _home = crate::installer::retired::test_env::lock_home();
         let dir = tempfile::tempdir().unwrap();
         let finding = finding("claude-code", FindingClass::ToolFailure);
         let marker = marker_for(&finding);
@@ -343,6 +344,7 @@ mod tests {
 
     #[test]
     fn no_match_creates() {
+        let _home = crate::installer::retired::test_env::lock_home();
         let dir = tempfile::tempdir().unwrap();
         let finding = finding("claude-code", FindingClass::UnrepairableDrift);
         let fp = finding.fingerprint.clone();
@@ -358,6 +360,7 @@ mod tests {
 
     #[test]
     fn cap_limits_filings_and_skips_the_rest() {
+        let _home = crate::installer::retired::test_env::lock_home();
         let dir = tempfile::tempdir().unwrap();
         let first = finding("claude-code", FindingClass::ToolFailure);
         let second = finding("opencode", FindingClass::UnrepairableDrift);
@@ -370,6 +373,7 @@ mod tests {
 
     #[test]
     fn labels_are_filtered_to_existing() {
+        let _home = crate::installer::retired::test_env::lock_home();
         let dir = tempfile::tempdir().unwrap();
         let finding = finding("claude-code", FindingClass::UnrepairableDrift);
         let gh = write_fake_gh(dir.path(), "[]", r#"[{"name":"bug"},{"name":"shipmates"}]"#);
@@ -386,40 +390,44 @@ mod tests {
 
     #[test]
     fn home_paths_are_sanitised_to_tilde() {
-        let _home = crate::installer::retired::test_env::lock_home();
-        let dir = tempfile::tempdir().unwrap();
-        let finding = finding("claude-code", FindingClass::UnrepairableDrift);
-        let gh = write_fake_gh(dir.path(), "[]", "[]");
+        let home_dir = tempfile::tempdir().unwrap();
+        let home = home_dir.path().join("isolated_home");
+        std::fs::create_dir_all(&home).unwrap();
+        crate::installer::retired::test_env::with_isolated_home(&home, || {
+            let dir = tempfile::tempdir().unwrap();
+            let finding = finding("claude-code", FindingClass::UnrepairableDrift);
+            let gh = write_fake_gh(dir.path(), "[]", "[]");
 
-        file_bugs(&[finding], &opts(&gh, 3, vec![])).unwrap();
-        let logged = log(dir.path());
-        if let Some(home) = home::home_dir() {
+            file_bugs(&[finding], &opts(&gh, 3, vec![])).unwrap();
+            let logged = log(dir.path());
             let home_str = home.to_string_lossy();
             assert!(!logged.contains(home_str.as_ref()), "home leaked: {logged}");
             assert!(logged.contains('~'), "expected ~: {logged}");
-        } else {
-            assert!(logged.contains("<project-root>"), "{logged}");
-        }
+        });
     }
 
     #[test]
     fn detail_never_leaks_a_project_root_outside_home() {
-        let _home = crate::installer::retired::test_env::lock_home();
-        let dir = tempfile::tempdir().unwrap();
-        let root = dir.path().join("secret-project");
-        let root_str = root.to_string_lossy().into_owned();
-        let finding = Finding {
-            class: FindingClass::RefreshFailed,
-            harness: "claude-code".to_string(),
-            root: root_str.clone(),
-            detail: format!("refresh failed for {root_str}: exit 1"),
-            fingerprint: fingerprint("claude-code", FindingClass::RefreshFailed),
-        };
-        let gh = write_fake_gh(dir.path(), "[]", "[]");
+        let home_dir = tempfile::tempdir().unwrap();
+        let home = home_dir.path().join("isolated_home");
+        std::fs::create_dir_all(&home).unwrap();
+        crate::installer::retired::test_env::with_isolated_home(&home, || {
+            let dir = tempfile::tempdir().unwrap();
+            let root = dir.path().join("secret-project");
+            let root_str = root.to_string_lossy().into_owned();
+            let finding = Finding {
+                class: FindingClass::RefreshFailed,
+                harness: "claude-code".to_string(),
+                root: root_str.clone(),
+                detail: format!("refresh failed for {root_str}: exit 1"),
+                fingerprint: fingerprint("claude-code", FindingClass::RefreshFailed),
+            };
+            let gh = write_fake_gh(dir.path(), "[]", "[]");
 
-        file_bugs(&[finding], &opts(&gh, 3, vec![])).unwrap();
-        let logged = log(dir.path());
-        assert!(!logged.contains(&root_str), "leaked root: {logged}");
-        assert!(logged.contains("<project-root>"), "{logged}");
+            file_bugs(&[finding], &opts(&gh, 3, vec![])).unwrap();
+            let logged = log(dir.path());
+            assert!(!logged.contains(&root_str), "leaked root: {logged}");
+            assert!(logged.contains("<project-root>"), "{logged}");
+        });
     }
 }

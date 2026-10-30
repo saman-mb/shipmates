@@ -31,6 +31,26 @@ export const isFullyTyped = (
   typedCharCount(framesSinceStart, fps, textLength, charsPerSecond) >=
   textLength;
 
+/**
+ * Dev-time over-length guard (#369): fails loudly when `text` cannot finish
+ * typing inside `durationFrames` at `charsPerSecond` (i.e. when the max
+ * characters budget `Math.ceil((durationFrames / fps) * charsPerSecond) < text.length`).
+ */
+export const assertTypeOnWindow = (
+  text: string,
+  durationFrames: number,
+  fps: number,
+  charsPerSecond: number = TYPE_ON_CHARS_PER_SECOND,
+  label = 'TypeOn',
+): void => {
+  const charsBudget = Math.ceil((durationFrames / fps) * charsPerSecond);
+  if (charsBudget < text.length) {
+    throw new Error(
+      `${label}: copy length (${text.length} chars) exceeds type-on window (${durationFrames}f @ ${fps}fps, ${charsPerSecond} cps → max ${charsBudget} chars): "${text}"`,
+    );
+  }
+};
+
 const CARET_BLINK_FRAMES = 15;
 const CARET = '▍';
 
@@ -42,6 +62,7 @@ const CARET = '▍';
 export const TypeOn: React.FC<{
   text: string;
   startFrame?: number;
+  durationFrames?: number;
   charsPerSecond?: number;
   color?: string;
   fontSize?: number;
@@ -50,6 +71,7 @@ export const TypeOn: React.FC<{
 }> = ({
   text,
   startFrame = 0,
+  durationFrames,
   charsPerSecond = TYPE_ON_CHARS_PER_SECOND,
   color = COLORS.text,
   fontSize,
@@ -58,6 +80,9 @@ export const TypeOn: React.FC<{
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  if (durationFrames !== undefined) {
+    assertTypeOnWindow(text, durationFrames, fps, charsPerSecond);
+  }
   const framesSinceStart = frame - startFrame;
   const count = typedCharCount(
     framesSinceStart,

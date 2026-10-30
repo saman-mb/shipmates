@@ -17,6 +17,35 @@ import {
   FONT_SIZES,
   MIN_FEED_GLYPH_PX,
 } from '../src/theme';
+import { assertTypeOnWindow } from '../src/components/TypeOn';
+import { validateBeatTypeOnWindows } from '../src/data/beats';
+
+// TypeOn over-length guard (#369): validate all beat type-on windows
+validateBeatTypeOnWindows();
+console.log('ok   TypeOn windows: all beat copy fits inside allocated frame windows.');
+
+// Negative self-check (#369): assertTypeOnWindow must fail loudly on over-length copy
+let threw = false;
+try {
+  assertTypeOnWindow(
+    'This storyboard string is way too long to fit in five frames',
+    5,
+    30,
+    30,
+    'NegativeCheck',
+  );
+} catch {
+  threw = true;
+}
+if (!threw) {
+  console.error(
+    'FAIL: assertTypeOnWindow did not throw on over-length string.',
+  );
+  process.exit(1);
+}
+console.log(
+  'ok   assertTypeOnWindow: negative self-check caught over-length copy as expected.',
+);
 
 let failed = false;
 
