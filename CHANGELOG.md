@@ -8,9 +8,16 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **Shadow mode no longer queues work it will never run (#601).** A shadow seat was admitted into the shared broker queue and then left there: shadow asked with a queue-only request, and a pinned model the broker cannot see never fits, so the entry never drained. Repeating a turn grew the queue until it hit the depth limit, where real enforce work would start being refused. Shadow is now a true dry run — the broker reports the decision and takes no queue slot, no reservation, and no lease.
+- **A cloud chat is no longer reserved by the local broker (#601).** In Local mode with the broker on, the captain's own chat was admitted like a local seat. On a cloud model it queued forever and, under enforce, would have stopped the captain's chat for no reason. A chat model the model registry reports as cloud is now skipped; an unreadable registry keeps the old behaviour.
+- **The macOS arm release build no longer asks for a retired runner.** `aarch64-apple-darwin` was pinned to `macos-14`, whose images GitHub deprecated and retires on 2026-11-02; a job on that label is cancelled a second after it starts, without a runner, so every job that needed it was skipped and the release published nothing. The target now pins `macos-15` in `dist-workspace.toml`.
 - **A `manual-only` label can no longer stand in for a check on an acceptance criterion (#611).** The product-manager role already refused a label as a pass, but the acceptance-board doctrine the same agent reads still allowed an explicit `manual-only` label in place of a machine-checkable pin — the exact escape the role rule was meant to close, shipped twice through `steering/bootstrap.md` and its `docs/COST.md` mirror. A label no longer substitutes: where no pin is possible the criterion is recorded unverified and fails, unless the issue itself or the captain defers it, and `ACCEPT-WITH-NITS` is now refused alongside `ACCEPT` while any criterion fails.
 - **The role says what it means about a documented gap, and names `unproven` as a non-answer (#611).** "A doc, changelog line, review note" could be read as forbidding the seat from requiring updated docs at all, which pulled against the Definition of Done bullet directly beneath it; it now says a line that *merely describes the gap* is not a pass. The generated agent page no longer advertises `ACCEPT-WITH-NITS` as an available verdict.
 - **The test that guards the acceptance-board doctrine asserts the rule it now guards (#611).** It still required the board to "name the `manual-only` escape", so it passed only because the phrase survived inside a negation: it would have failed a legitimate cleanup and passed a reinstated escape.
+
+### Added
+
+- `.github/scripts/validate_runner_labels.py` fails when a workflow or a dist target names a retired runner label, and when a target whose cargo-dist default is a retired image has no explicit pin. Without it the failure mode is a cancelled job and a skipped publish, not a readable error.
 
 ## [0.17.1] - 2026-10-30
 

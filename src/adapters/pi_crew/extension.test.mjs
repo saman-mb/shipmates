@@ -263,6 +263,47 @@ test("the captain chat is reserved only for Local enforce and released when the 
   }
 });
 
+test("a cloud chat is never reserved by the local broker", async () => {
+  const previous = process.env.PI_SUBAGENT_CHILD;
+  delete process.env.PI_SUBAGENT_CHILD;
+  try {
+    const ctx = {
+      model: { provider: "cloud", id: "big" },
+      modelRegistry: {
+        getAvailable: () => [
+          { provider: "cloud", id: "big", cost: { input: 3, output: 9, cacheRead: 0, cacheWrite: 0 } },
+        ],
+      },
+      aborted: false,
+      abort() {
+        this.aborted = true;
+      },
+      ui: { notify() {} },
+    };
+    for (const resources of ["shadow", "enforce"]) {
+      const run = harness(parsed({ switch: "Local", resources }));
+      await run.handlers.turn_start({ turnIndex: 0 }, ctx);
+      assert.equal(run.calls.length, 0, `a cloud chat must not be reserved under ${resources}`);
+      assert.equal(ctx.aborted, false);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.PI_SUBAGENT_CHILD;
+    else process.env.PI_SUBAGENT_CHILD = previous;
+  }
+});
+
+test("shadow records a decision but never holds a lease", async () => {
+  const { handlers, leases, calls } = harness(parsed({ switch: "Split", resources: "shadow" }), async () => ({
+    action: "grant",
+    generation: 4,
+    lease: { runId: "call-1#0", generation: 4, modelId: LOCAL },
+  }));
+  const event = seatEvent();
+  await handlers.tool_call(event);
+  assert.equal(calls[0].params.dryRun, true);
+  assert.equal(leases.size, 0, "shadow must not keep a reservation");
+});
+
 test("writeState preserves resources and does not treat a newer schema as enablement", () => {
   const dir = mkdtempSync(join(tmpdir(), "shipmates-crew-"));
   try {
