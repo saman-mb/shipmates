@@ -67,6 +67,11 @@ jobs:
       # .github/scripts/ is outside its reach, so this is that gate.
       - name: Lint the extracted workflow scripts
         run: bash .github/scripts/lint-shell.sh
+      # Offline (mocks only) and seconds long, so it gates every PR: a wrong
+      # step label, a reverted credential strip, or a doctor constant that no
+      # longer matches the binary fails here instead of in a release run.
+      - name: Run the release-upgrade self-test
+        run: bash .github/scripts/release-upgrade-e2e.sh --self-test
       - name: Test the pi crew switch policy
         run: bash .github/scripts/test-pi-crew-policy.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
@@ -101,6 +106,15 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Run the Rust test suite
         run: cargo test --all-targets
+      # The doctor control runs a real build of the binary. Build it explicitly
+      # rather than depend on what `cargo test` happens to leave behind.
+      - name: Build the CLI for the doctor control
+        run: cargo build --locked --bin shipmates
+      # Pins DOCTOR_HEALTHY_LINE to the last line this build's `doctor` prints,
+      # so the self-test's doctor assertion cannot agree with its own mock while
+      # disagreeing with what a captain sees.
+      - name: Pin the release-upgrade doctor line to the real binary
+        run: bash .github/scripts/release-upgrade-e2e.sh --doctor-control target/debug/shipmates
       - name: Check cargo package builds cleanly
         run: cargo package --locked
       - name: Test installer source resolution

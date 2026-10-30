@@ -7,9 +7,12 @@ set -Eeuo pipefail
 ISSUE_MARKER='[release-upgrade-e2e] linux previous-release upgrade failed'
 ISSUE_TITLE="$ISSUE_MARKER"
 # The healthy final line `shipmates doctor` prints (src/doctor.rs). The
-# lifecycle mock below prints it verbatim and the self-test asserts the
-# success path saw the whole line, so a mock shortened to fit an assertion
-# cannot pass — the assertion follows the binary, not the mock.
+# lifecycle mock below prints this variable rather than the sentence itself, so
+# the mock and the assertion cannot drift apart from each other — but this
+# constant would still agree with a mock while disagreeing with the binary.
+# `--doctor-control <binary>` is what pins it to a real build: it installs with
+# the binary, reads the last line its `doctor` prints, and fails unless that is
+# this sentence. The pages workflow runs it on every pull request.
 DOCTOR_HEALTHY_LINE='All shipshape. Your crew is aboard and current.'
 ASSET='shipmates-x86_64-unknown-linux-gnu.tar.xz'
 CHECKSUM_ASSET="${ASSET}.sha256"
@@ -25,15 +28,26 @@ RECEIPT_PATH=''
 RECEIPT_PATH_SNAPSHOT=''
 RECEIPT_FILES=()
 SELF_TEST_DIR=''
+DOCTOR_CONTROL_DIR=''
 
 usage() {
   cat <<'USAGE'
-Usage: release-upgrade-e2e.sh [--run|--self-test|--report]
+Usage: release-upgrade-e2e.sh [--run|--self-test|--report|--doctor-control <binary>]
 
-  --run        Run the published-release upgrade lifecycle (default).
-  --self-test  Exercise lifecycle failure labels and issue dedup with mocks.
-  --report     File a deduplicated issue from REPORT_FILE, if present.
+  --run                      Run the published-release upgrade lifecycle (default).
+  --self-test                Exercise lifecycle failure labels and issue dedup with mocks.
+  --report                   File a deduplicated issue from REPORT_FILE, if present.
+  --doctor-control <binary>  Check DOCTOR_HEALTHY_LINE against the last line a
+                             binary built by `cargo build --locked --bin
+                             shipmates` prints for a healthy `doctor`.
 USAGE
+}
+
+cleanup_doctor_control() {
+  if [[ -n "$DOCTOR_CONTROL_DIR" && -d "$DOCTOR_CONTROL_DIR" ]]; then
+    rm -rf -- "$DOCTOR_CONTROL_DIR"
+  fi
+  DOCTOR_CONTROL_DIR=''
 }
 
 cleanup_self_test() {
@@ -285,13 +299,13 @@ read_install_receipt() {
 verify_doctor_result() {
   local final_line=''
   final_line=$(awk 'NF { last = $0 } END { print last }' "$LAST_STEP_LOG")
-  # A healthy doctor ends with the whole sentence
-  #   All shipshape. Your crew is aboard and current.
-  # (src/doctor.rs), and the repo's own CLI e2e asserts it the same way — as a
-  # substring (tools/e2e_cli.sh). Comparing the line for exact equality fails
-  # on every healthy install, so assert the stable prefix instead.
-  if [[ "$final_line" != *'All shipshape.'* ]]; then
-    fail_with_report doctor "$LAST_STEP_LOG" 'doctor did not finish with "All shipshape."' \
+  # `print_report` (src/doctor.rs) prints the summary sentence as its final
+  # statement and returns straight after it, so a healthy doctor's last
+  # non-empty line IS the whole sentence — exact equality holds on every
+  # healthy install. Asserting the opening words instead would let a reworded
+  # summary line through on its stable prefix alone.
+  if [[ "$final_line" != "$DOCTOR_HEALTHY_LINE" ]]; then
+    fail_with_report doctor "$LAST_STEP_LOG" 'doctor did not finish with the healthy summary line' \
       "$BRANCH_BINARY" doctor --global --harness claude-code
   fi
 }
@@ -510,10 +524,10 @@ case "$command_name" in
     ;;
   doctor)
     [[ -f "$HOME/.shipmates/receipts/claude-code.json" ]] || exit 7
-    # The real healthy line, verbatim from src/doctor.rs. Anything shorter
-    # would let an exact-equality assertion pass against a binary it does not
-    # match, which is how this assertion drifted from the binary before.
-    printf 'All shipshape. Your crew is aboard and current.\n'
+    # The healthy line comes from the caller's DOCTOR_HEALTHY_LINE, so this
+    # mock and the assertion read one constant. Whether that constant still
+    # matches the binary is `--doctor-control`'s job, not this mock's.
+    printf '%s\n' "${DOCTOR_HEALTHY_LINE:?}"
     ;;
   uninstall)
     rm -f -- "$HOME/.claude/agents/mock.md" "$HOME/.shipmates/receipts/claude-code.json"
@@ -554,6 +568,10 @@ self_test() {
   local current_download
   local doctor_line
   local bash_path
+
+  # The mock shipped by create_mock_commands expands this variable at run time;
+  # keep the heredoc delimiter quoted so its `$` references stay literal.
+  export DOCTOR_HEALTHY_LINE
 
   self_root=$(mktemp -d "${RUNNER_TEMP}/release-upgrade-self-test.XXXXXX")
   SELF_TEST_DIR=$self_root
@@ -631,10 +649,11 @@ RELEASED_MOCK_BINARY
     return 1
   }
 
-  # The success run above is the doctor assertion's control. It passes only
-  # because the mock prints the real doctor line and verify_doctor_result
-  # matches it as a substring: restore an `==`/`!=` exact comparison and this
-  # run fails, and shortening the mock to fit such a comparison fails here.
+  # The success run above is the doctor assertion's control: verify_doctor_result
+  # compares doctor's last line for exact equality with DOCTOR_HEALTHY_LINE, so
+  # a mock shortened to the assertion's opening words fails this run. Whether
+  # the constant itself still matches the binary is `--doctor-control`'s check,
+  # run against a real build in the pages workflow.
   doctor_line=$(grep -F -m 1 -- "$DOCTOR_HEALTHY_LINE" "$self_root/success.log" || true)
   [[ -n "$doctor_line" ]] || {
     printf 'self-test: the success path did not exercise the real doctor line: %s\n' \
@@ -782,6 +801,76 @@ RELEASED_MOCK_BINARY
   printf 'Self-test passed: release exclusion, bounded retry, unsupported-tag skip, real doctor line, lifecycle sequence, labels install/update/doctor/uninstall, preflight reporting for a failed lookup / missing tool / missing digest verifier, and one-issue deduplication.\n'
 }
 
+# Pin DOCTOR_HEALTHY_LINE to the sentence a real build prints. Nothing else in
+# this script compares the constant with the binary, so without this a reworded
+# doctor summary line would leave the self-test green against a mock that agrees
+# with the constant and disagrees with what a captain sees (#571).
+doctor_control() {
+  local binary=${1:-}
+  local control_root=''
+  local control_home=''
+  local control_target=''
+  local install_log=''
+  local doctor_log=''
+  local definition_site=''
+  local status=0
+  local last_line=''
+
+  if [[ -z "$binary" ]]; then
+    printf 'Doctor control needs the path to a shipmates binary: release-upgrade-e2e.sh --doctor-control target/debug/shipmates\n' >&2
+    printf 'Build it first with: cargo build --locked --bin shipmates — this check compares against a real build, never a constant.\n' >&2
+    return 64
+  fi
+  if [[ ! -f "$binary" || ! -x "$binary" ]]; then
+    printf 'Doctor control needs an executable shipmates binary; %s is not one.\n' "$binary" >&2
+    printf 'Build it first with: cargo build --locked --bin shipmates, then pass target/debug/shipmates.\n' >&2
+    return 1
+  fi
+
+  mkdir -p -- "$RUNNER_TEMP"
+  control_root=$(mktemp -d "$RUNNER_TEMP/release-upgrade-doctor-control.XXXXXX")
+  DOCTOR_CONTROL_DIR=$control_root
+  trap 'cleanup_doctor_control' RETURN
+  control_home="$control_root/home"
+  control_target="$control_root/target"
+  install_log="$control_root/install.log"
+  doctor_log="$control_root/doctor.log"
+  mkdir -p -- "$control_home" "$control_target"
+
+  if ! HOME="$control_home" "$binary" install --harness claude-code \
+    --dir "$control_target" --with-tools none > "$install_log" 2>&1; then
+    cat -- "$install_log" >&2
+    printf 'Doctor control: %s install into a throwaway directory failed, so there is no healthy install to read the doctor line from.\n' "$binary" >&2
+    return 1
+  fi
+
+  if HOME="$control_home" "$binary" doctor --dir "$control_target" > "$doctor_log" 2>&1; then
+    status=0
+  else
+    status=$?
+  fi
+  if (( status != 0 )); then
+    cat -- "$doctor_log" >&2
+    printf 'Doctor control: %s doctor exited with status %s on a fresh install; a healthy install exits 0.\n' \
+      "$binary" "$status" >&2
+    return 1
+  fi
+
+  last_line=$(awk 'NF { last = $0 } END { print last }' "$doctor_log")
+  if [[ "$last_line" != "$DOCTOR_HEALTHY_LINE" ]]; then
+    definition_site=$(grep -n -m 1 '^DOCTOR_HEALTHY_LINE=' "$SCRIPT_PATH" || printf '%s' "$SCRIPT_PATH")
+    printf 'Doctor control: DOCTOR_HEALTHY_LINE no longer matches the real binary.\n' >&2
+    printf '  expected sentence: %s\n' "$DOCTOR_HEALTHY_LINE" >&2
+    printf '  observed last line: %s\n' "$last_line" >&2
+    printf '  constant defined at: %s\n' "$definition_site" >&2
+    printf '  source of truth: src/doctor.rs — print_report prints the healthy summary as its final line.\n' >&2
+    printf 'Update the constant in %s to the sentence src/doctor.rs prints.\n' "$SCRIPT_PATH" >&2
+    return 1
+  fi
+
+  printf 'Doctor control passed: %s prints %s\n' "$binary" "$DOCTOR_HEALTHY_LINE"
+}
+
 run_mode() {
   local report_dir
   local preflight_log
@@ -810,10 +899,26 @@ run_mode() {
 
 main() {
   local mode=${1:---run}
-  if (($# > 1)); then
+  # Arity is per mode: every mode but --doctor-control takes no further
+  # argument, and --doctor-control takes exactly one path. A single "more than
+  # one argument" guard rejected the only mode that needs an argument.
+  local max_args=1
+  case "$mode" in
+    --run|--self-test|--report|-h|--help)
+      ;;
+    --doctor-control)
+      max_args=2
+      ;;
+    *)
+      usage >&2
+      return 64
+      ;;
+  esac
+  if (($# > max_args)); then
     usage >&2
     return 64
   fi
+
   case "$mode" in
     --run)
       run_mode
@@ -824,12 +929,13 @@ main() {
     --report)
       report_issue
       ;;
+    --doctor-control)
+      # A missing path is reported by doctor_control itself, with the
+      # `cargo build` instruction a bare usage dump would not give.
+      doctor_control "${2:-}"
+      ;;
     -h|--help)
       usage
-      ;;
-    *)
-      usage >&2
-      return 64
       ;;
   esac
 }
