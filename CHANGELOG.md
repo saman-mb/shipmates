@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1] - 2026-10-30
+
+### Fixed
+
+- **Shadow mode no longer queues work it will never run (#601).** A shadow seat was admitted into the shared broker queue and then left there: shadow asked with a queue-only request, and a pinned model the broker cannot see never fits, so the entry never drained. Repeating a turn grew the queue until it hit the depth limit, where real enforce work would start being refused. Shadow is now a true dry run — the broker reports the decision and takes no queue slot, no reservation, and no lease.
+- **A cloud chat is no longer reserved by the local broker (#601).** In Local mode with the broker on, the captain's own chat was admitted like a local seat. On a cloud model it queued forever and, under enforce, would have stopped the captain's chat for no reason. A chat model the model registry reports as cloud is now skipped; an unreadable registry keeps the old behaviour.
+- **The macOS arm release build no longer asks for a retired runner.** `aarch64-apple-darwin` was pinned to `macos-14`, whose images GitHub deprecated and retires on 2026-11-02; a job on that label is cancelled a second after it starts, without a runner, so every job that needed it was skipped and the release published nothing. The target now pins `macos-15` in `dist-workspace.toml`.
+
+### Added
+
+- `.github/scripts/validate_runner_labels.py` fails when a workflow or a dist target names a retired runner label, and when a target whose cargo-dist default is a retired image has no explicit pin. Without it the failure mode is a cancelled job and a skipped publish, not a readable error.
+
 ## [0.17.0] - 2026-10-28
 
 ### Added

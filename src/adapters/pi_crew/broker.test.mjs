@@ -147,6 +147,42 @@ test("a frame without Content-Length is rejected", () => {
   assert.equal(failed, true);
 });
 
+test("a dry run reports the decision and takes neither a queue slot nor a lease", async () => {
+  const { broker, journal } = harness();
+  const watcher = pair(broker);
+  const client = pair(broker);
+
+  // A model the snapshot never reports and that cannot fit must queue forever
+  // in enforce; a dry run has to answer immediately and leave nothing behind.
+  const shadowed = await client.request("admit", admitParams("run-shadow", { model: "engine/unloaded", dryRun: true }));
+  assert.equal(shadowed.action, "queue");
+  assert.equal(shadowed.dryRun, true);
+  assert.equal(shadowed.generation, null);
+  assert.equal(Number.isInteger(shadowed.queuePosition), true);
+
+  const afterShadow = await watcher.request("status", {});
+  assert.equal(afterShadow.queue.length, 0);
+  assert.equal(afterShadow.leases.length, 0);
+  assert.equal(afterShadow.reservations.length, 0);
+
+  // Repeating a shadow seat at the same run id must not collide with itself.
+  const repeat = await client.request("admit", admitParams("run-shadow", { model: "engine/unloaded", dryRun: true }));
+  assert.equal(repeat.action, "queue");
+
+  // A dry grant is reported but reserves nothing, so the real admit still fits.
+  const dryGrant = await client.request("admit", admitParams("run-dry", { dryRun: true }));
+  assert.equal(dryGrant.action, "grant");
+  assert.equal(dryGrant.dryRun, true);
+  const afterGrant = await watcher.request("status", {});
+  assert.equal(afterGrant.leases.length, 0);
+
+  const real = await client.request("admit", admitParams("run-real"));
+  assert.equal(real.action, "grant");
+  assert.equal(Number.isInteger(real.generation), true);
+  assert.equal(journal.some((entry) => entry.runId === "run-shadow"), false);
+  assert.equal(journal.some((entry) => entry.runId === "run-dry"), false);
+});
+
 test("a pinned admit with no observed engine grants instead of parking", async () => {
   const { broker } = harness({
     snapshot: {
