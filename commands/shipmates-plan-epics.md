@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-plan-epics — briefs → GitHub epics + user stories
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Turn the supplied brief(s) into a planned backlog: one or more **epics** (labelled `epic`), each
 broken into **user stories** (labelled `user-story` + area tags), cross-linked once filed. A
 **planning panel** — always including `product-manager`, plus up to two context-derived specialists
@@ -95,6 +95,12 @@ inputs; the architect validates boundaries, coupling, and cross-epic ordering). 
 amendments into the epic set before Stage 2 — drop or reshape epics the architect flags as
 ill-scoped, and carry its notes forward.
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel panel fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected panelist is a failed run — never silently shrink the planning panel.
+
 Other non-PM panel members whose expertise is story-level (UX, art, data, perf, etc.) defer to
 Stage 2 — they do not scope epics.
 
@@ -105,6 +111,12 @@ they run concurrently. Give each: its epic (title/why/scope), the full repo cont
 epics' titles (for cross-epic dependencies), the existing-issues list (to dedupe), and `<panel>` so
 it knows which specialists will review. Each returns its epic's **user stories** as structured data
 (no `gh` calls) — per story:
+
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel author fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected author is a failed run — never silently drop an epic's stories.
 - `title` (short, outcome-shaped),
 - `description` (the user value: "As a … I want … so that …" where it fits),
 - **acceptance criteria** — explicit and checkable, Given/When/Then where natural,
@@ -120,6 +132,12 @@ list. To avoid clobbering, each PM returns its data **inline** (no shared temp f
 Each returns review notes and concrete amendments for its domain (UX coherence, art gates, data
 validity, perf measurability, etc.). The orchestrator merges amendments into the story set before
 Stage 3 — prefer specialist fixes that sharpen acceptance criteria over PM rewrites.
+
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel review fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected reviewer is a failed run — never silently shrink the review panel.
 
 ## Stage 3 — File the issues  (orchestrator, deterministic — only under `APPLY`)
 

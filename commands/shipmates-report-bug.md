@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-report-bug — structured upstream bug reports
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 File a **structured bug report on `saman-mb/shipmates`** from a live run in the captain's project —
 harness, command, repro, expected vs observed — in the shape maintainers already triage (#301, #305,
 #307). This command does **not** fix upstream; it reports upstream. Pair it with `/shipmates-fix-bug`, which

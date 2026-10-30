@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-qa — context → checklist → one step per turn → summary
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Point the crew at a change that needs **human eyes on a running build** — a PR, an issue's branch,
 or a named branch — and walk the captain through local QA **one check at a time**. CI and
 `/ship-pr-review` cover automated gates and the specialist board; this command covers what those
@@ -148,9 +148,16 @@ report:
 2. **Per-step results** — `PASS` / `FAIL` / `DEFERRED` for each `N of M`, one line each.
 3. **Findings** — each with severity, short repro, evidence pointer, and a **product-impact**
    statement (what changes / why it matters / who is affected). Ready to paste into an issue or PR
-   comment later; not filed yet.
+   comment later. Until the captain asks to file it, the disposition below is declined.
 4. **Verdict** — `QA-PASS` / `QA-PASS-WITH-DEFERRALS` / `QA-FAIL` (any non-deferred fail → fail).
 5. **Next** — optional handoff offers only (see Stage 6); no silent side effects.
+
+Every finding in this Stage 5 summary has a disposition: fixed, filed, or declined with a reason,
+not only a count. The default is declined — not filed, and not left unrecorded — unless the captain
+asks to file it. Findings stay in working memory until that summary. No ledger file — do not write a
+per-run findings ledger under `.shipmates/` or anywhere else in the repository (`.shipmates/worktrees/`
+stays allowed). A docs or visual step names the rendered artifact inspected, or states inspection was
+unavailable and does not pass that step.
 
 ## Stage 6 — Optional fix handoff + Re-QA
 

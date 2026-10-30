@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Grep, Glob
 disable-model-invocation: true
 ---
 # /shipmates-upgrade — check for a newer release, refresh and audit every install
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Check the installed `shipmates` binary for a newer release, then survey every known install of the
 crew and commands, refresh them from the new binary, audit each one, and — only when the captain asks —
 repair drift and file shipmates-attributable findings upstream. The default is a read-only

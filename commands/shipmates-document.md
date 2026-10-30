@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-document — draft from the code → fresh-reader test → fix drift
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Produce docs that get a reader to *done*, gated on the one check that catches bad docs: a **fresh agent
 with no prior context follows the instructions against the real repo and must reach the stated result**.
 Docs that drift from the code or can't be completed are rejected and fixed. The gate is "a newcomer can
@@ -74,7 +74,13 @@ Drafting, the fresh-reader run and every fix round happen inside `<WORKTREE_DIR>
 Under `EXECUTION=fanout` (default), when the scope covers several file-disjoint docs, spawn one
 `technical-writer` per doc concurrently in a single message (up to `MAX_CONCURRENT_WORKERS`), each with
 a machine-checkable **owned-paths manifest** (diffed against `git status` and `git diff --name-only` upon
-return to prevent collision); under `EXECUTION=sequential`, draft them one at a time. Each writer works
+return to prevent collision); under `EXECUTION=sequential`, draft them one at a time.
+
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel writer fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected writer is a failed run — never silently shrink the documentation team. Each writer works
 **from the real source** — verify citations (actual signatures, flags, paths, config, and outputs) with
 `grep` or inspection first; every command, parameter,
 and result must match what the repo does *today*. Minimal (least that gets to done), scannable, consistent
@@ -99,15 +105,18 @@ reader's outstanding blockers — don't ship docs that don't work.
 `pr` (the default): commit on the worktree branch — staging only the paths this run produced, never
 `git add -A` — push, and open the PR against `BASE_BRANCH`.
 
-<!-- shipmates:why-merge-pr -->
-
 Then gate on CI: poll `gh pr checks` until nothing is pending; a red check means pulling the failing
 log, fixing it, re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and
 escalate to the user with the failing log rather than looping. Never advance a red PR. Stop there
 unless `MERGE_MODE=auto`, in which case merge the PR and remove `<WORKTREE_DIR>`; the manual default
 leaves the worktree in place with the PR open. `edit-in-place`: leave the finished docs in the working
 tree and report. Report: what was documented, the doc type, the fresh-reader's final result (in its
-words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps).
+words), rounds taken, and any follow-ups (things worth documenting next, discovered gaps). The
+fresh-reader gate stays the inspection. Delivery names the rendered artifact — the doc path the fresh
+reader followed — or states that inspection was unavailable, and does not ACCEPT that surface from the
+writer's narrative. Reader findings stay in working memory and are fixed, filed, or declined with a
+reason in that delivery, not only as counts. Do not write a per-run findings ledger under `.shipmates/`
+(`.shipmates/worktrees/` stays allowed).
 
 ---
 

@@ -2,7 +2,7 @@
 
 use crate::digest;
 use crate::installer::{
-    manifest_db::{InstallReceipt, ReceiptRepository},
+    manifest_db::{self, InstallReceipt, ReceiptRepository},
     plan,
 };
 use anyhow::{Context, Result, bail};
@@ -103,6 +103,23 @@ pub fn uninstall_with_payload(
         harness: selected.receipt.harness.clone(),
         ..UninstallReport::default()
     };
+
+    // The catalog payload is built in workspace shape. Global installs write
+    // (and receipts record) relocated paths, so a receipt entry must be looked
+    // up against the relocated form of the known payload (#597).
+    let known_payload: BTreeMap<String, String> = if manifest_db::is_global_target(target_dir) {
+        known_payload
+            .iter()
+            .map(|(path, content)| {
+                let relocated = manifest_db::global_relocate(&selected.receipt.harness, path)
+                    .unwrap_or_else(|| path.clone());
+                (relocated, content.clone())
+            })
+            .collect()
+    } else {
+        known_payload.clone()
+    };
+
     let repository = ReceiptRepository::new(target_dir);
     let other_claims = repository
         .load_all()?
@@ -174,6 +191,10 @@ pub fn uninstall_with_payload(
     }
 
     if blocked {
+        report.warnings.push(format!(
+            "Warning: uninstall blocked for {}; managed files were preserved and the receipt was kept",
+            report.harness
+        ));
         return Ok(report);
     }
 
@@ -196,6 +217,12 @@ pub fn uninstall_with_payload(
         Ok(true) => {
             report.removed = removed;
             report.receipt_removed = true;
+            if removed == 0 {
+                report.warnings.push(format!(
+                    "Warning: install receipt removed for {} but no managed files were present",
+                    report.harness
+                ));
+            }
         }
         Ok(false) => {
             let rollback = rollback_transaction(&removals);
@@ -528,5 +555,172 @@ mod tests {
         assert_eq!(report.removed, 1);
         assert!(!path.exists());
         assert!(report.receipt_removed);
+    }
+
+    #[test]
+    fn global_pi_uninstall_removes_relocated_tree_and_preserves_foreign_files() {
+        let dir = tempdir().unwrap();
+        crate::installer::retired::test_env::with_isolated_home(dir.path(), || {
+            let target = dir.path();
+            let agent = target.join(".pi/agent/agents/architect.md");
+            let foreign = target.join(".pi/agent/settings.json");
+            crate::installer::atomic_write(&agent, "crew").unwrap();
+            crate::installer::atomic_write(&foreign, "foreign").unwrap();
+            receipt(target, "pi", ".pi/agent/agents/architect.md", b"crew");
+
+            let selected = select_receipt(target, Some("pi")).unwrap().unwrap();
+            let report = uninstall_with_payload(
+                target,
+                selected,
+                &BTreeMap::from([(
+                    String::from(".pi/agents/architect.md"),
+                    String::from("crew"),
+                )]),
+            )
+            .unwrap();
+
+            assert_eq!(report.removed, 1);
+            assert!(report.receipt_removed);
+            assert!(!agent.exists());
+            assert!(foreign.exists());
+            assert!(
+                report.warnings.iter().all(|w| !w.contains("old or unknown")),
+                "relocated entries must match the known payload, not be treated as old"
+            );
+        });
+    }
+
+    #[test]
+    fn global_devin_uninstall_removes_relocated_tree() {
+        let dir = tempdir().unwrap();
+        crate::installer::retired::test_env::with_isolated_home(dir.path(), || {
+            let target = dir.path();
+            let agent = target.join(".config/devin/agents/architect.md");
+            crate::installer::atomic_write(&agent, "crew").unwrap();
+            receipt(target, "devin", ".config/devin/agents/architect.md", b"crew");
+
+            let selected = select_receipt(target, Some("devin")).unwrap().unwrap();
+            let report = uninstall_with_payload(
+                target,
+                selected,
+                &BTreeMap::from([(
+                    String::from(".devin/agents/architect.md"),
+                    String::from("crew"),
+                )]),
+            )
+            .unwrap();
+
+            assert_eq!(report.removed, 1);
+            assert!(report.receipt_removed);
+            assert!(!agent.exists());
+        });
+    }
+
+    #[test]
+    fn global_antigravity_uninstall_removes_relocated_tree() {
+        let dir = tempdir().unwrap();
+        crate::installer::retired::test_env::with_isolated_home(dir.path(), || {
+            let target = dir.path();
+            let agent = target.join(".gemini/config/agents/sdet/agent.md");
+            crate::installer::atomic_write(&agent, "crew").unwrap();
+            receipt(
+                target,
+                "antigravity",
+                ".gemini/config/agents/sdet/agent.md",
+                b"crew",
+            );
+
+            let selected = select_receipt(target, Some("antigravity"))
+                .unwrap()
+                .unwrap();
+            let report = uninstall_with_payload(
+                target,
+                selected,
+                &BTreeMap::from([(
+                    String::from(".agents/agents/sdet/agent.md"),
+                    String::from("crew"),
+                )]),
+            )
+            .unwrap();
+
+            assert_eq!(report.removed, 1);
+            assert!(report.receipt_removed);
+            assert!(!agent.exists());
+        });
+    }
+
+    #[test]
+    fn non_global_uninstall_uses_workspace_paths_without_relocation() {
+        let dir = tempdir().unwrap();
+        let agent = dir.path().join(".pi/agents/architect.md");
+        crate::installer::atomic_write(&agent, "crew").unwrap();
+        receipt(dir.path(), "pi", ".pi/agents/architect.md", b"crew");
+
+        let selected = select_receipt(dir.path(), Some("pi")).unwrap().unwrap();
+        let report = uninstall_with_payload(
+            dir.path(),
+            selected,
+            &BTreeMap::from([(
+                String::from(".pi/agents/architect.md"),
+                String::from("crew"),
+            )]),
+        )
+        .unwrap();
+
+        assert_eq!(report.removed, 1);
+        assert!(report.receipt_removed);
+        assert!(!agent.exists());
+    }
+
+    #[test]
+    fn zero_files_removed_warns_when_receipt_is_removed() {
+        let dir = tempdir().unwrap();
+        receipt(dir.path(), "claude-code", ".claude/agents/a.md", b"current");
+
+        let selected = select_receipt(dir.path(), Some("claude-code"))
+            .unwrap()
+            .unwrap();
+        let report = uninstall_with_payload(
+            dir.path(),
+            selected,
+            &BTreeMap::from([(
+                String::from(".claude/agents/a.md"),
+                String::from("current"),
+            )]),
+        )
+        .unwrap();
+
+        assert_eq!(report.removed, 0);
+        assert!(report.receipt_removed);
+        assert!(report
+            .warnings
+            .iter()
+            .any(|w| w.contains("no managed files were present")));
+    }
+
+    #[test]
+    fn blocked_uninstall_warns_and_keeps_receipt() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(".claude/agents/a.md");
+        crate::installer::atomic_write(&path, "modified").unwrap();
+        receipt(dir.path(), "claude-code", ".claude/agents/a.md", b"original");
+
+        let selected = select_receipt(dir.path(), Some("claude-code"))
+            .unwrap()
+            .unwrap();
+        let report = uninstall_with_payload(
+            dir.path(),
+            selected,
+            &BTreeMap::from([(
+                String::from(".claude/agents/a.md"),
+                String::from("original"),
+            )]),
+        )
+        .unwrap();
+
+        assert_eq!(report.removed, 0);
+        assert!(!report.receipt_removed);
+        assert!(path.exists());
+        assert!(report.warnings.iter().any(|w| w.contains("uninstall blocked")));
     }
 }

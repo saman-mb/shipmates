@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-spike — prototype the options, recommend with an ADR
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Answer a hard "which way should we build this?" question with evidence instead of a hunch. Frame the
 decision, have engineers prototype **several approaches in parallel as disposable spikes**, judge them
 against the project's real constraints, and record the outcome as an **ADR** (Architecture Decision
@@ -61,6 +61,12 @@ to measure the criteria (does it work, how complex, how fast, how much migration
 they built, what they learned, evidence against the criteria (numbers where measurable), and the sharp
 edges they hit. Explicitly disposable — no polish, no tests-for-keeps.
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel prototyper fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected prototyper is a failed run — never silently drop an approach.
+
 ## Stage 2 — Judge  (agent: `architect` + any axis-specific judges)
 
 Spawn the `JUDGE`(s) to score every prototype against the Stage 0 criteria **side by side** — honest
@@ -105,8 +111,6 @@ a red check means pulling the failing log, fixing it, re-pushing, and re-polling
 looping. Never advance a red PR. Stop there unless `MERGE_MODE=auto`, in which case merge the PR and
 remove `<WORKTREE_DIR>`; the manual default leaves the worktree in place with the PR open. Under
 `MODE=edit-in-place`, there's nothing to deliver — the ADR is already in the tree.
-
-<!-- shipmates:why-merge-pr -->
 
 ## Stage 4 — Report & hand off
 

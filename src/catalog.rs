@@ -509,6 +509,43 @@ pub fn load_global_steering(root: &Path) -> Result<String, String> {
     }
 }
 
+const BOOTSTRAP_REL: &str = "steering/bootstrap.md";
+
+/// Load the canonical shared bootstrap prose compiled into the binary.
+pub fn load_bootstrap_embedded() -> Result<String, String> {
+    crate::embedded::embedded_sources()
+        .iter()
+        .find(|(rel, _)| *rel == BOOTSTRAP_REL)
+        .map(|(_, content)| content.to_string())
+        .ok_or_else(|| "embedded steering/bootstrap.md missing".to_string())
+}
+
+/// Load the canonical shared bootstrap prose, preferring an on-disk copy.
+pub fn load_bootstrap(root: &Path) -> Result<String, String> {
+    let path = root.join("steering").join("bootstrap.md");
+    if path.is_file() {
+        fs::read_to_string(&path).map_err(|e| e.to_string())
+    } else {
+        load_bootstrap_embedded()
+    }
+}
+
+/// Load the user-scope steering content plus the shared bootstrap combined
+/// into one block. This is what gets written to a harness's native
+/// instructions file at install time.
+pub fn load_combined_steering(root: &Path) -> Result<String, String> {
+    let global = load_global_steering(root)?;
+    let bootstrap = load_bootstrap(root)?;
+    Ok(format!("{}\n\n{}", global.trim(), bootstrap.trim()))
+}
+
+/// Embedded variant of [`load_combined_steering`].
+pub fn load_combined_steering_embedded() -> Result<String, String> {
+    let global = load_global_steering_embedded()?;
+    let bootstrap = load_bootstrap_embedded()?;
+    Ok(format!("{}\n\n{}", global.trim(), bootstrap.trim()))
+}
+
 /// Where a run's crew / commands / toolbox payload comes from.
 ///
 /// A released binary must install the payload it was built with. Reading
@@ -568,6 +605,24 @@ impl CatalogSource {
         .map_err(|error| anyhow::anyhow!(error))
     }
 
+    /// Canonical shared bootstrap text for this source.
+    pub fn load_bootstrap(&self) -> anyhow::Result<String> {
+        match self {
+            Self::Disk(root) => load_bootstrap(root),
+            Self::Embedded => load_bootstrap_embedded(),
+        }
+        .map_err(|error| anyhow::anyhow!(error))
+    }
+
+    /// Combined user-scope steering and shared bootstrap text for this source.
+    pub fn load_combined_steering(&self) -> anyhow::Result<String> {
+        match self {
+            Self::Disk(root) => load_combined_steering(root),
+            Self::Embedded => load_combined_steering_embedded(),
+        }
+        .map_err(|error| anyhow::anyhow!(error))
+    }
+
     /// Contributor steering, but only when the install target is the Shipmates
     /// source tree itself.
     pub fn steering_for_target(&self, target_dir: &Path) -> anyhow::Result<Option<String>> {
@@ -576,6 +631,13 @@ impl CatalogSource {
         } else {
             Ok(None)
         }
+    }
+
+    /// Canonical shared bootstrap for the target. Unlike contributor steering,
+    /// the bootstrap ships to every harness so rendered commands can point to it
+    /// instead of inlining shared principles.
+    pub fn bootstrap_for_target(&self, _target_dir: &Path) -> anyhow::Result<Option<String>> {
+        self.load_bootstrap().map(Some)
     }
 }
 

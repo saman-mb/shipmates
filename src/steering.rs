@@ -95,6 +95,8 @@ pub enum GlobalSteeringTier {
     TierA,
     /// Delimited managed block in user-scope file (Claude, Codex, OpenCode, Antigravity, Pi, Grok Build)
     TierB,
+    /// Delimited managed block in a project-scope instructions file (GitHub Copilot)
+    TierC,
     /// Documented gap where harness has no global instruction file
     Gap(&'static str),
 }
@@ -154,6 +156,29 @@ pub fn global_steering_path(harness: &str, home: &Path) -> Option<PathBuf> {
     }
 }
 
+/// Project-scope steering tier for a harness.
+pub fn project_steering_tier(harness: &str) -> GlobalSteeringTier {
+    match harness {
+        "github-copilot" => GlobalSteeringTier::TierC,
+        _ => GlobalSteeringTier::Gap(
+            "Project-scope managed steering is only implemented for GitHub Copilot",
+        ),
+    }
+}
+
+/// Project-scope path for a harness's steering relative to `project_root`.
+pub fn project_steering_path(harness: &str, project_root: &Path) -> Option<PathBuf> {
+    match harness {
+        "github-copilot" => Some(
+            project_root
+                .join(".github")
+                .join("instructions")
+                .join("shipmates.instructions.md"),
+        ),
+        _ => None,
+    }
+}
+
 /// Render Tier A dedicated rule file (Cursor .mdc frontmatter + body).
 pub fn render_tier_a(content: &str) -> String {
     format!(
@@ -209,6 +234,9 @@ pub fn check_global_steering(
     let rendered_expected = render_global_steering_content(harness, expected_content);
     match global_steering_tier(harness) {
         GlobalSteeringTier::Gap(msg) => Ok(GlobalSteeringStatus::Gap(msg)),
+        GlobalSteeringTier::TierC => Ok(GlobalSteeringStatus::Gap(
+            "TierC is project-scope; use project steering functions",
+        )),
         GlobalSteeringTier::TierA => {
             let path = global_steering_path(harness, home)
                 .context("resolving global steering path")?;
@@ -246,6 +274,9 @@ pub fn install_global_steering(
     let rendered_content = render_global_steering_content(harness, content);
     match global_steering_tier(harness) {
         GlobalSteeringTier::Gap(msg) => Ok(SteeringOutcome::Gap(msg)),
+        GlobalSteeringTier::TierC => Ok(SteeringOutcome::Gap(
+            "TierC is project-scope; use project steering functions",
+        )),
         GlobalSteeringTier::TierA => {
             let path = global_steering_path(harness, home)
                 .context("resolving global steering path")?;
@@ -310,6 +341,9 @@ pub fn install_global_steering(
 pub fn uninstall_global_steering(harness: &str, home: &Path) -> Result<SteeringOutcome> {
     match global_steering_tier(harness) {
         GlobalSteeringTier::Gap(msg) => Ok(SteeringOutcome::Gap(msg)),
+        GlobalSteeringTier::TierC => Ok(SteeringOutcome::Gap(
+            "TierC is project-scope; use project steering functions",
+        )),
         GlobalSteeringTier::TierA => {
             let path = global_steering_path(harness, home)
                 .context("resolving global steering path")?;
@@ -338,6 +372,118 @@ pub fn uninstall_global_steering(harness: &str, home: &Path) -> Result<SteeringO
             }
             Ok(SteeringOutcome::Removed(path))
         }
+    }
+}
+
+/// Render content for installation, replacing repo-instructions tokens with the
+/// harness's primary/fallback file names and applying any harness-specific
+/// prefix rewrites.
+fn render_project_steering_content(harness: &str, content: &str) -> String {
+    let mut rendered = if let Some(d) = crate::adapters::render::dialect_for(harness) {
+        crate::adapters::render::render_instructions(
+            content,
+            d.instructions_primary,
+            d.instructions_fallback,
+        )
+    } else {
+        content.to_string()
+    };
+    if harness == "pi" {
+        let re = regex::Regex::new(r"(^|[^a-zA-Z0-9._])/shipmates-").expect("static regex");
+        rendered = re
+            .replace_all(&rendered, "${1}/skill:shipmates-")
+            .into_owned();
+    }
+    rendered
+}
+
+/// Install or update canonical project-scope steering for `harness` in
+/// `project_root`.
+pub fn install_project_steering(
+    harness: &str,
+    project_root: &Path,
+    content: &str,
+) -> Result<SteeringOutcome> {
+    let rendered_content = render_project_steering_content(harness, content);
+    match project_steering_tier(harness) {
+        GlobalSteeringTier::Gap(msg) => Ok(SteeringOutcome::Gap(msg)),
+        GlobalSteeringTier::TierC => {
+            let path = project_steering_path(harness, project_root)
+                .context("resolving project steering path")?;
+            let managed_block = format!(
+                "{}{}\n{}",
+                GLOBAL_STEERING_START,
+                rendered_content.trim(),
+                GLOBAL_STEERING_END
+            );
+            if path.is_file() {
+                let current = fs::read_to_string(&path)?;
+                if has_global_steering_block(&current) {
+                    let extracted = extract_global_steering_block(&current).unwrap_or_default();
+                    if extracted.trim() == rendered_content.trim() {
+                        return Ok(SteeringOutcome::Unchanged(path));
+                    }
+                    let start_idx = current.find(GLOBAL_STEERING_START).unwrap();
+                    let end_idx =
+                        current.find(GLOBAL_STEERING_END).unwrap() + GLOBAL_STEERING_END.len();
+                    let updated = format!(
+                        "{}{}{}",
+                        &current[..start_idx],
+                        managed_block,
+                        &current[end_idx..]
+                    );
+                    installer::apply::backup_existing(&path, current.as_bytes())?;
+                    installer::atomic_write(&path, &updated)?;
+                    Ok(SteeringOutcome::Updated(path))
+                } else {
+                    let mut updated = current.trim_end().to_string();
+                    if !updated.is_empty() {
+                        updated.push_str("\n\n");
+                    }
+                    updated.push_str(&managed_block);
+                    installer::apply::backup_existing(&path, current.as_bytes())?;
+                    installer::atomic_write(&path, &updated)?;
+                    Ok(SteeringOutcome::Updated(path))
+                }
+            } else {
+                installer::atomic_write(&path, &managed_block)?;
+                Ok(SteeringOutcome::Created(path))
+            }
+        }
+        _ => Ok(SteeringOutcome::Gap(
+            "Project-scope steering only supports TierC",
+        )),
+    }
+}
+
+/// Uninstall project-scope steering for `harness` from `project_root`.
+pub fn uninstall_project_steering(
+    harness: &str,
+    project_root: &Path,
+) -> Result<SteeringOutcome> {
+    match project_steering_tier(harness) {
+        GlobalSteeringTier::Gap(msg) => Ok(SteeringOutcome::Gap(msg)),
+        GlobalSteeringTier::TierC => {
+            let path = project_steering_path(harness, project_root)
+                .context("resolving project steering path")?;
+            if !path.is_file() {
+                return Ok(SteeringOutcome::Unchanged(path));
+            }
+            let current = fs::read_to_string(&path)?;
+            if !has_global_steering_block(&current) {
+                return Ok(SteeringOutcome::Unchanged(path));
+            }
+            let stripped = strip_global_steering_block(&current);
+            if stripped.trim().is_empty() {
+                fs::remove_file(&path)?;
+            } else {
+                installer::atomic_write(&path, &format!("{}\n", stripped.trim()))?;
+            }
+            Ok(SteeringOutcome::Removed(path))
+        }
+        _ => Ok(SteeringOutcome::Gap(
+            "Project-scope steering only supports TierC",
+        )),
     }
 }
 

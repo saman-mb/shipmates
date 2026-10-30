@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-ship-epic — wave fan-out epic delivery
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Deliver a whole **epic** by driving the `/shipmates-ship-issue` pipeline over its unchecked story checklist —
 in **shipping units** (one story or a small cohesive bundle), dependency order preserved — until
 every non-gate story lands on a shared **epic integration branch**, then hand the captain **one**
@@ -230,11 +230,17 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
    own checkout:
    ```bash
    git -C <repo> fetch origin
+   # If a local <EPIC_BRANCH> exists, check it out and fast-forward it; stop loudly on divergence.
+   if git -C <repo> show-ref --verify --quiet refs/heads/<EPIC_BRANCH>; then
+     git -C <repo> checkout <EPIC_BRANCH>
+     git -C <repo> pull --ff-only || { echo "Local <EPIC_BRANCH> has diverged; reconcile manually first"; exit 1; }
+   fi
    git -C <repo> worktree add <kickoff-wt> -B <EPIC_BRANCH> origin/<EPIC_BRANCH>
    git -C <kickoff-wt> commit --allow-empty -m "chore: epic kickoff"
    git -C <kickoff-wt> push origin <EPIC_BRANCH>
    git -C <repo> worktree remove <kickoff-wt>
    ```
+   Record the kickoff base SHA (`git -C <repo> rev-parse origin/<EPIC_BRANCH>`) in the run report.
    That is the normal kickoff path, not an error-recovery footnote. Skip when the tips already differ
    (reconstruction or landed work). Never stack a second kickoff commit. Skip in `DRY_RUN` (print that
    a kickoff commit would be made).
@@ -254,8 +260,6 @@ Skip branch/PR mutation in `DRY_RUN` (print the planned names in the dry-run sum
      `<mis-merged-to-main>` was reconstructed, note which unit PRs were recovered from `MAIN_BRANCH`.
    - **Integration** — epic issue link, integration branch name, and explicit note: **human review
      required** — merge only when satisfied with the epic scope.
-
-<!-- shipmates:why-merge-pr -->
 
    Record `<EPIC_PR>`.
 7. **Persist state** — post or **edit** the single `<!-- shipmates-ship-epic-progress -->` comment on epic
@@ -494,8 +498,6 @@ On pause, include `<epic-log>` and a link to the progress comment in the pause r
 2. **Epic integration board** — **never skip on full closure** (not crew-complete with owner
    residuals). After step 1 is green, convene specialists on epic PR `<EPIC_PR>` head to review the consolidated epic diff:
 
-<!-- shipmates:epic-integration-board -->
-
    Fix any REJECT in a dedicated fixer worktree (a branch and a PR into `<EPIC_BRANCH>`), push, re-poll
    step 1, **Retry** the board from the fixer delta (shared rule) — bounded by `MAX_FIX_ROUNDS`.
    Exhaustion **pauses the epic** with integration blockers (distinct from unit pause).
@@ -508,7 +510,11 @@ On pause, include `<epic-log>` and a link to the progress comment in the pause r
 4. Post completion summary with **epic PR `<EPIC_PR>`** link, green CI link, **integration board
    verdicts**, pointer to epic progress comment, checklist state. **Stop** — the captain merges the
    epic PR into `MAIN_BRANCH` once satisfied. Do **not** auto-merge the epic PR. Do **not** ask the
-   captain to merge individual unit PRs.
+   captain to merge individual unit PRs. Closure notes list each integration-board finding kept in
+   working memory as fixed, filed, or declined with a reason — not only counts. Do not file unit nits
+   again at the epic layer, and do not write a per-run findings ledger under `.shipmates/`
+   (`.shipmates/worktrees/` stays allowed). A docs or visual acceptance names the rendered artifact
+   inspected, or states that inspection was unavailable.
 5. **`EPIC_CLOSE_MODE`** — `manual`: propose closing epic `<epic>`; `auto`: `gh issue close <epic>`.
 
 **Crew-complete (owner residuals remain)** — when `- [ ] #n` lines still exist but **every** pending

@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-pr-review — classify → convene the board → consolidate
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Point the crew at a pull request **somebody else wrote** — a teammate's, an outside contributor's, a
 dependency bump, or one you opened by hand before you thought to use Shipmates. Every other command
 assumes the crew authored the change; this one doesn't, and that single fact sets its shape: **no
@@ -103,10 +103,16 @@ runtime signal is unconfirmed.
 
 ## Stage 2 — The board  (specialist agents, in parallel, against `headRefOid`)
 
-<!-- shipmates:acceptance-board -->
-
 Spawn in a single message so they run concurrently, each pinned to the **head commit**. Use the Stage 0
-flags for scaled optional seats. **`/shipmates-pr-review`-specific additions** on top of the shared board:
+flags for scaled optional seats.
+
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel board fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected seat is a failed run — never silently convene a smaller board.
+
+**`/shipmates-pr-review`-specific additions** on top of the shared board:
 
 | `{{role-reference}}` | Runs |
 |---|---|
@@ -126,7 +132,9 @@ and rank them: **blocking** (correctness, security, data loss, a criterion the P
 misses) above **nits** (style, naming, taste). Attribute each finding to the role that raised it so
 the author can weigh it. For nits, recommend the `/shipmates-ship-issue` Stage 7 disposition (absorb in a
 follow-on fix when cheap and in-scope; PR-comment otherwise; file only when cross-cutting or
-decision-shaped) — do not urge opening one backlog ticket per nit. One verdict for the PR:
+decision-shaped) — do not urge opening one backlog ticket per nit. The consolidated review is the
+accountable record: list each finding's recommended disposition (fixed, filed, or declined with a
+reason), not only counts. Stay read-only — do not fix, file, or start filing. One verdict for the PR:
 `APPROVE` / `APPROVE-WITH-NITS` / `REQUEST-CHANGES`.
 
 If a visual specialist could not actually render the change, carry its **"needs a human visual pass"**
@@ -152,7 +160,9 @@ gh pr review <PR#> --comment --body-file "$REVIEW_BODY_FILE"
 ```
 
 Use `--comment`, not `--approve`/`--request-changes`, unless the caller explicitly asked for a binding
-verdict — an automated approval carries weight the crew hasn't earned on someone else's work.
+verdict — an automated approval carries weight the crew hasn't earned on someone else's work. The posted
+comment carries that same list — each finding's recommended disposition, not only counts — and still does
+not start filing.
 
 ---
 
