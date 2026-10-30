@@ -5,7 +5,7 @@ argument-hint: [report] [pre] [file-bugs]
 allowed-tools: Bash, Read, Write, Grep, Glob
 disable-model-invocation: true
 ---
-# /shipmates-upgrade — check for a newer release, refresh and audit every install
+# /shipmates-upgrade — check for a newer release, refresh, audit and repair every install
 
 <!-- shipmates:bootstrap -->
 Check the installed `shipmates` binary for a newer release, then survey every known install of the
