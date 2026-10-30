@@ -28,8 +28,35 @@ export const ORDER_HEADINGS = ["Outcome:", "Owned paths:", "Done-when:", "Out of
 export const ORDER_PREAMBLE =
   "Follow the order. Do not widen it. Stop and report if it is ambiguous.";
 
+export const RESOURCE_MODES = ["off", "shadow", "enforce"];
+
 export function offState() {
-  return { schemaVersion: 1, switch: "Off", roles: {}, ticks: [], ceiling: null };
+  return {
+    schemaVersion: 1,
+    switch: "Off",
+    roles: {},
+    ticks: [],
+    ceiling: null,
+    resources: "off",
+    engineBaseUrls: [],
+    headroomBytes: 0,
+    contextTokens: 0,
+  };
+}
+
+export function resourcesMode(value) {
+  return RESOURCE_MODES.includes(value) ? value : "off";
+}
+
+/** A missing or newer schema never turns the broker on. Switch Off never does either. */
+export function brokerWanted(state) {
+  if (!state || state.switch === "Off") return false;
+  return state.resources === "shadow" || state.resources === "enforce";
+}
+
+/** Local mode includes the captain chat whenever the broker is in use. */
+export function captainReserved(state) {
+  return Boolean(state && state.switch === "Local" && brokerWanted(state));
 }
 
 export function parseState(raw) {
@@ -55,8 +82,43 @@ export function parseState(raw) {
   const ticks = Array.isArray(obj.ticks) ? obj.ticks.filter((item) => typeof item === "string") : [];
   let ceiling = null;
   if (Number.isInteger(obj.ceiling) && obj.ceiling >= 0) ceiling = obj.ceiling;
+  const resources = resourcesMode(obj.resources);
+  const engineBaseUrls = engineUrls(obj.engineBaseUrls);
+  const headroomBytes = nonNeg(obj.headroomBytes);
+  const contextTokens = nonNeg(obj.contextTokens);
 
-  return { schemaVersion: 1, switch: obj.switch, roles, ticks, ceiling };
+  return {
+    schemaVersion: 1,
+    switch: obj.switch,
+    roles,
+    ticks,
+    ceiling,
+    resources,
+    engineBaseUrls,
+    headroomBytes,
+    contextTokens,
+  };
+}
+
+function nonNeg(value) {
+  return Number.isInteger(value) && value >= 0 ? value : 0;
+}
+
+function engineUrls(value) {
+  if (!Array.isArray(value)) return [];
+  const urls = [];
+  for (const item of value) {
+    if (typeof item !== "string" || urls.length >= 8) continue;
+    try {
+      const url = new URL(item);
+      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+      if (url.username || url.password) continue;
+      if (!urls.includes(item)) urls.push(item);
+    } catch {
+      // Skip a value that is not a URL.
+    }
+  }
+  return urls;
 }
 
 export function switchChoices(current) {

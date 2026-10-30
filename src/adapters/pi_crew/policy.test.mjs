@@ -3,7 +3,10 @@ import test from "node:test";
 import {
   ORDER_PREAMBLE,
   SHIPPED_TAG,
+  brokerWanted,
+  captainReserved,
   decideSpawn,
+  offState,
   parseState,
 } from "./policy.mjs";
 
@@ -30,11 +33,28 @@ function state(over = {}) {
 const order = "Outcome: x\nOwned paths: a\nDone-when: b\nOut of scope: c";
 
 test("absent and bad files behave as Off and do not refuse", () => {
-  for (const raw of ["", "not-json", { switch: "maybe" }, { schemaVersion: 2, switch: "Split" }]) {
+  for (const raw of ["", "not-json", { switch: "maybe" }, { schemaVersion: 2, switch: "Split", resources: "enforce" }]) {
     const parsed = parseState(raw);
     assert.equal(parsed.switch, "Off");
+    assert.equal(parsed.resources, "off");
+    assert.equal(brokerWanted(parsed), false);
     assert.equal(decideSpawn({ state: parsed, role: "senior-engineer" }).action, "allow");
   }
+});
+
+test("resources defaults off, preserves shadow or enforce, and a newer schema cannot enable it", () => {
+  assert.equal(offState().resources, "off");
+  assert.equal(parseState({ switch: "Split", ticks, ceiling: 5 }).resources, "off");
+  assert.equal(parseState({ switch: "Local", resources: "nope" }).resources, "off");
+  assert.equal(parseState({ switch: "Split", resources: "shadow", ticks, ceiling: 5 }).resources, "shadow");
+  assert.equal(parseState({ switch: "Local", resources: "enforce", ticks, ceiling: 1 }).resources, "enforce");
+  assert.equal(brokerWanted(parseState({ switch: "Off", resources: "enforce" })), false);
+  assert.equal(brokerWanted(parseState({ switch: "Split", resources: "off" })), false);
+  assert.equal(brokerWanted(parseState({ switch: "Local", resources: "shadow" })), true);
+  assert.equal(captainReserved(parseState({ switch: "Local", resources: "enforce" })), true);
+  assert.equal(captainReserved(parseState({ switch: "Local", resources: "shadow" })), true);
+  assert.equal(captainReserved(parseState({ switch: "Split", resources: "enforce" })), false);
+  assert.equal(captainReserved(parseState({ schemaVersion: 2, switch: "Local", resources: "enforce" })), false);
 });
 
 test("a null ceiling stays unset and does not force Off", () => {
