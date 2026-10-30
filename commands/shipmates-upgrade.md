@@ -1,7 +1,7 @@
 ---
 name: shipmates-upgrade
-description: Shipmates: Check for a newer Shipmates release and refresh, audit, and repair every known install — apply, or file upstream bugs, only when the captain asks.
-argument-hint: [apply] [pre] [file-bugs]
+description: Shipmates: Check for a newer Shipmates release, then refresh, audit, and repair every known install — reporting only when asked, filing upstream bugs only when asked.
+argument-hint: [report] [pre] [file-bugs]
 allowed-tools: Bash, Read, Write, Grep, Glob
 disable-model-invocation: true
 ---
@@ -9,10 +9,10 @@ disable-model-invocation: true
 
 <!-- shipmates:bootstrap -->
 Check the installed `shipmates` binary for a newer release, then survey every known install of the
-crew and commands, refresh them from the new binary, audit each one, and — only when the captain asks —
-repair drift and file shipmates-attributable findings upstream. The default is a read-only
-check-and-report: show the plan and stop. Upgrade, repair, and filing are each their own opt-in, and
-filing is the innermost one.
+crew and commands, refresh them from the new binary, audit each one, and repair drift. Invoked with no
+tokens it does exactly that — the command is named for the work. `report` is the explicit read-only
+pass: survey, show the plan, change nothing. Filing shipmates-attributable findings upstream is the
+innermost opt-in (`file-bugs`), so the default upgrades and repairs, and never files.
 
 The installed CLI does the real work — the release check, the self-upgrade, the refresh, the audit, and
 the upstream filing — and this command runs it and reports. It never shells out to `gh` itself and never
@@ -32,13 +32,13 @@ Frontmatter stays gated; behaviour matches a standalone run with the same argume
 
 ## Config (override only if the captain asks)
 
-- `MODE` = `report` (default) — survey and report only. `apply` — additionally run the
-  upgrade/repair/filing steps after showing the plan. Infer from the runtime tokens; ambiguous →
-  `report`, and state which mode ran.
+- `MODE` = `apply` (default) — run the upgrade and repair steps. `report` — survey and show the plan,
+  changing nothing; it is the explicit safe token. Infer from the runtime tokens; ambiguous → `apply`,
+  and state which mode ran.
 - `PRE` = `no` (default) — the release check considers stable releases only. `yes` (the `pre` token)
   includes prereleases.
 - `FILE_BUGS` = `no` (default) — print the findings and the exact filing command, but file nothing.
-  `yes` (the `file-bugs` token, honoured only with `MODE=apply`) lets the CLI file or comment upstream.
+  `yes` (the `file-bugs` token, honoured in `MODE=apply`) lets the CLI file or comment upstream.
 - `UPSTREAM_REPO` = `saman-mb/shipmates` (fixed) — the only repo the filing step may target.
 - **The CLI owns the mutating steps.** `shipmates upgrade --self`, `--fix`, and `--file-bugs` are the
   only things that change state; this command never runs a raw `gh` or `curl` of its own and never
@@ -51,7 +51,7 @@ Frontmatter stays gated; behaviour matches a standalone run with the same argume
 ## Stage 0 — Intake  (orchestrator)
 
 1. Parse the runtime input into `MODE`, `PRE`, and `FILE_BUGS` from the Parameters table. Default
-   `MODE=report`, `PRE=no`, `FILE_BUGS=no`; state the resolved values on the first line of the report.
+   `MODE=apply`, `PRE=no`, `FILE_BUGS=no`; state the resolved values on the first line of the report.
 2. Verify the binary and its surface before relying on either. Run `shipmates upgrade --help` and
    `shipmates status --help`. If either subcommand or one of its flags is missing, take Stage 6's
    version-skew path and say which path ran.
@@ -112,7 +112,7 @@ shipmates upgrade --file-bugs
 The CLI dedupes by fingerprint, sanitises home paths, filters to labels that exist, and files or
 comments upstream — this command reports the issue URLs it returns. Without the token, print the
 findings list and the exact command a captain would run to file them. **Never file silently**: filing is
-opt-in at two levels (`apply`, then `file-bugs`).
+opt-in once — the `file-bugs` token — and applying no longer implies it.
 
 ## Stage 5 — Report  (orchestrator)
 
@@ -145,8 +145,8 @@ point at `/shipmates-report-bug` for a manual upstream report instead.
   finding to report, never a reason to move it back.
 - **Never self-upgrade a source checkout.** `--self` is for brew / cargo-dist only; a source checkout or
   unknown channel gets the manual path, never an attempted self-upgrade.
-- **Never file silently.** Filing is opt-in at two levels — `apply`, then `file-bugs` — and the command
-  always prints the list and the exact command before any filing runs.
+- **Never file silently.** Filing is opt-in through the `file-bugs` token and nothing else, and the
+  command always prints the list and the exact command before any filing runs.
 - **No secrets in outputs.** Home paths are sanitised and credential-shaped strings redacted before
   anything is repeated to the captain.
 - **This command does not fix upstream code.** It upgrades and repairs installs. A bug in the captain's
@@ -156,9 +156,9 @@ point at `/shipmates-report-bug` for a manual upstream report instead.
 
 | Name | Required | Token | Values | Default | Mutates | Help |
 |------|----------|-------|--------|---------|---------|------|
-| apply | no | `apply` | `apply` | omit (`MODE=report`) | yes | Run the upgrade/repair/filing steps after showing the plan; default is check-and-report only. |
+| report | no | `report` | `report` | apply (`MODE=apply`) | yes | Report only: survey and show the plan without upgrading, repairing, or filing. The command upgrades by default; this is the safe token. |
 | pre | no | `pre` | `pre` | omit (stable only) | — | Include prereleases in the release check. |
-| file-bugs | no | `file-bugs` | `file-bugs` | omit | — | Allow filing or updating upstream issues for shipmates-attributable findings; requires apply. |
+| file-bugs | no | `file-bugs` | `file-bugs` | omit | — | Allow filing or updating upstream issues for shipmates-attributable findings; needs `MODE=apply`, which is the default. |
 
 ## Runtime input
 
@@ -166,8 +166,9 @@ Read `## Parameters` first. `$ARGUMENTS` is the captain-supplied or post-intake 
 Tokens/Values from that table (required then optionals). If intake ran, treat the restated invocation as
 authoritative for this run.
 
-The three tokens are optional and order-independent. `apply` sets `MODE=apply`; without it the run is
-`MODE=report` — survey and report only, never upgrade, repair, or file. `pre` includes prereleases in the
-release check (stable only otherwise). `file-bugs` allows filing or updating upstream issues for
-shipmates-attributable findings and is honoured only together with `apply`; alone it is ignored with a
-note. An empty invocation is a full check-and-report run.
+The three tokens are optional and order-independent. `report` sets `MODE=report` — survey and show the
+plan, never upgrade, repair, or file. Without it the run is `MODE=apply`: bring the binary and every
+known install up to date, then repair drift. `pre` includes prereleases in the release check (stable
+only otherwise). `file-bugs` allows filing or updating upstream issues for shipmates-attributable
+findings; it is honoured in `MODE=apply` and ignored with a note under `report`. An empty invocation is
+a full upgrade-and-repair run.
