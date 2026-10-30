@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.17.0] - 2026-10-28
 
+### Added
+
+- **Pi crew can opt into one machine-wide resource broker (#601).** The crew switch still starts Off, and Off starts no broker. A separate `resources` setting stays `off` until a captain sets `shadow` or `enforce`. Shadow asks the broker and still allows the spawn, recording a would-be queue. Enforce waits for a grant and stops the spawn if the broker cannot be reached. A named model is never substituted. A lease follows the tool call or the run id, not the model, and is released when that tool call ends. The captain's own chat is reserved in Local mode whenever the broker is on. Engine URLs, context, and headroom are settings. The first session starts one shared broker and does not shut it down for the others. If no engine reports a loaded model, enforce allows one local seat at a time instead of waiting forever for a model it cannot see. This is not a live proof that pi crew spawn works.
+
 ### Changed
 
 - **Shared Shipmates principles now ship through a single bootstrap file instead of being inlined into every command and crew role (#609).** A new `steering/bootstrap.md` holds the cost discipline, argument intake, model routing, acceptance board, epic integration board, subagent preamble, and why-merge-PR doctrine. The installer writes this block to each harness's native instructions/rules file, and every rendered command and role points to it with a short pointer. This removes per-file duplication and makes a rule change update one source rather than nineteen commands and thirteen roles.
