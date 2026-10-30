@@ -114,15 +114,17 @@ fn consolidate_merges_duplicate_substance_into_the_survivor_before_closing() {
 /// the captain never tokenized the knob that decides whether the run mutates —
 /// `skip and execute` won on *any* non-empty argument, so no defaults card and
 /// no OK-or-change question could ever fire. Each of the seven zero-required
-/// commands must mark its mutation-gating knob(s) `Mutates: yes` (with the safe
-/// value as Default), and the shared preamble must redefine "fully specified"
-/// so those knobs gate the skip, not merely the Required column.
+/// commands must mark its mutation-gating knob(s) `Mutates: yes`, and the
+/// shared preamble must redefine "fully specified" so those knobs gate the
+/// skip, not merely the Required column. An ask-first knob defaults to its safe
+/// value; an apply-first knob defaults to the mutation and declares an explicit
+/// safe token, so the table's Default cell is what each entry pins.
 #[test]
 fn mutating_knobs_are_token_gated_in_zero_required_parameter_tables() {
     let cost = prose(&cost_preamble());
     assert!(
         cost.contains(
-            "every Required=yes row present/parseable AND every `Mutates: yes` row explicitly tokenized"
+            "every Required=yes row present/parseable AND every `Mutates: yes` row resolved"
         ),
         "docs/COST.md must redefine fully-specified to require tokenized mutation-gating knobs:\n{cost}"
     );
@@ -135,7 +137,7 @@ fn mutating_knobs_are_token_gated_in_zero_required_parameter_tables() {
         ("shipmates-pr-review", &[("mode", "report")]),
         ("shipmates-release", &[("publish_mode", "manual")]),
         ("shipmates-report-bug", &[("apply", "omit (`MODE=report`)")]),
-        ("shipmates-upgrade", &[("apply", "omit (`MODE=report`)")]),
+        ("shipmates-upgrade", &[("report", "apply (`MODE=apply`)")]),
     ];
 
     for (name, knobs) in gated {

@@ -44,18 +44,21 @@
 
 ## Argument intake
 
-- A **mutation-gating knob** is a Parameters row whose `Mutates` column is `yes`: choosing a
-  non-default value performs a write (closing issues, filing upstream, rewriting an installed crew)
-  that the command would not otherwise perform. Only the seven commands whose table declares one
-  carry the column.
+- A **mutation-gating knob** is a Parameters row whose `Mutates` column is `yes`: it decides
+  whether the command performs a write (closing issues, filing upstream, rewriting an installed
+  crew). Only the seven commands whose table declares one carry the column.
+- A gating knob takes one of two shapes, and its own row says which. **Ask-first** (an `apply`-style
+  row): the safe value is the Default, and the knob is tokenized only by naming its mutating token.
+  **Apply-first** (a `report`-style row): the mutating value is the Default and the command declares
+  an explicit safe token, which is the opt-out. Only a command whose name *is* the mutation may
+  declare an apply-first knob, and its Help says plainly that the safe token is the way out.
 - Before any mutating step, classify `$ARGUMENTS`: **empty**, **partial**, or **fully specified**.
   Empty or partial → run intake; fully specified → skip and execute.
 - Completeness: Empty = blank/whitespace. Partial = non-empty but ≥1 Required=yes Parameters row
-  unresolved, or a mutation-gating knob left un-tokenized. Fully specified = every Required=yes row
-  present/parseable AND every `Mutates: yes` row explicitly tokenized — naming either the mutating
-  token or the safe token explicitly. A knob whose safe value is expressed by omission (an
-  `apply`-style row) is tokenized only by naming its mutating token: omitting it runs intake.
-  Missing optionals otherwise keep Defaults.
+  unresolved, or an ask-first mutation-gating knob left un-tokenized. Fully specified = every
+  Required=yes row present/parseable AND every `Mutates: yes` row resolved — an ask-first knob only
+  by naming its mutating token, an apply-first knob by its Default when nothing is typed or by its
+  safe token when the captain asks for the read-only path. Missing optionals otherwise keep Defaults.
 - A command whose table declares no `Mutates: yes` row keeps today's behaviour: supplying its
   Required=yes rows still skips the ask, so the 11 required-row commands (e.g.
   `/shipmates-ship-issue 42`) are unchanged.
@@ -79,8 +82,8 @@
   a TUI outside the session. Canonical prose must NOT name harness-specific tool IDs.
 - Non-interactive / no user-turn: **fail closed** if any required is missing (clear missing-arg
   message); apply Defaults for optionals, and an un-tokenized mutation-gating knob keeps its
-  Default — the value that does not perform the gated write — and the run proceeds. Never hang;
-  never invent irreversible choices.
+  declared Default — for an ask-first row that is the value that does not perform the write — and
+  the run proceeds. Never hang; never invent irreversible choices.
 - After intake, restate one resolved invocation line (`/<command> <tokens…>`), then proceed with the
   existing workflow unchanged.
 - Per-command files only declare `## Parameters`; do not copy these intake rules into each command.
