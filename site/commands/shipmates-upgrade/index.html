@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>/shipmates-upgrade — check for a newer release, refresh and audit every install · Shipmates</title>
-  <meta name="description" content="Check for a newer Shipmates release, refresh and audit every install — apply and file only on request.">
+  <meta name="description" content="Check for a newer release, then refresh, audit and repair every install — filing only when asked.">
   <link rel="canonical" href="https://saman-mb.github.io/shipmates/commands/shipmates-upgrade/">
   <link rel="icon" href="../../assets/logo-240.png" type="image/png">
   <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Shipmates">
   <meta property="og:title" content="/shipmates-upgrade — check for a newer release, refresh and audit every install">
-  <meta property="og:description" content="Check for a newer Shipmates release, refresh and audit every install — apply and file only on request.">
+  <meta property="og:description" content="Check for a newer release, then refresh, audit and repair every install — filing only when asked.">
   <meta property="og:url" content="https://saman-mb.github.io/shipmates/commands/shipmates-upgrade/">
   <meta property="og:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta property="og:image:width" content="1280">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="/shipmates-upgrade — check for a newer release, refresh and audit every install">
-  <meta name="twitter:description" content="Check for a newer Shipmates release, refresh and audit every install — apply and file only on request.">
+  <meta name="twitter:description" content="Check for a newer release, then refresh, audit and repair every install — filing only when asked.">
   <meta name="twitter:image" content="https://saman-mb.github.io/shipmates/assets/social-preview.png">
   <meta name="twitter:image:alt" content="Shipmates — Custom subagents and command workflows for your AI coding harness.">
   <link rel="stylesheet" href="../../styles.css">
@@ -29,7 +29,7 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "/shipmates-upgrade",
-    "description": "Check for a newer Shipmates release, refresh and audit every install — apply and file only on request.",
+    "description": "Check for a newer release, then refresh, audit and repair every install — filing only when asked.",
     "url": "https://saman-mb.github.io/shipmates/commands/shipmates-upgrade/",
     "step": [
       {
@@ -43,21 +43,21 @@
         "@type": "HowToStep",
         "position": 2,
         "name": "Upgrade",
-        "text": "Show the channel command the CLI reports. Apply runs shipmates upgrade --self — brew and cargo-dist only; a source checkout gets the manual path. Still the run — no spawn, and never a self-upgrade for a source checkout.",
+        "text": "Show the channel command the CLI reports. The default run executes shipmates upgrade --self — brew and cargo-dist only; a source checkout gets the manual path. Still the run — no spawn, and never a self-upgrade for a source checkout.",
         "url": "https://saman-mb.github.io/shipmates/commands/shipmates-upgrade/#step-2"
       },
       {
         "@type": "HowToStep",
         "position": 3,
         "name": "Repair",
-        "text": "Apply runs shipmates upgrade --fix --json and reports what was refreshed and repaired, per root — one failing root never stops the rest. The run reads the per-root JSON back.",
+        "text": "The default run executes shipmates upgrade --fix --json and reports what was refreshed and repaired, per root — one failing root never stops the rest. The run reads the per-root JSON back.",
         "url": "https://saman-mb.github.io/shipmates/commands/shipmates-upgrade/#step-3"
       },
       {
         "@type": "HowToStep",
         "position": 4,
         "name": "File",
-        "text": "Read findings (class, harness, root, fingerprint). Apply plus the file-bugs token runs shipmates upgrade --file-bugs; otherwise print the list and the exact command. Never files silently — the CLI dedupes and sanitises; the run reports its URLs.",
+        "text": "Read findings (class, harness, root, fingerprint). The file-bugs token runs shipmates upgrade --file-bugs; otherwise print the list and the exact command. Never files silently — the CLI dedupes and sanitises; the run reports its URLs.",
         "url": "https://saman-mb.github.io/shipmates/commands/shipmates-upgrade/#step-4"
       },
       {
@@ -108,7 +108,7 @@
           <p class="section__eyebrow"><span aria-hidden="true">📜</span> Command</p>
           <h1 class="order-detail__title" id="order-title"><code>/shipmates-upgrade</code></h1>
           <p class="order-detail__tagline">check for a newer release, refresh and audit every install</p>
-          <p class="order-detail__desc">Check for a newer Shipmates release, refresh and audit every install — apply and file only on request.</p>
+          <p class="order-detail__desc">Check for a newer release, then refresh, audit and repair every install — filing only when asked.</p>
         </div>
       </div>
     </section>
@@ -149,9 +149,9 @@
         <p class="order-process__lead">No crew spawns — the run drives the installed CLI (release check, self-upgrade, refresh, audit, filing) and reports what it reads back from its JSON.</p>
         <ol class="order-process__list" role="list">
           <li class="order-process__item" id="step-1"><span class="order-process__num" aria-hidden="true">1</span><div class="order-process__body"><h3 class="order-process__label">Survey</h3><p class="order-process__line">Run shipmates upgrade --check --json and shipmates status --json; present the release, channel, and each install&#x27;s version, state, and drift.</p><p class="order-process__crew order-process__crew--solo">No spawn — the CLI reports; the run reads the JSON.</p></div></li>
-          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Upgrade</h3><p class="order-process__line">Show the channel command the CLI reports. Apply runs shipmates upgrade --self — brew and cargo-dist only; a source checkout gets the manual path.</p><p class="order-process__crew order-process__crew--solo">Still the run — no spawn, and never a self-upgrade for a source checkout.</p></div></li>
-          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Repair</h3><p class="order-process__line">Apply runs shipmates upgrade --fix --json and reports what was refreshed and repaired, per root — one failing root never stops the rest.</p><p class="order-process__crew order-process__crew--solo">The run reads the per-root JSON back.</p></div></li>
-          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">File</h3><p class="order-process__line">Read findings (class, harness, root, fingerprint). Apply plus the file-bugs token runs shipmates upgrade --file-bugs; otherwise print the list and the exact command.</p><p class="order-process__crew order-process__crew--solo">Never files silently — the CLI dedupes and sanitises; the run reports its URLs.</p></div></li>
+          <li class="order-process__item" id="step-2"><span class="order-process__num" aria-hidden="true">2</span><div class="order-process__body"><h3 class="order-process__label">Upgrade</h3><p class="order-process__line">Show the channel command the CLI reports. The default run executes shipmates upgrade --self — brew and cargo-dist only; a source checkout gets the manual path.</p><p class="order-process__crew order-process__crew--solo">Still the run — no spawn, and never a self-upgrade for a source checkout.</p></div></li>
+          <li class="order-process__item" id="step-3"><span class="order-process__num" aria-hidden="true">3</span><div class="order-process__body"><h3 class="order-process__label">Repair</h3><p class="order-process__line">The default run executes shipmates upgrade --fix --json and reports what was refreshed and repaired, per root — one failing root never stops the rest.</p><p class="order-process__crew order-process__crew--solo">The run reads the per-root JSON back.</p></div></li>
+          <li class="order-process__item" id="step-4"><span class="order-process__num" aria-hidden="true">4</span><div class="order-process__body"><h3 class="order-process__label">File</h3><p class="order-process__line">Read findings (class, harness, root, fingerprint). The file-bugs token runs shipmates upgrade --file-bugs; otherwise print the list and the exact command.</p><p class="order-process__crew order-process__crew--solo">Never files silently — the CLI dedupes and sanitises; the run reports its URLs.</p></div></li>
           <li class="order-process__item" id="step-5"><span class="order-process__num" aria-hidden="true">5</span><div class="order-process__body"><h3 class="order-process__label">Report</h3><p class="order-process__line">Summarise what changed and any issue URLs, and remind the captain to restart the harness so a refreshed command loads.</p><p class="order-process__crew order-process__crew--solo">No extra spawn — the run closes out.</p></div></li>
         </ol>
         <p class="order-process__shared">Shared machinery &mdash; <a href="../../docs/how-commands-work/">how commands work</a>: worktrees, the CI gate, the review board, and merge modes.</p>
@@ -164,7 +164,8 @@
           <h2 class="section__title" id="when-to-use-title">When to use</h2>
         </div>
         <ul class="order-when__list">
-          <li>Shipmates itself needs upgrading, or an install has drifted and you want it surveyed before anything changes.</li>
+          <li>Shipmates itself needs upgrading, or an install has drifted and you want it brought back in line without hunting for the right flags.</li>
+          <li>Want a look before anything changes? Ask for report and the run surveys without touching a thing.</li>
           <li>Bug in your repo? /shipmates-fix-bug. Bug in Shipmates itself? /shipmates-report-bug.</li>
         </ul>
       </div>
