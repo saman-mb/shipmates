@@ -124,11 +124,14 @@ refreshed command, or the new payload is not yet in the session.
 ## Stage 6 — Version skew  (orchestrator, fallback)
 
 If the installed CLI predates this command's flags (Stage 0's `--help` does not list `status` or
-`upgrade`), fall back to the pre-`status`/`upgrade` path and **say which path ran**:
+`upgrade`), fall back to the pre-`status`/`upgrade` path and **say which path ran**. `MODE` governs the
+fallback exactly as it governs the main path, so `report` changes nothing here either:
 
 ```bash
+# MODE=apply (the default) — refresh, then repair drift
 shipmates update --harness all
-shipmates doctor          # per known root; add --fix only when the captain asked to repair
+shipmates doctor --fix
+# MODE=report — report only: never run the update, and run doctor without --fix
 ```
 
 The release check degrades to "unknown" here, and filing is not available — report both plainly, and

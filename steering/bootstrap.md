@@ -46,12 +46,14 @@
 
 - A **mutation-gating knob** is a Parameters row whose `Mutates` column is `yes`: it decides
   whether the command performs a write (closing issues, filing upstream, rewriting an installed
-  crew). Only the seven commands whose table declares one carry the column.
+  crew). The commands whose table declares one carry the column.
 - A gating knob takes one of two shapes, and its own row says which. **Ask-first** (an `apply`-style
   row): the safe value is the Default, and the knob is tokenized only by naming its mutating token.
   **Apply-first** (a `report`-style row): the mutating value is the Default and the command declares
   an explicit safe token, which is the opt-out. Only a command whose name *is* the mutation may
-  declare an apply-first knob, and its Help says plainly that the safe token is the way out.
+  declare an apply-first knob, and its Help says plainly that the safe token is the way out. An
+  apply-first command invoked with no tokens is already fully specified: do not open the intake card
+  for the work the command is named for.
 - Before any mutating step, classify `$ARGUMENTS`: **empty**, **partial**, or **fully specified**.
   Empty or partial → run intake; fully specified → skip and execute.
 - Completeness: Empty = blank/whitespace. Partial = non-empty but ≥1 Required=yes Parameters row

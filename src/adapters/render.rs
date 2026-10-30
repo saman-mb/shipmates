@@ -908,6 +908,10 @@ mod tests {
             ),
             "rendered command lost the mutation-gating definition"
         );
+        assert!(
+            flat.contains("an ask-first knob only by naming its mutating token"),
+            "rendered command lost the clause that resolves an ask-first knob"
+        );
         assert!(command.contains("Mandatory seats"));
         assert!(command.contains("Integration questions"));
         assert!(command.contains("Why merge this"));

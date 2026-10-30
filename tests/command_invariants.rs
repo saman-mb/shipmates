@@ -128,6 +128,16 @@ fn mutating_knobs_are_token_gated_in_zero_required_parameter_tables() {
         ),
         "docs/COST.md must redefine fully-specified to require tokenized mutation-gating knobs:\n{cost}"
     );
+    // The "resolved" wording alone would stay green if the discriminating clause
+    // went away, silently un-gating every ask-first knob. Pin that clause too.
+    assert!(
+        cost.contains("an ask-first knob only by naming its mutating token"),
+        "docs/COST.md must keep naming the token that resolves an ask-first knob:\n{cost}"
+    );
+    assert!(
+        cost.contains("An apply-first command invoked with no tokens is already fully specified"),
+        "docs/COST.md must say an apply-first command needs no intake card:\n{cost}"
+    );
 
     // command -> (mutation-gating token name, its safe Default)
     let gated: &[(&str, &[(&str, &str)])] = &[
