@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-fix-bug — reproduce → root-cause → fix → prove
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Take a bug from report to a **reviewed, CI-green PR** — but gated on the one signal that actually
 proves a bug is fixed: a **regression test that fails before the change and passes after**. No repro,
 no fix. Symptom-patching without a root cause is rejected.
@@ -58,9 +58,15 @@ what was tried — never "fix" an unconfirmed bug. This failing test is the cont
 2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — from `<repo>`, idempotently ensure
    `.shipmates/worktrees/` is ignored (append only when no line already ignores it; create `.gitignore`
    with `# Shipmates isolated command worktrees (auto-managed)` if missing). Never rewrite unrelated rules.
-3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required;
-   stop with a clear error if fetch fails. Fresh `worktree add … origin/<BASE_BRANCH>` **is**
-   pull-latest — no separate `git pull`.
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`.
+   - **`git -C <repo> fetch origin`** is required; stop with a clear error if fetch fails.
+   - Check out the local base branch: `git -C <repo> checkout <BASE_BRANCH>`.
+   - Fast-forward it to the fetched tip: `git -C <repo> pull --ff-only` (equivalently
+     `git -C <repo> reset --hard origin/<BASE_BRANCH>`). If the local branch has diverging commits
+     that cannot be fast-forwarded, **stop loudly** and ask the captain to reconcile — never silently
+     branch from a stale or overridden tip.
+   - Record `BASE_SHA=$(git -C <repo> rev-parse origin/<BASE_BRANCH>)` in the run report.
+   Fresh `worktree add … origin/<BASE_BRANCH>` now starts from the fresh tip.
 4. **Resume / reuse** — when worktree/branch exist, re-run fetch; rebase onto `BASE_REF` when behind
    (merge when repo docs prefer merge). Sync conflicts count toward `MAX_FIX_ROUNDS`.
 5. **Create the worktree** (when branch/worktree do not yet exist):
@@ -91,6 +97,13 @@ grep the codebase for the same defect class elsewhere.
   spawn multiple `senior-engineer` Builders concurrently in a single message up to `MAX_CONCURRENT_WORKERS`,
   each with a machine-checkable **owned-paths manifest** (diffed against `git status` and `git diff --name-only`
   upon completion to prevent cross-unit collision).
+
+  **Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+  one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+  in progress. For parallel builder fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+  call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+  status polling. A rejected builder is a failed run — never silently shrink the fix team.
+
 - Under `EXECUTION=sequential`, apply fixes one at a time serially.
 
 ## Stage 4 — Prove it  ⛔ HARD GATE  (agent: `sdet`)
@@ -101,8 +114,6 @@ nothing). Then push and run the **CI gate**: poll `gh pr checks` until done; if 
 `MAX_FIX_ROUNDS`. Never advance a red PR. (Long polls: run as a background/until-loop, not chained sleeps.)
 
 ## Stage 5 — Review  (agents, on the pushed PR head)
-
-<!-- shipmates:acceptance-board -->
 
 **Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
 modes), skip Stage 5 and proceed to Stage 6; `epic-deferred` must name the milestone board that will run
@@ -124,9 +135,8 @@ regression test, `Closes #<issue>`, and the green-CI link. Dispose sibling bugs 
 with the same **nit disposition** ladder as `/shipmates-ship-issue` Stage 7 (default absorb-first for cheap
 in-scope leftovers; cap and batch any filed issues; never open one ticket per trivial leftover).
 Report: root cause, the red→green proof, review verdicts, fix rounds, PR link, disposition counts,
-and the absolute `<WORKTREE_DIR>` path (for cleanup or resume).
-
-<!-- shipmates:why-merge-pr -->
+and the absolute `<WORKTREE_DIR>` path (for cleanup or resume). List each disposed finding (fixed,
+filed, or declined with a reason), not only counts.
 
 ---
 

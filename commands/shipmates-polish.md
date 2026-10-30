@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-polish — iterate to a specialist's sign-off
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Take a visual / UI / output artifact and refine it in a **loop**: produce it, have the right
 specialist critique what they actually SEE (not the source that made it), apply the concrete fixes,
 re-produce, re-review — until that specialist **genuinely signs off** or a round cap is hit. This is
@@ -156,6 +156,13 @@ Each round:
    prevent collision); apply the changes where Stage 0 put you — the
    worktree branch under `MODE=pr`, the working tree under `MODE=edit-in-place`. Keep the change scoped
    to the notes — no unrelated drift.
+
+   **Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+   one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+   in progress. For parallel builder fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+   call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+   status polling. A rejected builder is a failed run — never silently shrink the fix team.
+
 4. **Re-produce** — re-run the harness and capture the new artifact.
 5. Keep a one-line changelog per round, naming that round's capture-matrix coverage, so the trajectory
    and the coverage are both visible.
@@ -166,7 +173,11 @@ reviewer's remaining notes. Escalate; don't spin.
 ## Stage 4 — Report
 
 Show the user the final artifact (path / screenshot), the reviewer's verdict in its own words, the
-number of rounds, and a short before → after of what changed. Dispose allowed nits with the
+number of rounds, and a short before → after of what changed. Stage 1 stays the inspection. The report
+names the rendered artifact path opened, or states inspection was unavailable and does not ACCEPT that surface. Findings stay in working memory
+and are fixed, filed, or declined with a reason there, not only as counts. Captures stay in the
+worktree and are not committed as a ledger — never a per-run findings ledger under `.shipmates/`
+(`.shipmates/worktrees/` stays allowed). Dispose allowed nits with the
 `/shipmates-ship-issue` Stage 7 ladder (absorb when cheap; else PR-note or capped/batched issues — never one
 ticket per nit by default). Under `MODE=pr`, commit the rounds — staging only the paths the rounds actually
 touched, never `git add -A`, since the tree may hold unrelated uncommitted work — then push per
@@ -181,8 +192,6 @@ touched, never `git add -A`, since the tree may hold unrelated uncommitted work 
   run. Push, comment, and stop regardless; say so in the report. Leave `<WORKTREE_DIR>` in place
   either way — it isn't polish's PR to merge or clean up.
 - `new-branch`: push `<BRANCH>` and open a new PR with the same renders cited by path.
-
-<!-- shipmates:why-merge-pr -->
 
 Either way, then run the CI gate: poll `gh pr checks` until nothing is pending; a red check means
 pulling the failing log, fixing it, re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after

@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 ---
 # /shipmates-auto-trunk — TDD loop that drives trunk green, one commit at a time
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Take a single goal and run it to done on the default branch: break it into an
 ordered task list, write or modify a failing test before every source change,
 implement the smallest change that makes the test pass, run the repo's own

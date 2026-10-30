@@ -279,8 +279,8 @@ assert_file_exists "$PROJ/.codex/agents/architect.toml" "Codex agent present"
 
 cmd_run "$BIN" install --harness github-copilot --dir "$PROJ" --with-tools none >/dev/null 2>&1
 SHARED_FILES=$(find "$PROJ" -type f | wc -l)
-# 33 (codex) + 13 (github-copilot agents) + 1 receipt = 47
-[ "$SHARED_FILES" -eq 47 ] && ok "After github-copilot: 47 files" || fail "After github-copilot: $SHARED_FILES files (expected 47)"
+# 33 (codex) + 13 (github-copilot agents) + 1 receipt + 1 instructions file = 48
+[ "$SHARED_FILES" -eq 48 ] && ok "After github-copilot: 48 files" || fail "After github-copilot: $SHARED_FILES files (expected 48)"
 assert_file_exists "$PROJ/.github/agents/architect.agent.md" "GitHub agent present"
 assert_file_exists "$PROJ/.agents/skills/shipmates-ship-issue/SKILL.md" "Shared skill still present"
 

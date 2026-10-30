@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Agent, Grep, Glob
 disable-model-invocation: true
 ---
 # /shipmates-deslop — audit the debt, file it as an epic, let the captain choose what ships
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Every repository carries debt no issue tracks: an import nothing imports, two copies of one function
 that have quietly drifted apart, a wrapper that only passes its arguments through, a subsystem with
 seven internal states whose only caller reads a boolean, a feature flag that has read `true` since the
@@ -139,8 +139,8 @@ orchestrate the ones that exist, and say which ones were missing.
 
 ## Stage 1 — Discovery census  ⛔ the contract  (agents: `sdet`, `security-engineer`, `technical-writer`, `architect` × N, parallel across classes)
 
-**This census is the contract.** Every finding it records ends filed or explicitly excluded, with a
-reason. Silent truncation is a failure of the run, not a smaller run.
+**This census is the contract.** Every finding it records ends filed or declined — explicitly excluded,
+with a reason. Silent truncation is a failure of the run, not a smaller run.
 
 - Run the Stage 0 analysers and complement them with agent-driven reading. Under `EXECUTION=fanout`,
   split the survey by finding class (or by subtree for a large repo) across named crew subagents up to
@@ -150,6 +150,12 @@ reason. Silent truncation is a failure of the run, not a smaller run.
   above), an `architect` per structural or
   near-duplicate class — each returning rows in the one shape below. **A generic worker is not a
   substitute for a named role here**: the class a worker is assigned is the specialism it must bring.
+
+  **Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+  one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+  in progress. For parallel census fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+  call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+  status polling. A rejected specialist is a failed run — never silently shrink the discovery team.
 - Every finding is one row: **stable ID**, `file:line`, **class**, a one-line rationale, the evidence
   that produced it, and the proposed action. A row without evidence is a hunch, not a finding.
 
@@ -326,8 +332,16 @@ Produce both artifacts, in every mode, and write neither into the tree under aud
   artifact you hand back to the captain — printed in the session, posted on the epic, or written outside
   the repository entirely. A repository whose own audit shows up as a diff has been changed by the thing
   that was supposed to be reading it. When you want the run diff to survive between runs, write it
-  somewhere durable (`$TMPDIR` is not) and name that location in the report.
-- **The JSON ledger** alongside it — the same findings and stable IDs, machine readable, so two runs can
+  somewhere durable outside the repository (`$TMPDIR` is not, and never under `.shipmates/`) and name
+  that location in the report. Do not delete an out-of-repo ledger. Each finding kept in working memory is fixed, filed, or declined with a reason in the session
+  report — not only as counts, and not only in epic sub-issues that `report` mode does not create.
+  Under `report`, nothing is filed, so a finding that is not fixed is declined with a reason in that
+  report. When an epic is filed, its sub-issues are an additional tracked record, not a substitute for
+  the report. A docs acceptance names the rendered artifact inspected, or states inspection was
+  unavailable. `.shipmates/worktrees/` stays allowed for temporary captures that leave with cleanup; it
+  is not the durable ledger. The census contract above is unchanged. Do not write a per-run findings ledger under `.shipmates/` or anywhere else in the repository.
+- **The JSON ledger** alongside it, in that same place outside the repository and never under
+  `.shipmates/` — the same findings and stable IDs, machine readable, so two runs can
   be diffed, CI can consume them, and a sub-issue can reference a finding ID directly. Emitting it is
   what makes Stage 1's determinism checkable rather than aspirational.
 - **The run diff** against the previous report: new, resolved, carried-over.
@@ -336,8 +350,9 @@ Produce both artifacts, in every mode, and write neither into the tree under aud
   it changes how every grade below should be read.
 - **The coverage-of-the-scan footer** and the unscanned remainder from Stage 1.
 
-Under `MODE=report` the run **stops here**, stating plainly that these findings are not durable work and
-what it would take to make them so.
+Under `MODE=report` the run **stops here**. The session report is the accountable record: each finding
+is fixed, filed, or declined with a reason. State plainly that nothing was filed, and what it would take
+to make the findings tracked work.
 
 ---
 

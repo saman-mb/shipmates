@@ -6,7 +6,6 @@ import {
   brokerWanted,
   captainReserved,
   decideSpawn,
-  liveCap,
   offState,
   parseState,
 } from "./policy.mjs";
@@ -15,6 +14,7 @@ const LOCAL = "local-a";
 const LOCAL_B = "local-b";
 const LOCAL_C = "local-c";
 const CLOUD = "cloud-a";
+const CLOUD_B = "cloud-b";
 
 const ticks = [LOCAL, LOCAL_B, LOCAL_C];
 const loaded = [LOCAL, LOCAL_B, LOCAL_C];
@@ -112,7 +112,7 @@ test("Local refuses a cloud name and does not read the tag table", () => {
     task: "review",
   });
   assert.equal(refused.action, "block");
-  assert.match(refused.reason, /ticked loaded local/);
+  assert.match(refused.reason, /local model pi lists/);
   assert.equal(SHIPPED_TAG.architect, "cloud");
 });
 
@@ -180,10 +180,74 @@ test("doer checklist fires for sdet even if flipped to cloud, not for architect 
   assert.equal(judge.prepend, undefined);
 });
 
-test("cap stays at a captain ceiling above the loaded count, then drops", () => {
-  assert.equal(liveCap(5, ticks, loaded), 5);
-  assert.equal(liveCap(5, ticks, [LOCAL, LOCAL_B]), 4);
-  assert.equal(liveCap(5, ticks, []), 0);
+test("empty or absent ticks accept any pi-listed local model", () => {
+  const parsed = parseState({ switch: "Split", ticks: [], ceiling: 5 });
+  const ok = decideSpawn({
+    state: parsed,
+    role: "senior-engineer",
+    model: LOCAL,
+    modelTag: "local",
+    loaded: [LOCAL, LOCAL_B],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(ok.action, "allow");
+  assert.equal(ok.honoured, true);
+});
+
+test("present ticks narrow the local candidate set", () => {
+  const narrowed = state({ ticks: [LOCAL_B] });
+
+  const blocked = decideSpawn({
+    state: narrowed,
+    role: "senior-engineer",
+    model: LOCAL,
+    modelTag: "local",
+    loaded: [LOCAL, LOCAL_B],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(blocked.action, "block");
+  assert.match(blocked.reason, /local model pi lists and is ticked/);
+  assert.match(blocked.reason, /local-b/);
+
+  const allowed = decideSpawn({
+    state: narrowed,
+    role: "senior-engineer",
+    model: LOCAL_B,
+    modelTag: "local",
+    loaded: [LOCAL, LOCAL_B],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(allowed.action, "allow");
+  assert.equal(allowed.honoured, true);
+});
+
+test("refusal copy lists real free cloud models from pi registry", () => {
+  const result = decideSpawn({
+    state: state({ ticks: [] }),
+    role: "architect",
+    model: null,
+    modelTag: null,
+    loaded: [LOCAL],
+    busy: [],
+    cloudModels: [CLOUD, CLOUD_B],
+    runningLocal: 0,
+    runningAll: 0,
+  });
+  assert.equal(result.action, "block");
+  assert.doesNotMatch(result.reason, /Free cloud models: none/);
+  assert.match(result.reason, /cloud-a, cloud-b/);
 });
 
 test("Split ignores cloud seats and Local counts every crew seat", () => {

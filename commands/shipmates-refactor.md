@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 ---
 # /shipmates-refactor — pin behaviour → transform → prove equivalence
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 A refactor that quietly changes behaviour is a bug with good PR copy. The gate here is the one thing
 that distinguishes the two: **behaviour is pinned in tests written before the change, and those tests
 pass unmodified afterwards.** If a test had to be edited to make the refactor pass, it wasn't a
@@ -80,8 +80,15 @@ task rather than stalling in speculative design.
 2. **Gitignore the worktree root** when `WORKTREE_LAYOUT=nested` — idempotently ensure
    `.shipmates/worktrees/` is in `<repo>/.gitignore` (append only when missing; create with a one-line
    Shipmates comment if absent). Never rewrite unrelated rules.
-3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`. **`git -C <repo> fetch origin`** is required;
-   stop if fetch fails. Fresh `worktree add … origin/<BASE_BRANCH>` is pull-latest.
+3. **Sync base ref** — `BASE_REF=origin/<BASE_BRANCH>`.
+   - **`git -C <repo> fetch origin`** is required; stop if fetch fails.
+   - Check out the local base branch: `git -C <repo> checkout <BASE_BRANCH>`.
+   - Fast-forward it to the fetched tip: `git -C <repo> pull --ff-only` (equivalently
+     `git -C <repo> reset --hard origin/<BASE_BRANCH>`). If the local branch has diverging commits
+     that cannot be fast-forwarded, **stop loudly** and ask the captain to reconcile — never silently
+     branch from a stale or overridden tip.
+   - Record `BASE_SHA=$(git -C <repo> rev-parse origin/<BASE_BRANCH>)` in the run report.
+   Fresh `worktree add … origin/<BASE_BRANCH>` now starts from the fresh tip.
 4. **Resume / reuse** — re-fetch; rebase onto `BASE_REF` when behind (sync conflicts → `MAX_FIX_ROUNDS`).
 5. **Create the worktree** (when branch/worktree do not yet exist):
 
@@ -97,6 +104,13 @@ git -C <repo> worktree add <WORKTREE_DIR> -b <BRANCH> origin/<BASE_BRANCH>
   independent, file-disjoint seams or decoupled modules, spawn multiple Builders (`senior-engineer` × N)
   concurrently in a single message up to `MAX_CONCURRENT_WORKERS`, each with a machine-checkable
   **owned-paths manifest** (diffed against `git status` and `git diff --name-only` upon return to prevent seam collisions).
+
+  **Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+  one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+  in progress. For parallel builder fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+  call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+  status polling. A rejected builder is a failed run — never silently shrink the refactor team.
+
 - Under `EXECUTION=sequential`, execute refactoring transforms serially one seam at a time.
 - For single-seam refactors, spawn a single `senior-engineer`.
 
@@ -127,8 +141,6 @@ Then the full suite green, and the **CI gate**: poll `gh pr checks` until done; 
 
 ## Stage 5 — Review  (agents, on the pushed PR head)
 
-<!-- shipmates:acceptance-board -->
-
 **Deferral check**: with `board=epic-deferred` or `board=off` set (the shared acceptance-board delegation
 modes), skip Stage 5 and proceed to Stage 6; `epic-deferred` must name the milestone board that will run
 the review, and `board=off` is recorded in the report and PR body.
@@ -153,9 +165,8 @@ paragraph, the characterization tests and that they are unmodified, any pre-exis
 touched and why, and the green-CI link. Bugs found while refactoring still must not be mixed into
 the refactor (see Guardrails) — file them with the `/shipmates-ship-issue` Stage 7 disposition rules
 (prefer one batched issue; cap; dedupe). In-scope polish on already-touched refactor paths may be
-absorbed when behaviour-preserving and within absorb budgets.
-
-<!-- shipmates:why-merge-pr -->
+absorbed when behaviour-preserving and within absorb budgets. The delivery report lists each disposed
+finding (fixed, filed, or declined with a reason), not only counts.
 
 ---
 

@@ -173,6 +173,14 @@ When a seat is re-spawned, they review the **pushed SHA**. The report lists `re-
 
 If `principal-engineer` or any role does not resolve to a shipped crew role (skill-only harnesses until crew agents ship), fall back to a general-purpose agent with the role brief inlined and note the fallback — never silently skip a mandatory seat.
 If the child-launch / subagent runtime cannot load (spawn dies before any role resolves), **stop** and name the diagnostic — never silently run the board inline, never silently set `board=off`.
+
+**Finding accountability**
+
+Each finding kept in working memory has a stable id for the run. Its final disposition is exactly one of fixed, filed, or declined with a reason. Counts alone are not accountability. The list lives in the PR completion comment, the posted review comment, or the session report when the command opens no PR, plus any issue actually filed — do not tell a later agent to read a local run history. Do not write a per-run findings ledger, JSON dump, or report under `.shipmates/` or anywhere else in the repository, committed or not. Temporary captures stay in the run's existing temporary worktree and leave with that command's existing cleanup. This does not forbid `.shipmates/worktrees/`, install receipts, contributor steering, or an existing config file such as `.shipmates/deslop.toml`.
+
+A blocker is fixed or the run stops and escalates — it is not declined in order to ship. Nits are not auto-filed; they follow the command's existing ladder. Map, do not replace: absorb = fixed, file = filed, pr-note = declined with that note as the reason. Do not change `NITS_MODE` tokens. A read-only review records a recommended disposition in the review comment; it does not fix, file, or write a ledger. Security accepted-risk is declined with a reason, not a new status — do not rename it.
+
+When the change affects documentation or a visual artifact, the accepting reviewer was not given the builder's narrative and names the rendered artifact actually inspected (path or URL). If direct inspection is unavailable, the verdict states that limitation ("needs a human visual pass" is allowed) and does not ACCEPT that surface silently. A machine-checkable pin does not replace that inspection.
 <!-- acceptance-board:end -->
 
 ## Reusable epic integration board
@@ -234,6 +242,13 @@ Convene when the integrated epic plausibly trips the concern; name gated-out sea
 **Harness fallback**
 
 Same as the unit acceptance board — never silently skip a mandatory seat.
+
+Integration findings stay in working memory until closure notes list each one as fixed, filed, or
+declined with a reason — not only counts, and not a second filing of unit nits. Do not write a
+per-run findings ledger under `.shipmates/` or elsewhere in the repository; temporary captures stay in
+the existing worktree and leave with cleanup. `.shipmates/worktrees/` stays allowed. A docs or visual
+acceptance names the rendered artifact inspected, or states that inspection was unavailable and does
+not ACCEPT that surface.
 <!-- epic-integration-board:end -->
 
 ## Reusable subagent preamble
@@ -343,6 +358,8 @@ stated finding.
 | grok-build | query | per-spawn | abort | separate key · model-defined menu, no clamp documented |
 | devin | inherit | session-level | none | none · only an interactive cycle |
 
+**Pi.** A zero-cost local endpoint is not necessarily reachable. Only pick local when crew switch routes local seats; otherwise prefer cloud or `inherit`.
+
 **Additive, never a substitute.** Routing refines tiered execution, it does not replace it: the tier is
 still the primary cost gate, and the target's surface decides only **which** capable model runs a
 mechanical unit — never **whether** a lighter execution path is chosen.
@@ -371,6 +388,7 @@ merge.
   instead of restating the ladder, the resolution order, or the per-target table inside a command.
 - Place `<!-- shipmates:why-merge-pr -->` once, next to PR-body requirements, on every command that
   opens a pull request — never copy the Why-merge prose into the command by hand.
+- The acceptance-board block is the source for finding accountability. Commands must not copy a second nit ladder; a command that expands the block only names where its delivery or review comment lists each disposition.
 
 - Put one shared preamble marker near the start of every command and keep its runtime input section at
   the end of the stable workflow.
