@@ -86,7 +86,7 @@
           <h2 class="section__title" id="what-title">What this agent does</h2>
         </div>
         <div class="order-prose">
-          <p>The product manager guards user value and the quality bar — not the code. It checks every acceptance criterion individually against the actual current state of the pushed change, running whatever is checkable rather than trusting the PR&#x27;s claims.</p>
+          <p>The product manager guards user value and the quality bar — not the code. It checks every acceptance criterion individually against the actual current state of the pushed change, taking the list from the issue rather than reviewing against a shorter one, and running whatever is checkable rather than trusting the PR&#x27;s claims.</p>
           <p>Beyond the ticket, it holds the change to the project&#x27;s Definition of Done: tests present, docs updated, and the non-functional expectations the product implies. It guards scope in both directions — rejecting under-delivery and gold-plating alike. During planning, it surfaces hidden requirements and names ambiguity rather than letting it slide.</p>
         </div>
       </div>
@@ -100,7 +100,7 @@
         <div class="agent-scenarios">
           <div class="agent-scenario">
             <h3 class="agent-scenario__title">A PR needs a verdict</h3>
-            <p class="agent-scenario__desc">Each acceptance criterion gets verified against the real, pushed state of the change — ACCEPT, ACCEPT-WITH-NITS, or REJECT with the specific unmet criteria listed.</p>
+            <p class="agent-scenario__desc">Each acceptance criterion gets verified against the real, pushed state of the change, and a criterion passes only when the shipped behaviour does what it says. A documented gap is not a pass: ACCEPT and ACCEPT-WITH-NITS are unavailable while any criterion fails, and an unmet criterion is a blocker rather than a nit.</p>
           </div>
           <div class="agent-scenario">
             <h3 class="agent-scenario__title">Requirements are fuzzy</h3>

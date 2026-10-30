@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.2] - 2026-10-30
+
+### Fixed
+
+- **A `manual-only` label can no longer stand in for a check on an acceptance criterion (#611).** The product-manager role already refused a label as a pass, but the acceptance-board doctrine the same agent reads still allowed an explicit `manual-only` label in place of a machine-checkable pin — the exact escape the role rule was meant to close, shipped twice through `steering/bootstrap.md` and its `docs/COST.md` mirror. A label no longer substitutes: where no pin is possible the criterion is recorded unverified and fails, unless the issue itself or the captain defers it, and `ACCEPT-WITH-NITS` is now refused alongside `ACCEPT` while any criterion fails.
+- **The role says what it means about a documented gap, and names `unproven` as a non-answer (#611).** "A doc, changelog line, review note" could be read as forbidding the seat from requiring updated docs at all, which pulled against the Definition of Done bullet directly beneath it; it now says a line that *merely describes the gap* is not a pass. The generated agent page no longer advertises `ACCEPT-WITH-NITS` as an available verdict.
+- **The test that guards the acceptance-board doctrine asserts the rule it now guards (#611).** It still required the board to "name the `manual-only` escape", so it passed only because the phrase survived inside a negation: it would have failed a legitimate cleanup and passed a reinstated escape.
+
 ## [0.17.1] - 2026-10-30
 
 ### Added

@@ -986,7 +986,8 @@ AGENT_COPY = {
         what=(
             "The product manager guards user value and the quality bar — not the code. It "
             "checks every acceptance criterion individually against the actual current state of "
-            "the pushed change, running whatever is checkable rather than trusting the PR's "
+            "the pushed change, taking the list from the issue rather than reviewing against a "
+            "shorter one, and running whatever is checkable rather than trusting the PR's "
             "claims.",
             "Beyond the ticket, it holds the change to the project's Definition of Done: tests "
             "present, docs updated, and the non-functional expectations the product implies. It "
@@ -998,8 +999,10 @@ AGENT_COPY = {
             AgentScenario(
                 "A PR needs a verdict",
                 "Each acceptance criterion gets verified against the real, pushed state of the "
-                "change — ACCEPT, ACCEPT-WITH-NITS, or REJECT with the specific unmet criteria "
-                "listed.",
+                "change, and a criterion passes only when the shipped behaviour does what it "
+                "says. A documented gap is not a pass: ACCEPT and ACCEPT-WITH-NITS are "
+                "unavailable while any criterion fails, and an unmet criterion is a blocker "
+                "rather than a nit.",
             ),
             AgentScenario(
                 "Requirements are fuzzy",
