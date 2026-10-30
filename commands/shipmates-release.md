@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-release — changelog → CI-green tag → (opt-in) publish
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Turn "what's merged since the last release" into a clean, reversible release. The `technical-writer`
 builds the changelog from the real merge history (every user-visible change covered), the version is
 bumped consistently, and it's gated on **green CI at the exact commit being tagged** plus an SRE

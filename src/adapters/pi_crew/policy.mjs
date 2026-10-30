@@ -80,15 +80,6 @@ export function effectiveTag(state, role) {
   return SHIPPED_TAG[role] ?? null;
 }
 
-export function liveCap(ceiling, ticks, loaded) {
-  if (!Number.isInteger(ceiling) || ceiling < 0) return null;
-  const up = new Set(loaded);
-  const missing = ticks.filter((model) => !up.has(model));
-  if (missing.length === 0) return ceiling;
-  if (missing.length === ticks.length) return 0;
-  return Math.max(0, ceiling - missing.length);
-}
-
 export function missingHeadings(task) {
   const text = typeof task === "string" ? task : "";
   return ORDER_HEADINGS.filter((heading) => !text.includes(heading));
@@ -98,15 +89,24 @@ function listed(models) {
   return models.length ? models.join(", ") : "";
 }
 
+function narrowedCandidates(loaded, ticks) {
+  if (!ticks || ticks.length === 0) return loaded.slice();
+  return loaded.filter((model) => ticks.includes(model));
+}
+
+function tickQualifier(ticks) {
+  return ticks && ticks.length ? " and is ticked" : "";
+}
+
 /**
  * @param {object} input
  * @param {ReturnType<typeof parseState>} input.state
  * @param {string} input.role
  * @param {string | null | undefined} input.model
  * @param {"local" | "cloud" | null} input.modelTag where the named model is served
- * @param {string[]} input.loaded models the servers report as loaded
+ * @param {string[]} input.loaded local models pi lists as available
  * @param {string[]} input.busy plugin in-flight model ids
- * @param {string[]} input.cloudModels cloud models pi already lists
+ * @param {string[]} input.cloudModels cloud models pi lists as available
  * @param {number} input.runningLocal in-flight seats that count in Split
  * @param {number} input.runningAll in-flight crew seats
  * @param {string} [input.task]
@@ -123,23 +123,18 @@ export function decideSpawn(input) {
     return { action: "block", reason: "Refused: no ceiling is set. Run /shipmates-crew. I will not invent a number." };
   }
 
-  const loaded = new Set(input.loaded ?? []);
   const busy = new Set(input.busy ?? []);
   const ticks = state.ticks;
-  const dropped = ticks.filter((model) => !loaded.has(model));
-  const cap = liveCap(state.ceiling, ticks, input.loaded ?? []);
-  const freeLocal = ticks.filter((model) => loaded.has(model) && !busy.has(model));
+  const candidates = narrowedCandidates(input.loaded ?? [], ticks);
+  const cap = state.ceiling;
+  const freeLocal = candidates.filter((model) => !busy.has(model));
   const freeCloud = (input.cloudModels ?? []).filter((model) => !busy.has(model));
 
-  const dropNote = dropped.length
-    ? `${dropped.join(", ")} is no longer loaded, so it is skipped, not replaced. Live cap is now ${cap}. `
-    : "";
-
   if (state.switch === "Local") {
-    if (input.modelTag !== "local" || !ticks.includes(input.model) || !loaded.has(input.model)) {
+    if (input.modelTag !== "local" || !candidates.includes(input.model)) {
       return {
         action: "block",
-        reason: `${dropNote}Refused: ${input.role} must be a ticked loaded local model. Free models: ${listed(freeLocal) || "none"}. I will not pick one.`,
+        reason: `Refused: ${input.role} must be a local model pi lists${tickQualifier(ticks)}. Free models: ${listed(freeLocal) || "none"}. I will not pick one.`,
       };
     }
     if (busy.has(input.model)) {
@@ -148,7 +143,7 @@ export function decideSpawn(input) {
     if (input.runningAll >= cap) {
       return { action: "block", reason: `Waiting: live cap is ${cap}, ${input.runningAll} already running. Not started. Run this seat again when one returns. I will not send it to the cloud or to an unticked model.` };
     }
-    return finish(input, dropNote, cap, input.runningAll);
+    return finish(input, cap, input.runningAll);
   }
 
   const tag = effectiveTag(state, input.role);
@@ -156,11 +151,11 @@ export function decideSpawn(input) {
     const free = tag === "local" ? freeLocal : freeCloud;
     return {
       action: "block",
-      reason: `${dropNote}Refused: ${input.role} is tagged ${tag}. ${input.model || "No model"} is the wrong tag. Free ${tag} models: ${listed(free) || "none"}. Name one and retry. I will not substitute a model.`,
+      reason: `Refused: ${input.role} is tagged ${tag}. ${input.model || "No model"} is the wrong tag. Free ${tag} models: ${listed(free) || "none"}. Name one and retry. I will not substitute a model.`,
     };
   }
-  if (tag === "local" && !loaded.has(input.model)) {
-    return { action: "block", reason: `${dropNote}Refused: ${input.model} is not loaded. It is skipped, not replaced. Free local models: ${listed(freeLocal) || "none"}.` };
+  if (tag === "local" && !candidates.includes(input.model)) {
+    return { action: "block", reason: `Refused: ${input.model} is not a local model pi lists${tickQualifier(ticks)}. Free local models: ${listed(freeLocal) || "none"}.` };
   }
   if (tag === "local" && busy.has(input.model)) {
     return { action: "block", reason: `Waiting: ${input.model} is busy. This seat stays on ${input.model}. Not moved. Run it again when that model is free. I will not substitute a model.` };
@@ -169,15 +164,15 @@ export function decideSpawn(input) {
   if (tag === "local" && running >= cap) {
     return { action: "block", reason: `Waiting: live cap is ${cap}, ${input.runningLocal} already running. Not started. Run this seat again when one returns. I will not send it to the cloud or to an unticked model.` };
   }
-  return finish(input, dropNote, cap, running);
+  return finish(input, cap, running);
 }
 
-function finish(input, dropNote, cap, running) {
+function finish(input, cap, running) {
   const slots = Math.max(0, cap - running);
   const mode = input.state.switch;
   const line = mode === "Local"
-    ? `${dropNote}Local. Live cap ${cap}. Slots free ${slots}. Crew seats only. You do not count. Honoured: ${input.role} stays on ${input.model}.`
-    : `${dropNote}Split. Live cap ${cap}. Slots free ${slots}. Local seats only. Honoured: ${input.role} stays on ${input.model}.`;
+    ? `Local. Live cap ${cap}. Slots free ${slots}. Crew seats only. You do not count. Honoured: ${input.role} stays on ${input.model}.`
+    : `Split. Live cap ${cap}. Slots free ${slots}. Local seats only. Honoured: ${input.role} stays on ${input.model}.`;
   if (input.state.switch !== "Off" && isDoer(input.role)) {
     const missing = missingHeadings(input.task);
     if (missing.length) {

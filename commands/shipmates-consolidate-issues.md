@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-consolidate-issues — inventory → cross-check history → close → migrate → merge → bundle
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Turn a drifting issue tracker back into a plan. The whole open-issue set is pulled, every issue is
 checked against the project's git history and merged PRs to see what is **already done**, the done
 and stale ones are closed, legacy-shaped issues are migrated to the tracker's current conventions,
@@ -146,6 +146,12 @@ run. Spawn one `product-manager` per **area** (from the project's existing area 
 theming runs in parallel; give each its area's issues, the repo context, and the rule that bundles
 are **thematic + dependency-ordered + individually shippable** — never a grab-bag of unrelated
 tickets. Each returns structured bundle proposals: `name`, `theme` (one line), `issues` (numbers),
+
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel theming fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected product-manager is a failed run — never silently drop an area.
 `order` (build sequence within the bundle), and a suggested label. Orphan issues that fit no theme
 stay as singletons — don't force them in.
 

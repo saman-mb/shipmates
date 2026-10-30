@@ -27,6 +27,13 @@ fn main() {
             global_steering.to_string_lossy().into_owned(),
         ));
     }
+    let bootstrap = root.join("steering").join("bootstrap.md");
+    if bootstrap.is_file() {
+        entries.push((
+            "steering/bootstrap.md".to_string(),
+            bootstrap.to_string_lossy().into_owned(),
+        ));
+    }
     for dir in ["crew", "commands"] {
         let base = root.join(dir);
         if !base.is_dir() {

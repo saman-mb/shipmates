@@ -76,6 +76,7 @@ pub(crate) fn class_slug(class: FindingClass) -> &'static str {
         FindingClass::CorruptReceipt => "corrupt-receipt",
         FindingClass::PostUpgradeMismatch => "post-upgrade-mismatch",
         FindingClass::ToolFailure => "tool-failure",
+        FindingClass::PiCrewConfig => "pi-crew-config",
     }
 }
 

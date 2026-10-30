@@ -422,9 +422,9 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
     let re_tokens = regex::Regex::new(r"\{\{[a-zA-Z:-]+\}\}").unwrap();
     for command in &commands {
         assert_eq!(
-            command.narrative.matches("<!-- shipmates:command-preamble -->").count(),
+            command.narrative.matches("<!-- shipmates:bootstrap -->").count(),
             1,
-            "{} must reference shared command preamble once",
+            "{} must reference shared bootstrap once",
             command.name
         );
         assert_eq!(
@@ -441,7 +441,7 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
         );
         assert!(
             command.narrative.find("## Runtime input").unwrap()
-                > command.narrative.find("<!-- shipmates:command-preamble -->").unwrap(),
+                > command.narrative.find("<!-- shipmates:bootstrap -->").unwrap(),
             "{} places volatile input below stable workflow",
             command.name
         );
@@ -480,9 +480,9 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
     assert_eq!(roles.len(), 13);
     for role in &roles {
         assert_eq!(
-            role.body.matches("<!-- shipmates:subagent-preamble -->").count(),
+            role.body.matches("<!-- shipmates:bootstrap -->").count(),
             1,
-            "{} must reference shared subagent preamble once",
+            "{} must reference shared bootstrap once",
             role.name
         );
     }
@@ -501,15 +501,13 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
                 .collect();
             assert_eq!(matches.len(), 1, "{target} must emit one {} command", command.name);
             let (path, content) = matches[0];
-            assert!(content.contains("## Cost discipline"), "{target} {path} missed command preamble");
-            // The ruleset is global: the shared preamble carries it, so every
-            // target's every command must render it — not just the ones this repo
-            // happened to wire a marker into.
-            assert_eq!(
-                content.matches("## Model routing").count(),
-                1,
-                "{target} {path} must carry the model-routing ruleset exactly once"
+            // The bootstrap is rendered as a short pointer because every harness
+            // auto-loads the full shared principles from its instructions file.
+            assert!(
+                content.contains("Shared Shipmates bootstrap principles"),
+                "{target} {path} missed bootstrap pointer"
             );
+            assert!(!content.contains("<!-- shipmates:bootstrap -->"), "{target} {path} leaked bootstrap marker");
             assert!(!content.contains("shipmates:command-preamble"), "{target} {path} leaked command marker");
             assert!(!content.contains("shipmates:acceptance-board"), "{target} {path} leaked board marker");
             assert!(
@@ -536,10 +534,155 @@ fn test_prompt_cost_layout_is_shared_and_cache_friendly() {
             }
             assert_eq!(matches.len(), 1, "{target} must emit one {} role", role.name);
             let (path, content) = matches[0];
-            assert!(content.contains("## Return discipline"), "{target} {path} missed role preamble");
-            assert!(!content.contains("shipmates:subagent-preamble"), "{target} {path} leaked role marker");
+            assert!(
+                content.contains("Shared Shipmates bootstrap principles"),
+                "{target} {path} missed bootstrap pointer"
+            );
+            assert!(!content.contains("<!-- shipmates:bootstrap -->"), "{target} {path} leaked bootstrap marker");
         }
     }
+}
+
+/// Every harness must be able to render or install the shared bootstrap prose
+/// without panicking. This is Slice A of the bootstrap refactor: the bootstrap
+/// file exists, the render layer can expand it, and the steering layer can
+/// install it through a project-scope instructions file.
+#[test]
+fn test_bootstrap_renders_or_installs_for_every_target() {
+    let bootstrap = shipmates::adapters::render::bootstrap_content();
+    assert!(!bootstrap.is_empty());
+    assert!(
+        bootstrap.contains("## Cost discipline"),
+        "bootstrap must contain cost discipline"
+    );
+    assert!(
+        bootstrap.contains("## Argument intake"),
+        "bootstrap must contain argument intake"
+    );
+    assert!(
+        bootstrap.contains("## Model routing"),
+        "bootstrap must contain model routing"
+    );
+    assert!(
+        bootstrap.contains("## Reusable acceptance board"),
+        "bootstrap must contain acceptance board"
+    );
+    assert!(
+        bootstrap.contains("## Reusable epic integration board"),
+        "bootstrap must contain epic integration board"
+    );
+    assert!(
+        bootstrap.contains("## Reusable subagent preamble"),
+        "bootstrap must contain subagent preamble"
+    );
+    assert!(
+        bootstrap.contains("## Why merge this (PR body)"),
+        "bootstrap must contain why-merge-pr"
+    );
+
+    let dialects = [
+        ("claude-code", &shipmates::adapters::render::CLAUDE_CODE),
+        ("opencode", &shipmates::adapters::render::OPENCODE),
+        ("antigravity", &shipmates::adapters::render::ANTIGRAVITY),
+        ("codex", &shipmates::adapters::render::CODEX),
+        ("cursor", &shipmates::adapters::render::AGENT_SKILLS),
+        (
+            "github-copilot",
+            &shipmates::adapters::render::GITHUB_COPILOT,
+        ),
+        ("pi", &shipmates::adapters::render::PI),
+        ("grok-build", &shipmates::adapters::render::GROK_BUILD),
+        ("devin", &shipmates::adapters::render::DEVIN),
+    ];
+
+    for (name, d) in dialects {
+        let rendered = shipmates::adapters::render::render_body("<!-- shipmates:bootstrap -->", d);
+        assert!(
+            !rendered.contains("<!-- shipmates:bootstrap -->"),
+            "{name} leaked bootstrap marker"
+        );
+        match d.bootstrap_mode {
+            shipmates::adapters::render::BootstrapMode::Inline => {
+                assert!(
+                    rendered.contains("## Cost discipline"),
+                    "{name} inline bootstrap missing cost discipline"
+                );
+            }
+            shipmates::adapters::render::BootstrapMode::Pointer => {
+                assert!(
+                    rendered.contains(d.instructions_primary),
+                    "{name} pointer bootstrap missing instructions reference"
+                );
+            }
+            shipmates::adapters::render::BootstrapMode::Omit => {
+                assert!(
+                    rendered.trim().is_empty(),
+                    "{name} omit bootstrap was not empty"
+                );
+            }
+        }
+    }
+
+    // Project-scope install for GitHub Copilot, the only TierC harness.
+    let project = tempfile::tempdir().unwrap();
+    let instructions_dir = project.path().join(".github").join("instructions");
+    std::fs::create_dir_all(&instructions_dir).unwrap();
+    let path = instructions_dir.join("shipmates.instructions.md");
+    std::fs::write(&path, "# Existing project instructions\n\nKeep me.\n").unwrap();
+
+    let rendered = shipmates::adapters::render::render_instructions(
+        bootstrap,
+        shipmates::adapters::render::GITHUB_COPILOT.instructions_primary,
+        shipmates::adapters::render::GITHUB_COPILOT.instructions_fallback,
+    );
+    let outcome =
+        shipmates::steering::install_project_steering("github-copilot", project.path(), &rendered)
+            .unwrap();
+    assert!(
+        matches!(outcome, shipmates::steering::SteeringOutcome::Updated(_)),
+        "copilot project steering should be updated"
+    );
+    let content = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        content.contains("Keep me."),
+        "copilot project steering must preserve existing content"
+    );
+    assert!(
+        content.contains("<!-- shipmates:global-steering -->"),
+        "copilot project steering must contain managed block start"
+    );
+    assert!(
+        content.contains("## Cost discipline"),
+        "copilot project steering must contain bootstrap content"
+    );
+    assert!(
+        content.contains("AGENTS.md"),
+        "copilot project steering must render instructions token"
+    );
+
+    let outcome2 =
+        shipmates::steering::install_project_steering("github-copilot", project.path(), &rendered)
+            .unwrap();
+    assert!(
+        matches!(outcome2, shipmates::steering::SteeringOutcome::Unchanged(_)),
+        "copilot project steering should be idempotent"
+    );
+
+    let outcome3 =
+        shipmates::steering::uninstall_project_steering("github-copilot", project.path()).unwrap();
+    assert!(
+        matches!(outcome3, shipmates::steering::SteeringOutcome::Removed(_)),
+        "copilot project steering should be removed"
+    );
+    let after = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        !after.contains("<!-- shipmates:global-steering -->"),
+        "copilot project steering must remove managed block"
+    );
+    assert!(
+        after.contains("Keep me."),
+        "copilot project steering must keep existing content after uninstall"
+    );
 }
 
 /// The #407 defect was frontmatter that installed cleanly and was never
@@ -1853,6 +1996,197 @@ fn test_acceptance_board_docs_acs_require_machine_pin_or_manual_only() {
     );
 }
 
+/// Review findings stay accountable in the shared board, and a rendered
+/// acceptance must name the artifact that was actually inspected. The contract
+/// also forbids a persistent per-run ledger under `.shipmates/`.
+#[test]
+fn test_review_findings_are_accountable_without_a_local_ledger() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let doctrine = std::fs::read_to_string(root.join("docs/COST.md")).unwrap();
+    let board = doctrine
+        .split_once("<!-- acceptance-board:start -->")
+        .expect("cost doctrine has no acceptance-board start marker")
+        .1
+        .split_once("<!-- acceptance-board:end -->")
+        .expect("cost doctrine has no acceptance-board end marker")
+        .0;
+    let epic = doctrine
+        .split_once("<!-- epic-integration-board:start -->")
+        .expect("cost doctrine has no epic-integration-board start marker")
+        .1
+        .split_once("<!-- epic-integration-board:end -->")
+        .expect("cost doctrine has no epic-integration-board end marker")
+        .0;
+
+    for (name, slice) in [("acceptance-board", board), ("epic-integration-board", epic)] {
+        for phrase in [
+            "working memory",
+            "fixed",
+            "filed",
+            "declined",
+            "rendered artifact",
+            ".shipmates/worktrees/",
+            "per-run findings ledger",
+        ] {
+            assert!(
+                slice.contains(phrase),
+                "{name} must contain `{phrase}`"
+            );
+        }
+        for forbidden in [
+            ".shipmates/findings",
+            ".shipmates/reviews",
+            ".shipmates/reports",
+        ] {
+            assert!(
+                !slice.contains(forbidden),
+                "{name} must not name a ledger path `{forbidden}`"
+            );
+        }
+    }
+    assert!(
+        doctrine.contains("must not copy a second nit ladder"),
+        "authoring checklist must point at the acceptance-board block"
+    );
+
+    const BOARD_COMMANDS: &[&str] = &[
+        "shipmates-ship-issue",
+        "shipmates-pr-review",
+        "shipmates-fix-bug",
+        "shipmates-refactor",
+        "shipmates-migrate",
+    ];
+    const LOCAL_COMMANDS: &[&str] = &[
+        "shipmates-ship-epic",
+        "shipmates-harden",
+        "shipmates-document",
+        "shipmates-polish",
+        "shipmates-qa",
+        "shipmates-deslop",
+        "shipmates-onboard",
+    ];
+    const CREW: &[&str] = &[
+        "technical-writer",
+        "ux-ui-designer",
+        "art-director",
+        "product-manager",
+        "principal-engineer",
+    ];
+
+    let commands = load_commands(&root.join("commands")).unwrap();
+    let files = ClaudeCodeAdapter.build(&[], &commands).unwrap();
+
+    // With harness-native bootstrap (#609), Claude Code uses Pointer mode: the full
+    // acceptance-board / accountability contract lives in the shared bootstrap prose
+    // (installed via steering), not re-inlined into every skill. Skills must still
+    // point at project instructions and must not reintroduce the old markers.
+    let bootstrap = shipmates::adapters::render::bootstrap_content();
+    assert!(
+        bootstrap.contains("per-run findings ledger")
+            && bootstrap.contains("working memory")
+            && bootstrap.contains("rendered artifact")
+            && bootstrap.contains(".shipmates/worktrees/"),
+        "steering/bootstrap.md must carry the accountability contract for pointer harnesses"
+    );
+
+    for name in BOARD_COMMANDS {
+        let path = format!("harnesses/claude-code/.claude/skills/{name}/SKILL.md");
+        let rendered = files
+            .get(&path)
+            .unwrap_or_else(|| panic!("no rendered payload for {path}"));
+        assert!(
+            rendered.contains("Shared Shipmates bootstrap principles")
+                || rendered.contains("per-run findings ledger"),
+            "{name}: rendered skill must point at bootstrap or carry the accountability contract"
+        );
+        assert!(
+            !rendered.contains("shipmates:acceptance-board"),
+            "{name}: the acceptance-board marker must not survive into the payload"
+        );
+        for forbidden in [
+            ".shipmates/findings",
+            ".shipmates/reviews",
+            ".shipmates/reports",
+        ] {
+            assert!(!rendered.contains(forbidden), "{name}: must not name `{forbidden}`");
+        }
+    }
+
+    let epic_path = "harnesses/claude-code/.claude/skills/shipmates-ship-epic/SKILL.md";
+    let epic_rendered = files
+        .get(epic_path)
+        .unwrap_or_else(|| panic!("no rendered payload for {epic_path}"));
+    assert!(
+        epic_rendered.contains("Shared Shipmates bootstrap principles")
+            || (epic_rendered.contains("per-run findings ledger")
+                && epic_rendered.contains("rendered artifact")),
+        "ship-epic: rendered skill must point at bootstrap or carry the integration accountability contract"
+    );
+    assert!(
+        !epic_rendered.contains("shipmates:epic-integration-board"),
+        "ship-epic: the epic-board marker must not survive into the payload"
+    );
+
+    for name in LOCAL_COMMANDS.iter().chain(BOARD_COMMANDS.iter()) {
+        let canonical = std::fs::read_to_string(root.join("commands").join(format!("{name}.md")))
+            .unwrap_or_else(|e| panic!("read commands/{name}.md: {e}"));
+        for phrase in ["fixed", "filed", "declined"] {
+            assert!(
+                canonical.contains(phrase),
+                "{name}: command must account for a `{phrase}` disposition"
+            );
+        }
+    }
+    for name in LOCAL_COMMANDS {
+        let canonical = std::fs::read_to_string(root.join("commands").join(format!("{name}.md")))
+            .unwrap_or_else(|e| panic!("read commands/{name}.md: {e}"));
+        assert!(
+            canonical.contains("working memory")
+                && canonical.contains("rendered artifact")
+                && canonical.contains("per-run findings ledger")
+                && canonical.contains(".shipmates/worktrees/"),
+            "{name}: local review command must carry the locked accountability phrases"
+        );
+    }
+
+    let report_bug = files
+        .get("harnesses/claude-code/.claude/skills/shipmates-report-bug/SKILL.md")
+        .expect("rendered report-bug");
+    assert!(
+        !report_bug.contains("per-run findings ledger"),
+        "a non-review command must not gain the findings-ledger contract"
+    );
+
+    for name in CREW {
+        let body = std::fs::read_to_string(root.join("crew").join(format!("{name}.md")))
+            .unwrap_or_else(|e| panic!("read crew/{name}.md: {e}"));
+        assert!(
+            body.contains("rendered artifact"),
+            "{name}: reviewer must name the rendered artifact"
+        );
+    }
+
+    let qa = std::fs::read_to_string(root.join("commands/shipmates-qa.md")).unwrap();
+    assert!(
+        !qa.contains("when a disposition is recorded"),
+        "qa must not make a disposition optional"
+    );
+    assert!(
+        qa.contains("The default is declined"),
+        "qa's default report must decline an unfiled finding rather than leave it unrecorded"
+    );
+    let harden = std::fs::read_to_string(root.join("commands/shipmates-harden.md")).unwrap();
+    assert!(
+        harden.contains("deferred without an issue is declined"),
+        "harden report mode must map an unfiled deferral to declined"
+    );
+    let deslop = std::fs::read_to_string(root.join("commands/shipmates-deslop.md")).unwrap();
+    assert!(
+        deslop.contains("not only in epic sub-issues") && deslop.contains("The session report is the accountable record"),
+        "deslop report mode must account for findings in the session report"
+    );
+}
+
 /// The model-routing ruleset is a *global* one. It is expanded from the shared
 /// cost-discipline preamble, so **every** command carries it — not only the two
 /// that spawn the most subagents. A marker left in a single command would make
@@ -1864,18 +2198,12 @@ fn test_every_command_carries_the_model_routing_ruleset() {
     assert!(!commands.is_empty());
     let files = ClaudeCodeAdapter.build(&[], &commands).unwrap();
 
-    // The ruleset is sourced once, from the shared cost-discipline preamble.
-    let doctrine = std::fs::read_to_string(root.join("docs/COST.md")).unwrap();
-    let preamble = doctrine
-        .split_once("<!-- command-preamble:start -->")
-        .expect("cost doctrine has no command-preamble start marker")
-        .1
-        .split_once("<!-- command-preamble:end -->")
-        .expect("cost doctrine has no command-preamble end marker")
-        .0;
+    // The ruleset now lives in the shared bootstrap file; docs/COST.md keeps
+    // the canonical public copy, and every rendered command points to it.
+    let bootstrap = std::fs::read_to_string(root.join("steering/bootstrap.md")).unwrap();
     assert!(
-        preamble.contains("<!-- shipmates:model-routing -->"),
-        "the cost-discipline preamble must expand the model-routing ruleset"
+        bootstrap.contains("## Model routing"),
+        "steering/bootstrap.md must contain the model-routing ruleset"
     );
 
     for command in &commands {
@@ -1886,15 +2214,14 @@ fn test_every_command_carries_the_model_routing_ruleset() {
         let rendered = files
             .get(&path)
             .unwrap_or_else(|| panic!("no rendered payload for {path}"));
-        assert_eq!(
-            rendered.matches("## Model routing").count(),
-            1,
-            "{}: every command must carry the model-routing ruleset exactly once",
+        assert!(
+            rendered.contains("Shared Shipmates bootstrap principles"),
+            "{}: every command must reference the shared bootstrap",
             command.name
         );
         assert!(
-            !rendered.contains("shipmates:model-routing"),
-            "{}: the marker must not survive into the payload",
+            !rendered.contains("<!-- shipmates:bootstrap -->"),
+            "{}: the bootstrap marker must not survive into the payload",
             command.name
         );
     }
@@ -1904,7 +2231,7 @@ fn test_every_command_carries_the_model_routing_ruleset() {
 /// The marker lives only on PR-opening commands; non-PR commands must stay clean
 /// so the contract cannot silently widen.
 #[test]
-fn test_pr_opening_commands_require_why_merge() {
+fn test_pr_opening_commands_reference_bootstrap() {
     const PR_OPENING: &[&str] = &[
         "shipmates-ship-issue",
         "shipmates-fix-bug",
@@ -1917,17 +2244,21 @@ fn test_pr_opening_commands_require_why_merge() {
         "shipmates-migrate",
         "shipmates-refactor",
     ];
-    const MARKER: &str = "<!-- shipmates:why-merge-pr -->";
 
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let commands = load_commands(&root.join("commands")).unwrap();
     assert!(!commands.is_empty());
     let files = ClaudeCodeAdapter.build(&[], &commands).unwrap();
 
+    // The why-merge doctrine now lives in the shared bootstrap file.
+    let bootstrap = std::fs::read_to_string(root.join("steering/bootstrap.md")).unwrap();
+    assert!(
+        bootstrap.contains("Why merge this") || bootstrap.contains("why-merge-pr"),
+        "steering/bootstrap.md must contain the why-merge doctrine"
+    );
+
     let pr_set: std::collections::HashSet<&str> = PR_OPENING.iter().copied().collect();
     for command in &commands {
-        let canonical = std::fs::read_to_string(root.join("commands").join(format!("{}.md", command.name)))
-            .unwrap_or_else(|e| panic!("read commands/{}.md: {e}", command.name));
         let path = format!(
             "harnesses/claude-code/.claude/skills/{}/SKILL.md",
             command.name
@@ -1938,25 +2269,13 @@ fn test_pr_opening_commands_require_why_merge() {
 
         if pr_set.contains(command.name.as_str()) {
             assert!(
-                canonical.contains(MARKER),
-                "{}: PR-opening command must carry {MARKER}",
-                command.name
-            );
-            assert_eq!(
-                rendered.matches("Why merge this").count(),
-                1,
-                "{}: rendered body must contain 'Why merge this' exactly once",
+                rendered.contains("Shared Shipmates bootstrap principles"),
+                "{}: PR-opening command must reference the shared bootstrap",
                 command.name
             );
             assert!(
-                !rendered.contains("shipmates:why-merge-pr"),
-                "{}: the why-merge-pr marker must not survive into the payload",
-                command.name
-            );
-        } else {
-            assert!(
-                !canonical.contains(MARKER),
-                "{}: non-PR-opening command must not carry {MARKER}",
+                !rendered.contains("<!-- shipmates:bootstrap -->"),
+                "{}: the bootstrap marker must not survive into the payload",
                 command.name
             );
         }

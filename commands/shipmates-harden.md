@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob, WebSearch, WebFetch
 disable-model-invocation: true
 ---
 # /shipmates-harden — threat-model → remediate → re-review
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Take a surface and make it defensibly secure: a `security-engineer` threat-models it, findings are
 ranked and fixed, and the loop closes only when **every finding is either remediated or carries an
 explicit, reasoned accepted-risk note** — and the secrets/dependency scans are clean. The gate is
@@ -97,6 +97,12 @@ each with a machine-checkable **owned-paths manifest** (diffed against `git stat
 upon return to prevent collision). Under `EXECUTION=sequential`, fix one blocker at a time. For
 single-file or cohesive fixes, spawn one builder either way.
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel builder fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected builder is a failed run — never silently shrink the remediation team.
+
 Apply **scoped** fixes (parameterise the query, add the authz check, move the secret to config,
 pin/upgrade the dep) — no unrelated rewrites. Where a fix changes behaviour, add/adjust a test so it's
 covered. Rotate any exposed secret is a human action — flag it loudly; don't just delete it from the
@@ -116,11 +122,15 @@ declare a surface hardened while a Critical/High stands.
 
 Deliver: the threat model summary, the findings table (severity → status: fixed / accepted-risk /
 deferred), the remaining risk in plain words, and any human follow-ups (secret rotation, infra/config
-changes outside the repo). Under `report` (the default) that report **is** the deliverable and the
+changes outside the repo). Findings stay in working memory until that report, and the report lists each one as fixed, filed,
+or declined with a reason — including under `report`, which files nothing. Keep fixed /
+accepted-risk / deferred as the table's own words, and map them: accepted-risk is declined with a
+reason, deferred with an issue is filed, and deferred without an issue is declined with that deferral
+as the reason. Do not write a per-run findings ledger under `.shipmates/` or elsewhere in the repository
+(`.shipmates/worktrees/` stays allowed). A docs or visual acceptance names the rendered artifact
+inspected, or states inspection was unavailable. Under `report` (the default) that report **is** the deliverable and the
 working tree is exactly as you found it — say so explicitly. Under `pr`, commit and push `<BRANCH>`
 and open the PR, same as `/shipmates-ship-issue`'s commit-push-PR stage, with the same trailers.
-
-<!-- shipmates:why-merge-pr -->
 
 Then gate on
 CI: poll `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing

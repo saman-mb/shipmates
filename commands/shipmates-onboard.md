@@ -6,8 +6,8 @@ allowed-tools: Bash, Read, Write, Edit, Agent, Grep, Glob
 disable-model-invocation: true
 ---
 # /shipmates-onboard — recon → draft → prove it answers
-<!-- shipmates:command-preamble -->
 
+<!-- shipmates:bootstrap -->
 Every role in this crew is told to hold the work to the standard in *your* repo's `README` /
 `{{project-instructions}}`. Nothing produces that file. On a repo without a good one the whole crew quietly degrades
 to generic advice — and the failure is silent, because a vague context file still yields confident
@@ -91,6 +91,12 @@ instead.
 
 Spawn these in a single message. Each returns findings, not prose:
 
+**Harness portability — Pi parallel spawn.** On most harnesses, several blocking subagent calls in
+one turn run concurrently. On Pi, `pi-subagents` rejects a second blocking call while one is already
+in progress. For parallel recon fan-out on Pi, use either (a) one `subagent({ workflow: true, ... })`
+call with parallel children, or (b) async launches (`subagent({ async: true, ... })`) followed by
+status polling. A rejected agent is a failed run — never silently shrink the recon team.
+
 - **`architect`** — the real structure: module boundaries, layering, where business logic lives,
   which invariants matter, and what a newcomer would break first.
 - **`sdet`** — **runs** the build, test, lint and type-check commands. This is the point of the
@@ -134,8 +140,6 @@ Write to `TARGET` — inside `<WORKTREE_DIR>` under `MODE=pr` (the default), in 
 changed on their behalf. Under `MODE=pr`, commit on the branch — staging only the paths this run
 produced, never `git add -A` — push, and open the PR against `BASE_BRANCH`.
 
-<!-- shipmates:why-merge-pr -->
-
 Then gate on CI: poll
 `gh pr checks` until nothing is pending; a red check means pulling the failing log, fixing it,
 re-pushing, and re-polling — bounded by `MAX_FIX_ROUNDS`, after which you stop and escalate to the
@@ -145,7 +149,11 @@ place with the PR open. The context file only exists on that branch until it's m
 or check out `BRANCH` before running other commands in this session if you need it in place now, or
 pass `MODE=edit-in-place` up front instead. Report: the file written, the undo path (the backup, or
 the branch), which commands were proven versus recorded as unverified, and the verification round it
-passed on.
+passed on. Delivery names the rendered artifact — the instruction file the fresh agent was given — or
+states that inspection was unavailable. Do not give that agent the writer's narrative, and do not ACCEPT
+the file from that narrative. Gaps stay in working memory and are fixed, filed, or declined with a reason
+in the delivery, not only as counts. Do not write a per-run findings ledger under `.shipmates/`
+(`.shipmates/worktrees/` stays allowed).
 
 ---
 
