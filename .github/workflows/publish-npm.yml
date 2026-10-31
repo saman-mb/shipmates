@@ -1,0 +1,62 @@
+# Custom publish job run by cargo-dist during the Release workflow.
+# Builds this revision's binary, renders the pi payload through the normal
+# installer path, repacks it as the pi-shipmates npm package, and publishes it.
+#
+# There is deliberately no npm secret here: publishing uses npm's OIDC trusted
+# identity, which needs a package and a trusted-publisher entry to exist first.
+# The Release workflow therefore gates this job on the PI_NPM_PUBLISH_ENABLED
+# repository variable, so until the captain creates both the job skips and the
+# release stays green — a channel that is not configured yet must never be able
+# to break a release.
+name: Publish npm
+
+on:
+  workflow_call:
+    inputs:
+      plan:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    env:
+      PKG_NAME: pi-shipmates
+      OUT_DIR: pi-shipmates-package
+    permissions:
+      "id-token": "write"
+      "packages": "write"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+      - name: Build the shipmates binary
+        run: cargo build --release --bin shipmates
+      # npm's own minimums for OIDC trusted publishing are npm 11.5.1 and Node
+      # 22.14.0; the runner image is not allowed to decide that for us.
+      - name: Install Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22.x"
+          registry-url: "https://registry.npmjs.org"
+      - name: Use npm with trusted-publishing support
+        run: |
+          npm install -g npm@latest
+          node --version
+          npm --version
+      - name: Assemble the package
+        env:
+          VERSION: ${{ inputs.tag }}
+        run: bash .github/scripts/package-pi-npm.sh
+      - name: Publish
+        env:
+          VERSION: ${{ inputs.tag }}
+        run: bash .github/scripts/publish-npm.sh

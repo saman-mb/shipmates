@@ -410,9 +410,16 @@ Modes:
   --check     Verify digests without writing digests
   --update    Regenerate tests/payload-digests/<target>.sha256
 
+--with-tools adds toolbox tools to the written tree (all / none / comma-separated
+names). Omit it for none — the inverse of `install`, where omit means every tool:
+payload digests cover crew + commands + steering only, so the default --out tree
+stays byte-for-byte the committed digest. Like --out, the flag is ignored by
+--check / --update.
+
 Examples:
   shipmates build --target claude-code
   shipmates build --target opencode --out /tmp/payload
+  shipmates build --target pi --out /tmp/pi-payload --with-tools all
   shipmates build --target claude-code --update
   shipmates build --target claude-code --check"
     )]
@@ -428,6 +435,16 @@ Examples:
         /// Output directory for a normal build (ignored by --check / --update)
         #[arg(long, value_name = "PATH")]
         out: Option<String>,
+
+        /// Tools for the written tree: all / none / comma-separated names.
+        /// Omit for none (unlike `install`); ignored by --check / --update
+        #[arg(
+            long = "with-tools",
+            value_name = "NAMES|all|none",
+            value_delimiter = ',',
+            help_heading = "What"
+        )]
+        with_tools: Option<Vec<String>>,
 
         /// Verify the built payload against committed digests (no digest write)
         #[arg(long)]

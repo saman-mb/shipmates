@@ -9,6 +9,7 @@ import { closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, w
 import { freemem, homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 
 const STATE_NAME = "shipmates-crew.json";
 
@@ -167,8 +168,37 @@ function provisioningAllowed() {
   return !import.meta.url.includes("/src/adapters/pi_crew/");
 }
 
-function runtimeRoot() {
-  return join(dirname(fileURLToPath(import.meta.url)), ".shipmates-runtime");
+function runtimeRoot(base = dirname(fileURLToPath(import.meta.url))) {
+  return join(base, ".shipmates-runtime");
+}
+
+/**
+ * Resolve one pinned runtime dep from an installed package's own `node_modules`
+ * and return the package root that holds it, or null when no copy resolves at the
+ * exact pin. Walks up from the extension dir; a copy only counts when its version
+ * equals the pin, so a nearer or differently versioned copy is never used.
+ */
+function resolveExactPinnedDep(name, startDir) {
+  try {
+    const req = createRequire(pathToFileURL(join(startDir, "package.json")).href);
+    const manifestPath = req.resolve(`${name}/package.json`);
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (manifest?.version !== RUNTIME_PINS[name]) return null;
+    // manifestPath sits at <pkg>/node_modules/<name>/package.json, so the owning
+    // package root is the dir whose node_modules/ holds the pinned copy.
+    return dirname(dirname(dirname(manifestPath)));
+  } catch {
+    return null;
+  }
+}
+
+function resolvePinnedRuntimeRoot(base = dirname(fileURLToPath(import.meta.url))) {
+  const startDir = base;
+  const roots = Object.keys(RUNTIME_PINS).map((name) => resolveExactPinnedDep(name, startDir));
+  if (roots.some((found) => found === null)) return null;
+  // npm installs a declared dependency set into one package or hoists it into one
+  // prefix, so the pins that resolved share the root that holds them.
+  return roots[0];
 }
 
 function fileJournal(dir) {
@@ -196,9 +226,12 @@ function packagesInstalled(root) {
   });
 }
 
-function ensureRuntimePackages() {
-  const root = runtimeRoot();
-  if (!provisioningAllowed()) return Promise.resolve(root);
+export async function ensureRuntimePackages(base = dirname(fileURLToPath(import.meta.url)), provisioning) {
+  const root = runtimeRoot(base);
+  const allowed = provisioning ?? provisioningAllowed();
+  if (!allowed) return Promise.resolve(root);
+  const packageRoot = resolvePinnedRuntimeRoot(base);
+  if (packageRoot) return Promise.resolve(packageRoot);
   mkdirSync(root, { recursive: true });
   const desired = JSON.stringify({ private: true, dependencies: RUNTIME_PINS }, null, 2);
   const manifest = join(root, "package.json");

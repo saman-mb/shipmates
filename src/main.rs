@@ -1166,6 +1166,7 @@ fn main() -> Result<()> {
             target,
             root,
             out,
+            with_tools,
             check,
             update,
         } => {
@@ -1185,6 +1186,23 @@ fn main() -> Result<()> {
             } else if update {
                 write_digests(&target, adapter.digest_root(), &files, root_path)?;
             } else {
+                // Tools join the written tree only, and only when asked for.
+                // Payload digests cover crew + commands + steering even for
+                // `install --with-tools all` (tools are receipt-tracked
+                // separately), so `build --out` without the flag must stay
+                // byte-for-byte the committed digest — unlike `install`, where
+                // omitting the flag means every bundled tool. `--check` and
+                // `--update` ignore it, exactly as they ignore `--out`. When the
+                // flag is absent the toolbox is not read at all, so `build` keeps
+                // working from a root that carries no toolbox/.
+                let mut files = files;
+                let mut tool_count = 0;
+                if let Some(requested) = with_tools {
+                    let available = catalog::load_tools(&root_path.join("toolbox"))?;
+                    let selected = select_tools(Some(requested), available)?;
+                    tool_count = selected.len();
+                    files.extend(adapter.build_tools(&selected));
+                }
                 let out_dir = out
                     .map(PathBuf::from)
                     .unwrap_or_else(|| root_path.join("harnesses").join(&target));
@@ -1192,7 +1210,10 @@ fn main() -> Result<()> {
                     let full_path = out_dir.join(&path_str);
                     installer::atomic_write(&full_path, &content)?;
                 }
-                println!("Built payload for target: {}", target);
+                println!(
+                    "Built payload for target: {} (tools: {})",
+                    target, tool_count
+                );
             }
         }
         Command::Check { target, root } => {

@@ -11,8 +11,11 @@ ci = "github"
 installers = ["homebrew", "shell"]
 tap = "saman-mb/homebrew-tap"
 formula = "shipmates"
-# Publish the formula to the tap and the crate to crates.io on release
-publish-jobs = ["homebrew", "./publish-cargo"]
+# Publish the formula to the tap, the crate to crates.io, and the pi payload to
+# npm on release. The npm job is a cargo-dist local hook like ./publish-cargo; the
+# committed release.yml carries the matching custom-publish-npm block because
+# allow-dirty = ["ci"] makes that file authoritative here.
+publish-jobs = ["homebrew", "./publish-cargo", "./publish-npm"]
 # The release workflow is hand-authored to auto-publish only when the
 # Cargo.toml version is newer than the latest published tag. Tell dist to
 # treat the generated CI file as ours and skip its drift check.

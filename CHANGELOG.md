@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.4] - 2026-10-31
+
+### Added
+
+- **`pi-shipmates` on npm gives pi captains a door that speaks their harness's package manager (#635).** `pi install npm:pi-shipmates` brings the crew, the nineteen commands and the toolbox into pi with no brew tap, no cargo, and no checkout; `pi update --extensions` refreshes the payload when a release lands and `pi remove npm:pi-shipmates` takes it back out. The package is not a second renderer — it is the tree the `pi` adapter already compiles, repacked at publish time, so `commands/` and `crew/` stay the only sources and `shipmates check --target pi` still gates the content. This is the pi-only channel: the `shipmates` binary stays how the other eight harnesses are installed, and pi's crew still resolve through the third-party `pi-subagents` extension, which the package inherits rather than replaces.
+- **`shipmates build --with-tools` materializes the whole payload in one command (#635).** `build --target pi --out <dir>` emitted crew, commands and steering but no toolbox, while `install --harness pi --dir <dir> --with-tools all` emitted the toolbox but no steering — so packaging the pi tree meant unioning two outputs by hand. One call now emits the install-equivalent tree, which is what the packager and the parity gate assert against.
+- **The first publish is a manual step, and the release job says so instead of silently skipping it (#635).** npm's trusted publishing can only authorize a package that already exists, so the very first `pi-shipmates` release needs a manual `npm publish` plus a Trusted Publisher entry naming the release workflow in the registry UI (with `npm publish` ticked, not only `npm stage publish`). Until the captain does that once, the npm publish job is skipped and the rest of the release ships unchanged.
+
 ## [0.17.3] - 2026-10-30
 
 ### Changed
