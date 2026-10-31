@@ -81,7 +81,7 @@ from anything hardcoded into the role.
 | `/shipmates-onboard [path]` | Reads an unfamiliar repo and writes the agent-facing context file the whole crew runs on |
 | `/shipmates-refactor <target>` | Reshapes code without changing behaviour — characterization tests pinned first, then proved |
 | `/shipmates-deslop [target] [file|ship]` | Audits the codebase for health debt — dead code, duplication, misplaced layers, dependency and config rot — grades each finding by risk, and files it as an epic behind a human gate |
-| `/shipmates-upgrade [apply] [pre] [file-bugs]` | Checks for a newer Shipmates release and refreshes, audits, and repairs every known install — check-and-report by default; `apply` runs the upgrade/repair/filing steps |
+| `/shipmates-upgrade [report] [pre] [file-bugs]` | Checks for a newer Shipmates release and refreshes, audits, and repairs every known install — the default run applies; `report` surveys and changes nothing, and `file-bugs` adds upstream filing |
 | `/shipmates-auto-trunk <goal>` | Test-driven trunk loop — parse a goal into tasks, write a failing test first, red→green each change, and commit to the default branch. Plan mode is the default; commits and pushes are opt-in |
 
 **Where a command writes.** Anything that changes your repo does it on its own branch, in its own
@@ -91,8 +91,9 @@ exception: the release commit has to land on the branch being tagged, so it comm
 straight in your checkout instead of an unmerged side branch. `/shipmates-auto-trunk` is the second
 exception: it intentionally commits directly to the default branch when you opt into `mode=run`.
 `/shipmates-pr-review` and the default
-`report` mode of `/shipmates-harden`, `/shipmates-consolidate-issues`, `/shipmates-deslop` and
-`/shipmates-upgrade` write nothing at all. Writing straight into the working tree is opt-in
+`report` mode of `/shipmates-harden`, `/shipmates-consolidate-issues` and `/shipmates-deslop` write
+nothing at all, and `/shipmates-upgrade` takes `report` when you want the same — it upgrades by default.
+Writing straight into the working tree is opt-in
 (`MODE=edit-in-place`); so are merging (`MERGE_MODE=auto`) and publishing (`PUBLISH_MODE=auto`).
 
 **There's deliberately no `code-reviewer`.** Review is split by discipline instead of pooled into one

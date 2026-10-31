@@ -672,13 +672,14 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
         ),
     ),
     "shipmates-upgrade": CommandPageCopy(
-        guide_blurb="Check for a newer Shipmates release, refresh and audit every install — apply and file only on request.",
+        guide_blurb="Check for a newer release, then refresh, audit and repair every install — filing only when asked.",
         process_lead=(
             "No crew spawns — the run drives the installed CLI (release check, self-upgrade, "
             "refresh, audit, filing) and reports what it reads back from its JSON."
         ),
         when_to_use=(
-            "Shipmates itself needs upgrading, or an install has drifted and you want it surveyed before anything changes.",
+            "Shipmates itself needs upgrading, or an install has drifted and you want it brought back in line without hunting for the right flags.",
+            "Want a look before anything changes? Ask for report and the run surveys without touching a thing.",
             "Bug in your repo? /shipmates-fix-bug. Bug in Shipmates itself? /shipmates-report-bug.",
         ),
         process=(
@@ -689,17 +690,17 @@ COMMAND_PAGE_COPY: dict[str, CommandPageCopy] = {
             ),
             ProcessStep(
                 "Upgrade",
-                "Show the channel command the CLI reports. Apply runs shipmates upgrade --self — brew and cargo-dist only; a source checkout gets the manual path.",
+                "Show the channel command the CLI reports. The default run executes shipmates upgrade --self — brew and cargo-dist only; a source checkout gets the manual path.",
                 solo="Still the run — no spawn, and never a self-upgrade for a source checkout.",
             ),
             ProcessStep(
                 "Repair",
-                "Apply runs shipmates upgrade --fix --json and reports what was refreshed and repaired, per root — one failing root never stops the rest.",
+                "The default run executes shipmates upgrade --fix --json and reports what was refreshed and repaired, per root — one failing root never stops the rest.",
                 solo="The run reads the per-root JSON back.",
             ),
             ProcessStep(
                 "File",
-                "Read findings (class, harness, root, fingerprint). Apply plus the file-bugs token runs shipmates upgrade --file-bugs; otherwise print the list and the exact command.",
+                "Read findings (class, harness, root, fingerprint). The file-bugs token runs shipmates upgrade --file-bugs; otherwise print the list and the exact command.",
                 solo="Never files silently — the CLI dedupes and sanitises; the run reports its URLs.",
             ),
             ProcessStep(
