@@ -904,9 +904,13 @@ mod tests {
         let flat = command.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(
             flat.contains(
-                "every Required=yes row present/parseable AND every `Mutates: yes` row explicitly tokenized"
+                "every Required=yes row present/parseable AND every `Mutates: yes` row resolved"
             ),
             "rendered command lost the mutation-gating definition"
+        );
+        assert!(
+            flat.contains("an ask-first knob only by naming its mutating token"),
+            "rendered command lost the clause that resolves an ask-first knob"
         );
         assert!(command.contains("Mandatory seats"));
         assert!(command.contains("Integration questions"));
