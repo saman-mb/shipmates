@@ -67,9 +67,12 @@ test("fileJournal appends one JSON line per record and tolerates an unwritable d
   assert.equal(lines.length, 2);
   assert.equal(JSON.parse(lines[0]).atMs, 1);
   assert.equal(JSON.parse(lines[1]).atMs, 2);
-  // Unwritable journal file: replace the jsonl with a directory so append cannot write.
-  // Admission must not throw — the journal is best-effort.
+  // Truncated / corrupt prior bytes must not crash later appends — the journal is
+  // write-only best-effort (nothing reads it on the critical path).
   const journalPath = join(dir, "journal.jsonl");
+  writeFileSync(journalPath, "{not-json\n");
+  assert.doesNotThrow(() => journal.append({ type: "after-corrupt" }));
+  // Unwritable target: replace the jsonl with a directory so append cannot write.
   rmSync(journalPath, { force: true });
   mkdirSync(journalPath);
   assert.doesNotThrow(() => journal.append({ type: "x" }));

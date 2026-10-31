@@ -494,6 +494,21 @@ test("shipmates-crew menu: Off to Split saves and notifies; cancelled Local pick
   assert.equal(readState(stateFile).switch, "Split");
   assert.ok(notes.some((n) => /Saved|Split/i.test(n.msg || "")));
 
+  // Selecting Off again is a no-op write of Off (still Saved).
+  await command.handler([], {
+    ui: {
+      notify(msg) {
+        notes.push({ type: "notify", msg });
+      },
+      async select() {
+        return "Off";
+      },
+    },
+    model: null,
+    modelRegistry: null,
+  });
+  assert.equal(readState(stateFile).switch, "Off");
+
   // Local without a tick matching chat model → cancel picker → unchanged.
   writeState({ ...parsed({ switch: "Off", ticks: [LOCAL] }) }, stateFile);
   const before = readState(stateFile).switch;

@@ -56,7 +56,17 @@ pub fn select_receipt(target_dir: &Path, harness: Option<&str>) -> Result<Option
                     receipt: receipt.expect("valid receipt must be present"),
                 })),
                 plan::ReceiptState::Missing => {
-                    bail!("No install receipt found for harness {harness}; refusing to uninstall")
+                    // Pi's machine-wide broker outlives the receipt. Returning
+                    // None lets main run broker teardown for an explicit
+                    // `uninstall --harness pi` even after the receipt is gone.
+                    // Every other harness still fails closed.
+                    if harness == "pi" {
+                        Ok(None)
+                    } else {
+                        bail!(
+                            "No install receipt found for harness {harness}; refusing to uninstall"
+                        )
+                    }
                 }
                 plan::ReceiptState::Invalid => bail!(
                     "Install receipt for harness {harness} is invalid: {}; refusing to uninstall",
