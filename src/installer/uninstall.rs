@@ -22,6 +22,8 @@ pub struct UninstallReport {
     pub removed: usize,
     pub warnings: Vec<String>,
     pub receipt_removed: bool,
+    /// Outcome of the pi resource-broker teardown, when this uninstall was for pi.
+    pub broker: Option<crate::pi_broker::Teardown>,
 }
 
 /// Find receipts without guessing a harness. The complete receipt directory is
@@ -300,6 +302,17 @@ pub fn uninstall_with_payload(
                 .unwrap_or(&backup_dir)
                 .display()
         ));
+    }
+
+    // Pi's resource broker is machine-wide and outside the install receipt. Stop
+    // it only after file removal, and only when no pi extension remains at the
+    // agent dir (a project-scope uninstall must not kill a global install's broker).
+    if report.harness == "pi" && report.receipt_removed {
+        let teardown = crate::pi_broker::teardown_after_uninstall();
+        if let Some(line) = teardown.warning_line() {
+            report.warnings.push(line);
+        }
+        report.broker = Some(teardown);
     }
 
     Ok(report)

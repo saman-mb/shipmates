@@ -422,3 +422,103 @@ test('model: "inherit" on a cloud session still refuses a local-tagged doer unde
     assert.match(result.reason, /must be a local model/);
   });
 });
+
+test("session_start is a no-op when PI_SUBAGENT_CHILD is set and does not throw when pi-subagents is absent", async () => {
+  const prev = process.env.PI_SUBAGENT_CHILD;
+  process.env.PI_SUBAGENT_CHILD = "1";
+  try {
+    const { handlers } = harness(parsed({ switch: "Off" }));
+    assert.equal(typeof handlers.session_start, "function");
+    await assert.doesNotReject(() => handlers.session_start());
+  } finally {
+    if (prev === undefined) delete process.env.PI_SUBAGENT_CHILD;
+    else process.env.PI_SUBAGENT_CHILD = prev;
+  }
+  // Absent package path: clear the env and still must not throw.
+  const { handlers } = harness(parsed({ switch: "Off" }));
+  await assert.doesNotReject(() => handlers.session_start());
+});
+
+test("session_shutdown clears seats and nulls the broker handle without throwing", async () => {
+  const { handlers, leases } = harness(parsed({ switch: "Split", resources: "enforce" }));
+  leases.set("seat-1", {
+    seatKey: "seat-1",
+    toolCallId: "call-1",
+    brokerRunId: "run-1",
+    generation: 1,
+    model: LOCAL,
+    role: "senior-engineer",
+  });
+  assert.equal(typeof handlers.session_shutdown, "function");
+  await assert.doesNotReject(() => handlers.session_shutdown());
+  assert.equal(leases.size, 0);
+});
+
+test("shipmates-crew menu: Off to Split saves and notifies; cancelled Local picker leaves state unchanged", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "shipmates-menu-"));
+  const stateFile = join(dir, "shipmates-crew.json");
+  writeFileSync(stateFile, JSON.stringify(parsed({ switch: "Off" }), null, 2));
+
+  const notes = [];
+  let command = null;
+  const pi = {
+    registerCommand(name, def) {
+      command = def;
+    },
+    on() {},
+  };
+  install(pi, {
+    readState: () => readState(stateFile),
+    connect: async () => null,
+    notes,
+    leases: new Map(),
+    heartbeat: false,
+    sessionId: "s-menu",
+    statePath: stateFile,
+  });
+  assert.ok(command, "shipmates-crew command must register");
+
+  // Off → Split.
+  await command.handler([], {
+    ui: {
+      notify(msg) {
+        notes.push({ type: "notify", msg });
+      },
+      async select() {
+        return "Split";
+      },
+    },
+    model: null,
+    modelRegistry: null,
+  });
+  assert.equal(readState(stateFile).switch, "Split");
+  assert.ok(notes.some((n) => /Saved|Split/i.test(n.msg || "")));
+
+  // Local without a tick matching chat model → cancel picker → unchanged.
+  writeState({ ...parsed({ switch: "Off", ticks: [LOCAL] }) }, stateFile);
+  const before = readState(stateFile).switch;
+  await command.handler([], {
+    ui: {
+      notify(msg) {
+        notes.push({ type: "notify", msg });
+      },
+      async select(label) {
+        if (/Switch/i.test(label)) return "Local";
+        return null; // cancel model picker
+      },
+    },
+    model: { provider: "cloud", id: "x" },
+    modelRegistry: {
+      getAvailable() {
+        return [{ provider: "local", id: "a", cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }];
+      },
+      find() {
+        return null;
+      },
+    },
+    setModel: async () => {},
+  });
+  assert.equal(readState(stateFile).switch, before);
+  assert.ok(notes.some((n) => /unchanged|No local model/i.test(n.msg || "")));
+  rmSync(dir, { recursive: true, force: true });
+});

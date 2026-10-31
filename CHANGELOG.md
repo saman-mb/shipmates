@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-10-31
+
+### Added
+
+- **`shipmates uninstall --harness pi` stops the machine-wide resource broker and removes its runtime directory (#633).** The broker was started detached and lived outside the install receipt, so uninstall left an orphaned process holding a lock and socket with no command that could find it. Teardown verifies the PID is ours (`--shipmates-broker-daemon`) before signalling TERM, refuses foreign PIDs, and treats missing or malformed endpoint files as non-fatal. A project-scope uninstall does not stop the broker when a global pi extension is still present.
+- **`shipmates doctor` warns about a live resource broker with no pi extension installed (#633).** The check runs for every harness so the post-uninstall orphan is visible even when there is no pi receipt left to diagnose.
+- **Pi crew protocol, daemon lifecycle, session, and menu paths have direct CI tests (#634).** `protocol.test.mjs` and `daemon.test.mjs` cover framing, lock reclaim, endpoint writes, and double-bind refusal; `extension.test.mjs` covers `session_start` / `session_shutdown` and the switch menu.
+
 ## [0.17.3] - 2026-10-30
 
 ### Changed

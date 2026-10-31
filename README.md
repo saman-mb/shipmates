@@ -272,7 +272,9 @@ multiple valid receipts require `--harness`. An explicit missing or invalid rece
 an invalid sibling receipt also blocks discovery. No receipt directory means nothing to uninstall. It
 removes only receipt-owned, unchanged files and preserves unmanaged files. Modified or unreadable
 files retain the receipt. The receipt is the ownership record — never remove a whole harness tree to
-uninstall.
+uninstall. A pi uninstall also stops the machine-wide resource broker it started (the process under
+`~/.pi/agent/shipmates-resource-broker/`) when no pi extension remains, and removes that runtime
+directory.
 
 **Check an install with `shipmates doctor`.** Run `shipmates doctor` for a read-only health report
 against the global home directory and the `claude-code` harness by default. Pass `--harness` to

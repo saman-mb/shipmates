@@ -703,6 +703,10 @@ fn diagnose_built(
     let version = env!("CARGO_PKG_VERSION");
     let mut checks = Vec::new();
 
+    // Resource-broker orphan check is unconditional: after a pi uninstall there
+    // is no pi receipt, so a harness-gated check would never see the orphan.
+    checks.extend(crate::pi_broker::checks());
+
     let (receipt_state, receipt, receipt_error) = plan::read_receipt(target_dir, harness);
     match (receipt_state, receipt_error.as_deref()) {
         (plan::ReceiptState::Valid, _) => checks.push(Check {
@@ -1734,10 +1738,11 @@ pub(crate) fn pi_crew_paths(target_dir: &Path, harness: &str) -> Option<(PathBuf
     if harness != "pi" {
         return None;
     }
+    // Honour PI_CODING_AGENT_DIR the same way the extension does (pi_broker::agent_dir).
+    let agent_dir = crate::pi_broker::agent_dir()?;
     let home_dir = home::home_dir()?;
-    let agent_dir = home_dir.join(".pi/agent");
     let extension_file = if target_dir == home_dir.as_path() {
-        agent_dir.join("extensions/shipmates-crew/index.ts")
+        crate::pi_broker::extension_path(&agent_dir)
     } else {
         target_dir.join(".pi/extensions/shipmates-crew/index.ts")
     };

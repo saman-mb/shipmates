@@ -1126,8 +1126,17 @@ fn main() -> Result<()> {
                 "Uninstalled harness: {} ({} files removed)",
                 report.harness, report.removed
             );
-            for warning in report.warnings {
+            for warning in &report.warnings {
                 println!("{}", warning);
+            }
+            if let Some(teardown) = &report.broker {
+                if let Some(line) = teardown.warning_line() {
+                    // Already pushed into warnings above when set; print only if
+                    // a future path sets broker without a warning line.
+                    if !report.warnings.iter().any(|w| w == &line) {
+                        println!("{}", line);
+                    }
+                }
             }
             // Always strip user-scope steering for this harness on uninstall so
             // a prior local install that wrote home files (#489) can still be
