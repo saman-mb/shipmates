@@ -1738,13 +1738,25 @@ pub(crate) fn pi_crew_paths(target_dir: &Path, harness: &str) -> Option<(PathBuf
     if harness != "pi" {
         return None;
     }
-    // Honour PI_CODING_AGENT_DIR the same way the extension does (pi_broker::agent_dir).
-    let agent_dir = crate::pi_broker::agent_dir()?;
+    // Match the installer's pi global root (`.pi/agent` under HOME), not
+    // `PI_CODING_AGENT_DIR`. The runtime extension may honour that env var, but
+    // doctor/fix must write where the receipt owns files — otherwise a fix
+    // lands outside uninstall's reach. Broker orphan checks use `pi_broker::checks`
+    // separately and do honour the env var (runtime home).
     let home_dir = home::home_dir()?;
-    let extension_file = if target_dir == home_dir.as_path() {
-        crate::pi_broker::extension_path(&agent_dir)
+    let (agent_dir, extension_file) = if target_dir == home_dir.as_path() {
+        let agent = home_dir.join(".pi").join("agent");
+        let ext = agent
+            .join("extensions")
+            .join("shipmates-crew")
+            .join("index.ts");
+        (agent, ext)
     } else {
-        target_dir.join(".pi/extensions/shipmates-crew/index.ts")
+        // Project-scope: extension under the project tree; state still lives at
+        // the global agent dir (pi's agentDir is machine-wide).
+        let agent = home_dir.join(".pi").join("agent");
+        let ext = target_dir.join(".pi/extensions/shipmates-crew/index.ts");
+        (agent, ext)
     };
     Some((agent_dir, extension_file))
 }

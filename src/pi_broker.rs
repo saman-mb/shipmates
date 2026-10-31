@@ -135,18 +135,38 @@ fn pid_alive(pid: u32) -> bool {
     }
     #[cfg(unix)]
     {
-        Command::new("kill")
+        let still_addressable = Command::new("kill")
             .args(["-0", &pid.to_string()])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
             .map(|s| s.success())
-            .unwrap_or(false)
+            .unwrap_or(false);
+        if !still_addressable {
+            return false;
+        }
+        // A zombie is addressable but no longer running — treat as dead so a
+        // TERM that already reaped (or left a zombie held by a parent) counts.
+        !pid_is_zombie(pid)
     }
     #[cfg(not(unix))]
     {
         let _ = pid;
         false
+    }
+}
+
+#[cfg(unix)]
+fn pid_is_zombie(pid: u32) -> bool {
+    let output = Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "state="])
+        .output();
+    match output {
+        Ok(out) if out.status.success() => {
+            let state = String::from_utf8_lossy(&out.stdout);
+            state.trim().starts_with('Z')
+        }
+        _ => false,
     }
 }
 
@@ -289,28 +309,38 @@ pub fn teardown_after_uninstall() -> Teardown {
     let Some(agent) = agent_dir() else {
         return Teardown::NoHome;
     };
-    if extension_present(&agent) {
+    teardown_after_uninstall_at(&agent)
+}
+
+/// Testable seam: same rules as [`teardown_after_uninstall`] for a given agent dir.
+pub fn teardown_after_uninstall_at(agent: &Path) -> Teardown {
+    if extension_present(agent) {
         // Another install still owns the extension — leave the machine-wide broker.
         return Teardown::NoEndpoint;
     }
-    let home = broker_home(&agent);
+    let home = broker_home(agent);
     stop(&home)
 }
 
 /// Doctor checks: unconditional, Warn-only, never fixable.
 pub fn checks() -> Vec<Check> {
-    let mut out = Vec::new();
     let Some(agent) = agent_dir() else {
-        return out;
+        return Vec::new();
     };
-    let home = broker_home(&agent);
-    let has_extension = extension_present(&agent);
+    checks_at(&agent)
+}
+
+/// Testable seam for doctor checks against a given agent dir.
+pub fn checks_at(agent: &Path) -> Vec<Check> {
+    let mut out = Vec::new();
+    let home = broker_home(agent);
+    let has_extension = extension_present(agent);
     match liveness(&home) {
         Liveness::Live { pid } if !has_extension => out.push(Check {
             name: "Pi resource broker".into(),
             severity: Severity::Warn,
             detail: format!(
-                "live resource broker (pid {pid}) with no pi extension installed; run `shipmates uninstall --harness pi` once more, or remove {} and stop the process",
+                "live resource broker (pid {pid}) with no pi extension installed; stop that process and remove {}, or run `shipmates uninstall --harness pi` (tears down even with no receipt)",
                 home.display()
             ),
             fixable: false,
@@ -352,11 +382,21 @@ pub fn checks() -> Vec<Check> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     fn temp_home() -> (tempfile::TempDir, PathBuf) {
         let dir = tempfile::tempdir().unwrap();
         let home = dir.path().join(BROKER_DIR);
         fs::create_dir_all(&home).unwrap();
         (dir, home)
+    }
+
+    fn write_endpoint(home: &Path, pid: u32) {
+        let endpoint = serde_json::json!({
+            "protocolVersion": 1,
+            "listenPath": "/tmp/shipmates-test-broker.sock",
+            "pid": pid,
+        });
+        fs::write(home.join(ENDPOINT_NAME), endpoint.to_string()).unwrap();
     }
 
     #[test]
@@ -379,32 +419,13 @@ mod tests {
             Teardown::Malformed(_) => {}
             other => panic!("expected Malformed, got {other:?}"),
         }
-        // Home must still exist — we refused to act.
         assert!(home.exists());
     }
 
     #[test]
     fn stale_pid_cleans_home() {
         let (_dir, home) = temp_home();
-        let endpoint = serde_json::json!({
-            "protocolVersion": 1,
-            "listenPath": home.join("broker.sock").to_string_lossy(),
-            // PID 1 is rejected by read_endpoint as invalid; use a high unused pid.
-            "pid": 2_147_000_000i64,
-        });
-        // Actually pid must be valid range but not alive. Use max-ish that won't be us.
-        let endpoint = serde_json::json!({
-            "protocolVersion": 1,
-            "listenPath": "/tmp/shipmates-test-broker.sock",
-            "pid": 999_999,
-        });
-        let _ = endpoint;
-        let endpoint = serde_json::json!({
-            "protocolVersion": 1,
-            "listenPath": "/tmp/shipmates-test-broker.sock",
-            "pid": 999999,
-        });
-        fs::write(home.join(ENDPOINT_NAME), endpoint.to_string()).unwrap();
+        write_endpoint(&home, 999_999);
         assert_eq!(liveness(&home), Liveness::NotRunning);
         assert_eq!(stop(&home), Teardown::NotRunning);
         assert!(!home.exists());
@@ -413,9 +434,6 @@ mod tests {
     #[test]
     fn foreign_live_pid_is_refused() {
         let (_dir, home) = temp_home();
-        // Use our own parent-ish: current process is never "our broker" (no marker).
-        // pid_alive(self) is false by design, so pick init? No — init is pid 1 invalid.
-        // Spawn a short-lived sleep and use that pid.
         #[cfg(unix)]
         {
             let child = Command::new("sleep")
@@ -425,12 +443,7 @@ mod tests {
                 .spawn()
                 .expect("spawn sleep");
             let pid = child.id();
-            let endpoint = serde_json::json!({
-                "protocolVersion": 1,
-                "listenPath": "/tmp/shipmates-test-broker.sock",
-                "pid": pid,
-            });
-            fs::write(home.join(ENDPOINT_NAME), endpoint.to_string()).unwrap();
+            write_endpoint(&home, pid);
             assert_eq!(liveness(&home), Liveness::ForeignPid { pid });
             assert_eq!(stop(&home), Teardown::RefusedForeignPid { pid });
             assert!(home.exists());
@@ -458,18 +471,25 @@ mod tests {
     }
 
     #[test]
-    fn agent_dir_honours_env() {
+    fn agent_dir_honours_env_under_lock() {
+        // Serialise with every other HOME / PI_CODING_AGENT_DIR writer in the crate.
         let dir = tempfile::tempdir().unwrap();
         let custom = dir.path().join("custom-agent");
         fs::create_dir_all(&custom).unwrap();
-        // SAFETY: test process is single-threaded for this env poke.
-        unsafe {
-            std::env::set_var("PI_CODING_AGENT_DIR", &custom);
-        }
-        assert_eq!(agent_dir().as_deref(), Some(custom.as_path()));
-        unsafe {
-            std::env::remove_var("PI_CODING_AGENT_DIR");
-        }
+        crate::installer::retired::test_env::with_isolated_home(dir.path(), || {
+            // with_isolated_home points PI_CODING_AGENT_DIR at <home>/.pi/agent;
+            // override inside the lock to the custom path for this assertion.
+            let previous = std::env::var_os("PI_CODING_AGENT_DIR");
+            // SAFETY: HOME_LOCK is held by with_isolated_home for this closure.
+            unsafe {
+                std::env::set_var("PI_CODING_AGENT_DIR", &custom);
+            }
+            assert_eq!(agent_dir().as_deref(), Some(custom.as_path()));
+            match previous {
+                Some(v) => unsafe { std::env::set_var("PI_CODING_AGENT_DIR", v) },
+                None => unsafe { std::env::remove_var("PI_CODING_AGENT_DIR") },
+            }
+        });
     }
 
     #[test]
@@ -481,24 +501,80 @@ mod tests {
         fs::write(&ext, b"// present\n").unwrap();
         let home = broker_home(&agent);
         fs::create_dir_all(&home).unwrap();
-        let endpoint = serde_json::json!({
-            "protocolVersion": 1,
-            "listenPath": "/tmp/x.sock",
-            "pid": 999999,
-        });
-        fs::write(home.join(ENDPOINT_NAME), endpoint.to_string()).unwrap();
-        unsafe {
-            std::env::set_var("PI_CODING_AGENT_DIR", &agent);
-        }
-        // Extension present → no teardown.
-        assert_eq!(teardown_after_uninstall(), Teardown::NoEndpoint);
+        write_endpoint(&home, 999_999);
+        // Extension present → no teardown (path-parameter seam; no env).
+        assert_eq!(teardown_after_uninstall_at(&agent), Teardown::NoEndpoint);
         assert!(home.exists());
-        // Remove extension → cleans stale.
         fs::remove_file(&ext).unwrap();
-        assert_eq!(teardown_after_uninstall(), Teardown::NotRunning);
+        assert_eq!(teardown_after_uninstall_at(&agent), Teardown::NotRunning);
         assert!(!home.exists());
-        unsafe {
-            std::env::remove_var("PI_CODING_AGENT_DIR");
+    }
+
+    /// Headline AC: Live ours-broker → TERM → Stopped + home removed.
+    #[test]
+    #[cfg(unix)]
+    fn live_ours_broker_is_stopped() {
+        let (_dir, home) = temp_home();
+        // Spawn a process whose argv carries the daemon marker so is_our_broker matches.
+        // `sleep` alone is foreign; re-exec via a tiny shell wrapper that keeps the marker
+        // in the process command line visible to `ps -o args=`.
+        let child = Command::new("sh")
+            .args([
+                "-c",
+                &format!("exec -a 'node {DAEMON_MARKER}' sleep 60"),
+            ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .expect("spawn marked sleep");
+        let pid = child.id();
+        write_endpoint(&home, pid);
+        assert_eq!(liveness(&home), Liveness::Live { pid });
+        assert_eq!(stop(&home), Teardown::Stopped { pid });
+        assert!(!home.exists());
+        // Process must have exited (or be exiting) after TERM.
+        let mut child = child;
+        let _ = child.try_wait();
+        for _ in 0..50 {
+            if !pid_alive(pid) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        assert!(!pid_alive(pid), "broker pid {pid} still alive after stop");
+    }
+
+    #[test]
+    fn checks_at_warns_orphan_live_broker() {
+        let dir = tempfile::tempdir().unwrap();
+        let agent = dir.path().join("agent");
+        fs::create_dir_all(&agent).unwrap();
+        let home = broker_home(&agent);
+        fs::create_dir_all(&home).unwrap();
+        #[cfg(unix)]
+        {
+            let child = Command::new("sh")
+                .args([
+                    "-c",
+                    &format!("exec -a 'node {DAEMON_MARKER}' sleep 30"),
+                ])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+                .expect("spawn marked sleep");
+            let pid = child.id();
+            write_endpoint(&home, pid);
+            let checks = checks_at(&agent);
+            assert!(
+                checks.iter().any(|c| {
+                    c.severity == Severity::Warn && c.detail.contains("no pi extension")
+                }),
+                "expected orphan warn, got {checks:?}"
+            );
+            let _ = Command::new("kill")
+                .args(["-TERM", &pid.to_string()])
+                .status();
+            let _ = child;
         }
     }
 }

@@ -598,7 +598,7 @@ export function install(pi, deps = {}) {
             ctx.ui.notify("No local model to move to. Switch unchanged. /model unchanged.", "warning");
             return;
           }
-          writeState({ ...current, switch: "Local" });
+          writeState({ ...current, switch: "Local" }, deps.statePath);
           if (ctx.modelRegistry?.find) {
             const [provider, ...rest] = choice.split("/");
             const found = ctx.modelRegistry.find(provider, rest.join("/"));

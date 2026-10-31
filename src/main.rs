@@ -2,7 +2,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use shipmates::cli::{Cli, Command, install_force_hint};
 use shipmates::installer::manifest_db::InstallReceipt;
-use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering, upgrade};
+use shipmates::{adapters, catalog, detector, digest, doctor, installer, pi_broker, steering, upgrade};
 use std::fs;
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -1102,6 +1102,18 @@ fn main() -> Result<()> {
             let target_dir = resolve_target_dir(location.local, location.dir)?;
             let selected = installer::uninstall::select_receipt(&target_dir, harness.as_deref())?;
             let Some(selected) = selected else {
+                // Pi's resource broker can outlive the receipt (it is machine-wide
+                // and outside ownership). Allow an explicit pi uninstall with no
+                // receipt to still tear the broker down when no extension remains.
+                if harness.as_deref() == Some("pi") {
+                    let teardown = pi_broker::teardown_after_uninstall();
+                    if let Some(line) = teardown.warning_line() {
+                        println!("{}", line);
+                    } else {
+                        println!("No install receipt found; nothing to uninstall.");
+                    }
+                    return Ok(());
+                }
                 println!("No install receipt found; nothing to uninstall.");
                 return Ok(());
             };
