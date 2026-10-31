@@ -703,6 +703,10 @@ fn diagnose_built(
     let version = env!("CARGO_PKG_VERSION");
     let mut checks = Vec::new();
 
+    // Resource-broker orphan check is unconditional: after a pi uninstall there
+    // is no pi receipt, so a harness-gated check would never see the orphan.
+    checks.extend(crate::pi_broker::checks());
+
     let (receipt_state, receipt, receipt_error) = plan::read_receipt(target_dir, harness);
     match (receipt_state, receipt_error.as_deref()) {
         (plan::ReceiptState::Valid, _) => checks.push(Check {
@@ -1734,12 +1738,25 @@ pub(crate) fn pi_crew_paths(target_dir: &Path, harness: &str) -> Option<(PathBuf
     if harness != "pi" {
         return None;
     }
+    // Match the installer's pi global root (`.pi/agent` under HOME), not
+    // `PI_CODING_AGENT_DIR`. The runtime extension may honour that env var, but
+    // doctor/fix must write where the receipt owns files — otherwise a fix
+    // lands outside uninstall's reach. Broker orphan checks use `pi_broker::checks`
+    // separately and do honour the env var (runtime home).
     let home_dir = home::home_dir()?;
-    let agent_dir = home_dir.join(".pi/agent");
-    let extension_file = if target_dir == home_dir.as_path() {
-        agent_dir.join("extensions/shipmates-crew/index.ts")
+    let (agent_dir, extension_file) = if target_dir == home_dir.as_path() {
+        let agent = home_dir.join(".pi").join("agent");
+        let ext = agent
+            .join("extensions")
+            .join("shipmates-crew")
+            .join("index.ts");
+        (agent, ext)
     } else {
-        target_dir.join(".pi/extensions/shipmates-crew/index.ts")
+        // Project-scope: extension under the project tree; state still lives at
+        // the global agent dir (pi's agentDir is machine-wide).
+        let agent = home_dir.join(".pi").join("agent");
+        let ext = target_dir.join(".pi/extensions/shipmates-crew/index.ts");
+        (agent, ext)
     };
     Some((agent_dir, extension_file))
 }

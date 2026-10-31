@@ -7,5 +7,6 @@ pub mod doctor;
 pub mod embedded;
 pub mod installer;
 pub(crate) mod manifest;
+pub mod pi_broker;
 pub mod steering;
 pub mod upgrade;
