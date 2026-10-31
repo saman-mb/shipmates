@@ -21,6 +21,39 @@ copy_root() {
   [ ! -e "$copy/harnesses" ]
 }
 
+@test "build --with-tools controls whether the toolbox joins the written tree" {
+  local copy="$BATS_TEST_TMPDIR/root" plain="$BATS_TEST_TMPDIR/plain" full="$BATS_TEST_TMPDIR/full"
+  local subset="$BATS_TEST_TMPDIR/subset" none="$BATS_TEST_TMPDIR/none"
+  copy_root "$copy"
+
+  # Omitted means none — unlike `install`. The default written tree must stay
+  # byte-for-byte the committed digest, which is what the digest gate compares.
+  run "$SHIPMATES_BIN" build --target pi --root "$copy" --out "$plain"
+  assert_success
+  [ -f "$plain/harnesses/pi/.pi/skills/shipmates-ship-issue/SKILL.md" ]
+  [ ! -e "$plain/harnesses/pi/.pi/skills/shipmates-diagram" ]
+
+  # all ships the toolbox beside the commands — the tree the npm packager packs.
+  run "$SHIPMATES_BIN" build --target pi --root "$copy" --out "$full" --with-tools all
+  assert_success
+  [ -f "$full/harnesses/pi/.pi/skills/shipmates-ship-issue/SKILL.md" ]
+  [ -f "$full/harnesses/pi/.pi/skills/shipmates-diagram/SKILL.md" ]
+  [ ! -e "$full/harnesses/pi/.shipmates/receipts" ]
+  local ext_count
+  ext_count="$(find "$full/harnesses/pi/.pi/extensions" -name index.ts | wc -l | tr -d ' ')"
+  [ "$ext_count" = "1" ]
+
+  # A named subset ships that tool only, and `none` ships none explicitly.
+  run "$SHIPMATES_BIN" build --target pi --root "$copy" --out "$subset" --with-tools scrub
+  assert_success
+  [ -f "$subset/harnesses/pi/.pi/skills/shipmates-scrub/SKILL.md" ]
+  [ ! -e "$subset/harnesses/pi/.pi/skills/shipmates-diagram" ]
+
+  run "$SHIPMATES_BIN" build --target pi --root "$copy" --out "$none" --with-tools none
+  assert_success
+  [ ! -e "$none/harnesses/pi/.pi/skills/shipmates-diagram" ]
+}
+
 @test "check passes on a clean copy and fails on a tampered source" {
   local copy="$BATS_TEST_TMPDIR/root"
   copy_root "$copy"
