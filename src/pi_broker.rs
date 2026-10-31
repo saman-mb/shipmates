@@ -510,29 +510,31 @@ mod tests {
         assert!(!home.exists());
     }
 
+    /// Spawn `sleep` with argv0 carrying the daemon marker (portable; no bash `exec -a`).
+    #[cfg(unix)]
+    fn spawn_marked_sleep(seconds: &str) -> std::process::Child {
+        use std::os::unix::process::CommandExt;
+        let mut cmd = Command::new("sleep");
+        cmd.arg0(format!("node {DAEMON_MARKER}"))
+            .arg(seconds)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+        cmd.spawn().expect("spawn marked sleep")
+    }
+
     /// Headline AC: Live ours-broker → TERM → Stopped + home removed.
     #[test]
     #[cfg(unix)]
     fn live_ours_broker_is_stopped() {
         let (_dir, home) = temp_home();
-        // Spawn a process whose argv carries the daemon marker so is_our_broker matches.
-        // `sleep` alone is foreign; re-exec via a tiny shell wrapper that keeps the marker
-        // in the process command line visible to `ps -o args=`.
-        let child = Command::new("sh")
-            .args([
-                "-c",
-                &format!("exec -a 'node {DAEMON_MARKER}' sleep 60"),
-            ])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
-            .expect("spawn marked sleep");
+        let child = spawn_marked_sleep("60");
         let pid = child.id();
+        // Brief settle so `ps` sees the new process.
+        std::thread::sleep(std::time::Duration::from_millis(50));
         write_endpoint(&home, pid);
         assert_eq!(liveness(&home), Liveness::Live { pid });
         assert_eq!(stop(&home), Teardown::Stopped { pid });
         assert!(!home.exists());
-        // Process must have exited (or be exiting) after TERM.
         let mut child = child;
         let _ = child.try_wait();
         for _ in 0..50 {
@@ -545,36 +547,27 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn checks_at_warns_orphan_live_broker() {
         let dir = tempfile::tempdir().unwrap();
         let agent = dir.path().join("agent");
         fs::create_dir_all(&agent).unwrap();
         let home = broker_home(&agent);
         fs::create_dir_all(&home).unwrap();
-        #[cfg(unix)]
-        {
-            let child = Command::new("sh")
-                .args([
-                    "-c",
-                    &format!("exec -a 'node {DAEMON_MARKER}' sleep 30"),
-                ])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn()
-                .expect("spawn marked sleep");
-            let pid = child.id();
-            write_endpoint(&home, pid);
-            let checks = checks_at(&agent);
-            assert!(
-                checks.iter().any(|c| {
-                    c.severity == Severity::Warn && c.detail.contains("no pi extension")
-                }),
-                "expected orphan warn, got {checks:?}"
-            );
-            let _ = Command::new("kill")
-                .args(["-TERM", &pid.to_string()])
-                .status();
-            let _ = child;
-        }
+        let child = spawn_marked_sleep("30");
+        let pid = child.id();
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        write_endpoint(&home, pid);
+        let checks = checks_at(&agent);
+        assert!(
+            checks.iter().any(|c| {
+                c.severity == Severity::Warn && c.detail.contains("no pi extension")
+            }),
+            "expected orphan warn, got {checks:?}"
+        );
+        let _ = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .status();
+        let _ = child;
     }
 }
