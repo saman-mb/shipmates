@@ -342,6 +342,25 @@ jobs:
       "id-token": "write"
       "packages": "write"
 
+  # npm is the pi install channel. Trusted publishing has no secret to withhold,
+  # so the gate is the PI_NPM_PUBLISH_ENABLED repository variable: until the
+  # package and its trusted-publisher entry exist, this job skips. A channel that
+  # is not configured yet must never be able to turn a release red.
+  custom-publish-npm:
+    needs:
+      - plan
+      - host
+      - e2e-cli
+    if: ${{ vars.PI_NPM_PUBLISH_ENABLED == 'true' && needs.plan.outputs.binary-affected == 'true' && (!fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases) }}
+    uses: ./.github/workflows/publish-npm.yml
+    with:
+      plan: ${{ needs.plan.outputs.val }}
+      tag: ${{ needs.plan.outputs.tag }}
+    secrets: inherit
+    permissions:
+      "id-token": "write"
+      "packages": "write"
+
   announce:
     needs:
       - plan
@@ -349,10 +368,11 @@ jobs:
       - e2e-cli
       - publish-homebrew-formula
       - custom-publish-cargo
+      - custom-publish-npm
     # use "always() && ..." to allow us to wait for all publish jobs while
     # still allowing individual publish jobs to skip themselves (for prereleases).
     # "host" however must run to completion, no skipping allowed!
-    if: ${{ always() && needs.host.result == 'success' && (needs.publish-homebrew-formula.result == 'skipped' || needs.publish-homebrew-formula.result == 'success') && (needs.custom-publish-cargo.result == 'skipped' || needs.custom-publish-cargo.result == 'success') }}
+    if: ${{ always() && needs.host.result == 'success' && (needs.publish-homebrew-formula.result == 'skipped' || needs.publish-homebrew-formula.result == 'success') && (needs.custom-publish-cargo.result == 'skipped' || needs.custom-publish-cargo.result == 'success') && (needs.custom-publish-npm.result == 'skipped' || needs.custom-publish-npm.result == 'success') }}
     runs-on: "ubuntu-22.04"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { parseState } from "./policy.mjs";
-import { install, readState, RUNTIME_PINS, runIdsIn, writeState } from "./index.ts";
+import { install, readState, RUNTIME_PINS, runIdsIn, writeState, ensureRuntimePackages } from "./index.ts";
 
 const LOCAL = "local-a";
 const CLOUD = "cloud-a";
@@ -287,6 +287,62 @@ test("runtime pins match package.json and tests do not install them", () => {
   const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
   assert.deepEqual(pkg.dependencies, RUNTIME_PINS);
   assert.equal(process.env.NODE_TEST_CONTEXT !== undefined, true);
+});
+
+function fakeDep(root, name, version) {
+  const depDir = join(root, "node_modules", name);
+  mkdirSync(depDir, { recursive: true });
+  writeFileSync(join(depDir, "package.json"), JSON.stringify({ name, version }));
+}
+
+function scratchDir() {
+  return mkdtempSync(join(realpathSync(tmpdir()), "shipmates-crew-"));
+}
+
+function fakeInstalledRuntimeRoot(base) {
+  const root = join(base, ".shipmates-runtime");
+  for (const name of Object.keys(RUNTIME_PINS)) fakeDep(root, name, RUNTIME_PINS[name]);
+  return root;
+}
+
+test("an exact pin resolvable from a package node_modules resolves without provisioning", async () => {
+  const scratch = scratchDir();
+  const pkgRoot = join(scratch, "pkg");
+  fakeDep(pkgRoot, "systeminformation", RUNTIME_PINS["systeminformation"]);
+  fakeDep(pkgRoot, "vscode-jsonrpc", RUNTIME_PINS["vscode-jsonrpc"]);
+  try {
+    const resolved = await ensureRuntimePackages(pkgRoot, true);
+    assert.equal(resolved, pkgRoot);
+    assert.equal(existsSync(join(pkgRoot, ".shipmates-runtime")), false);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test("a present-but-wrong-version copy is rejected and provisioning still happens", async () => {
+  const scratch = scratchDir();
+  const badRoot = join(scratch, "bad");
+  fakeDep(badRoot, "systeminformation", "0.0.1");
+  const runtimeRootDir = fakeInstalledRuntimeRoot(badRoot);
+  try {
+    const resolved = await ensureRuntimePackages(badRoot, true);
+    assert.equal(resolved, runtimeRootDir);
+    assert.equal(existsSync(join(badRoot, ".shipmates-runtime", "package.json")), true);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test("nothing resolvable falls back to the existing self-provisioning behaviour", async () => {
+  const scratch = scratchDir();
+  const emptyRoot = join(scratch, "empty");
+  const runtimeRootDir = fakeInstalledRuntimeRoot(emptyRoot);
+  try {
+    const resolved = await ensureRuntimePackages(emptyRoot, true);
+    assert.equal(resolved, runtimeRootDir);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 });
 
 const LOCAL_MODEL = "lmstudio/model-a";

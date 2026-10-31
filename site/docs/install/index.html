@@ -85,7 +85,7 @@
       <div class="container container--prose">
         <div class="section__head">
           <h2 class="section__title" id="cli-title">1. Install the CLI</h2>
-          <p class="section__lead">Get the <code>shipmates</code> CLI via Homebrew, Cargo, or a binary installer.</p>
+          <p class="section__lead">Get the <code>shipmates</code> CLI via Homebrew, Cargo, or a binary installer. Pi captains can skip this step and install from npm instead.</p>
         </div>
         <div class="order-prose">
           <p><strong>macOS / Linux (Homebrew)</strong></p>
@@ -94,7 +94,11 @@
           <pre class="order-code" tabindex="0"><code>cargo install shipmates</code></pre>
           <p><strong>Binary Installer</strong></p>
           <pre class="order-code" tabindex="0"><code>curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh</code></pre>
-        </div>
+          <p><strong>pi (npm)</strong></p>
+          <pre class="order-code" tabindex="0"><code>pi install npm:pi-shipmates     # the crew and commands, through pi&#x27;s own package manager
+pi update --extensions            # refresh the payload when a release lands
+pi remove npm:pi-shipmates        # take it back out</code></pre>
+          <p><code>pi-shipmates</code> is the pi-only door, and it is the same payload the CLI compiles for <code>--harness pi</code> — the Rust adapters stay the only compiler, and the package is that tree repacked at release time. Nothing about the other eight harnesses changes: the CLI is their channel, and <code>shipmates targets</code> stays the truth about what this binary can install. Like the CLI install, the package resolves its crew through the third-party <code>pi-subagents</code> extension, because core pi documents no subagent schema of its own.</p>
       </div>
     </section>
 
