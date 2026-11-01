@@ -71,7 +71,7 @@
           <p class="order-detail__eyebrow"><span aria-hidden="true">&#127754;</span> Pi</p>
           <h1 class="order-detail__title" id="pi-crew-title">Pi crew switch</h1>
           <p class="order-detail__tagline">Keep the captain on a cloud model. Put the crew on the local models you pick.</p>
-          <p class="order-detail__desc">A <a href="https://pi.dev">pi</a> install now ships one small extension. It watches the seats a ship command spawns and checks each one against a switch you control. It starts <strong>Off</strong>, so installing it changes nothing until you turn it on. <strong>Off starts no broker.</strong></p>
+          <p class="order-detail__desc">A <a href="https://pi.dev">pi</a> install now ships one small extension. It watches the seats a ship command spawns and checks each one against a switch you control. It starts <strong>Off</strong>, so a seat that names a local model is refused from the start. <strong>Off starts no broker.</strong></p>
         </div>
       </div>
     </section>
@@ -170,7 +170,7 @@
           <table>
             <thead><tr><th scope="col">Position</th><th scope="col">Your chat</th><th scope="col">The crew</th></tr></thead>
             <tbody>
-              <tr><td><code>Off</code></td><td>Your own model</td><td>Untouched. Nothing is checked or refused.</td></tr>
+              <tr><td><code>Off</code></td><td>Your own model</td><td>A seat that names a local model is refused. A seat that names no model inherits your chat's model.</td></tr>
               <tr><td><code>Split</code></td><td>Your own model</td><td>A doer must be a local model you ticked. A judge must be a cloud model.</td></tr>
               <tr><td><code>Local</code></td><td>A local model you ticked</td><td>Every seat must be a local model you ticked. The tag table is not used.</td></tr>
             </tbody>

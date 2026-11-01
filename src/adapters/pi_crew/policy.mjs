@@ -170,6 +170,7 @@ function tickQualifier(ticks) {
  * @param {ReturnType<typeof parseState>} input.state
  * @param {string} input.role
  * @param {string | null | undefined} input.model
+ * @param {string | null | undefined} input.rawModel the model exactly as named at spawn; null, empty, or "inherit" mean the seat names no model
  * @param {"local" | "cloud" | null} input.modelTag where the named model is served
  * @param {string[]} input.loaded local models pi lists as available
  * @param {string[]} [input.served] local models the engine reports it can serve;
@@ -183,7 +184,18 @@ function tickQualifier(ticks) {
  */
 export function decideSpawn(input) {
   const state = input.state ?? offState();
-  if (state.switch === "Off") return { action: "allow" };
+  if (state.switch === "Off") {
+    // Off never routes a crew seat to a local engine. A seat that names a
+    // local model is refused; a seat that names none inherits the session model.
+    const named = input.rawModel != null && input.rawModel !== "" && input.rawModel !== "inherit";
+    if (named && input.modelTag === "local") {
+      return {
+        action: "block",
+        reason: `Refused: the crew switch is Off and ${input.model} is a local model. I will not put a crew seat on a local engine. I will not substitute a model.`,
+      };
+    }
+    return { action: "allow" };
+  }
 
   if (!isKnownRole(input.role)) {
     return { action: "block", reason: `Refused: ${input.role || "that seat"} is not a crew role. I will not guess a tag.` };

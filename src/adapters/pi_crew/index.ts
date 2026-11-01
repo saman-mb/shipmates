@@ -839,6 +839,7 @@ export function install(pi, deps = {}) {
         state,
         role: seat.role,
         model: seat.model,
+        rawModel: seat.rawModel,
         modelTag: modelTag(seat.model, localIds),
         loaded: registryLocal,
         served,

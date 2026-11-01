@@ -66,13 +66,56 @@ function seatEvent(over = {}) {
   };
 }
 
-test("Off allows a spawn and does not ask the broker", async () => {
+test("Off refuses a seat that names a local model and never asks the broker", async () => {
   const { handlers, calls } = harness(parsed({ switch: "Off", resources: "enforce" }));
   const event = seatEvent();
+  // No registry ctx: localIds falls back to state.ticks, which holds LOCAL.
   const result = await handlers.tool_call(event);
+  assert.equal(result.block, true);
+  assert.match(result.reason, /switch is Off/);
+  assert.match(result.reason, /will not substitute/);
+  assert.equal(calls.length, 0);
+  assert.equal(event.input.model, LOCAL, "a refused seat is not moved or substituted");
+});
+
+test("Off lets a seat that names no model inherit the session model", async () => {
+  const { handlers, calls } = harness(parsed({ switch: "Off", resources: "enforce" }));
+  const event = seatEvent({ model: undefined });
+  const result = await handlers.tool_call(event, {
+    modelRegistry: makeRegistry(),
+    model: { provider: "lmstudio", id: "model-a" },
+  });
   assert.equal(result, undefined);
   assert.equal(calls.length, 0);
-  assert.equal(event.input.model, LOCAL);
+  assert.equal(event.input.model, undefined, "Off leaves an unnamed seat on inherit");
+});
+
+test("Off never moves the captain's own turn", async () => {
+  const previous = process.env.PI_SUBAGENT_CHILD;
+  delete process.env.PI_SUBAGENT_CHILD;
+  try {
+    const ctx = {
+      model: { provider: "lmstudio", id: "model-a" },
+      modelRegistry: makeRegistry(),
+      aborted: false,
+      abort() {
+        this.aborted = true;
+      },
+      ui: {
+        notify() {
+          throw new Error("Off must not notify on the captain's turn");
+        },
+      },
+    };
+    const { handlers, calls } = harness(parsed({ switch: "Off", resources: "enforce" }));
+    await handlers.turn_start({ turnIndex: 0 }, ctx);
+    assert.equal(calls.length, 0, "Off must not ask the broker about the captain");
+    assert.equal(ctx.aborted, false);
+    assert.equal(ctx.model.id, "model-a", "the captain's model is never moved");
+  } finally {
+    if (previous === undefined) delete process.env.PI_SUBAGENT_CHILD;
+    else process.env.PI_SUBAGENT_CHILD = previous;
+  }
 });
 
 test("resources off does not start or ask a broker", async () => {
