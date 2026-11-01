@@ -13,7 +13,7 @@ target=pi
 .pi/agents/site-reliability-engineer.md 996183761093d5c440d8571fe889344e88e825e8f31a443eed01ec380efdb134
 .pi/agents/technical-writer.md 5fb5e6121ead7666ddf02d187cc4c4c2dbade0ef6041ffbf229ee315ca0c0389
 .pi/agents/ux-ui-designer.md e125915071144372dc4135a8a62d0fa51a53db223943fb2132c94ed61b4dcce0
-.pi/extensions/shipmates-crew/index.ts 6b45eb9ddd22c2b10de52f9b1680d735207cfb1ba728d8656baf2e56a2ce394c
+.pi/extensions/shipmates-crew/index.ts 0b8162a0027108c63ca66e877178e380ba643a548cace0fe2d22499ef49ecca9
 .pi/skills/shipmates-auto-trunk/SKILL.md 2dab37ec95fb223af27f3aeab26faf26c5fb936bf27b0386cc565d4e0785fa47
 .pi/skills/shipmates-consolidate-issues/SKILL.md e8f45e0f22c1649b16841568a68e8a6068571b9a633a89f1138343ec7d334d7d
 .pi/skills/shipmates-deslop/SKILL.md edc3032f14f34cce771290d1dca57170f42b8123580867775e45aea1eff8fe44
@@ -32,5 +32,5 @@ target=pi
 .pi/skills/shipmates-ship-epic/SKILL.md 7dd077a78521df3461b319a1fc3152aebf6aa5b7ff2904f41be0901e9fa5d429
 .pi/skills/shipmates-ship-issue/SKILL.md 57d7a1ff8b953abaf2d0041fe287b17e58a8aa7012d9ccbbabded0d9159749fb
 .pi/skills/shipmates-spike/SKILL.md c0880672482629edd491a092ceeb6d957e365eaaf770b752c530649f7001a5b8
-.pi/skills/shipmates-upgrade/SKILL.md 0ed27e0f358b75350cc25a2dcaa070123a86d93ebf3d1b43c3a7e616cd5060cc
+.pi/skills/shipmates-upgrade/SKILL.md 3e422ddcb7f4326b9ed87c6e075c751b21f9b3700c4640befb4416ade0ffc8e4
 .shipmates/contributor-steering.md ab54a42554437a23bba26eb61f3e701a1dedf59ad344471ec2bd001dd136b8bb

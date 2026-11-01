@@ -7,4 +7,6 @@ node --experimental-strip-types --test \
   src/adapters/pi_crew/capacity.test.mjs \
   src/adapters/pi_crew/telemetry.test.mjs \
   src/adapters/pi_crew/broker.test.mjs \
+  src/adapters/pi_crew/protocol.test.mjs \
+  src/adapters/pi_crew/daemon.test.mjs \
   src/adapters/pi_crew/extension.test.mjs

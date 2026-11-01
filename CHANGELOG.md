@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-10-31
+
+### Added
+
+- **`shipmates uninstall --harness pi` stops the machine-wide resource broker and removes its runtime directory (#633).** The broker was started detached and lived outside the install receipt, so uninstall left an orphaned process holding a lock and socket with no command that could find it. Teardown verifies the PID is ours (`--shipmates-broker-daemon`) before signalling TERM, refuses foreign PIDs, and treats missing or malformed endpoint files as non-fatal. Once the process has exited, the runtime directory is removed. An explicit `uninstall --harness pi` still tears the broker down when no receipt remains (the post-uninstall orphan case). Teardown is skipped when a pi extension is still installed at the agent dir.
+- **`shipmates doctor` warns about a live resource broker with no pi extension installed (#633).** The check runs for every harness so the post-uninstall orphan is visible even when there is no pi receipt left to diagnose, and points at the no-receipt uninstall path above.
+- **Pi crew protocol, daemon lifecycle, session, and menu paths have direct CI tests (#634).** `protocol.test.mjs` and `daemon.test.mjs` cover framing, lock reclaim, endpoint writes, and double-bind refusal; `extension.test.mjs` covers `session_start` / `session_shutdown` and the switch menu.
+
+## [0.17.3] - 2026-10-30
+
+### Changed
+
+- **`/shipmates-upgrade` now upgrades and repairs when invoked with no tokens (#617).** The command was named for the work but defaulted to a read-only report, so a captain who ran it and said nothing got a plan and no change. An empty invocation now brings the binary and every known install up to date and repairs drift. `report` is the explicit read-only pass, filing upstream bugs still needs the `file-bugs` token, and applying no longer implies filing.
+- **The shared intake doctrine names two shapes of mutation-gating knob instead of assuming one (#617).** It previously defined the knob as "choosing a non-default value performs a write", which made an omitted token always mean the safe path, and forced an ask before any command that mutates. A knob is now either **ask-first** (its safe value is the default, tokenized only by naming the mutating token) or **apply-first** (its mutating value is the default with an explicit safe token as the opt-out). Only a command whose name *is* the mutation may declare an apply-first knob, its Help says what the way out is, and invoking it with no tokens is already fully specified. Every other mutating command keeps today's ask-first behaviour unchanged.
+
 ## [0.17.2] - 2026-10-30
 
 ### Fixed
