@@ -37,6 +37,16 @@ cargo install shipmates
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
+**pi (npm):**
+```bash
+pi install npm:pi-shipmates
+```
+
+`pi-shipmates` is the pi-only door: the same pi payload the CLI compiles, published to npm so a pi
+captain installs it with the harness's own package manager (`pi update --extensions` refreshes it,
+`pi remove npm:pi-shipmates` removes it). The binary below stays the channel for the other eight
+harnesses.
+
 Then `shipmates install --harness <name>` drops the harness's own tree (`.claude/`, `.opencode/`,
 `.codex/`, …) into the current directory — or `--dir` for a specific project. `shipmates targets`
 lists every harness.

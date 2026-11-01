@@ -399,7 +399,75 @@ def main() -> int:
         check_doc(rel, declared, current)
 
     check_bootstrap_cost_sync()
+    check_npm_channel_pending()
     return report()
+
+
+NPM_CHANNEL_SENTINEL_RE = re.compile(r"^\s*#\s*npm-channel:\s*([a-z]+)\s*$", re.M)
+# Offered as a command to run, not merely named: a page that only describes the
+# package is not sending a captain to a registry that answers 404.
+NPM_INSTALL_OFFER_RE = re.compile(r"npm:pi-shipmates")
+# Any one of these, anywhere in the same file, states the channel's status.
+PENDING_MARKERS = ("not published", "not yet published", "404", "npm-channel: pending")
+
+
+def npm_channel_state() -> str:
+    """The `# npm-channel: <state>` token in the release workflow, or '' if absent."""
+    wf = ROOT / ".github" / "workflows" / "release.yml"
+    if not wf.is_file():
+        return ""
+    m = NPM_CHANNEL_SENTINEL_RE.search(wf.read_text(encoding="utf-8"))
+    return m.group(1) if m else ""
+
+
+def check_npm_channel_pending() -> None:
+    """While the npm channel is pending, every page offering it must say so.
+
+    `pi install npm:pi-shipmates` is a registry fact this repository cannot see
+    offline: the package ships from this repo but does not exist in npm until the
+    first manual publish. A README or docs page that prints the command without
+    that status sends a captain to a 404 and reads as a working install path — the
+    one claim the docs must not make. The gate cannot assert the registry state, so
+    it asserts the thing we do control: the status is stated wherever the command
+    is offered.
+
+    The rule retires itself. `.github/workflows/release.yml` carries
+    `# npm-channel: pending`; change that token to `published` after the first
+    publish and this check reports instead of enforcing.
+    """
+    state = npm_channel_state()
+    if state != "pending":
+        ok(
+            "npm channel: no pending sentinel in the release workflow"
+            if not state
+            else f"npm channel: state `{state}` — pending-caveat rule retired"
+        )
+        return
+
+    surfaces = [ROOT / "README.md", *sorted(ROOT.glob("site/**/*.html"))]
+    offering = [
+        p
+        for p in surfaces
+        if p.is_file() and NPM_INSTALL_OFFER_RE.search(p.read_text(encoding="utf-8", errors="ignore"))
+    ]
+    missing = [
+        p
+        for p in offering
+        if not any(m in p.read_text(encoding="utf-8", errors="ignore") for m in PENDING_MARKERS)
+    ]
+    if missing:
+        named = ", ".join(f"`{m}`" for m in PENDING_MARKERS)
+        for p in missing:
+            fail(
+                f"{p.relative_to(ROOT)}: offers `pi install npm:pi-shipmates` while the release "
+                f"workflow says the channel is pending — state that the package is not published "
+                f"yet (write one of: {named})"
+            )
+        return
+    ok(
+        f"npm channel: pending — {len(offering)} surface(s) offer "
+        f"`pi install npm:pi-shipmates`, all stating it is not published yet"
+    )
 
 
 def report() -> int:

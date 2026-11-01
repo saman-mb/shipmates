@@ -157,6 +157,22 @@ cargo install shipmates
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/saman-mb/shipmates/releases/download/vX.Y.Z/shipmates-installer.sh | sh
 ```
 
+**pi (npm):**
+```bash
+pi install npm:pi-shipmates    # the crew and commands, through pi's own package manager
+pi update --extensions         # refresh the payload when a release lands
+pi remove npm:pi-shipmates     # take it back out
+```
+
+The npm door is the pi-only path: it delivers the same pi payload the CLI writes, packed as
+`pi-shipmates`, so a pi captain never leaves the harness. The `shipmates` binary below stays the
+channel for the other eight harnesses. Both pi doors need the same thing to resolve the crew — the
+third-party `pi-subagents` extension, since core pi documents no subagent schema of its own.
+
+**`pi-shipmates` is not published yet.** The package and the release job that publishes it ship
+here; the npm registry entry and its Trusted Publisher are a one-time manual step in the npm UI, so
+until that is done `pi install npm:pi-shipmates` answers `404` and the paths above are the way in.
+
 Then install the crew. By default it drops into your global home directory. When `--harness` is
 omitted, `shipmates install` reports any detected harnesses as a hint, then prompts in a terminal
 (Enter = `claude-code`) or installs `claude-code` only when non-interactive — pass `--harness NAME`

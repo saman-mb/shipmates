@@ -684,4 +684,49 @@ mod tests {
         let files = PiAdapter.build(&[r], &[]).unwrap();
         assert!(files["harnesses/pi/.pi/agents/bare.md"].contains("tools: read\n"));
     }
+
+    /// `build --with-tools` unions `build()` with `build_tools()` into one tree.
+    /// Every bundled tool arrives as a native `.pi/skills/` skill (never a
+    /// second copy beside the crew extension), an empty selection adds nothing,
+    /// and the merged tree still carries exactly one inlined crew extension —
+    /// the file the pi npm package (#635) ships whole.
+    #[test]
+    fn test_pi_tool_skills_merge_without_disturbing_the_crew_extension() {
+        let core = PiAdapter
+            .build(&[role("sdet", "Tests")], &[command()])
+            .unwrap();
+        // `none` selects nothing: the merged tree is byte-identical to `build()`.
+        assert!(PiAdapter.build_tools(&[]).is_empty());
+
+        let tools = crate::catalog::load_tools_embedded().expect("embedded toolbox");
+        assert!(!tools.is_empty(), "the toolbox must ship tools for --with-tools");
+        let tool_files = PiAdapter.build_tools(&tools);
+        for tool in &tools {
+            let skill = format!("harnesses/pi/.pi/skills/{}/SKILL.md", tool.name);
+            assert!(
+                tool_files.contains_key(&skill),
+                "tool {name} must land as a native pi skill at {skill}",
+                name = tool.name
+            );
+        }
+
+        // Tool skills and command skills share the `skills/` namespace, so a
+        // name collision would silently drop one file from the written tree.
+        assert!(
+            !core.keys().any(|path| tool_files.contains_key(path)),
+            "tool payload must not overlap the crew/command payload paths"
+        );
+
+        let mut merged = core;
+        merged.extend(tool_files);
+        let extensions: Vec<&String> = merged
+            .keys()
+            .filter(|path| path.ends_with(".pi/extensions/shipmates-crew/index.ts"))
+            .collect();
+        assert_eq!(
+            extensions.len(),
+            1,
+            "the crew extension must stay a single inlined file after the tool merge"
+        );
+    }
 }

@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-10-31
+
+### Added
+
+- **`pi-shipmates` on npm gives pi captains a door that speaks their harness's package manager (#635).** `pi install npm:pi-shipmates` brings the crew, the nineteen commands and the toolbox into pi with no brew tap, no cargo, and no checkout; `pi update --extensions` refreshes the payload when a release lands and `pi remove npm:pi-shipmates` takes it back out. The package is not a second renderer — it is the tree the `pi` adapter already compiles, repacked at publish time, so `commands/` and `crew/` stay the only sources and `shipmates check --target pi` still gates the content. This is the pi-only channel: the `shipmates` binary stays how the other eight harnesses are installed, and pi's crew still resolve through the third-party `pi-subagents` extension, which the package inherits rather than replaces.
+- **`shipmates build --with-tools` materializes the whole payload in one command (#635).** `build --target pi --out <dir>` emitted crew, commands and steering but no toolbox, while `install --harness pi --dir <dir> --with-tools all` emitted the toolbox but no steering — so packaging the pi tree meant unioning two outputs by hand. One call now emits the install-equivalent tree, which is what the packager and the parity gate assert against.
+- **The first publish is a manual step, and the release job says so instead of silently skipping it (#635).** npm's trusted publishing can only authorize a package that already exists, so the very first `pi-shipmates` release needs a manual `npm publish` plus a Trusted Publisher entry naming the release workflow in the registry UI (with `npm publish` ticked, not only `npm stage publish`). Until the captain does that once, the npm publish job is skipped and the rest of the release ships unchanged.
+
+### Fixed
+
+- **Every surface that offers `pi install npm:pi-shipmates` now says the package is not published yet (#635).** The README and the install and harness docs pages printed the command as a working install path while the registry holds no such package, so the docs sent a captain straight to an npm 404. Each of the three states the status now and names the CLI as pi's door in the meantime. `tools/validate_docs.py` enforces it: while the release workflow carries `# npm-channel: pending`, any page offering the command without that status fails the docs gate, and changing the token to `published` retires the rule by itself.
+- **The site validator now fails an unbalanced document (#635).** A `</div>` lost from the install page rendered correctly — the browser closed the block at `</section>` — so every existing check passed a page whose nesting was wrong. The gate now compares opening and closing counts for strict containers on every page, with `p`, `li`, `td`, `th` and `tr` exempt because HTML closes those implicitly.
+- **The npm publish job no longer inherits the workflow's secrets (#635).** Trusted publishing authenticates with the OIDC token the job already holds, and the reusable workflow it calls declares inputs only, so inheriting widened the job's reach for nothing.
+
 ## [0.18.0] - 2026-10-31
 
 ### Added
