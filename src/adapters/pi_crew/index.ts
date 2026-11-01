@@ -495,7 +495,13 @@ export function install(pi, deps = {}) {
   }
 
   function busyModels() {
-    return [...new Set([...seats.values()].map((seat) => seat.model).filter(Boolean))];
+    // The captain chat never becomes a seat, but its turn holds a lease on the
+    // model it generates on. That model must read as busy to the same-model
+    // guard for the span of the turn; every lease release frees it.
+    const models = [...seats.values()].map((seat) => seat.model).filter(Boolean);
+    const captain = captainKey ? leases.get(captainKey)?.model : null;
+    if (captain) models.push(captain);
+    return [...new Set(models)];
   }
 
   function runningLocal() {

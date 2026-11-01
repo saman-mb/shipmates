@@ -263,6 +263,69 @@ test("the captain chat is reserved only for Local enforce and released when the 
   }
 });
 
+test("a seat on the captain's model waits until the turn ends", async () => {
+  const previous = process.env.PI_SUBAGENT_CHILD;
+  delete process.env.PI_SUBAGENT_CHILD;
+  try {
+    const run = harness(parsed({ switch: "Local", resources: "enforce", ticks: ["local/a"] }));
+    const ctx = {
+      model: { provider: "local", id: "a" },
+      aborted: false,
+      abort() {
+        this.aborted = true;
+      },
+      ui: { notify() {} },
+    };
+    await run.handlers.turn_start({ turnIndex: 1 }, ctx);
+    assert.equal(ctx.aborted, false);
+    const blocked = await run.handlers.tool_call(seatEvent({ model: "local/a" }));
+    assert.equal(blocked.block, true);
+    assert.match(blocked.reason, /Waiting: local\/a is busy/);
+    assert.match(blocked.reason, /This seat stays on local\/a\. Not moved\./);
+    await run.handlers.turn_end({ turnIndex: 1 });
+    assert.equal(run.leases.size, 0);
+    const allowed = await run.handlers.tool_call(seatEvent({ model: "local/a" }));
+    assert.equal(allowed, undefined);
+  } finally {
+    if (previous === undefined) delete process.env.PI_SUBAGENT_CHILD;
+    else process.env.PI_SUBAGENT_CHILD = previous;
+  }
+});
+
+test("a captain admission failure leaves no phantom busy model", async () => {
+  const previous = process.env.PI_SUBAGENT_CHILD;
+  delete process.env.PI_SUBAGENT_CHILD;
+  try {
+    let denyCaptain = false;
+    const run = harness(parsed({ switch: "Local", resources: "enforce", ticks: ["local/a"] }), async (_method, params) => {
+      if (params.role === "captain" && denyCaptain) return { action: "deny", reason: "Denied: full." };
+      return { action: "grant", generation: 3, lease: { runId: params.runId, generation: 3, modelId: params.model } };
+    });
+    const ctx = {
+      model: { provider: "local", id: "a" },
+      aborted: false,
+      abort() {
+        this.aborted = true;
+      },
+      ui: { notify() {} },
+    };
+    // A live captain turn holds the model.
+    await run.handlers.turn_start({ turnIndex: 0 }, ctx);
+    assert.equal((await run.handlers.tool_call(seatEvent({ model: "local/a" }))).block, true);
+    assert.equal(run.leases.size, 1);
+    // The turn is aborted before turn_end and the next admission fails: the
+    // previous lease is released and the model must not stay busy.
+    denyCaptain = true;
+    await run.handlers.turn_start({ turnIndex: 1 }, ctx);
+    assert.equal(ctx.aborted, true);
+    assert.equal(run.leases.size, 0);
+    assert.equal(await run.handlers.tool_call(seatEvent({ model: "local/a" })), undefined);
+  } finally {
+    if (previous === undefined) delete process.env.PI_SUBAGENT_CHILD;
+    else process.env.PI_SUBAGENT_CHILD = previous;
+  }
+});
+
 test("a cloud chat is never reserved by the local broker", async () => {
   const previous = process.env.PI_SUBAGENT_CHILD;
   delete process.env.PI_SUBAGENT_CHILD;
