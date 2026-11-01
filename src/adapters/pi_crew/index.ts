@@ -530,6 +530,7 @@ export function install(pi, deps = {}) {
         contextTokens: state.contextTokens,
         outputReserveTokens: state.contextTokens,
         wait: !shadow,
+        dryRun: shadow,
       });
       const result = await (signal
         ? Promise.race([
@@ -550,9 +551,8 @@ export function install(pi, deps = {}) {
           queuePosition: result?.queuePosition ?? null,
           reason: typeof result?.reason === "string" ? result.reason : "",
         });
-        if (result?.action === "grant" && result.lease) {
-          return { ok: true, lease: result.lease, generation: result.generation ?? result.lease.generation };
-        }
+        // Shadow observes. It never holds a lease, so it cannot consume
+        // capacity or leave a reservation behind if the run dies.
         return { ok: true };
       }
       if (result?.action === "grant" && result.lease && Number.isInteger(result.lease.generation ?? result.generation)) {
@@ -646,6 +646,13 @@ export function install(pi, deps = {}) {
       ctx.abort?.();
       return;
     }
+    // The local broker governs local work. A cloud chat is not a local seat, so
+    // reserving it would park a model the broker never holds and, under
+    // enforce, stop the captain's own chat for no reason. Only a model the
+    // registry positively reports as cloud is skipped; an unreadable registry
+    // keeps the previous behaviour.
+    const { cloud } = classifyModels(ctx?.modelRegistry?.getAvailable?.());
+    if (cloud.includes(model) && !state.ticks.includes(model)) return;
     if (captainKey) await releaseRecord(leases.get(captainKey));
     const seatKey = `captain:${sessionId}:${event?.turnIndex ?? 0}`;
     const admission = await askBroker(state, seatKey, "captain", model);
