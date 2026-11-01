@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.1] - 2026-11-01
+
+### Fixed
+
+- **`/shipmates-pr-review` briefs every board seat with the PR diff up front (#630).** The command assumed its spawned reviewers could run `gh`/`git` themselves; on harnesses that spawn board members without a shell tool, every reviewer interrupted asking the parent to fetch the diff. Stage 0 now prefetches the head SHA, changed-file list and diff to a temp file, Stage 2 carries them into every seat brief, and a portability rule has context-only reviewers state "static review of provided context" rather than reaching for a shell. The diff is passed as untrusted data, never executed. (The rename half of the issue is tracked separately.)
+
 ## [0.19.0] - 2026-10-31
 
 ### Added
@@ -17,6 +23,7 @@ All notable changes to this project are documented here. The format follows
 - **Every surface that offers `pi install npm:pi-shipmates` now says the package is not published yet (#635).** The README and the install and harness docs pages printed the command as a working install path while the registry holds no such package, so the docs sent a captain straight to an npm 404. Each of the three states the status now and names the CLI as pi's door in the meantime. `tools/validate_docs.py` enforces it: while the release workflow carries `# npm-channel: pending`, any page offering the command without that status fails the docs gate, and changing the token to `published` retires the rule by itself.
 - **The site validator now fails an unbalanced document (#635).** A `</div>` lost from the install page rendered correctly — the browser closed the block at `</section>` — so every existing check passed a page whose nesting was wrong. The gate now compares opening and closing counts for strict containers on every page, with `p`, `li`, `td`, `th` and `tr` exempt because HTML closes those implicitly.
 - **The npm publish job no longer inherits the workflow's secrets (#635).** Trusted publishing authenticates with the OIDC token the job already holds, and the reusable workflow it calls declares inputs only, so inheriting widened the job's reach for nothing.
+
 
 ## [0.18.0] - 2026-10-31
 
