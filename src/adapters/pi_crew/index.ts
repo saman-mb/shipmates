@@ -95,6 +95,20 @@ function resolveModel(model, sessionModel) {
   return typeof model === "string" ? model : modelId(model);
 }
 
+/** Spawn intent, not a management-action allowlist: a spawn names an `agent`,
+ * a `model`, or a `tasks`/`runs` batch, and does not carry `workflow`. Every
+ * other subagent call — a management action, or one this file has never heard
+ * of — is not a spawn and must never reach the model gate. */
+function hasSpawnIntent(input) {
+  if (!input || typeof input !== "object" || input.workflow) return false;
+  if (input.agent || input.model) return true;
+  for (const key of ["tasks", "runs"]) {
+    const items = input.args?.[key] || input[key];
+    if (Array.isArray(items) && items.length > 0) return true;
+  }
+  return false;
+}
+
 function spawnInputs(input, sessionModel) {
   const seats = [];
   if (input && typeof input === "object") {
@@ -717,11 +731,7 @@ export function install(pi, deps = {}) {
   pi.on("tool_call", async (event, ctx) => {
     if (event.toolName !== "subagent") return;
     const state = read();
-    const action = event.input?.action;
-    if (typeof action === "string" && ["status", "list", "guide", "cancel", "message"].includes(action)) {
-      return;
-    }
-    if (event.input?.workflow) return;
+    if (!hasSpawnIntent(event.input)) return;
 
     const available = ctx?.modelRegistry?.getAvailable?.();
     let registryLocal;
