@@ -28,7 +28,6 @@ All notable changes to this project are documented here. The format follows
 - **The site validator now fails an unbalanced document (#635).** A `</div>` lost from the install page rendered correctly — the browser closed the block at `</section>` — so every existing check passed a page whose nesting was wrong. The gate now compares opening and closing counts for strict containers on every page, with `p`, `li`, `td`, `th` and `tr` exempt because HTML closes those implicitly.
 - **The npm publish job no longer inherits the workflow's secrets (#635).** Trusted publishing authenticates with the OIDC token the job already holds, and the reusable workflow it calls declares inputs only, so inheriting widened the job's reach for nothing.
 
-
 ## [0.18.0] - 2026-10-31
 
 ### Added
