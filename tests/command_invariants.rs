@@ -604,3 +604,68 @@ fn auto_trunk_defaults_safe_and_degrades_on_protected_trunk() {
         "auto-trunk must never force-push"
     );
 }
+
+/// #643: /shipmates-qa agent-as-tester mode — opt-in flag where the agent
+/// drives the running build instead of the human, with dual SDET+PO verdicts,
+/// stack-agnostic driving discovery from repo docs, and deferral on missing tooling.
+#[test]
+fn qa_agent_as_tester_mode_contracts() {
+    let body = command("shipmates-qa");
+    let text = prose(&body);
+
+    // 1. Parameter and config declaration
+    assert!(
+        body.contains("| tester | no |") && body.contains("human / agent") && body.contains("| human |"),
+        "qa Parameters table must declare tester with default human and values human / agent"
+    );
+    assert!(
+        body.contains("`TESTER` = `human`") && body.contains("`agent`"),
+        "qa Config must document TESTER with human default and agent opt-in"
+    );
+
+    // 2. Stage 4 branching
+    assert!(
+        text.contains("TESTER=human") && text.contains("TESTER=agent"),
+        "Stage 4 must branch on TESTER (human vs agent)"
+    );
+    assert!(
+        text.contains("SDET verdict") && text.contains("PO verdict"),
+        "Stage 4 agent mode must require dual SDET and PO verdicts"
+    );
+    assert!(
+        text.contains("No sign-off without evidence") || text.contains("evidence on file"),
+        "Stage 4 agent mode must require evidence on file before sign-off"
+    );
+
+    // 3. Generic/stack-agnostic constraint and deferral
+    assert!(
+        text.contains("Generic and stack-agnostic") || text.contains("generic and stack-agnostic"),
+        "qa guardrails must enforce generic and stack-agnostic driving"
+    );
+    assert!(
+        text.contains("discover available driving tooling from the target repo")
+            || text.contains("discover available driving tooling from the repo"),
+        "Stage 1 must instruct discovering driving tooling from repo docs"
+    );
+
+    // 4. Strict neutrality: no specific UI automation tools or vendor stacks hardcoded
+    const FORBIDDEN_STACKS: &[&str] = &[
+        "flutter",
+        "simctl",
+        "playwright",
+        "maestro",
+        "appium",
+        "xcode",
+        "espresso",
+        "cypress",
+        "selenium",
+    ];
+    let lower = body.to_lowercase();
+    for stack in FORBIDDEN_STACKS {
+        assert!(
+            !lower.contains(stack),
+            "shipmates-qa must not hardcode specific stack or toolchain '{stack}'"
+        );
+    }
+}
+
