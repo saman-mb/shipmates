@@ -196,12 +196,13 @@
           <table>
             <thead><tr><th scope="col">Situation</th><th scope="col">What happens</th></tr></thead>
             <tbody>
-              <tr><td>No model named for a seat</td><td>Refused. It lists the free models of that kind and waits for you.</td></tr>
+              <tr><td>No model named for a seat (on Split or Local)</td><td>Refused. It lists the free models of that kind and waits for you.</td></tr>
               <tr><td>A doer sent to a cloud model</td><td>Refused. The role is tagged local; name a local model.</td></tr>
               <tr><td>A judge sent to a local model</td><td>Refused. The role is tagged cloud.</td></tr>
               <tr><td>A local model you did not tick</td><td>Refused. Tick it first, or name another.</td></tr>
               <tr><td>More seats than your ceiling</td><td>It waits and tells you the cap and how many are already running.</td></tr>
               <tr><td>The model you named is busy</td><td>It waits for that model. It is not moved to another one.</td></tr>
+              <tr><td>The switch is Off and the seat names a local model</td><td>Refused. Off never puts a crew seat on a local engine; a seat that names no model inherits your chat's model.</td></tr>
             </tbody>
           </table>
         </div>
