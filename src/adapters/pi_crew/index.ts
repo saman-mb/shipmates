@@ -201,7 +201,7 @@ function resolvePinnedRuntimeRoot(base = dirname(fileURLToPath(import.meta.url))
   return roots[0];
 }
 
-function fileJournal(dir) {
+export function fileJournal(dir) {
   const file = join(dir, "journal.jsonl");
   mkdirSync(dir, { recursive: true });
   return {
@@ -331,7 +331,7 @@ async function rpcOver(socket) {
   };
 }
 
-function spawnDaemon(endpoint) {
+export function spawnDaemon(endpoint) {
   const child = spawn(process.execPath, [
     "--experimental-strip-types",
     fileURLToPath(import.meta.url),
@@ -348,7 +348,7 @@ function spawnDaemon(endpoint) {
   child.unref();
 }
 
-async function waitForBroker(listenPath) {
+export async function waitForBroker(listenPath) {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const client = await tryConnect(listenPath);
     if (client) return client;
@@ -357,7 +357,7 @@ async function waitForBroker(listenPath) {
   return null;
 }
 
-function lockIsLive(lockPath) {
+export function lockIsLive(lockPath) {
   try {
     const pid = Number(readFileSync(lockPath, "utf8"));
     if (!Number.isInteger(pid) || pid <= 0) return false;
@@ -392,7 +392,7 @@ export async function startDaemon() {
   setInterval(() => {}, 1 << 30);
 }
 
-function takeLock(lockPath) {
+export function takeLock(lockPath) {
   try {
     const fd = openSync(lockPath, "wx");
     writeSync(fd, String(process.pid));
@@ -631,7 +631,7 @@ export function install(pi, deps = {}) {
             ctx.ui.notify("No local model to move to. Switch unchanged. /model unchanged.", "warning");
             return;
           }
-          writeState({ ...current, switch: "Local" });
+          writeState({ ...current, switch: "Local" }, deps.statePath);
           if (ctx.modelRegistry?.find) {
             const [provider, ...rest] = choice.split("/");
             const found = ctx.modelRegistry.find(provider, rest.join("/"));
