@@ -346,6 +346,13 @@ jobs:
   # so the gate is the PI_NPM_PUBLISH_ENABLED repository variable: until the
   # package and its trusted-publisher entry exist, this job skips. A channel that
   # is not configured yet must never be able to turn a release red.
+  #
+  # npm-channel: pending
+  #   State of the channel, read by tools/validate_docs.py. While it says
+  #   `pending`, every surface that offers `npm:pi-shipmates` as a way in must also
+  #   say the package is not published yet, so an npm 404 is never advertised as a
+  #   working install path. Change the token to `published` after the first manual
+  #   `npm publish` and the gate retires the requirement by itself.
   custom-publish-npm:
     needs:
       - plan
@@ -356,7 +363,8 @@ jobs:
     with:
       plan: ${{ needs.plan.outputs.val }}
       tag: ${{ needs.plan.outputs.tag }}
-    secrets: inherit
+    # No `secrets: inherit`: publish-npm.yml declares inputs only and publishes
+    # with the OIDC token, so inheriting would widen this job's reach for nothing.
     permissions:
       "id-token": "write"
       "packages": "write"

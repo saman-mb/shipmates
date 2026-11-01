@@ -1131,6 +1131,44 @@ def check_docs_coverage(pages: list[Page]) -> None:
         ok(f"docs coverage: hub plus {len(DOCS_SLUGS)} docs page(s) published")
 
 
+STRICT_CONTAINERS = (
+    "div", "section", "main", "header", "footer", "nav", "aside", "figure", "figcaption",
+    "table", "thead", "tbody", "tfoot", "ul", "ol", "blockquote", "pre", "code", "span",
+    "strong", "em", "a", "h1", "h2", "h3", "h4", "button", "label", "form", "select", "iframe",
+)
+
+
+def check_tag_balance(pages: list[Page]) -> None:
+    """Every strict container a page opens, it closes.
+
+    A dropped `</div>` renders. The browser closes the block at the next `</section>`, the page
+    looks right in a screenshot, and the next editor inherits a document whose nesting is a lie —
+    a new element lands inside the wrong container and the breakage surfaces two edits later.
+    `p`, `li`, `td`, `th` and `tr` are exempt because HTML closes them implicitly, and `script`,
+    `style` and `svg` bodies are stripped before counting so their markup is not misread.
+    """
+    bad = 0
+    for page in pages:
+        html = page.path.read_text(encoding="utf-8", errors="ignore")
+        html = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+        html = re.sub(r"<(script|style|svg)\b.*?</\1>", "", html, flags=re.S | re.I)
+        for tag in STRICT_CONTAINERS:
+            opened = len(re.findall(rf"<{tag}(?=[\s>/])", html, flags=re.I))
+            opened -= len(re.findall(rf"<{tag}\b[^>]*/>", html, flags=re.I))
+            closed = len(re.findall(rf"</{tag}>", html, flags=re.I))
+            if opened != closed:
+                bad += 1
+                fail(
+                    f"{page.rel}: <{tag}> opened {opened}× but closed {closed}× — an unclosed "
+                    f"container renders today and misnests the next edit"
+                )
+    if not bad:
+        ok(
+            f"tag balance: {len(pages)} page(s), every strict container closes "
+            f"(p/li/td/th/tr exempt — closed implicitly)"
+        )
+
+
 def check_uniqueness(pages: list[Page]) -> None:
     """Duplicate titles or descriptions make pages compete in search results."""
     titles: dict[str, list[str]] = {}
@@ -1303,6 +1341,7 @@ def main() -> int:
     check_agent_coverage(pages)
     check_tool_coverage(pages)
     check_uniqueness(pages)
+    check_tag_balance(pages)
     check_css(css)
     check_sitemap(pages, n_commands, n_docs, n_agents, n_tools)
 

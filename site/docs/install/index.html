@@ -99,6 +99,8 @@
 pi update --extensions            # refresh the payload when a release lands
 pi remove npm:pi-shipmates        # take it back out</code></pre>
           <p><code>pi-shipmates</code> is the pi-only door, and it is the same payload the CLI compiles for <code>--harness pi</code> — the Rust adapters stay the only compiler, and the package is that tree repacked at release time. Nothing about the other eight harnesses changes: the CLI is their channel, and <code>shipmates targets</code> stays the truth about what this binary can install. Like the CLI install, the package resolves its crew through the third-party <code>pi-subagents</code> extension, because core pi documents no subagent schema of its own.</p>
+          <p class="callout callout--warn"><strong><code>pi-shipmates</code> is not published yet.</strong> The package and the release job that publishes it are built from this repository; the npm registry entry and its Trusted Publisher are a one-time manual step in the npm UI. Until that is done, <code>pi install npm:pi-shipmates</code> answers <code>404</code> and the Homebrew, Cargo, or installer path above is the way in.</p>
+        </div>
       </div>
     </section>
 

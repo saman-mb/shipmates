@@ -169,6 +169,10 @@ The npm door is the pi-only path: it delivers the same pi payload the CLI writes
 channel for the other eight harnesses. Both pi doors need the same thing to resolve the crew — the
 third-party `pi-subagents` extension, since core pi documents no subagent schema of its own.
 
+**`pi-shipmates` is not published yet.** The package and the release job that publishes it ship
+here; the npm registry entry and its Trusted Publisher are a one-time manual step in the npm UI, so
+until that is done `pi install npm:pi-shipmates` answers `404` and the paths above are the way in.
+
 Then install the crew. By default it drops into your global home directory. When `--harness` is
 omitted, `shipmates install` reports any detected harnesses as a hint, then prompts in a terminal
 (Enter = `claude-code`) or installs `claude-code` only when non-interactive — pass `--harness NAME`
