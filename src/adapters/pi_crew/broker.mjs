@@ -350,8 +350,34 @@ async function admit(runtime, connection, params, deliveries) {
       code: "refused-invalid",
     });
   }
+  if (plan.action === "grant" && params.dryRun === true) {
+    // A dry run reports the decision and takes nothing. It must not queue or
+    // reserve, or a shadow seat would hold capacity and a shadow queue entry
+    // would never drain.
+    return {
+      action: "grant",
+      code: plan.code,
+      reason: typeof plan.reason === "string" ? plan.reason : "",
+      queuePosition: null,
+      generation: null,
+      reservation: plan.reservation ?? null,
+      dryRun: true,
+    };
+  }
   if (plan.action === "grant") return issueGrant(runtime, planned, plan);
   if (plan.action !== "queue") throw rpcError(-32603, "capacity returned an unknown action");
+
+  if (params.dryRun === true) {
+    return {
+      action: "queue",
+      code: plan.code,
+      reason: typeof plan.reason === "string" ? plan.reason : "",
+      queuePosition: plan.queuePosition ?? null,
+      generation: null,
+      reservation: null,
+      dryRun: true,
+    };
+  }
 
   if (runtime.queue.length >= MAX_QUEUE) {
     throw rpcError(-32006, "queue is full");

@@ -91,6 +91,11 @@ jobs:
       # inline for exactly that reason, and its jobs only run on a push (#534).
       - name: Validate workflow steps that run before checkout
         run: python3 .github/scripts/validate_precheckout_steps.py
+      # A retired hosted runner label is cancelled a second after the job starts
+      # (no runner is ever assigned), which silently skips every job that needs
+      # it and publishes nothing. macOS 14 is retired from 2026-11-02.
+      - name: Validate no workflow or dist target requests a retired runner
+        run: python3 .github/scripts/validate_runner_labels.py
       - name: Validate the harness roster audit
         run: python3 tools/validate_harness_roster.py
       - name: Validate static site
