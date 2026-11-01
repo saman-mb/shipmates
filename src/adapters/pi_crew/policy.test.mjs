@@ -233,6 +233,132 @@ test("present ticks narrow the local candidate set", () => {
   assert.equal(allowed.honoured, true);
 });
 
+test("a ticked local model the engine cannot start is refused before spawn", () => {
+  const result = decideSpawn({
+    state: state(),
+    role: "senior-engineer",
+    model: LOCAL,
+    modelTag: "local",
+    loaded,
+    served: [LOCAL_B, LOCAL_C],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(result.action, "block");
+  assert.match(result.reason, /^Refused: local-a is ticked but its engine cannot start it\./);
+  assert.match(result.reason, /Free local models: local-b, local-c\./);
+  assert.match(result.reason, /will not pick one/);
+
+  const localMode = decideSpawn({
+    state: state({ switch: "Local" }),
+    role: "architect",
+    model: LOCAL,
+    modelTag: "local",
+    loaded,
+    served: [LOCAL_B],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+  });
+  assert.equal(localMode.action, "block");
+  assert.match(localMode.reason, /its engine cannot start it/);
+});
+
+test("with no ticks the engine refusal still fires and names the served local models", () => {
+  const result = decideSpawn({
+    state: state({ ticks: [] }),
+    role: "senior-engineer",
+    model: LOCAL,
+    modelTag: "local",
+    loaded,
+    served: [LOCAL_B],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(result.action, "block");
+  assert.match(result.reason, /is a local model pi lists but its engine cannot start it/);
+  assert.match(result.reason, /Free local models: local-b\./);
+
+  const served = decideSpawn({
+    state: state({ ticks: [] }),
+    role: "senior-engineer",
+    model: LOCAL_B,
+    modelTag: "local",
+    loaded,
+    served: [LOCAL_B],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(served.action, "allow");
+});
+
+test("an engine probe that cannot answer keeps the listed-model behaviour", () => {
+  for (const served of [null, undefined]) {
+    const ok = decideSpawn({
+      state: state(),
+      role: "senior-engineer",
+      model: LOCAL,
+      modelTag: "local",
+      loaded,
+      served,
+      busy: [],
+      cloudModels: [CLOUD],
+      runningLocal: 0,
+      runningAll: 0,
+      task: order,
+    });
+    assert.equal(ok.action, "allow", `served=${String(served)} must not change the decision`);
+    assert.equal(ok.honoured, true);
+  }
+});
+
+test("the free-local list in a tag refusal only names engine-served models", () => {
+  const result = decideSpawn({
+    state: state(),
+    role: "senior-engineer",
+    model: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    served: [LOCAL_B],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(result.action, "block");
+  assert.match(result.reason, /Free local models: local-b\./);
+  assert.doesNotMatch(result.reason, /local-a/);
+});
+
+test("a cloud seat is untouched by the engine's local report", () => {
+  const result = decideSpawn({
+    state: state(),
+    role: "architect",
+    model: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    served: [LOCAL_B],
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: "review",
+  });
+  assert.equal(result.action, "allow");
+  assert.equal(result.honoured, true);
+});
+
 test("refusal copy lists real free cloud models from pi registry", () => {
   const result = decideSpawn({
     state: state({ ticks: [] }),

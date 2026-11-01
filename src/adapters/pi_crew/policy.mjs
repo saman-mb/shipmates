@@ -156,6 +156,11 @@ function narrowedCandidates(loaded, ticks) {
   return loaded.filter((model) => ticks.includes(model));
 }
 
+function servedCandidates(listed, served) {
+  if (!Array.isArray(served)) return listed;
+  return listed.filter((model) => served.includes(model));
+}
+
 function tickQualifier(ticks) {
   return ticks && ticks.length ? " and is ticked" : "";
 }
@@ -167,6 +172,9 @@ function tickQualifier(ticks) {
  * @param {string | null | undefined} input.model
  * @param {"local" | "cloud" | null} input.modelTag where the named model is served
  * @param {string[]} input.loaded local models pi lists as available
+ * @param {string[]} [input.served] local models the engine reports it can serve;
+ *   null or absent when the engine probe could not answer, which keeps the
+ *   listed-model behaviour
  * @param {string[]} input.busy plugin in-flight model ids
  * @param {string[]} input.cloudModels cloud models pi lists as available
  * @param {number} input.runningLocal in-flight seats that count in Split
@@ -187,10 +195,25 @@ export function decideSpawn(input) {
 
   const busy = new Set(input.busy ?? []);
   const ticks = state.ticks;
-  const candidates = narrowedCandidates(input.loaded ?? [], ticks);
+  const listedCandidates = narrowedCandidates(input.loaded ?? [], ticks);
+  const candidates = servedCandidates(listedCandidates, input.served);
   const cap = state.ceiling;
   const freeLocal = candidates.filter((model) => !busy.has(model));
   const freeCloud = (input.cloudModels ?? []).filter((model) => !busy.has(model));
+
+  if (
+    Array.isArray(input.served)
+    && input.modelTag === "local"
+    && typeof input.model === "string"
+    && listedCandidates.includes(input.model)
+    && !candidates.includes(input.model)
+  ) {
+    const how = ticks.length ? "is ticked" : "is a local model pi lists";
+    return {
+      action: "block",
+      reason: `Refused: ${input.model} ${how} but its engine cannot start it. Free local models: ${listed(freeLocal) || "none"}. I will not pick one.`,
+    };
+  }
 
   if (state.switch === "Local") {
     if (input.modelTag !== "local" || !candidates.includes(input.model)) {

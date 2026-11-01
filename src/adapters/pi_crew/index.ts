@@ -144,6 +144,31 @@ function localSeat(state, model, localIds) {
   return modelTag(model, localIds) === "local";
 }
 
+// The engine probe runs on the spawn hot path, so it is bounded twice: a short
+// staleness cache per engine-url set, and an overall race against the bound
+// (the probe's own per-fetch timeouts are stricter). A probe that cannot answer
+// yields null, and null keeps the listed-model behaviour.
+const ENGINE_PROBE_CACHE_MS = 10_000;
+const ENGINE_PROBE_BOUND_MS = 2_500;
+
+/** Engine-reported model ids from a probe snapshot, or null when it saw nothing. */
+function servedFromProbe(snapshot) {
+  const models = Array.isArray(snapshot?.models) ? snapshot.models : [];
+  const ids = [];
+  for (const model of models) {
+    const id = model && typeof model.id === "string" ? model.id : "";
+    if (id && model.loaded !== false && !ids.includes(id)) ids.push(id);
+  }
+  return ids.length ? ids : null;
+}
+
+/** The engine may report the bare id where pi's registry carries `provider/id`. */
+function engineServes(servedIds, model) {
+  if (servedIds.includes(model)) return true;
+  const slash = model.indexOf("/");
+  return slash > 0 && servedIds.includes(model.slice(slash + 1));
+}
+
 function pushId(ids, value) {
   if (typeof value === "string" && value.length > 0 && !ids.includes(value)) ids.push(value);
 }
@@ -467,9 +492,42 @@ export function install(pi, deps = {}) {
   const seats = new Map();
   const timers = new Map();
   const sessionId = deps.sessionId ?? randomUUID();
+  const probeEngines = deps.probeEngines ?? ((urls) => probe({ engineBaseUrls: urls }));
   let captainKey = null;
   let clientPromise = null;
   let brokerHandle = null;
+  let engineProbeCache = { urlsKey: null, atMs: 0, served: null };
+
+  /** Local models the engine reports it can serve, or null when it cannot answer. */
+  async function engineServedLocal(state, registryLocal) {
+    const urls = Array.isArray(state.engineBaseUrls) ? state.engineBaseUrls : [];
+    const key = JSON.stringify(urls);
+    const now = Date.now();
+    let servedIds;
+    if (engineProbeCache.urlsKey === key && now - engineProbeCache.atMs < ENGINE_PROBE_CACHE_MS) {
+      servedIds = engineProbeCache.served;
+    } else {
+      try {
+        const snapshot = await Promise.race([
+          Promise.resolve(probeEngines(urls)),
+          new Promise((resolve) => {
+            const timer = setTimeout(() => resolve(null), ENGINE_PROBE_BOUND_MS);
+            timer.unref?.();
+          }),
+        ]);
+        servedIds = servedFromProbe(snapshot);
+      } catch {
+        servedIds = null;
+      }
+      engineProbeCache = { urlsKey: key, atMs: now, served: servedIds };
+    }
+    if (!servedIds) return null;
+    const matched = registryLocal.filter((model) => engineServes(servedIds, model));
+    // No overlap means the engine's ids do not line up with pi's registry, so
+    // it has answered nothing about these candidates. Answer nothing rather
+    // than refuse everything.
+    return matched.length ? matched : null;
+  }
 
   async function defaultConnect() {
     if (process.env.NODE_TEST_CONTEXT) {
@@ -755,6 +813,17 @@ export function install(pi, deps = {}) {
       if (state.switch === "Off") return;
       return { block: true, reason: "Refused: no model named. I will not pick one." };
     }
+    // A listed local model is a candidate only when the engine reports it can
+    // serve it. The probe is bounded (cache + race) and a probe that cannot
+    // answer passes null through, which keeps the listed-model behaviour.
+    let served = null;
+    if (
+      state.switch !== "Off"
+      && registryLocal.length > 0
+      && seatsInCall.some((seat) => modelTag(seat.model, localIds) === "local")
+    ) {
+      served = await engineServedLocal(state, registryLocal);
+    }
     const toolCallId = typeof event.toolCallId === "string" && event.toolCallId ? event.toolCallId : randomUUID();
     const granted = [];
     for (let index = 0; index < seatsInCall.length; index += 1) {
@@ -772,6 +841,7 @@ export function install(pi, deps = {}) {
         model: seat.model,
         modelTag: modelTag(seat.model, localIds),
         loaded: registryLocal,
+        served,
         busy: busyModels(),
         cloudModels: registryCloud,
         runningLocal: runningLocal(),
