@@ -67,6 +67,17 @@ jobs:
       # .github/scripts/ is outside its reach, so this is that gate.
       - name: Lint the extracted workflow scripts
         run: bash .github/scripts/lint-shell.sh
+      - name: Check the version-bump gate's own logic
+        run: bash .github/scripts/check-release-bump.sh --self-test
+      # Released content that lands without a version bump merges, goes green, and
+      # publishes nothing — the release workflow only ships a version that has no
+      # release yet. Fail it here, while the fix is one commit.
+      - name: Check release-affecting changes bump the version
+        if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: bash .github/scripts/check-release-bump.sh
       - name: Test the pi crew switch policy
         run: bash .github/scripts/test-pi-crew-policy.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
