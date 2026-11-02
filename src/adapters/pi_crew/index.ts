@@ -511,8 +511,10 @@ export function install(pi, deps = {}) {
         const snapshot = await Promise.race([
           Promise.resolve(probeEngines(urls)),
           new Promise((resolve) => {
-            const timer = setTimeout(() => resolve(null), ENGINE_PROBE_BOUND_MS);
-            timer.unref?.();
+            // Deliberately NOT unref'd: this timer is the sole resolver of the
+            // race when the probe hangs. An unref'd timer lets the event loop
+            // drain first, leaving the await pending and cancelling the suite.
+            setTimeout(() => resolve(null), ENGINE_PROBE_BOUND_MS);
           }),
         ]);
         servedIds = servedFromProbe(snapshot);
