@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.1] - 2026-11-01
+
+### Fixed
+
+- **`/shipmates-pr-review` briefs every board seat with the PR diff up front (#630).** The command assumed its spawned reviewers could run `gh`/`git` themselves; on harnesses that spawn board members without a shell tool, every reviewer interrupted asking the parent to fetch the diff. Stage 0 now prefetches the head SHA, changed-file list and diff to a temp file, Stage 2 carries them into every seat brief, and a portability rule has context-only reviewers state "static review of provided context" rather than reaching for a shell. The diff is passed as untrusted data, never executed. (The rename half of the issue is tracked separately.)
+
 ## [0.19.0] - 2026-10-31
 
 ### Added
