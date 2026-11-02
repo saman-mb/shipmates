@@ -22,7 +22,7 @@ function parsed(over = {}) {
   });
 }
 
-function harness(state, connect) {
+function harness(state, connect, extra = {}) {
   const handlers = {};
   const notes = [];
   const leases = new Map();
@@ -48,6 +48,7 @@ function harness(state, connect) {
     heartbeat: false,
     sessionId: "session-1",
     statePath: join(tmpdir(), "shipmates-crew-unused.json"),
+    ...extra,
   });
   return { handlers, notes, leases, calls };
 }
@@ -169,6 +170,93 @@ test("a cloud seat under enforce does not ask the broker", async () => {
   assert.equal(result, undefined);
   assert.equal(calls.length, 0);
   assert.equal(event.input.model, CLOUD);
+});
+
+const LOCAL_Z = "lmstudio/model-z";
+
+function twoLocalRegistry() {
+  return {
+    getAvailable: () => [
+      { provider: "lmstudio", id: "model-a", cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } },
+      { provider: "lmstudio", id: "model-z", cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } },
+      { provider: "anthropic", id: "model-b", cost: { input: 3, output: 9, cacheRead: 0, cacheWrite: 0 } },
+    ],
+  };
+}
+
+test("a listed local model the engine cannot start is blocked before spawn, and the probe answer is cached", async () => {
+  const probes = [];
+  const { handlers, calls } = harness(
+    parsed({ ticks: [LOCAL_MODEL, LOCAL_Z], resources: "enforce" }),
+    undefined,
+    {
+      probeEngines: async (urls) => {
+        probes.push(urls);
+        return { models: [{ id: "lmstudio/model-a", loaded: true }] };
+      },
+    },
+  );
+
+  const refused = await handlers.tool_call(seatEvent({ model: LOCAL_Z }), { modelRegistry: twoLocalRegistry() });
+  assert.equal(refused.block, true);
+  assert.match(refused.reason, /Refused: lmstudio\/model-z is ticked but its engine cannot start it\./);
+  assert.match(refused.reason, /Free local models: lmstudio\/model-a\./);
+  assert.match(refused.reason, /will not pick one/);
+  assert.equal(calls.length, 0, "an unstartable model must be refused before any broker call");
+
+  const allowed = await handlers.tool_call(seatEvent({ model: LOCAL_MODEL }), { modelRegistry: twoLocalRegistry() });
+  assert.equal(allowed, undefined);
+  assert.equal(calls.length, 1, "the served model still spawns and reaches the broker");
+  assert.equal(probes.length, 1, "a second spawn inside the staleness window reuses the cached answer");
+});
+
+test("a probe that cannot answer keeps today's listed-model behaviour", async () => {
+  const failures = [
+    async () => {
+      throw new Error("engine down");
+    },
+    async () => null,
+    async () => ({}),
+    async () => ({ models: [] }),
+    // A report whose ids do not line up with pi's registry answers nothing.
+    async () => ({ models: [{ id: "unrelated/id", loaded: true }] }),
+  ];
+  for (const probeEngines of failures) {
+    const { handlers } = harness(parsed({ ticks: [LOCAL_MODEL] }), undefined, { probeEngines });
+    const result = await handlers.tool_call(seatEvent({ model: LOCAL_MODEL }), { modelRegistry: makeRegistry() });
+    assert.equal(result, undefined, `a failed probe must not block a listed local model: ${probeEngines}`);
+  }
+});
+
+test("an engine-probe timeout on the spawn path still answers within the bound", async () => {
+  const { handlers } = harness(
+    parsed({ ticks: [LOCAL_MODEL] }),
+    undefined,
+    { probeEngines: () => new Promise(() => {}) },
+  );
+  const result = await handlers.tool_call(seatEvent({ model: LOCAL_MODEL }), { modelRegistry: makeRegistry() });
+  assert.equal(result, undefined, "a hanging probe must degrade to the listed-model behaviour");
+});
+
+test("Off and cloud-only spawns never consult the engine probe", async () => {
+  let probed = 0;
+  const probeEngines = async () => {
+    probed += 1;
+    return { models: [] };
+  };
+
+  const off = harness(parsed({ switch: "Off" }), undefined, { probeEngines });
+  assert.equal(await off.handlers.tool_call(seatEvent(), { modelRegistry: makeRegistry() }), undefined);
+  assert.equal(off.calls.length, 0);
+
+  const cloud = harness(parsed({ ticks: [] }), undefined, { probeEngines });
+  const result = await cloud.handlers.tool_call(
+    seatEvent({ agent: "architect", model: CLOUD, task: "review" }),
+    { modelRegistry: makeRegistry() },
+  );
+  assert.equal(result, undefined);
+  assert.equal(cloud.calls.length, 0, "a cloud seat does not ask the broker");
+  assert.equal(probed, 0, "no probe when the switch is Off or no seat is local");
 });
 
 test("leases release on tool_execution_end and rekey when the result has a run id", async () => {
