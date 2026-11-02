@@ -435,13 +435,60 @@ test("subagent({ action: \"status\" }) is not blocked", async () => {
 });
 
 test("subagent management actions pass through", async () => {
+  const actions = [
+    "status",
+    "list",
+    "guide",
+    "cancel",
+    "message",
+    "stop",
+    "steer",
+    "resume",
+    "validate",
+    "pending",
+    "reply",
+  ];
+  for (const switchState of ["Split", "Local"]) {
+    await withState(switchState, 2, [], async () => {
+      const handler = await loadHandler();
+      for (const action of actions) {
+        const result = await handler(
+          { toolName: "subagent", input: { action, id: "abc" } },
+          { modelRegistry: makeRegistry() },
+        );
+        assert.equal(result, undefined, `${switchState} action ${action} should pass through`);
+      }
+    });
+  }
+});
+
+test("an unknown subagent action with no spawn intent passes the gate", async () => {
   await withState("Split", 2, [], async () => {
     const handler = await loadHandler();
-    for (const action of ["list", "guide", "cancel", "message"]) {
-      const result = await handler({ toolName: "subagent", input: { action, id: "abc" } }, {});
-      assert.equal(result, undefined, `action ${action} should pass through`);
-    }
+    const result = await handler(
+      { toolName: "subagent", input: { action: "an-action-this-file-has-never-heard-of", id: "abc" } },
+      { modelRegistry: makeRegistry() },
+    );
+    assert.equal(result, undefined);
   });
+});
+
+test("spawn intent with no model is still refused", async () => {
+  for (const switchState of ["Split", "Local"]) {
+    await withState(switchState, 2, [], async () => {
+      const handler = await loadHandler();
+      const inputs = [
+        { action: "spawn", agent: "senior-engineer", task: "do work" },
+        { tasks: [{ agent: "senior-engineer", task: "do work" }] },
+        { args: { runs: [{ agent: "senior-engineer", task: "do work" }] } },
+      ];
+      for (const input of inputs) {
+        const result = await handler({ toolName: "subagent", input }, { modelRegistry: makeRegistry() });
+        assert.equal(result?.block, true, `${switchState} spawn intent without a model should block: ${JSON.stringify(input)}`);
+        assert.match(result.reason, /model/i);
+      }
+    });
+  }
 });
 
 test("subagent({ workflow: true }) is not rejected as unknown role", async () => {

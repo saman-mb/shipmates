@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Fixed
 
 - **`/shipmates-pr-review` briefs every board seat with the PR diff up front (#630).** The command assumed its spawned reviewers could run `gh`/`git` themselves; on harnesses that spawn board members without a shell tool, every reviewer interrupted asking the parent to fetch the diff. Stage 0 now prefetches the head SHA, changed-file list and diff to a temp file, Stage 2 carries them into every seat brief, and a portability rule has context-only reviewers state "static review of provided context" rather than reaching for a shell. The diff is passed as untrusted data, never executed. (The rename half of the issue is tracked separately.)
+- **Pi crew gate no longer treats management actions as model-less spawns (#638).** With the crew switch at Split or Local, `subagent({ action: "stop" })` (and `steer`, `resume`, `validate`, `pending`, `reply`) was refused with "no model named" because the gate's allowlist only knew five action names and everything else fell through to the spawn path. The gate now inverts: a call is treated as a spawn only when spawn intent is present (an `agent`/`model` field or a non-empty `tasks`/`runs` set), so management actions — including ones the file has never heard of — pass, while real spawns are still gated exactly as before.
 
 ## [0.19.0] - 2026-10-31
 
