@@ -42,6 +42,59 @@ test("absent and bad files behave as Off and do not refuse", () => {
   }
 });
 
+test("Off refuses a seat that names a local model and inherits one that names none", () => {
+  const off = parseState({ switch: "Off" });
+
+  const refused = decideSpawn({
+    state: off,
+    role: "senior-engineer",
+    model: LOCAL,
+    rawModel: LOCAL,
+    modelTag: "local",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+    task: order,
+  });
+  assert.equal(refused.action, "block");
+  assert.match(refused.reason, /switch is Off/);
+  assert.match(refused.reason, /will not substitute/);
+
+  // No model named: the seat inherits the session model and is allowed, even
+  // when that session model happens to be served locally.
+  for (const rawModel of [null, undefined, "", "inherit"]) {
+    const inherited = decideSpawn({
+      state: off,
+      role: "senior-engineer",
+      model: LOCAL,
+      rawModel,
+      modelTag: "local",
+      loaded,
+      busy: [],
+      cloudModels: [CLOUD],
+      runningLocal: 0,
+      runningAll: 0,
+    });
+    assert.equal(inherited.action, "allow", `rawModel ${String(rawModel)} must inherit the session model`);
+  }
+
+  const cloud = decideSpawn({
+    state: off,
+    role: "architect",
+    model: CLOUD,
+    rawModel: CLOUD,
+    modelTag: "cloud",
+    loaded,
+    busy: [],
+    cloudModels: [CLOUD],
+    runningLocal: 0,
+    runningAll: 0,
+  });
+  assert.equal(cloud.action, "allow");
+});
+
 test("resources defaults off, preserves shadow or enforce, and a newer schema cannot enable it", () => {
   assert.equal(offState().resources, "off");
   assert.equal(parseState({ switch: "Split", ticks, ceiling: 5 }).resources, "off");
