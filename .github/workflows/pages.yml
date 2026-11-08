@@ -24,7 +24,10 @@ jobs:
   # The job name is the status-check name branch protection matches on; leave it.
   validate:
     name: Validate site
-    runs-on: ubuntu-latest
+    # Pinned to the LTS image on purpose: install-demo-deps.sh pins an exact
+    # fonts-dejavu-core version because the demo GIFs are compared as pixels.
+    # ubuntu-latest moved to 26.04, where that package version does not exist.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -126,7 +129,9 @@ jobs:
 
   exporter-floor:
     name: Exporter on minimum environment
-    runs-on: ubuntu-latest
+    # The floor this job exports against is Python 3.9, which the 26.04
+    # ubuntu-latest image no longer carries. Pin the image, not the floor.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
