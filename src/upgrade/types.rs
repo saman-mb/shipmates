@@ -86,7 +86,6 @@ pub enum FindingClass {
     CorruptReceipt,
     PostUpgradeMismatch,
     ToolFailure,
-    PiCrewConfig,
 }
 
 /// One attributable post-upgrade finding.

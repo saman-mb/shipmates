@@ -30,7 +30,7 @@ BUILT="$OUT_DIR/.built"
 rm -rf "$BUILT"
 mkdir -p "$BUILT" "$OUT_DIR/docs"
 
-# One invocation yields the whole pi payload: crew, commands, toolbox, broker and
+# One invocation yields the whole pi payload: crew, commands, toolbox and
 # steering. `build` writes under harnesses/<target>/; a package root does not nest.
 "$SHIPMATES_BIN" build --target pi --root "$SRC_ROOT" --out "$BUILT" --with-tools all
 if [ -d "$BUILT/harnesses/pi" ]; then
@@ -41,7 +41,7 @@ fi
 rm -rf "$OUT_DIR/.pi"
 cp -R "$ROOT/.pi" "$OUT_DIR/.pi"
 
-# A pi package carries four resource types — extensions, skills, prompts, themes — and none of them
+# A pi package carries skills, prompts and themes — and none of them
 # fits contributor steering. It is reference documentation, not a reusable prompt: declaring it under
 # `pi.prompts` would put `/contributor-steering` in the captain's slash menu and pour repository
 # conventions into a prompt. It ships as plain, undeclared package content that the README points at.
@@ -56,7 +56,7 @@ cp "$SRC_ROOT/packaging/pi-shipmates/README.md" "$OUT_DIR/README.md"
 # The broker's runtime pins live in one place — the adapter's own manifest — so
 # the package never disagrees with the extension it ships.
 node "$SRC_ROOT/packaging/pi-shipmates/write-manifest.mjs" \
-  "$OUT_DIR/package.json" "$PKG_NAME" "$VERSION" "$SRC_ROOT/src/adapters/pi_crew/package.json"
+  "$OUT_DIR/package.json" "$PKG_NAME" "$VERSION"
 
 # Expected counts are derived from the sources, never hard-coded, so this gate
 # cannot rot when the crew or the toolbox grows.
@@ -65,15 +65,13 @@ want_skills=$(find "$SRC_ROOT/commands" -maxdepth 1 -name '*.md' | wc -l | tr -d
 want_tools=$(find "$SRC_ROOT/toolbox" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
 got_agents=$(find "$OUT_DIR/.pi/agents" -name '*.md' | wc -l | tr -d ' ')
 got_skills=$(find "$OUT_DIR/.pi/skills" -name 'SKILL.md' | wc -l | tr -d ' ')
-got_ext=$(find "$OUT_DIR/.pi/extensions" -name 'index.ts' | wc -l | tr -d ' ')
 # The scratch render dir has done its job; leaving it behind would put machine
 # state next to the package root and give the checks below something to lie about.
 rm -rf "$BUILT"
 
-echo "package: agents=$got_agents/$want_agents skills=$got_skills/$((want_skills + want_tools)) broker=$got_ext/1"
+echo "package: agents=$got_agents/$want_agents skills=$got_skills/$((want_skills + want_tools))"
 [ "$got_agents" -eq "$want_agents" ] || { echo "::error::crew agents incomplete"; exit 1; }
 [ "$got_skills" -eq "$((want_skills + want_tools))" ] || { echo "::error::skills incomplete — commands and toolbox must both be packaged"; exit 1; }
-[ "$got_ext" -eq 1 ] || { echo "::error::exactly one broker extension file must ship"; exit 1; }
 
 for junk in __pycache__ .venv node_modules receipts .shipmates .built; do
   if [ -n "$(find "$OUT_DIR" -name "$junk" -print -quit)" ]; then

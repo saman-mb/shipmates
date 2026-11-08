@@ -246,79 +246,6 @@ const CREW_FORMAT: CrewFormat = CrewFormat {
     layout: CrewLayout::Flat,
 };
 
-fn strip_module_imports(source: &str) -> String {
-    let mut out = String::new();
-    for line in source.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("import ") && trimmed.ends_with(';') {
-            continue;
-        }
-        out.push_str(line);
-        out.push('\n');
-    }
-    out
-}
-
-fn exported_names(source: &str) -> Vec<String> {
-    let mut names = Vec::new();
-    for line in source.lines() {
-        let trimmed = line.trim();
-        let rest = trimmed
-            .strip_prefix("export async function ")
-            .or_else(|| trimmed.strip_prefix("export function "))
-            .or_else(|| trimmed.strip_prefix("export const "));
-        let Some(rest) = rest else { continue };
-        let name: String = rest
-            .chars()
-            .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '_')
-            .collect();
-        if !name.is_empty() {
-            names.push(name);
-        }
-    }
-    names
-}
-
-fn inline_sibling(source: &str) -> String {
-    let body = strip_module_imports(source).replace("export ", "");
-    let names = exported_names(source);
-    format!(
-        "const {{ {} }} = (() => {{\n{body}  return {{ {} }};\n}})();\n",
-        names.join(", "),
-        names.join(", ")
-    )
-}
-
-fn bundle_pi_crew_extension() -> String {
-    const POLICY: &str = include_str!("pi_crew/policy.mjs");
-    const CAPACITY: &str = include_str!("pi_crew/capacity.mjs");
-    const PROTOCOL: &str = include_str!("pi_crew/protocol.mjs");
-    const TELEMETRY: &str = include_str!("pi_crew/telemetry.mjs");
-    const BROKER: &str = include_str!("pi_crew/broker.mjs");
-    const HOOKS: &str = include_str!("pi_crew/index.ts");
-    let mut bundled = String::from(
-        "import net from \"node:net\";\n\
-import os, { freemem, homedir } from \"node:os\";\n\
-import path, { dirname, join } from \"node:path\";\n\
-import { closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync, writeSync } from \"node:fs\";\n\
-import { PassThrough } from \"node:stream\";\n\
-import { spawn } from \"node:child_process\";\n\
-import { randomUUID } from \"node:crypto\";\n\
-import { fileURLToPath, pathToFileURL } from \"node:url\";\n\n",
-    );
-    bundled.push_str(POLICY);
-    bundled.push('\n');
-    bundled.push_str(&inline_sibling(CAPACITY));
-    bundled.push_str(&inline_sibling(PROTOCOL));
-    bundled.push_str(&inline_sibling(TELEMETRY));
-    bundled.push_str(&inline_sibling(BROKER));
-    bundled.push_str(&strip_module_imports(HOOKS));
-    if bundled.contains("from \"./") || bundled.contains(".mjs\"") {
-        panic!("pi crew extension still imports a sibling; emit must inline every module");
-    }
-    bundled
-}
-
 impl Adapter for PiAdapter {
     fn base_dir(&self) -> &'static str {
         "harnesses/pi/.pi"
@@ -348,10 +275,6 @@ impl Adapter for PiAdapter {
     ) -> anyhow::Result<HashMap<String, String>> {
         let mut files = emit_crew_files(self.base_dir(), roles, &CREW_FORMAT)?;
         files.extend(emit_pi_command_skills(self.base_dir(), commands)?);
-        files.insert(
-            format!("{}/extensions/shipmates-crew/index.ts", self.base_dir()),
-            bundle_pi_crew_extension(),
-        );
         Ok(files)
     }
 
@@ -395,60 +318,6 @@ mod tests {
     }
 
     #[test]
-    fn test_pi_emits_one_inlined_crew_extension() {
-        let files = PiAdapter.build(&[role("sdet", "Tests")], &[command()]).unwrap();
-        let bundled = files
-            .get("harnesses/pi/.pi/extensions/shipmates-crew/index.ts")
-            .expect("pi payload must include the crew extension");
-        assert!(bundled.contains("registerCommand(\"shipmates-crew\""));
-        assert!(bundled.contains("export function decideSpawn"));
-        assert!(bundled.contains("function startBroker"));
-        assert!(bundled.contains("function probe"));
-        assert!(!bundled.contains("policy.mjs"));
-        assert!(!bundled.contains("from \"./"));
-        assert!(!bundled.contains("login"));
-        assert!(!files.keys().any(|path| path.contains("claude") && path.contains("shipmates-crew")));
-        let check_path = std::env::temp_dir().join("shipmates-pi-crew-bundle-check.mjs");
-        std::fs::write(&check_path, bundled).expect("write bundle check");
-        if let Ok(node) = std::process::Command::new("node")
-            .arg("--check")
-            .arg(&check_path)
-            .output()
-        {
-            if !node.status.success() {
-                let _ = std::fs::remove_file(&check_path);
-                panic!(
-                    "bundled pi crew extension failed node --check:\n{}",
-                    String::from_utf8_lossy(&node.stderr)
-                );
-            }
-        }
-        let mut import_path = check_path.display().to_string().replace('\\', "/");
-        if !import_path.starts_with('/') {
-            import_path.insert(0, '/');
-        }
-        let import_url = format!("file://{import_path}");
-        if let Ok(imported) = std::process::Command::new("node")
-            .arg("--input-type=module")
-            .arg("-e")
-            .arg(format!(
-                "const mod = await import({import_url:?}); if (typeof mod.default !== 'function') process.exit(2);"
-            ))
-            .output()
-        {
-            if !imported.status.success() {
-                let _ = std::fs::remove_file(&check_path);
-                panic!(
-                    "bundled pi crew extension failed to evaluate:\n{}{}",
-                    String::from_utf8_lossy(&imported.stderr),
-                    String::from_utf8_lossy(&imported.stdout)
-                );
-            }
-        }
-        let _ = std::fs::remove_file(&check_path);
-    }
-
-    #[test]
     fn test_pi_steering_target_is_shared_plain_markdown() {
         let target = PiAdapter.steering_target().expect("pi must emit steering");
         assert_eq!(
@@ -472,7 +341,6 @@ mod tests {
             },
             vec![
                 "harnesses/pi/.pi/agents/sdet.md",
-                "harnesses/pi/.pi/extensions/shipmates-crew/index.ts",
                 "harnesses/pi/.pi/skills/ship-fix-bug/SKILL.md",
             ]
         );
@@ -686,12 +554,10 @@ mod tests {
     }
 
     /// `build --with-tools` unions `build()` with `build_tools()` into one tree.
-    /// Every bundled tool arrives as a native `.pi/skills/` skill (never a
-    /// second copy beside the crew extension), an empty selection adds nothing,
-    /// and the merged tree still carries exactly one inlined crew extension —
-    /// the file the pi npm package (#635) ships whole.
+    /// Every bundled tool arrives as a native `.pi/skills/` skill, and an empty
+    /// selection adds nothing.
     #[test]
-    fn test_pi_tool_skills_merge_without_disturbing_the_crew_extension() {
+    fn test_pi_tool_skills_merge_without_colliding() {
         let core = PiAdapter
             .build(&[role("sdet", "Tests")], &[command()])
             .unwrap();
@@ -719,14 +585,6 @@ mod tests {
 
         let mut merged = core;
         merged.extend(tool_files);
-        let extensions: Vec<&String> = merged
-            .keys()
-            .filter(|path| path.ends_with(".pi/extensions/shipmates-crew/index.ts"))
-            .collect();
-        assert_eq!(
-            extensions.len(),
-            1,
-            "the crew extension must stay a single inlined file after the tool merge"
-        );
+        assert!(merged.contains_key("harnesses/pi/.pi/agents/sdet.md"));
     }
 }

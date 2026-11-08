@@ -2,7 +2,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use shipmates::cli::{Cli, Command, install_force_hint};
 use shipmates::installer::manifest_db::InstallReceipt;
-use shipmates::{adapters, catalog, detector, digest, doctor, installer, pi_broker, steering, upgrade};
+use shipmates::{adapters, catalog, detector, digest, doctor, installer, steering, upgrade};
 use std::fs;
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -820,25 +820,6 @@ fn install_harness(
     // #454: guidance only — do not remap the target or invent a doctor check.
     // Global pi crew lands under ~/.pi/agent/; a nearer ancestor carrying
     // `.pi/` or `.agents/` still shadows that home tree from a nested cwd.
-    if harness == "pi" {
-        // Seed a safe default crew config so doctor is clean after install and
-        // the extension has a schema-valid file before the captain runs
-        // /shipmates-crew (#606).
-        if let Some(home) = home::home_dir() {
-            let agent_dir = home.join(".pi").join("agent");
-            match doctor::fix_pi_crew_config(&agent_dir) {
-                Ok(true) => println!(
-                    "Pi crew config: wrote default shipmates-crew.json (switch Off) at {}",
-                    agent_dir.join("shipmates-crew.json").display()
-                ),
-                Ok(false) => {}
-                Err(error) => eprintln!("Pi crew config: could not write default: {error}"),
-            }
-        }
-        println!(
-            "Pi crew plugin installed. Run /shipmates-crew once. The switch starts at Off and does not change /model."
-        );
-    }
     if let Some(hint) = pi_global_install_hint(harness, global) {
         println!("{hint}");
     }
@@ -1102,18 +1083,6 @@ fn main() -> Result<()> {
             let target_dir = resolve_target_dir(location.local, location.dir)?;
             let selected = installer::uninstall::select_receipt(&target_dir, harness.as_deref())?;
             let Some(selected) = selected else {
-                // Pi's resource broker can outlive the receipt (it is machine-wide
-                // and outside ownership). Allow an explicit pi uninstall with no
-                // receipt to still tear the broker down when no extension remains.
-                if harness.as_deref() == Some("pi") {
-                    let teardown = pi_broker::teardown_after_uninstall();
-                    if let Some(line) = teardown.warning_line() {
-                        println!("{}", line);
-                    } else {
-                        println!("No install receipt found; nothing to uninstall.");
-                    }
-                    return Ok(());
-                }
                 println!("No install receipt found; nothing to uninstall.");
                 return Ok(());
             };
@@ -1140,15 +1109,6 @@ fn main() -> Result<()> {
             );
             for warning in &report.warnings {
                 println!("{}", warning);
-            }
-            if let Some(teardown) = &report.broker {
-                if let Some(line) = teardown.warning_line() {
-                    // Already pushed into warnings above when set; print only if
-                    // a future path sets broker without a warning line.
-                    if !report.warnings.iter().any(|w| w == &line) {
-                        println!("{}", line);
-                    }
-                }
             }
             // Always strip user-scope steering for this harness on uninstall so
             // a prior local install that wrote home files (#489) can still be
