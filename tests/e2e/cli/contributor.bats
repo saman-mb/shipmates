@@ -39,9 +39,7 @@ copy_root() {
   [ -f "$full/harnesses/pi/.pi/skills/shipmates-ship-issue/SKILL.md" ]
   [ -f "$full/harnesses/pi/.pi/skills/shipmates-diagram/SKILL.md" ]
   [ ! -e "$full/harnesses/pi/.shipmates/receipts" ]
-  local ext_count
-  ext_count="$(find "$full/harnesses/pi/.pi/extensions" -name index.ts | wc -l | tr -d ' ')"
-  [ "$ext_count" = "1" ]
+  [ ! -e "$full/harnesses/pi/.pi/extensions" ]
 
   # A named subset ships that tool only, and `none` ships none explicitly.
   run "$SHIPMATES_BIN" build --target pi --root "$copy" --out "$subset" --with-tools scrub
