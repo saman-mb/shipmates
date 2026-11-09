@@ -772,6 +772,16 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && !parts[3].is_empty()
                     && (parts[4] == "SKILL.md"
                         || (parts.len() == 5 && parts[4].ends_with(".py"))))
+                // Retired in 0.20.0 with the crew switch itself. Nothing installs
+                // these two paths any more, but a receipt written by an earlier
+                // version still names them, and `validate` runs on every load:
+                // dropping the arm would make every existing pi install's receipt
+                // invalid, so `uninstall` and `update` would refuse to touch it.
+                // Exact equality, never an `extensions/*.ts` arm — pi loads every
+                // file in that directory, and the captain's own extensions there
+                // must stay outside a receipt's reach.
+                || path == ".pi/extensions/shipmates-crew/index.ts"
+                || path == ".pi/agent/extensions/shipmates-crew/index.ts"
         }
         "grok-build" => {
             is_steering_receipt_path(harness, path)
@@ -1351,6 +1361,33 @@ mod tests {
         assert!(!allowed_receipt_path("pi", ".pi/settings.json"));
         assert!(!allowed_receipt_path("pi", ".pi/agents/evil.sh"));
         assert!(!allowed_receipt_path("pi", ".pi/agents/nested/sdet.md"));
+    }
+
+    /// The crew switch was removed in 0.20.0, but its file is still named by
+    /// every receipt an earlier version wrote. `validate` runs on every load, so
+    /// dropping the path from the predicate would turn those receipts invalid and
+    /// strand the files on disk — `uninstall` and `update` both refuse a receipt
+    /// they cannot read. The retired path stays claimable, and only that path.
+    #[test]
+    fn retired_pi_crew_plugin_path_still_loads_from_an_older_receipt() {
+        for path in [
+            ".pi/extensions/shipmates-crew/index.ts",
+            ".pi/agent/extensions/shipmates-crew/index.ts",
+        ] {
+            InstallReceipt::new(
+                "0.19.1",
+                "pi",
+                LAYOUT_SKILLS,
+                vec![".pi".into(), ".shipmates".into()],
+                vec![file(path, HASH)],
+            )
+            .unwrap_or_else(|error| panic!("an older receipt naming {path} must still load: {error}"));
+        }
+
+        // Negative control: the allowance is exact equality, so a widened arm
+        // would show up here as a receipt claiming the captain's own extension.
+        assert!(!allowed_receipt_path("pi", ".pi/extensions/captain-own/index.ts"));
+        assert!(!allowed_receipt_path("pi", ".pi/agent/extensions/captain-own/index.ts"));
     }
 
     #[test]
