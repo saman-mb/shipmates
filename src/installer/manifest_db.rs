@@ -623,6 +623,25 @@ fn is_shipmates_steering_path(path: &str) -> bool {
 /// payload trees each adapter can write; a syntactically relative path is not
 /// enough because uninstall and doctor use receipts as deletion/overwrite
 /// authority.
+/// Paths a *previous* Shipmates release installed and this one no longer ships.
+///
+/// They stay claimable for two reasons, and both matter: `validate` runs on every
+/// load, so a receipt that still names one must keep loading rather than turn
+/// invalid and strand the install; and uninstall must be able to remove it, or a
+/// retired file stays on disk forever behind an "unknown payload entry" block.
+///
+/// Exact paths only. A retired file grants no authority over the directory it
+/// sits in — every harness reads those trees for the captain's own resources.
+pub(crate) fn retired_receipt_path(harness: &str, path: &str) -> bool {
+    matches!(
+        (harness, path),
+        (
+            "pi",
+            ".pi/extensions/shipmates-crew/index.ts" | ".pi/agent/extensions/shipmates-crew/index.ts"
+        )
+    )
+}
+
 fn allowed_receipt_path(harness: &str, path: &str) -> bool {
     let parts = path.split('/').collect::<Vec<_>>();
     if parts.iter().any(|part| {
@@ -772,16 +791,7 @@ fn allowed_receipt_path(harness: &str, path: &str) -> bool {
                     && !parts[3].is_empty()
                     && (parts[4] == "SKILL.md"
                         || (parts.len() == 5 && parts[4].ends_with(".py"))))
-                // Retired in 0.20.0 with the crew switch itself. Nothing installs
-                // these two paths any more, but a receipt written by an earlier
-                // version still names them, and `validate` runs on every load:
-                // dropping the arm would make every existing pi install's receipt
-                // invalid, so `uninstall` and `update` would refuse to touch it.
-                // Exact equality, never an `extensions/*.ts` arm — pi loads every
-                // file in that directory, and the captain's own extensions there
-                // must stay outside a receipt's reach.
-                || path == ".pi/extensions/shipmates-crew/index.ts"
-                || path == ".pi/agent/extensions/shipmates-crew/index.ts"
+                || retired_receipt_path(harness, path)
         }
         "grok-build" => {
             is_steering_receipt_path(harness, path)
