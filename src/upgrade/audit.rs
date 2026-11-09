@@ -158,33 +158,16 @@ pub fn audit_install(
             // receipt, not a repairable drift.
             match doctor::diagnose(root, harness, roles, cmds, tools, source, "") {
                 Ok(doc_report) => {
-                    const PI_CREW_CHECK_NAMES: &[&str] = &[
-                        "Pi crew extension syntax",
-                        "Pi subagents package",
-                        "Pi crew config",
-                    ];
-                    let mut pi_problem_count = 0usize;
-                    let mut other_problem_count = 0usize;
-                    for check in &doc_report.checks {
-                        if check.severity != Severity::Problem {
-                            continue;
-                        }
-                        if PI_CREW_CHECK_NAMES.contains(&check.name.as_str()) {
-                            pi_problem_count += 1;
-                        } else {
-                            other_problem_count += 1;
-                        }
-                    }
-                    drift_count += pi_problem_count + other_problem_count;
-                    if pi_problem_count > 0 {
-                        classes.push(FindingClass::PiCrewConfig);
-                        parts.push(format!("{} pi crew extension issue(s)", pi_problem_count));
-                    }
-                    if other_problem_count > 0 {
+                    let problem_count = doc_report
+                        .checks
+                        .iter()
+                        .filter(|check| check.severity == Severity::Problem)
+                        .count();
+                    drift_count += problem_count;
+                    if problem_count > 0 {
                         classes.push(FindingClass::UnrepairableDrift);
                         parts.push(format!(
-                            "{} problem(s) doctor cannot repair",
-                            other_problem_count
+                            "{problem_count} problem(s) doctor cannot repair"
                         ));
                     }
                 }

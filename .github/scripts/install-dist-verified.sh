@@ -100,8 +100,25 @@ else
   asset="cargo-dist-${DIST_TARGET}.tar.xz"
 fi
 
-curl --proto '=https' --tlsv1.2 -LsSf -o "$asset" "${base}/${asset}"
-curl --proto '=https' --tlsv1.2 -LsSf -o "${asset}.sha256" "${base}/${asset}.sha256"
+# The release CDN answers a transient 5xx often enough that a single attempt
+# red-builds an unrelated pull request. Retry a bounded number of times with a
+# short backoff; a persistent failure still fails the job.
+fetch() {
+  local url="$1" dest="$2" attempt=1
+  while [ "$attempt" -le 4 ]; do
+    if curl --proto '=https' --tlsv1.2 -LsSf -o "$dest" "$url"; then
+      return 0
+    fi
+    echo "attempt ${attempt} failed for ${url}; retrying" >&2
+    attempt=$((attempt + 1))
+    sleep $((attempt * 3))
+  done
+  echo "error: could not download ${url}" >&2
+  return 1
+}
+
+fetch "${base}/${asset}" "$asset"
+fetch "${base}/${asset}.sha256" "${asset}.sha256"
 verify_sha256 "$asset" "${asset}.sha256"
 
 if [ "$is_windows" -eq 1 ]; then

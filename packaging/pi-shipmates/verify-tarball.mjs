@@ -22,7 +22,6 @@ for (const required of [
   "package.json",
   "README.md",
   "LICENSE",
-  ".pi/extensions/shipmates-crew/index.ts",
   ".pi/agents/architect.md",
   "docs/contributor-steering.md",
 ]) {

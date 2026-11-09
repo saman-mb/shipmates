@@ -20,8 +20,6 @@ package, and `pi update --extensions` keeps them current.
   so on. Commands are captain-invoked: nothing here runs on its own.
 - **The toolbox** — the model-invoked utilities (diagram, badge, sparkline, scrub, fixtures, GitHub CLI
   wrapper and friends) the crew reach for implicitly.
-- **The crew resource broker**, which meters local-model capacity so a subagent fan-out cannot exhaust
-  VRAM. It starts at Off and does not change your model; run `/skill:shipmates-crew` once to set it.
 
 ## The crew holds your standard, not ours
 

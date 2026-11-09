@@ -494,7 +494,7 @@ pub(crate) mod test_env {
     }
 
     /// Run `f` with `HOME` pointed at `dir`, restoring the previous value after.
-    /// Also clears `PI_CODING_AGENT_DIR` for the duration so pi-broker teardown
+    /// Also clears `PI_CODING_AGENT_DIR` for the duration so a pi install test
     /// cannot reach a developer's real agent dir when ambient env is set.
     pub(crate) fn with_isolated_home(dir: &Path, f: impl FnOnce()) {
         let _guard = lock_home();
@@ -502,10 +502,10 @@ pub(crate) mod test_env {
         let previous_pi = std::env::var_os("PI_CODING_AGENT_DIR");
         // SAFETY: every writer of `HOME` / `PI_CODING_AGENT_DIR` in this crate
         // goes through HOME_LOCK, so no two threads mutate the environment at
-        // once; readers (`home::home_dir`, `pi_broker::agent_dir`) use `var_os`.
+        // once; readers (`home::home_dir`) use `var_os`.
         unsafe {
             std::env::set_var("HOME", dir);
-            // Point pi agent dir under the isolated home so broker teardown is
+            // Point pi agent dir under the isolated home so path resolution is
             // sandboxed the same way HOME is.
             std::env::set_var("PI_CODING_AGENT_DIR", dir.join(".pi").join("agent"));
         };

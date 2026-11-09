@@ -95,7 +95,7 @@ self_test() {
   crew_only=$'crew/sdet.md'
   docs_only=$'README.md\nsite/docs/install/index.html'
   both_github=$'.github/workflows/pages.yml\n.github/scripts/lint-shell.sh'
-  ext=$'src/adapters/pi_crew/index.ts\ntests/payload-digests/pi.sha256'
+  ext=$'src/adapters/pi.rs\ntests/payload-digests/pi.sha256'
   packaging=$'packaging/pi-shipmates/README.md'
 
   check "a crew change with no version bump fails" \

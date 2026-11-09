@@ -24,7 +24,10 @@ jobs:
   # The job name is the status-check name branch protection matches on; leave it.
   validate:
     name: Validate site
-    runs-on: ubuntu-latest
+    # Pinned to the LTS image on purpose: install-demo-deps.sh pins an exact
+    # fonts-dejavu-core version because the demo GIFs are compared as pixels.
+    # ubuntu-latest moved to 26.04, where that package version does not exist.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -78,8 +81,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: bash .github/scripts/check-release-bump.sh
-      - name: Test the pi crew switch policy
-        run: bash .github/scripts/test-pi-crew-policy.sh
       - name: Install deps for the demo GIF check (Pillow + DejaVu Sans Mono)
         # Both are pinned: the artifacts are compared as pixels, and the pixels
         # come from Pillow's bundled freetype and this exact font version. An
@@ -128,7 +129,9 @@ jobs:
 
   exporter-floor:
     name: Exporter on minimum environment
-    runs-on: ubuntu-latest
+    # The floor this job exports against is Python 3.9, which the 26.04
+    # ubuntu-latest image no longer carries. Pin the image, not the floor.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:

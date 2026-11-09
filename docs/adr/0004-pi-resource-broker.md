@@ -1,6 +1,6 @@
 # ADR 0004 — One machine-wide broker for pi local work
 
-**Status:** Accepted — contract for #601. Not a runtime attestation.
+**Status:** Superseded — the pi crew switch and its broker were removed in 0.20.0. Kept as the historical record of #601.
 **Date:** 2026-10-28
 **Decided by:** issue #601
 

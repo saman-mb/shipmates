@@ -22,8 +22,6 @@ pub struct UninstallReport {
     pub removed: usize,
     pub warnings: Vec<String>,
     pub receipt_removed: bool,
-    /// Outcome of the pi resource-broker teardown, when this uninstall was for pi.
-    pub broker: Option<crate::pi_broker::Teardown>,
 }
 
 /// Find receipts without guessing a harness. The complete receipt directory is
@@ -55,19 +53,9 @@ pub fn select_receipt(target_dir: &Path, harness: Option<&str>) -> Result<Option
                     path: repository.receipt_path(harness)?,
                     receipt: receipt.expect("valid receipt must be present"),
                 })),
-                plan::ReceiptState::Missing => {
-                    // Pi's machine-wide broker outlives the receipt. Returning
-                    // None lets main run broker teardown for an explicit
-                    // `uninstall --harness pi` even after the receipt is gone.
-                    // Every other harness still fails closed.
-                    if harness == "pi" {
-                        Ok(None)
-                    } else {
-                        bail!(
-                            "No install receipt found for harness {harness}; refusing to uninstall"
-                        )
-                    }
-                }
+                plan::ReceiptState::Missing => bail!(
+                    "No install receipt found for harness {harness}; refusing to uninstall"
+                ),
                 plan::ReceiptState::Invalid => bail!(
                     "Install receipt for harness {harness} is invalid: {}; refusing to uninstall",
                     error.unwrap_or_else(|| "unknown receipt error".into())
@@ -156,6 +144,41 @@ pub fn uninstall_with_payload(
             continue;
         }
         let Some(expected) = known_payload.get(&file.path) else {
+            // A path a later release retired: still ours, and still named by this
+            // receipt, so remove it when the bytes are the ones we wrote. An
+            // unknown *and* unretired path is left alone, and a modified file is
+            // the captain's, exactly as for a live payload entry.
+            if manifest_db::retired_receipt_path(&selected.receipt.harness, &file.path) {
+                match fs::read(&path) {
+                    Ok(current) if digest::hash_bytes(&current) == file.sha256 => {
+                        let permissions = fs::metadata(&path)
+                            .with_context(|| format!("inspecting retired file {}", path.display()))?
+                            .permissions();
+                        removals.push(Removal {
+                            path,
+                            bytes: current,
+                            permissions,
+                        });
+                    }
+                    Ok(_) => {
+                        report.warnings.push(format!(
+                            "Warning: modified retired file preserved: {}",
+                            rel.display()
+                        ));
+                        blocked = true;
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => {
+                        report.warnings.push(format!(
+                            "Warning: retired file preserved (cannot read {}): {}",
+                            rel.display(),
+                            error
+                        ));
+                        blocked = true;
+                    }
+                }
+                continue;
+            }
             report.warnings.push(format!(
                 "Warning: old or unknown payload entry preserved: {}",
                 rel.display()
@@ -312,17 +335,6 @@ pub fn uninstall_with_payload(
                 .unwrap_or(&backup_dir)
                 .display()
         ));
-    }
-
-    // Pi's resource broker is machine-wide and outside the install receipt. Stop
-    // it only after file removal, and only when no pi extension remains at the
-    // agent dir (a project-scope uninstall must not kill a global install's broker).
-    if report.harness == "pi" && report.receipt_removed {
-        let teardown = crate::pi_broker::teardown_after_uninstall();
-        if let Some(line) = teardown.warning_line() {
-            report.warnings.push(line);
-        }
-        report.broker = Some(teardown);
     }
 
     Ok(report)
@@ -548,6 +560,59 @@ mod tests {
                 .warnings
                 .iter()
                 .any(|warning| warning.contains("old or unknown payload entry"))
+        );
+    }
+
+    /// The crew switch was retired in 0.20.0, so its file is no longer in the
+    /// current payload — but a receipt from an earlier version still names it.
+    /// Leaving it behind would strand it on disk, and blocking on it would make
+    /// every old install un-uninstallable. It is removed when untouched.
+    #[test]
+    fn retired_pi_crew_plugin_is_removed_from_an_older_receipt() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(".pi/extensions/shipmates-crew/index.ts");
+        crate::installer::atomic_write(&path, "export default function () {}\n").unwrap();
+        receipt(
+            dir.path(),
+            "pi",
+            ".pi/extensions/shipmates-crew/index.ts",
+            b"export default function () {}\n",
+        );
+        let selected = select_receipt(dir.path(), Some("pi")).unwrap().unwrap();
+        let report = uninstall_with_payload(dir.path(), selected, &BTreeMap::new()).unwrap();
+
+        assert_eq!(report.removed, 1, "warnings: {:?}", report.warnings);
+        assert!(!path.exists());
+        assert!(report.receipt_removed);
+    }
+
+    /// ...and a retired file the captain edited stays theirs, exactly as a live
+    /// managed file would.
+    #[test]
+    fn modified_retired_pi_crew_plugin_is_preserved() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(".pi/extensions/shipmates-crew/index.ts");
+        crate::installer::atomic_write(&path, "// the captain's own edit
+").unwrap();
+        receipt(
+            dir.path(),
+            "pi",
+            ".pi/extensions/shipmates-crew/index.ts",
+            b"the bytes shipmates wrote",
+        );
+        let selected = select_receipt(dir.path(), Some("pi")).unwrap().unwrap();
+        let report = uninstall_with_payload(dir.path(), selected, &BTreeMap::new()).unwrap();
+
+        assert_eq!(report.removed, 0);
+        assert!(!report.receipt_removed);
+        assert!(path.exists());
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("modified retired file preserved")),
+            "warnings: {:?}",
+            report.warnings
         );
     }
 

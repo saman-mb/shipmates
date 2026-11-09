@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versioning follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-11-08
+
+### Removed
+
+- **The pi crew switch is gone.** The `/shipmates-crew` extension, its resource broker, its policy and capacity modules, and the `pi_broker` teardown path are removed. `shipmates install --harness pi` no longer writes `.pi/extensions/shipmates-crew/index.ts`, `doctor` no longer reports or repairs `shipmates-crew.json`, and `pi-shipmates` declares no `extensions` entry. The crew, the nineteen commands and the toolbox are unchanged — this removes the model-routing gate, not the crew.
+- **Existing pi installs retire the extension on `update`.** A receipt written by an earlier version still names the extension file, and that path stays claimable so the receipt keeps loading: `shipmates update` then removes the dropped file the way it removes any file a release retires, and `shipmates uninstall` cleans it up the same way. Nothing is left behind for pi to load, and no receipt from an older version is stranded.
+
 ## [0.19.1] - 2026-11-01
 
 ### Fixed
